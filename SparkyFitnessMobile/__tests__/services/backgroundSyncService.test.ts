@@ -1,4 +1,10 @@
-import { triggerManualSync } from '../../src/services/backgroundSyncService';
+import {
+  triggerManualSync,
+  flushPendingHealthSyncCacheRefresh,
+} from '../../src/services/backgroundSyncService';
+import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
+import { TimeoutError } from '../../src/utils/concurrency';
+import { AppState } from 'react-native';
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -12,6 +18,8 @@ jest.mock('../../src/services/storage', () => ({
   loadLastSyncedTime: jest.fn(),
   saveLastSyncedTime: jest.fn(),
   loadBackgroundSyncEnabled: jest.fn(),
+  savePendingHealthSyncCacheRefresh: jest.fn(),
+  consumePendingHealthSyncCacheRefresh: jest.fn(),
 }));
 
 jest.mock('../../src/HealthMetrics', () => ({
@@ -42,11 +50,17 @@ jest.mock('../../src/services/healthConnectService', () => ({
   getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
 }));
 
+jest.mock('../../src/hooks/refreshHealthSyncCache', () => ({
+  refreshHealthSyncCache: jest.fn(),
+}));
+
 const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
 const storage = require('../../src/services/storage') as {
   loadLastSyncedTime: jest.Mock;
   saveLastSyncedTime: jest.Mock;
   loadBackgroundSyncEnabled: jest.Mock;
+  savePendingHealthSyncCacheRefresh: jest.Mock;
+  consumePendingHealthSyncCacheRefresh: jest.Mock;
 };
 const healthService = require('../../src/services/healthConnectService') as {
   loadHealthPreference: jest.Mock;
@@ -62,14 +76,27 @@ const healthService = require('../../src/services/healthConnectService') as {
   resetDatabaseInaccessibleCount: jest.Mock;
   getDatabaseInaccessibleCount: jest.Mock;
 };
+const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction<
+  typeof refreshHealthSyncCache
+>;
 
 describe('performBackgroundSync (via triggerManualSync)', () => {
+  const setAppState = (state: string) => {
+    Object.defineProperty(AppState, 'currentState', {
+      configurable: true,
+      value: state,
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2024-01-15T14:30:00Z'));
     jest.spyOn(console, 'log').mockImplementation();
     api.syncHealthData.mockResolvedValue(undefined);
+    storage.savePendingHealthSyncCacheRefresh.mockResolvedValue(undefined);
+    storage.consumePendingHealthSyncCacheRefresh.mockResolvedValue(false);
+    setAppState('active');
   });
 
   afterEach(() => {
@@ -405,6 +432,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
           { value: 72 },
         ])
       );
+      expect(mockRefreshHealthSyncCache).toHaveBeenCalled();
       expect(storage.saveLastSyncedTime).toHaveBeenCalled();
     });
 
@@ -414,6 +442,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
@@ -426,6 +455,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       api.syncHealthData.mockRejectedValue(new Error('Network error'));
 
       await expect(triggerManualSync()).rejects.toThrow('Network error');
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
@@ -437,7 +467,86 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('refreshes caches even when timestamp save is skipped after a timeout', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isActiveCaloriesSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockRejectedValue(
+        new TimeoutError('Background query for Steps', 60_000),
+      );
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([{ value: 300 }]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 300 }]);
+      expect(mockRefreshHealthSyncCache).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('does not refresh caches when sync finishes in the background', async () => {
+      setAppState('background');
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
+      expect(storage.savePendingHealthSyncCacheRefresh).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('flushes the pending refresh if the app becomes active while saving it', async () => {
+      setAppState('background');
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+      storage.savePendingHealthSyncCacheRefresh.mockImplementation(async () => {
+        setAppState('active');
+        storage.consumePendingHealthSyncCacheRefresh.mockResolvedValueOnce(true);
+      });
+
+      await triggerManualSync();
+
+      expect(storage.savePendingHealthSyncCacheRefresh).toHaveBeenCalled();
+      expect(storage.consumePendingHealthSyncCacheRefresh).toHaveBeenCalled();
+      expect(mockRefreshHealthSyncCache).toHaveBeenCalledTimes(1);
+    });
+
+    test('flushes pending refresh when the app becomes active', async () => {
+      storage.consumePendingHealthSyncCacheRefresh.mockResolvedValue(true);
+
+      const refreshed = await flushPendingHealthSyncCacheRefresh();
+
+      expect(refreshed).toBe(true);
+      expect(storage.consumePendingHealthSyncCacheRefresh).toHaveBeenCalled();
+      expect(mockRefreshHealthSyncCache).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not flush pending refresh while the app is backgrounded', async () => {
+      setAppState('background');
+
+      const refreshed = await flushPendingHealthSyncCacheRefresh();
+
+      expect(refreshed).toBe(false);
+      expect(storage.consumePendingHealthSyncCacheRefresh).not.toHaveBeenCalled();
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
     });
   });
 

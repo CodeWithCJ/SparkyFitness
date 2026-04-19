@@ -49,7 +49,11 @@ import {
 import type { TimeRange } from './src/services/storage';
 import { initHealthConnect, loadHealthPreference , startObservers, stopObservers } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
-import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
+import {
+  configureBackgroundSync,
+  performBackgroundSync,
+  flushPendingHealthSyncCacheRefresh,
+} from './src/services/backgroundSyncService';
 import {
   tryClaimAutoSync,
   isSyncClaimed,
@@ -404,6 +408,10 @@ function AppContent() {
       console.error('[App] Failed to initialize sync services:', error);
     });
 
+    flushPendingHealthSyncCacheRefresh().catch(error => {
+      console.error('[App] Failed to flush pending health sync refresh:', error);
+    });
+
     return () => {
       cancelled = true;
       if (Platform.OS === 'ios') {
@@ -459,6 +467,8 @@ function AppContent() {
         }
 
         if (nextAppState !== 'active') return;
+
+        await flushPendingHealthSyncCacheRefresh();
         if (!wasInBackgroundRef.current) return;
 
         const enteredAt = backgroundEnteredAtRef.current;
