@@ -5,7 +5,7 @@ export function fireSelectionHaptic(): void {
 }
 
 export function fireSheetOpenHaptic(): void {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
 }
 
 export function fireSuccessHaptic(): void {
