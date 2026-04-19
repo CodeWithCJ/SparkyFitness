@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  sparkyfitness-db:
+    image: postgres:15-alpine
+    container_name: sparky-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME}
+      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER}
+      POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD}
+    volumes:
+      - staging_db_data:/var/lib/postgresql/data
+    networks:
+      - staging-network
+    ports:
+      - "5433:5432"
+
+  sparkyfitness-server:
+    image: codewithcj/sparkyfitness:${SPARKY_VERSION}
+    container_name: sparky-staging-server
+    restart: unless-stopped
+    depends_on:
+      - sparkyfitness-db
+    environment:
+      SPARKY_FITNESS_DB_HOST: sparkyfitness-db
+      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
+      SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER}
+      SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD} 
+      NODE_ENV: staging
+    networks:
+      - staging-network
+    ports:
+      - "3010:3010"
+
+  sparkyfitness-frontend:
+    image: codewithcj/sparkyfitness:${SPARKY_VERSION}
+    container_name: sparky-staging-frontend
+    restart: unless-stopped
+    depends_on:
+      - sparkyfitness-server
+    networks:
+      - staging-network
+    ports:
+      - "8081:80"
+
+networks:
+  staging-network:
+    driver: bridge
+
+volumes:
+  staging_db_data:
