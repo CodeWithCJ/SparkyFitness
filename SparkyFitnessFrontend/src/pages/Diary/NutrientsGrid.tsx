@@ -18,6 +18,7 @@ interface NutrientGridProps {
     to: 'kcal' | 'kJ'
   ) => number;
   baseVariant: FoodVariant | null | undefined;
+  visibleNutrients: string[];
 }
 
 export const NutrientGrid = ({
@@ -26,124 +27,74 @@ export const NutrientGrid = ({
   energyUnit,
   convertEnergy,
   baseVariant,
+  visibleNutrients,
 }: NutrientGridProps) => {
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
   const { t } = useTranslation();
 
-  const renderNutrientBlock = (
-    keys: Array<keyof CalculatedNutrition>,
-    customNutrientList: UserCustomNutrient[]
-  ) => {
-    return keys.map((key) => {
-      const meta = getNutrientMetadata(key as string, customNutrientList);
-      if (key === 'custom_nutrients') return null;
-
-      const value = nutrition[key] as number;
-
-      return (
-        <div key={key}>
-          <Label className="text-sm">
-            {t(meta.label, { defaultValue: meta.defaultLabel })} ({meta.unit})
-          </Label>
-          <div className="text-lg font-medium">
-            {formatNutrientValue(key as string, value, customNutrientList)}
-          </div>
-        </div>
-      );
-    });
-  };
-
   return (
     <div className="space-y-4">
-      <div>
-        <h4 className="font-medium mb-3">Macronutrients</h4>
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <Label className="text-sm">
-              Calories ({getEnergyUnitString(energyUnit)})
-            </Label>
-            <div className="text-lg font-medium">
-              {Math.round(
-                convertEnergy(nutrition.calories, 'kcal', energyUnit)
-              )}
-            </div>
-          </div>
-          {renderNutrientBlock(['protein', 'carbs', 'fat'], customNutrients)}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-medium mb-3">Fat Breakdown</h4>
-        <div className="grid grid-cols-4 gap-4">
-          {renderNutrientBlock(
-            [
-              'saturated_fat',
-              'polyunsaturated_fat',
-              'monounsaturated_fat',
-              'trans_fat',
-            ],
-            customNutrients
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-medium mb-3">Minerals & Other Nutrients</h4>
-        <div className="grid grid-cols-4 gap-4">
-          {renderNutrientBlock(
-            ['cholesterol', 'sodium', 'potassium', 'dietary_fiber'],
-            customNutrients
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-medium mb-3">Sugars & Vitamins</h4>
-        <div className="grid grid-cols-4 gap-4">
-          {renderNutrientBlock(
-            ['sugars', 'vitamin_a', 'vitamin_c', 'calcium'],
-            customNutrients
-          )}
-        </div>
-      </div>
-
-      <div>
-        <div className="grid grid-cols-1 gap-4">
-          {renderNutrientBlock(['iron'], customNutrients)}
-        </div>
-      </div>
-
-      {customNutrients.length > 0 && nutrition.custom_nutrients && (
-        <div>
-          <h4 className="font-medium mb-3">Custom Nutrients</h4>
-          <div className="grid grid-cols-4 gap-4">
-            {customNutrients.map((nutrient) => (
-              <div key={nutrient.id}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {visibleNutrients.map((key) => {
+          if (key === 'calories') {
+            return (
+              <div key="calories">
                 <Label className="text-sm">
-                  {nutrient.name} ({nutrient.unit})
+                  Calories ({getEnergyUnitString(energyUnit)})
                 </Label>
                 <div className="text-lg font-medium">
-                  {formatNutrientValue(
-                    nutrient.name,
-                    nutrition.custom_nutrients[nutrient.name] || 0,
-                    customNutrients
+                  {Math.round(
+                    convertEnergy(nutrition.calories, 'kcal', energyUnit)
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            );
+          }
+
+          const customNutrient = customNutrients.find((cn) => cn.name === key);
+          if (customNutrient) {
+            const value = nutrition.custom_nutrients?.[key] || 0;
+            return (
+              <div key={key}>
+                <Label className="text-sm">
+                  {customNutrient.name} ({customNutrient.unit})
+                </Label>
+                <div className="text-lg font-medium">
+                  {formatNutrientValue(key, value, customNutrients)}
+                </div>
+              </div>
+            );
+          }
+
+          if (key in nutrition && key !== 'custom_nutrients') {
+            const meta = getNutrientMetadata(key, customNutrients);
+            const value = nutrition[key as keyof CalculatedNutrition] as number;
+            return (
+              <div key={key}>
+                <Label className="text-sm">
+                  {t(meta.label, { defaultValue: meta.defaultLabel })} (
+                  {meta.unit})
+                </Label>
+                <div className="text-lg font-medium">
+                  {formatNutrientValue(key, value, customNutrients)}
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })}
+      </div>
 
       {baseVariant && (
-        <div className="bg-muted p-4 rounded-lg">
+        <div className="bg-muted p-4 rounded-lg mt-4">
           <h4 className="font-medium mb-2">
             Base Values (per {baseVariant.serving_size}{' '}
             {baseVariant.serving_unit}):
           </h4>
-          <div className="grid grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
               {Math.round(
                 convertEnergy(baseVariant.calories || 0, 'kcal', energyUnit)

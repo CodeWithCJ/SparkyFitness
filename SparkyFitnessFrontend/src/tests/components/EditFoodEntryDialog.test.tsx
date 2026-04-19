@@ -13,6 +13,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     loggingLevel: 'DEBUG',
     energyUnit: 'kcal' as const,
     convertEnergy: (value: number) => value,
+    nutrientDisplayPreferences: [],
   }),
 }));
 
@@ -20,6 +21,7 @@ jest.mock('@/utils/logging', () => ({
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
+  debug: jest.fn(),
 }));
 
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({

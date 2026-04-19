@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -469,9 +469,15 @@ const EnhancedFoodSearch = ({
       (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
     );
 
-  const visibleNutrients = quickInfoPreferences
-    ? quickInfoPreferences.visible_nutrients
-    : DEFAULT_NUTRIENTS;
+  const visibleNutrients = useMemo(() => {
+    const base = quickInfoPreferences
+      ? quickInfoPreferences.visible_nutrients
+      : DEFAULT_NUTRIENTS;
+
+    const allKeys = [...base, ...(customNutrients?.map((cn) => cn.name) || [])];
+
+    return Array.from(new Set(allKeys));
+  }, [quickInfoPreferences, customNutrients]);
 
   const nutrientConfig = {
     visibleNutrients,

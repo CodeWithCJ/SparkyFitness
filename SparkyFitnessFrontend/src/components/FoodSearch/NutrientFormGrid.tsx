@@ -7,71 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import type { GlycemicIndex, NumericFoodVariantKeys } from '@/types/food';
 import type { FormFoodVariant } from '@/utils/foodForm';
-
-interface NutrientFieldConfig {
-  key: NumericFoodVariantKeys;
-  label: string;
-  unit: string;
-  step?: string;
-}
-
-interface NutrientSection {
-  title: string;
-  fields: NutrientFieldConfig[];
-}
-
-const NUTRIENT_SECTIONS: NutrientSection[] = [
-  {
-    title: 'Main Nutrients',
-    fields: [
-      // calories is handled separately (energy unit conversion) — excluded here
-      { key: 'protein', label: 'Protein', unit: 'g', step: '0.1' },
-      { key: 'carbs', label: 'Carbs', unit: 'g', step: '0.1' },
-      { key: 'fat', label: 'Fat', unit: 'g', step: '0.1' },
-    ],
-  },
-  {
-    title: 'Fat Breakdown',
-    fields: [
-      { key: 'saturated_fat', label: 'Saturated Fat', unit: 'g', step: '0.1' },
-      {
-        key: 'polyunsaturated_fat',
-        label: 'Polyunsaturated Fat',
-        unit: 'g',
-        step: '0.1',
-      },
-      {
-        key: 'monounsaturated_fat',
-        label: 'Monounsaturated Fat',
-        unit: 'g',
-        step: '0.1',
-      },
-      { key: 'trans_fat', label: 'Trans Fat', unit: 'g', step: '0.1' },
-    ],
-  },
-  {
-    title: 'Minerals & Other',
-    fields: [
-      { key: 'cholesterol', label: 'Cholesterol', unit: 'mg', step: '0.1' },
-      { key: 'sodium', label: 'Sodium', unit: 'mg', step: '0.1' },
-      { key: 'potassium', label: 'Potassium', unit: 'mg', step: '0.1' },
-      { key: 'dietary_fiber', label: 'Dietary Fiber', unit: 'g', step: '0.1' },
-    ],
-  },
-  {
-    title: 'Sugars & Vitamins',
-    fields: [
-      { key: 'sugars', label: 'Sugars', unit: 'g', step: '0.1' },
-      { key: 'vitamin_a', label: 'Vitamin A', unit: 'μg', step: '0.1' },
-      { key: 'vitamin_c', label: 'Vitamin C', unit: 'mg', step: '0.1' },
-      { key: 'calcium', label: 'Calcium', unit: 'mg', step: '0.1' },
-      { key: 'iron', label: 'Iron', unit: 'mg', step: '0.1' },
-    ],
-  },
-];
+import { useTranslation } from 'react-i18next';
 
 const GLYCEMIC_INDEX_OPTIONS: { value: GlycemicIndex; label: string }[] = [
   { value: 'None', label: 'None' },
@@ -144,114 +84,97 @@ export function NutrientGrid({
   customNutrients,
   onUpdate,
 }: NutrientGridProps) {
+  const { t } = useTranslation();
   const isLocked = variant.is_locked ?? false;
-  const visible = new Set(visibleNutrients);
-
   const update = (field: string) => (val: string) =>
     onUpdate(variantIndex, field, val);
 
   return (
-    <div className="space-y-4">
-      {/* Glycemic Index */}
-      {visible.has('glycemic_index') && (
-        <div>
-          <Label htmlFor={gridId(variantIndex, 'glycemic_index')}>
-            Glycemic Index (GI)
-          </Label>
-          <Select
-            value={variant.glycemic_index ?? 'None'}
-            onValueChange={(val: GlycemicIndex) =>
-              onUpdate(variantIndex, 'glycemic_index', val)
-            }
-          >
-            <SelectTrigger
-              id={gridId(variantIndex, 'glycemic_index')}
-              className="w-45"
-            >
-              <SelectValue placeholder="Select GI" />
-            </SelectTrigger>
-            <SelectContent>
-              {GLYCEMIC_INDEX_OPTIONS.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {visibleNutrients.map((key) => {
+        // --- Glycemic Index ---
+        if (key === 'glycemic_index') {
+          return (
+            <div key="glycemic_index">
+              <Label htmlFor={gridId(variantIndex, 'glycemic_index')}>
+                Glycemic Index (GI)
+              </Label>
+              <Select
+                value={variant.glycemic_index ?? 'None'}
+                onValueChange={(val: GlycemicIndex) =>
+                  onUpdate(variantIndex, 'glycemic_index', val)
+                }
+              >
+                <SelectTrigger
+                  id={gridId(variantIndex, 'glycemic_index')}
+                  disabled={isLocked}
+                >
+                  <SelectValue placeholder="Select GI" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GLYCEMIC_INDEX_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        }
 
-      {/* Standard sections */}
-      {NUTRIENT_SECTIONS.map((section) => {
-        const visibleFields = section.fields.filter((f) => visible.has(f.key));
-        const isMainNutrients = section.title === 'Main Nutrients';
-        const showCalories = isMainNutrients && visible.has('calories');
-        if (!showCalories && visibleFields.length === 0) return null;
+        // --- Calories ---
+        if (key === 'calories') {
+          return (
+            <NutrientInput
+              key="calories"
+              id={gridId(variantIndex, 'calories')}
+              label={`Calories (${energyUnit})`}
+              value={
+                variant.calories === ''
+                  ? ''
+                  : Math.round(
+                      convertEnergy(variant.calories || 0, 'kcal', energyUnit)
+                    )
+              }
+              step="1"
+              disabled={isLocked}
+              onChange={update('calories')}
+            />
+          );
+        }
+
+        // --- Standard Nutrients ---
+        const cfg = CENTRAL_NUTRIENT_CONFIG[key];
+        if (cfg) {
+          return (
+            <NutrientInput
+              key={key}
+              id={gridId(variantIndex, key)}
+              label={`${t(cfg.label, { defaultValue: cfg.defaultLabel })} (${cfg.unit})`}
+              value={variant[key as NumericFoodVariantKeys] ?? ''}
+              step={cfg.decimals === 0 ? '1' : '0.1'}
+              disabled={isLocked}
+              onChange={update(key)}
+            />
+          );
+        }
+
+        // --- Custom Nutrients ---
+        const cn = customNutrients?.find((n) => n.name === key);
+        if (!cn) return null;
 
         return (
-          <div key={section.title}>
-            <h5 className="text-sm font-medium text-gray-700 mb-3">
-              {section.title}
-            </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {showCalories && (
-                <NutrientInput
-                  id={gridId(variantIndex, 'calories')}
-                  label={`Calories (${energyUnit})`}
-                  value={
-                    variant.calories === ''
-                      ? ''
-                      : Math.round(
-                          convertEnergy(
-                            variant.calories || 0,
-                            'kcal',
-                            energyUnit
-                          )
-                        )
-                  }
-                  step="1"
-                  disabled={isLocked}
-                  onChange={update('calories')}
-                />
-              )}
-              {visibleFields.map(({ key, label, unit, step }) => (
-                <NutrientInput
-                  key={key}
-                  id={gridId(variantIndex, key)}
-                  label={`${label} (${unit})`}
-                  value={variant[key] ?? ''}
-                  step={step}
-                  disabled={isLocked}
-                  onChange={update(key)}
-                />
-              ))}
-            </div>
-          </div>
+          <NutrientInput
+            key={key}
+            id={gridId(variantIndex, key)}
+            label={`${cn.name} (${cn.unit})`}
+            value={variant.custom_nutrients?.[cn.name] ?? ''}
+            disabled={isLocked}
+            onChange={update(cn.name)}
+          />
         );
       })}
-
-      {/* Custom nutrients */}
-      {customNutrients && customNutrients.some((n) => visible.has(n.name)) && (
-        <div>
-          <h5 className="text-sm font-medium text-gray-700 mb-3">
-            Custom Nutrients
-          </h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {customNutrients
-              .filter((n) => visible.has(n.name))
-              .map((nutrient) => (
-                <NutrientInput
-                  key={nutrient.id}
-                  id={gridId(variantIndex, nutrient.name)}
-                  label={`${nutrient.name} (${nutrient.unit})`}
-                  value={variant.custom_nutrients?.[nutrient.name] ?? ''}
-                  disabled={isLocked}
-                  onChange={update(nutrient.name)}
-                />
-              ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
