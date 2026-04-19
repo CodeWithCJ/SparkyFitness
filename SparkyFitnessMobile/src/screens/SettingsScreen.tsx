@@ -22,13 +22,13 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type SettingsScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Settings'>,
-  StackScreenProps<RootStackParamList>
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {

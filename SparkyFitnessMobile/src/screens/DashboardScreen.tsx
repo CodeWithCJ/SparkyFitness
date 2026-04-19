@@ -20,8 +20,8 @@ import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
@@ -32,7 +32,7 @@ const RANGE_SEGMENTS: Segment<StepsRange>[] = [
 
 type DashboardScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Dashboard'>,
-  StackScreenProps<RootStackParamList>
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {

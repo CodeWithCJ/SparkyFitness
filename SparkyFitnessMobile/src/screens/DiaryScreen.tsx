@@ -19,13 +19,13 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
-  StackScreenProps<RootStackParamList>
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {

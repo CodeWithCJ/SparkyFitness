@@ -126,7 +126,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       <TextInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
         className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-        style={{ fontSize: 16, lineHeight: 20 }}
+        style={{ fontSize: 16 }}
         placeholder={placeholder}
         placeholderTextColor={textMuted}
         value={form[field]}
@@ -153,7 +153,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       <TextInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
         className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-        style={{ fontSize: 16, lineHeight: 20 }}
+        style={{ fontSize: 16 }}
         placeholder="0"
         placeholderTextColor={textMuted}
         value={form[field]}
@@ -217,7 +217,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
             <TextInput
               ref={fieldRefs.calories}
               className="bg-raised rounded-lg px-3 py-2.5 text-text-primary border border-border-strong"
-              style={{ fontSize: 16, lineHeight: 20 }}
+              style={{ fontSize: 16 }}
               placeholder="0"
               placeholderTextColor={textMuted}
               value={form.calories}
