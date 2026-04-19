@@ -139,4 +139,23 @@ describe('FoodScanScreen', () => {
       expect(mockFireSuccessHaptic).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('does not fire a success haptic for manual barcode lookup success', async () => {
+    mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Type Barcode Instead'));
+    fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
+    fireEvent.press(screen.getByText('Look Up'));
+
+    await waitFor(() => {
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        'FoodEntryAdd',
+        expect.objectContaining({
+          item: expect.objectContaining({ id: 'food-1' }),
+        }),
+      );
+    });
+    expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
+  });
 });

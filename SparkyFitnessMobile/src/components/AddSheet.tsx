@@ -9,6 +9,7 @@ import {
 import { useUniwind, useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
+import { fireSheetOpenHaptic } from '../services/haptics';
 
 export interface AddSheetRef {
   present: () => void;
@@ -34,8 +35,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
+    const isOpenRef = useRef(false);
     const pendingPresentRef = useRef(false);
     const presentFrameRef = useRef<number | null>(null);
+    const presentRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -49,16 +52,36 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         '--color-text-secondary',
       ]) as [string, string, string, string, string];
 
-    const schedulePresent = useCallback(() => {
+    const clearScheduledPresent = useCallback(() => {
       if (presentFrameRef.current != null) {
         cancelAnimationFrame(presentFrameRef.current);
+        presentFrameRef.current = null;
       }
 
+      if (presentRetryTimeoutRef.current != null) {
+        clearTimeout(presentRetryTimeoutRef.current);
+        presentRetryTimeoutRef.current = null;
+      }
+    }, []);
+
+    const schedulePresent = useCallback((shouldRetry = true) => {
+      clearScheduledPresent();
       presentFrameRef.current = requestAnimationFrame(() => {
         presentFrameRef.current = null;
         bottomSheetRef.current?.present();
+
+        if (!shouldRetry) {
+          return;
+        }
+
+        presentRetryTimeoutRef.current = setTimeout(() => {
+          presentRetryTimeoutRef.current = null;
+          if (pendingPresentRef.current && !isDismissingRef.current && !isOpenRef.current) {
+            schedulePresent(false);
+          }
+        }, 120);
       });
-    }, []);
+    }, [clearScheduledPresent]);
 
     useImperativeHandle(ref, () => ({
       present: () => {
@@ -71,23 +94,18 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       dismiss: () => {
         pendingPresentRef.current = false;
         isDismissingRef.current = true;
-        if (presentFrameRef.current != null) {
-          cancelAnimationFrame(presentFrameRef.current);
-          presentFrameRef.current = null;
-        }
+        clearScheduledPresent();
         bottomSheetRef.current?.dismiss();
       },
-    }), [schedulePresent]);
+    }), [clearScheduledPresent, schedulePresent]);
 
     useEffect(() => {
       const sheetRef = bottomSheetRef.current;
       return () => {
-        if (presentFrameRef.current != null) {
-          cancelAnimationFrame(presentFrameRef.current);
-        }
+        clearScheduledPresent();
         sheetRef?.dismiss();
       };
-    }, []);
+    }, [clearScheduledPresent]);
 
     const renderBackdrop = useCallback(
       (props: BottomSheetBackdropProps) => (
@@ -108,6 +126,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
     const handleDismiss = useCallback(() => {
       isDismissingRef.current = false;
+      isOpenRef.current = false;
       setShowExerciseMenu(false);
       if (pendingPresentRef.current) {
         schedulePresent();
@@ -117,14 +136,21 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
       if (fromIndex >= 0 && toIndex === -1) {
         isDismissingRef.current = true;
+        isOpenRef.current = false;
         return;
+      }
+
+      if (fromIndex === -1 && toIndex >= 0) {
+        fireSheetOpenHaptic();
       }
 
       if (toIndex >= 0) {
         isDismissingRef.current = false;
+        isOpenRef.current = true;
         pendingPresentRef.current = false;
+        clearScheduledPresent();
       }
-    }, []);
+    }, [clearScheduledPresent]);
 
     const cards: ActionCard[] = [
       { label: 'Food', icon: 'food', onPress: onAddFood },

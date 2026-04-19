@@ -1,6 +1,13 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
+import { fireSheetOpenHaptic } from '../../src/services/haptics';
+
+jest.mock('../../src/services/haptics', () => ({
+  fireSelectionHaptic: jest.fn(),
+  fireSheetOpenHaptic: jest.fn(),
+  fireSuccessHaptic: jest.fn(),
+}));
 
 const mockBottomSheetControls = {
   openCount: 0,
@@ -40,6 +47,9 @@ jest.mock('@gorhom/bottom-sheet', () => {
 });
 
 describe('AddSheet', () => {
+  const mockFireSheetOpenHaptic = fireSheetOpenHaptic as jest.MockedFunction<
+    typeof fireSheetOpenHaptic
+  >;
   let requestAnimationFrameSpy: jest.SpyInstance<number, [FrameRequestCallback]>;
   let cancelAnimationFrameSpy: jest.SpyInstance<void, [number]>;
 
@@ -83,7 +93,11 @@ describe('AddSheet', () => {
     ref.current?.present();
     expect(mockBottomSheetControls.openCount).toBe(1);
 
+    mockBottomSheetControls.onAnimate?.(-1, 0);
+    expect(mockFireSheetOpenHaptic).toHaveBeenCalledTimes(1);
+
     mockBottomSheetControls.isPresentBlocked = true;
+    mockBottomSheetControls.onAnimate?.(0, -1);
     ref.current?.present();
 
     expect(mockBottomSheetControls.openCount).toBe(1);
@@ -92,5 +106,8 @@ describe('AddSheet', () => {
     mockBottomSheetControls.onDismiss?.();
 
     expect(mockBottomSheetControls.openCount).toBe(2);
+
+    mockBottomSheetControls.onAnimate?.(-1, 0);
+    expect(mockFireSheetOpenHaptic).toHaveBeenCalledTimes(2);
   });
 });
