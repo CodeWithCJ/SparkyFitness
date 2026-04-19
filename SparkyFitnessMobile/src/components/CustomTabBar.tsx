@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Icon, { type IconName } from './Icon';
-import { fireSelectionHaptic } from '../services/haptics';
+import { fireSheetOpenHaptic } from '../services/haptics';
 
 export const TAB_BAR_HEIGHT = 56;
 /**
@@ -72,7 +72,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
         };
 
         const handleAddPress = () => {
-          fireSelectionHaptic();
+          fireSheetOpenHaptic();
           onPress();
         };
 

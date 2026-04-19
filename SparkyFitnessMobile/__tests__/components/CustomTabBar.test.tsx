@@ -3,16 +3,17 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import CustomTabBar from '../../src/components/CustomTabBar';
-import { fireSelectionHaptic } from '../../src/services/haptics';
+import { fireSheetOpenHaptic } from '../../src/services/haptics';
 
 jest.mock('../../src/services/haptics', () => ({
   fireSelectionHaptic: jest.fn(),
+  fireSheetOpenHaptic: jest.fn(),
   fireSuccessHaptic: jest.fn(),
 }));
 
 describe('CustomTabBar', () => {
-  const mockFireSelectionHaptic = fireSelectionHaptic as jest.MockedFunction<
-    typeof fireSelectionHaptic
+  const mockFireSheetOpenHaptic = fireSheetOpenHaptic as jest.MockedFunction<
+    typeof fireSheetOpenHaptic
   >;
 
   const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -66,7 +67,7 @@ describe('CustomTabBar', () => {
     jest.clearAllMocks();
   });
 
-  it('fires a selection haptic when the Add button is pressed', () => {
+  it('fires a sheet-open haptic when the Add button is pressed', () => {
     const props = createProps();
     const screen = render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
@@ -76,7 +77,7 @@ describe('CustomTabBar', () => {
 
     fireEvent.press(screen.getByLabelText('Add'));
 
-    expect(mockFireSelectionHaptic).toHaveBeenCalledTimes(1);
+    expect(mockFireSheetOpenHaptic).toHaveBeenCalledTimes(1);
     expect(props.navigation.emit).toHaveBeenCalledWith({
       type: 'tabPress',
       target: 'Add-key',
