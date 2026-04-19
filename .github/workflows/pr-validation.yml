@@ -1,29 +1,26 @@
-name: PR Validation
+name: PR Checks
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
-  validate-pr:
-    name: Validate PR Requirements
+  validate:
+    name: Validate & Label
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check PR Description
-        id: check_description
+      - name: Validate and Label PR
         uses: actions/github-script@v7
         with:
           script: |
-            const prBody = context.payload.pull_request.body || '';
+            const title = context.payload.pull_request.title.toLowerCase();
+            const body  = context.payload.pull_request.body || '';
 
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
@@ -33,9 +30,9 @@ jobs:
 
             const changedFiles = files.map(f => f.filename);
 
-            // Change detection
+            // ---- Change detection ----
             const hasFrontendChanges = changedFiles.some(f =>
-              f.startsWith('SparkyFitnessFrontend/') || f.startsWith('src/')
+              f.startsWith('SparkyFitnessFrontend/')
             );
             const hasBackendChanges = changedFiles.some(f =>
               f.startsWith('SparkyFitnessServer/')
@@ -44,7 +41,6 @@ jobs:
               f.startsWith('SparkyFitnessMobile/')
             );
 
-            // Translation change detection
             const localesRoot = 'SparkyFitnessFrontend/public/locales/';
             const nonEnLocaleFiles = changedFiles.filter(f =>
               f.startsWith(localesRoot) && !f.startsWith(`${localesRoot}en/`)
@@ -52,97 +48,119 @@ jobs:
             const hasEnTranslationChange = changedFiles.some(f =>
               f === `${localesRoot}en/translation.json`
             );
-
-            // SQL change detection
             const hasSQLChanges = changedFiles.some(f =>
-              f.startsWith('SparkyFitnessServer/') && f.endsWith('.sql')
+              f.includes('rls_policies.sql')
             );
 
-            const isNewFeature =
-              prBody.includes('[x] New Feature') ||
-              prBody.includes('[X] New Feature');
+            // ---- Checkbox helpers ----
+            const checkedBoxes = [...body.matchAll(/- \[x\] (.+)/gi)]
+              .map(m => m[1].toLowerCase());
 
             const checked = str =>
-              prBody.includes(`[x] **${str}**`) ||
-              prBody.includes(`[X] **${str}**`);
+              body.includes(`[x] **${str}**`) ||
+              body.includes(`[X] **${str}**`);
 
+            const isNewFeature =
+              body.includes('[x] New Feature') ||
+              body.includes('[X] New Feature');
+
+            // ---- Labeling ----
+            const toAdd = [];
+
+            if (/^fix(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('issue') || b.includes('bug'))) {
+              toAdd.push('bug');
+            }
+            if (/^feat(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('new feature'))) {
+              toAdd.push('enhancement');
+            }
+            if (/^docs(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('documentation'))) {
+              toAdd.push('documentation');
+            }
+            if (/^refactor(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.startsWith('refactor'))) {
+              toAdd.push('refactor');
+            }
+            if (/^security(\(.+\))?:/.test(title)) {
+              toAdd.push('security');
+            }
+            if (hasFrontendChanges) toAdd.push('frontend');
+            if (hasBackendChanges)  toAdd.push('backend');
+            if (hasMobileChanges)   toAdd.push('mobile');
+
+            if (toAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: toAdd,
+              });
+            }
+
+            // ---- Validation ----
             let errors = [];
             let warnings = [];
 
-            // --- Integrity (all PRs) ---
             if (!checked('[MANDATORY - ALL] Integrity & License')) {
               errors.push('**[MANDATORY]** Check the "Integrity & License" checkbox.');
             }
-
-            // --- Alignment (new features) ---
             if (isNewFeature && !checked('[MANDATORY for new feature] Alignment')) {
               errors.push('**[MANDATORY for new features]** Check the "Alignment" checkbox.');
             }
-
-            // --- Frontend quality ---
             if (hasFrontendChanges && !checked('[MANDATORY for Frontend changes] Quality')) {
               errors.push('**[MANDATORY for Frontend changes]** Check the "Quality" checkbox (run `pnpm run validate`).');
             }
-
-            // --- Translations ---
-            // Hard error: non-en locale files must never be modified by contributors
             if (nonEnLocaleFiles.length > 0) {
               errors.push(
                 `**[MANDATORY]** Only the \`en\` translation file may be modified. ` +
-                `Remove changes to: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}. ` +
-                `Non-English locales are maintained by project maintainers.`
+                `Remove changes to: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}.`
               );
             }
-
-            // Require checkbox when en/translation.json is touched
             if (hasEnTranslationChange && !checked('[MANDATORY for Frontend changes] Translations')) {
-              errors.push(
-                '**[MANDATORY for Frontend changes]** You modified `en/translation.json`. ' +
-                'Check the "Translations" checkbox.'
-              );
+              errors.push('**[MANDATORY for Frontend changes]** You modified `en/translation.json`. Check the "Translations" checkbox.');
             }
-
-            // --- Backend quality ---
             if (hasBackendChanges && !checked('[MANDATORY for Backend changes] Code Quality')) {
-              errors.push('**[MANDATORY for Backend changes]** Check the "Code Quality" checkbox.');
+              errors.push('**[MANDATORY for Backend changes]** Backend files were modified (`SparkyFitnessServer/`). Check the "Code Quality" checkbox.');
             }
-
-            // --- Database security ---
+            if (hasMobileChanges && !checked('[MANDATORY for Mobile changes] Tested on device or emulator')) {
+              errors.push('**[MANDATORY for Mobile changes]** Mobile files were modified (`SparkyFitnessMobile/`). Check the "Tested on device or emulator" checkbox.');
+            }
+            if (hasFrontendChanges && !checked('[MANDATORY for Frontend changes] Quality')) {
+              errors.push('**[MANDATORY for Frontend changes]** Frontend files were modified (`SparkyFitnessFrontend/`). Check the "Quality" checkbox (run `pnpm run validate`).');
+            }
+            if (hasMobileChanges && !checked('[MANDATORY for Mobile changes] Tested on device or emulator')) {
+              errors.push('**[MANDATORY for Mobile changes]** Check the "Tested on device or emulator" checkbox.');
+            }
             if (hasSQLChanges && !checked('[MANDATORY for Backend changes] Database Security')) {
-              errors.push(
-                '**[MANDATORY for Backend changes]** SQL file changes detected. ' +
-                'Check the "Database Security" checkbox and confirm `rls_policies.sql` is updated for any new user-specific tables.'
-              );
+              errors.push('**[MANDATORY for Backend changes]** `rls_policies.sql` was modified. Check the "Database Security" checkbox.');
             }
 
-            // --- Screenshots (self-reported) ---
-            // UI change detection is unreliable (files in pages/ aren't always visual changes),
-            // so we only validate that screenshots are actually present if the contributor checks the box.
             const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
-
             if (screenshotsChecked) {
-              // Only look for image markdown, HTML tags, or generic URLs
-              const hasImages = prBody.includes('![') || prBody.includes('<img') || prBody.includes('http');
-
+              const hasImages = body.includes('![') || body.includes('<img') || body.includes('http');
               if (!hasImages) {
-                errors.push(
-                  '**[MANDATORY for UI changes]** You checked the Screenshots box, but no images were found in the PR body. Please attach them.'
-                );
+                errors.push('**[MANDATORY for UI changes]** You checked the Screenshots box, but no images were found.');
               }
             }
 
-            // --- Description quality ---
-            const descriptionBody = prBody.split('## Description')[1] || '';
-            if (!prBody.includes('## Description') || descriptionBody.trim().length < 20) {
+            const hasType =
+              body.includes('[x] Issue')         || body.includes('[X] Issue')    ||
+              body.includes('[x] New Feature')    || body.includes('[X] New Feature') ||
+              body.includes('[x] Refactor')       || body.includes('[X] Refactor') ||
+              body.includes('[x] Documentation')  || body.includes('[X] Documentation');
+
+            if (!hasType) {
+              warnings.push('Please select a PR type (Issue, New Feature, Refactor, or Documentation).');
+            }
+
+            const descriptionBody = body.split('## Description')[1] || '';
+            if (!body.includes('## Description') || descriptionBody.trim().length < 20) {
               warnings.push('Please provide a meaningful description of your changes.');
             }
 
-            // --- Linked issue ---
-            if (!prBody.match(/Linked Issue:\s*#\d+/)) {
-              warnings.push('Please link a related GitHub issue (`Linked Issue: #123`).');
+            if (!body.match(/Linked Issue:\s*(Closes|Fixes|Resolves)?\s*#\d+/i)) {
+              warnings.push('Please link a related GitHub issue (`Linked Issue: Closes #123`).');
             }
 
-            // --- Build summary ---
+            // ---- Summary ----
             let message = '## PR Validation Results\n\n';
 
             message += '### Change Detection\n';
@@ -150,45 +168,56 @@ jobs:
             if (hasBackendChanges)       message += '- Backend changes detected\n';
             if (hasMobileChanges)        message += '- Mobile changes detected\n';
             if (hasEnTranslationChange)  message += '- `en` translation file modified\n';
-            if (nonEnLocaleFiles.length) message += `- ⛔ Non-English locale files modified: ${nonEnLocaleFiles.join(', ')}\n`;
-            if (hasSQLChanges)           message += '- SQL changes detected\n';
+            if (nonEnLocaleFiles.length) message += `- Non-English locale files modified: ${nonEnLocaleFiles.join(', ')}\n`;
+            if (hasSQLChanges)           message += '- `rls_policies.sql` modified\n';
             message += '\n';
 
             if (errors.length > 0) {
-              message += '### ❌ Required Actions\n\n';
+              message += '### Required Actions\n\n';
               message += errors.map(e => `- ${e}`).join('\n') + '\n\n';
               errors.forEach(e => core.error(e));
             }
-
             if (warnings.length > 0) {
-              message += '### ⚠️ Recommendations\n\n';
+              message += '### Recommendations\n\n';
               message += warnings.map(w => `- ${w}`).join('\n') + '\n\n';
               warnings.forEach(w => core.warning(w));
             }
-
             if (errors.length === 0 && warnings.length === 0) {
-              message += '### ✅ All checks passed. Thank you!\n';
+              message += '### All checks passed. Thank you!\n';
             }
 
             await core.summary.addRaw(message).write();
 
-            if (errors.length > 0) {
-              core.setFailed('Required PR checks are missing. See the summary for details.');
+            // ---- Upsert comment ----
+            const botTag = '<!-- pr-validation-bot -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes(botTag)
+            );
+
+            const commentBody = botTag + '\n' + message;
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: commentBody,
+              });
             }
 
-      - name: Validate PR Type Selected
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prBody = context.payload.pull_request.body || '';
-
-            const hasIssue    = prBody.includes('[x] Issue')       || prBody.includes('[X] Issue');
-            const hasFeature  = prBody.includes('[x] New Feature') || prBody.includes('[X] New Feature');
-            const hasRefactor = prBody.includes('[x] Refactor')    || prBody.includes('[X] Refactor');
-            const hasDoc      = prBody.includes('[x] Documentation') || prBody.includes('[X] Documentation');
-
-            if (!hasIssue && !hasFeature && !hasRefactor && !hasDoc) {
-              const message = 'Please select a PR type (Issue, New Feature, Refactor, or Documentation).';
-              core.warning(message);
-              await core.summary.addRaw(`\n\n### ⚠️ PR Type Missing\n${message}`).write();
+            if (errors.length > 0) {
+              core.setFailed('Required PR checks are missing. See the summary for details.');
             }
