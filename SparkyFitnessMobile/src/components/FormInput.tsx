@@ -33,7 +33,7 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
             paddingLeft: 12,
             paddingRight: 12,
             fontSize: 16,
-            lineHeight: 20,
+            letterSpacing: 0,
           },
           style,
         ]}

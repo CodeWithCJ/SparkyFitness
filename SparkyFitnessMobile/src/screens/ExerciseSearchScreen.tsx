@@ -166,7 +166,7 @@ useEffect(() => {
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16, lineHeight: 20 }}
+            style={{ fontSize: 16, letterSpacing: 0 }}
             placeholder="Search exercises..."
             placeholderTextColor={textMuted}
             value={searchText}

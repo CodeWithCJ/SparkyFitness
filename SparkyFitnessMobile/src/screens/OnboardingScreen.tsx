@@ -373,7 +373,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           <View className="flex-1">
             <TextInput
               className="p-2.5 text-base text-text-primary"
-              style={{ lineHeight: 20 }}
+              style={{ letterSpacing: 0 }}
               placeholder="https://your-sparky-app.com"
               placeholderTextColor={textMuted}
               value={serverUrl}
@@ -512,7 +512,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             <View className="flex-1">
               <TextInput
                 className="p-2.5 text-base text-text-primary"
-                style={{ lineHeight: 20 }}
+                style={{ letterSpacing: 0 }}
                 placeholder="Uds3d8i..."
                 placeholderTextColor={textMuted}
                 value={apiKey}
