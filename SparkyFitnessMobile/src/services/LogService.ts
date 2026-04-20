@@ -59,6 +59,16 @@ const THRESHOLD_LEVEL: Record<LogThreshold, number> = {
   errors_only: 1,
 };
 
+// Translation from the legacy threshold filter to the chip-selection model
+// used by the Log screen. `all` maps to `[]` (the "show all" sentinel) so
+// users who never narrowed their filter keep seeing every level.
+const THRESHOLD_TO_STATUSES: Record<LogThreshold, LogStatus[]> = {
+  all: [],
+  no_debug: ['ERROR', 'WARNING', 'INFO'],
+  warnings_errors: ['ERROR', 'WARNING'],
+  errors_only: ['ERROR'],
+};
+
 // Options shared by both the capture-level and view-filter pickers.
 export const LOG_THRESHOLD_OPTIONS: { label: string; value: LogThreshold }[] = [
   { label: 'All', value: 'all' },
@@ -440,18 +450,31 @@ export const getViewFilter = async (): Promise<LogThreshold> => {
  * An empty array means "no explicit selection — show all" and is the
  * default on a fresh install. Unknown values in the stored array are
  * dropped silently.
+ *
+ * When no chip selection is stored, translate a previously persisted
+ * threshold filter (`log_view_filter`) into an equivalent chip selection
+ * so users who had set `errors_only`, `no_debug`, etc. before this
+ * screen was refactored don't silently have their filter reset to
+ * "show all" on upgrade.
  */
 export const getViewSelectedStatuses = async (): Promise<LogStatus[]> => {
   if (cachedSelectedStatuses !== null) return cachedSelectedStatuses;
 
   try {
     const stored = await AsyncStorage.getItem(LOG_VIEW_SELECTED_STATUSES_KEY);
-    if (!stored) {
-      cachedSelectedStatuses = [];
+    if (stored) {
+      const parsed: unknown = JSON.parse(stored);
+      cachedSelectedStatuses = Array.isArray(parsed) ? parsed.filter(isLogStatus) : [];
       return cachedSelectedStatuses;
     }
-    const parsed: unknown = JSON.parse(stored);
-    cachedSelectedStatuses = Array.isArray(parsed) ? parsed.filter(isLogStatus) : [];
+
+    const legacyThreshold = await AsyncStorage.getItem(LOG_VIEW_FILTER_KEY);
+    if (legacyThreshold && THRESHOLD_LEVEL[legacyThreshold as LogThreshold] !== undefined) {
+      cachedSelectedStatuses = [...THRESHOLD_TO_STATUSES[legacyThreshold as LogThreshold]];
+      return cachedSelectedStatuses;
+    }
+
+    cachedSelectedStatuses = [];
     return cachedSelectedStatuses;
   } catch (error) {
     console.error('Failed to get selected log statuses', error);

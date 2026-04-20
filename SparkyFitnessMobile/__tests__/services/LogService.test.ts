@@ -531,6 +531,65 @@ describe('LogService', () => {
       const statuses = await getViewSelectedStatuses();
       expect(statuses).toEqual(['WARNING']);
     });
+
+    describe('threshold migration', () => {
+      test.each<[LogThreshold, LogStatus[]]>([
+        ['all', []],
+        ['no_debug', ['ERROR', 'WARNING', 'INFO']],
+        ['warnings_errors', ['ERROR', 'WARNING']],
+        ['errors_only', ['ERROR']],
+      ])('translates persisted "%s" threshold into chip selection', async (threshold, expected) => {
+        await setViewFilter(threshold);
+        _resetForTesting();
+
+        const statuses = await getViewSelectedStatuses();
+        expect(statuses).toEqual(expected);
+      });
+
+      test('prefers stored chip selection over legacy threshold', async () => {
+        await setViewFilter('errors_only');
+        await setViewSelectedStatuses(['INFO', 'WARNING']);
+        _resetForTesting();
+
+        const statuses = await getViewSelectedStatuses();
+        expect(statuses).toEqual(['INFO', 'WARNING']);
+      });
+
+      test('migrates from the old log_filter key via getViewFilter chain', async () => {
+        await AsyncStorage.setItem('log_filter', 'errors_only');
+        // Simulate initLogService running getViewFilter once — it moves
+        // `log_filter` → `log_view_filter` and deletes the old key.
+        await getViewFilter();
+        _resetForTesting();
+
+        const statuses = await getViewSelectedStatuses();
+        expect(statuses).toEqual(['ERROR']);
+      });
+
+      test('does not translate when no threshold has ever been persisted', async () => {
+        const statuses = await getViewSelectedStatuses();
+        expect(statuses).toEqual([]);
+      });
+
+      test('ignores invalid threshold values stored under log_view_filter', async () => {
+        await AsyncStorage.setItem('log_view_filter', 'not-a-threshold');
+
+        const statuses = await getViewSelectedStatuses();
+        expect(statuses).toEqual([]);
+      });
+
+      test('translation does not mutate the shared threshold map', async () => {
+        await setViewFilter('no_debug');
+        _resetForTesting();
+
+        const first = await getViewSelectedStatuses();
+        first.push('DEBUG');
+        _resetForTesting();
+
+        const second = await getViewSelectedStatuses();
+        expect(second).toEqual(['ERROR', 'WARNING', 'INFO']);
+      });
+    });
   });
 
   describe('getLogSummary', () => {
