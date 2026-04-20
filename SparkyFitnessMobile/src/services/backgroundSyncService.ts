@@ -256,7 +256,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       await saveLastSyncedTime();
     }
 
-    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
+    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   } else {
     await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   }

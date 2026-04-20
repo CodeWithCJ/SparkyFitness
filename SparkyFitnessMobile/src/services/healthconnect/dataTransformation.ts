@@ -145,7 +145,7 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
 
     if (isValidValue && isValidDate) {
       if (index === 0) {
-        addLog(`[Transform] ${config.logLabel} SUCCESS on ${date}`, 'SUCCESS');
+        addLog(`[Transform] ${config.logLabel} SUCCESS on ${date}`, 'INFO');
       }
       return { value: value!, date };
     }

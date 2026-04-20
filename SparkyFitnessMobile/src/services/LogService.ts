@@ -2,10 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
 // Unified status type (replaces both LogLevel and LogStatus)
-export type LogStatus = 'DEBUG' | 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+export type LogStatus = 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR';
 
-// Filter options for UI picker
-export type LogFilter = 'all' | 'no_debug' | 'warnings_errors' | 'errors_only';
+// Threshold used by both the capture-level and view-filter settings.
+export type LogThreshold = 'all' | 'no_debug' | 'warnings_errors' | 'errors_only';
 
 export interface LogEntry {
   timestamp: string;
@@ -14,76 +14,109 @@ export interface LogEntry {
   details: string[];
 }
 
+// Shape of log entries as they may appear on disk — older writes can still
+// carry legacy `level` or `status: 'SUCCESS'` values that have not yet been
+// migrated. Normalized into LogEntry by `migrateLogEntry`.
+interface StoredLogEntry {
+  timestamp: string;
+  message: string;
+  status: LogStatus | 'SUCCESS';
+  details?: string[];
+  level?: string;
+}
+
 export interface LogSummary {
   DEBUG: number;
   INFO: number;
-  SUCCESS: number;
   WARNING: number;
   ERROR: number;
 }
 
 const LOG_KEY = 'app_logs';
-const LOG_FILTER_KEY = 'log_filter';
-const OLD_LOG_LEVEL_KEY = 'log_level'; // For migration
+const LOG_CAPTURE_LEVEL_KEY = 'log_capture_level';
+const LOG_VIEW_FILTER_KEY = 'log_view_filter';
+const OLD_LOG_FILTER_KEY = 'log_filter'; // Migrated into view filter, then deleted
+const OLD_LOG_LEVEL_KEY = 'log_level'; // Migrated into view filter, then deleted
 
 // Status severity for filtering (lower = more critical)
 const STATUS_SEVERITY: Record<LogStatus, number> = {
   ERROR: 1,
   WARNING: 2,
-  SUCCESS: 3,
-  INFO: 3, // Same as SUCCESS
+  INFO: 3,
   DEBUG: 4,
 };
 
-// Filter thresholds
-const FILTER_THRESHOLD: Record<LogFilter, number> = {
+// Threshold table shared by capture and view settings.
+const THRESHOLD_LEVEL: Record<LogThreshold, number> = {
   all: 4,
   no_debug: 3,
   warnings_errors: 2,
   errors_only: 1,
 };
 
-// Filter options for the UI picker
-export const LOG_FILTER_OPTIONS: { label: string; value: LogFilter }[] = [
+// Options shared by both the capture-level and view-filter pickers.
+export const LOG_THRESHOLD_OPTIONS: { label: string; value: LogThreshold }[] = [
   { label: 'All', value: 'all' },
   { label: 'No Debug', value: 'no_debug' },
   { label: 'Warnings & Errors', value: 'warnings_errors' },
   { label: 'Errors Only', value: 'errors_only' },
 ];
 
-// --- Write buffering and filter caching state ---
+// --- Write buffering and setting caching state ---
 const FLUSH_INTERVAL_MS = 5000;
 const FLUSH_THRESHOLD = 20;
 const MAX_LOG_ENTRIES = 1000;
 const MAX_FLUSH_FAILURES = 3;
 
-let cachedFilter: LogFilter | null = null;
+let cachedCaptureLevel: LogThreshold | null = null;
+let cachedViewFilter: LogThreshold | null = null;
 let writeBuffer: LogEntry[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushPromise: Promise<void> | null = null;
+// Serializes the one-shot view-filter migration chain so concurrent callers
+// at init don't see intermediate states (e.g. old key deleted, new key not
+// yet written).
+let getViewPromise: Promise<LogThreshold> | null = null;
 let consecutiveFlushFailures = 0;
 let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
 
 /**
- * Migrates an old log entry format to the new format.
- * Old format: { level: 'info', status: 'SUCCESS', ... }
- * New format: { status: 'SUCCESS', ... }
+ * Normalizes a stored log entry to the current on-disk shape. Returns
+ * `changed: true` when the input required rewriting (legacy `level` field
+ * or `status: 'SUCCESS'`) so callers can decide whether to write back.
  */
-const migrateLogEntry = (entry: LogEntry & { level?: string }): LogEntry => {
-  if (!entry.level) return entry; // Already migrated
+const migrateLogEntry = (entry: StoredLogEntry): { entry: LogEntry; changed: boolean } => {
+  let changed = false;
+  let status: LogStatus;
 
-  // If level='debug', always map to DEBUG (level takes precedence)
-  // Otherwise, use the existing status value directly
-  const newStatus: LogStatus =
-    entry.level === 'debug' ? 'DEBUG' : (entry.status || 'INFO');
+  if (entry.level === 'debug') {
+    // Legacy 'debug' level always wins over whatever status was written.
+    status = 'DEBUG';
+    changed = true;
+  } else if (entry.status === 'SUCCESS') {
+    // Fold legacy SUCCESS into INFO.
+    status = 'INFO';
+    changed = true;
+  } else {
+    status = entry.status || 'INFO';
+    if (entry.level !== undefined || entry.status === undefined) {
+      changed = true;
+    }
+  }
 
   return {
-    timestamp: entry.timestamp,
-    message: entry.message,
-    status: newStatus,
-    details: entry.details || [],
+    entry: {
+      timestamp: entry.timestamp,
+      message: entry.message,
+      status,
+      details: entry.details || [],
+    },
+    changed,
   };
 };
+
+const normalizeLogs = (raw: StoredLogEntry[]): LogEntry[] =>
+  raw.map(item => migrateLogEntry(item).entry);
 
 /**
  * Flushes the write buffer to AsyncStorage.
@@ -148,6 +181,8 @@ const scheduleFlush = (): void => {
 
 /**
  * Adds a new log entry with a specified status and optional details.
+ * Entries whose severity exceeds the capture-level threshold are dropped
+ * at write time.
  */
 export const addLog = async (
   message: string,
@@ -155,12 +190,12 @@ export const addLog = async (
   details: string[] = []
 ): Promise<void> => {
   try {
-    const currentFilter = await getLogFilter();
+    const captureLevel = await getCaptureLevel();
     const statusSeverity = STATUS_SEVERITY[status];
-    const filterThreshold = FILTER_THRESHOLD[currentFilter];
+    const captureThreshold = THRESHOLD_LEVEL[captureLevel];
 
-    if (statusSeverity > filterThreshold) {
-      return; // Don't log if status severity is below the filter threshold
+    if (statusSeverity > captureThreshold) {
+      return; // Don't capture entries below the capture threshold
     }
 
     const newLog: LogEntry = {
@@ -184,14 +219,20 @@ export const addLog = async (
 };
 
 /**
- * Clears logs older than a specified number of days.
+ * Clears logs older than a specified number of days and rewrites any
+ * stored entries that need legacy-format normalization (SUCCESS→INFO,
+ * level→status).
  */
 export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
   try {
     await flushBuffer();
 
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
-    const logs: LogEntry[] = existingLogs ? (JSON.parse(existingLogs) as LogEntry[]) : [];
+    const rawLogs: StoredLogEntry[] = existingLogs ? JSON.parse(existingLogs) : [];
+
+    const migrated = rawLogs.map(migrateLogEntry);
+    const didNormalize = migrated.some(m => m.changed);
+    const logs = migrated.map(m => m.entry);
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
@@ -202,9 +243,10 @@ export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
       return logDate >= cutoffDate;
     });
 
-    if (filteredLogs.length !== logs.length) {
+    const removedCount = logs.length - filteredLogs.length;
+    if (removedCount !== 0 || didNormalize) {
       await AsyncStorage.setItem(LOG_KEY, JSON.stringify(filteredLogs));
-      console.log(`[LogService] Pruned logs: removed ${logs.length - filteredLogs.length} old entries.`);
+      console.log(`[LogService] Pruned logs: removed ${removedCount} old entries${didNormalize ? ' and normalized legacy entries' : ''}.`);
     } else {
       console.log('[LogService] No old logs to prune.');
     }
@@ -214,29 +256,28 @@ export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
 };
 
 /**
- * Retrieves log entries with pagination, filtered by current filter setting.
+ * Retrieves log entries with pagination, filtered by the view filter
+ * (or an explicit override) at read time.
  */
 export const getLogs = async (
   offset: number = 0,
   limit: number = 30,
-  filter: LogFilter | null = null
+  filter: LogThreshold | null = null
 ): Promise<LogEntry[]> => {
   try {
     await flushBuffer();
 
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
     let logs: LogEntry[] = existingLogs
-      ? (JSON.parse(existingLogs) as (LogEntry & { level?: string })[]).map(migrateLogEntry)
+      ? normalizeLogs(JSON.parse(existingLogs) as StoredLogEntry[])
       : [];
 
-    // Filter logs by current filter setting
-    const currentFilter = filter || await getLogFilter();
-    const filterThreshold = FILTER_THRESHOLD[currentFilter];
+    const viewFilter = filter || await getViewFilter();
+    const viewThreshold = THRESHOLD_LEVEL[viewFilter];
 
-    // Only show logs that meet the filter threshold
     logs = logs.filter(log => {
       const statusSeverity = STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
-      return statusSeverity <= filterThreshold;
+      return statusSeverity <= viewThreshold;
     });
 
     return logs.slice(offset, offset + limit);
@@ -273,125 +314,179 @@ export const clearLogs = async (): Promise<void> => {
 };
 
 /**
- * Sets the current log filter.
+ * Sets the capture level (what addLog writes to disk).
  */
-export const setLogFilter = async (filter: LogFilter): Promise<void> => {
+export const setCaptureLevel = async (level: LogThreshold): Promise<void> => {
   try {
-    if (FILTER_THRESHOLD[filter] !== undefined) {
-      await AsyncStorage.setItem(LOG_FILTER_KEY, filter);
-      cachedFilter = filter;
+    if (THRESHOLD_LEVEL[level] !== undefined) {
+      await AsyncStorage.setItem(LOG_CAPTURE_LEVEL_KEY, level);
+      cachedCaptureLevel = level;
     } else {
-      console.warn(`Invalid log filter: ${filter}. Not setting.`);
+      console.warn(`Invalid log capture level: ${level}. Not setting.`);
     }
   } catch (error) {
-    console.error('Failed to set log filter', error);
+    console.error('Failed to set log capture level', error);
   }
 };
 
 /**
- * Retrieves the current log filter.
- * Returns cached value if available, otherwise reads from AsyncStorage.
- * Migrates from old log level format if necessary.
+ * Retrieves the current capture level.
+ * Plain cached read with no migration chain — default is `all`.
  */
-export const getLogFilter = async (): Promise<LogFilter> => {
-  if (cachedFilter !== null) return cachedFilter;
+export const getCaptureLevel = async (): Promise<LogThreshold> => {
+  if (cachedCaptureLevel !== null) return cachedCaptureLevel;
 
   try {
-    // Check new key first
-    const filter = await AsyncStorage.getItem(LOG_FILTER_KEY);
-    if (filter && FILTER_THRESHOLD[filter as LogFilter] !== undefined) {
-      cachedFilter = filter as LogFilter;
-      return cachedFilter;
+    const stored = await AsyncStorage.getItem(LOG_CAPTURE_LEVEL_KEY);
+    if (stored && THRESHOLD_LEVEL[stored as LogThreshold] !== undefined) {
+      cachedCaptureLevel = stored as LogThreshold;
+      return cachedCaptureLevel;
     }
 
-    // Try to migrate from old log level key
-    const oldLevel = await AsyncStorage.getItem(OLD_LOG_LEVEL_KEY);
-    if (oldLevel) {
-      // Migrate: 'debug' -> 'all', 'info' -> 'no_debug', 'warn' -> 'warnings_errors', 'error'/'silent' -> 'errors_only'
-      const migrationMap: Record<string, LogFilter> = {
-        debug: 'all',
-        info: 'no_debug',
-        warn: 'warnings_errors',
-        error: 'errors_only',
-        silent: 'errors_only',
-      };
-      const newFilter = migrationMap[oldLevel] || 'no_debug';
-
-      // Save migrated value and clean up old key
-      await AsyncStorage.setItem(LOG_FILTER_KEY, newFilter);
-      await AsyncStorage.removeItem(OLD_LOG_LEVEL_KEY);
-
-      cachedFilter = newFilter;
-      return cachedFilter;
-    }
-
-    cachedFilter = 'no_debug'; // Default
-    return cachedFilter;
+    cachedCaptureLevel = 'all'; // Default: capture everything
+    return cachedCaptureLevel;
   } catch (error) {
-    console.error('Failed to get log filter', error);
-    return 'no_debug';
+    console.error('Failed to get log capture level', error);
+    return 'all';
   }
 };
 
 /**
- * Retrieves a summary of log entries by status.
- * Counts match what's displayed in the log list.
- * Filters by current filter setting to match what getLogs() displays.
+ * Sets the view filter (what the Log screen reads back).
  */
-export const getLogSummary = async (): Promise<LogSummary> => {
+export const setViewFilter = async (filter: LogThreshold): Promise<void> => {
+  try {
+    if (THRESHOLD_LEVEL[filter] !== undefined) {
+      await AsyncStorage.setItem(LOG_VIEW_FILTER_KEY, filter);
+      cachedViewFilter = filter;
+    } else {
+      console.warn(`Invalid log view filter: ${filter}. Not setting.`);
+    }
+  } catch (error) {
+    console.error('Failed to set log view filter', error);
+  }
+};
+
+/**
+ * Retrieves the current view filter.
+ * Migrates from the old combined `log_filter` setting (or the even older
+ * `log_level` preference) on first read. Serialized via `getViewPromise`
+ * so concurrent callers don't observe intermediate migration states.
+ */
+export const getViewFilter = async (): Promise<LogThreshold> => {
+  if (cachedViewFilter !== null) return cachedViewFilter;
+  if (getViewPromise) return getViewPromise;
+
+  const run = async (): Promise<LogThreshold> => {
+    try {
+      // 1) New key.
+      const stored = await AsyncStorage.getItem(LOG_VIEW_FILTER_KEY);
+      if (stored && THRESHOLD_LEVEL[stored as LogThreshold] !== undefined) {
+        cachedViewFilter = stored as LogThreshold;
+        return cachedViewFilter;
+      }
+
+      // 2) Old combined `log_filter` — users set this expecting it to
+      // control what they *saw*, so it migrates into the view filter.
+      const oldFilter = await AsyncStorage.getItem(OLD_LOG_FILTER_KEY);
+      if (oldFilter && THRESHOLD_LEVEL[oldFilter as LogThreshold] !== undefined) {
+        await AsyncStorage.setItem(LOG_VIEW_FILTER_KEY, oldFilter);
+        await AsyncStorage.removeItem(OLD_LOG_FILTER_KEY);
+        cachedViewFilter = oldFilter as LogThreshold;
+        return cachedViewFilter;
+      }
+
+      // 3) Even older `log_level` preference.
+      const oldLevel = await AsyncStorage.getItem(OLD_LOG_LEVEL_KEY);
+      if (oldLevel) {
+        const migrationMap: Record<string, LogThreshold> = {
+          debug: 'all',
+          info: 'no_debug',
+          warn: 'warnings_errors',
+          error: 'errors_only',
+          silent: 'errors_only',
+        };
+        const newFilter = migrationMap[oldLevel] || 'no_debug';
+        await AsyncStorage.setItem(LOG_VIEW_FILTER_KEY, newFilter);
+        await AsyncStorage.removeItem(OLD_LOG_LEVEL_KEY);
+        cachedViewFilter = newFilter;
+        return cachedViewFilter;
+      }
+
+      cachedViewFilter = 'no_debug'; // Default
+      return cachedViewFilter;
+    } catch (error) {
+      console.error('Failed to get log view filter', error);
+      return 'no_debug';
+    }
+  };
+
+  getViewPromise = run();
+  try {
+    return await getViewPromise;
+  } finally {
+    getViewPromise = null;
+  }
+};
+
+/**
+ * Retrieves a summary of log entries by status for today.
+ * Filters by the view filter (or an explicit override) so the summary
+ * reflects what the log list is showing.
+ */
+export const getLogSummary = async (
+  filter: LogThreshold | null = null
+): Promise<LogSummary> => {
   try {
     await flushBuffer();
 
     const existingLogs = await AsyncStorage.getItem(LOG_KEY);
     const logs: LogEntry[] = existingLogs
-      ? (JSON.parse(existingLogs) as (LogEntry & { level?: string })[]).map(migrateLogEntry)
+      ? normalizeLogs(JSON.parse(existingLogs) as StoredLogEntry[])
       : [];
 
     const summary: LogSummary = {
       DEBUG: 0,
       INFO: 0,
-      SUCCESS: 0,
       WARNING: 0,
       ERROR: 0,
     };
 
-    // Get current filter for filtering (same as getLogs)
-    const currentFilter = await getLogFilter();
-    const filterThreshold = FILTER_THRESHOLD[currentFilter];
+    const viewFilter = filter || await getViewFilter();
+    const viewThreshold = THRESHOLD_LEVEL[viewFilter];
 
     // Filter logs for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     logs.forEach(log => {
-      // Filter by status severity (same logic as getLogs)
       const statusSeverity = STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
-      if (statusSeverity > filterThreshold) {
-        return; // Skip logs below filter threshold
+      if (statusSeverity > viewThreshold) {
+        return;
       }
 
       const logDate = new Date(log.timestamp);
       logDate.setHours(0, 0, 0, 0);
 
       if (logDate.getTime() === today.getTime()) {
-        // Count by status (matches what's displayed in the log list)
         summary[log.status]++;
       }
     });
     return summary;
   } catch (error) {
     console.error('Failed to get log summary', error);
-    return { DEBUG: 0, INFO: 0, SUCCESS: 0, WARNING: 0, ERROR: 0 };
+    return { DEBUG: 0, INFO: 0, WARNING: 0, ERROR: 0 };
   }
 };
 
 /**
  * Initializes the log service. Call once at app startup.
- * Warms the filter cache, prunes old logs, and registers an AppState
- * listener to flush the buffer when the app goes to background.
+ * Warms the filter caches, prunes + normalizes old logs, and registers
+ * an AppState listener to flush the buffer when the app backgrounds.
  */
 export const initLogService = async (): Promise<void> => {
-  await getLogFilter();
+  await getCaptureLevel();
+  await getViewFilter();
   await pruneLogs();
 
   appStateSubscription?.remove();
@@ -412,9 +507,11 @@ export const _resetForTesting = (): void => {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
-  cachedFilter = null;
+  cachedCaptureLevel = null;
+  cachedViewFilter = null;
   writeBuffer = [];
   flushPromise = null;
+  getViewPromise = null;
   consecutiveFlushFailures = 0;
   appStateSubscription?.remove();
   appStateSubscription = null;

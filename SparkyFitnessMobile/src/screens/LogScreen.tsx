@@ -18,11 +18,11 @@ import {
   getLogs,
   clearLogs,
   getLogSummary,
-  getLogFilter,
-  setLogFilter,
-  LOG_FILTER_OPTIONS,
+  getViewFilter,
+  setViewFilter,
+  LOG_THRESHOLD_OPTIONS,
 } from '../services/LogService';
-import type { LogEntry, LogSummary, LogFilter } from '../services/LogService';
+import type { LogEntry, LogSummary, LogThreshold } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type LogScreenProps = RootStackScreenProps<'Logs'>;
@@ -36,11 +36,10 @@ const LogScreen: React.FC<LogScreenProps> = () => {
   const [logSummary, setLogSummary] = useState<LogSummary>({
     DEBUG: 0,
     INFO: 0,
-    SUCCESS: 0,
     WARNING: 0,
     ERROR: 0,
   });
-  const [currentFilter, setCurrentFilter] = useState<LogFilter>('no_debug');
+  const [currentViewFilter, setCurrentViewFilter] = useState<LogThreshold>('no_debug');
 
   const LOG_LIMIT = 30;
 
@@ -60,16 +59,16 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     setLogSummary(summary);
   };
 
-  const loadFilter = async (): Promise<void> => {
-    const filter = await getLogFilter();
-    setCurrentFilter(filter);
+  const loadViewFilter = async (): Promise<void> => {
+    const filter = await getViewFilter();
+    setCurrentViewFilter(filter);
   };
 
   useFocusEffect(
     useCallback(() => {
       loadLogs();
       loadSummary();
-      loadFilter();
+      loadViewFilter();
     }, [])
   );
 
@@ -98,7 +97,6 @@ const LogScreen: React.FC<LogScreenProps> = () => {
             setLogSummary({
               DEBUG: 0,
               INFO: 0,
-              SUCCESS: 0,
               WARNING: 0,
               ERROR: 0,
             });
@@ -109,11 +107,11 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     );
   };
 
-  const handleFilterChange = async (filter: LogFilter): Promise<void> => {
-    if (filter && filter !== currentFilter) {
+  const handleViewFilterChange = async (filter: LogThreshold): Promise<void> => {
+    if (filter && filter !== currentViewFilter) {
       try {
-        await setLogFilter(filter);
-        setCurrentFilter(filter);
+        await setViewFilter(filter);
+        setCurrentViewFilter(filter);
         loadLogs(0, false);
         loadSummary();
       } catch (error) {
@@ -140,7 +138,6 @@ const LogScreen: React.FC<LogScreenProps> = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return '#28a745';
       case 'WARNING': return '#ffc107';
       case 'INFO': return '#007bff';
       case 'DEBUG': return '#6c757d';
@@ -150,7 +147,6 @@ const LogScreen: React.FC<LogScreenProps> = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return require('../../assets/icons/success.png');
       case 'WARNING': return require('../../assets/icons/warning.png');
       case 'INFO': return require('../../assets/icons/info.png');
       default: return require('../../assets/icons/error.png');
@@ -167,10 +163,10 @@ const LogScreen: React.FC<LogScreenProps> = () => {
           </Text>
           <View className="flex-row justify-around mb-4">
             <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#28a745' }}>
-                {logSummary.SUCCESS}
+              <Text className="text-2xl font-bold" style={{ color: '#007bff' }}>
+                {logSummary.INFO}
               </Text>
-              <Text className="text-sm text-text-secondary">Success</Text>
+              <Text className="text-sm text-text-secondary">Info</Text>
             </View>
             <View className="items-center">
               <Text className="text-2xl font-bold" style={{ color: '#ffc107' }}>
@@ -183,12 +179,6 @@ const LogScreen: React.FC<LogScreenProps> = () => {
                 {logSummary.ERROR}
               </Text>
               <Text className="text-sm text-text-secondary">Error</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#007bff' }}>
-                {logSummary.INFO}
-              </Text>
-              <Text className="text-sm text-text-secondary">Info</Text>
             </View>
             <View className="items-center">
               <Text className="text-2xl font-bold" style={{ color: '#6c757d' }}>
@@ -204,9 +194,9 @@ const LogScreen: React.FC<LogScreenProps> = () => {
           <Text className="text-lg font-bold mb-3 text-text-primary">Log Filter</Text>
           <View className="flex-row justify-between items-center">
             <BottomSheetPicker
-              value={currentFilter}
-              options={LOG_FILTER_OPTIONS}
-              onSelect={handleFilterChange}
+              value={currentViewFilter}
+              options={LOG_THRESHOLD_OPTIONS}
+              onSelect={handleViewFilterChange}
               title="Log Filter"
               containerStyle={{ flex: 1, maxWidth: '50%' }}
             />

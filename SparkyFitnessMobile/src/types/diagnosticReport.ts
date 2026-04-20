@@ -1,8 +1,8 @@
-import type { LogEntry, LogFilter, LogSummary } from '../services/LogService';
+import type { LogEntry, LogThreshold, LogSummary } from '../services/LogService';
 import type { UserPreferences } from './preferences';
 import type { TimeRange } from '../services/storage';
 
-export const REPORT_FORMAT_VERSION = '1.0.0';
+export const REPORT_FORMAT_VERSION = '1.1.0';
 
 export interface DiagnosticQueryState {
   queryKey: string;
@@ -44,7 +44,8 @@ export interface DiagnosticSyncStatus {
 }
 
 export interface DiagnosticLogInfo {
-  currentFilter: LogFilter;
+  captureLevel: LogThreshold;
+  viewFilter: LogThreshold;
   todaySummary: LogSummary;
   recentLogs: LogEntry[];
 }

@@ -112,7 +112,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       await loadConfig();
       refetchConnection();
       Toast.show({ type: 'success', text1: 'Active server changed' });
-      addLog('Active server configuration changed.', 'SUCCESS');
+      addLog('Active server configuration changed.', 'INFO');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to set active server configuration:', error);
@@ -130,7 +130,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       }
       await loadConfig();
       refetchConnection();
-      addLog('Server configuration deleted.', 'SUCCESS');
+      addLog('Server configuration deleted.', 'INFO');
       if (remainingConfigs.length === 0) {
         Alert.alert('Success', 'Server configuration deleted.', [
           { text: 'OK', onPress: () => notifyNoConfigs() },

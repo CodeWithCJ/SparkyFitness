@@ -330,7 +330,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         authType: 'apiKey',
         sessionToken: '',
       });
-      addLog('Connected with API key.', 'SUCCESS');
+      addLog('Connected with API key.', 'INFO');
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -371,7 +371,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         ...authFields,
         proxyHeaders: cleanedHeaders(),
       });
-      addLog('Server configuration updated.', 'SUCCESS');
+      addLog('Server configuration updated.', 'INFO');
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

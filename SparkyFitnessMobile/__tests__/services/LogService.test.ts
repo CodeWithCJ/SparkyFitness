@@ -4,12 +4,14 @@ import {
   getLogs,
   clearLogs,
   pruneLogs,
-  setLogFilter,
-  getLogFilter,
+  setCaptureLevel,
+  getCaptureLevel,
+  setViewFilter,
+  getViewFilter,
   getLogSummary,
   _resetForTesting,
   _flushBuffer,
-  LogFilter,
+  LogThreshold,
 } from '../../src/services/LogService';
 
 describe('LogService', () => {
@@ -64,20 +66,24 @@ describe('LogService', () => {
       expect(logs[2].message).toBe('First');
     });
 
-    test('addLog respects current filter threshold', async () => {
-      await setLogFilter('warnings_errors');
+    test('addLog respects capture level, not view filter', async () => {
+      // Capture restricts what's written to disk; view only affects read.
+      await setCaptureLevel('errors_only');
+      await setViewFilter('all');
 
       await addLog('Debug message', 'DEBUG');
       await addLog('Info message', 'INFO');
+      await addLog('Warning message', 'WARNING');
+      await addLog('Error message', 'ERROR');
 
-      // Use 'all' filter to see all logs that were actually stored
       const logs = await getLogs(0, 30, 'all');
 
-      expect(logs).toHaveLength(0);
+      expect(logs).toHaveLength(1);
+      expect(logs[0].status).toBe('ERROR');
     });
 
-    test('addLog stores logs at or below current filter threshold', async () => {
-      await setLogFilter('warnings_errors');
+    test('addLog stores logs at or below current capture threshold', async () => {
+      await setCaptureLevel('warnings_errors');
 
       await addLog('Error message', 'ERROR');
       await addLog('Warning message', 'WARNING');
@@ -89,13 +95,13 @@ describe('LogService', () => {
     });
 
     test('log entries have correct structure', async () => {
-      await addLog('Test', 'SUCCESS', ['detail']);
+      await addLog('Test', 'INFO', ['detail']);
 
       const logs = await getLogs(0, 30, 'all');
 
       expect(logs[0]).toMatchObject({
         message: 'Test',
-        status: 'SUCCESS',
+        status: 'INFO',
         details: ['detail'],
       });
       expect(logs[0].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
@@ -109,9 +115,8 @@ describe('LogService', () => {
       expect(logs).toEqual([]);
     });
 
-    test('when filter is null, uses stored filter', async () => {
-      // Default filter is 'no_debug', so debug logs should be filtered out
-      await setLogFilter('all');
+    test('when filter is null, uses stored view filter', async () => {
+      await setViewFilter('all');
       await addLog('Error log', 'ERROR');
       await addLog('Info log', 'INFO');
 
@@ -119,26 +124,26 @@ describe('LogService', () => {
       const allLogs = await getLogs(0, 30, 'all');
       expect(allLogs).toHaveLength(2);
 
-      // Now check that default filtering (null = stored filter = 'all') works
+      // Now check that default filtering (null = stored view filter = 'all') works
       const filteredLogs = await getLogs(0, 30, null);
       expect(filteredLogs).toHaveLength(2);
 
-      // Change filter to 'errors_only' and verify filtering
-      await setLogFilter('errors_only');
+      // Change view filter to 'errors_only' and verify filtering
+      await setViewFilter('errors_only');
       const errorOnlyLogs = await getLogs(0, 30, null);
       expect(errorOnlyLogs).toHaveLength(1);
       expect(errorOnlyLogs[0].status).toBe('ERROR');
     });
 
-    test('respects filter parameter over stored filter', async () => {
-      // First store logs with permissive filter so they all get saved
-      await setLogFilter('all');
+    test('respects filter parameter over stored view filter', async () => {
+      // Capture=all so every entry lands on disk regardless of view.
+      await setCaptureLevel('all');
       await addLog('Error log', 'ERROR');
       await addLog('Warning log', 'WARNING');
       await addLog('Info log', 'INFO');
 
-      // Change stored filter to 'errors_only' - normally getLogs would only show error
-      await setLogFilter('errors_only');
+      // Stored view filter is 'errors_only' — normally getLogs would only show errors
+      await setViewFilter('errors_only');
 
       // But with filter='all', we override and see all logs
       const logs = await getLogs(0, 30, 'all');
@@ -240,6 +245,26 @@ describe('LogService', () => {
     test('handles empty log list without error', async () => {
       await expect(pruneLogs()).resolves.toBeUndefined();
     });
+
+    test('normalizes legacy SUCCESS entries on disk even when none age out', async () => {
+      // Seed storage with a legacy-format entry that should be rewritten.
+      const legacy = [
+        {
+          timestamp: new Date().toISOString(),
+          message: 'Legacy success',
+          status: 'SUCCESS',
+          details: [],
+        },
+      ];
+      await AsyncStorage.setItem('app_logs', JSON.stringify(legacy));
+
+      await pruneLogs(30);
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      const parsed = JSON.parse(raw!);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].status).toBe('INFO');
+    });
   });
 
   describe('clearLogs', () => {
@@ -255,13 +280,13 @@ describe('LogService', () => {
       expect(logs).toEqual([]);
     });
 
-    test('does not affect log filter setting', async () => {
-      await setLogFilter('errors_only');
+    test('does not affect view filter setting', async () => {
+      await setViewFilter('errors_only');
       await addLog('Some log', 'ERROR');
 
       await clearLogs();
 
-      const filter = await getLogFilter();
+      const filter = await getViewFilter();
       expect(filter).toBe('errors_only');
     });
 
@@ -313,52 +338,136 @@ describe('LogService', () => {
     });
   });
 
-  describe('setLogFilter / getLogFilter', () => {
-    test('persists log filter setting', async () => {
-      await setLogFilter('all');
+  describe('setCaptureLevel / getCaptureLevel', () => {
+    test('persists capture level setting', async () => {
+      await setCaptureLevel('warnings_errors');
 
-      const filter = await getLogFilter();
+      const level = await getCaptureLevel();
+
+      expect(level).toBe('warnings_errors');
+    });
+
+    test('returns "all" as default on fresh install', async () => {
+      const level = await getCaptureLevel();
+
+      expect(level).toBe('all');
+    });
+
+    test('accepts all valid thresholds', async () => {
+      const levels: LogThreshold[] = ['all', 'no_debug', 'warnings_errors', 'errors_only'];
+
+      for (const lvl of levels) {
+        await setCaptureLevel(lvl);
+        const result = await getCaptureLevel();
+        expect(result).toBe(lvl);
+      }
+    });
+
+    test('invalid capture level preserves previous valid setting', async () => {
+      await setCaptureLevel('warnings_errors');
+
+      await setCaptureLevel('invalid' as LogThreshold);
+
+      const level = await getCaptureLevel();
+      expect(level).toBe('warnings_errors');
+    });
+
+    test('getCaptureLevel returns cached value without hitting AsyncStorage', async () => {
+      await setCaptureLevel('errors_only');
+
+      await getCaptureLevel();
+
+      await AsyncStorage.removeItem('log_capture_level');
+
+      const level = await getCaptureLevel();
+      expect(level).toBe('errors_only');
+    });
+
+    test('does not migrate from old log_filter key (captures stays at default)', async () => {
+      // Legacy combined filter belongs to view, not capture.
+      await AsyncStorage.setItem('log_filter', 'errors_only');
+
+      const level = await getCaptureLevel();
+      expect(level).toBe('all');
+    });
+  });
+
+  describe('setViewFilter / getViewFilter', () => {
+    test('persists view filter setting', async () => {
+      await setViewFilter('all');
+
+      const filter = await getViewFilter();
 
       expect(filter).toBe('all');
     });
 
-    test('returns no_debug as default when no filter set', async () => {
-      const filter = await getLogFilter();
+    test('returns "no_debug" as default on fresh install', async () => {
+      const filter = await getViewFilter();
 
       expect(filter).toBe('no_debug');
     });
 
-    test('accepts all valid log filters', async () => {
-      const filters: LogFilter[] = ['all', 'no_debug', 'warnings_errors', 'errors_only'];
+    test('accepts all valid thresholds', async () => {
+      const filters: LogThreshold[] = ['all', 'no_debug', 'warnings_errors', 'errors_only'];
 
       for (const f of filters) {
-        await setLogFilter(f);
-        const result = await getLogFilter();
+        await setViewFilter(f);
+        const result = await getViewFilter();
         expect(result).toBe(f);
       }
     });
 
-    test('invalid log filter preserves previous valid filter', async () => {
-      await setLogFilter('warnings_errors');
+    test('invalid view filter preserves previous valid filter', async () => {
+      await setViewFilter('warnings_errors');
 
-      // Cast to bypass TypeScript, simulating runtime invalid input
-      await setLogFilter('invalid' as LogFilter);
+      await setViewFilter('invalid' as LogThreshold);
 
-      const filter = await getLogFilter();
+      const filter = await getViewFilter();
       expect(filter).toBe('warnings_errors');
     });
 
-    test('getLogFilter returns cached value without hitting AsyncStorage', async () => {
-      await setLogFilter('all');
+    test('getViewFilter returns cached value without hitting AsyncStorage', async () => {
+      await setViewFilter('all');
 
-      // First call populates cache
-      await getLogFilter();
+      await getViewFilter();
 
-      // Clear AsyncStorage — cached value should still be returned
-      await AsyncStorage.removeItem('log_filter');
+      await AsyncStorage.removeItem('log_view_filter');
 
-      const filter = await getLogFilter();
+      const filter = await getViewFilter();
       expect(filter).toBe('all');
+    });
+
+    test('capture and view settings are independent', async () => {
+      await setCaptureLevel('errors_only');
+      await setViewFilter('all');
+
+      expect(await getCaptureLevel()).toBe('errors_only');
+      expect(await getViewFilter()).toBe('all');
+
+      await setCaptureLevel('all');
+      await setViewFilter('warnings_errors');
+
+      expect(await getCaptureLevel()).toBe('all');
+      expect(await getViewFilter()).toBe('warnings_errors');
+    });
+
+    test('concurrent getViewFilter calls during init do not double-migrate', async () => {
+      // Seed the legacy key the migration reads from.
+      await AsyncStorage.setItem('log_filter', 'warnings_errors');
+
+      // Fire several concurrent reads at cold cache.
+      const results = await Promise.all([
+        getViewFilter(),
+        getViewFilter(),
+        getViewFilter(),
+      ]);
+
+      expect(results).toEqual(['warnings_errors', 'warnings_errors', 'warnings_errors']);
+
+      // Legacy key must be cleaned up.
+      expect(await AsyncStorage.getItem('log_filter')).toBeNull();
+      // Migrated value is persisted to the new key.
+      expect(await AsyncStorage.getItem('log_view_filter')).toBe('warnings_errors');
     });
   });
 
@@ -369,7 +478,6 @@ describe('LogService', () => {
       expect(summary).toEqual({
         DEBUG: 0,
         INFO: 0,
-        SUCCESS: 0,
         WARNING: 0,
         ERROR: 0,
       });
@@ -379,67 +487,87 @@ describe('LogService', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      await addLog('Yesterday log', 'SUCCESS');
+      await addLog('Yesterday log', 'INFO');
 
       // Move to next day
       jest.setSystemTime(new Date('2024-06-16T10:00:00.000Z'));
 
-      await addLog('Today log', 'SUCCESS');
+      await addLog('Today log', 'INFO');
 
       const summary = await getLogSummary();
 
-      expect(summary.SUCCESS).toBe(1);
+      expect(summary.INFO).toBe(1);
     });
 
     test('counts all statuses to match list display', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      await setLogFilter('all');
-      await addLog('Success 1', 'SUCCESS');
-      await addLog('Success 2', 'SUCCESS');
+      await setCaptureLevel('all');
+      await setViewFilter('all');
+      await addLog('Info 1', 'INFO');
+      await addLog('Info 2', 'INFO');
       await addLog('Warning', 'WARNING');
       await addLog('Error 1', 'ERROR');
       await addLog('Error 2', 'ERROR');
       await addLog('Error 3', 'ERROR');
-      await addLog('Info status', 'INFO');
       await addLog('Debug status', 'DEBUG');
 
       const summary = await getLogSummary();
 
-      expect(summary.SUCCESS).toBe(2);
+      expect(summary.INFO).toBe(2);
       expect(summary.WARNING).toBe(1);
       expect(summary.ERROR).toBe(3);
-      expect(summary.INFO).toBe(1);
       expect(summary.DEBUG).toBe(1);
     });
 
-    test('filters by current filter to match getLogs display', async () => {
+    test('filters by current view filter to match getLogs display', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
 
-      // Set to all to store all statuses
-      await setLogFilter('all');
+      // Capture=all so every entry persists regardless of view
+      await setCaptureLevel('all');
+      await setViewFilter('all');
 
-      await addLog('Info log', 'SUCCESS');
+      await addLog('Info log', 'INFO');
       await addLog('Warn log', 'WARNING');
       await addLog('Error log', 'ERROR');
       await addLog('Debug log', 'DEBUG');
 
-      // With 'all' filter, all logs should be counted
+      // With 'all' view filter, all logs should be counted
       let summary = await getLogSummary();
-      expect(summary.SUCCESS).toBe(1);
+      expect(summary.INFO).toBe(1);
       expect(summary.WARNING).toBe(1);
       expect(summary.ERROR).toBe(1);
       expect(summary.DEBUG).toBe(1);
 
-      // Change to 'errors_only' filter - only error logs should be counted
-      await setLogFilter('errors_only');
+      // Change view to 'errors_only' — only error logs should be counted
+      await setViewFilter('errors_only');
       summary = await getLogSummary();
-      expect(summary.SUCCESS).toBe(0);
+      expect(summary.INFO).toBe(0);
       expect(summary.WARNING).toBe(0);
       expect(summary.ERROR).toBe(1);
       expect(summary.DEBUG).toBe(0);
+    });
+
+    test("'all' override returns unfiltered counts (for diagnostics)", async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2024-06-15T10:00:00.000Z'));
+
+      await setCaptureLevel('all');
+      await setViewFilter('errors_only');
+
+      await addLog('Info log', 'INFO');
+      await addLog('Warn log', 'WARNING');
+      await addLog('Error log', 'ERROR');
+      await addLog('Debug log', 'DEBUG');
+
+      const summary = await getLogSummary('all');
+
+      expect(summary.INFO).toBe(1);
+      expect(summary.WARNING).toBe(1);
+      expect(summary.ERROR).toBe(1);
+      expect(summary.DEBUG).toBe(1);
     });
   });
 
@@ -459,29 +587,54 @@ describe('LogService', () => {
       expect(logs).toHaveLength(3);
       // Old debug level should become DEBUG status (first in array)
       expect(logs[0].status).toBe('DEBUG');
-      // Old info level with SUCCESS status should keep SUCCESS (second in array)
-      expect(logs[1].status).toBe('SUCCESS');
+      // Old SUCCESS status folds into INFO (second in array)
+      expect(logs[1].status).toBe('INFO');
       // Old error level should keep ERROR status (third in array)
       expect(logs[2].status).toBe('ERROR');
     });
 
-    test('migrates old log level preference to new filter format', async () => {
-      // Simulate old format log level preference
+    test('migrates SUCCESS-only entries (no legacy level field) to INFO on read', async () => {
+      const entries = [
+        { timestamp: new Date().toISOString(), message: 'SUCCESS only', status: 'SUCCESS', details: [] },
+      ];
+      await AsyncStorage.setItem('app_logs', JSON.stringify(entries));
+
+      const logs = await getLogs(0, 30, 'all');
+
+      expect(logs).toHaveLength(1);
+      expect(logs[0].status).toBe('INFO');
+    });
+
+    test('migrates old log_filter key to log_view_filter and deletes it', async () => {
+      await AsyncStorage.setItem('log_filter', 'warnings_errors');
+
+      const filter = await getViewFilter();
+      expect(filter).toBe('warnings_errors');
+
+      // Old key should be deleted
+      expect(await AsyncStorage.getItem('log_filter')).toBeNull();
+      // New key should have the migrated value
+      expect(await AsyncStorage.getItem('log_view_filter')).toBe('warnings_errors');
+    });
+
+    test('migrates old log_level key to log_view_filter (not capture)', async () => {
       await AsyncStorage.setItem('log_level', 'debug');
 
-      const filter = await getLogFilter();
+      const filter = await getViewFilter();
 
       // 'debug' should migrate to 'all'
       expect(filter).toBe('all');
+      expect(await AsyncStorage.getItem('log_level')).toBeNull();
+
+      // Capture should remain default — legacy value never routes to capture
+      expect(await getCaptureLevel()).toBe('all');
     });
 
-    test('cleans up old log level key after migration', async () => {
-      // Simulate old format log level preference
+    test('cleans up old log_level key after migration', async () => {
       await AsyncStorage.setItem('log_level', 'warn');
 
-      await getLogFilter();
+      await getViewFilter();
 
-      // Old key should be removed
       const oldValue = await AsyncStorage.getItem('log_level');
       expect(oldValue).toBeNull();
     });

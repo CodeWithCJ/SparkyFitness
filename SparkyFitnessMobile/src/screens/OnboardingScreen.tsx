@@ -189,7 +189,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: result.sessionToken,
       });
 
-      addLog('Connected via sign in.', 'SUCCESS');
+      addLog('Connected via sign in.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {
@@ -238,7 +238,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: '',
       });
 
-      addLog('Connected with API key.', 'SUCCESS');
+      addLog('Connected with API key.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -280,7 +280,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: result.sessionToken,
       });
 
-      addLog('Connected via sign in with MFA.', 'SUCCESS');
+      addLog('Connected via sign in with MFA.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {

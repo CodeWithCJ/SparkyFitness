@@ -240,7 +240,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           await saveHealthPreference(metric.preferenceKey, false);
           addLog(`Permission Denied: ${metric.label} permission not granted.`, 'WARNING');
         } else {
-          addLog(`${metric.label} sync enabled and permissions granted.`, 'SUCCESS');
+          addLog(`${metric.label} sync enabled and permissions granted.`, 'INFO');
           enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
         }
       } catch (permissionError) {
@@ -283,7 +283,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           });
           addLog('[SyncScreen] Not all permissions were granted. Reverting "Enable All".', 'WARNING');
         } else {
-          addLog(`[SyncScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'SUCCESS');
+          addLog(`[SyncScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'INFO');
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);

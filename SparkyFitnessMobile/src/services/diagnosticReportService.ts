@@ -6,7 +6,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getLogs, getLogSummary, getLogFilter } from './LogService';
+import { getLogs, getLogSummary, getCaptureLevel, getViewFilter } from './LogService';
 import type { LogEntry } from './LogService';
 import { loadLastSyncedTime, loadBackgroundSyncEnabled, loadTimeRange } from './storage';
 import { loadHealthPreference } from './healthConnectService';
@@ -113,13 +113,15 @@ export const collectSyncStatus = async (): Promise<DiagnosticSyncStatus> => {
 };
 
 export const collectLogInfo = async (): Promise<DiagnosticLogInfo> => {
-  const [currentFilter, todaySummary, recentLogs] = await Promise.all([
-    getLogFilter(),
-    getLogSummary(),
+  const [captureLevel, viewFilter, todaySummary, recentLogs] = await Promise.all([
+    getCaptureLevel(),
+    getViewFilter(),
+    getLogSummary('all'),
     getLogs(0, 1000, 'all'),
   ]);
   return {
-    currentFilter,
+    captureLevel,
+    viewFilter,
     todaySummary,
     recentLogs: recentLogs.map(sanitizeLogEntry),
   };
