@@ -698,9 +698,7 @@ function AppContent() {
             name="Logs"
             component={SafeLogs}
             options={{
-              headerShown: true,
-              title: 'Logs',
-              headerBackTitle: 'Back',
+              headerShown: false,
             }}
           />
           <Stack.Screen

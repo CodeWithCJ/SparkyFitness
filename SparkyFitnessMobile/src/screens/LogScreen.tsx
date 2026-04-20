@@ -1,16 +1,24 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
   FlatList,
+  ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolateColor,
+} from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
+import Icon, { IconName } from '../components/Icon';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
@@ -25,11 +33,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 type LogScreenProps = RootStackScreenProps<'Logs'>;
 
 const MAX_LOGS_TO_LOAD = 1000;
-const LEVEL_CHIPS: { status: LogStatus; label: string; color: string }[] = [
-  { status: 'INFO', label: 'Info', color: '#007bff' },
-  { status: 'WARNING', label: 'Warning', color: '#ffc107' },
+const LEVEL_CHIPS: { status: LogStatus; label: string; color: string; activeColor?: string }[] = [
   { status: 'ERROR', label: 'Error', color: '#dc3545' },
-  { status: 'DEBUG', label: 'Debug', color: '#6c757d' },
+  { status: 'WARNING', label: 'Warning', color: '#ffc107' },
+  { status: 'INFO', label: 'Info', color: '#007bff', activeColor: '#ffffff' },
+  { status: 'DEBUG', label: 'Debug', color: '#6c757d', activeColor: '#d1d5db' },
 ];
 
 const getStatusColor = (status: string): string => {
@@ -41,11 +49,12 @@ const getStatusColor = (status: string): string => {
   }
 };
 
-const getStatusIcon = (status: string) => {
+const getStatusIcon = (status: string): IconName => {
   switch (status) {
-    case 'WARNING': return require('../../assets/icons/warning.png');
-    case 'INFO': return require('../../assets/icons/info.png');
-    default: return require('../../assets/icons/error.png');
+    case 'WARNING': return 'warning';
+    case 'INFO': return 'info-circle';
+    case 'DEBUG': return 'wrench';
+    default: return 'alert-circle';
   }
 };
 
@@ -54,45 +63,69 @@ interface FilterChipProps {
   count: number;
   active: boolean;
   color?: string;
+  activeColor?: string;
   onPress: () => void;
 }
 
-const FilterChip: React.FC<FilterChipProps> = ({ label, count, active, color, onPress }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    activeOpacity={0.7}
-    className={`flex-row items-center rounded-full px-3 py-1.5 mr-2 mb-2 border ${
-      active
-        ? 'bg-raised border-border-strong'
-        : 'bg-transparent border-border-subtle'
-    }`}
-  >
-    {color && (
-      <View
-        className="w-2 h-2 rounded-full mr-2"
-        style={{ backgroundColor: color }}
-      />
-    )}
-    <Text
-      className={`text-sm font-medium ${
-        active ? 'text-text-primary' : 'text-text-secondary'
-      }`}
-    >
-      {label}
-    </Text>
-    <Text
-      className={`text-sm ml-1.5 ${
-        active ? 'text-text-primary' : 'text-text-secondary'
-      }`}
-    >
-      {count}
-    </Text>
-  </TouchableOpacity>
-);
+const TRANSPARENT = 'rgba(0,0,0,0)';
+const CHIP_ANIMATION_DURATION = 250;
+
+const FilterChip: React.FC<FilterChipProps> = ({ label, count, active, color, activeColor, onPress }) => {
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const accentText = useCSSVariable('--color-accent-text') as string;
+  const borderSubtle = useCSSVariable('--color-border-subtle') as string;
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
+
+  const progress = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, { duration: CHIP_ANIMATION_DURATION });
+  }, [active, progress]);
+
+  const chipStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [TRANSPARENT, accentPrimary]),
+    borderColor: interpolateColor(progress.value, [0, 1], [borderSubtle, accentPrimary]),
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [textSecondary, accentText]),
+  }));
+
+  const dotStyle = useAnimatedStyle(() => {
+    if (!color) return {};
+    return {
+      backgroundColor: interpolateColor(
+        progress.value,
+        [0, 1],
+        [color, activeColor ?? color],
+      ),
+    };
+  });
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Animated.View
+        className="flex-row items-center rounded-full px-3 py-1.5 mr-2 mb-2 border"
+        style={chipStyle}
+      >
+        {color && (
+          <Animated.View className="w-2 h-2 rounded-full mr-2" style={dotStyle} />
+        )}
+        <Animated.Text className="text-sm font-medium" style={labelStyle}>
+          {label} {count}
+        </Animated.Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+const pluralize = (count: number, [singular, plural]: [string, string]): string =>
+  count === 1 ? singular : plural;
 
 const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<LogStatus[]>([]);
 
@@ -154,20 +187,6 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   }, []);
 
   const hasLogs = logs.length > 0;
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Button
-          variant="header"
-          className="pr-4"
-          onPress={handleClearLogs}
-          disabled={!hasLogs}
-        >
-          Clear
-        </Button>
-      ),
-    });
-  }, [navigation, handleClearLogs, hasLogs]);
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
     let logText = `Status: ${item.status}\n`;
@@ -184,14 +203,6 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     Toast.show({ type: 'success', text1: 'Copied', text2: 'Log entry copied to clipboard' });
   };
 
-  const counts = useMemo(() => {
-    const c: Record<LogStatus, number> = { DEBUG: 0, INFO: 0, WARNING: 0, ERROR: 0 };
-    for (const log of logs) {
-      c[log.status]++;
-    }
-    return c;
-  }, [logs]);
-
   const filteredLogs = useMemo(() => {
     if (selectedStatuses.length === 0) return logs;
     return logs.filter(log => selectedStatuses.includes(log.status));
@@ -199,29 +210,78 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   const allActive = selectedStatuses.length === 0;
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<LogStatus, number> = { ERROR: 0, WARNING: 0, INFO: 0, DEBUG: 0 };
+    for (const log of logs) {
+      counts[log.status] = (counts[log.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [logs]);
+
+  const showSummary = allActive || selectedStatuses.length > 1;
+
+  const summaryLabel = useMemo(() => {
+    const n = filteredLogs.length;
+    return `Showing ${n} ${pluralize(n, ['log', 'logs'])}`;
+  }, [filteredLogs.length]);
+
   const ListHeader = (
-    <View className="flex-row flex-wrap mb-2">
-      <FilterChip
-        label="All"
-        count={logs.length}
-        active={allActive}
-        onPress={handleSelectAll}
-      />
-      {LEVEL_CHIPS.map(chip => (
+    <View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="-mx-4"
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+      >
         <FilterChip
-          key={chip.status}
-          label={chip.label}
-          count={counts[chip.status]}
-          active={selectedStatuses.includes(chip.status)}
-          color={chip.color}
-          onPress={() => handleToggleStatus(chip.status)}
+          label="All"
+          count={logs.length}
+          active={allActive}
+          onPress={handleSelectAll}
         />
-      ))}
+        {LEVEL_CHIPS.map(chip => (
+          <FilterChip
+            key={chip.status}
+            label={chip.label}
+            count={statusCounts[chip.status]}
+            active={selectedStatuses.includes(chip.status)}
+            color={chip.color}
+            activeColor={chip.activeColor}
+            onPress={() => handleToggleStatus(chip.status)}
+          />
+        ))}
+      </ScrollView>
+      {showSummary && (
+        <Text className="text-sm text-text-muted mb-3">{summaryLabel}</Text>
+      )}
     </View>
   );
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center px-4 py-3">
+        <Button
+          variant="ghost"
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="py-0 px-0 mr-2"
+        >
+          <Icon name="chevron-back" size={22} color={accentPrimary} />
+        </Button>
+        <Text className="text-2xl font-bold text-text-primary">Logs</Text>
+        <View className="flex-1" />
+        <Button
+          variant="ghost"
+          onPress={handleClearLogs}
+          disabled={!hasLogs}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="py-0 px-0"
+        >
+          <Text className={`text-base font-medium ${hasLogs ? 'text-accent-primary' : 'text-text-muted'}`}>
+            Clear
+          </Text>
+        </Button>
+      </View>
       <FlatList
         data={filteredLogs}
         ListHeaderComponent={ListHeader}
@@ -231,30 +291,30 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
             onPress={() => handleCopyLogToClipboard(item)}
             activeOpacity={0.7}
           >
-            <View
-              className="mr-3 p-2 rounded-[20px] items-center justify-center"
-              style={{ backgroundColor: getStatusColor(item.status) }}
-            >
-              <Image
-                source={getStatusIcon(item.status)}
-                className="w-6 h-6"
-                style={{ tintColor: '#fff' }}
+            <View className="mr-3 items-center justify-center">
+              <Icon
+                name={getStatusIcon(item.status)}
+                size={28}
+                color={getStatusColor(item.status)}
               />
             </View>
             <View className="flex-1 shrink w-full">
               <Text
-                className="text-base font-bold mb-1"
-                style={{ color: getStatusColor(item.status) }}
+                className="text-sm mb-1 flex-wrap w-full text-text-primary"
+                numberOfLines={4}
+                ellipsizeMode="tail"
               >
-                {item.status}
-              </Text>
-              <Text className="text-sm mb-1 flex-wrap w-full text-text-primary" ellipsizeMode="clip">
                 {item.message}
               </Text>
               <View className="flex-row flex-wrap mb-1">
                 {item.details &&
                   item.details.map((detail, index) => (
-                    <Text key={index} className="bg-raised rounded px-2 py-1 mr-2 mb-1 text-sm text-text-primary">
+                    <Text
+                      key={index}
+                      className="bg-raised rounded px-2 py-1 mr-2 mb-1 text-sm text-text-primary"
+                      numberOfLines={3}
+                      ellipsizeMode="tail"
+                    >
                       {detail}
                     </Text>
                   ))}

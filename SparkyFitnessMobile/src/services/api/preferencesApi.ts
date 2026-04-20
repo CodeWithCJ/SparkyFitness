@@ -70,7 +70,6 @@ export async function ensureTimezoneBootstrapped(
     }
 
     try {
-      addLog(`[Preferences] Ensuring server timezone from device: ${deviceTz}`, 'INFO');
       const prefs = await apiFetch<UserPreferences>({
         endpoint: '/api/user-preferences/bootstrap-timezone',
         serviceName: 'Preferences API',
