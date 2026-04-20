@@ -65,7 +65,7 @@ import {
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
-import { initLogService } from './src/services/LogService';
+import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -130,7 +130,9 @@ function AppContent() {
         const route = config ? 'Tabs' : 'Onboarding';
         setInitialRoute(route);
         setLinkingEnabled(route === 'Tabs');
-      } catch {
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to load active server config on startup: ${message}`, 'ERROR');
         setInitialRoute('Onboarding');
       } finally {
         await SplashScreen.hideAsync();
@@ -330,7 +332,8 @@ function AppContent() {
         },
       });
     } catch (error) {
-      console.error('[App] Auto sync on open failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Auto sync on open failed: ${message}`, 'ERROR');
     } finally {
       if (!committed) release();
     }
@@ -358,7 +361,8 @@ function AppContent() {
 
     // Initialize log service (warms cache, prunes old logs, registers AppState listener)
     initLogService().catch(error => {
-      console.error('[App] Failed to initialize log service:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize log service: ${message}`, 'ERROR');
     });
 
     const initializeSyncServices = async () => {
@@ -366,7 +370,7 @@ function AppContent() {
       // has a stable timezone for the very first sync.
       const timezone = await ensureTimezoneBootstrapped();
       if (!timezone) {
-        console.warn('[App] Timezone bootstrap did not resolve a timezone before sync setup.');
+        addLog('[App] Timezone bootstrap did not resolve a timezone before sync setup.', 'WARNING');
       }
 
       if (cancelled) return;
@@ -374,7 +378,8 @@ function AppContent() {
       try {
         await configureBackgroundSync();
       } catch (error) {
-        console.error('[App] Failed to configure background sync:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to configure background sync: ${message}`, 'ERROR');
       }
 
       if (cancelled || Platform.OS !== 'ios') return;
@@ -399,23 +404,27 @@ function AppContent() {
 
           performBackgroundSync('healthkit-observer')
             .catch(error => {
-              console.error('[App] Observer-triggered sync failed:', error);
+              const message = error instanceof Error ? error.message : String(error);
+              addLog(`[App] Observer-triggered sync failed: ${message}`, 'ERROR');
             })
             .finally(() => {
               release();
             });
         });
       } catch (error) {
-        console.error('[App] Failed to configure HealthKit observers:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to configure HealthKit observers: ${message}`, 'ERROR');
       }
     };
 
     initializeSyncServices().catch(error => {
-      console.error('[App] Failed to initialize sync services:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize sync services: ${message}`, 'ERROR');
     });
 
     flushPendingHealthSyncCacheRefresh().catch(error => {
-      console.error('[App] Failed to flush pending health sync refresh:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to flush pending health sync refresh: ${message}`, 'ERROR');
     });
 
     return () => {
@@ -457,7 +466,8 @@ function AppContent() {
 
     triggerColdStartSync().catch(error => {
       setForegroundAutoSyncWindowState(false);
-      console.error('[App] Cold-start sync on open failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Cold-start sync on open failed: ${message}`, 'ERROR');
     });
   }, [initialRoute, setForegroundAutoSyncWindowState]);
 
@@ -511,7 +521,8 @@ function AppContent() {
         await triggerAutoSyncRef.current(config.id, safeCleanup);
       } catch (error) {
         setForegroundAutoSyncWindowState(false);
-        console.error('[App] Foreground-return sync on open failed:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Foreground-return sync on open failed: ${message}`, 'ERROR');
       }
     });
 

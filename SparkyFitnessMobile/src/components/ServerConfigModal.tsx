@@ -182,8 +182,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         let factors: MfaFactors = { mfaTotpEnabled: true, mfaEmailEnabled: false };
         try {
           factors = await fetchMfaFactors(url, email.trim());
-        } catch {
+        } catch (err) {
           // Fallback: assume TOTP only
+          const message = err instanceof Error ? err.message : String(err);
+          addLog(`[ServerConfigModal] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');

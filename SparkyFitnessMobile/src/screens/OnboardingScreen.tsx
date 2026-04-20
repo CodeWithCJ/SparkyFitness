@@ -54,7 +54,9 @@ const checkReachability = async (url: string): Promise<boolean> => {
     });
     clearTimeout(timeout);
     return response.ok;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Onboarding] Reachability check failed for ${url}: ${message}`, 'WARNING');
     return false;
   }
 };
@@ -173,8 +175,10 @@ export default function OnboardingScreen({ navigation }: Props) {
         };
         try {
           factors = await fetchMfaFactors(url, email.trim());
-        } catch {
+        } catch (err) {
           // Fallback: assume TOTP only
+          const message = err instanceof Error ? err.message : String(err);
+          addLog(`[Onboarding] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');
