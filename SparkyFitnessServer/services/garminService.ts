@@ -515,7 +515,9 @@ async function processGarminWorkoutSession(
         source_id: activity.activityId
           ? `${activity.activityId}_${exerciseSortOrder}`
           : null,
-        steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
+        steps: Math.round(
+          activity.steps || activity.totalSteps || activity.stepCount || 0
+        ),
       };
       await exerciseEntryRepository.createExerciseEntry(
         userId,
@@ -659,14 +661,20 @@ async function processGarminSimpleActivity(
   const exerciseEntryData = {
     exercise_id: exercise.id,
     duration_minutes: activity.duration || 0,
-    calories_burned: activity.active_calories || 0,
+    calories_burned: Math.round(activity.active_calories || 0),
     entry_date: entryDate,
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,
     avg_heart_rate:
-      activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
+      activity.averageHR || activity.averageHeartRateInBeatsPerMinute
+        ? Math.round(
+            activity.averageHR || activity.averageHeartRateInBeatsPerMinute
+          )
+        : null,
     source_id: activity.activityId?.toString() ?? null,
-    steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
+    steps: Math.round(
+      activity.steps || activity.totalSteps || activity.stepCount || 0
+    ),
   };
   const newEntry = await exerciseEntryRepository.createExerciseEntry(
     userId,
