@@ -29,6 +29,24 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        - name: wait-for-db
+          image: {{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ include "sparkyfitness.databaseHost" . }} -p {{ include "sparkyfitness.databasePort" . }}; do echo "Waiting for database..."; sleep 2; done
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+        {{- with .Values.server.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       containers:
         - name: server
           image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
@@ -140,6 +158,9 @@ spec:
               mountPath: {{ .Values.server.persistence.tempUploads.mountPath }}
             - name: tmp
               mountPath: /tmp
+            {{- with .Values.server.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: backup
           persistentVolumeClaim:
@@ -151,3 +172,6 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        {{- with .Values.server.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
