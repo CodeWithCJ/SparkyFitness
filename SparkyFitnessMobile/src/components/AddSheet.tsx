@@ -33,6 +33,10 @@ interface ActionCard {
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const isDismissingRef = useRef(false);
+    const isOpenRef = useRef(false);
+    const pendingPresentRef = useRef(false);
+    const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -46,17 +50,47 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         '--color-text-secondary',
       ]) as [string, string, string, string, string];
 
+    const clearScheduledPresent = useCallback(() => {
+      if (presentFrameRef.current != null) {
+        cancelAnimationFrame(presentFrameRef.current);
+        presentFrameRef.current = null;
+      }
+    }, []);
+
+    const schedulePresent = useCallback(() => {
+      clearScheduledPresent();
+      presentFrameRef.current = requestAnimationFrame(() => {
+        presentFrameRef.current = null;
+        bottomSheetRef.current?.present();
+      });
+    }, [clearScheduledPresent]);
+
     useImperativeHandle(ref, () => ({
-      present: () => bottomSheetRef.current?.present(),
-      dismiss: () => bottomSheetRef.current?.dismiss(),
-    }));
+      present: () => {
+        if (isOpenRef.current || (pendingPresentRef.current && !isDismissingRef.current)) {
+          return;
+        }
+        pendingPresentRef.current = true;
+        if (isDismissingRef.current) {
+          return;
+        }
+        schedulePresent();
+      },
+      dismiss: () => {
+        pendingPresentRef.current = false;
+        isDismissingRef.current = true;
+        clearScheduledPresent();
+        bottomSheetRef.current?.dismiss();
+      },
+    }), [clearScheduledPresent, schedulePresent]);
 
     useEffect(() => {
       const sheetRef = bottomSheetRef.current;
       return () => {
+        clearScheduledPresent();
         sheetRef?.dismiss();
       };
-    }, []);
+    }, [clearScheduledPresent]);
 
     const renderBackdrop = useCallback(
       (props: BottomSheetBackdropProps) => (
@@ -76,8 +110,28 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, []);
 
     const handleDismiss = useCallback(() => {
+      isDismissingRef.current = false;
+      isOpenRef.current = false;
       setShowExerciseMenu(false);
-    }, []);
+      if (pendingPresentRef.current) {
+        schedulePresent();
+      }
+    }, [schedulePresent]);
+
+    const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
+      if (fromIndex >= 0 && toIndex === -1) {
+        isDismissingRef.current = true;
+        isOpenRef.current = false;
+        return;
+      }
+
+      if (toIndex >= 0) {
+        isDismissingRef.current = false;
+        isOpenRef.current = true;
+        pendingPresentRef.current = false;
+        clearScheduledPresent();
+      }
+    }, [clearScheduledPresent]);
 
     const cards: ActionCard[] = [
       { label: 'Food', icon: 'food', onPress: onAddFood },
@@ -140,6 +194,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
+        onAnimate={handleAnimate}
         onDismiss={handleDismiss}
       >
         <BottomSheetView className="pb-5 px-2.5">
