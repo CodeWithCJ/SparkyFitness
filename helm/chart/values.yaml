@@ -189,7 +189,7 @@ server:
   # -- Application database credentials (limited-privilege user for runtime queries)
   appDatabase:
     # -- Username for the limited-privilege app DB user
-    username: "sparkyapp"
+    username: "sparky"
     # -- Password (auto-generated if empty)
     password: ""
     # -- Use an existing K8s Secret (keys: username, password)
@@ -216,6 +216,12 @@ server:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the server container
   extraEnvFrom: []
+  # -- Extra volumes to add to the server pod
+  extraVolumes: []
+  # -- Extra volume mounts to add to the server container
+  extraVolumeMounts: []
+  # -- Init containers to run before the server container starts
+  initContainers: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
@@ -371,13 +377,54 @@ postgresql:
     readOnlyRootFilesystem: false
     capabilities:
       drop: [ALL]
+  config:
+    postgresql: |
+      log_statement = none
+      log_min_duration_statement = 1000
   auth:
     database: sparkyfitness
-    username: sparky
-    # -- Password for PostgreSQL owner user (auto-generated if empty)
+    # -- DB owner username. This becomes SPARKY_FITNESS_DB_USER in the server.
+    # The application uses two database roles:
+    #   - sparky_admin (this user): DB owner used for migrations, schema management,
+    #     RLS policy application, and cross-user queries. Must have CREATEROLE so the
+    #     app can create the app user on first startup. Matches the upstream docs at
+    #     https://codewithcj.github.io/SparkyFitness/install/external-database/
+    #   - sparky (server.appDatabase.username): limited-privilege runtime user
+    #     created automatically by the app on first startup. Used for all normal
+    #     application queries with RLS enforced.
+    username: sparky_admin
     password: ""
     # -- Use an existing K8s Secret (keys: postgres-password, user-password, replication-password)
     existingSecret: ""
+  # -- First-boot initialization: reassign DB ownership to the DB owner, grant
+  # CREATEROLE so the app can create the app user on first startup, and install
+  # required PostgreSQL extensions.
+  # Reference: https://codewithcj.github.io/SparkyFitness/install/external-database/
+  #
+  # WARNING: The DB owner is granted CREATEROLE so the application can automatically
+  # create the limited-privilege app user (sparky) on first startup. The upstream
+  # docs recommend revoking this after first startup, but future app updates that add
+  # new roles will fail without it. See "Security Hardening" in the link above.
+  initdb:
+    scripts:
+      02-sparky-admin-setup.sh: |
+        #!/bin/bash
+        set -euo pipefail
+        export PGPASSWORD="${POSTGRES_PASSWORD}"
+        # The postgres entrypoint pre-creates POSTGRES_DB owned by the postgres
+        # superuser before initdb scripts run. Reassign ownership to the DB owner
+        # so it can create schemas and manage RLS during migrations.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER DATABASE \"${APP_DATABASE}\" OWNER TO \"${APP_USERNAME}\""
+        # Grant CREATEROLE so the app can create the sparky role on first startup.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER USER \"${APP_USERNAME}\" CREATEROLE"
+        # Install required extensions and grant function execution (must run as superuser).
+        psql --username "${POSTGRES_USER}" --dbname "${APP_DATABASE}" \
+          -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"' \
+          -c "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO \"${APP_USERNAME}\" WITH GRANT OPTION"
   persistence:
     enabled: true
     size: 8Gi
