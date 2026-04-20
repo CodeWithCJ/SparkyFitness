@@ -5,6 +5,7 @@ import { saveLastSyncedTime } from '../services/storage';
 import { addLog } from '../services/LogService';
 import type { TimeRange } from '../services/storage';
 import { serverConnectionQueryKey } from './queryKeys';
+import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 
 interface SyncHealthDataParams {
   timeRange: TimeRange;
@@ -38,6 +39,7 @@ export function useSyncHealthData(options?: {
       }
     },
     onSuccess: (data) => {
+      refreshHealthSyncCache(queryClient);
       queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
       if (showToasts) {
         Toast.show({
