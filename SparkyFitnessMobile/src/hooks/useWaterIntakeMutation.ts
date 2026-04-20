@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
-import { fireSelectionHaptic } from '../services/haptics';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 
@@ -80,13 +79,11 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
 
   const increment = () => {
     if (!primaryContainer) { noContainerAlert(); return; }
-    fireSelectionHaptic();
     mutation.mutate(1);
   };
 
   const decrement = () => {
     if (!primaryContainer) { noContainerAlert(); return; }
-    fireSelectionHaptic();
     mutation.mutate(-1);
   };
 

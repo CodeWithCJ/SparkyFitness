@@ -9,7 +9,6 @@ import {
 import { useUniwind, useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
-import { fireSheetOpenHaptic } from '../services/haptics';
 
 export interface AddSheetRef {
   present: () => void;
@@ -138,10 +137,6 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         isDismissingRef.current = true;
         isOpenRef.current = false;
         return;
-      }
-
-      if (fromIndex === -1 && toIndex >= 0) {
-        fireSheetOpenHaptic();
       }
 
       if (toIndex >= 0) {

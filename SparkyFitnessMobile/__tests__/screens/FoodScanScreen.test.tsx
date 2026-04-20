@@ -11,7 +11,6 @@ jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
 }));
 
 jest.mock('../../src/services/haptics', () => ({
-  fireSelectionHaptic: jest.fn(),
   fireSuccessHaptic: jest.fn(),
 }));
 

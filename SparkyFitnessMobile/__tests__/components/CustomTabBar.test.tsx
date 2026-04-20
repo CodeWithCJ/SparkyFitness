@@ -4,12 +4,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import CustomTabBar from '../../src/components/CustomTabBar';
 
-jest.mock('../../src/services/haptics', () => ({
-  fireSelectionHaptic: jest.fn(),
-  fireSheetOpenHaptic: jest.fn(),
-  fireSuccessHaptic: jest.fn(),
-}));
-
 describe('CustomTabBar', () => {
   const insets = { top: 0, bottom: 0, left: 0, right: 0 };
   const frame = { x: 0, y: 0, width: 390, height: 844 };
