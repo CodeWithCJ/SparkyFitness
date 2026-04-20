@@ -16,7 +16,7 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
 
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -76,9 +76,11 @@ import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
+const androidModalAnimation =
+  Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -508,7 +510,7 @@ function AppContent() {
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-        <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
             name="Onboarding"
             component={SafeOnboarding}
@@ -559,7 +561,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -569,7 +571,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -579,7 +581,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -589,7 +591,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -598,7 +600,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -615,7 +616,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -624,7 +624,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -633,7 +632,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -642,7 +640,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -651,7 +648,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen

@@ -12,14 +12,14 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 
 type WorkoutsScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Workouts'>,
-  StackScreenProps<RootStackParamList>
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 type SessionSection = { title: string; data: ExerciseSessionResponse[] };
