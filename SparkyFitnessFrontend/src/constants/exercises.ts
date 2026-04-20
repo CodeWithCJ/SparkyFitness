@@ -45,6 +45,11 @@ export const EXERCISE_CATEGORIES = [
     labelKey: 'exercise.databaseManager.categoryStretching',
     defaultLabel: 'Stretching',
   },
+  {
+    value: 'isometric',
+    labelKey: 'exercise.databaseManager.categoryIsometric',
+    defaultLabel: 'Isometric',
+  },
 ] as const;
 
 export const DAYS_OF_WEEK = [
@@ -204,3 +209,20 @@ export const DROPDOWN_GUIDES = [
     options: dropdownOptions['mechanic'],
   },
 ];
+
+export const SET_TYPE_STYLES: Record<string, string> = {
+  Normal: 'bg-muted text-muted-foreground',
+  'Working Set': 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  'Warm-up': 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  'Drop Set': 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+  Failure: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+  AMRAP: 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
+  'Back-off': 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+  'Rest-Pause':
+    'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+  Cluster:
+    'bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+  Technique: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
+  Isometric:
+    'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
+};

@@ -20,6 +20,7 @@ interface UnitInputProps {
   onChange: (metricValue: number) => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
 }
 
 export const UnitInput: React.FC<UnitInputProps> = ({
@@ -30,6 +31,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   type,
   placeholder,
   className,
+  inputClassName = '',
 }) => {
   const metricValue =
     typeof value === 'string' ? parseFloat(value) || 0 : value;
@@ -125,7 +127,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             value={val1}
             onChange={(e) => handleSplitChange(e.target.value, val2)}
             onBlur={handleSplitBlur}
-            className="pr-8"
+            className={`pr-8 ${inputClassName}`}
             placeholder="0"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -144,7 +146,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             value={val2}
             onChange={(e) => handleSplitChange(val1, e.target.value)}
             onBlur={handleSplitBlur}
-            className="pr-8"
+            className={`pr-8 ${inputClassName}`}
             placeholder="0"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -169,7 +171,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         onChange={handleSingleChange}
         onBlur={handleSingleBlur}
         placeholder={placeholder}
-        className="pr-9"
+        className={`pr-9 ${inputClassName}`}
       />
       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
         {unit}

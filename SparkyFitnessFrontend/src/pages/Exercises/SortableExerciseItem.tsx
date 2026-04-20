@@ -9,11 +9,26 @@ import {
   Copy,
   Book,
   Dumbbell,
+  HeartPulse,
 } from 'lucide-react';
-import { SortableContext, useSortable } from '@dnd-kit/sortable';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
-import { SortableSetItem } from './SortableWorkoutPresetSet';
+import { SortableSetItem } from './SortableWorkoutSet';
+import { CardioLog } from './CardioLog';
 import type {
   WorkoutPreset,
   SetFieldKey,
@@ -21,6 +36,8 @@ import type {
   SortableExerciseItemData,
 } from '@/types/workout';
 import { PresetSessionResponse } from '@workspace/shared';
+import { SetColumnHeaders } from './SetHeader';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 type PresetMetadata = WorkoutPreset | PresetSessionResponse;
 
@@ -38,8 +55,14 @@ interface SortableExerciseItemProps {
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
   onAddSet?: (exerciseIndex: number) => void;
   onCopyExercise?: (ex: SortableExerciseItemData) => void;
+  onReorderSets?: (
+    exerciseIndex: number,
+    oldIndex: number,
+    newIndex: number
+  ) => void;
   weightUnit: string;
   workoutPresets?: PresetMetadata[];
+  simplified?: boolean;
 }
 
 export const SortableExerciseItem = ({
@@ -51,26 +74,27 @@ export const SortableExerciseItem = ({
   onRemoveSet,
   onAddSet,
   onCopyExercise,
+  onReorderSets,
   weightUnit,
   workoutPresets,
+  simplified = false,
 }: SortableExerciseItemProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const { distanceUnit } = usePreferences();
 
   const sortableId = ex.id?.toString() || `ex-${exerciseIndex}`;
 
   const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
-      id: sortableId,
-    });
+    useSortable({ id: sortableId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
+  const isCardio = ex.category === 'cardio';
   const hasSets = Array.isArray(ex.sets) && ex.sets.length > 0;
 
-  // Strict name resolution logic
   const displayName =
     ('exercise_name' in ex && ex.exercise_name) ||
     ('workout_preset_name' in ex && ex.workout_preset_name) ||
@@ -93,6 +117,64 @@ export const SortableExerciseItem = ({
     [workoutPresets, ex]
   );
 
+  const cardioSet = ex.sets?.[0];
+  const cardioDuration =
+    ('duration_minutes' in ex ? ex.duration_minutes : undefined) ??
+    cardioSet?.duration ??
+    '';
+  const cardioDistance = ('distance' in ex ? ex.distance : undefined) ?? '';
+  const cardioCalories =
+    ('calories_burned' in ex ? ex.calories_burned : undefined) ?? '';
+  const cardioHr =
+    ('avg_heart_rate' in ex ? ex.avg_heart_rate : undefined) ?? '';
+  const cardioRpe = cardioSet?.rpe ?? '';
+
+  const handleCardioSetChange = (
+    field: SetFieldKey,
+    value: string | number | null | undefined
+  ) => {
+    onSetChange(exerciseIndex, 0, field, value);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleSetDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id && ex.sets) {
+      const oldIndex = ex.sets.findIndex((s, i) => {
+        const setWithId = s as typeof s & {
+          _dndId?: string;
+          id?: string | number;
+        };
+        return (
+          (setWithId._dndId ||
+            setWithId.id?.toString() ||
+            `set-${exerciseIndex}-${i}`) === active.id
+        );
+      });
+      const newIndex = ex.sets.findIndex((s, i) => {
+        const setWithId = s as typeof s & {
+          _dndId?: string;
+          id?: string | number;
+        };
+        return (
+          (setWithId._dndId ||
+            setWithId.id?.toString() ||
+            `set-${exerciseIndex}-${i}`) === over.id
+        );
+      });
+
+      if (oldIndex !== -1 && newIndex !== -1 && onReorderSets) {
+        onReorderSets(exerciseIndex, oldIndex, newIndex);
+      }
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -109,6 +191,8 @@ export const SortableExerciseItem = ({
             <div className="flex items-center gap-2">
               {isWorkoutPreset ? (
                 <Book className="h-4 w-4 text-primary" />
+              ) : isCardio ? (
+                <HeartPulse className="h-4 w-4 text-red-500" />
               ) : (
                 <Dumbbell className="h-4 w-4 text-muted-foreground" />
               )}
@@ -122,7 +206,7 @@ export const SortableExerciseItem = ({
           </div>
         </div>
         <div className="flex items-center space-x-1">
-          {hasSets && (
+          {(hasSets || isCardio) && (
             <Button
               variant="ghost"
               size="icon"
@@ -157,28 +241,90 @@ export const SortableExerciseItem = ({
         </div>
       </div>
 
-      {isExpanded && hasSets && (
+      {isExpanded && isCardio && (
+        <CardioLog
+          simplified={simplified}
+          durationMinutes={cardioDuration as number | ''}
+          distance={cardioDistance as number | ''}
+          caloriesBurned={cardioCalories as number | ''}
+          avgHeartRate={cardioHr as number | ''}
+          rpe={cardioRpe as number | ''}
+          distanceUnit={distanceUnit}
+          onDurationChange={(v) =>
+            handleCardioSetChange('duration', v === '' ? undefined : Number(v))
+          }
+          onDistanceChange={(v) =>
+            handleCardioSetChange(
+              'distance' as SetFieldKey,
+              v === '' ? null : Number(v)
+            )
+          }
+          onCaloriesChange={(v) =>
+            handleCardioSetChange(
+              'calories' as SetFieldKey,
+              v === '' ? null : Number(v)
+            )
+          }
+          onAvgHeartRateChange={(v) =>
+            handleCardioSetChange(
+              'avg_heart_rate' as SetFieldKey,
+              v === '' ? null : Number(v)
+            )
+          }
+          onRpeChange={(v) =>
+            handleCardioSetChange('rpe', v === '' ? null : Number(v))
+          }
+        />
+      )}
+
+      {isExpanded && !isCardio && hasSets && (
         <div className="space-y-3">
-          <SortableContext
-            items={ex.sets.map(
-              (s, i) => s.id?.toString() || `set-${exerciseIndex}-${i}`
-            )}
+          <SetColumnHeaders category={ex?.category} />
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleSetDragEnd}
           >
-            <div className="space-y-2">
-              {ex.sets.map((set, setIndex) => (
-                <SortableSetItem
-                  key={set.id?.toString() || setIndex}
-                  set={set as SortableSetData}
-                  exerciseIndex={exerciseIndex}
-                  setIndex={setIndex}
-                  onSetChange={onSetChange}
-                  onDuplicateSet={onDuplicateSet}
-                  onRemoveSet={onRemoveSet}
-                  weightUnit={weightUnit}
-                />
-              ))}
-            </div>
-          </SortableContext>
+            <SortableContext
+              items={(ex.sets || []).map((s, i) => {
+                const setWithId = s as typeof s & {
+                  _dndId?: string;
+                  id?: string | number;
+                };
+                return (
+                  setWithId._dndId ||
+                  setWithId.id?.toString() ||
+                  `set-${exerciseIndex}-${i}`
+                );
+              })}
+            >
+              <div className="space-y-2">
+                {(ex.sets || []).map((s, setIndex) => {
+                  const setWithId = s as typeof s & {
+                    _dndId?: string;
+                    id?: string | number;
+                  };
+                  const dndId =
+                    setWithId._dndId ||
+                    setWithId.id?.toString() ||
+                    `set-${exerciseIndex}-${setIndex}`;
+                  return (
+                    <SortableSetItem
+                      key={dndId}
+                      id={dndId}
+                      set={s as SortableSetData}
+                      exerciseIndex={exerciseIndex}
+                      setIndex={setIndex}
+                      onSetChange={onSetChange}
+                      onDuplicateSet={onDuplicateSet}
+                      onRemoveSet={onRemoveSet}
+                      weightUnit={weightUnit}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <div className="flex justify-between items-center mt-2 border-t pt-2">
             {onAddSet && !isWorkoutPreset ? (
@@ -200,6 +346,7 @@ export const SortableExerciseItem = ({
           </div>
         </div>
       )}
+
       {isWorkoutPreset && (
         <p className="text-[11px] text-muted-foreground italic px-7">
           Workout Preset block: Edit individual exercises within the preset

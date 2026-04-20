@@ -126,6 +126,7 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
                 wpe.exercise_id,
                 wpe.image_url,
                 e.name as exercise_name,
+                e.category as category,
                 COALESCE(
                   (SELECT json_agg(set_data ORDER BY set_data.set_number)
                    FROM (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -12,6 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import type { WorkoutPresetSet } from '@/types/workout';
@@ -30,7 +35,7 @@ import {
   sortableKeyboardCoordinates,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { X, Plus, XCircle } from 'lucide-react';
+import { X, Plus, XCircle, ChevronDown } from 'lucide-react';
 import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
 import {
   exerciseDetailsOptions,
@@ -38,7 +43,10 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
-import { SortableSetItem } from '../Exercises/SortableWorkoutPresetSet';
+import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
+import { SetColumnHeaders } from '../Exercises/SetHeader';
+import { CardioLog } from '../Exercises/CardioLog';
+import { cn } from '@/lib/utils';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
@@ -46,7 +54,7 @@ interface EditExerciseEntryDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: () => void;
 }
-
+type SortableSet = WorkoutPresetSet & { _dndId: string };
 const EditExerciseEntryDialog = ({
   entry,
   open,
@@ -56,18 +64,16 @@ const EditExerciseEntryDialog = ({
   const { t } = useTranslation();
   const { loggingLevel, weightUnit, distanceUnit, convertDistance } =
     usePreferences();
-  debug(
-    loggingLevel,
-    'EditExerciseEntry_v2: Component rendered for entry:',
-    entry.id
-  );
 
-  const [sets, setSets] = useState<WorkoutPresetSet[]>(() => {
-    return ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
+  const isCardio = entry.exercise_snapshot?.category === 'cardio';
+
+  const [sets, setSets] = useState<SortableSet[]>(() =>
+    ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
-      weight: Number(set.weight) || 0, // Keep metric (kg)
-    }));
-  });
+      weight: Number(set.weight) || 0,
+      _dndId: crypto.randomUUID(),
+    }))
+  );
   const [notes, setNotes] = useState(entry.notes || '');
   const [imageUrl, setImageUrl] = useState<string | null>(
     entry.image_url || null
@@ -82,9 +88,10 @@ const EditExerciseEntryDialog = ({
       : ''
   );
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
-    entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined
-      ? entry.avg_heart_rate
-      : ''
+    entry.avg_heart_rate != null ? entry.avg_heart_rate : ''
+  );
+  const [durationInput, setDurationInput] = useState<number | ''>(
+    entry.duration_minutes || ''
   );
   const [activityDetails, setActivityDetails] = useState<
     ActivityDetailKeyValuePair[]
@@ -100,36 +107,24 @@ const EditExerciseEntryDialog = ({
       detail_type: detail.detail_type,
     }))
   );
-
   const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   const { mutateAsync: updateExerciseEntry, isPending: loading } =
     useUpdateExerciseEntryMutation();
-
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    // When sets change, clear the calories burned input to trigger recalculation
-    debug(
-      loggingLevel,
-      'EditExerciseEntryDialog: sets useEffect triggered. Sets changed, clearing caloriesBurnedInput.'
-    );
-    if (sets.length > 0 && !entry.calories_burned) {
-      setCaloriesBurnedInput('');
-      setShowCaloriesWarning(true);
-    }
-  }, [
-    sets,
-    setCaloriesBurnedInput,
-    setShowCaloriesWarning,
-    entry.calories_burned,
-    loggingLevel,
-  ]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       setImageFile(file);
-      setImageUrl(URL.createObjectURL(file)); // Show preview of new image
+      setImageUrl(URL.createObjectURL(file));
+    }
+  };
+  const triggerCalorieWarning = () => {
+    if (!entry.calories_burned) {
+      setCaloriesBurnedInput('');
+      setShowCaloriesWarning(true);
     }
   };
 
@@ -143,80 +138,67 @@ const EditExerciseEntryDialog = ({
     field: keyof WorkoutPresetSet,
     value: string | number | undefined
   ) => {
-    debug(
-      loggingLevel,
-      `[EditExerciseEntryDialog] handleSetChange: index=${setIndex}, field=${field}, value=${value}, weightUnit=${weightUnit}`
-    );
     setSets((prev) =>
-      prev.map((set, sIndex) => {
-        if (sIndex !== setIndex) {
-          return set;
-        }
-        return { ...set, [field]: value };
-      })
+      prev.map((set, i) => (i !== setIndex ? set : { ...set, [field]: value }))
     );
+    triggerCalorieWarning();
   };
 
   const handleAddSet = () => {
     setSets((prev) => {
-      const lastSet =
-        prev.length > 0
-          ? prev[prev.length - 1]
-          : {
-              set_number: 0,
-              set_type: 'Working Set' as const,
-              reps: 10,
-              weight: 0,
-            };
-      if (!lastSet) {
-        return [...prev];
-      }
-      const newSet: WorkoutPresetSet = {
-        ...lastSet,
-        set_number: prev.length + 1,
+      const lastSet = prev[prev.length - 1] ?? {
+        set_number: 0,
+        set_type: 'Working Set' as const,
+        reps: 10,
+        weight: 0,
+        _dndId: crypto.randomUUID(),
       };
-      return [...prev, newSet];
+      return [
+        ...prev,
+        {
+          ...lastSet,
+          set_number: prev.length + 1,
+          _dndId: crypto.randomUUID(),
+        },
+      ];
     });
+    triggerCalorieWarning();
   };
 
   const handleDuplicateSet = (setIndex: number) => {
     setSets((prev) => {
       const setToDuplicate = prev[setIndex];
-      if (!setToDuplicate) {
-        return [...prev];
-      }
-      const newSets = [
+      if (!setToDuplicate) return prev;
+      return [
         ...prev.slice(0, setIndex + 1),
-        { ...setToDuplicate },
+        { ...setToDuplicate, _dndId: crypto.randomUUID() },
         ...prev.slice(setIndex + 1),
       ].map((s, i) => ({ ...s, set_number: i + 1 }));
-      return newSets;
     });
+    triggerCalorieWarning();
   };
 
   const handleRemoveSet = (setIndex: number) => {
     setSets((prev) =>
       prev
-        .filter((_, sIndex) => sIndex !== setIndex)
+        .filter((_, i) => i !== setIndex)
         .map((s, i) => ({ ...s, set_number: i + 1 }))
     );
+    triggerCalorieWarning();
   };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = sets.findIndex((_s, i) => `set-${i}` === active.id);
-      const newIndex = sets.findIndex((_s, i) => `set-${i}` === over.id);
       setSets((items) => {
-        const reorderedSets = arrayMove(items, oldIndex, newIndex);
-        return reorderedSets.map((set, index) => ({
+        const oldIndex = items.findIndex((s) => s._dndId === active.id);
+        const newIndex = items.findIndex((s) => s._dndId === over.id);
+        return arrayMove(items, oldIndex, newIndex).map((set, index) => ({
           ...set,
           set_number: index + 1,
         }));
@@ -225,53 +207,38 @@ const EditExerciseEntryDialog = ({
   };
 
   const handleSave = async () => {
-    info(
-      loggingLevel,
-      'EditExerciseEntryDialog: Attempting to save changes for entry:',
-      entry.id
-    );
-
+    info(loggingLevel, 'EditExerciseEntryDialog: saving entry:', entry.id);
     try {
-      debug(
-        loggingLevel,
-        'EditExerciseEntryDialog: Fetching exercise details for recalculation:',
-        entry.exercise_id
-      );
       const exerciseData = await queryClient.fetchQuery(
         exerciseDetailsOptions(entry.exercise_id)
       );
-
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
-      const totalDurationFromSets = sets.reduce(
-        (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
-        0
-      );
-      const totalDuration = totalDurationFromSets;
 
-      let caloriesBurned: number;
-      if (caloriesBurnedInput !== '' && caloriesBurnedInput !== 0) {
-        caloriesBurned = caloriesBurnedInput;
-      } else {
-        caloriesBurned = Math.round((caloriesPerHour / 60) * totalDuration);
-      }
+      const totalDuration = isCardio
+        ? durationInput === ''
+          ? 0
+          : Number(durationInput)
+        : sets.reduce(
+            (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
+            0
+          );
 
-      debug(
-        loggingLevel,
-        'EditExerciseEntryDialog: Final calories burned:',
-        caloriesBurned
-      );
+      const caloriesBurned =
+        caloriesBurnedInput !== '' && caloriesBurnedInput !== 0
+          ? caloriesBurnedInput
+          : Math.round((caloriesPerHour / 60) * totalDuration);
 
       await updateExerciseEntry({
         id: entry.id,
         data: {
           duration_minutes: totalDuration,
           calories_burned: caloriesBurned,
-          notes: notes,
-          sets: sets.map((set) => ({
+          notes,
+          sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
-            weight: set.weight ?? 0, // already metric (kg) from UnitInput
+            weight: set.weight ?? 0,
           })),
-          imageFile: imageFile,
+          imageFile,
           image_url: imageUrl,
           distance:
             distanceInput === ''
@@ -282,43 +249,30 @@ const EditExerciseEntryDialog = ({
           activity_details: activityDetails.map((detail) => ({
             id: detail.id,
             provider_name: detail.provider_name,
-            detail_type: detail.key, // Use key as detail_type
-            detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
+            detail_type: detail.key,
+            detail_data: detail.value,
           })),
         },
       });
 
       info(
         loggingLevel,
-        'EditExerciseEntryDialog: Exercise entry updated successfully:',
+        'EditExerciseEntryDialog: saved successfully:',
         entry.id
       );
       onOpenChange(false);
       onSave();
     } catch (err) {
-      error(
-        loggingLevel,
-        'EditExerciseEntryDialog: Error updating exercise entry:',
-        err
-      );
-    } finally {
-      debug(
-        loggingLevel,
-        'EditExerciseEntryDialog: Loading state set to false.'
-      );
+      error(loggingLevel, 'EditExerciseEntryDialog: error saving:', err);
     }
   };
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(open) => {
-        debug(
-          loggingLevel,
-          'EditExerciseEntryDialog: Dialog open state changed:',
-          open
-        );
-        onOpenChange(open);
+      onOpenChange={(o) => {
+        debug(loggingLevel, 'EditExerciseEntryDialog: open state changed:', o);
+        onOpenChange(o);
       }}
     >
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
@@ -337,7 +291,7 @@ const EditExerciseEntryDialog = ({
         {showCaloriesWarning && (
           <Alert
             variant="default"
-            className="bg-yellow-100 border-yellow-400 text-yellow-700 p-0.25 relative"
+            className="bg-yellow-100 border-yellow-400 text-yellow-700 relative py-2"
           >
             <AlertDescription>
               {t(
@@ -353,9 +307,11 @@ const EditExerciseEntryDialog = ({
             </button>
           </Alert>
         )}
-        <div className="space-y-2">
-          <div>
-            <Label htmlFor="exercise-name">
+
+        <div className="space-y-4 py-2">
+          {/* Exercise name (read-only) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="exercise-name" className="text-sm">
               {t('exercise.editExerciseEntryDialog.exerciseLabel', 'Exercise')}
             </Label>
             <Input
@@ -368,212 +324,234 @@ const EditExerciseEntryDialog = ({
                 )
               }
               disabled
-              className="bg-gray-100 dark:bg-gray-800"
+              className="bg-muted"
             />
           </div>
 
-          {sets && sets.length > 0 && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={sets.map((_, i) => `set-${i}`)}>
-                <div className="space-y-2">
-                  {sets.map((set, setIndex) => (
-                    <SortableSetItem
-                      key={`set-${setIndex}`}
-                      set={set}
-                      setIndex={setIndex}
-                      exerciseIndex={0}
-                      onSetChange={(_, sIdx, field, value) =>
-                        handleSetChange(sIdx, field, value ?? undefined)
-                      }
-                      onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
-                      onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
-                      weightUnit={weightUnit}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-          <Button type="button" variant="outline" onClick={handleAddSet}>
-            <Plus className="h-4 w-4 mr-2" />{' '}
-            {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
-          </Button>
-          <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
-
-          <div>
-            <Label htmlFor="calories-burned">
-              {t(
-                'exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel',
-                'Calories Burned (Optional)'
-              )}
-            </Label>
-            <div className="relative">
-              <Input
-                id="calories-burned"
-                type="number"
-                value={caloriesBurnedInput}
-                onChange={(e) =>
-                  setCaloriesBurnedInput(
-                    e.target.value === '' ? '' : Number(e.target.value)
+          {/* ── Cardio log or strength sets ── */}
+          {isCardio ? (
+            <CardioLog
+              durationMinutes={durationInput}
+              distance={distanceInput}
+              caloriesBurned={caloriesBurnedInput}
+              avgHeartRate={avgHeartRateInput}
+              rpe={sets[0]?.rpe ?? ''}
+              distanceUnit={distanceUnit}
+              onDurationChange={setDurationInput}
+              onDistanceChange={setDistanceInput}
+              onCaloriesChange={setCaloriesBurnedInput}
+              onAvgHeartRateChange={setAvgHeartRateInput}
+              onRpeChange={(v) =>
+                setSets((prev) =>
+                  prev.map((s, i) =>
+                    i === 0 ? { ...s, rpe: v === '' ? null : Number(v) } : s
                   )
-                }
-                placeholder={t(
-                  'exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder',
-                  'Enter calories burned to override calculation'
-                )}
-                className="pr-8"
-              />
-              {caloriesBurnedInput !== '' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setCaloriesBurnedInput('');
-                    setShowCaloriesWarning(true);
-                  }}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              )}
+                )
+              }
+            />
+          ) : (
+            <div className="space-y-1">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SetColumnHeaders
+                  category={entry.exercise_snapshot?.category}
+                />
+                <SortableContext items={sets.map((set) => set._dndId)}>
+                  <div className="space-y-0.5">
+                    {sets.map((set, setIndex) => (
+                      <SortableSetItem
+                        id={set._dndId}
+                        key={set._dndId}
+                        set={set}
+                        setIndex={setIndex}
+                        exerciseIndex={0}
+                        onSetChange={(_, sIdx, field, value) =>
+                          handleSetChange(sIdx, field, value ?? undefined)
+                        }
+                        onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
+                        onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
+                        weightUnit={weightUnit}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddSet}
+                className="mt-1"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
+              </Button>
             </div>
-            {caloriesBurnedInput === '' && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {t(
-                  'exercise.editExerciseEntryDialog.caloriesBurnedHint',
-                  'Calories will be automatically calculated on save if left blank.'
-                )}
-              </p>
-            )}
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="distance">
-              {t('exercise.editExerciseEntryDialog.distanceLabel', 'Distance')}{' '}
-              ({distanceUnit})
-            </Label>
-            <Input
-              id="distance"
-              type="number"
-              value={distanceInput}
-              onChange={(e) =>
-                setDistanceInput(
-                  e.target.value === '' ? '' : Number(e.target.value)
-                )
-              }
-              placeholder={t(
-                'exercise.editExerciseEntryDialog.distancePlaceholder',
-                'Enter distance in {{distanceUnit}}',
-                { distanceUnit }
-              )}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="avg-heart-rate">
-              {t(
-                'exercise.editExerciseEntryDialog.avgHeartRateLabel',
-                'Average Heart Rate (bpm)'
-              )}
-            </Label>
-            <Input
-              id="avg-heart-rate"
-              type="number"
-              value={avgHeartRateInput}
-              onChange={(e) =>
-                setAvgHeartRateInput(
-                  e.target.value === '' ? '' : Number(e.target.value)
-                )
-              }
-              placeholder={t(
-                'exercise.editExerciseEntryDialog.avgHeartRatePlaceholder',
-                'Enter average heart rate'
-              )}
-            />
-          </div>
-
-          <div>
-            <Label>
-              {t(
-                'exercise.editExerciseEntryDialog.customActivityDetailsLabel',
-                'Custom Activity Details'
-              )}
-            </Label>
-            <ExerciseActivityDetailsEditor
-              initialData={activityDetails}
-              onChange={setActivityDetails}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="notes">
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <Label htmlFor="notes" className="text-sm">
               {t('exercise.editExerciseEntryDialog.notesLabel', 'Notes')}
             </Label>
             <Textarea
               id="notes"
               value={notes}
-              onChange={(e) => {
-                debug(
-                  loggingLevel,
-                  'EditExerciseEntryDialog: Notes input changed:',
-                  e.target.value
-                );
-                setNotes(e.target.value);
-              }}
+              rows={2}
+              className="resize-none text-sm"
               placeholder={t(
                 'exercise.editExerciseEntryDialog.notesPlaceholder',
                 'Add any notes about this exercise...'
               )}
+              onChange={(e) => setNotes(e.target.value)}
             />
           </div>
 
-          <div>
-            <Label htmlFor="image">
-              {t('exercise.editExerciseEntryDialog.imageLabel', 'Image')}
-            </Label>
-            <Input
-              id="image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-            {(imageUrl || imageFile) && (
-              <div className="mt-2 relative w-24 h-24">
-                <img
-                  src={
-                    imageFile ? URL.createObjectURL(imageFile) : imageUrl || ''
-                  }
-                  alt="Exercise"
-                  className="h-full w-full object-cover rounded-md"
+          {/* Exercise history */}
+          <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
+
+          {/* ── Advanced (collapsible) ── */}
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-muted-foreground hover:text-foreground px-2"
+              >
+                <ChevronDown
+                  className={cn(
+                    'h-3.5 w-3.5 transition-transform duration-200',
+                    advancedOpen && 'rotate-180'
+                  )}
                 />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  onClick={handleClearImage}
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
+                <span className="text-xs font-medium uppercase tracking-wide">
+                  {t('common.advanced', 'Advanced')}
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="space-y-3 pt-2">
+              {/* Calories override — strength only */}
+              {!isCardio && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="calories-burned" className="text-sm">
+                    {t(
+                      'exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel',
+                      'Calories burned (optional)'
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="calories-burned"
+                      type="number"
+                      value={caloriesBurnedInput}
+                      onChange={(e) =>
+                        setCaloriesBurnedInput(
+                          e.target.value === '' ? '' : Number(e.target.value)
+                        )
+                      }
+                      placeholder={t(
+                        'exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder',
+                        'Auto-calculated if left blank'
+                      )}
+                      className="pr-8"
+                    />
+                    {caloriesBurnedInput !== '' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setCaloriesBurnedInput('');
+                          setShowCaloriesWarning(true);
+                        }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Avg heart rate — strength only */}
+              {!isCardio && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="avg-heart-rate" className="text-sm">
+                    {t(
+                      'exercise.editExerciseEntryDialog.avgHeartRateLabel',
+                      'Average heart rate (bpm)'
+                    )}
+                  </Label>
+                  <Input
+                    id="avg-heart-rate"
+                    type="number"
+                    value={avgHeartRateInput}
+                    onChange={(e) =>
+                      setAvgHeartRateInput(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    placeholder="0"
+                  />
+                </div>
+              )}
+
+              {/* Custom activity details */}
+              <div className="space-y-1.5">
+                <Label className="text-sm">
+                  {t(
+                    'exercise.editExerciseEntryDialog.customActivityDetailsLabel',
+                    'Custom activity details'
+                  )}
+                </Label>
+                <ExerciseActivityDetailsEditor
+                  initialData={activityDetails}
+                  onChange={setActivityDetails}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Image */}
+              <div className="space-y-1.5">
+                <Label htmlFor="image" className="text-sm">
+                  {t('exercise.editExerciseEntryDialog.imageLabel', 'Photo')}
+                </Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                {(imageUrl || imageFile) && (
+                  <div className="mt-1 relative w-24 h-24">
+                    <img
+                      src={
+                        imageFile
+                          ? URL.createObjectURL(imageFile)
+                          : imageUrl || ''
+                      }
+                      alt="Exercise"
+                      className="h-full w-full object-cover rounded-md"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={handleClearImage}
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
-        <div className="flex justify-end space-x-2 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              debug(
-                loggingLevel,
-                'EditExerciseEntryDialog: Cancel button clicked.'
-              );
-              onOpenChange(false);
-            }}
-          >
+        <div className="flex justify-end space-x-2 mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSave} disabled={loading}>

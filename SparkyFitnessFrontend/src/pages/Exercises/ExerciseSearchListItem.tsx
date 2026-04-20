@@ -76,8 +76,9 @@ export const ExerciseSearchListItem = ({
         </div>
         <div className="text-sm text-gray-500">
           {exercise.category}
-          {exercise.calories_per_hour &&
-            ` • ${Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
+          {exercise.calories_per_hour
+            ? ` • ${Math.round(convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`
+            : ''}
           {exercise.level && ` • Level: ${exercise.level}`}
           {exercise.force && ` • Force: ${exercise.force}`}
           {exercise.mechanic && ` • Mechanic: ${exercise.mechanic}`}
