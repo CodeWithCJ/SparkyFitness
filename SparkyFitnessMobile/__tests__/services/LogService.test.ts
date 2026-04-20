@@ -8,9 +8,12 @@ import {
   getCaptureLevel,
   setViewFilter,
   getViewFilter,
+  setViewSelectedStatuses,
+  getViewSelectedStatuses,
   getLogSummary,
   _resetForTesting,
   _flushBuffer,
+  LogStatus,
   LogThreshold,
 } from '../../src/services/LogService';
 
@@ -468,6 +471,65 @@ describe('LogService', () => {
       expect(await AsyncStorage.getItem('log_filter')).toBeNull();
       // Migrated value is persisted to the new key.
       expect(await AsyncStorage.getItem('log_view_filter')).toBe('warnings_errors');
+    });
+  });
+
+  describe('setViewSelectedStatuses / getViewSelectedStatuses', () => {
+    test('returns empty array as default on fresh install', async () => {
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual([]);
+    });
+
+    test('persists selected statuses across reads', async () => {
+      await setViewSelectedStatuses(['INFO', 'ERROR']);
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual(['INFO', 'ERROR']);
+    });
+
+    test('round-trips an empty selection (means show all)', async () => {
+      await setViewSelectedStatuses(['INFO']);
+      await setViewSelectedStatuses([]);
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual([]);
+    });
+
+    test('drops invalid status values silently when reading', async () => {
+      // Direct write of mixed-validity payload to simulate corruption.
+      await AsyncStorage.setItem(
+        'log_view_selected_statuses',
+        JSON.stringify(['INFO', 'BOGUS', 'ERROR']),
+      );
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual(['INFO', 'ERROR']);
+    });
+
+    test('drops invalid status values when writing', async () => {
+      await setViewSelectedStatuses(['INFO', 'BOGUS' as LogStatus, 'WARNING']);
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual(['INFO', 'WARNING']);
+    });
+
+    test('treats malformed stored JSON as empty selection', async () => {
+      await AsyncStorage.setItem('log_view_selected_statuses', 'not-json');
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual([]);
+    });
+
+    test('returns cached value without hitting AsyncStorage', async () => {
+      await setViewSelectedStatuses(['WARNING']);
+
+      // Warm the cache.
+      await getViewSelectedStatuses();
+
+      await AsyncStorage.removeItem('log_view_selected_statuses');
+
+      const statuses = await getViewSelectedStatuses();
+      expect(statuses).toEqual(['WARNING']);
     });
   });
 

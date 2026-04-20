@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -12,114 +12,162 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
-import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   getLogs,
   clearLogs,
-  getLogSummary,
-  getViewFilter,
-  setViewFilter,
-  LOG_THRESHOLD_OPTIONS,
+  getViewSelectedStatuses,
+  setViewSelectedStatuses,
 } from '../services/LogService';
-import type { LogEntry, LogSummary, LogThreshold } from '../services/LogService';
+import type { LogEntry, LogStatus } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type LogScreenProps = RootStackScreenProps<'Logs'>;
 
-const LogScreen: React.FC<LogScreenProps> = () => {
+const MAX_LOGS_TO_LOAD = 1000;
+const LEVEL_CHIPS: { status: LogStatus; label: string; color: string }[] = [
+  { status: 'INFO', label: 'Info', color: '#007bff' },
+  { status: 'WARNING', label: 'Warning', color: '#ffc107' },
+  { status: 'ERROR', label: 'Error', color: '#dc3545' },
+  { status: 'DEBUG', label: 'Debug', color: '#6c757d' },
+];
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'WARNING': return '#ffc107';
+    case 'INFO': return '#007bff';
+    case 'DEBUG': return '#6c757d';
+    default: return '#dc3545';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'WARNING': return require('../../assets/icons/warning.png');
+    case 'INFO': return require('../../assets/icons/info.png');
+    default: return require('../../assets/icons/error.png');
+  }
+};
+
+interface FilterChipProps {
+  label: string;
+  count: number;
+  active: boolean;
+  color?: string;
+  onPress: () => void;
+}
+
+const FilterChip: React.FC<FilterChipProps> = ({ label, count, active, color, onPress }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.7}
+    className={`flex-row items-center rounded-full px-3 py-1.5 mr-2 mb-2 border ${
+      active
+        ? 'bg-raised border-border-strong'
+        : 'bg-transparent border-border-subtle'
+    }`}
+  >
+    {color && (
+      <View
+        className="w-2 h-2 rounded-full mr-2"
+        style={{ backgroundColor: color }}
+      />
+    )}
+    <Text
+      className={`text-sm font-medium ${
+        active ? 'text-text-primary' : 'text-text-secondary'
+      }`}
+    >
+      {label}
+    </Text>
+    <Text
+      className={`text-sm ml-1.5 ${
+        active ? 'text-text-primary' : 'text-text-secondary'
+      }`}
+    >
+      {count}
+    </Text>
+  </TouchableOpacity>
+);
+
+const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [offset, setOffset] = useState<number>(0);
-  const [hasMore, setHasMore] = useState<boolean>(true);
-  const [logSummary, setLogSummary] = useState<LogSummary>({
-    DEBUG: 0,
-    INFO: 0,
-    WARNING: 0,
-    ERROR: 0,
-  });
-  const [currentViewFilter, setCurrentViewFilter] = useState<LogThreshold>('no_debug');
+  const [selectedStatuses, setSelectedStatuses] = useState<LogStatus[]>([]);
 
-  const LOG_LIMIT = 30;
-
-  const loadLogs = async (newOffset = 0, append = false): Promise<void> => {
-    const storedLogs = await getLogs(newOffset, LOG_LIMIT);
-    if (append) {
-      setLogs(prevLogs => [...prevLogs, ...storedLogs]);
-    } else {
-      setLogs(storedLogs);
-    }
-    setOffset(newOffset + storedLogs.length);
-    setHasMore(storedLogs.length === LOG_LIMIT);
+  const loadLogs = async (): Promise<void> => {
+    const stored = await getLogs(0, MAX_LOGS_TO_LOAD, 'all');
+    setLogs(stored);
   };
 
-  const loadSummary = async (): Promise<void> => {
-    const summary = await getLogSummary();
-    setLogSummary(summary);
-  };
-
-  const loadViewFilter = async (): Promise<void> => {
-    const filter = await getViewFilter();
-    setCurrentViewFilter(filter);
+  const loadSelectedStatuses = async (): Promise<void> => {
+    const stored = await getViewSelectedStatuses();
+    setSelectedStatuses(stored);
   };
 
   useFocusEffect(
     useCallback(() => {
       loadLogs();
-      loadSummary();
-      loadViewFilter();
+      loadSelectedStatuses();
     }, [])
   );
 
-  const handleLoadMore = (): void => {
-    if (hasMore) {
-      loadLogs(offset, true);
+  const persistSelection = async (next: LogStatus[]): Promise<void> => {
+    setSelectedStatuses(next);
+    try {
+      await setViewSelectedStatuses(next);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save log filter.' });
+      console.error('Failed to persist log filter selection', error);
     }
   };
 
-  const handleClearLogs = async (): Promise<void> => {
+  const handleSelectAll = (): void => {
+    if (selectedStatuses.length === 0) return;
+    persistSelection([]);
+  };
+
+  const handleToggleStatus = (status: LogStatus): void => {
+    const next = selectedStatuses.includes(status)
+      ? selectedStatuses.filter(s => s !== status)
+      : [...selectedStatuses, status];
+    persistSelection(next);
+  };
+
+  const handleClearLogs = useCallback((): void => {
     Alert.alert(
       'Clear Logs',
       'Are you sure you want to clear all logs?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           onPress: async () => {
             await clearLogs();
             setLogs([]);
-            setOffset(0);
-            setHasMore(true);
-            setLogSummary({
-              DEBUG: 0,
-              INFO: 0,
-              WARNING: 0,
-              ERROR: 0,
-            });
           },
         },
       ],
       { cancelable: true },
     );
-  };
+  }, []);
 
-  const handleViewFilterChange = async (filter: LogThreshold): Promise<void> => {
-    if (filter && filter !== currentViewFilter) {
-      try {
-        await setViewFilter(filter);
-        setCurrentViewFilter(filter);
-        loadLogs(0, false);
-        loadSummary();
-      } catch (error) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save log filter settings.' });
-        console.error('Failed to save log filter settings:', error);
-      }
-    }
-  };
+  const hasLogs = logs.length > 0;
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Button
+          variant="header"
+          className="pr-4"
+          onPress={handleClearLogs}
+          disabled={!hasLogs}
+        >
+          Clear
+        </Button>
+      ),
+    });
+  }, [navigation, handleClearLogs, hasLogs]);
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
     let logText = `Status: ${item.status}\n`;
@@ -136,85 +184,47 @@ const LogScreen: React.FC<LogScreenProps> = () => {
     Toast.show({ type: 'success', text1: 'Copied', text2: 'Log entry copied to clipboard' });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'WARNING': return '#ffc107';
-      case 'INFO': return '#007bff';
-      case 'DEBUG': return '#6c757d';
-      default: return '#dc3545';
+  const counts = useMemo(() => {
+    const c: Record<LogStatus, number> = { DEBUG: 0, INFO: 0, WARNING: 0, ERROR: 0 };
+    for (const log of logs) {
+      c[log.status]++;
     }
-  };
+    return c;
+  }, [logs]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'WARNING': return require('../../assets/icons/warning.png');
-      case 'INFO': return require('../../assets/icons/info.png');
-      default: return require('../../assets/icons/error.png');
-    }
-  };
+  const filteredLogs = useMemo(() => {
+    if (selectedStatuses.length === 0) return logs;
+    return logs.filter(log => selectedStatuses.includes(log.status));
+  }, [logs, selectedStatuses]);
+
+  const allActive = selectedStatuses.length === 0;
+
+  const ListHeader = (
+    <View className="flex-row flex-wrap mb-2">
+      <FilterChip
+        label="All"
+        count={logs.length}
+        active={allActive}
+        onPress={handleSelectAll}
+      />
+      {LEVEL_CHIPS.map(chip => (
+        <FilterChip
+          key={chip.status}
+          label={chip.label}
+          count={counts[chip.status]}
+          active={selectedStatuses.includes(chip.status)}
+          color={chip.color}
+          onPress={() => handleToggleStatus(chip.status)}
+        />
+      ))}
+    </View>
+  );
 
   return (
     <View className="flex-1 bg-background">
-      <View className="p-4 pb-0 z-100">
-        {/* Today's Summary */}
-        <View className="bg-surface rounded-xl p-4 py-2.5 mb-2.5 shadow-sm">
-          <Text className="text-lg font-bold mb-3 text-text-primary">
-            {"Today's Summary"}
-          </Text>
-          <View className="flex-row justify-around mb-4">
-            <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#007bff' }}>
-                {logSummary.INFO}
-              </Text>
-              <Text className="text-sm text-text-secondary">Info</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#ffc107' }}>
-                {logSummary.WARNING}
-              </Text>
-              <Text className="text-sm text-text-secondary">Warning</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#dc3545' }}>
-                {logSummary.ERROR}
-              </Text>
-              <Text className="text-sm text-text-secondary">Error</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold" style={{ color: '#6c757d' }}>
-                {logSummary.DEBUG}
-              </Text>
-              <Text className="text-sm text-text-secondary">Debug</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Log Filter Settings */}
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <Text className="text-lg font-bold mb-3 text-text-primary">Log Filter</Text>
-          <View className="flex-row justify-between items-center">
-            <BottomSheetPicker
-              value={currentViewFilter}
-              options={LOG_THRESHOLD_OPTIONS}
-              onSelect={handleViewFilterChange}
-              title="Log Filter"
-              containerStyle={{ flex: 1, maxWidth: '50%' }}
-            />
-            {/* Clear Logs Button */}
-            <Button
-              variant="primary"
-              className="bg-bg-danger px-6 self-center"
-              textClassName="font-bold"
-              onPress={handleClearLogs}
-            >
-              Clear All Logs
-            </Button>
-          </View>
-        </View>
-      </View>
-
       <FlatList
-        data={logs}
+        data={filteredLogs}
+        ListHeaderComponent={ListHeader}
         renderItem={({ item }: { item: LogEntry }) => (
           <TouchableOpacity
             className="bg-surface rounded-xl p-4 mb-3 flex-row items-center w-full shadow-sm"
@@ -255,22 +265,18 @@ const LogScreen: React.FC<LogScreenProps> = () => {
             </View>
           </TouchableOpacity>
         )}
-        keyExtractor={(item, index) => index.toString()}
-        ListFooterComponent={() => (
-          <>
-            {hasMore && (
-              <Button
-                variant="primary"
-                className="mt-4"
-                textClassName="font-bold"
-                onPress={handleLoadMore}
-              >
-                Load more logs
-              </Button>
-            )}
-          </>
+        keyExtractor={(item, index) => `${item.timestamp}-${index}`}
+        ListEmptyComponent={() => (
+          <View className="items-center py-8">
+            <Text className="text-text-muted text-base">
+              {logs.length === 0 ? 'No logs yet.' : 'No logs match the current filter.'}
+            </Text>
+          </View>
         )}
-        contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
+        }}
       />
     </View>
   );

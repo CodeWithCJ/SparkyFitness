@@ -35,8 +35,13 @@ export interface LogSummary {
 const LOG_KEY = 'app_logs';
 const LOG_CAPTURE_LEVEL_KEY = 'log_capture_level';
 const LOG_VIEW_FILTER_KEY = 'log_view_filter';
+const LOG_VIEW_SELECTED_STATUSES_KEY = 'log_view_selected_statuses';
 const OLD_LOG_FILTER_KEY = 'log_filter'; // Migrated into view filter, then deleted
 const OLD_LOG_LEVEL_KEY = 'log_level'; // Migrated into view filter, then deleted
+
+const ALL_LOG_STATUSES: LogStatus[] = ['DEBUG', 'INFO', 'WARNING', 'ERROR'];
+const isLogStatus = (value: unknown): value is LogStatus =>
+  typeof value === 'string' && (ALL_LOG_STATUSES as string[]).includes(value);
 
 // Status severity for filtering (lower = more critical)
 const STATUS_SEVERITY: Record<LogStatus, number> = {
@@ -70,6 +75,7 @@ const MAX_FLUSH_FAILURES = 3;
 
 let cachedCaptureLevel: LogThreshold | null = null;
 let cachedViewFilter: LogThreshold | null = null;
+let cachedSelectedStatuses: LogStatus[] | null = null;
 let writeBuffer: LogEntry[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushPromise: Promise<void> | null = null;
@@ -430,6 +436,51 @@ export const getViewFilter = async (): Promise<LogThreshold> => {
 };
 
 /**
+ * Retrieves the per-status chip selection used by the Log screen.
+ * An empty array means "no explicit selection — show all" and is the
+ * default on a fresh install. Unknown values in the stored array are
+ * dropped silently.
+ */
+export const getViewSelectedStatuses = async (): Promise<LogStatus[]> => {
+  if (cachedSelectedStatuses !== null) return cachedSelectedStatuses;
+
+  try {
+    const stored = await AsyncStorage.getItem(LOG_VIEW_SELECTED_STATUSES_KEY);
+    if (!stored) {
+      cachedSelectedStatuses = [];
+      return cachedSelectedStatuses;
+    }
+    const parsed: unknown = JSON.parse(stored);
+    cachedSelectedStatuses = Array.isArray(parsed) ? parsed.filter(isLogStatus) : [];
+    return cachedSelectedStatuses;
+  } catch (error) {
+    console.error('Failed to get selected log statuses', error);
+    cachedSelectedStatuses = [];
+    return cachedSelectedStatuses;
+  }
+};
+
+/**
+ * Persists the per-status chip selection used by the Log screen.
+ * Unknown values are filtered out before writing so callers cannot
+ * corrupt storage.
+ */
+export const setViewSelectedStatuses = async (
+  statuses: LogStatus[]
+): Promise<void> => {
+  try {
+    const sanitized = statuses.filter(isLogStatus);
+    await AsyncStorage.setItem(
+      LOG_VIEW_SELECTED_STATUSES_KEY,
+      JSON.stringify(sanitized),
+    );
+    cachedSelectedStatuses = sanitized;
+  } catch (error) {
+    console.error('Failed to set selected log statuses', error);
+  }
+};
+
+/**
  * Retrieves a summary of log entries by status for today.
  * Filters by the view filter (or an explicit override) so the summary
  * reflects what the log list is showing.
@@ -509,6 +560,7 @@ export const _resetForTesting = (): void => {
   }
   cachedCaptureLevel = null;
   cachedViewFilter = null;
+  cachedSelectedStatuses = null;
   writeBuffer = [];
   flushPromise = null;
   getViewPromise = null;
