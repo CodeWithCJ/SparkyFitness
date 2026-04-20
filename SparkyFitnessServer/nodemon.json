@@ -18,5 +18,5 @@
     "coverage"
   ],
   "ext": "js,ts,json",
-  "exec": "tsx SparkyFitnessServer.ts"
+  "exec": "tsx index.ts"
 }

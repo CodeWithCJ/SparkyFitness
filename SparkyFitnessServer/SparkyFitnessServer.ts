@@ -1,4 +1,3 @@
-import './env.js'; // Diese Zeile MUSS ganz oben stehen
 import path from 'path';
 
 import fs from 'fs';
