@@ -37,7 +37,6 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const isOpenRef = useRef(false);
     const pendingPresentRef = useRef(false);
     const presentFrameRef = useRef<number | null>(null);
-    const presentRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -56,34 +55,21 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         cancelAnimationFrame(presentFrameRef.current);
         presentFrameRef.current = null;
       }
-
-      if (presentRetryTimeoutRef.current != null) {
-        clearTimeout(presentRetryTimeoutRef.current);
-        presentRetryTimeoutRef.current = null;
-      }
     }, []);
 
-    const schedulePresent = useCallback((shouldRetry = true) => {
+    const schedulePresent = useCallback(() => {
       clearScheduledPresent();
       presentFrameRef.current = requestAnimationFrame(() => {
         presentFrameRef.current = null;
         bottomSheetRef.current?.present();
-
-        if (!shouldRetry) {
-          return;
-        }
-
-        presentRetryTimeoutRef.current = setTimeout(() => {
-          presentRetryTimeoutRef.current = null;
-          if (pendingPresentRef.current && !isDismissingRef.current && !isOpenRef.current) {
-            schedulePresent(false);
-          }
-        }, 120);
       });
     }, [clearScheduledPresent]);
 
     useImperativeHandle(ref, () => ({
       present: () => {
+        if (isOpenRef.current || (pendingPresentRef.current && !isDismissingRef.current)) {
+          return;
+        }
         pendingPresentRef.current = true;
         if (isDismissingRef.current) {
           return;
