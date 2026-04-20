@@ -56,6 +56,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     handleAddSet,
     handleDuplicateSet,
     handleRemoveSet,
+    handleReorderSets, // <--- Destructured here
     handleDragEnd,
     handleSubmit,
   } = useWorkoutPresetForm({ onSave, initialPreset });
@@ -139,21 +140,41 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext items={exercises.map((ex) => ex.id as string)}>
+              <SortableContext
+                items={exercises
+                  .map((ex) => {
+                    const safeEx = ex as {
+                      _dndId?: string;
+                      id?: string | number;
+                    };
+                    return safeEx._dndId || safeEx.id?.toString() || '';
+                  })
+                  .filter(Boolean)}
+              >
                 <div className="space-y-4">
-                  {exercises.map((ex, exerciseIndex) => (
-                    <SortableExerciseItem
-                      key={ex.id}
-                      ex={ex}
-                      exerciseIndex={exerciseIndex}
-                      weightUnit={weightUnit}
-                      onRemoveExercise={handleRemoveExercise}
-                      onSetChange={handleSetChange}
-                      onDuplicateSet={handleDuplicateSet}
-                      onRemoveSet={handleRemoveSet}
-                      onAddSet={handleAddSet}
-                    />
-                  ))}
+                  {exercises.map((ex, exerciseIndex) => {
+                    const safeEx = ex as {
+                      _dndId?: string;
+                      id?: string | number;
+                    };
+                    const dndId = safeEx._dndId || safeEx.id?.toString();
+
+                    return (
+                      <SortableExerciseItem
+                        key={dndId}
+                        ex={ex}
+                        exerciseIndex={exerciseIndex}
+                        weightUnit={weightUnit}
+                        onRemoveExercise={handleRemoveExercise}
+                        onSetChange={handleSetChange}
+                        onDuplicateSet={handleDuplicateSet}
+                        onRemoveSet={handleRemoveSet}
+                        onAddSet={handleAddSet}
+                        onReorderSets={handleReorderSets}
+                        simplified
+                      />
+                    );
+                  })}
                 </div>
               </SortableContext>
             </DndContext>

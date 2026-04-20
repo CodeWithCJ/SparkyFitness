@@ -202,6 +202,7 @@ export const exerciseEntryResponseSchema = z
     exercise_snapshot: exerciseSnapshotResponseSchema.nullable(),
     activity_details: z.array(activityDetailResponseSchema),
     steps: z.number().nullable().optional(),
+    category: z.string().nullable().optional(),
   })
   .strict();
 
