@@ -1,10 +1,14 @@
 import "tsx/cjs";
 import { ExpoConfig, ConfigContext } from 'expo/config';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getIosAppGroup } = require('./app.identifiers.js');
 
 const APP_NAME = 'SparkyFitness';
 const APP_SLUG = 'sparkyfitnessmobile';
 const ANDROID_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
+const DEV_APPLE_TEAM_ID = process.env.EXPO_DEV_APPLE_TEAM_ID || '';
+const PROD_APPLE_TEAM_ID = process.env.EXPO_PROD_APPLE_TEAM_ID || '';
 const DEV_BUNDLE_IDENTIFIER = process.env.EXPO_DEV_BUNDLE_IDENTIFIER || 'org.SparkyApps.SparkyFitnessMobile.dev';
 
 const DEV_PACKAGE = DEV_BUNDLE_IDENTIFIER;
@@ -106,12 +110,16 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
         : IOS_PROD_BUNDLE_IDENTIFIER,
+      appleTeamId: isDev ? DEV_APPLE_TEAM_ID : PROD_APPLE_TEAM_ID,
       supportsTablet: false,
       infoPlist: {
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
         },
         ITSAppUsesNonExemptEncryption: false,
+      },
+      entitlements: {
+        'com.apple.security.application-groups': [getIosAppGroup()],
       },
       icon: './assets/icons/appicon.icon',
     },
@@ -132,6 +140,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     extra: {
       ...config.extra,
       APP_VARIANT: environment,
+      iosAppGroup: getIosAppGroup(),
       eas: {
         projectId: "498a86c5-344f-4d2c-9033-dfd720e4a383",
       },
