@@ -30,6 +30,8 @@ import { runTasksInBatches, withTimeout, TimeoutError } from '../utils/concurren
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 
+const isAppActive = (): boolean => AppState.currentState === 'active';
+
 const METRIC_FETCH_CONCURRENCY = 3;
 const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
 
@@ -98,19 +100,19 @@ async function processBackgroundMetric(
 let inflightSync: Promise<void> | null = null;
 
 async function refreshHealthSyncCacheWhenActive() {
-  if (AppState.currentState === 'active') {
+  if (isAppActive()) {
     refreshHealthSyncCache(queryClient);
     return;
   }
 
   await savePendingHealthSyncCacheRefresh();
-  if (AppState.currentState === 'active') {
+  if (isAppActive()) {
     await flushPendingHealthSyncCacheRefresh();
   }
 }
 
 export const flushPendingHealthSyncCacheRefresh = async (): Promise<boolean> => {
-  if (AppState.currentState !== 'active') {
+  if (!isAppActive()) {
     return false;
   }
 
