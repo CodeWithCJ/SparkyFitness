@@ -357,7 +357,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
             >
               <Icon name="chevron-back" size={22} color={accentPrimary} />
             </Button>
-            <Text className="text-2xl font-bold text-text-primary">Sync</Text>
+            <Text className="text-2xl font-bold text-text-primary">Health Data Sync</Text>
           </View>
         </View>
 

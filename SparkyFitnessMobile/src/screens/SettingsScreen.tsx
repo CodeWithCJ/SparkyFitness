@@ -211,30 +211,30 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate('Sync')}
               activeOpacity={0.7}
             >
-              <Text className="text-base font-semibold text-text-primary">Sync</Text>
+              <Text className="text-base font-semibold text-text-primary">Health Data Sync</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
 
             {isConnected && (
-              <TouchableOpacity
-                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-                onPress={() => navigation.navigate('CalorieSettings')}
-                activeOpacity={0.7}
-              >
-                <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            )}
+              <View className="bg-surface rounded-xl mb-4 shadow-sm">
+                <TouchableOpacity
+                  className="p-4 flex-row items-center justify-between border-b border-border-subtle"
+                  onPress={() => navigation.navigate('CalorieSettings')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
+                  <Icon name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
 
-            {isConnected && (
-              <TouchableOpacity
-                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-                onPress={() => navigation.navigate('FoodSettings')}
-                activeOpacity={0.7}
-              >
-                <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  className="p-4 flex-row items-center justify-between"
+                  onPress={() => navigation.navigate('FoodSettings')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
+                  <Icon name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
+              </View>
             )}
 
             <AppearanceSettings />
