@@ -2,8 +2,6 @@ import './env.js'; // Diese Zeile MUSS ganz oben stehen
 import path from 'path';
 
 import fs from 'fs';
-import { loadSecrets } from './utils/secretLoader.js';
-import { runPreflightChecks } from './utils/preflightChecks.js';
 import express from 'express';
 // @ts-expect-error TS7016
 import cors from 'cors';
@@ -103,13 +101,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-loadSecrets();
-try {
-  runPreflightChecks();
-} catch (error) {
-  process.exitCode = 1;
-  throw error;
-}
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
