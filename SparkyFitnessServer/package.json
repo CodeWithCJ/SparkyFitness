@@ -56,20 +56,23 @@
     "@eslint/js": "^10.0.1",
     "@types/eslint-plugin-security": "^3.0.1",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^10.0.3",
     "eslint-plugin-n": "^17.23.2",
     "eslint-plugin-security": "^4.0.0",
     "globals": "^17.1.0",
+    "jest": "^30.3.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.0.0",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1",
-    "vitest": "^4.1.4"
+    "vitest": "^2.1.0"
   }
 }
