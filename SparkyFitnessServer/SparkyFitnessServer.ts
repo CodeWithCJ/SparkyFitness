@@ -268,7 +268,7 @@ app.get(
       }
       const originalRelativeImagePath = (
         (exercise as { images?: string[] }).images ?? []
-      ).find((img) => img.endsWith(String(imageFileName)));
+      ).find((img) => path.basename(img) === imageFileName);
       if (!originalRelativeImagePath) {
         return res.status(404).send('Image not found for this exercise.');
       }
