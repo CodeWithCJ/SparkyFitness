@@ -12,7 +12,8 @@
     "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate": "pnpm run typecheck && pnpm run lint"
   },
   "dependencies": {
     "@bacons/apple-targets": "^4.0.6",

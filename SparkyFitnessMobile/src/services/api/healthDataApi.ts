@@ -273,7 +273,7 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
       config,
     );
 
-    addLog(`[API] Sync successful: ${data.length} records sent to server`, 'SUCCESS');
+    addLog(`[API] Sync successful: ${data.length} records sent to server`, 'INFO');
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

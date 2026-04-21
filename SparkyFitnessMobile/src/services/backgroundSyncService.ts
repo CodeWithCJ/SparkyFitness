@@ -256,7 +256,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       await saveLastSyncedTime();
     }
 
-    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
+    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   } else {
     await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   }
@@ -283,7 +283,8 @@ export const configureBackgroundSync = async (): Promise<void> => {
     const enabled = await loadBackgroundSyncEnabled();
     if (!enabled) {
       await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME).catch(() => {});
-      addLog('[Background Sync] Background sync disabled, task unregistered', 'INFO');
+      // Disabled temporarily due to log flooding
+      // addLog('[Background Sync] Background sync disabled, task unregistered', 'DEBUG');
       return;
     }
 

@@ -182,8 +182,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         let factors: MfaFactors = { mfaTotpEnabled: true, mfaEmailEnabled: false };
         try {
           factors = await fetchMfaFactors(url, email.trim());
-        } catch {
+        } catch (err) {
           // Fallback: assume TOTP only
+          const message = err instanceof Error ? err.message : String(err);
+          addLog(`[ServerConfigModal] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');
@@ -330,7 +332,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         authType: 'apiKey',
         sessionToken: '',
       });
-      addLog('Connected with API key.', 'SUCCESS');
+      addLog('Connected with API key.', 'INFO');
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -371,7 +373,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         ...authFields,
         proxyHeaders: cleanedHeaders(),
       });
-      addLog('Server configuration updated.', 'SUCCESS');
+      addLog('Server configuration updated.', 'INFO');
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

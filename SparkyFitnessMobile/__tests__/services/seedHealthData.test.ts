@@ -160,7 +160,7 @@ describe('seedHealthData.ts (Android)', () => {
       await seedService.seedHealthData(7);
 
       const successCalls = mockAddLog.mock.calls.filter(
-        (call) => call[1] === 'SUCCESS'
+        (call) => call[1] === 'INFO'
       );
       expect(successCalls.length).toBeGreaterThan(0);
     });

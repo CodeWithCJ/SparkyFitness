@@ -104,7 +104,8 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
     activeServerConfigCache = undefined;
     await setActiveServerConfig(config.id);
   } catch (e) {
-    console.error('Failed to save server config.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to save server config: ${message}`, 'ERROR');
     throw e;
   }
 };
@@ -133,7 +134,8 @@ export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
     }
     return result;
   } catch (e) {
-    console.error('Failed to retrieve active server config.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to retrieve active server config: ${message}`, 'ERROR');
     throw e;
   }
 };
@@ -197,7 +199,8 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
 
     return configs;
   } catch (e) {
-    console.error('Failed to retrieve all server configs.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to retrieve all server configs: ${message}`, 'ERROR');
     return [];
   }
 };
@@ -210,7 +213,8 @@ export const setActiveServerConfig = async (configId: string): Promise<void> => 
     await AsyncStorage.setItem(ACTIVE_SERVER_CONFIG_ID_KEY, configId);
     activeServerConfigCache = undefined;
   } catch (e) {
-    console.error('Failed to set active server config.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to set active server config: ${message}`, 'ERROR');
     throw e;
   }
 };
@@ -234,7 +238,8 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
       await AsyncStorage.removeItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     }
   } catch (e) {
-    console.error('Failed to delete server config.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to delete server config: ${message}`, 'ERROR');
     throw e;
   }
 };
@@ -246,7 +251,8 @@ export const saveTimeRange = async (timeRange: TimeRange): Promise<void> => {
   try {
     await AsyncStorage.setItem(TIME_RANGE_KEY, timeRange);
   } catch (e) {
-    console.error('Failed to save time range.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to save time range: ${message}`, 'ERROR');
     throw e;
   }
 };
@@ -259,7 +265,8 @@ export const loadTimeRange = async (): Promise<TimeRange | null> => {
     const timeRange = await AsyncStorage.getItem(TIME_RANGE_KEY);
     return timeRange as TimeRange | null;
   } catch (e) {
-    console.error('Failed to load time range.', e);
+    const message = e instanceof Error ? e.message : String(e);
+    addLog(`[Storage] Failed to load time range: ${message}`, 'ERROR');
     return null;
   }
 };
@@ -269,7 +276,8 @@ export const loadLastSyncedTime = async (): Promise<string | null> => {
     const synced = await AsyncStorage.getItem(LAST_SYNCED_TIME_KEY);
     return synced;
   } catch (error) {
-    console.error('Failed to retrieve sync time.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to retrieve sync time: ${message}`, 'ERROR');
     return null;
   }
 };
@@ -280,7 +288,8 @@ export const saveLastSyncedTime = async (): Promise<string | null> => {
     await AsyncStorage.setItem(LAST_SYNCED_TIME_KEY, timestamp);
     return timestamp;
   } catch (error) {
-    console.error('Failed to save sync time.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save sync time: ${message}`, 'ERROR');
     return null;
   }
 };
@@ -289,7 +298,8 @@ export const saveBackgroundSyncEnabled = async (enabled: boolean): Promise<void>
   try {
     await AsyncStorage.setItem(BACKGROUND_SYNC_ENABLED_KEY, JSON.stringify(enabled));
   } catch (error) {
-    console.error('Failed to save background sync enabled preference.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save background sync enabled preference: ${message}`, 'ERROR');
   }
 };
 
@@ -299,7 +309,8 @@ export const loadBackgroundSyncEnabled = async (): Promise<boolean> => {
     if (value === null) return false;
     return JSON.parse(value) as boolean;
   } catch (error) {
-    console.error('Failed to load background sync enabled preference.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to load background sync enabled preference: ${message}`, 'ERROR');
     return false;
   }
 };
@@ -308,7 +319,8 @@ export const saveSyncOnOpenEnabled = async (enabled: boolean): Promise<void> => 
   try {
     await AsyncStorage.setItem(SYNC_ON_OPEN_ENABLED_KEY, JSON.stringify(enabled));
   } catch (error) {
-    console.error('Failed to save sync on open preference.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save sync on open preference: ${message}`, 'ERROR');
   }
 };
 
@@ -318,7 +330,8 @@ export const loadSyncOnOpenEnabled = async (): Promise<boolean> => {
     if (value === null) return false;
     return JSON.parse(value) as boolean;
   } catch (error) {
-    console.error('Failed to load sync on open preference.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to load sync on open preference: ${message}`, 'ERROR');
     return false;
   }
 };
@@ -327,7 +340,8 @@ export const savePendingHealthSyncCacheRefresh = async (): Promise<void> => {
   try {
     await AsyncStorage.setItem(PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY, 'true');
   } catch (error) {
-    console.error('Failed to save pending health sync cache refresh.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save pending health sync cache refresh: ${message}`, 'ERROR');
   }
 };
 
@@ -341,7 +355,8 @@ export const consumePendingHealthSyncCacheRefresh = async (): Promise<boolean> =
     await AsyncStorage.removeItem(PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY);
     return true;
   } catch (error) {
-    console.error('Failed to consume pending health sync cache refresh.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to consume pending health sync cache refresh: ${message}`, 'ERROR');
     return false;
   }
 };
@@ -352,7 +367,8 @@ export const saveCollapsedCategories = async (categories: string[]): Promise<voi
   try {
     await AsyncStorage.setItem(COLLAPSED_CATEGORIES_KEY, JSON.stringify(categories));
   } catch (error) {
-    console.error('Failed to save collapsed categories:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save collapsed categories: ${message}`, 'ERROR');
   }
 };
 
@@ -363,7 +379,8 @@ export const loadCollapsedCategories = async (): Promise<string[]> => {
       return JSON.parse(value);
     }
   } catch (error) {
-    console.error('Failed to load collapsed categories:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to load collapsed categories: ${message}`, 'ERROR');
   }
   // Default: all categories except Common are collapsed
   return CATEGORY_ORDER.filter(c => c !== 'Common');
