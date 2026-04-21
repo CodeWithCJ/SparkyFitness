@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check } from 'lucide-react';
 import {
   Dialog,
@@ -73,7 +73,7 @@ const FoodUnitSelector = ({
 
   const queryClient = useQueryClient();
   const createFoodVariantMutation = useCreateFoodVariantMutation();
-
+  const quantityInputRef = useRef<HTMLInputElement>(null);
   const {
     pendingUnit,
     setPendingUnit,
@@ -303,12 +303,17 @@ const FoodUnitSelector = ({
     };
   })();
 
-  const focusAndSelect = useCallback((e: HTMLInputElement) => {
-    if (e) {
-      e.focus();
-      e.select();
+  useEffect(() => {
+    if (open && quantityInputRef.current) {
+      const timeoutId = setTimeout(() => {
+        if (quantityInputRef.current) {
+          quantityInputRef.current.focus();
+          quantityInputRef.current.select();
+        }
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
-  }, []);
+  }, [open, loading]);
 
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
@@ -342,12 +347,12 @@ const FoodUnitSelector = ({
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
+                    ref={quantityInputRef}
                     id="quantity"
                     type="number"
                     step="0.1"
                     min="0.1"
                     value={quantity}
-                    ref={focusAndSelect}
                     onChange={(e) => {
                       const newQuantity = Number(e.target.value);
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
