@@ -2,6 +2,9 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies
+vi.mock('../auth.js', () => ({
+  syncTrustedProviders: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('../db/poolManager', () => ({
   getSystemClient: vi.fn(),
 }));
