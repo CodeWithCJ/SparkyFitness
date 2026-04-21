@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
@@ -353,10 +354,15 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 }
 
 const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
-  if (route.params.mode === 'adjust-entry-nutrition') {
-    return <AdjustNutritionMode params={route.params} navigation={navigation} />;
-  }
-  return <CreateFoodMode params={route.params} navigation={navigation} />;
+  return (
+    <BottomSheetModalProvider>
+      {route.params.mode === 'adjust-entry-nutrition' ? (
+        <AdjustNutritionMode params={route.params} navigation={navigation} />
+      ) : (
+        <CreateFoodMode params={route.params} navigation={navigation} />
+      )}
+    </BottomSheetModalProvider>
+  );
 };
 
 export default FoodFormScreen;
