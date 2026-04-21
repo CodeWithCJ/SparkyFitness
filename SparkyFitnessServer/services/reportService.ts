@@ -606,13 +606,20 @@ async function getExerciseDashboardData(
   exercise: any
 ) {
   try {
-    const exerciseEntries = await reportRepository.getExerciseEntries(
+    const allExerciseEntries = await reportRepository.getExerciseEntries(
       targetUserId,
       startDate,
       endDate,
       equipment,
       muscle,
       exercise
+    );
+    // Synced device calorie summaries (e.g. Apple Health "Active Calories") are
+    // logged as exercise entries but aren't true workouts — exclude them so
+    // every counter on the Exercise Reports dashboard matches user expectations.
+    const exerciseEntries = allExerciseEntries.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (entry: any) => entry.exercise_name !== 'Active Calories'
     );
     let totalVolume = 0;
     let totalReps = 0;

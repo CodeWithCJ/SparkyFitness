@@ -568,8 +568,11 @@ async function getExerciseEntries(
 async function getExerciseNames(userId: any, muscle: any, equipment: any) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Exclude synced device calorie summaries (e.g. Apple Health "Active
+    // Calories") — they show up as exercise entries but aren't true workouts,
+    // and the Exercise Reports dashboard filters them out of its aggregates.
     let query =
-      'SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1';
+      "SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1 AND exercise_name <> 'Active Calories'";
     const params = [userId];
     let paramIndex = 2;
     if (muscle) {
