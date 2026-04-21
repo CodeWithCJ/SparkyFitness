@@ -22,13 +22,13 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type SettingsScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Settings'>,
-  StackScreenProps<RootStackParamList>
+  NativeStackScreenProps<RootStackParamList>
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
@@ -112,7 +112,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       await loadConfig();
       refetchConnection();
       Toast.show({ type: 'success', text1: 'Active server changed' });
-      addLog('Active server configuration changed.', 'SUCCESS');
+      addLog('Active server configuration changed.', 'INFO');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to set active server configuration:', error);
@@ -130,7 +130,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       }
       await loadConfig();
       refetchConnection();
-      addLog('Server configuration deleted.', 'SUCCESS');
+      addLog('Server configuration deleted.', 'INFO');
       if (remainingConfigs.length === 0) {
         Alert.alert('Success', 'Server configuration deleted.', [
           { text: 'OK', onPress: () => notifyNoConfigs() },
@@ -211,30 +211,30 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate('Sync')}
               activeOpacity={0.7}
             >
-              <Text className="text-base font-semibold text-text-primary">Sync</Text>
+              <Text className="text-base font-semibold text-text-primary">Health Data Sync</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
 
             {isConnected && (
-              <TouchableOpacity
-                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-                onPress={() => navigation.navigate('CalorieSettings')}
-                activeOpacity={0.7}
-              >
-                <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            )}
+              <View className="bg-surface rounded-xl mb-4 shadow-sm">
+                <TouchableOpacity
+                  className="p-4 flex-row items-center justify-between border-b border-border-subtle"
+                  onPress={() => navigation.navigate('CalorieSettings')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
+                  <Icon name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
 
-            {isConnected && (
-              <TouchableOpacity
-                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-                onPress={() => navigation.navigate('FoodSettings')}
-                activeOpacity={0.7}
-              >
-                <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  className="p-4 flex-row items-center justify-between"
+                  onPress={() => navigation.navigate('FoodSettings')}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
+                  <Icon name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
+              </View>
             )}
 
             <AppearanceSettings />

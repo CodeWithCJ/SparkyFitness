@@ -24,6 +24,7 @@ export interface WorkoutPresetExercise {
   exercise_name: string; // Populated from backend join
   exercise: Exercise; // Full exercise object
   sets: WorkoutPresetSet[];
+  category?: string;
 }
 
 export interface WorkoutPreset {
@@ -55,6 +56,7 @@ export interface WorkoutPlanAssignment {
   sets: WorkoutPresetSet[];
   created_at?: string;
   updated_at?: string;
+  category?: string;
 }
 
 export interface WorkoutPlanTemplate {

@@ -192,7 +192,8 @@ async function prepareExerciseEntryForCreate(
   entryData: any
 ) {
   const resolvedExerciseId = await resolveExerciseIdToUuid(
-    entryData.exercise_id
+    entryData.exercise_id,
+    authenticatedUserId
   );
   const exercise = await exerciseDb.getExerciseById(
     resolvedExerciseId,
@@ -1298,7 +1299,10 @@ async function getExerciseHistory(
   limit: any
 ) {
   try {
-    const resolvedExerciseId = await resolveExerciseIdToUuid(exerciseId);
+    const resolvedExerciseId = await resolveExerciseIdToUuid(
+      exerciseId,
+      authenticatedUserId
+    );
     // getExerciseHistory is implemented in the exerciseEntry module
     const history = await exerciseEntryDb.getExerciseHistory(
       authenticatedUserId,

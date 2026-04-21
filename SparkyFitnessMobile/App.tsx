@@ -4,6 +4,7 @@ import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
+  type LinkingOptions,
   type NavigationProp,
   type Theme,
 } from '@react-navigation/native';
@@ -16,7 +17,7 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
 
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -49,7 +50,11 @@ import {
 import type { TimeRange } from './src/services/storage';
 import { initHealthConnect, loadHealthPreference , startObservers, stopObservers } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
-import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
+import {
+  configureBackgroundSync,
+  performBackgroundSync,
+  flushPendingHealthSyncCacheRefresh,
+} from './src/services/backgroundSyncService';
 import {
   tryClaimAutoSync,
   isSyncClaimed,
@@ -60,7 +65,7 @@ import {
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
-import { initLogService } from './src/services/LogService';
+import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,9 +81,11 @@ import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
+const androidModalAnimation =
+  Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -114,13 +121,18 @@ function AppContent() {
   } = useAuth();
 
   const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
+  const [linkingEnabled, setLinkingEnabled] = useState(false);
 
   useEffect(() => {
     const determine = async () => {
       try {
         const config = await getActiveServerConfig();
-        setInitialRoute(config ? 'Tabs' : 'Onboarding');
-      } catch {
+        const route = config ? 'Tabs' : 'Onboarding';
+        setInitialRoute(route);
+        setLinkingEnabled(route === 'Tabs');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to load active server config on startup: ${message}`, 'ERROR');
         setInitialRoute('Onboarding');
       } finally {
         await SplashScreen.hideAsync();
@@ -320,7 +332,8 @@ function AppContent() {
         },
       });
     } catch (error) {
-      console.error('[App] Auto sync on open failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Auto sync on open failed: ${message}`, 'ERROR');
     } finally {
       if (!committed) release();
     }
@@ -348,7 +361,8 @@ function AppContent() {
 
     // Initialize log service (warms cache, prunes old logs, registers AppState listener)
     initLogService().catch(error => {
-      console.error('[App] Failed to initialize log service:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize log service: ${message}`, 'ERROR');
     });
 
     const initializeSyncServices = async () => {
@@ -356,7 +370,7 @@ function AppContent() {
       // has a stable timezone for the very first sync.
       const timezone = await ensureTimezoneBootstrapped();
       if (!timezone) {
-        console.warn('[App] Timezone bootstrap did not resolve a timezone before sync setup.');
+        addLog('[App] Timezone bootstrap did not resolve a timezone before sync setup.', 'WARNING');
       }
 
       if (cancelled) return;
@@ -364,7 +378,8 @@ function AppContent() {
       try {
         await configureBackgroundSync();
       } catch (error) {
-        console.error('[App] Failed to configure background sync:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to configure background sync: ${message}`, 'ERROR');
       }
 
       if (cancelled || Platform.OS !== 'ios') return;
@@ -389,19 +404,27 @@ function AppContent() {
 
           performBackgroundSync('healthkit-observer')
             .catch(error => {
-              console.error('[App] Observer-triggered sync failed:', error);
+              const message = error instanceof Error ? error.message : String(error);
+              addLog(`[App] Observer-triggered sync failed: ${message}`, 'ERROR');
             })
             .finally(() => {
               release();
             });
         });
       } catch (error) {
-        console.error('[App] Failed to configure HealthKit observers:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Failed to configure HealthKit observers: ${message}`, 'ERROR');
       }
     };
 
     initializeSyncServices().catch(error => {
-      console.error('[App] Failed to initialize sync services:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize sync services: ${message}`, 'ERROR');
+    });
+
+    flushPendingHealthSyncCacheRefresh().catch(error => {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to flush pending health sync refresh: ${message}`, 'ERROR');
     });
 
     return () => {
@@ -443,7 +466,8 @@ function AppContent() {
 
     triggerColdStartSync().catch(error => {
       setForegroundAutoSyncWindowState(false);
-      console.error('[App] Cold-start sync on open failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Cold-start sync on open failed: ${message}`, 'ERROR');
     });
   }, [initialRoute, setForegroundAutoSyncWindowState]);
 
@@ -459,6 +483,8 @@ function AppContent() {
         }
 
         if (nextAppState !== 'active') return;
+
+        await flushPendingHealthSyncCacheRefresh();
         if (!wasInBackgroundRef.current) return;
 
         const enteredAt = backgroundEnteredAtRef.current;
@@ -495,20 +521,51 @@ function AppContent() {
         await triggerAutoSyncRef.current(config.id, safeCleanup);
       } catch (error) {
         setForegroundAutoSyncWindowState(false);
-        console.error('[App] Foreground-return sync on open failed:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[App] Foreground-return sync on open failed: ${message}`, 'ERROR');
       }
     });
 
     return () => subscription.remove();
   }, [setForegroundAutoSyncWindowState]);
 
+  const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
+    prefixes: ['sparkyfitnessmobile://'],
+    config: {
+      initialRouteName: 'Tabs',
+      screens: {
+        Tabs: {
+          screens: {
+            Dashboard: '',
+          },
+        },
+        FoodScan: 'scan',
+        FoodSearch: 'search',
+      },
+    },
+  }), []);
+
   if (!initialRoute) return null;
 
   return (
-    <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
+    <NavigationContainer
+      ref={rootNavigationRef}
+      theme={navigationTheme}
+      linking={linkingEnabled ? linking : undefined}
+      onStateChange={(state) => {
+        // Enable deep-link handling once the user has left Onboarding.
+        // Without this, widget URLs are ignored for the rest of the session
+        // after first-run setup completes.
+        if (linkingEnabled) return;
+        const topRoute = state?.routes[state.index ?? 0]?.name;
+        if (topRoute === 'Tabs') {
+          setLinkingEnabled(true);
+        }
+      }}
+    >
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-        <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
             name="Onboarding"
             component={SafeOnboarding}
@@ -559,7 +616,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -569,7 +626,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -579,7 +636,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -589,7 +646,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -598,7 +655,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -615,7 +671,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -624,7 +679,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -633,7 +687,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -642,7 +695,6 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -651,16 +703,13 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: true,
-              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
             name="Logs"
             component={SafeLogs}
             options={{
-              headerShown: true,
-              title: 'Logs',
-              headerBackTitle: 'Back',
+              headerShown: false,
             }}
           />
           <Stack.Screen

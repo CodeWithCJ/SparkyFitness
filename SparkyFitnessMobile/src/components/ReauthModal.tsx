@@ -31,6 +31,7 @@ import {
   proxyHeadersToRecord,
   type ServerConfig,
 } from '../services/storage';
+import { addLog } from '../services/LogService';
 
 interface ReauthModalProps {
   visible: boolean;
@@ -139,8 +140,10 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
         let factors: MfaFactors = { mfaTotpEnabled: true, mfaEmailEnabled: false };
         try {
           factors = await fetchMfaFactors(currentUrl, email.trim());
-        } catch {
+        } catch (err) {
           // Fallback: assume TOTP only
+          const message = err instanceof Error ? err.message : String(err);
+          addLog(`[ReauthModal] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');

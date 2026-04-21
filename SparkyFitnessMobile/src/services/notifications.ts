@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
+import { fireSuccessHaptic } from './haptics';
 
 const CHANNEL_ID = 'workout-timer';
 
@@ -97,7 +97,7 @@ export async function cancelScheduledNotification(id: string | null): Promise<vo
 }
 
 export function fireRestCompleteHaptic(): void {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  fireSuccessHaptic();
 }
 
 /** Test-only helper — resets module-level state. */

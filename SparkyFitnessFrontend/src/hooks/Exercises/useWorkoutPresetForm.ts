@@ -74,6 +74,7 @@ export function useWorkoutPresetForm({
             weight: 0,
           },
         ],
+        category: exercise.category ?? '',
       };
       setExercises((prev) => [...prev, newExercise]);
     }
@@ -285,6 +286,31 @@ export function useWorkoutPresetForm({
     });
   };
 
+  const handleReorderSets = (
+    exerciseIndex: number,
+    oldIndex: number,
+    newIndex: number
+  ) => {
+    setExercises((prev) => {
+      const newExercises = [...prev];
+      const exercise = {
+        ...newExercises[exerciseIndex],
+      } as (typeof newExercises)[0];
+
+      if (exercise.sets) {
+        exercise.sets = arrayMove(exercise.sets, oldIndex, newIndex).map(
+          (set, i) => ({
+            ...set,
+            set_number: i + 1,
+          })
+        );
+      }
+
+      newExercises[exerciseIndex] = exercise;
+      return newExercises;
+    });
+  };
+
   return {
     name,
     description,
@@ -305,5 +331,6 @@ export function useWorkoutPresetForm({
     handleRemoveSet,
     handleDragEnd,
     handleSubmit,
+    handleReorderSets,
   };
 }

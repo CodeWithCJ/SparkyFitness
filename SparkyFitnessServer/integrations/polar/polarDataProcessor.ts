@@ -94,7 +94,8 @@ async function processPolarExercises(
       const exerciseSourceId = `polar-workout-${exerciseId}`;
       let exerciseDef = await exerciseRepository.getExerciseBySourceAndSourceId(
         'Polar',
-        exerciseSourceId
+        exerciseSourceId,
+        userId
       );
       if (!exerciseDef) {
         // Search by name if source not found

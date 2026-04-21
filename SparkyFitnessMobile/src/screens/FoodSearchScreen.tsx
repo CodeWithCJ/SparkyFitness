@@ -181,8 +181,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            // Match line height, font size to vertically center the text in search bar. Doesn't seem to work in tailwind
-            style={{ fontSize: 16, lineHeight: 20 }}
+            style={{ fontSize: 16 }}
             placeholder={activeTab === 'meal' ? 'Search meals...' : 'Search foods...'}
             placeholderTextColor={textMuted}
             value={searchText}

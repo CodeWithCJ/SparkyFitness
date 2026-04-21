@@ -24,9 +24,10 @@ import type { UserPreferences } from '../../src/types/preferences';
 jest.mock('../../src/services/LogService', () => ({
   getLogs: jest.fn().mockResolvedValue([]),
   getLogSummary: jest.fn().mockResolvedValue({
-    DEBUG: 0, INFO: 5, SUCCESS: 2, WARNING: 1, ERROR: 0,
+    DEBUG: 0, INFO: 5, WARNING: 1, ERROR: 0,
   }),
-  getLogFilter: jest.fn().mockResolvedValue('no_debug'),
+  getCaptureLevel: jest.fn().mockResolvedValue('all'),
+  getViewFilter: jest.fn().mockResolvedValue('no_debug'),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -40,7 +41,7 @@ jest.mock('../../src/services/healthConnectService', () => ({
   loadHealthPreference: (...args: unknown[]) => mockLoadHealthPreference(...args),
 }));
 
-const { getLogs, getLogSummary, getLogFilter } = jest.requireMock('../../src/services/LogService');
+const { getLogs, getLogSummary, getCaptureLevel, getViewFilter } = jest.requireMock('../../src/services/LogService');
 const { loadLastSyncedTime, loadBackgroundSyncEnabled, loadTimeRange } = jest.requireMock('../../src/services/storage');
 
 const makeHookData = (overrides?: Partial<DiagnosticHookData>): DiagnosticHookData => ({
@@ -114,20 +115,21 @@ describe('diagnosticReportService', () => {
 
   // ---- collectLogInfo ----
   describe('collectLogInfo', () => {
-    it('returns log info with sanitized entries', async () => {
+    it('returns log info with sanitized entries and both filter settings', async () => {
       getLogs.mockResolvedValueOnce([
         {
           timestamp: '2026-02-27T10:00:00.000Z',
           message: 'Synced data to https://myserver.com/api',
-          status: 'SUCCESS',
+          status: 'INFO',
           details: ['Bearer abc123token'],
         },
       ]);
 
       const logInfo = await collectLogInfo();
-      expect(logInfo.currentFilter).toBe('no_debug');
+      expect(logInfo.captureLevel).toBe('all');
+      expect(logInfo.viewFilter).toBe('no_debug');
       expect(logInfo.todaySummary).toEqual({
-        DEBUG: 0, INFO: 5, SUCCESS: 2, WARNING: 1, ERROR: 0,
+        DEBUG: 0, INFO: 5, WARNING: 1, ERROR: 0,
       });
       expect(logInfo.recentLogs).toHaveLength(1);
       expect(logInfo.recentLogs[0].message).not.toContain('https://myserver.com');
@@ -138,6 +140,12 @@ describe('diagnosticReportService', () => {
       getLogs.mockResolvedValueOnce([]);
       await collectLogInfo();
       expect(getLogs).toHaveBeenCalledWith(0, 1000, 'all');
+    });
+
+    it('requests unfiltered summary so diagnostics are not view-filtered', async () => {
+      getLogs.mockResolvedValueOnce([]);
+      await collectLogInfo();
+      expect(getLogSummary).toHaveBeenCalledWith('all');
     });
   });
 

@@ -54,7 +54,9 @@ const checkReachability = async (url: string): Promise<boolean> => {
     });
     clearTimeout(timeout);
     return response.ok;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Onboarding] Reachability check failed for ${url}: ${message}`, 'WARNING');
     return false;
   }
 };
@@ -173,8 +175,10 @@ export default function OnboardingScreen({ navigation }: Props) {
         };
         try {
           factors = await fetchMfaFactors(url, email.trim());
-        } catch {
+        } catch (err) {
           // Fallback: assume TOTP only
+          const message = err instanceof Error ? err.message : String(err);
+          addLog(`[Onboarding] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');
@@ -189,7 +193,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: result.sessionToken,
       });
 
-      addLog('Connected via sign in.', 'SUCCESS');
+      addLog('Connected via sign in.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {
@@ -238,7 +242,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: '',
       });
 
-      addLog('Connected with API key.', 'SUCCESS');
+      addLog('Connected with API key.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -280,7 +284,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         sessionToken: result.sessionToken,
       });
 
-      addLog('Connected via sign in with MFA.', 'SUCCESS');
+      addLog('Connected via sign in with MFA.', 'INFO');
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {

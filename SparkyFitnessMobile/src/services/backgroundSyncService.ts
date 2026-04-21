@@ -1,5 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
+import { AppState } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
@@ -18,8 +19,18 @@ import {
   getDatabaseInaccessibleCount,
 } from './healthConnectService';
 import type { TransformedRecord } from '../types/healthRecords';
-import { loadLastSyncedTime, saveLastSyncedTime, loadBackgroundSyncEnabled } from './storage';
+import {
+  loadLastSyncedTime,
+  saveLastSyncedTime,
+  loadBackgroundSyncEnabled,
+  savePendingHealthSyncCacheRefresh,
+  consumePendingHealthSyncCacheRefresh,
+} from './storage';
 import { runTasksInBatches, withTimeout, TimeoutError } from '../utils/concurrency';
+import { queryClient } from '../hooks/queryClient';
+import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
+
+const isAppActive = (): boolean => AppState.currentState === 'active';
 
 const METRIC_FETCH_CONCURRENCY = 3;
 const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
@@ -87,6 +98,32 @@ async function processBackgroundMetric(
 // Guard against overlapping syncs from concurrent triggers (background task,
 // manual trigger, HealthKit observer). Second caller awaits the in-flight run.
 let inflightSync: Promise<void> | null = null;
+
+async function refreshHealthSyncCacheWhenActive() {
+  if (isAppActive()) {
+    refreshHealthSyncCache(queryClient);
+    return;
+  }
+
+  await savePendingHealthSyncCacheRefresh();
+  if (isAppActive()) {
+    await flushPendingHealthSyncCacheRefresh();
+  }
+}
+
+export const flushPendingHealthSyncCacheRefresh = async (): Promise<boolean> => {
+  if (!isAppActive()) {
+    return false;
+  }
+
+  const shouldRefresh = await consumePendingHealthSyncCacheRefresh();
+  if (!shouldRefresh) {
+    return false;
+  }
+
+  refreshHealthSyncCache(queryClient);
+  return true;
+}
 
 export const performBackgroundSync = async (taskId: string): Promise<void> => {
   if (inflightSync) {
@@ -208,6 +245,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
     addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
     await syncHealthData(allData);
+    await refreshHealthSyncCacheWhenActive();
 
     if (hasTimeouts) {
       addLog(
@@ -218,7 +256,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       await saveLastSyncedTime();
     }
 
-    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
+    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   } else {
     await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   }
@@ -245,7 +283,8 @@ export const configureBackgroundSync = async (): Promise<void> => {
     const enabled = await loadBackgroundSyncEnabled();
     if (!enabled) {
       await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME).catch(() => {});
-      addLog('[Background Sync] Background sync disabled, task unregistered', 'INFO');
+      // Disabled temporarily due to log flooding
+      // addLog('[Background Sync] Background sync disabled, task unregistered', 'DEBUG');
       return;
     }
 

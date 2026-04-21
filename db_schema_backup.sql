@@ -3604,10 +3604,10 @@ CREATE INDEX idx_exercises_source ON public.exercises USING btree (source);
 
 
 --
--- Name: idx_exercises_source_source_id_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_exercises_user_source_source_id_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_exercises_source_source_id_unique ON public.exercises USING btree (source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
+CREATE UNIQUE INDEX idx_exercises_user_source_source_id_unique ON public.exercises USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --
@@ -5583,7 +5583,7 @@ CREATE POLICY select_policy ON public.workout_plan_templates FOR SELECT USING (p
 -- Name: workout_presets select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_exercise_library'::text]));
+CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_exercise_library'::text]));
 
 
 --
@@ -7262,4 +7262,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 --
 
 \unrestrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
-

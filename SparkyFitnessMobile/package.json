@@ -12,17 +12,19 @@
     "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate": "pnpm run typecheck && pnpm run lint"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^4.0.6",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@kingstinct/react-native-healthkit": "^13.3.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.0",
     "@react-navigation/bottom-tabs": "^7.15.6",
-    "@react-navigation/native": "^7.1.14",
-    "@react-navigation/stack": "^7.4.2",
+    "@react-navigation/native": "^7.2.2",
+    "@react-navigation/native-stack": "^7.4.2",
     "@shopify/react-native-skia": "2.2.12",
     "@tanstack/react-query": "^5.90.20",
     "@workspace/shared": "workspace:*",

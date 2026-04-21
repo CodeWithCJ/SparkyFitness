@@ -4,6 +4,7 @@ import { useSyncHealthData } from '../../src/hooks/useSyncHealthData';
 import { syncHealthData as healthConnectSyncData } from '../../src/services/healthConnectService';
 import { saveLastSyncedTime } from '../../src/services/storage';
 import { addLog } from '../../src/services/LogService';
+import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/healthConnectService', () => ({
@@ -141,6 +142,28 @@ describe('useSyncHealthData', () => {
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalledWith('2024-01-15T10:00:00Z');
+      });
+    });
+
+    test('invalidates server connection on success', async () => {
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      mockHealthConnectSyncData.mockResolvedValue({ success: true, syncErrors: [] });
+      mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
+
+      const { result } = renderHook(() => useSyncHealthData(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        result.current.mutate(testParams);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: serverConnectionQueryKey,
       });
     });
   });
@@ -283,6 +306,7 @@ describe('useSyncHealthData', () => {
         );
       });
     });
+
   });
 
   describe('mutation state', () => {

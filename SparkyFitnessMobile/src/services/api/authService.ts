@@ -1,5 +1,6 @@
 import { NativeModules } from 'react-native';
 import { clearSessionToken, ServerConfig } from '../storage';
+import { addLog } from '../LogService';
 
 export class LoginError extends Error {
   constructor(message: string, public statusCode?: number) {
@@ -110,7 +111,9 @@ const normalizeOrigin = (origin?: string | null): string | undefined => {
 
   try {
     return new URL(origin).origin;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[AuthService] Invalid trusted_origin from server: ${origin} (${message})`, 'WARNING');
     return undefined;
   }
 };
@@ -118,7 +121,9 @@ const normalizeOrigin = (origin?: string | null): string | undefined => {
 const getFallbackAuthOrigin = (serverUrl: string): string | undefined => {
   try {
     return new URL(serverUrl).origin;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[AuthService] Invalid server URL for auth origin: ${serverUrl} (${message})`, 'WARNING');
     return undefined;
   }
 };

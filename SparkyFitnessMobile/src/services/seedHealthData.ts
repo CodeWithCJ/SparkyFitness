@@ -737,7 +737,7 @@ export const seedHistoricalSteps = async (): Promise<SeedResult> => {
       await insertRecords(records as Parameters<typeof insertRecords>[0]);
       totalRecords += records.length;
     }
-    addLog(`[SeedHistoricalSteps] Seeded step records for ${midRangeDays.length} days in 3-6 month range`, 'SUCCESS');
+    addLog(`[SeedHistoricalSteps] Seeded step records for ${midRangeDays.length} days in 3-6 month range`, 'INFO');
 
     // 2-3 records between 6-12 months ago (~180-365 days)
     const farRangeDays = pickRandomDates(180, 365, randomInt(2, 3));
@@ -746,9 +746,9 @@ export const seedHistoricalSteps = async (): Promise<SeedResult> => {
       await insertRecords(records as Parameters<typeof insertRecords>[0]);
       totalRecords += records.length;
     }
-    addLog(`[SeedHistoricalSteps] Seeded step records for ${farRangeDays.length} days in 6-12 month range`, 'SUCCESS');
+    addLog(`[SeedHistoricalSteps] Seeded step records for ${farRangeDays.length} days in 6-12 month range`, 'INFO');
 
-    addLog(`[SeedHistoricalSteps] Done — ${totalRecords} total step records seeded`, 'SUCCESS');
+    addLog(`[SeedHistoricalSteps] Done — ${totalRecords} total step records seeded`, 'INFO');
 
     return { success: true, recordsInserted: totalRecords };
   } catch (error) {
@@ -793,14 +793,14 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
         }
 
         totalRecords += count;
-        addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'SUCCESS');
+        addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'INFO');
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         addLog(`[SeedHealthData] Failed to seed ${config.recordType}: ${message}`, 'WARNING');
       }
     }
 
-    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records`, 'SUCCESS');
+    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records`, 'INFO');
 
     return {
       success: true,

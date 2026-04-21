@@ -371,7 +371,7 @@ SELECT create_library_policy('foods', 'shared_with_public', ARRAY['can_view_food
 SELECT create_library_policy('meals', 'is_public', ARRAY['can_view_food_library', 'can_manage_diary']);
 SELECT create_library_policy('meal_plan_templates', 'false', ARRAY['can_view_food_library']);
 SELECT create_library_policy('workout_plan_templates', 'false', ARRAY['can_view_exercise_library']);
-SELECT create_library_policy('workout_presets', 'false', ARRAY['can_view_exercise_library']);
+SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exercise_library']);
 
 
 -- Custom policies for special cases

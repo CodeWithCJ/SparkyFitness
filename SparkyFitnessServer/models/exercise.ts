@@ -606,8 +606,14 @@ async function getTopExercises(userId: any, limit: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExerciseBySourceAndSourceId(source: any, sourceId: any) {
+async function getExerciseBySourceAndSourceId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  source: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sourceId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any
+) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -615,8 +621,8 @@ async function getExerciseBySourceAndSourceId(source: any, sourceId: any) {
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               created_at, updated_at
-       FROM exercises WHERE source = $1 AND source_id = $2`,
-      [source, sourceId]
+       FROM exercises WHERE source = $1 AND source_id = $2 AND user_id = $3`,
+      [source, sourceId, userId]
     );
     const exercise = result.rows[0];
     if (exercise && exercise.images) {

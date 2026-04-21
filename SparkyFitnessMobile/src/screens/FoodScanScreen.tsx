@@ -11,6 +11,7 @@ import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { fireSuccessHaptic } from '../services/haptics';
 import { toFormString } from '../types/foodInfo';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
@@ -43,13 +44,19 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [manualBarcode, setManualBarcode] = useState('');
   const cameraRef = useRef<CameraView>(null);
 
-  const performBarcodeLookup = async (barcode: string) => {
+  const performBarcodeLookup = async (
+    barcode: string,
+    { shouldFireSuccessHaptic = false }: { shouldFireSuccessHaptic?: boolean } = {},
+  ) => {
     try {
       const result = await lookupBarcodeV2(barcode);
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
       } else if (result.food.id) {
+        if (shouldFireSuccessHaptic) {
+          fireSuccessHaptic();
+        }
         const dv = result.food.default_variant;
         const item: FoodInfoItem = {
           id: result.food.id,
@@ -78,6 +85,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         };
         navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
       } else {
+        if (shouldFireSuccessHaptic) {
+          fireSuccessHaptic();
+        }
         const dv = result.food.default_variant;
         navigation.replace('FoodForm', { mode: 'create-food',
           date: route.params?.date,
@@ -118,7 +128,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     scanLock.current = true;
     setScanned(true);
     setLoading(true);
-    await performBarcodeLookup(data);
+    await performBarcodeLookup(data, { shouldFireSuccessHaptic: true });
   };
 
   const handleManualSubmit = async () => {
