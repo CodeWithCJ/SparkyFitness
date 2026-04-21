@@ -82,7 +82,6 @@ import swaggerSpecs from './config/swagger.js';
 import { createCorsOriginChecker } from './utils/corsHelper.js';
 import authModule from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
-import exerciseRepository from './models/exerciseRepository.js';
 import freeExerciseDBService from './integrations/freeexercisedb/FreeExerciseDBService.js';
 import { downloadImage } from './utils/imageDownloader.js';
 import authRoutes from './routes/authRoutes.js';
@@ -258,19 +257,18 @@ app.get(
     if (fs.existsSync(localImagePath)) {
       return res.sendFile(localImagePath);
     }
-    // If not found, attempt to re-download
+    // If not found, attempt to re-download. Resolve image paths from the
+    // upstream free-exercise-db record (the canonical source) rather than a
+    // per-user DB copy — different users may have locally diverged the images
+    // array, and this route is unauthenticated so we have no user context.
     try {
-      const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
-        'free-exercise-db',
-        exerciseId
-      );
+      const exercise = await freeExerciseDBService.getExerciseById(exerciseId);
       if (!exercise) {
         return res.status(404).send('Exercise not found.');
       }
-      // @ts-expect-error TS7006
-      const originalRelativeImagePath = exercise.images.find((img) =>
-        img.endsWith(imageFileName)
-      );
+      const originalRelativeImagePath = (
+        (exercise as { images?: string[] }).images ?? []
+      ).find((img) => path.basename(img) === imageFileName);
       if (!originalRelativeImagePath) {
         return res.status(404).send('Image not found for this exercise.');
       }
