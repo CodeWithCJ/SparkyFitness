@@ -959,7 +959,8 @@ async function processWithingsWorkouts(
       const exerciseSourceId = `withings-workout-${workoutCategory}`;
       let exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
         'Withings',
-        exerciseSourceId
+        exerciseSourceId,
+        userId
       ); // Corrected variable name
       if (!exercise) {
         // If not found by source and sourceId, try to find by name (for user-created exercises)

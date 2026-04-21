@@ -3604,10 +3604,10 @@ CREATE INDEX idx_exercises_source ON public.exercises USING btree (source);
 
 
 --
--- Name: idx_exercises_source_source_id_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_exercises_user_source_source_id_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_exercises_source_source_id_unique ON public.exercises USING btree (source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
+CREATE UNIQUE INDEX idx_exercises_user_source_source_id_unique ON public.exercises USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --

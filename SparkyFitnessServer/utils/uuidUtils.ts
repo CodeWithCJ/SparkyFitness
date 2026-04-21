@@ -7,16 +7,22 @@ const isValidUuid = (uuid: any) => {
   return uuidRegex.test(uuid);
 };
 // Helper function to resolve exercise ID to a UUID
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveExerciseIdToUuid(exerciseId: any) {
+async function resolveExerciseIdToUuid(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any
+) {
   if (isValidUuid(exerciseId)) {
     return exerciseId;
   }
-  // If not a UUID, assume it's an integer ID from a source like FreeExerciseDB
-  // We need to find the corresponding exercise in our DB that has this source_id
+  // If not a UUID, assume it's an ID from a source like FreeExerciseDB.
+  // Each user may have their own per-user copy of that source exercise, so
+  // callers pass userId to select the row owned by the current user.
   const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
     'free-exercise-db',
-    exerciseId
+    exerciseId,
+    userId
   );
   if (exercise) {
     return exercise.id;

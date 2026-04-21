@@ -6,7 +6,7 @@ import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 async function createWorkoutPreset(userId: any, presetData: any) {
   // Validate and resolve exercise_ids
   for (const ex of presetData.exercises) {
-    ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id); // Resolve to UUID
+    ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId); // Resolve to UUID
     const exercise = await exerciseRepository.getExerciseById(
       ex.exercise_id,
       userId
@@ -71,7 +71,7 @@ async function updateWorkoutPreset(
   // Validate and resolve exercise_ids if exercises are being updated
   if (updateData.exercises) {
     for (const ex of updateData.exercises) {
-      ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id); // Resolve to UUID
+      ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId); // Resolve to UUID
       const exercise = await exerciseRepository.getExerciseById(
         ex.exercise_id,
         userId
