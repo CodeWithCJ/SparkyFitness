@@ -5583,7 +5583,7 @@ CREATE POLICY select_policy ON public.workout_plan_templates FOR SELECT USING (p
 -- Name: workout_presets select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_exercise_library'::text]));
+CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_exercise_library'::text]));
 
 
 --
@@ -7262,4 +7262,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 --
 
 \unrestrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
-
