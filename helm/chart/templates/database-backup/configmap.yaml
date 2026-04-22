@@ -77,14 +77,16 @@ data:
       keep_file="$3"
       : > "${keep_file}"
       now_epoch="$(date -u +%s)"
+      # Ensure UTC output from awk strftime on all platforms (Alpine/BusyBox + Debian/GNU)
+      export TZ=UTC
       i=0
       while [ "${i}" -lt "${count}" ]; do
         case "${bucket}" in
           daily)
-            date -u -d "@$(( now_epoch - i * 86400 ))" +%F
+            awk -v e="$(( now_epoch - i * 86400 ))" 'BEGIN { print strftime("%Y-%m-%d", e) }'
             ;;
           weekly)
-            date -u -d "@$(( now_epoch - i * 7 * 86400 ))" +%G-W%V
+            awk -v e="$(( now_epoch - i * 7 * 86400 ))" 'BEGIN { print strftime("%G-W%V", e) }'
             ;;
           monthly)
             awk -v y="$(date -u +%Y)" -v mon="$(date -u +%m)" -v i="${i}" \
