@@ -19,7 +19,7 @@ import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
-import WorkoutsScreen from './src/screens/WorkoutsScreen';
+import LibraryScreen from './src/screens/LibraryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
@@ -38,6 +38,7 @@ import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import WorkoutHistoryScreen from './src/screens/WorkoutHistoryScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -90,12 +91,13 @@ const androidModalAnimation =
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
 const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
-const SafeWorkouts = withErrorBoundary(WorkoutsScreen, 'Workouts');
+const SafeLibrary = withErrorBoundary(LibraryScreen, 'Library');
 
 // Onboarding — no Go Back (initial route for new users)
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
+const SafeWorkoutHistory = withErrorBoundary(WorkoutHistoryScreen, 'WorkoutHistory', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
@@ -604,11 +606,19 @@ function AppContent() {
                     },
                   })}
                 />
-                <Tab.Screen name="Workouts" component={SafeWorkouts} />
+                <Tab.Screen name="Library" component={SafeLibrary} />
                 <Tab.Screen name="Settings" component={SettingsScreen} />
               </Tab.Navigator>
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="WorkoutHistory"
+            component={SafeWorkoutHistory}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
           <Stack.Screen
             name="FoodSearch"
             component={SafeFoodSearch}

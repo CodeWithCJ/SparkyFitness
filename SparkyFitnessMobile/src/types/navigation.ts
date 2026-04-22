@@ -11,13 +11,14 @@ export type TabParamList = {
   Dashboard: undefined;
   Diary: { selectedDate?: string } | undefined;
   Add: undefined;
-  Workouts: undefined;
+  Library: undefined;
   Settings: undefined;
 };
 
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
+  WorkoutHistory: undefined;
   FoodSearch: { date?: string } | undefined;
   FoodEntryAdd: { item: FoodInfoItem; date?: string; adjustedValues?: FoodFormData };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };

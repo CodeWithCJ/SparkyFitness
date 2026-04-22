@@ -2,34 +2,27 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, SectionList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { TAB_BAR_HEIGHT } from '../components/CustomTabBar';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Button from '../components/ui/Button';
+import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, TabParamList } from '../types/navigation';
+import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 
-type WorkoutsScreenProps = CompositeScreenProps<
-  BottomTabScreenProps<TabParamList, 'Workouts'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type WorkoutHistoryScreenProps = RootStackScreenProps<'WorkoutHistory'>;
 
 type SessionSection = { title: string; data: ExerciseSessionResponse[] };
 
-const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
+const WorkoutHistoryScreen: React.FC<WorkoutHistoryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
-  const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const scrollBottomPadding =
-    TAB_BAR_HEIGHT + activeWorkoutBarPadding + insets.bottom + 16;
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { preferences } = usePreferences();
@@ -130,14 +123,14 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           iconColor="#9CA3AF"
           iconSize={64}
           title="No server configured"
-          subtitle="Configure your server connection in Settings to view your workouts."
+          subtitle="Configure your server connection in Settings to view your workout history."
           action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading workouts..." />;
+      return <StatusView loading title="Loading workout history..." />;
     }
 
     if (isError) {
@@ -146,7 +139,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load workouts"
+          title="Failed to load workout history"
           subtitle="Please check your connection and try again."
           action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
         />
@@ -172,12 +165,20 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="px-4 pt-4 pb-5">
-        <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
+      <View className="flex-row items-center px-4 pt-4 pb-5">
+        <Button
+          variant="ghost"
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="py-0 px-0 mr-2"
+        >
+          <Icon name="chevron-back" size={22} color={accentPrimary} />
+        </Button>
+        <Text className="text-2xl font-bold text-text-primary">Workout History</Text>
       </View>
       {renderContent()}
     </View>
   );
 };
 
-export default WorkoutsScreen;
+export default WorkoutHistoryScreen;

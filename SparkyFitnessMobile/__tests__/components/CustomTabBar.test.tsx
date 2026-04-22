@@ -13,7 +13,7 @@ describe('CustomTabBar', () => {
       { key: 'Dashboard-key', name: 'Dashboard' as const, params: undefined },
       { key: 'Diary-key', name: 'Diary' as const, params: undefined },
       { key: 'Add-key', name: 'Add' as const, params: undefined },
-      { key: 'Workouts-key', name: 'Workouts' as const, params: undefined },
+      { key: 'Library-key', name: 'Library' as const, params: undefined },
       { key: 'Settings-key', name: 'Settings' as const, params: undefined },
     ];
 
