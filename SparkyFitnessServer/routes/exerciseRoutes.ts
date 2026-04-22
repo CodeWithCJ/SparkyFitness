@@ -8,7 +8,16 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
+
+const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, '../uploads');
 // Setup Multer for file uploads
 const storage = multer.diskStorage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,8 +26,8 @@ const storage = multer.diskStorage({
       ? JSON.parse(req.body.exerciseData).name
       : 'unknown-exercise';
     const uploadPath = path.join(
-      __dirname,
-      '../uploads/exercises',
+      baseUploadsDir,
+      'exercises',
       exerciseName.replace(/[^a-zA-Z0-9]/g, '_')
     );
     fs.mkdirSync(uploadPath, { recursive: true });

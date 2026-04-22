@@ -5,6 +5,7 @@ RUN corepack enable
 
 WORKDIR /app
 
+RUN apk add --no-cache postgresql-client
 # Copy workspace root files for pnpm resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
