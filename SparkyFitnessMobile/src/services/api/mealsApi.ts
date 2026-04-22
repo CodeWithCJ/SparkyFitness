@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import { Meal } from '../../types/meals';
+import { CreateMealPayload, Meal } from '../../types/meals';
 
 /**
  * Fetches all meals for the current user.
@@ -21,5 +21,18 @@ export const searchMeals = async (searchTerm: string): Promise<Meal[]> => {
     endpoint: `/api/meals/search?${params.toString()}`,
     serviceName: 'Meals API',
     operation: 'search meals',
+  });
+};
+
+/**
+ * Creates a meal template for the current user.
+ */
+export const createMeal = async (payload: CreateMealPayload): Promise<Meal> => {
+  return apiFetch<Meal>({
+    endpoint: '/api/meals',
+    serviceName: 'Meals API',
+    operation: 'create meal',
+    method: 'POST',
+    body: payload,
   });
 };

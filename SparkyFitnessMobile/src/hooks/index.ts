@@ -31,7 +31,7 @@ export { useWaterIntakeMutation } from './useWaterIntakeMutation';
 export { useFoods } from './useFoods';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
-export { useMeals } from './useMeals';
+export { useMeals, useCreateMeal } from './useMeals';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';

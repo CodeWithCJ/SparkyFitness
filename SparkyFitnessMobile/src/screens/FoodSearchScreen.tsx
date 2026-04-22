@@ -9,13 +9,23 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
-import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch, usePreferences } from '../hooks';
+import {
+  useServerConnection,
+  useFoods,
+  useFoodSearch,
+  useMeals,
+  useMealSearch,
+  useExternalProviders,
+  useExternalFoodSearch,
+  usePreferences,
+} from '../hooks';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
@@ -33,7 +43,7 @@ type FoodSection = {
 
 type TabKey = 'search' | 'online' | 'meal';
 
-const TABS: { key: TabKey; label: string }[] = [
+const ALL_TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
   { key: 'meal', label: 'Meals' },
@@ -41,7 +51,11 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
+  const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isNarrowScreen = width <= 375;
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -54,12 +68,23 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
 
+  const visibleTabs = useMemo(
+    () => (isMealBuilderMode ? ALL_TABS.filter((tab) => tab.key !== 'meal') : ALL_TABS),
+    [isMealBuilderMode],
+  );
+
+  useEffect(() => {
+    if (isMealBuilderMode && activeTab === 'meal') {
+      setActiveTab('search');
+    }
+  }, [activeTab, isMealBuilderMode]);
+
   const { searchResults, isSearching, isSearchActive, isSearchError } = useFoodSearch(searchText, {
     enabled: isConnected && activeTab === 'search',
   });
 
   const { meals, isLoading: isMealsLoading, isError: isMealsError, refetch: refetchMeals } = useMeals({
-    enabled: isConnected && activeTab === 'meal',
+    enabled: isConnected && activeTab === 'meal' && !isMealBuilderMode,
   });
   const {
     searchResults: mealSearchResults,
@@ -67,7 +92,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isSearchActive: isMealSearchActive,
     isSearchError: isMealSearchError,
   } = useMealSearch(searchText, {
-    enabled: isConnected && activeTab === 'meal',
+    enabled: isConnected && activeTab === 'meal' && !isMealBuilderMode,
   });
 
   const {
@@ -84,7 +109,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
 
   const selectedProviderType = useMemo(
-    () => providers.find((p) => p.id === selectedProvider)?.provider_type ?? '',
+    () => providers.find((provider) => provider.id === selectedProvider)?.provider_type ?? '',
+    [providers, selectedProvider],
+  );
+
+  const selectedProviderName = useMemo(
+    () => providers.find((provider) => provider.id === selectedProvider)?.provider_name ?? '',
     [providers, selectedProvider],
   );
 
@@ -106,15 +136,52 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   useEffect(() => {
     if (providers.length === 0) return;
-    if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
+    if (hasUserSelectedProvider.current && providers.some((provider) => provider.id === selectedProvider)) {
+      return;
+    }
 
     const defaultId = preferences?.default_food_data_provider_id;
-    const defaultProvider = defaultId ? providers.find((p) => p.id === defaultId) : undefined;
+    const defaultProvider = defaultId ? providers.find((provider) => provider.id === defaultId) : undefined;
     setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-  }, [providers, selectedProvider, preferences?.default_food_data_provider_id]);
+  }, [preferences?.default_food_data_provider_id, providers, selectedProvider]);
 
   const showFoodInfo = (item: FoodInfoItem) => {
-    navigation.navigate('FoodEntryAdd', { item, date });
+    navigation.navigate('FoodEntryAdd', {
+      item,
+      date,
+      pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+      returnDepth: isMealBuilderMode ? 2 : undefined,
+    });
+  };
+
+  const openCreateFood = () => {
+    navigation.navigate('FoodForm', {
+      mode: 'create-food',
+      date,
+      pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+      returnDepth: isMealBuilderMode ? 2 : undefined,
+    });
+  };
+
+  const openMealBuilder = () => {
+    navigation.navigate('MealBuilder');
+  };
+
+  const openFoodScan = () => {
+    navigation.navigate('FoodScan', {
+      date,
+      pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+      returnDepth: isMealBuilderMode ? 2 : undefined,
+    });
+  };
+
+  const handleHeaderActionPress = () => {
+    if (!isMealBuilderMode && activeTab === 'meal') {
+      openMealBuilder();
+      return;
+    }
+
+    openCreateFood();
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
@@ -130,6 +197,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       }
       return;
     }
+
     showFoodInfo(externalFoodItemToFoodInfo(item));
   };
 
@@ -138,8 +206,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       { title: 'Recently Logged', data: recentFoods },
       { title: 'Top Foods', data: topFoods },
     ];
+
     return allSections.filter((section) => section.data.length > 0);
   }, [recentFoods, topFoods]);
+
+  const trailingActionLabel =
+    !isMealBuilderMode && activeTab === 'meal' ? 'Create Meal' : 'Add Food';
 
   const renderItem = ({ item }: { item: FoodItem | TopFoodItem }) => (
     <TouchableOpacity
@@ -150,9 +222,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
           <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-          {item.brand && (
+          {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
-          )}
+          ) : null}
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
@@ -168,9 +240,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSectionHeader = ({ section }: { section: FoodSection }) => (
     <View className="px-4 py-2 bg-surface">
-      <Text className="text-text-muted text-xs font-semibold uppercase">
-        {section.title}
-      </Text>
+      <Text className="text-text-muted text-xs font-semibold uppercase">{section.title}</Text>
     </View>
   );
 
@@ -191,16 +261,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             returnKeyType="search"
           />
         </View>
-        {searchText.length > 0 && (
+        {searchText.length > 0 ? (
           <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
             <Icon name="close" size={16} color={textMuted} />
           </Button>
-        )}
+        ) : null}
         <Button
           variant="ghost"
-          onPress={() => navigation.navigate('FoodScan', { date })}
+          onPress={openFoodScan}
           hitSlop={8}
           className="ml-2 p-0"
+          accessibilityLabel="Scan Food"
         >
           <Icon name="scan" size={20} color={accentColor} />
         </Button>
@@ -279,11 +350,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load foods
           </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetch()}
-            className="mt-4 px-6"
-          >
+          <Button variant="secondary" onPress={() => refetch()} className="mt-4 px-6">
             Retry
           </Button>
         </View>
@@ -293,9 +360,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (sections.length === 0) {
       return (
         <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No foods found
-          </Text>
+          <Text className="text-text-secondary text-base text-center">No foods found</Text>
         </View>
       );
     }
@@ -314,6 +379,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderMealItem = ({ item }: { item: Meal }) => {
     const foodInfo = mealToFoodInfo(item);
+
     return (
       <TouchableOpacity
         className="px-4 py-2 border-b border-border-subtle"
@@ -413,11 +479,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load meals
           </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetchMeals()}
-            className="mt-4 px-6"
-          >
+          <Button variant="secondary" onPress={() => refetchMeals()} className="mt-4 px-6">
             Retry
           </Button>
         </View>
@@ -427,9 +489,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (meals.length === 0) {
       return (
         <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No meals found
-          </Text>
+          <Text className="text-text-secondary text-base text-center">No meals found</Text>
+          <Button variant="primary" onPress={openMealBuilder} className="mt-4 px-6">
+            Create Meal
+          </Button>
         </View>
       );
     }
@@ -449,23 +512,23 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       className="px-4 py-3 border-b border-border-subtle"
       activeOpacity={0.7}
       disabled={loadingFoodId !== null}
-      onPress={() => handleExternalFoodTap(item)}
+      onPress={() => {
+        void handleExternalFoodTap(item);
+      }}
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
           <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-          {item.brand && (
+          {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
-          )}
+          ) : null}
         </View>
         <View className="items-end">
           {loadingFoodId === item.id ? (
             <ActivityIndicator size="small" color={accentColor} />
           ) : (
             <>
-              <Text className="text-text-primary text-base font-semibold">
-                {item.calories} cal
-              </Text>
+              <Text className="text-text-primary text-base font-semibold">{item.calories} cal</Text>
               <Text className="text-text-secondary text-xs">
                 {item.serving_size} {item.serving_unit}
               </Text>
@@ -541,11 +604,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     );
   };
 
-  const selectedProviderName = useMemo(
-    () => providers.find((p) => p.id === selectedProvider)?.provider_name ?? '',
-    [providers, selectedProvider],
-  );
-
   const renderOnlineTab = () => {
     if (!isConnected) {
       return (
@@ -573,11 +631,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load providers
           </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetchProviders()}
-            className="mt-4 px-6"
-          >
+          <Button variant="secondary" onPress={() => refetchProviders()} className="mt-4 px-6">
             Retry
           </Button>
         </View>
@@ -605,6 +659,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         >
           {providers.map((provider) => {
             const isActive = provider.id === selectedProvider;
+
             return (
               <TouchableOpacity
                 key={provider.id}
@@ -663,39 +718,54 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <Button
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 p-0"
-        >
-          <Icon name="close" size={22} color={accentColor} />
-        </Button>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Add
-        </Text>
-        <Button
-          variant="ghost"
-          onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', date })}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 p-0"
-        >
-          <Icon name="add" size={26} color={accentColor} />
-        </Button>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
+      <View className="px-4 py-3 border-b border-border-subtle">
+        <View className="flex-row items-center justify-between">
+          <Button
+            variant="header"
+            onPress={() => navigation.goBack()}
+            className="z-10 min-h-11 min-w-11 items-start justify-center"
+            accessibilityLabel="Close"
+          >
+            <Icon name="close" size={22} color={accentColor} />
+          </Button>
+
+          <View
+            pointerEvents="none"
+            className="absolute left-0 right-0 items-center justify-center"
+            style={{ top: 0, bottom: 0 }}
+          >
+            <Text
+              className={`text-text-primary font-semibold ${isNarrowScreen ? 'text-base' : 'text-lg'}`}
+              numberOfLines={1}
+            >
+              Food
+            </Text>
+          </View>
+
+          <Button
+            variant="outline"
+            onPress={handleHeaderActionPress}
+            className="z-10 min-h-11 flex-row items-center gap-1.5 rounded-full px-3 py-2"
+            accessibilityLabel={trailingActionLabel}
+          >
+            <Icon name="add" size={16} color={accentColor} />
+            <Text className={`${isNarrowScreen ? 'text-sm' : 'text-base'} text-accent-primary font-semibold`}>
+              {trailingActionLabel}
+            </Text>
+          </Button>
+        </View>
       </View>
 
-      {/* Segmented control */}
       <View className="px-4 mt-2">
-        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
+        <SegmentedControl segments={visibleTabs} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
-      {/* Search bar */}
       {renderSearchBar()}
 
-      {/* Tab content */}
       {renderTabContent()}
     </View>
   );

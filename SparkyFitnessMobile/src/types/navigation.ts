@@ -5,7 +5,10 @@ import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
+import type { MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
+
+export type FoodPickerMode = 'log-entry' | 'meal-builder';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -18,13 +21,46 @@ export type TabParamList = {
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
-  FoodSearch: { date?: string } | undefined;
-  FoodEntryAdd: { item: FoodInfoItem; date?: string; adjustedValues?: FoodFormData };
+  FoodSearch:
+    | {
+        date?: string;
+        pickerMode?: FoodPickerMode;
+      }
+    | undefined;
+  FoodEntryAdd:
+    | {
+        item: FoodInfoItem;
+        date?: string;
+        adjustedValues?: FoodFormData;
+        pickerMode?: FoodPickerMode;
+        ingredientIndex?: number;
+        returnDepth?: number;
+      };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
   FoodForm:
-    | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
+    | {
+        mode: 'create-food';
+        date?: string;
+        initialFood?: Partial<FoodFormData>;
+        barcode?: string;
+        providerType?: string;
+        pickerMode?: FoodPickerMode;
+        returnDepth?: number;
+      }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null };
-  FoodScan: { date?: string } | undefined;
+  FoodScan:
+    | {
+        date?: string;
+        pickerMode?: FoodPickerMode;
+        returnDepth?: number;
+      }
+    | undefined;
+  MealBuilder:
+    | {
+        selectedIngredient?: MealIngredientDraft;
+        ingredientIndex?: number;
+      }
+    | undefined;
   ExerciseSearch: { returnKey: string };
   PresetSearch: { date?: string } | undefined;
   WorkoutAdd: {
