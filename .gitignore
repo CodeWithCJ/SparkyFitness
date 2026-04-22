@@ -9,6 +9,8 @@ lerna-debug.log*
 
 # Generic
 postgresql
+!helm/chart/charts/postgresql/
+!helm/chart/charts/postgresql/**
 node_modules
 dist
 dist-ssr

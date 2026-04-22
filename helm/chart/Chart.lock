@@ -1,0 +1,6 @@
+dependencies:
+- name: postgresql
+  repository: https://repo.helmforge.dev
+  version: 1.9.5
+digest: sha256:4ea8afa7b92c3b54fdbc8f8643957ea2f246305910f5609ce948d1089ff6b059
+generated: "2026-04-12T23:46:55.814194449-04:00"

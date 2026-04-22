@@ -1,0 +1,18 @@
+{{- if and (include "sparkyfitness.databaseBackupEnabled" .) (not .Values.databaseBackup.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sparkyfitness.databaseBackupPvcName" . }}
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-backup
+spec:
+  accessModes:
+    - {{ .Values.databaseBackup.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.databaseBackup.persistence.size | quote }}
+  {{- with .Values.databaseBackup.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+{{- end }}

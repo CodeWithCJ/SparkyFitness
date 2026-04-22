@@ -10,9 +10,9 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 | Component | Image | Default Port | Optional |
 |-----------|-------|-------------|----------|
 | Server | `codewithcj/sparkyfitness_server` | 3010 | No |
-| Frontend | `codewithcj/sparkyfitness` | 80 | No |
+| Frontend | `codewithcj/sparkyfitness_frontend_nonroot` | 8080 | No |
 | Garmin | `codewithcj/sparkyfitness_garmin` | 8000 | Yes |
-| PostgreSQL | `postgres:15-alpine` | 5432 | Yes (bundled) |
+| PostgreSQL | official `postgres:18.3-trixie` via `helmforge/postgresql` | 5432 | Yes (bundled) |
 
 ## Quick Start
 
@@ -20,13 +20,15 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 helm install sparkyfitness ./chart
 ```
 
-This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:80`.
+This deploys Sparkyfitness with a bundled PostgreSQL 18.3 instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:8080`.
+
+For Kubernetes routing, the chart's Ingress and HTTPRoute send `/api` and `/uploads` directly to the server service and send `/` to the frontend service. The frontend nginx serves static assets and SPA routes only.
 
 ## Database
 
 ### Bundled PostgreSQL (default)
 
-Enabled by default. Credentials are auto-generated on first install and preserved across upgrades.
+Enabled by default. The chart now pulls PostgreSQL from the namespace-scoped `helmforge/postgresql` dependency and uses the official `postgres` image.
 
 ```yaml
 postgresql:
@@ -35,8 +37,56 @@ postgresql:
     database: sparkyfitness
     username: sparky
     # password: ""  # auto-generated if empty
+  image:
+    tag: "18.3-trixie"
+```
+
+### Scheduled backups
+
+Two backup modes are available:
+
+1. `postgresql.backup` — the bundled dependency's built-in **S3-compatible** backup CronJob
+2. `databaseBackup` — this chart's **PVC-backed** `pg_dumpall` CronJob with retention
+
+Enable only one mode at a time.
+
+#### S3-compatible object storage
+
+```yaml
+postgresql:
+  enabled: true
+  backup:
+    enabled: true
+    schedule: "0 3 * * *"
+    s3:
+      endpoint: "https://minio.example.com"
+      bucket: "sparkyfitness-db"
+      existingSecret: "sparkyfitness-db-backup"
+```
+
+The built-in S3 path remains available unchanged.
+
+#### PVC-backed retention backups
+
+The chart-managed PVC backup job stores compressed `pg_dumpall` archives on a PersistentVolumeClaim and enforces retention in three buckets:
+
+- one backup per retained **day**
+- one backup per retained **week**
+- one backup per retained **month**
+
+For example, `days: 7`, `weeks: 5`, `months: 3` keeps one backup for each of the last 7 days, 5 weeks, and 3 months.
+
+```yaml
+databaseBackup:
+  enabled: true
+  schedule: "0 4 * * *"
   persistence:
-    size: 8Gi
+    storageClass: ceph-rbd-capacity
+    size: 20Gi
+  retention:
+    days: 7
+    weeks: 5
+    months: 3
 ```
 
 ### External Database
@@ -81,7 +131,7 @@ The chart manages five separate Kubernetes Secrets:
 |--------|------|---------|
 | `<release>-app` | `api_encryption_key`, `better_auth_secret` | Server |
 | `<release>-appdb` | `username`, `password` | Server (app DB user) |
-| `<release>-postgres` | `username`, `password` | Server (DB owner) |
+| `<release>-postgresql-auth` | `postgres-password`, `user-password`, `replication-password` | Bundled PostgreSQL + Server (DB owner password) |
 | `<release>-oidc` | `client_id`, `client_secret` | Server (if OIDC enabled) |
 | `<release>-smtp` | `username`, `password` | Server (if email enabled) |
 
@@ -93,7 +143,13 @@ Each secret supports three provisioning modes:
 
 ### Existing Secrets
 
+For the bundled PostgreSQL dependency, `postgresql.auth.existingSecret` must provide the password keys expected by `helmforge/postgresql`. The owner username remains `postgresql.auth.username` in values.
+
 ```yaml
+postgresql:
+  auth:
+    existingSecret: "my-bundled-postgres-secret" # keys: postgres-password, user-password, replication-password
+
 server:
   secrets:
     existingSecret: "my-app-secret"       # keys: api_encryption_key, better_auth_secret
@@ -182,6 +238,12 @@ ingress:
         - sparkyfitness.example.com
 ```
 
+When enabled, the chart routes:
+
+- `/api` → `server`
+- `/uploads` → `server`
+- `/` → `frontend`
+
 ### Gateway API (HTTPRoute)
 
 ```yaml
@@ -193,6 +255,8 @@ httpRoute:
     namespace: gateway-system
     sectionName: https
 ```
+
+The generated `HTTPRoute` uses the same split routing as the Ingress template: `/api` and `/uploads` go to the server service, and `/` goes to the frontend service.
 
 ### Network Policies
 
@@ -250,7 +314,7 @@ Each component runs with a security context matching its upstream image:
 | Component | UID:GID | Non-Root | Capabilities |
 |-----------|---------|----------|-------------|
 | Server | 1000:1000 | Yes | None (all dropped) |
-| Frontend | root | No | `CHOWN`, `NET_BIND_SERVICE`, `SETGID`, `SETUID` |
+| Frontend | 101:101 | Yes | None (all dropped) |
 | Garmin | 1:1 | Yes | None (all dropped) |
 | PostgreSQL | 999:999 | Yes | None (all dropped) |
 

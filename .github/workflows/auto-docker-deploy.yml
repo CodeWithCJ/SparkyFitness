@@ -50,6 +50,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase repository name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -58,8 +62,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            codewithcj/sparkyfitness
-            ghcr.io/${{ github.repository }}-frontend
+            ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -80,8 +84,41 @@ jobs:
       - name: Generate artifact attestation Frontend
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-frontend
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-frontend
           subject-digest: ${{ steps.push-frontend.outputs.digest }}
+          push-to-registry: true
+
+      - name: Metadata frontend non-root
+        id: meta-frontend-nonroot
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_frontend_nonroot
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend-nonroot
+          tags: |
+            type=raw,value=${{ steps.get_latest_release.outputs.tag }}
+            type=raw,value=latest
+
+      - name: Build and push frontend non-root
+        id: push-frontend-nonroot
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.frontend.nonroot
+          build-args: |
+            FRONTEND_BASE_IMAGE=ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ steps.meta-frontend.outputs.version }}
+          push: true
+          tags: ${{ steps.meta-frontend-nonroot.outputs.tags }}
+          labels: ${{ steps.meta-frontend-nonroot.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate artifact attestation Frontend non-root
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-frontend-nonroot
+          subject-digest: ${{ steps.push-frontend-nonroot.outputs.digest }}
           push-to-registry: true
 
       - name: Metadata server
@@ -89,8 +126,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            codewithcj/sparkyfitness_server
-            ghcr.io/${{ github.repository }}-server
+            ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_server
+            ghcr.io/${{ steps.repo.outputs.name }}-server
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -111,7 +148,7 @@ jobs:
       - name: Generate artifact attestation server
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-server
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-server
           subject-digest: ${{ steps.push-server.outputs.digest }}
           push-to-registry: true
 
@@ -120,8 +157,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            codewithcj/sparkyfitness_garmin
-            ghcr.io/${{ github.repository }}-garmin
+            ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_garmin
+            ghcr.io/${{ steps.repo.outputs.name }}-garmin
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -142,6 +179,6 @@ jobs:
       - name: Generate artifact attestation Garmin Microservice
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-garmin
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
           push-to-registry: true
