@@ -8,7 +8,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFoodVariants, useServerConnection } from '../hooks';
+import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../hooks';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -20,8 +20,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
 
+const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string) =>
+  hasExternalVariants ? (variantId ?? 'ext-0') : variantId;
+
 const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
-  const { item } = route.params;
+  const { item, updatedItem } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
@@ -29,45 +32,115 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     '--color-text-primary',
   ]) as [string, string];
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { profile } = useProfile();
+  const [food, setFood] = useState(item);
 
-  const isLocalFood = item.source === 'local';
-  const hasExternalVariants = !!(item.externalVariants && item.externalVariants.length > 1);
+  const isLocalFood = food.source === 'local';
+  const hasExternalVariants = !!(food.externalVariants && food.externalVariants.length > 1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
-    hasExternalVariants ? (item.variantId ?? 'ext-0') : item.variantId,
+    buildSelectedVariantId(hasExternalVariants, item.variantId),
   );
-  const { variants, isLoading: isVariantsLoading, isError: isVariantsError } = useFoodVariants(item.id, {
+  const { variants, isLoading: isVariantsLoading, isError: isVariantsError } = useFoodVariants(food.id, {
     enabled: isLocalFood && isConnected,
   });
+  const canManageFood = !!(isLocalFood && isConnected && food.userId && profile?.id === food.userId);
 
   const localVariantOptions = useMemo(
     () => buildLocalVariantOptions(variants),
     [variants],
   );
   const externalVariantOptions = useMemo(
-    () => buildExternalVariantOptions(item.externalVariants),
-    [item.externalVariants],
+    () => buildExternalVariantOptions(food.externalVariants),
+    [food.externalVariants],
   );
   const variantOptions = localVariantOptions.length > 0
     ? localVariantOptions
     : externalVariantOptions;
   const displayValues = useMemo(
     () => resolveFoodDisplayValues({
-      item,
+      item: food,
       selectedVariantId,
       localVariantOptions,
       externalVariantOptions,
     }),
-    [item, selectedVariantId, localVariantOptions, externalVariantOptions],
+    [food, selectedVariantId, localVariantOptions, externalVariantOptions],
   );
 
   const selectedVariantLabel = variantOptions.find((option) => option.id === selectedVariantId)?.label
     ?? formatVariantLabel(displayValues);
+  const selectedCustomNutrients = useMemo(() => {
+    const selectedVariant = variants?.find((variant) => variant.id === selectedVariantId);
+    if (selectedVariant) {
+      return selectedVariant.custom_nutrients ?? null;
+    }
+
+    if (selectedVariantId === food.variantId) {
+      return food.customNutrients ?? null;
+    }
+
+    return undefined;
+  }, [food.customNutrients, food.variantId, selectedVariantId, variants]);
+
+  useEffect(() => {
+    setFood(item);
+  }, [item]);
+
+  useEffect(() => {
+    if (updatedItem) {
+      setFood(updatedItem);
+      navigation.setParams({ updatedItem: undefined });
+    }
+  }, [updatedItem, navigation]);
 
   useEffect(() => {
     if (!selectedVariantId && localVariantOptions.length > 0) {
       setSelectedVariantId(localVariantOptions[0].id);
     }
   }, [selectedVariantId, localVariantOptions]);
+
+  const { confirmAndDelete, isPending: isDeletePending, invalidateCaches } = useDeleteFood({
+    foodId: food.id,
+    onSuccess: () => {
+      invalidateCaches();
+      navigation.goBack();
+    },
+  });
+
+  const handleEdit = () => {
+    if (!selectedVariantId) {
+      return;
+    }
+
+    navigation.navigate('FoodForm', {
+      mode: 'edit-food',
+      item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
+      returnKey: route.key,
+      foodId: food.id,
+      variantId: selectedVariantId,
+      customNutrients: selectedCustomNutrients,
+      initialValues: {
+        name: food.name,
+        brand: food.brand ?? '',
+        servingSize: String(displayValues.servingSize),
+        servingUnit: displayValues.servingUnit,
+        calories: String(displayValues.calories),
+        protein: String(displayValues.protein),
+        carbs: String(displayValues.carbs),
+        fat: String(displayValues.fat),
+        fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
+        saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
+        sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
+        sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
+        transFat: displayValues.transFat != null ? String(displayValues.transFat) : '',
+        potassium: displayValues.potassium != null ? String(displayValues.potassium) : '',
+        calcium: displayValues.calcium != null ? String(displayValues.calcium) : '',
+        iron: displayValues.iron != null ? String(displayValues.iron) : '',
+        cholesterol: displayValues.cholesterol != null ? String(displayValues.cholesterol) : '',
+        vitaminA: displayValues.vitaminA != null ? String(displayValues.vitaminA) : '',
+        vitaminC: displayValues.vitaminC != null ? String(displayValues.vitaminC) : '',
+      },
+    });
+  };
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -94,8 +167,8 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         }}
       >
         <FoodNutritionSummary
-          name={item.name}
-          brand={item.brand}
+          name={food.name}
+          brand={food.brand}
           values={displayValues}
         />
 
@@ -147,11 +220,22 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         <Button
           variant="primary"
           onPress={() => navigation.navigate('FoodEntryAdd', {
-            item: applyDisplayValuesToFoodInfo(item, displayValues, selectedVariantId),
+            item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
           })}
         >
           <Text className="text-white text-base font-semibold">Log Food</Text>
         </Button>
+
+        {canManageFood && (
+          <Button
+            variant="ghost"
+            onPress={confirmAndDelete}
+            disabled={isDeletePending}
+            textClassName="text-bg-danger font-medium"
+          >
+            {isDeletePending ? 'Deleting...' : 'Delete Food'}
+          </Button>
+        )}
       </ScrollView>
     );
   };
@@ -165,6 +249,19 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
+        {canManageFood && (
+          <View className="ml-auto">
+            <Button
+              variant="ghost"
+              onPress={handleEdit}
+              disabled={!selectedVariantId}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              textClassName="font-medium"
+            >
+              Edit
+            </Button>
+          </View>
+        )}
       </View>
       {renderContent()}
     </View>

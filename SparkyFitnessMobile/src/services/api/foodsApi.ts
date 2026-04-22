@@ -158,6 +158,10 @@ export interface UpdateFoodPayload {
   brand?: string;
 }
 
+export interface DeleteFoodResponse {
+  message: string;
+}
+
 /**
  * Updates a food item's metadata (name, brand).
  */
@@ -168,5 +172,17 @@ export const updateFood = async (foodId: string, payload: UpdateFoodPayload): Pr
     operation: 'update food',
     method: 'PUT',
     body: payload,
+  });
+};
+
+/**
+ * Deletes a food item by ID.
+ */
+export const deleteFood = async (foodId: string): Promise<DeleteFoodResponse> => {
+  return apiFetch<DeleteFoodResponse>({
+    endpoint: `/api/foods/${foodId}`,
+    serviceName: 'Foods API',
+    operation: 'delete food',
+    method: 'DELETE',
   });
 };

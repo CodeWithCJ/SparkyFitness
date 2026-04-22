@@ -29,6 +29,9 @@ export interface FoodItem {
   name: string;
   brand: string | null;
   is_custom: boolean;
+  user_id?: string;
+  shared_with_public?: boolean;
+  is_quick_food?: boolean;
   default_variant: FoodDefaultVariant;
 }
 

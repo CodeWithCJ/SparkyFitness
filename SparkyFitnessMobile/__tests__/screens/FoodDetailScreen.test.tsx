@@ -2,10 +2,12 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodDetailScreen from '../../src/screens/FoodDetailScreen';
-import { useFoodVariants, useServerConnection } from '../../src/hooks';
+import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../../src/hooks';
 
 jest.mock('../../src/hooks', () => ({
+  useDeleteFood: jest.fn(),
   useFoodVariants: jest.fn(),
+  useProfile: jest.fn(),
   useServerConnection: jest.fn(),
 }));
 
@@ -48,7 +50,10 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
 });
 
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
+const mockUseDeleteFood = useDeleteFood as jest.MockedFunction<typeof useDeleteFood>;
+const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockConfirmAndDelete = jest.fn();
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -57,47 +62,68 @@ describe('FoodDetailScreen', () => {
   const navigation = {
     goBack: jest.fn(),
     navigate: jest.fn(),
+    setParams: jest.fn(),
   } as any;
 
-  const route = {
+  const baseItem = {
+    id: 'food-1',
+    name: 'Greek Yogurt',
+    brand: 'Sparky',
+    userId: 'user-1',
+    sharedWithPublic: false,
+    servingSize: 1,
+    servingUnit: 'cup',
+    calories: 100,
+    protein: 15,
+    carbs: 6,
+    fat: 0,
+    customNutrients: null,
+    variantId: 'variant-1',
+    source: 'local' as const,
+    originalItem: {
+      id: 'food-1',
+      name: 'Greek Yogurt',
+    },
+  };
+
+  const buildRoute = (itemOverrides: Record<string, unknown> = {}) => ({
     key: 'FoodDetail-key',
     name: 'FoodDetail' as const,
     params: {
       item: {
-        id: 'food-1',
-        name: 'Greek Yogurt',
-        brand: 'Sparky',
-        servingSize: 1,
-        servingUnit: 'cup',
-        calories: 100,
-        protein: 15,
-        carbs: 6,
-        fat: 0,
-        variantId: 'variant-1',
-        source: 'local' as const,
-        originalItem: {
-          id: 'food-1',
-          name: 'Greek Yogurt',
-        },
+        ...baseItem,
+        ...itemOverrides,
       },
     },
-  };
+  });
 
-  const renderScreen = () =>
+  const renderScreen = (itemOverrides: Record<string, unknown> = {}) =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <FoodDetailScreen navigation={navigation} route={route as any} />
+        <FoodDetailScreen navigation={navigation} route={buildRoute(itemOverrides) as any} />
       </SafeAreaProvider>,
     );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseProfile.mockReturnValue({
+      profile: { id: 'user-1' } as any,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
       isLoading: false,
       isError: false,
       error: null,
       refetch: jest.fn(),
+    });
+    mockUseDeleteFood.mockReturnValue({
+      confirmAndDelete: mockConfirmAndDelete,
+      invalidateCaches: jest.fn(),
+      isPending: false,
     });
     mockUseFoodVariants.mockReturnValue({
       variants: [
@@ -153,5 +179,46 @@ describe('FoodDetailScreen', () => {
         }),
       }),
     );
+  });
+
+  it('opens the edit form for owned foods using the selected variant values', async () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+    fireEvent.press(screen.getByText('Edit'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodForm',
+      expect.objectContaining({
+        mode: 'edit-food',
+        foodId: 'food-1',
+        variantId: 'variant-2',
+        initialValues: expect.objectContaining({
+          name: 'Greek Yogurt',
+          brand: 'Sparky',
+          servingSize: '2',
+          servingUnit: 'cup',
+          calories: '200',
+        }),
+      }),
+    );
+  });
+
+  it('hides edit and delete actions for public foods owned by another user', () => {
+    const screen = renderScreen({
+      userId: 'user-2',
+      sharedWithPublic: true,
+    });
+
+    expect(screen.queryByText('Edit')).toBeNull();
+    expect(screen.queryByText('Delete Food')).toBeNull();
+  });
+
+  it('shows delete for owned foods and triggers the delete hook', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Delete Food'));
+
+    expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
 });
