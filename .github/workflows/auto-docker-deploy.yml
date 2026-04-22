@@ -50,6 +50,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase repository name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,7 +63,7 @@ jobs:
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness
-            ghcr.io/${{ github.repository }}-frontend
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -80,7 +84,7 @@ jobs:
       - name: Generate artifact attestation Frontend
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-frontend
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-frontend
           subject-digest: ${{ steps.push-frontend.outputs.digest }}
           push-to-registry: true
 
@@ -90,7 +94,7 @@ jobs:
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_frontend_nonroot
-            ghcr.io/${{ github.repository }}-frontend-nonroot
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend-nonroot
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -102,7 +106,7 @@ jobs:
           context: .
           file: docker/Dockerfile.frontend.nonroot
           build-args: |
-            FRONTEND_BASE_IMAGE=ghcr.io/${{ github.repository }}-frontend:${{ steps.meta-frontend.outputs.version }}
+            FRONTEND_BASE_IMAGE=ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ steps.meta-frontend.outputs.version }}
           push: true
           tags: ${{ steps.meta-frontend-nonroot.outputs.tags }}
           labels: ${{ steps.meta-frontend-nonroot.outputs.labels }}
@@ -113,7 +117,7 @@ jobs:
       - name: Generate artifact attestation Frontend non-root
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-frontend-nonroot
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-frontend-nonroot
           subject-digest: ${{ steps.push-frontend-nonroot.outputs.digest }}
           push-to-registry: true
 
@@ -123,7 +127,7 @@ jobs:
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_server
-            ghcr.io/${{ github.repository }}-server
+            ghcr.io/${{ steps.repo.outputs.name }}-server
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -144,7 +148,7 @@ jobs:
       - name: Generate artifact attestation server
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-server
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-server
           subject-digest: ${{ steps.push-server.outputs.digest }}
           push-to-registry: true
 
@@ -154,7 +158,7 @@ jobs:
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_garmin
-            ghcr.io/${{ github.repository }}-garmin
+            ghcr.io/${{ steps.repo.outputs.name }}-garmin
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
             type=raw,value=latest
@@ -175,6 +179,6 @@ jobs:
       - name: Generate artifact attestation Garmin Microservice
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/${{ github.repository }}-garmin
+          subject-name: ghcr.io/${{ steps.repo.outputs.name }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
           push-to-registry: true
