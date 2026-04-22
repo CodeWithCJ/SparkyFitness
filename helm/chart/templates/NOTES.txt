@@ -57,3 +57,25 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
     -- Grant extension functions to the DB owner so the app can delegate them
     GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "<owner>" WITH GRANT OPTION;
 {{- end }}
+
+================================================================================
+  PORT FORWARDING (Local Development / Testing)
+================================================================================
+To access the application locally via port-forwarding, run the following commands
+in separate terminal windows:
+
+  1. Port-forward the Frontend to localhost:3004:
+     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-frontend 3004:80
+
+  2. Port-forward the Server to localhost:3010:
+     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-server 3010:3010
+
+Then open your browser to: http://localhost:3004
+
+================================================================================
+  TESTING
+================================================================================
+To run the included Helm tests to verify connectivity:
+
+  helm test {{ .Release.Name }}
+

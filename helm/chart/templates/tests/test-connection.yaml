@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "sparkyfitness.fullname" . }}-test-connection"
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "sparkyfitness.fullname" . }}-frontend:80']
+  restartPolicy: Never
