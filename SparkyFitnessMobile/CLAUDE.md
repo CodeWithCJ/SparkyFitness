@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-22*
 
 SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
@@ -25,13 +25,13 @@ tsc --noEmit                                   # Type check only
 
 - `App.tsx` — Root providers: `QueryClientProvider` → `GestureHandlerRootView` → `KeyboardProvider` → `BottomSheetModalProvider` → `NavigationContainer` → `SafeAreaProvider` → `Toast`. Every screen is wrapped with `withErrorBoundary(...)` (from `ScreenErrorBoundary`) so a crashing screen falls back to a graceful in-place error UI.
 - **Root Stack** (`@react-navigation/stack`): `Onboarding` (when no server config) or `Tabs`, plus food/exercise/workout flows, settings subscreens, `Logs`, and `Sync`.
-- **Tab Navigator**: Dashboard, Diary, Add (opens `AddSheet` bottom sheet), Workouts, Settings. `CustomTabBar` has a floating "Add" button; `TAB_BAR_HEIGHT = 56`.
+- **Tab Navigator**: Dashboard, Diary, Add (opens `AddSheet` bottom sheet), Library, Settings. `CustomTabBar` has a floating "Add" button; `TAB_BAR_HEIGHT = 56`.
 - Tab icons: SF Symbols on iOS, Ionicons on Android (via `Icon`).
 
 ### Source Structure (`src/`)
 
 - **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI, auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding, dashboard, diary, settings, sync, logs, workouts/activities (add + detail), exercise/preset search, food search/scan/form/entry. `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **screens/** — Top-level screens for onboarding, dashboard, diary, settings, sync, logs, library (`LibraryScreen` tab + `FoodsLibraryScreen` paginated list + `FoodDetailScreen`), workouts/activities (add + detail), exercise/preset search, food search/scan/form/entry. `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
   - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
@@ -141,6 +141,14 @@ When changing widget display: update both the Swift view and the TS snapshot sha
 
 App Icons live under `targets/widget/assets/AppIcon.appiconset/` (colocated because the config plugin owns the iOS asset catalog). Edit there, not the generated `ios/` files.
 
+### Food Library
+
+The **Library** tab (`LibraryScreen`) is the entry point for browsing saved foods. It shows "Create food" tiles + a 3-item preview of recent foods, with "View all" pushing `FoodsLibraryScreen` (paginated, infinite-scroll search over `/api/foods/foods-paginated`). Rows push `FoodDetailScreen`, which renders nutrition via `FoodNutritionSummary`, exposes a serving-variant picker (`useFoodVariants`), and offers Log / Edit / Delete. Edit jumps to `FoodFormScreen` in `edit-food` mode (a third mode alongside `create-food` and `adjust-entry-nutrition`); Delete uses `useDeleteFood`. Edit/Delete are gated on `profile.id === food.userId` (owner-only). Nutrition value transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, and `FoodFormScreen`.
+
+`useFoodsLibrary` (infinite query) uses `queryClient.resetQueries` instead of `query.refetch()` on focus/pull-to-refresh — `refetch()` re-downloads every cached page, so a user deep in the list pays for pages 1..N on every focus. Same pattern as `useExerciseHistory`. `loadMore` gates on `isFetching` (not just `isFetchingNextPage`) so pagination cannot overlap with a reset and leave gaps.
+
+`FoodFormScreen` locally re-wraps its content in `BottomSheetModalProvider` so bottom sheets inside the form render above the native modal presentation (the root-level provider in `App.tsx` sits below the modal stack).
+
 ### Workout & Exercise Architecture
 
 Two session types via discriminated union (`ExerciseSessionResponse`):
@@ -174,7 +182,10 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `GET /api/foods` | Recent and top foods | `foodsApi` |
 | `GET /api/foods/foods-paginated` | Search local foods | `foodsApi` |
 | `GET /api/foods/food-variants` | Food variants by food ID | `foodsApi` |
+| `PUT /api/foods/food-variants/{id}` | Update a food variant's nutrition | `foodsApi` |
 | `POST /api/foods` | Save custom food | `foodsApi` |
+| `PUT /api/foods/{id}` | Update food metadata (name, brand) | `foodsApi` |
+| `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
 | `GET /api/foods/openfoodfacts/search` | Search Open Food Facts | `externalFoodSearchApi` |

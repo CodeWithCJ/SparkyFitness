@@ -1,8 +1,8 @@
 # AGENTS.md
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-22*
 
-SparkyFitness Mobile is a React Native 0.81.5 + Expo SDK 54 app for syncing HealthKit / Health Connect data to the SparkyFitness backend, tracking daily nutrition and exercise, managing workouts, and powering iOS widgets plus the in-app active workout HUD.
+SparkyFitness Mobile is a React Native 0.81.5 + Expo SDK 54 app for syncing HealthKit / Health Connect data to the SparkyFitness backend, tracking daily nutrition and exercise, managing a saved food library plus workouts, and powering iOS widgets plus the in-app active workout HUD.
 
 This file is the package guide for `SparkyFitnessMobile/`. Use it for work in this directory. This app lives in a monorepo, so if a task crosses into the backend, frontend, or `shared/`, read the matching guide there before editing outside this package.
 
@@ -69,6 +69,8 @@ npx expo prebuild -c
 - Root navigation is a single native stack containing:
   - `Onboarding`
   - `Tabs`
+  - `FoodsLibrary`
+  - `FoodDetail`
   - `FoodSearch`
   - `FoodEntryAdd`
   - `FoodForm`
@@ -84,9 +86,12 @@ npx expo prebuild -c
   - `Sync`
   - `CalorieSettings`
   - `FoodSettings`
-- Tabs are `Dashboard`, `Diary`, `Add`, `Workouts`, and `Settings`.
+- Tabs are `Dashboard`, `Diary`, `Add`, `Library`, and `Settings`.
 - `CustomTabBar` in `src/components/CustomTabBar.tsx` owns the tab UI. `Add` is a center action button, not a real content screen.
 - Tapping `Add` opens `src/components/AddSheet.tsx`, which offers Food, Sync Health Data, Barcode Scan, and an Exercise submenu for Workout, Activity, and Preset flows.
+- `Library` is the saved-food tab. `src/screens/LibraryScreen.tsx` shows the create-food entrypoint plus a recent-food preview, while `src/screens/FoodsLibraryScreen.tsx` is the searchable paginated full list.
+- `src/screens/FoodDetailScreen.tsx` handles serving-variant selection plus owner-only edit/delete for local foods. `src/screens/FoodFormScreen.tsx` now supports both `create-food` and `edit-food` flows, and edited items are passed back through the `updatedItem` route param.
+- Workout creation still starts from the Add sheet and stack routes. There is no dedicated workouts tab in the current navigation tree.
 - The tab bar embeds `ActiveWorkoutBar` above itself. Stack screens use the floating variant instead.
 - `DiaryScreen` uses fling gestures for date navigation. Be careful with gesture changes because they can affect nested scrolling and sheet interactions.
 - Current deep links use the `sparkyfitnessmobile://` prefix and route `scan` -> `FoodScan` and `search` -> `FoodSearch`.
@@ -94,12 +99,12 @@ npx expo prebuild -c
 
 ### Source Structure (`src/`)
 
-- `components/` - reusable UI including the custom tab bar, add sheet, workout HUD, auth/config modals, charts, settings controls, and food/workout UI
+- `components/` - reusable UI including the custom tab bar, add sheet, workout HUD, auth/config modals, charts, settings controls, and food-library / workout UI such as `CreateTile`, `FoodLibraryRow`, and `FoodNutritionSummary`
 - `components/auth/` - MFA-related auth UI used by onboarding, setup, and reauth flows
 - `components/ui/` - shared primitives such as `Button` and the toast configuration
-- `screens/` - top-level screens including onboarding, dashboard, diary, workouts, sync, settings, logs, food entry, and exercise flows
-- `hooks/` - TanStack Query hooks, auth and connection hooks, widget sync, workout/activity form hooks, draft persistence, and query client setup
-- `services/api/` - backend-facing API clients for auth, food, workouts, daily summary, measurements, preferences, and related lookups
+- `screens/` - top-level screens including onboarding, dashboard, diary, the library tab, full food library/detail flows, sync, settings, logs, food entry, and exercise flows
+- `hooks/` - TanStack Query hooks, auth and connection hooks, widget sync, food library/search/delete hooks, workout/activity form hooks, draft persistence, and query client setup
+- `services/api/` - backend-facing API clients for auth, paginated food library and variant management, workouts, daily summary, measurements, preferences, and related lookups
 - `services/healthconnect/` - Android Health Connect reading, aggregation, transformation, and preference logic
 - `services/healthkit/` - iOS HealthKit reading, aggregation, transformation, background delivery, and preference logic
 - `services/shared/` - platform-shared helpers used by both health stacks
@@ -133,6 +138,7 @@ These are not thin wrappers. Both contain substantial sync logic. For sync chang
 - Query setup lives in `src/hooks/queryClient.ts`.
 - Query keys live in `src/hooks/queryKeys.ts`.
 - The default query client uses `staleTime: Infinity`. The app relies on explicit invalidation and refetches, not background polling.
+- The food library is an intentional exception: `useFoodsLibrary(...)` uses an infinite query keyed by `foodsLibraryQueryKey(searchTerm)` with a shorter stale window and `resetQueries(...)`-based refreshes so pull-to-refresh and focus refetch only page 1 instead of replaying every cached page.
 - Settings changes that swap the active server clear query state before refetching. Preserve that behavior when adjusting auth or multi-server flows.
 - Error-boundary retry flows call `queryClient.resetQueries()`. Keep that in mind when changing screen-level recovery behavior.
 
@@ -217,6 +223,13 @@ const androidService = require('../../src/services/healthConnectService.ts');
   - `__tests__/services/healthConnectService.test.ts`
   - `__tests__/services/healthConnectService.ios.test.ts`
   - the relevant platform tests under `__tests__/services/healthconnect/` or `__tests__/services/healthkit/`
+- If you change the library tab, saved-food browsing, food detail/edit flows, or food pagination utilities, rerun the related tests:
+  - `__tests__/screens/LibraryScreen.test.tsx`
+  - `__tests__/screens/FoodDetailScreen.test.tsx`
+  - `__tests__/hooks/useFoodsLibrary.test.ts`
+  - `__tests__/hooks/useDeleteFood.test.ts`
+  - `__tests__/services/foodsApi.test.ts`
+  - `__tests__/utils/foodDetails.test.ts`
 - If you change widgets, active workout state, or tab/add-sheet behavior, rerun the related tests:
   - `__tests__/hooks/useWidgetSync.test.ts`
   - `__tests__/stores/activeWorkoutStore.test.ts`
@@ -229,6 +242,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 
 - After file moves or import refactors, run the full Jest suite immediately and verify asset and `require(...)` paths before reporting completion.
 - If you change routes, modal entry points, or the add sheet, verify `src/types/navigation.ts`, `App.tsx`, deep-link config, and any route-param consumers stay aligned.
+- If you change the saved-food flow, keep `LibraryScreen`, `FoodsLibraryScreen`, `FoodDetailScreen`, `FoodFormScreen`, `src/types/navigation.ts`, and the `updatedItem` / `returnKey` handoff aligned so edits return to the correct screen with refreshed values.
 - If you change the custom tab bar, active workout HUD, or bottom sheet flows, sanity-check safe-area spacing and `useActiveWorkoutBarPadding(...)` behavior on both iOS and Android paths.
 - If you change widget plumbing, verify `DashboardScreen`, `useWidgetSync.ts`, the app group config, and `targets/widget/` stay in sync.
 - If you change permissions, target config, plugins, app group config, or native dependencies, rerun `npx expo prebuild -c`.
@@ -239,8 +253,10 @@ const androidService = require('../../src/services/healthConnectService.ts');
   inspect `src/services/healthConnectService.ts` or `src/services/healthConnectService.ios.ts`, then `src/services/backgroundSyncService.ts`, `src/services/autoSyncCoordinator.ts`, `src/screens/SyncScreen.tsx`, and the matching platform folder under `src/services/healthconnect/` or `src/services/healthkit/`
 - Onboarding, auth, or server-config bug:
   inspect `src/screens/OnboardingScreen.tsx`, `src/components/ServerConfigModal.tsx`, `src/components/ReauthModal.tsx`, `src/hooks/useAuth.ts`, `src/services/api/authService.ts`, `src/services/api/apiClient.ts`, `src/services/api/healthDataApi.ts`, and `src/services/storage.ts`
+- Food library, custom food, or saved-food detail bug:
+  inspect `src/screens/LibraryScreen.tsx`, `src/screens/FoodsLibraryScreen.tsx`, `src/screens/FoodDetailScreen.tsx`, `src/screens/FoodFormScreen.tsx`, `src/components/FoodLibraryRow.tsx`, `src/hooks/useFoodsLibrary.ts`, `src/hooks/useDeleteFood.ts`, `src/services/api/foodsApi.ts`, `src/types/foodInfo.ts`, and `src/utils/foodDetails.ts`
 - Workout or activity flow bug:
-  inspect `src/components/AddSheet.tsx`, `src/screens/WorkoutsScreen.tsx`, `src/screens/WorkoutAddScreen.tsx`, `src/screens/ActivityAddScreen.tsx`, `src/screens/WorkoutDetailScreen.tsx`, `src/screens/ActivityDetailScreen.tsx`, `src/services/workoutDraftService.ts`, `src/stores/activeWorkoutStore.ts`, and the relevant form hooks in `src/hooks/`
+  inspect `src/components/AddSheet.tsx`, `src/screens/WorkoutAddScreen.tsx`, `src/screens/ActivityAddScreen.tsx`, `src/screens/WorkoutDetailScreen.tsx`, `src/screens/ActivityDetailScreen.tsx`, `src/services/workoutDraftService.ts`, `src/stores/activeWorkoutStore.ts`, and the relevant form hooks in `src/hooks/`
 - Active workout HUD or rest timer bug:
   inspect `src/components/ActiveWorkoutBar.tsx`, `src/stores/activeWorkoutStore.ts`, `src/services/notifications.ts`, and any screen using `useActiveWorkoutBarPadding(...)`
 - Widget or deep-link bug:
