@@ -340,40 +340,6 @@ garmin:
 # Set enabled=false and configure externalDatabase to use an existing instance.
 postgresql:
   enabled: true
-  image:
-    repository: postgres
-    tag: "18.3-trixie"
-    pullPolicy: IfNotPresent
-  livenessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    failureThreshold: 5
-  readinessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop: [ALL]
   config:
     postgresql: |
       log_statement = none
@@ -436,22 +402,6 @@ postgresql:
       memory: 512Mi
   backup:
     enabled: false
-    schedule: "0 3 * * *"
-    suspend: false
-    concurrencyPolicy: Forbid
-    successfulJobsHistoryLimit: 3
-    failedJobsHistoryLimit: 3
-    backoffLimit: 1
-    archivePrefix: sparkyfitness
-    s3:
-      endpoint: ""
-      bucket: ""
-      prefix: postgresql
-      createBucketIfNotExists: true
-      # -- Use an existing K8s Secret (keys: access-key, secret-key)
-      existingSecret: ""
-      accessKey: ""
-      secretKey: ""
 
 # -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
 # Leave disabled to use the bundled chart's built-in S3 backup mode instead.
