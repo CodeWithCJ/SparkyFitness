@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const fsp = { promises }.promises; // Import fs.promises as fsp
 const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
-  : path.join(__dirname, 'uploads');
+  : path.join(__dirname, '../uploads');
 
 const UPLOADS_DIR = path.join(baseUploadsDir, 'exercises');
 /**
