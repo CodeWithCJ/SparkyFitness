@@ -344,9 +344,6 @@ postgresql:
     repository: postgres
     tag: "18.3-trixie"
     pullPolicy: IfNotPresent
-  extraEnv:
-    - name: PGDATA
-      value: /var/lib/postgresql/data/pgdata
   livenessProbe:
     exec:
       command:
@@ -439,22 +436,6 @@ postgresql:
       memory: 512Mi
   backup:
     enabled: false
-    schedule: "0 3 * * *"
-    suspend: false
-    concurrencyPolicy: Forbid
-    successfulJobsHistoryLimit: 3
-    failedJobsHistoryLimit: 3
-    backoffLimit: 1
-    archivePrefix: sparkyfitness
-    s3:
-      endpoint: ""
-      bucket: ""
-      prefix: postgresql
-      createBucketIfNotExists: true
-      # -- Use an existing K8s Secret (keys: access-key, secret-key)
-      existingSecret: ""
-      accessKey: ""
-      secretKey: ""
 
 # -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
 # Leave disabled to use the bundled chart's built-in S3 backup mode instead.

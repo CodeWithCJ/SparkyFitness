@@ -29,7 +29,7 @@ spec:
             - name: pg-dumpall
               image: {{ include "sparkyfitness.image" (dict "image" .Values.databaseBackup.image "global" .Values.global "appVersion" .Chart.AppVersion) | quote }}
               imagePullPolicy: {{ .Values.databaseBackup.image.pullPolicy }}
-              command: ["/bin/sh", "/scripts/database-backup.sh"]
+              command: ["/bin/bash", "/scripts/database-backup.sh"]
               securityContext:
                 {{- toYaml .Values.databaseBackup.containerSecurityContext | nindent 16 }}
               env:
@@ -51,7 +51,7 @@ spec:
                   value: {{ include "sparkyfitness.databasePort" . | toString | quote }}
                 - name: DB_USER
                   {{- if .Values.postgresql.enabled }}
-                  value: {{ .Values.postgresql.auth.username | quote }}
+                  value: "postgres"
                   {{- else }}
                   valueFrom:
                     secretKeyRef:
@@ -63,7 +63,7 @@ spec:
                     secretKeyRef:
                       name: {{ include "sparkyfitness.databaseSecretName" . }}
                       {{- if .Values.postgresql.enabled }}
-                      key: user-password
+                      key: postgres-password
                       {{- else }}
                       key: password
                       {{- end }}
