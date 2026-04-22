@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { XCircle } from 'lucide-react';
 import type { useAddCustomExerciseForm } from '@/hooks/Exercises/useAddCustomExerciseForm';
+import { EXERCISE_CATEGORIES } from '@/constants/exercises';
 
 interface AddCustomExerciseFormProps {
   form: ReturnType<typeof useAddCustomExerciseForm>;
@@ -90,18 +91,11 @@ export default function AddCustomExerciseForm({
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="general">
-              {t('exercise.addExerciseDialog.categoryGeneral', 'General')}
-            </SelectItem>
-            <SelectItem value="strength">
-              {t('exercise.addExerciseDialog.categoryStrength', 'Strength')}
-            </SelectItem>
-            <SelectItem value="cardio">
-              {t('exercise.addExerciseDialog.categoryCardio', 'Cardio')}
-            </SelectItem>
-            <SelectItem value="yoga">
-              {t('exercise.addExerciseDialog.categoryYoga', 'Yoga')}
-            </SelectItem>
+            {EXERCISE_CATEGORIES.map(({ value, labelKey, defaultLabel }) => (
+              <SelectItem key={value} value={value}>
+                {t(labelKey, defaultLabel)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
