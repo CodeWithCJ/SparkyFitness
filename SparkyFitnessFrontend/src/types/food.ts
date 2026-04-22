@@ -1,3 +1,5 @@
+import { FormFoodVariant } from '@/utils/foodForm';
+
 export type GlycemicIndex =
   | 'None'
   | 'Very Low'
@@ -182,3 +184,12 @@ export type NumericFoodVariantKeys = Exclude<
   | 'glycemic_index'
   | 'custom_nutrients'
 >;
+export interface EquivalentUnit {
+  id?: string;
+  serving_size: number;
+  serving_unit: string;
+}
+
+export type FormFoodVariantWithEquivalents = FormFoodVariant & {
+  equivalents?: EquivalentUnit[];
+};
