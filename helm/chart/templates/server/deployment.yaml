@@ -32,7 +32,15 @@ spec:
       initContainers:
         {{- if .Values.postgresql.enabled }}
         - name: wait-for-db
-          image: {{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+          {{- /*
+          Image is constructed as repository:tag to exactly match how the
+          HelmForge postgresql subchart references its own image. HelmForge
+          exposes no image helper and does not honour global.imageRegistry,
+          so using sparkyfitness.image here would be inconsistent and could
+          double-apply a registry prefix. Set postgresql.image.repository to
+          the full registry path if mirroring to a private registry.
+          */}}
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
           command:
             - sh
             - -c
