@@ -410,7 +410,18 @@ postgresql:
     enabled: false
 
 # -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
+# Requires postgresql.enabled=true (the bundled HelmForge subchart). PVC backups
+# are not supported with an external database (externalDatabase.*).
 # Leave disabled to use the bundled chart's built-in S3 backup mode instead.
+#
+# Image: by default the backup job uses the same postgres image as the bundled
+# subchart (postgresql.image.*) so no separate pull is needed and versions always
+# stay in sync. To override, set image.repository to a non-empty value;
+# global.imageRegistry will then be prepended via the sparkyfitness.image helper.
+#
+# Security context: defaults below run as the standard postgres UID 999. Override
+# podSecurityContext or containerSecurityContext here to match your cluster's
+# requirements. readOnlyRootFilesystem is true by default; do not disable it.
 databaseBackup:
   enabled: false
   schedule: "0 4 * * *"
@@ -420,9 +431,12 @@ databaseBackup:
   failedJobsHistoryLimit: 3
   backoffLimit: 1
   archivePrefix: sparkyfitness
+  # -- Override the backup container image. Leave repository empty (default) to
+  # automatically use postgresql.image (same version, no extra pull needed).
+  # When set, global.imageRegistry is prepended via sparkyfitness.image helper.
   image:
-    repository: postgres
-    tag: "18.3-trixie"
+    repository: ""
+    tag: ""
     pullPolicy: IfNotPresent
   podSecurityContext:
     runAsNonRoot: true
@@ -435,8 +449,9 @@ databaseBackup:
   containerSecurityContext:
     runAsUser: 999
     runAsGroup: 999
+    runAsNonRoot: true
     allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
+    readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
   persistence:

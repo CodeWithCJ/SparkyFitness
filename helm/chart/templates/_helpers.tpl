@@ -126,6 +126,9 @@ app.kubernetes.io/component: database-backup
 
 {{- define "sparkyfitness.databaseBackupEnabled" -}}
 {{- if .Values.databaseBackup.enabled -}}
+  {{- if not .Values.postgresql.enabled -}}
+    {{- fail "databaseBackup requires the bundled postgresql subchart (postgresql.enabled=true). PVC backups are not supported with an external database." -}}
+  {{- end -}}
   {{- if and .Values.postgresql.enabled .Values.postgresql.backup.enabled -}}
     {{- fail "databaseBackup.enabled and postgresql.backup.enabled cannot both be true; choose either built-in S3 backups or PVC backups" -}}
   {{- end -}}
