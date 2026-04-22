@@ -1,6 +1,0 @@
-config:
-  preset: medium
-
-standalone:
-  persistence:
-    enabled: false
