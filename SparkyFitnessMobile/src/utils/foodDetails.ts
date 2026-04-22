@@ -49,12 +49,20 @@ export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
   };
 }
 
+export function formatVariantLabel(values: Pick<FoodDisplayValues, 'servingSize' | 'servingUnit' | 'calories'>): string {
+  return `${values.servingSize} ${values.servingUnit} (${values.calories} cal)`;
+}
+
 export function buildLocalVariantOptions(
   variants?: FoodVariantDetail[],
 ): FoodVariantOptionData[] {
   return (variants ?? []).map((variant) => ({
     id: variant.id,
-    label: `${variant.serving_size} ${variant.serving_unit} (${variant.calories} cal)`,
+    label: formatVariantLabel({
+      servingSize: variant.serving_size,
+      servingUnit: variant.serving_unit,
+      calories: variant.calories,
+    }),
     servingSize: variant.serving_size,
     servingUnit: variant.serving_unit,
     calories: variant.calories,

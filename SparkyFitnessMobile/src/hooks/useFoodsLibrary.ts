@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchFoodsPage } from '../services/api/foodsApi';
 import { foodsLibraryQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
+import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 interface UseFoodsLibraryOptions {
   enabled?: boolean;
@@ -13,10 +14,12 @@ export function useFoodsLibrary(
   options?: UseFoodsLibraryOptions,
 ) {
   const { enabled = true } = options ?? {};
+  const queryClient = useQueryClient();
   const debouncedSearch = useDebounce(searchText.trim(), 300);
+  const queryKey = foodsLibraryQueryKey(debouncedSearch);
 
   const query = useInfiniteQuery({
-    queryKey: foodsLibraryQueryKey(debouncedSearch),
+    queryKey,
     queryFn: ({ pageParam }) =>
       fetchFoodsPage({
         searchTerm: debouncedSearch,
@@ -36,6 +39,32 @@ export function useFoodsLibrary(
     [query.data?.pages],
   );
 
+  // Reset rather than refetch: query.refetch() on an infinite query re-fetches
+  // every cached page, so a user deep in the list would re-download pages 1..N
+  // on every focus/pull-to-refresh. resetQueries drops the cache and re-fetches
+  // page 1 only — same pattern as useExerciseHistory.
+  const refetch = useCallback(async () => {
+    try {
+      await queryClient.resetQueries({ queryKey, exact: true });
+    } catch {
+      // Errors surface through the query's own isError state; swallowing here
+      // prevents unhandled rejections from pull-to-refresh and focus callers.
+    }
+  }, [queryClient, queryKey]);
+
+  const loadMore = useCallback(() => {
+    // Gate on isFetching (not just isFetchingNextPage) so pagination cannot
+    // overlap with a focus/pull-to-refresh reset — infinite queries share one
+    // cache entry, and overlapping fetches can cancel each other and leave
+    // gaps or duplicates in the list.
+    if (query.hasNextPage && !query.isFetching) {
+      void query.fetchNextPage();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
+  }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
+
+  useRefetchOnFocus(refetch, enabled);
+
   return {
     foods,
     isLoading: query.isLoading,
@@ -44,11 +73,7 @@ export function useFoodsLibrary(
     isFetchNextPageError: query.isError && foods.length > 0,
     hasNextPage: query.hasNextPage ?? false,
     isFetchingNextPage: query.isFetchingNextPage,
-    loadMore: () => {
-      if (query.hasNextPage && !query.isFetching) {
-        void query.fetchNextPage();
-      }
-    },
-    refetch: query.refetch,
+    loadMore,
+    refetch,
   };
 }

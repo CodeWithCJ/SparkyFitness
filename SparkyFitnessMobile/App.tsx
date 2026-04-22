@@ -40,7 +40,6 @@ import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
-import WorkoutHistoryScreen from './src/screens/WorkoutHistoryScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -99,7 +98,6 @@ const SafeLibrary = withErrorBoundary(LibraryScreen, 'Library');
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
-const SafeWorkoutHistory = withErrorBoundary(WorkoutHistoryScreen, 'WorkoutHistory', { canGoBack: true });
 const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
 const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
@@ -615,14 +613,6 @@ function AppContent() {
               </Tab.Navigator>
             )}
           </Stack.Screen>
-          <Stack.Screen
-            name="WorkoutHistory"
-            component={SafeWorkoutHistory}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
-          />
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}

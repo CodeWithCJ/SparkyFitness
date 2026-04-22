@@ -18,7 +18,6 @@ export type TabParamList = {
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
-  WorkoutHistory: undefined;
   FoodsLibrary: undefined;
   FoodDetail: { item: FoodInfoItem };
   FoodSearch: { date?: string } | undefined;

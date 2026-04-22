@@ -355,6 +355,8 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
 const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
   return (
+    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
+    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
     <BottomSheetModalProvider>
       {route.params.mode === 'adjust-entry-nutrition' ? (
         <AdjustNutritionMode params={route.params} navigation={navigation} />

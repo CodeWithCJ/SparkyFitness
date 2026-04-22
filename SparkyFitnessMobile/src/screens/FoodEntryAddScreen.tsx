@@ -293,6 +293,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
   return (
+    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
+    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
     <BottomSheetModalProvider>
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}

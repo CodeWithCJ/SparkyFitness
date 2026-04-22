@@ -6,11 +6,13 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
+import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFoodVariants, useServerConnection } from '../hooks';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
+  formatVariantLabel,
   resolveFoodDisplayValues,
   applyDisplayValuesToFoodInfo,
 } from '../utils/foodDetails';
@@ -26,7 +28,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
-  const { isConnected } = useServerConnection();
+  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
 
   const isLocalFood = item.source === 'local';
   const hasExternalVariants = !!(item.externalVariants && item.externalVariants.length > 1);
@@ -59,7 +61,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   );
 
   const selectedVariantLabel = variantOptions.find((option) => option.id === selectedVariantId)?.label
-    ?? `${displayValues.servingSize} ${displayValues.servingUnit} (${displayValues.calories} cal)`;
+    ?? formatVariantLabel(displayValues);
 
   useEffect(() => {
     if (!selectedVariantId && localVariantOptions.length > 0) {
@@ -67,17 +69,21 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     }
   }, [selectedVariantId, localVariantOptions]);
 
-  return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="chevron-back" size={22} color={accentColor} />
-        </TouchableOpacity>
-      </View>
+  const renderContent = () => {
+    if (!isConnectionLoading && !isConnected) {
+      return (
+        <StatusView
+          icon="cloud-offline"
+          iconColor="#9CA3AF"
+          iconSize={64}
+          title="No server configured"
+          subtitle="Configure your server connection in Settings to view food details."
+          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+        />
+      );
+    }
 
+    return (
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -147,6 +153,20 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           <Text className="text-white text-base font-semibold">Log Food</Text>
         </Button>
       </ScrollView>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon name="chevron-back" size={22} color={accentColor} />
+        </TouchableOpacity>
+      </View>
+      {renderContent()}
     </View>
   );
 };

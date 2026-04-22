@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -29,6 +30,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
@@ -46,6 +48,12 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const handleFoodPress = useCallback((food: FoodItem) => {
     navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
   }, [navigation]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const renderHeader = () => (
     <View className="flex-row items-center px-4 pt-4 pb-5">
@@ -107,17 +115,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       );
     }
 
-    if (!hasNextPage) {
-      return <View className="h-4" />;
-    }
-
-    return (
-      <Button variant="ghost" onPress={loadMore} className="mx-4 mt-2 mb-4">
-        <Text className="text-base font-semibold" style={{ color: accentColor }}>
-          Load More
-        </Text>
-      </Button>
-    );
+    return <View className="h-4" />;
   };
 
   const renderEmpty = () => (
@@ -178,6 +176,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         keyboardShouldPersistTaps="handled"
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
+            loadMore();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+        }
         contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
       />
     );
