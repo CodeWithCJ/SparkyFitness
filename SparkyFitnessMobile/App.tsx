@@ -29,6 +29,8 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
+import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
+import FoodDetailScreen from './src/screens/FoodDetailScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
@@ -98,6 +100,8 @@ const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
 const SafeWorkoutHistory = withErrorBoundary(WorkoutHistoryScreen, 'WorkoutHistory', { canGoBack: true });
+const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
+const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
@@ -614,6 +618,22 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutHistory"
             component={SafeWorkoutHistory}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="FoodsLibrary"
+            component={SafeFoodsLibrary}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="FoodDetail"
+            component={SafeFoodDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,

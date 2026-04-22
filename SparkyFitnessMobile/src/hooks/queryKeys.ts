@@ -14,6 +14,8 @@ export const foodsQueryKey = ['foods'] as const;
 
 export const foodSearchQueryKey = (searchTerm: string) => ['foodSearch', searchTerm] as const;
 
+export const foodsLibraryQueryKey = (searchTerm: string) => ['foodsLibrary', searchTerm] as const;
+
 export const mealsQueryKey = ['meals'] as const;
 
 export const mealSearchQueryKey = (searchTerm: string) => ['mealSearch', searchTerm] as const;

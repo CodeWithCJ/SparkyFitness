@@ -46,6 +46,18 @@ export interface FoodSearchResponse {
   totalCount: number;
 }
 
+export interface FoodSearchPagination {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedFoodsResponse {
+  foods: FoodItem[];
+  pagination: FoodSearchPagination;
+}
+
 export interface FoodVariantDetail {
   id: string;
   food_id: string;

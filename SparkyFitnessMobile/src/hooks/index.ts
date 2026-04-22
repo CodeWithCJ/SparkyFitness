@@ -7,6 +7,7 @@ export {
   waterContainersQueryKey,
   foodsQueryKey,
   foodSearchQueryKey,
+  foodsLibraryQueryKey,
   mealsQueryKey,
   mealSearchQueryKey,
   externalProvidersQueryKey,
@@ -31,6 +32,7 @@ export { useWaterIntakeMutation } from './useWaterIntakeMutation';
 export { useFoods } from './useFoods';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
+export { useFoodsLibrary } from './useFoodsLibrary';
 export { useMeals } from './useMeals';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
@@ -54,4 +56,3 @@ export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
-

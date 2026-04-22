@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
+import CreateTile from '../components/CreateTile';
+import FoodLibraryRow from '../components/FoodLibraryRow';
 import StatusView from '../components/StatusView';
-import { useServerConnection } from '../hooks';
+import { useFoods, useServerConnection } from '../hooks';
+import { foodItemToFoodInfo } from '../types/foodInfo';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type LibraryScreenProps = CompositeScreenProps<
@@ -19,8 +21,9 @@ type LibraryScreenProps = CompositeScreenProps<
 const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { recentFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
+  const previewFoods = recentFoods.slice(0, 3);
 
   if (!isConnectionLoading && !isConnected) {
     return (
@@ -57,24 +60,75 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       >
         <View className="mb-6">
           <Text className="text-2xl font-bold text-text-primary">Library</Text>
-          <Text className="text-sm text-text-secondary mt-2">
-            A home for workout tools and saved training resources.
-          </Text>
         </View>
 
-        <TouchableOpacity
-          className="bg-surface rounded-xl p-4 flex-row items-center justify-between shadow-sm"
-          onPress={() => navigation.navigate('WorkoutHistory')}
-          activeOpacity={0.7}
-        >
-          <View className="flex-1 pr-4">
-            <Text className="text-base font-semibold text-text-primary">Workout History</Text>
-            <Text className="text-sm text-text-secondary mt-1">
-              See your logged workouts and activities.
-            </Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={textSecondary} />
-        </TouchableOpacity>
+
+        <View className="flex-row flex-wrap justify-between mb-3">
+          <CreateTile
+            icon="food"
+            title="Create food"
+            subtitle="Manual entry"
+            onPress={() => navigation.navigate('FoodForm', { mode: 'create-food' })}
+            className="w-[48%] mb-3"
+          />
+        </View>
+
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-lg font-semibold text-text-primary">Foods</Text>
+          <Button
+            variant="link"
+            className="px-0 py-0"
+            textClassName="text-sm"
+            onPress={() => navigation.navigate('FoodsLibrary')}
+          >
+            View all
+          </Button>
+        </View>
+
+        <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
+          {isLoading ? (
+            <View className="px-4 py-8 items-center">
+              <ActivityIndicator size="small" color="#6B7280" />
+              <Text className="text-text-secondary text-sm mt-3">
+                Loading recent foods...
+              </Text>
+            </View>
+          ) : isError ? (
+            <View className="px-4 py-6 items-start">
+              <Text className="text-text-secondary text-sm">
+                Failed to load your recent foods.
+              </Text>
+              <Button
+                variant="link"
+                className="px-0 py-0 mt-3"
+                textClassName="text-sm"
+                onPress={() => refetch()}
+              >
+                Retry
+              </Button>
+            </View>
+          ) : previewFoods.length > 0 ? (
+            previewFoods.map((food, index) => (
+              <FoodLibraryRow
+                key={food.id}
+                food={food}
+                showDivider={index < previewFoods.length - 1}
+                onPress={() => navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) })}
+              />
+            ))
+          ) : (
+            <View className="px-4 py-6">
+              <Text className="text-text-primary text-base font-medium">
+                No recent foods yet
+              </Text>
+              <Text className="text-text-secondary text-sm mt-1">
+                Foods you log will appear here for quick access.
+              </Text>
+            </View>
+          )}
+        </View>
+
+
       </ScrollView>
     </View>
   );

@@ -1,5 +1,11 @@
 import { apiFetch } from './apiClient';
-import { FoodItem, FoodsResponse, FoodSearchResponse, FoodVariantDetail } from '../../types/foods';
+import {
+  FoodItem,
+  FoodsResponse,
+  FoodSearchResponse,
+  FoodVariantDetail,
+  PaginatedFoodsResponse,
+} from '../../types/foods';
 
 /**
  * Fetches the list of recent and top foods.
@@ -12,21 +18,52 @@ export const fetchFoods = async (): Promise<FoodsResponse> => {
   });
 };
 
+export interface FetchFoodsPageOptions {
+  searchTerm?: string;
+  page?: number;
+  itemsPerPage?: number;
+  sortBy?: string;
+}
+
+export const fetchFoodsPage = async ({
+  searchTerm = '',
+  page = 1,
+  itemsPerPage = 20,
+  sortBy = 'name:asc',
+}: FetchFoodsPageOptions = {}): Promise<PaginatedFoodsResponse> => {
+  const params = new URLSearchParams({
+    searchTerm,
+    currentPage: String(page),
+    itemsPerPage: String(itemsPerPage),
+    sortBy,
+  });
+
+  const response = await apiFetch<FoodSearchResponse>({
+    endpoint: `/api/foods/foods-paginated?${params.toString()}`,
+    serviceName: 'Foods API',
+    operation: 'fetch foods page',
+  });
+
+  return {
+    foods: response.foods,
+    pagination: {
+      page,
+      pageSize: itemsPerPage,
+      totalCount: response.totalCount,
+      hasMore: page * itemsPerPage < response.totalCount,
+    },
+  };
+};
+
 /**
  * Searches foods by name with server-side pagination.
  */
 export const searchFoods = async (searchTerm: string): Promise<FoodSearchResponse> => {
-  const params = new URLSearchParams({
-    searchTerm,
-    currentPage: '1',
-    itemsPerPage: '20',
-    sortBy: 'name:asc',
-  });
-  return apiFetch<FoodSearchResponse>({
-    endpoint: `/api/foods/foods-paginated?${params.toString()}`,
-    serviceName: 'Foods API',
-    operation: 'search foods',
-  });
+  const response = await fetchFoodsPage({ searchTerm, page: 1, itemsPerPage: 20, sortBy: 'name:asc' });
+  return {
+    foods: response.foods,
+    totalCount: response.pagination.totalCount,
+  };
 };
 
 /**
@@ -133,4 +170,3 @@ export const updateFood = async (foodId: string, payload: UpdateFoodPayload): Pr
     body: payload,
   });
 };
-
