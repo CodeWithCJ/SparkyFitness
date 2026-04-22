@@ -30,6 +30,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        {{- if .Values.postgresql.enabled }}
         - name: wait-for-db
           image: {{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
           command:
@@ -37,13 +38,14 @@ spec:
             - -c
             - until pg_isready -h {{ include "sparkyfitness.databaseHost" . }} -p {{ include "sparkyfitness.databasePort" . }}; do echo "Waiting for database..."; sleep 2; done
           securityContext:
-            runAsUser: 999
-            runAsGroup: 999
+            runAsUser: {{ .Values.postgresql.podSecurityContext.runAsUser | default 999 }}
+            runAsGroup: {{ .Values.postgresql.podSecurityContext.runAsGroup | default 999 }}
             runAsNonRoot: true
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+        {{- end }}
         {{- with .Values.server.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
