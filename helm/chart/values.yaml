@@ -11,7 +11,13 @@ fullnameOverride: ""
 # ========================== 1. GLOBAL ========================================
 
 global:
-  # -- Container image registry prefix (e.g. "registry.example.com")
+  # -- Container image registry prefix (e.g. "registry.example.com").
+  # Applied by the sparkyfitness.image helper to the server and frontend images.
+  # NOTE: This does NOT apply to the bundled HelmForge postgresql subchart
+  # (postgresql.*) or the wait-for-db init container, which use
+  # postgresql.image.repository/tag directly — matching how HelmForge itself
+  # constructs the image reference. Configure postgresql.image.repository
+  # with the full registry path if you mirror the image to a private registry.
   imageRegistry: ""
   # -- Global image pull secrets, e.g. [{name: "regcred"}]
   imagePullSecrets: []

@@ -76,17 +76,19 @@ data:
       count="$2"
       keep_file="$3"
       : > "${keep_file}"
+      now_epoch="$(date -u +%s)"
       i=0
       while [ "${i}" -lt "${count}" ]; do
         case "${bucket}" in
           daily)
-            date -u -d "-${i} day" +%F
+            date -u -d "@$(( now_epoch - i * 86400 ))" +%F
             ;;
           weekly)
-            date -u -d "-${i} week" +%G-W%V
+            date -u -d "@$(( now_epoch - i * 7 * 86400 ))" +%G-W%V
             ;;
           monthly)
-            date -u -d "$(date -u +%Y-%m-01) -${i} month" +%Y-%m
+            awk -v y="$(date -u +%Y)" -v mon="$(date -u +%m)" -v i="${i}" \
+              'BEGIN { mon -= i; while (mon <= 0) { mon += 12; y-- }; printf "%04d-%02d\n", y, mon }'
             ;;
           *)
             return 1
