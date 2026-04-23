@@ -40,9 +40,9 @@ config:
   adminEmail: ""
 
   # -- Allow CORS from private network ranges (only for self-hosted/private networks)
-  allowPrivateNetworkCors: false
+  allowPrivateNetworkCors: true
   # -- Extra trusted origins, comma-separated (e.g. "http://192.168.1.5:8080")
-  extraTrustedOrigins: ""
+  extraTrustedOrigins: "http://localhost:3004"
 
   # -- Force email/password login to be enabled (fail-safe against OIDC lockout)
   forceEmailLogin: true
@@ -330,8 +330,11 @@ postgresql:
   enabled: true
   image:
     repository: postgres
-    tag: "15-alpine"
+    tag: "18-alpine"
     pullPolicy: IfNotPresent
+  extraEnv:
+    - name: PGDATA
+      value: /var/lib/postgresql/data/pgdata
   livenessProbe:
     exec:
       command:
@@ -365,8 +368,9 @@ postgresql:
   auth:
     database: sparkyfitness
     username: sparky
+    # -- Password for PostgreSQL owner user (auto-generated if empty)
     password: ""
-    # -- Use an existing K8s Secret (keys: username, password)
+    # -- Use an existing K8s Secret (keys: username, password; optional: database)
     existingSecret: ""
   persistence:
     enabled: true
