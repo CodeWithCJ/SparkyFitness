@@ -1,13 +1,22 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { Platform } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
+
+// Render the sheet inside an iOS UIWindow so it sits above any native modal
+// presentation. No-op on Android.
+const sheetContainer =
+  Platform.OS === 'ios'
+    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
+    : undefined;
 
 export interface CalendarSheetRef {
   present: () => void;
@@ -82,6 +91,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         ref={bottomSheetRef}
         enableDynamicSizing
         backdropComponent={renderBackdrop}
+        containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
