@@ -322,14 +322,14 @@ async function processHealthData(
   const errors = [];
   const tzMetadataByType = {};
   const tzFallbackByType = {};
-  // 0. Pre-Cleanup: Delete existing Sleep/Exercise entries for the date range to prevent duplicates
-  // This implements a "delete-then-insert" strategy for idempotent sync
+  // 0. Pre-Cleanup: Delete existing Exercise entries for the date range to prevent duplicates
+  // (delete-then-insert idempotency for exercise/workout sessions).
+  // Sleep is intentionally excluded: a partial-window re-sync (e.g. only post-midnight stages)
+  // must NOT wipe the previously-stored full night. Sleep ingest is merge-based via
+  // upsertSleepStageEvent ON CONFLICT + aggregate recompute. See issue #1180.
   const entriesToClean = healthDataArray.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (d: any) =>
-      d.type === 'SleepSession' ||
-      d.type === 'ExerciseSession' ||
-      d.type === 'Workout'
+    (d: any) => d.type === 'ExerciseSession' || d.type === 'Workout'
   );
   if (entriesToClean.length > 0) {
     const datesBySource = {};
@@ -351,27 +351,11 @@ async function processHealthData(
       const dates = Object.keys(datesBySource[source]).sort();
       if (dates.length > 0) {
         const startDate = dates[0];
-        const endDate = dates[dates.length - 1]; // Inclusive end date for the function call
-        // Calculate max date + 1 day for database range logic if needed, but the current repo methods usually take inclusive/specific range
-        // Looking at sleepRepository.deleteSleepEntriesByEntrySourceAndDate(user_id, source, start_date, end_date), it typically handles range.
-        // Let's assume inclusive range which is standard for these helpers.
+        const endDate = dates[dates.length - 1];
         log(
           'info',
-          `[processHealthData] Pre-cleanup: Deleting existing entries for source '${source}' from ${startDate} to ${endDate}.`
+          `[processHealthData] Pre-cleanup: Deleting existing exercise entries for source '${source}' from ${startDate} to ${endDate}.`
         );
-        // Clean Sleep
-        await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
-          userId,
-          source,
-          startDate,
-          endDate
-        );
-        // Clean Exercises
-        // Note: deleteExerciseEntriesByEntrySourceAndDate expects (userId, startDate, endDate, source) - verify arg order!
-        // Based on typical repo patterns, let's verify.
-        // Wait, standard exerciseEntryRepo usually puts userId first.
-        // I will use safe assumption or verify garminService usage:
-        // garminService: await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, startDate, endDate, 'garmin');
         await exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate(
           userId,
           startDate,
@@ -1897,6 +1881,9 @@ async function processSleepEntry(
     `[processSleepEntry] Received sleepEntryData: ${JSON.stringify(sleepEntryData)}`
   );
   try {
+    const originalHadStages =
+      Array.isArray(sleepEntryData.stage_events) &&
+      sleepEntryData.stage_events.length > 0;
     let stage_events = sleepEntryData.stage_events;
     const {
       stage_events: _stage_events,
@@ -1913,7 +1900,9 @@ async function processSleepEntry(
       awake_sleep_seconds,
       ...rest
     } = sleepEntryData;
-    // If no stage events are provided, create a default "light sleep" stage
+    // If no stage events are provided, create a default "light sleep" stage. We do NOT
+    // run overlap-delete in this path — the synthetic default would wipe legitimate
+    // pre-existing stages stored from earlier real syncs.
     if (!stage_events || stage_events.length === 0) {
       log(
         'info',
@@ -1976,33 +1965,152 @@ async function processSleepEntry(
       actingUserId,
       entryToUpsert
     );
-    if (stage_events && stage_events.length > 0) {
-      // Deleting existing stages is handled by upsertSleepStageEvent if we treat them as new or updates?
-      // Actually handling stages usually implies wiping for a new sync or upserting individually.
-      // Since upsertSleepEntry returns an ID, we can just insert them.
-      // NOTE: Sync logic usually replaces for a given day.
-      for (const stageEvent of stage_events) {
-        // Round duration for each stage event
-        const duration =
-          Math.round(Number(stageEvent.duration_in_seconds)) || 0;
-        // Pass actingUserId to upsertSleepStageEvent
-        await sleepRepository.upsertSleepStageEvent(
-          userId,
-          newSleepEntry.id,
-          {
-            ...stageEvent,
-            duration_in_seconds: duration,
-          },
-          // @ts-expect-error TS(2554): Expected 3 arguments, but got 4.
-          actingUserId
-        );
-      }
+    if (originalHadStages && stage_events && stage_events.length > 0) {
+      // Stages merge by natural key (entry_id, start_time, end_time) inside one
+      // repository transaction so partial-window cleanup and reinserts are atomic.
+      await sleepRepository.mergeSleepStageEvents(
+        userId,
+        newSleepEntry.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        stage_events.map((stageEvent: any) => ({
+          ...stageEvent,
+          duration_in_seconds:
+            Math.round(Number(stageEvent.duration_in_seconds)) || 0,
+        })),
+        actingUserId
+      );
     }
-    return newSleepEntry;
+    // Recompute sleep_entries aggregates from the stored stage rows so they reflect the
+    // durable merged state. For summary-only retries with no incoming stage data, preserve
+    // any previously stored detailed stages instead of layering a synthetic full-night
+    // fallback on top of them. If no stages exist at all, seed a single fallback stage.
+    let mergedStages = await sleepRepository.getSleepStageEventsByEntryId(
+      userId,
+      newSleepEntry.id
+    );
+    if (
+      !originalHadStages &&
+      mergedStages.length === 0 &&
+      stage_events.length > 0
+    ) {
+      await sleepRepository.mergeSleepStageEvents(
+        userId,
+        newSleepEntry.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        stage_events.map((stageEvent: any) => ({
+          ...stageEvent,
+          duration_in_seconds:
+            Math.round(Number(stageEvent.duration_in_seconds)) || 0,
+        })),
+        actingUserId
+      );
+      mergedStages = await sleepRepository.getSleepStageEventsByEntryId(
+        userId,
+        newSleepEntry.id
+      );
+    } else if (!originalHadStages && mergedStages.length > 0) {
+      log(
+        'info',
+        `[processSleepEntry] Preserving ${mergedStages.length} existing stage events for entry ${newSleepEntry.id} because the payload had no authoritative stage data.`
+      );
+    }
+    const recomputed = recomputeSleepAggregatesFromStages(mergedStages);
+    const recomputedSleepScore = await calculateSleepScore(
+      {
+        duration_in_seconds: recomputed.duration_in_seconds,
+        time_asleep_in_seconds: recomputed.time_asleep_in_seconds,
+      },
+      mergedStages,
+      age,
+      // @ts-expect-error TS(2554): Expected 2-3 arguments, but got 4.
+      gender
+    );
+    await sleepRepository.updateSleepEntryAggregates(
+      userId,
+      newSleepEntry.id,
+      actingUserId,
+      {
+        ...recomputed,
+        sleep_score: Number(recomputedSleepScore) || 0,
+      }
+    );
+    return {
+      ...newSleepEntry,
+      ...recomputed,
+      sleep_score: Number(recomputedSleepScore) || 0,
+    };
   } catch (error) {
     log('error', `Error in processSleepEntry for user ${userId}:`, error);
     throw error;
   }
+}
+
+// Pure aggregate derivation from a stage list. Limitation: overlapping stage segments
+// (rare, but HealthKit can emit them) are SUMmed and would double-count.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function recomputeSleepAggregatesFromStages(stages: any[]) {
+  if (!stages || stages.length === 0) {
+    return {
+      bedtime: null,
+      wake_time: null,
+      duration_in_seconds: 0,
+      time_asleep_in_seconds: 0,
+      deep_sleep_seconds: 0,
+      light_sleep_seconds: 0,
+      rem_sleep_seconds: 0,
+      awake_sleep_seconds: 0,
+    };
+  }
+  let minStart = new Date(stages[0].start_time).getTime();
+  let maxEnd = new Date(stages[0].end_time).getTime();
+  let deep = 0;
+  let light = 0;
+  let rem = 0;
+  let awake = 0;
+  for (const s of stages) {
+    const startMs = new Date(s.start_time).getTime();
+    const endMs = new Date(s.end_time).getTime();
+    if (startMs < minStart) minStart = startMs;
+    if (endMs > maxEnd) maxEnd = endMs;
+    const duration = Math.round(Number(s.duration_in_seconds)) || 0;
+    switch (s.stage_type) {
+      case 'deep':
+        deep += duration;
+        break;
+      case 'light':
+        light += duration;
+        break;
+      case 'rem':
+        rem += duration;
+        break;
+      case 'awake':
+        awake += duration;
+        break;
+      default:
+        // Unknown stage type — counted in time_asleep below if not 'awake'.
+        break;
+    }
+  }
+  const durationInSeconds = Math.max(0, Math.round((maxEnd - minStart) / 1000));
+  const timeAsleep = stages
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((s: any) => s.stage_type !== 'awake')
+    .reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sum: number, s: any) =>
+        sum + (Math.round(Number(s.duration_in_seconds)) || 0),
+      0
+    );
+  return {
+    bedtime: new Date(minStart),
+    wake_time: new Date(maxEnd),
+    duration_in_seconds: durationInSeconds,
+    time_asleep_in_seconds: timeAsleep,
+    deep_sleep_seconds: deep,
+    light_sleep_seconds: light,
+    rem_sleep_seconds: rem,
+    awake_sleep_seconds: awake,
+  };
 }
 async function updateSleepEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2074,12 +2182,10 @@ async function updateSleepEntry(
       // Then, insert the new stage events
       if (stage_events.length > 0) {
         for (const stageEvent of stage_events) {
-          // Pass actingUserId (assuming upsertSleepStageEvent now takes it)
           await sleepRepository.upsertSleepStageEvent(
             userId,
             entryId,
             stageEvent,
-            // @ts-expect-error TS(2554): Expected 3 arguments, but got 4.
             actingUserId
           );
         }

@@ -511,12 +511,17 @@ async function processFitbitSleep(
         if (stageType === 'wake' || stageType === 'restless')
           stageType = 'awake';
         if (stageType === 'asleep') stageType = 'light';
-        await sleepRepository.upsertSleepStageEvent(userId, result.id, {
-          stage_type: stageType,
-          start_time: startIso,
-          end_time: endTime.toISOString(),
-          duration_in_seconds: stage.seconds,
-        });
+        await sleepRepository.upsertSleepStageEvent(
+          userId,
+          result.id,
+          {
+            stage_type: stageType,
+            start_time: startIso,
+            end_time: endTime.toISOString(),
+            duration_in_seconds: stage.seconds,
+          },
+          createdByUserId
+        );
       }
     }
   }

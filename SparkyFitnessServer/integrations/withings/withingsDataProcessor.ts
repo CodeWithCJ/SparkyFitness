@@ -709,12 +709,17 @@ async function processWithingsSleepData(
         // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         stageAggregates[stageKey] += duration;
       }
-      await sleepRepository.upsertSleepStageEvent(userId, entryId, {
-        stage_type: stageType,
-        start_time: new Date(segment.startdate * 1000).toISOString(),
-        end_time: new Date(segment.enddate * 1000).toISOString(),
-        duration_in_seconds: duration,
-      });
+      await sleepRepository.upsertSleepStageEvent(
+        userId,
+        entryId,
+        {
+          stage_type: stageType,
+          start_time: new Date(segment.startdate * 1000).toISOString(),
+          end_time: new Date(segment.enddate * 1000).toISOString(),
+          duration_in_seconds: duration,
+        },
+        createdByUserId
+      );
     }
     await sleepRepository.updateSleepEntry(userId, entryId, createdByUserId, {
       deep_sleep_seconds: stageAggregates.deep,

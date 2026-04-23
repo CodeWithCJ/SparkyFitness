@@ -171,117 +171,342 @@ async function upsertSleepEntry(
   }
 }
 
+function normalizeSleepStageEventData(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sleepStageEventData: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any
+) {
+  const normalized = { ...sleepStageEventData };
+  const { stage_type, start_time, duration_in_seconds } = normalized;
+  let { end_time } = normalized;
+  if (!end_time && start_time && duration_in_seconds) {
+    const start = new Date(start_time);
+    end_time = new Date(
+      start.getTime() + duration_in_seconds * 1000
+    ).toISOString();
+    log(
+      'info',
+      `[sleepRepository] Derived missing end_time (${end_time}) for stage ${stage_type} at ${start_time} for user ${userId}`
+    );
+  }
+  normalized.end_time = end_time;
+  return normalized;
+}
+
+async function upsertSleepStageEventWithClient(
+  client: Awaited<ReturnType<typeof getClient>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sleepStageEventData: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any = null
+) {
+  const normalized = normalizeSleepStageEventData(sleepStageEventData, userId);
+  const { id, stage_type, start_time, end_time, duration_in_seconds } =
+    normalized;
+  let sleepStageEventId;
+  const isUUID =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      id
+    );
+  const upsertByNaturalKey = `
+    INSERT INTO sleep_entry_stages
+      (entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds, created_by_user_id, updated_by_user_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+    ON CONFLICT (entry_id, start_time, end_time) DO UPDATE SET
+      stage_type = EXCLUDED.stage_type,
+      duration_in_seconds = EXCLUDED.duration_in_seconds,
+      updated_by_user_id = EXCLUDED.updated_by_user_id,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING id;
+  `;
+  if (id && isUUID) {
+    const updateQuery = `
+      UPDATE sleep_entry_stages
+      SET stage_type = $4,
+          start_time = $5,
+          end_time = $6,
+          duration_in_seconds = $7,
+          updated_by_user_id = $8,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND entry_id = $2 AND user_id = $3
+      RETURNING id;
+    `;
+    const updateResult = await client.query(updateQuery, [
+      id,
+      entryId,
+      userId,
+      stage_type,
+      start_time,
+      end_time,
+      duration_in_seconds,
+      actingUserId,
+    ]);
+    if (updateResult.rows.length > 0) {
+      sleepStageEventId = updateResult.rows[0].id;
+      log(
+        'info',
+        `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`
+      );
+    } else {
+      const insertResult = await client.query(upsertByNaturalKey, [
+        entryId,
+        userId,
+        stage_type,
+        start_time,
+        end_time,
+        duration_in_seconds,
+        actingUserId,
+      ]);
+      sleepStageEventId = insertResult.rows[0].id;
+      log(
+        'info',
+        `Upserted sleep stage event ${sleepStageEventId} for entry ${entryId} (id ${id} not found).`
+      );
+    }
+  } else {
+    const insertResult = await client.query(upsertByNaturalKey, [
+      entryId,
+      userId,
+      stage_type,
+      start_time,
+      end_time,
+      duration_in_seconds,
+      actingUserId,
+    ]);
+    sleepStageEventId = insertResult.rows[0].id;
+    const reason =
+      id === undefined ? 'no ID provided' : `ignoring invalid ID: ${id}`;
+    log(
+      'info',
+      `Upserted sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`
+    );
+  }
+  const { id: _originalId, ...restOfData } = normalized;
+  return { id: sleepStageEventId, ...restOfData };
+}
+
 async function upsertSleepStageEvent(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entryId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sleepStageEventData: any
+  sleepStageEventData: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any = null
 ) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const { id } = sleepStageEventData; // Optional: if provided, attempt to update
-    const { stage_type, start_time, duration_in_seconds } = sleepStageEventData;
-    let { end_time } = sleepStageEventData;
-    // Defense: If end_time is missing but duration and start_time are present, calculate it
-    if (!end_time && start_time && duration_in_seconds) {
-      const start = new Date(start_time);
-      end_time = new Date(
-        start.getTime() + duration_in_seconds * 1000
-      ).toISOString();
-      log(
-        'info',
-        `[sleepRepository] Derived missing end_time (${end_time}) for stage ${stage_type} at ${start_time} for user ${userId}`
-      );
-    }
-    let sleepStageEventId;
-    // Basic UUID validation
-    const isUUID =
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-        id
-      );
-    if (id && isUUID) {
-      // Attempt to update existing event
-      const updateQuery = `
-                UPDATE sleep_entry_stages
-        SET
-        stage_type = $4,
-            start_time = $5,
-            end_time = $6,
-            duration_in_seconds = $7,
-            updated_at = CURRENT_TIMESTAMP
-                WHERE id = $1 AND entry_id = $2 AND user_id = $3
-                RETURNING id;
-        `;
-      const updateResult = await client.query(updateQuery, [
-        id,
-        entryId,
-        userId,
-        stage_type,
-        start_time,
-        end_time,
-        duration_in_seconds,
-      ]);
-      if (updateResult.rows.length > 0) {
-        sleepStageEventId = updateResult.rows[0].id;
-        log(
-          'info',
-          `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`
-        );
-      } else {
-        // If no row was updated, insert new event
-        const insertQuery = `
-                    INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds)
-        VALUES($1, $2, $3, $4, $5, $6)
-                    RETURNING id;
-        `;
-        const insertResult = await client.query(insertQuery, [
-          entryId,
-          userId,
-          stage_type,
-          start_time,
-          end_time,
-          duration_in_seconds,
-        ]);
-        sleepStageEventId = insertResult.rows[0].id;
-        log(
-          'info',
-          `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}.`
-        );
-      }
-    } else {
-      // Insert new event, ignoring the invalid ID
-      const insertQuery = `
-                INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds)
-        VALUES($1, $2, $3, $4, $5, $6)
-                RETURNING id;
-        `;
-      const insertResult = await client.query(insertQuery, [
-        entryId,
-        userId,
-        stage_type,
-        start_time,
-        end_time,
-        duration_in_seconds,
-      ]);
-      sleepStageEventId = insertResult.rows[0].id;
-      const reason =
-        id === undefined ? 'no ID provided' : `ignoring invalid ID: ${id}`;
-      log(
-        'info',
-        `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`
-      );
-    }
+    const result = await upsertSleepStageEventWithClient(
+      client,
+      userId,
+      entryId,
+      sleepStageEventData,
+      actingUserId
+    );
     await client.query('COMMIT');
-    const { id: _originalId, ...restOfData } = sleepStageEventData;
-    return { id: sleepStageEventId, ...restOfData };
+    return result;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
       'error',
       `Error upserting sleep stage event for entry ${entryId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteSupersededSleepStagesWithClient(
+  client: Awaited<ReturnType<typeof getClient>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  windowStart: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  windowEnd: any,
+  keptStages: Array<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    start_time: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    end_time: any;
+  }>
+) {
+  const keptStarts = keptStages.map((s) =>
+    s.start_time instanceof Date
+      ? s.start_time.toISOString()
+      : new Date(s.start_time).toISOString()
+  );
+  const keptEnds = keptStages.map((s) =>
+    s.end_time instanceof Date
+      ? s.end_time.toISOString()
+      : new Date(s.end_time).toISOString()
+  );
+  const result = await client.query(
+    `DELETE FROM sleep_entry_stages s
+     WHERE s.entry_id = $1
+       AND s.user_id = $2
+       AND s.start_time >= $3
+       AND s.end_time   <= $4
+       AND NOT EXISTS (
+         SELECT 1 FROM unnest($5::timestamptz[], $6::timestamptz[]) AS kept(st, et)
+         WHERE kept.st = s.start_time AND kept.et = s.end_time
+       )
+     RETURNING id`,
+    [entryId, userId, windowStart, windowEnd, keptStarts, keptEnds]
+  );
+  if (result.rows.length > 0) {
+    log(
+      'info',
+      `Deleted ${result.rows.length} superseded sleep stage events for entry ${entryId} (re-sync refined boundaries).`
+    );
+  }
+  return { deleted: result.rows.length };
+}
+
+async function mergeSleepStageEvents(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sleepStageEvents: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any = null
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query('BEGIN');
+    const normalizedEvents = sleepStageEvents.map((event) =>
+      normalizeSleepStageEventData(event, userId)
+    );
+    const startMs = normalizedEvents.map((s) =>
+      new Date(s.start_time).getTime()
+    );
+    const endMs = normalizedEvents.map((s) => new Date(s.end_time).getTime());
+    const payloadStart = new Date(Math.min(...startMs));
+    const payloadEnd = new Date(Math.max(...endMs));
+    await deleteSupersededSleepStagesWithClient(
+      client,
+      userId,
+      entryId,
+      payloadStart,
+      payloadEnd,
+      normalizedEvents
+    );
+    const results = [];
+    for (const stageEvent of normalizedEvents) {
+      results.push(
+        await upsertSleepStageEventWithClient(
+          client,
+          userId,
+          entryId,
+          stageEvent,
+          actingUserId
+        )
+      );
+    }
+    await client.query('COMMIT');
+    return results;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    log(
+      'error',
+      `Error merging sleep stage events for entry ${entryId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getSleepStageEventsByEntryId(userId: any, entryId: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, stage_type, start_time, end_time, duration_in_seconds
+       FROM sleep_entry_stages
+       WHERE entry_id = $1 AND user_id = $2
+       ORDER BY start_time ASC`,
+      [entryId, userId]
+    );
+    return result.rows;
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching sleep stage events for entry ${entryId} for user ${userId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateSleepEntryAggregates(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  aggregates: any
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE sleep_entries
+       SET bedtime = $3,
+           wake_time = $4,
+           duration_in_seconds = $5,
+           time_asleep_in_seconds = $6,
+           sleep_score = $7,
+           deep_sleep_seconds = $8,
+           light_sleep_seconds = $9,
+           rem_sleep_seconds = $10,
+           awake_sleep_seconds = $11,
+           updated_by_user_id = $12,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [
+        entryId,
+        userId,
+        aggregates.bedtime,
+        aggregates.wake_time,
+        aggregates.duration_in_seconds,
+        aggregates.time_asleep_in_seconds,
+        aggregates.sleep_score,
+        aggregates.deep_sleep_seconds,
+        aggregates.light_sleep_seconds,
+        aggregates.rem_sleep_seconds,
+        aggregates.awake_sleep_seconds,
+        actingUserId,
+      ]
+    );
+    if (result.rows.length === 0) {
+      throw new Error(
+        `Sleep entry ${entryId} not found for user ${userId} during aggregate update.`
+      );
+    }
+    return { id: result.rows[0].id, ...aggregates };
+  } catch (error) {
+    log(
+      'error',
+      `Error updating sleep entry aggregates for entry ${entryId} for user ${userId}: `,
       error
     );
     throw error;
@@ -753,6 +978,9 @@ async function deleteSleepEntry(userId: any, entryId: any) {
 }
 export { upsertSleepEntry };
 export { upsertSleepStageEvent };
+export { mergeSleepStageEvents };
+export { getSleepStageEventsByEntryId };
+export { updateSleepEntryAggregates };
 export { getSleepEntriesByUserIdAndDateRange };
 export { updateSleepEntry };
 export { deleteSleepStageEventsByEntryId };
@@ -762,6 +990,9 @@ export { deleteSleepEntriesByEntrySourceAndDate };
 export default {
   upsertSleepEntry,
   upsertSleepStageEvent,
+  mergeSleepStageEvents,
+  getSleepStageEventsByEntryId,
+  updateSleepEntryAggregates,
   getSleepEntriesByUserIdAndDateRange,
   updateSleepEntry,
   deleteSleepStageEventsByEntryId,

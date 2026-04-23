@@ -478,14 +478,19 @@ async function processPolarSleep(
             durationSec = Math.round((endDateUTC - stageStartTimeUTC) / 1000);
           }
           if (durationSec > 0) {
-            await sleepRepository.upsertSleepStageEvent(userId, entry.id, {
-              stage_type: stageType,
-              start_time: stageStartTimeUTC.toISOString(),
-              end_time: new Date(
-                stageStartTimeUTC.getTime() + durationSec * 1000
-              ).toISOString(),
-              duration_in_seconds: durationSec,
-            });
+            await sleepRepository.upsertSleepStageEvent(
+              userId,
+              entry.id,
+              {
+                stage_type: stageType,
+                start_time: stageStartTimeUTC.toISOString(),
+                end_time: new Date(
+                  stageStartTimeUTC.getTime() + durationSec * 1000
+                ).toISOString(),
+                duration_in_seconds: durationSec,
+              },
+              createdByUserId
+            );
           }
         }
       }
