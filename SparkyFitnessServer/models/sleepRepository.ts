@@ -384,6 +384,11 @@ async function mergeSleepStageEvents(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any = null
 ) {
+  // Guard at the module boundary: an empty payload window would collapse to
+  // Math.min(...[]) = Infinity → Invalid Date → confusing SQL failure.
+  if (!Array.isArray(sleepStageEvents) || sleepStageEvents.length === 0) {
+    return [];
+  }
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
