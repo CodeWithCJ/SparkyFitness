@@ -1,4 +1,16 @@
 import { format } from 'date-fns';
+import {
+  Activity,
+  Dumbbell,
+  HeartPulse,
+  Flower2,
+  ArrowBigUp,
+  Zap,
+  Hammer,
+  ChevronsUp,
+  Expand,
+  Pause,
+} from 'lucide-react';
 export const EXERCISE_CATEGORIES = [
   {
     value: 'general',
@@ -52,6 +64,63 @@ export const EXERCISE_CATEGORIES = [
   },
 ] as const;
 
+export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number]['value'];
+
+export const EXERCISE_CATEGORY_META: Record<
+  ExerciseCategory,
+  { icon: React.ElementType; color: string; bg: string }
+> = {
+  general: {
+    icon: Activity,
+    color: 'text-slate-500',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+  },
+  strength: {
+    icon: Dumbbell,
+    color: 'text-blue-600',
+    bg: 'bg-blue-100 dark:bg-blue-900/40',
+  },
+  cardio: {
+    icon: HeartPulse,
+    color: 'text-rose-500',
+    bg: 'bg-rose-100 dark:bg-rose-900/40',
+  },
+  yoga: {
+    icon: Flower2,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+  },
+  powerlifting: {
+    icon: ArrowBigUp,
+    color: 'text-orange-600',
+    bg: 'bg-orange-100 dark:bg-orange-900/40',
+  },
+  'olympic weightlifting': {
+    icon: Zap,
+    color: 'text-yellow-500',
+    bg: 'bg-yellow-100 dark:bg-yellow-900/40',
+  },
+  strongman: {
+    icon: Hammer,
+    color: 'text-red-600',
+    bg: 'bg-red-100 dark:bg-red-900/40',
+  },
+  plyometrics: {
+    icon: ChevronsUp,
+    color: 'text-violet-500',
+    bg: 'bg-violet-100 dark:bg-violet-900/40',
+  },
+  stretching: {
+    icon: Expand,
+    color: 'text-teal-500',
+    bg: 'bg-teal-100 dark:bg-teal-900/40',
+  },
+  isometric: {
+    icon: Pause,
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+  },
+};
 export const DAYS_OF_WEEK = [
   { id: 0, name: 'Sunday' },
   { id: 1, name: 'Monday' },
