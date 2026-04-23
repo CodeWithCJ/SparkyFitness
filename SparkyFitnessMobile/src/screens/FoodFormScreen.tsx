@@ -11,7 +11,9 @@ import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useMealTypes } from '../hooks';
+import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
@@ -21,6 +23,7 @@ import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
+import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
@@ -185,7 +188,15 @@ async function persistFoodEdits({
 
 function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
+  const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+    '--color-form-enabled',
+    '--color-form-disabled',
+  ]) as [string, string, string, string];
+  const pickerMode = params.pickerMode ?? 'log-entry';
+  const returnDepth = params.returnDepth ?? 1;
+  const isMealBuilderMode = pickerMode === 'meal-builder';
 
   const initialFood = params.initialFood;
   const barcode = params.barcode;
@@ -243,14 +254,17 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
-  const { addEntry, isPending: isSubmitting, invalidateCache } = useAddFoodEntry({
+  const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
+  const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
     onSuccess: (entry) => {
       invalidateCache(normalizeDate(entry.entry_date));
       navigation.dispatch(StackActions.popToTop());
     },
   });
 
-  const handleSubmit = (data: FoodFormData) => {
+  const isSubmitting = isAddPending || isSavePending;
+
+  const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
       Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
@@ -259,6 +273,51 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
+
+    const saveFoodPayload = {
+      name: data.name,
+      brand: data.brand || null,
+      serving_size: parseDecimalInput(data.servingSize) || 0,
+      serving_unit: data.servingUnit || 'serving',
+      calories: parseDecimalInput(data.calories) || 0,
+      protein: parseDecimalInput(data.protein) || 0,
+      carbs: parseDecimalInput(data.carbs) || 0,
+      fat: parseDecimalInput(data.fat) || 0,
+      dietary_fiber: parseOptional(data.fiber),
+      saturated_fat: parseOptional(data.saturatedFat),
+      sodium: parseOptional(data.sodium),
+      sugars: parseOptional(data.sugars),
+      trans_fat: parseOptional(data.transFat),
+      potassium: parseOptional(data.potassium),
+      calcium: parseOptional(data.calcium),
+      iron: parseOptional(data.iron),
+      cholesterol: parseOptional(data.cholesterol),
+      vitamin_a: parseOptional(data.vitaminA),
+      vitamin_c: parseOptional(data.vitaminC),
+      is_custom: true,
+      is_quick_food: isMealBuilderMode ? false : !saveToDatabase,
+      is_default: true,
+      barcode: barcode ?? null,
+      provider_type: providerType ?? null,
+    };
+
+    if (isMealBuilderMode) {
+      try {
+        const savedFood = await saveFoodAsync(saveFoodPayload);
+        setPendingMealIngredientSelection({
+          ingredient: buildMealIngredientDraftFromSavedFood(
+            savedFood,
+            parseDecimalInput(data.servingSize) || 0,
+            data.servingUnit || 'serving',
+          ),
+        });
+        navigation.dispatch(StackActions.pop(returnDepth));
+      } catch {
+        // Error toast is handled in the save hook.
+      }
+      return;
+    }
+
     if (!quantity) {
       Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
       return;
@@ -269,32 +328,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
     }
 
     addEntry({
-      saveFoodPayload: {
-        name: data.name,
-        brand: data.brand || null,
-        serving_size: parseDecimalInput(data.servingSize) || 0,
-        serving_unit: data.servingUnit || 'serving',
-        calories: parseDecimalInput(data.calories) || 0,
-        protein: parseDecimalInput(data.protein) || 0,
-        carbs: parseDecimalInput(data.carbs) || 0,
-        fat: parseDecimalInput(data.fat) || 0,
-        dietary_fiber: parseOptional(data.fiber),
-        saturated_fat: parseOptional(data.saturatedFat),
-        sodium: parseOptional(data.sodium),
-        sugars: parseOptional(data.sugars),
-        trans_fat: parseOptional(data.transFat),
-        potassium: parseOptional(data.potassium),
-        calcium: parseOptional(data.calcium),
-        iron: parseOptional(data.iron),
-        cholesterol: parseOptional(data.cholesterol),
-        vitamin_a: parseOptional(data.vitaminA),
-        vitamin_c: parseOptional(data.vitaminC),
-        is_custom: true,
-        is_quick_food: !saveToDatabase,
-        is_default: true,
-        barcode: barcode ?? null,
-        provider_type: providerType ?? null,
-      },
+      saveFoodPayload,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,
@@ -306,7 +340,6 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -320,85 +353,92 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         </Text>
       </View>
 
-      <FoodForm onSubmit={handleSubmit} onServingChange={handleServingChange} isSubmitting={isSubmitting} initialValues={initialFood}>
-        {/* Logging */}
-        <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
+      <FoodForm
+        onSubmit={(data) => {
+          void handleSubmit(data);
+        }}
+        onServingChange={handleServingChange}
+        isSubmitting={isSubmitting}
+        initialValues={initialFood}
+      >
+        {!isMealBuilderMode ? (
+          <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
+            <View className="flex-row items-start">
+              <TouchableOpacity
+                onPress={() => calendarRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-1 flex-row items-center"
+              >
+                <Text className="text-text-secondary text-base mr-3">Date</Text>
+                <Text className="text-text-primary text-base font-medium mx-1.5">
+                  {formatDateLabel(selectedDate)}
+                </Text>
+                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+              </TouchableOpacity>
 
-          <View className="flex-row items-start">
-            {/* Date */}
-            <TouchableOpacity
-              onPress={() => calendarRef.current?.present()}
-              activeOpacity={0.7}
-              className="flex-1 flex-row items-center"
-            >
-              <Text className="text-text-secondary text-base mr-3">Date</Text>
-              <Text className="text-text-primary text-base font-medium mx-1.5">
-                {formatDateLabel(selectedDate)}
-              </Text>
-              <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-            </TouchableOpacity>
+              {selectedMealType ? (
+                <View className="flex-1 flex-row items-center">
+                  <Text className="text-text-secondary text-base mx-3">Meal</Text>
+                  <BottomSheetPicker
+                    value={effectiveMealId!}
+                    options={mealPickerOptions}
+                    onSelect={setSelectedMealId}
+                    title="Select Meal"
+                    renderTrigger={({ onPress }) => (
+                      <TouchableOpacity
+                        onPress={onPress}
+                        activeOpacity={0.7}
+                        className="flex-row items-center"
+                      >
+                        <Text className="text-text-primary text-base font-medium mx-1.5">
+                          {getMealTypeLabel(selectedMealType.name)}
+                        </Text>
+                        <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+                      </TouchableOpacity>
+                    )}
+                  />
+                </View>
+              ) : null}
+            </View>
 
-            {/* Meal */}
-            {selectedMealType && (
-              <View className="flex-1 flex-row items-center">
-                <Text className="text-text-secondary text-base mx-3">Meal</Text>
-                <BottomSheetPicker
-                  value={effectiveMealId!}
-                  options={mealPickerOptions}
-                  onSelect={setSelectedMealId}
-                  title="Select Meal"
-                  renderTrigger={({ onPress }) => (
-                    <TouchableOpacity
-                      onPress={onPress}
-                      activeOpacity={0.7}
-                      className="flex-row items-center"
-                    >
-                      <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeLabel(selectedMealType.name)}
-                      </Text>
-                      <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-                    </TouchableOpacity>
-                  )}
+            <View>
+              <View className="flex-row items-center">
+                <StepperInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  onDecrement={() => adjustQuantity(-1)}
+                  onIncrement={() => adjustQuantity(1)}
                 />
+                <Text className="text-text-primary text-base font-medium ml-2">
+                  {formServingUnit}
+                </Text>
               </View>
-            )}
-          </View>
-          {/* Amount */}
-          <View>
-            <View className="flex-row items-center">
-              <StepperInput
-                value={quantityText}
-                onChangeText={updateQuantityText}
-                onBlur={clampQuantity}
-                onDecrement={() => adjustQuantity(-1)}
-                onIncrement={() => adjustQuantity(1)}
-              />
-              <Text className="text-text-primary text-base font-medium ml-2">
-                {formServingUnit}
+              <Text className="text-text-secondary text-sm mt-2">
+                {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
+                {' \u00b7 '}{formServingSize} {formServingUnit} per serving
               </Text>
             </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' · '}{formServingSize} {formServingUnit} per serving
-            </Text>
+
+            <View className="flex-row items-center justify-between">
+              <Text className="text-text-secondary text-base">Save to Database</Text>
+              <Switch
+                value={saveToDatabase}
+                onValueChange={setSaveToDatabase}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            {barcode ? (
+              <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
+            ) : null}
           </View>
-          {/* Save to Database */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-text-secondary text-base">Save to Database</Text>
-            <Switch
-              value={saveToDatabase}
-              onValueChange={setSaveToDatabase}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          {barcode && (
-            <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
-          )}
-        </View>
+        ) : null}
       </FoodForm>
 
-      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      {!isMealBuilderMode ? (
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      ) : null}
     </View>
   );
 }
@@ -459,7 +499,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         initialValues={initialValues}
         submitLabel="Update Values"
       >
-        {canUpdateVariant && (
+        {canUpdateVariant ? (
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">Save nutrition for future use</Text>
@@ -471,7 +511,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
               />
             </View>
           </View>
-        )}
+        ) : null}
       </FoodForm>
     </View>
   );
@@ -546,8 +586,6 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
 
 const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
   return (
-    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
-    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
     <BottomSheetModalProvider>
       {route.params.mode === 'adjust-entry-nutrition' ? (
         <AdjustNutritionMode params={route.params} navigation={navigation} />

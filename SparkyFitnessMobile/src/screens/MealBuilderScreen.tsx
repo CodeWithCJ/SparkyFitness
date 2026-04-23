@@ -12,9 +12,11 @@ import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import NutritionMacroCard from '../components/NutritionMacroCard';
 import { useCreateMeal } from '../hooks';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
@@ -178,220 +180,198 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 min-h-11 min-w-11 items-start justify-center"
-          accessibilityLabel="Back"
-          accessibilityRole="button"
-        >
-          <Icon name="chevron-back" size={22} color={accentColor} />
-        </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Create Meal
-        </Text>
-        <View className="min-h-11 min-w-11" />
-      </View>
-
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-8 gap-4"
-        keyboardShouldPersistTaps="handled"
+    <BottomSheetModalProvider>
+      <View
+        className="flex-1 bg-background"
+        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
-        <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Meal Name *</Text>
-            <TextInput
-              className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-              style={{ fontSize: 16 }}
-              placeholder="e.g. Chicken Rice Bowl"
-              placeholderTextColor={textMuted}
-              value={mealName}
-              onChangeText={setMealName}
-              returnKeyType="done"
-            />
-          </View>
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="z-10 min-h-11 min-w-11 items-start justify-center"
+            accessibilityLabel="Back"
+            accessibilityRole="button"
+          >
+            <Icon name="chevron-back" size={22} color={accentColor} />
+          </TouchableOpacity>
+          <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+            Create Meal
+          </Text>
+          <View className="min-h-11 min-w-11" />
+        </View>
 
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Description</Text>
-            <TextInput
-              className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-              style={{ fontSize: 16, minHeight: 92, textAlignVertical: 'top' }}
-              placeholder="Optional"
-              placeholderTextColor={textMuted}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-            />
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Serving Size</Text>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-4 pt-4 pb-8 gap-4"
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Meal Name *</Text>
               <TextInput
                 className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
                 style={{ fontSize: 16 }}
-                placeholder="1"
+                placeholder="e.g. Chicken Rice Bowl"
                 placeholderTextColor={textMuted}
-                value={servingSizeText}
-                onChangeText={updateServingSize}
-                keyboardType="decimal-pad"
+                value={mealName}
+                onChangeText={setMealName}
                 returnKeyType="done"
               />
             </View>
-            <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
-              <BottomSheetPicker
-                value={servingUnit}
-                options={SERVING_UNIT_OPTIONS}
-                onSelect={setServingUnit}
-                title="Select Unit"
-                renderTrigger={({ onPress, selectedOption }) => (
-                  <TouchableOpacity
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                    className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
-                    style={{ minHeight: 44 }}
-                  >
-                    <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                      {selectedOption?.label ?? servingUnit}
-                    </Text>
-                    <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-                  </TouchableOpacity>
-                )}
+
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Description</Text>
+              <TextInput
+                className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
+                style={{ fontSize: 16, minHeight: 92, textAlignVertical: 'top' }}
+                placeholder="Optional"
+                placeholderTextColor={textMuted}
+                value={description}
+                onChangeText={setDescription}
+                multiline
               />
             </View>
-          </View>
-        </View>
 
-        <View className="bg-surface rounded-xl p-4 shadow-sm">
-          <Text className="text-text-secondary text-sm font-medium">Total Nutrition</Text>
-          <View className="mt-4 flex-row items-start gap-4">
-            <View className="w-28 items-start">
-              <Text className="text-text-primary text-3xl font-semibold">
-                {Math.round(totals.calories)}
-              </Text>
-              <Text className="text-text-secondary text-sm mt-1">calories</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1 gap-1.5">
+                <Text className="text-text-secondary text-sm font-medium">Serving Size</Text>
+                <TextInput
+                  className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
+                  style={{ fontSize: 16 }}
+                  placeholder="1"
+                  placeholderTextColor={textMuted}
+                  value={servingSizeText}
+                  onChangeText={updateServingSize}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
+                <BottomSheetPicker
+                  value={servingUnit}
+                  options={SERVING_UNIT_OPTIONS}
+                  onSelect={setServingUnit}
+                  title="Select Unit"
+                  renderTrigger={({ onPress, selectedOption }) => (
+                    <TouchableOpacity
+                      onPress={onPress}
+                      activeOpacity={0.7}
+                      className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
+                      style={{ minHeight: 44 }}
+                    >
+                      <Text className="text-text-primary" style={{ fontSize: 16 }}>
+                        {selectedOption?.label ?? servingUnit}
+                      </Text>
+                      <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
             </View>
-            <View className="flex-1 gap-3">
-              {[
-                { label: 'Protein', value: totals.protein, unit: 'g' },
-                { label: 'Carbs', value: totals.carbs, unit: 'g' },
-                { label: 'Fat', value: totals.fat, unit: 'g' },
-              ].map((item) => (
-                <View key={item.label} className="flex-row justify-between">
-                  <Text className="text-text-secondary text-sm">{item.label}</Text>
-                  <Text className="text-text-primary text-sm font-medium">
-                    {Math.round(item.value)}
-                    {item.unit}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-text-primary text-lg font-semibold">Ingredients</Text>
-              <Text className="text-text-secondary text-sm mt-1">
-                Add foods to build this meal.
-              </Text>
-            </View>
-            <Button
-              variant="outline"
-              onPress={openIngredientPicker}
-              className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel="Add Food"
-            >
-              <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">Add Food</Text>
-            </Button>
           </View>
 
-          {!ingredients.length ? (
-            <View className="items-center justify-center rounded-xl border border-dashed border-border-subtle px-5 py-8">
-              <Text className="text-text-secondary text-base text-center">
-                No foods added to this meal yet.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {ingredients.map((ingredient, index) => {
-                const scale =
-                  ingredient.serving_size > 0 ? ingredient.quantity / ingredient.serving_size : 0;
-                const ingredientCalories = Math.round(ingredient.calories * scale);
+          <NutritionMacroCard
+            heading="Total Nutrition"
+            calories={totals.calories}
+            protein={totals.protein}
+            carbs={totals.carbs}
+            fat={totals.fat}
+          />
 
-                return (
-                  <View
-                    key={`${ingredient.food_id}-${ingredient.variant_id}-${index}`}
-                    className="rounded-xl border border-border-subtle bg-raised px-4 py-3"
-                  >
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1">
-                        <Text className="text-text-primary text-base font-semibold">
-                          {ingredient.food_name || 'Food'}
-                        </Text>
-                        {ingredient.brand ? (
-                          <Text className="text-text-secondary text-sm mt-0.5">
-                            {ingredient.brand}
+          <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-text-primary text-lg font-semibold">Foods in Meal</Text>
+              <Button
+                variant="outline"
+                onPress={openIngredientPicker}
+                className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
+                accessibilityLabel="Add Food"
+              >
+                <Icon name="add" size={16} color={accentColor} />
+                <Text className="text-accent-primary text-sm font-semibold">Add Food</Text>
+              </Button>
+            </View>
+
+            {!ingredients.length ? (
+              <View className="items-center justify-center rounded-xl border border-dashed border-border-subtle px-5 py-8">
+                <Text className="text-text-secondary text-base text-center">
+                  No foods added to this meal yet.
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-3">
+                {ingredients.map((ingredient, index) => {
+                  const scale =
+                    ingredient.serving_size > 0 ? ingredient.quantity / ingredient.serving_size : 0;
+                  const ingredientCalories = Math.round(ingredient.calories * scale);
+
+                  return (
+                    <View
+                      key={`${ingredient.food_id}-${ingredient.variant_id}-${index}`}
+                      className="rounded-xl border border-border-subtle bg-raised px-4 py-3"
+                    >
+                      <View className="flex-row items-start justify-between gap-3">
+                        <View className="flex-1">
+                          <Text className="text-text-primary text-base font-semibold">
+                            {ingredient.food_name || 'Food'}
                           </Text>
-                        ) : null}
-                        <Text className="text-text-muted text-sm mt-1">
-                          {ingredient.quantity} {ingredient.unit}
-                          {' \u00b7 '}
-                          {ingredientCalories} cal
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center gap-2">
-                        <TouchableOpacity
-                          onPress={() => editIngredient(ingredient, index)}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          className="min-h-11 min-w-11 items-center justify-center"
-                          accessibilityLabel={`Edit ${ingredient.food_name || 'ingredient'}`}
-                          accessibilityRole="button"
-                        >
-                          <Icon name="pencil" size={18} color={accentColor} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => removeIngredient(index)}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          className="min-h-11 min-w-11 items-center justify-center"
-                          accessibilityLabel={`Remove ${ingredient.food_name || 'ingredient'}`}
-                          accessibilityRole="button"
-                        >
-                          <Icon name="remove-circle" size={20} color={accentColor} />
-                        </TouchableOpacity>
+                          {ingredient.brand ? (
+                            <Text className="text-text-secondary text-sm mt-0.5">
+                              {ingredient.brand}
+                            </Text>
+                          ) : null}
+                          <Text className="text-text-muted text-sm mt-1">
+                            {ingredient.quantity} {ingredient.unit}
+                            {' \u00b7 '}
+                            {ingredientCalories} cal
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center gap-2">
+                          <TouchableOpacity
+                            onPress={() => editIngredient(ingredient, index)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            className="min-h-11 min-w-11 items-center justify-center"
+                            accessibilityLabel={`Edit ${ingredient.food_name || 'ingredient'}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon name="pencil" size={18} color={accentColor} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => removeIngredient(index)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            className="min-h-11 min-w-11 items-center justify-center"
+                            accessibilityLabel={`Remove ${ingredient.food_name || 'ingredient'}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon name="remove-circle" size={20} color={accentColor} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-        </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
 
-        <Button
-          variant="primary"
-          onPress={() => {
-            void handleSaveMeal();
-          }}
-          disabled={isPending}
-        >
-          {isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-white text-base font-semibold">Save Meal</Text>
-          )}
-        </Button>
-      </ScrollView>
-    </View>
+          <Button
+            variant="primary"
+            onPress={() => {
+              void handleSaveMeal();
+            }}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text className="text-white text-base font-semibold">Save Meal</Text>
+            )}
+          </Button>
+        </ScrollView>
+      </View>
+    </BottomSheetModalProvider>
   );
 };
 

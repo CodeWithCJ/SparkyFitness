@@ -221,7 +221,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         accessibilityRole="button"
         accessibilityLabel="Create Meal"
       >
-        <Text className="text-accent-primary text-sm font-medium">Create new meal...</Text>
+        <Text className="text-accent-primary text-base font-medium">Create new meal...</Text>
       </TouchableOpacity>
     );
   };
