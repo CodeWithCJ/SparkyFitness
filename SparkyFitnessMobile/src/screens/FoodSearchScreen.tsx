@@ -9,7 +9,6 @@ import {
   ScrollView,
   TextInput,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,8 +53,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const isNarrowScreen = width <= 375;
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -212,6 +209,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const trailingActionLabel =
     !isMealBuilderMode && activeTab === 'meal' ? 'Create Meal' : 'Add Food';
+
+  const renderCreateMealCta = () => {
+    if (isMealBuilderMode || activeTab !== 'meal') return null;
+
+    return (
+      <TouchableOpacity
+        onPress={openMealBuilder}
+        activeOpacity={0.7}
+        className="px-4 pb-2"
+        accessibilityRole="button"
+        accessibilityLabel="Create Meal"
+      >
+        <Text className="text-accent-primary text-sm font-medium">Create new meal...</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderItem = ({ item }: { item: FoodItem | TopFoodItem }) => (
     <TouchableOpacity
@@ -490,9 +503,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       return (
         <View className="flex-1 justify-center items-center px-6">
           <Text className="text-text-secondary text-base text-center">No meals found</Text>
-          <Button variant="primary" onPress={openMealBuilder} className="mt-4 px-6">
-            Create Meal
-          </Button>
         </View>
       );
     }
@@ -722,42 +732,28 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      <View className="px-4 py-3 border-b border-border-subtle">
-        <View className="flex-row items-center justify-between">
-          <Button
-            variant="header"
-            onPress={() => navigation.goBack()}
-            className="z-10 min-h-11 min-w-11 items-start justify-center"
-            accessibilityLabel="Close"
-          >
-            <Icon name="close" size={22} color={accentColor} />
-          </Button>
-
-          <View
-            pointerEvents="none"
-            className="absolute left-0 right-0 items-center justify-center"
-            style={{ top: 0, bottom: 0 }}
-          >
-            <Text
-              className={`text-text-primary font-semibold ${isNarrowScreen ? 'text-base' : 'text-lg'}`}
-              numberOfLines={1}
-            >
-              Food
-            </Text>
-          </View>
-
-          <Button
-            variant="outline"
-            onPress={handleHeaderActionPress}
-            className="z-10 min-h-11 flex-row items-center gap-1.5 rounded-full px-3 py-2"
-            accessibilityLabel={trailingActionLabel}
-          >
-            <Icon name="add" size={16} color={accentColor} />
-            <Text className={`${isNarrowScreen ? 'text-sm' : 'text-base'} text-accent-primary font-semibold`}>
-              {trailingActionLabel}
-            </Text>
-          </Button>
-        </View>
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+        <Button
+          variant="ghost"
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10 p-0"
+          accessibilityLabel="Close"
+        >
+          <Icon name="close" size={22} color={accentColor} />
+        </Button>
+        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+          Add
+        </Text>
+        <Button
+          variant="ghost"
+          onPress={handleHeaderActionPress}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10 p-0"
+          accessibilityLabel={trailingActionLabel}
+        >
+          <Icon name="add" size={26} color={accentColor} />
+        </Button>
       </View>
 
       <View className="px-4 mt-2">
@@ -765,6 +761,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       </View>
 
       {renderSearchBar()}
+      {renderCreateMealCta()}
 
       {renderTabContent()}
     </View>

@@ -6,7 +6,6 @@ import {
   Platform,
   ScrollView,
   TextInput,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -26,9 +25,7 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 type MealBuilderScreenProps = RootStackScreenProps<'MealBuilder'>;
 
 const SERVING_UNIT_OPTIONS = [
-  'serving', 'g', 'oz', 'cup', 'piece', 'slice', 'scoop', 'tbsp', 'tsp',
-  'bowl', 'plate', 'handful', 'bar', 'stick', 'can', 'bottle', 'packet', 'bag', 'whole',
-  'ml', 'l', 'kg', 'lb', 'mg',
+  'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
 ].map((unit) => ({ label: unit, value: unit }));
 
 interface MealTotals {
@@ -56,19 +53,16 @@ function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
 
 const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, textPrimary, formEnabled, formDisabled] = useCSSVariable([
+  const [accentColor, textMuted, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-primary',
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string, string];
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
   const [servingSizeText, setServingSizeText] = useState('1');
   const [servingUnit, setServingUnit] = useState('serving');
-  const [isPublic, setIsPublic] = useState(false);
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
 
   const { createMealAsync, isPending } = useCreateMeal();
@@ -110,7 +104,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
   };
 
   const openIngredientPicker = () => {
-    navigation.navigate('FoodSearch', { pickerMode: 'meal-builder' });
+    navigation.push('FoodSearch', { pickerMode: 'meal-builder' });
   };
 
   const editIngredient = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
@@ -166,7 +160,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
       await createMealAsync({
         name: trimmedMealName,
         description: description.trim() || null,
-        is_public: isPublic,
+        is_public: false,
         serving_size: parsedServingSize,
         serving_unit: servingUnit,
         foods: ingredients.map(({ brand: _brand, ...ingredient }) => ingredient),
@@ -273,35 +267,18 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
               />
             </View>
           </View>
-
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-4">
-              <Text className="text-text-secondary text-base">Share with Public</Text>
-              <Text className="text-text-muted text-sm mt-1">
-                Make this meal available anywhere your shared meals appear on web.
-              </Text>
-            </View>
-            <Switch
-              value={isPublic}
-              onValueChange={setIsPublic}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
         </View>
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
-          <Text className="text-text-secondary text-sm font-medium uppercase tracking-wide">
-            Nutrition Summary
-          </Text>
-          <View className="flex-row justify-between mt-4">
-            <View className="items-center flex-1">
+          <Text className="text-text-secondary text-sm font-medium">Total Nutrition</Text>
+          <View className="mt-4 flex-row items-start gap-4">
+            <View className="w-28 items-start">
               <Text className="text-text-primary text-3xl font-semibold">
                 {Math.round(totals.calories)}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">calories</Text>
             </View>
-            <View className="flex-1 gap-3 pl-4">
+            <View className="flex-1 gap-3">
               {[
                 { label: 'Protein', value: totals.protein, unit: 'g' },
                 { label: 'Carbs', value: totals.carbs, unit: 'g' },
@@ -330,7 +307,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
             <Button
               variant="outline"
               onPress={openIngredientPicker}
-              className="min-h-11 flex-row items-center gap-1.5 rounded-full px-3 py-2"
+              className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
               accessibilityLabel="Add Food"
             >
               <Icon name="add" size={16} color={accentColor} />
@@ -343,13 +320,6 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
               <Text className="text-text-secondary text-base text-center">
                 No foods added to this meal yet.
               </Text>
-              <Button
-                variant="primary"
-                onPress={openIngredientPicker}
-                className="mt-4 px-5"
-              >
-                Add Food
-              </Button>
             </View>
           ) : (
             <View className="gap-3">
@@ -375,7 +345,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
                         ) : null}
                         <Text className="text-text-muted text-sm mt-1">
                           {ingredient.quantity} {ingredient.unit}
-                          {' · '}
+                          {' \u00b7 '}
                           {ingredientCalories} cal
                         </Text>
                       </View>
