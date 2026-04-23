@@ -334,9 +334,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       return;
     }
 
-    try {
-      switch (item.source) {
-        case 'local': {
+    switch (item.source) {
+      case 'local': {
+        try {
           const variantId = selectedVariantId ?? item.variantId;
           if (!variantId) {
             throw new Error('Missing variant ID for local food');
@@ -350,10 +350,25 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               adjustedValues?.brand ?? item.brand,
             ),
           );
+        } catch {
+          Toast.show({
+            type: 'error',
+            text1: 'Failed to add food',
+            text2: 'Please try again.',
+          });
+        }
+        return;
+      }
+      case 'external': {
+        let savedFood;
+        try {
+          savedFood = await saveFoodAsync(buildSaveFoodPayload());
+        } catch {
+          // Save failures already show a toast in useSaveFood.
           return;
         }
-        case 'external': {
-          const savedFood = await saveFoodAsync(buildSaveFoodPayload());
+
+        try {
           finishMealBuilderSelection(
             buildMealIngredientDraftFromSavedFood(
               savedFood,
@@ -361,23 +376,22 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               displayValues.servingUnit,
             ),
           );
-          return;
-        }
-        case 'meal':
+        } catch {
           Toast.show({
             type: 'error',
-            text1: 'Meals not supported here',
-            text2: 'Select a food instead of another meal.',
+            text1: 'Failed to add food',
+            text2: 'Please try again.',
           });
+        }
+        return;
       }
-    } catch {
-      if (item.source === 'local') {
+      case 'meal':
         Toast.show({
           type: 'error',
-          text1: 'Failed to add food',
-          text2: 'Please try again.',
+          text1: 'Meals not supported here',
+          text2: 'Select a food instead of another meal.',
         });
-      }
+        return;
     }
   };
 
