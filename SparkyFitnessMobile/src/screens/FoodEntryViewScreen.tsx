@@ -353,7 +353,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
     : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
-  const otherNutrients = buildNutrientDisplayList(displayValues);
+  const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+  const { primary: primaryNutrients, additional: additionalNutrients } = buildNutrientDisplayList(displayValues);
+  const visibleNutrients = showMoreNutrients
+    ? [...primaryNutrients, ...additionalNutrients]
+    : primaryNutrients;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -519,19 +523,35 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         </Animated.View>
 
         {/* Other Nutrients */}
-        {otherNutrients.length > 0 && (
-          <Animated.View layout={LinearTransition.duration(300)} className="rounded-xl my-2">
-            {otherNutrients.map((n, i) => (
-              <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
-                <Text className="text-text-secondary text-sm">{n.label}</Text>
-                <Text className="text-text-primary text-sm">
-                  {isEditing
-                    ? `${Math.round(scaled(n.value!))}${n.unit}`
-                    : `${Math.round(scaledValue(n.value!, entry))}${n.unit}`
-                  }
-                </Text>
+        {(visibleNutrients.length > 0 || additionalNutrients.length > 0) && (
+          <Animated.View layout={LinearTransition.duration(300)} className="my-2 gap-2">
+            {visibleNutrients.length > 0 && (
+              <View className="rounded-xl">
+                {visibleNutrients.map((n, i) => (
+                  <View key={n.label} className={`flex-row justify-between py-1 ${i < visibleNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
+                    <Text className="text-text-secondary text-sm">{n.label}</Text>
+                    <Text className="text-text-primary text-sm">
+                      {isEditing
+                        ? `${Math.round(scaled(n.value!))}${n.unit}`
+                        : `${Math.round(scaledValue(n.value!, entry))}${n.unit}`
+                      }
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
+            {additionalNutrients.length > 0 && (
+              <Button
+                variant="ghost"
+                onPress={() => setShowMoreNutrients((prev) => !prev)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                className="self-start py-0 px-0"
+              >
+                <Text style={{ color: accentColor }} className="text-sm font-medium">
+                  {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+                </Text>
+              </Button>
+            )}
           </Animated.View>
         )}
 

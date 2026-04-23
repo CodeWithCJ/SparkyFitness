@@ -20,20 +20,36 @@ export const EXTRA_NUTRIENT_FIELDS = [
   { key: 'transFat', label: 'Trans Fat', unit: 'g' },
   { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
   { key: 'sodium', label: 'Sodium', unit: 'mg' },
-  { key: 'potassium', label: 'Potassium', unit: 'mg' },
-  { key: 'calcium', label: 'Calcium', unit: 'mg' },
-  { key: 'iron', label: 'Iron', unit: 'mg' },
-  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg' },
-  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg' },
+  { key: 'potassium', label: 'Potassium', unit: 'mg', additional: true },
+  { key: 'calcium', label: 'Calcium', unit: 'mg', additional: true },
+  { key: 'iron', label: 'Iron', unit: 'mg', additional: true },
+  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg', additional: true },
+  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg', additional: true },
 ] as const;
 
 type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
 
-/** Build a filtered display list from a camelCase nutrient source. */
+export interface NutrientDisplayItem {
+  label: string;
+  value: number;
+  unit: string;
+}
+
+/** Build primary + additional display lists from a camelCase nutrient source. */
 export function buildNutrientDisplayList(source: Partial<Record<ExtraNutrientKey, number>>) {
-  return EXTRA_NUTRIENT_FIELDS
-    .filter(({ key }) => source[key] != null)
-    .map(({ key, label, unit }) => ({ label, value: source[key]!, unit }));
+  const primary: NutrientDisplayItem[] = [];
+  const additional: NutrientDisplayItem[] = [];
+  for (const field of EXTRA_NUTRIENT_FIELDS) {
+    const value = source[field.key];
+    if (value == null) continue;
+    const item: NutrientDisplayItem = { label: field.label, value, unit: field.unit };
+    if ('additional' in field && field.additional) {
+      additional.push(item);
+    } else {
+      primary.push(item);
+    }
+  }
+  return { primary, additional };
 }
 
 export interface FoodInfoItem {
