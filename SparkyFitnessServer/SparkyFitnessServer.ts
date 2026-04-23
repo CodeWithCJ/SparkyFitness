@@ -201,7 +201,10 @@ app.use((req, _res, next) => {
   next();
 });
 // Serve static files from the 'uploads' directory
-const UPLOADS_BASE_DIR = path.join(__dirname, 'uploads');
+const UPLOADS_BASE_DIR = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, 'uploads');
+
 console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
 // Mount at both paths for compatibility during transition
 app.use('/api/uploads', express.static(UPLOADS_BASE_DIR));
@@ -247,8 +250,8 @@ app.get(
   async (req, res, _next) => {
     const { exerciseId, imageFileName } = req.params;
     const localImagePath = path.join(
-      __dirname,
-      'uploads/exercises',
+      UPLOADS_BASE_DIR,
+      'exercises',
       // @ts-expect-error TS2345
       exerciseId,
       imageFileName
@@ -275,13 +278,8 @@ app.get(
       const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
         originalRelativeImagePath
       );
-      const downloadedLocalPath = await downloadImage(
-        externalImageUrl,
-        exerciseId
-      );
-      // @ts-expect-error TS2345
-      const finalImagePath = path.join(__dirname, downloadedLocalPath);
-      res.sendFile(finalImagePath);
+      await downloadImage(externalImageUrl, exerciseId);
+      res.sendFile(localImagePath);
     } catch (error) {
       // @ts-expect-error TS18046
       log('error', `Error serving image: ${error.message}`);
