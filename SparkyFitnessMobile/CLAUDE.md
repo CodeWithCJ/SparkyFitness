@@ -147,7 +147,7 @@ The **Library** tab (`LibraryScreen`) is the entry point for browsing saved food
 
 `useFoodsLibrary` (infinite query) uses `queryClient.resetQueries` instead of `query.refetch()` on focus/pull-to-refresh — `refetch()` re-downloads every cached page, so a user deep in the list pays for pages 1..N on every focus. Same pattern as `useExerciseHistory`. `loadMore` gates on `isFetching` (not just `isFetchingNextPage`) so pagination cannot overlap with a reset and leave gaps.
 
-`FoodFormScreen` locally re-wraps its content in `BottomSheetModalProvider` so bottom sheets inside the form render above the native modal presentation (the root-level provider in `App.tsx` sits below the modal stack).
+`BottomSheetPicker` and `CalendarSheet` pass `containerComponent={FullWindowOverlay}` (iOS only) so the sheets render in a UIWindow above any native modal presentation. Earlier versions wrapped modal-presented screens in a local `BottomSheetModalProvider`, but that polluted the root provider's bottom-inset state and left the AddSheet with stale padding after dismissal — using `FullWindowOverlay` per-sheet avoids the nested provider entirely.
 
 ### Workout & Exercise Architecture
 

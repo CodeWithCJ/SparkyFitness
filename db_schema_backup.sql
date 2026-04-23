@@ -3688,6 +3688,13 @@ CREATE INDEX idx_sleep_entry_stages_user_id ON public.sleep_entry_stages USING b
 
 
 --
+-- Name: sleep_entry_stages_entry_natural_key_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX sleep_entry_stages_entry_natural_key_idx ON public.sleep_entry_stages USING btree (entry_id, start_time, end_time);
+
+
+--
 -- Name: idx_sleep_need_calc_user; Type: INDEX; Schema: public; Owner: -
 --
 
