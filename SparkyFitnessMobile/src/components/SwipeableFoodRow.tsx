@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
-import type { EntryNutrition } from './FoodSummary';
+import type { EntryNutrition } from '../utils/mealNutrition';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;

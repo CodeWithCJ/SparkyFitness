@@ -5,75 +5,63 @@ import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
 import { MEAL_TYPES, MEAL_CONFIG } from '../constants/meals';
 import SwipeableFoodRow from './SwipeableFoodRow';
+import {
+  calculateEntryNutrition,
+  calculateMealNutrition,
+  groupFoodEntriesByMealType,
+  type MealTypeKey,
+} from '../utils/mealNutrition';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
+  onPressMealType?: (mealType: MealTypeKey, entries: FoodEntry[]) => void;
 }
-
-function groupByMealType(entries: FoodEntry[]): Record<string, FoodEntry[]> {
-  const grouped: Record<string, FoodEntry[]> = {};
-  for (const mealType of MEAL_TYPES) {
-    grouped[mealType] = [];
-  }
-  grouped.other = [];
-  for (const entry of entries) {
-    const mealType = entry.meal_type?.toLowerCase() || 'snacks';
-    if (MEAL_TYPES.includes(mealType as (typeof MEAL_TYPES)[number])) {
-      grouped[mealType].push(entry);
-    } else {
-      grouped.other.push(entry);
-    }
-  }
-  return grouped;
-}
-
-function calculateEntryValue(value: number | undefined, entry: FoodEntry): number {
-  if (value === undefined || !entry.serving_size) return 0;
-  return (value * entry.quantity) / entry.serving_size;
-}
-
-export interface EntryNutrition {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
-export function calculateEntryNutrition(entry: FoodEntry): EntryNutrition {
-  return {
-    calories: Math.round(calculateEntryValue(entry.calories, entry)),
-    protein: Math.round(calculateEntryValue(entry.protein, entry)),
-    carbs: Math.round(calculateEntryValue(entry.carbs, entry)),
-    fat: Math.round(calculateEntryValue(entry.fat, entry)),
-  };
-}
-
 
 interface MealSectionProps {
-  mealType: string;
+  mealType: MealTypeKey;
   entries: FoodEntry[];
   onAdjustServing?: (entry: FoodEntry) => void;
+  onPressMealType?: (mealType: MealTypeKey, entries: FoodEntry[]) => void;
 }
 
-const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustServing }) => {
+const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustServing, onPressMealType }) => {
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const totalCalories = entries.reduce((sum, entry) => sum + calculateEntryNutrition(entry).calories, 0);
+  const totalCalories = calculateMealNutrition(entries).calories;
+  const headerContent = (
+    <>
+      <Icon name={config.icon} size={18} color={accentPrimary} />
+      <Text className="text-base font-bold text-text-secondary flex-1">{config.label}</Text>
+      {totalCalories > 0 && (
+        <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
+          <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>
+        </View>
+      )}
+      {onPressMealType && (
+        <Icon name="chevron-forward" size={14} color={accentPrimary} />
+      )}
+    </>
+  );
 
   return (
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
-      <View className="flex-row gap-2 mb-3 items-center">
-        <Icon name={config.icon} size={18} color={accentPrimary} />
-        <Text className="text-base font-bold text-text-secondary flex-1">{config.label}</Text>
-        {totalCalories > 0 && (
-          <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
-            <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>
-          </View>
-        )}
-      </View>
+      {onPressMealType ? (
+        <Pressable
+          onPress={() => onPressMealType(mealType, entries)}
+          className="flex-row gap-2 mb-3 items-center"
+          accessibilityRole="button"
+          accessibilityLabel={`${config.label} nutrition breakdown`}
+        >
+          {headerContent}
+        </Pressable>
+      ) : (
+        <View className="flex-row gap-2 mb-3 items-center">
+          {headerContent}
+        </View>
+      )}
       {entries.map((entry, index) => {
         const nutrition = calculateEntryNutrition(entry);
         return (
@@ -89,7 +77,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
   );
 };
 
-const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing }) => {
+const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing, onPressMealType }) => {
   if (foodEntries.length === 0) {
     return (
       <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
@@ -98,7 +86,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
     );
   }
 
-  const grouped = groupByMealType(foodEntries);
+  const grouped = groupFoodEntriesByMealType(foodEntries);
   const mealTypesWithEntries = MEAL_TYPES.filter((mealType) => grouped[mealType].length > 0);
   const hasOther = grouped.other.length > 0;
 
@@ -113,10 +101,21 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
   return (
     <View className="gap-2 my-2">
       {mealTypesWithEntries.map((mealType) => (
-        <MealSection key={mealType} mealType={mealType} entries={grouped[mealType]} onAdjustServing={onAdjustServing} />
+        <MealSection
+          key={mealType}
+          mealType={mealType}
+          entries={grouped[mealType]}
+          onAdjustServing={onAdjustServing}
+          onPressMealType={onPressMealType}
+        />
       ))}
       {hasOther && (
-        <MealSection mealType="other" entries={grouped.other} onAdjustServing={onAdjustServing} />
+        <MealSection
+          mealType="other"
+          entries={grouped.other}
+          onAdjustServing={onAdjustServing}
+          onPressMealType={onPressMealType}
+        />
       )}
     </View>
   );
