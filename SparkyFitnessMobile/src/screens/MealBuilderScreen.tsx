@@ -167,12 +167,6 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
         serving_unit: servingUnit,
         foods: ingredients.map(({ brand: _brand, ...ingredient }) => ingredient),
       });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Meal created',
-        text2: `${trimmedMealName} is ready to use.`,
-      });
       navigation.goBack();
     } catch {
       // Error toast is handled in the mutation hook.
