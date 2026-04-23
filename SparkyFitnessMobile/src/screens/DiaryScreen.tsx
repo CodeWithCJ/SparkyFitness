@@ -158,7 +158,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         ) : (
           <>
             <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
-            <ExerciseSummary exerciseEntries={summary.exerciseEntries} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
+            <ExerciseSummary exerciseEntries={summary.exerciseEntries} entryDate={selectedDate} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
               if (session.type === 'preset') {
                 navigation.navigate('WorkoutDetail', { session });
               } else {
@@ -182,7 +182,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             onNextDay={goToNextDay}
             onToday={goToToday}
             onDatePress={openCalendar}
-            hideChevrons
             showDateAlways
             skipSafeAreaTop
           />
