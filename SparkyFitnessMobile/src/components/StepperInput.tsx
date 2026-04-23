@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, type TextInputProps } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  type NativeSyntheticEvent,
+  type TextInputFocusEventData,
+  type TextInputProps,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
@@ -21,6 +28,8 @@ interface StepperInputProps {
   /** Compact size for inline use in set rows */
   compact?: boolean;
 }
+
+type TextInputFocusEvent = NativeSyntheticEvent<TextInputFocusEventData>;
 
 function StepperInput({
   value,
@@ -67,11 +76,11 @@ function StepperInput({
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}
-        onFocus={(e: never) => {
+        onFocus={(e: TextInputFocusEvent) => {
           setIsFocused(true);
           externalOnFocus?.(e);
         }}
-        onBlur={(e: never) => {
+        onBlur={(e: TextInputFocusEvent) => {
           setIsFocused(false);
           onBlur?.();
           externalOnBlur?.(e);

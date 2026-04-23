@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { View, Text, Pressable, TouchableOpacity } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -41,7 +43,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   weightUnit = 'kg',
   distanceUnit = 'km',
 }) => {
-  const swipeableRef = useRef<any>(null);
+  const swipeableRef = useRef<SwipeableMethods | null>(null);
   const rowHeight = useSharedValue<number | null>(null);
   const isRemoving = useSharedValue(false);
   const invalidateCacheRef = useRef<() => void>(() => {});
@@ -104,6 +106,8 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
       style={{ width: DELETE_ACTION_WIDTH }}
       onPress={confirmAndDelete}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Delete exercise"
     >
       <Text className="text-text-danger font-semibold text-sm">Delete</Text>
     </TouchableOpacity>
