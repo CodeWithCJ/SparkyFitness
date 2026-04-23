@@ -19,7 +19,7 @@ import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
-import WorkoutsScreen from './src/screens/WorkoutsScreen';
+import LibraryScreen from './src/screens/LibraryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
@@ -29,6 +29,8 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
+import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
+import FoodDetailScreen from './src/screens/FoodDetailScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
@@ -90,12 +92,14 @@ const androidModalAnimation =
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
 const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
-const SafeWorkouts = withErrorBoundary(WorkoutsScreen, 'Workouts');
+const SafeLibrary = withErrorBoundary(LibraryScreen, 'Library');
 
 // Onboarding — no Go Back (initial route for new users)
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
+const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
+const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
@@ -604,11 +608,27 @@ function AppContent() {
                     },
                   })}
                 />
-                <Tab.Screen name="Workouts" component={SafeWorkouts} />
+                <Tab.Screen name="Library" component={SafeLibrary} />
                 <Tab.Screen name="Settings" component={SettingsScreen} />
               </Tab.Navigator>
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="FoodsLibrary"
+            component={SafeFoodsLibrary}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="FoodDetail"
+            component={SafeFoodDetail}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
           <Stack.Screen
             name="FoodSearch"
             component={SafeFoodSearch}

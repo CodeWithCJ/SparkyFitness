@@ -29,6 +29,9 @@ export interface FoodItem {
   name: string;
   brand: string | null;
   is_custom: boolean;
+  user_id?: string;
+  shared_with_public?: boolean;
+  is_quick_food?: boolean;
   default_variant: FoodDefaultVariant;
 }
 
@@ -44,6 +47,18 @@ export interface FoodsResponse {
 export interface FoodSearchResponse {
   foods: FoodItem[];
   totalCount: number;
+}
+
+export interface FoodSearchPagination {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedFoodsResponse {
+  foods: FoodItem[];
+  pagination: FoodSearchPagination;
 }
 
 export interface FoodVariantDetail {

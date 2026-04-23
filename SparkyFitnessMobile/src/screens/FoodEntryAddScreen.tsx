@@ -5,9 +5,11 @@ import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQuery } from '@tanstack/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
@@ -19,8 +21,13 @@ import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodFormData } from '../components/FoodForm';
-import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
+import { toFormString, parseOptional } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  buildExternalVariantOptions,
+  buildLocalVariantOptions,
+  resolveFoodDisplayValues,
+} from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
@@ -39,85 +46,28 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   const isLocalFood = item.source === 'local';
   const hasExternalVariants = !!(item.externalVariants && item.externalVariants.length > 1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
-    hasExternalVariants ? 'ext-0' : item.variantId,
+    hasExternalVariants ? (item.variantId ?? 'ext-0') : item.variantId,
   );
 
   const { variants } = useFoodVariants(item.id, { enabled: isLocalFood });
 
-  const externalVariantOptions = useMemo(() => {
-    if (!item.externalVariants || item.externalVariants.length <= 1) return null;
-    return item.externalVariants.map((v, i) => ({
-      id: `ext-${i}`,
-      servingSize: v.serving_size,
-      servingUnit: v.serving_unit,
-      servingDescription: v.serving_description,
-      calories: v.calories,
-      protein: v.protein,
-      carbs: v.carbs,
-      fat: v.fat,
-      fiber: v.fiber,
-      saturatedFat: v.saturated_fat,
-      sodium: v.sodium,
-      sugars: v.sugars,
-      transFat: v.trans_fat,
-      potassium: v.potassium,
-      calcium: v.calcium,
-      iron: v.iron,
-      cholesterol: v.cholesterol,
-      vitaminA: v.vitamin_a,
-      vitaminC: v.vitamin_c,
-    }));
-  }, [item.externalVariants]);
+  const localVariantOptions = useMemo(
+    () => buildLocalVariantOptions(variants),
+    [variants],
+  );
+  const externalVariantOptions = useMemo(
+    () => buildExternalVariantOptions(item.externalVariants),
+    [item.externalVariants],
+  );
 
   const activeVariant = useMemo(() => {
-    if (variants && selectedVariantId) {
-      const v = variants.find((v) => v.id === selectedVariantId);
-      if (v) {
-        return {
-          servingSize: v.serving_size,
-          servingUnit: v.serving_unit,
-          calories: v.calories,
-          protein: v.protein,
-          carbs: v.carbs,
-          fat: v.fat,
-          fiber: v.dietary_fiber,
-          saturatedFat: v.saturated_fat,
-          sodium: v.sodium,
-          sugars: v.sugars,
-          transFat: v.trans_fat,
-          potassium: v.potassium,
-          calcium: v.calcium,
-          iron: v.iron,
-          cholesterol: v.cholesterol,
-          vitaminA: v.vitamin_a,
-          vitaminC: v.vitamin_c,
-        };
-      }
-    }
-    if (externalVariantOptions && selectedVariantId) {
-      const ev = externalVariantOptions.find((v) => v.id === selectedVariantId);
-      if (ev) return ev;
-    }
-    return {
-      servingSize: item.servingSize,
-      servingUnit: item.servingUnit,
-      calories: item.calories,
-      protein: item.protein,
-      carbs: item.carbs,
-      fat: item.fat,
-      fiber: item.fiber,
-      saturatedFat: item.saturatedFat,
-      transFat: item.transFat,
-      sodium: item.sodium,
-      sugars: item.sugars,
-      potassium: item.potassium,
-      calcium: item.calcium,
-      iron: item.iron,
-      cholesterol: item.cholesterol,
-      vitaminA: item.vitaminA,
-      vitaminC: item.vitaminC,
-    };
-  }, [variants, externalVariantOptions, selectedVariantId, item]);
+    return resolveFoodDisplayValues({
+      item,
+      selectedVariantId,
+      localVariantOptions,
+      externalVariantOptions,
+    });
+  }, [item, selectedVariantId, localVariantOptions, externalVariantOptions]);
 
   const displayValues = useMemo(() => {
     if (!adjustedValues) return activeVariant;
@@ -143,20 +93,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   }, [adjustedValues, activeVariant]);
 
   const variantPickerOptions = useMemo(() => {
-    if (variants && variants.length > 0) {
-      return variants.map((v) => ({
-        label: `${v.serving_size} ${v.serving_unit} (${v.calories} cal)`,
-        value: v.id,
+    if (localVariantOptions.length > 0) {
+      return localVariantOptions.map((variant) => ({
+        label: variant.label,
+        value: variant.id,
       }));
     }
-    if (externalVariantOptions) {
-      return externalVariantOptions.map((v) => ({
-        label: `${v.servingDescription} (${v.calories} cal)`,
-        value: v.id,
+    if (externalVariantOptions.length > 0) {
+      return externalVariantOptions.map((variant) => ({
+        label: variant.label,
+        value: variant.id,
       }));
     }
     return [];
-  }, [variants, externalVariantOptions]);
+  }, [localVariantOptions, externalVariantOptions]);
 
   const [quantityText, setQuantityText] = useState(String(activeVariant.servingSize));
   const quantity = parseDecimalInput(quantityText) || 0;
@@ -181,16 +131,23 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     }
   }, [adjustedFromNav, navigation]);
 
+  useEffect(() => {
+    if (!selectedVariantId && localVariantOptions.length > 0) {
+      setSelectedVariantId(localVariantOptions[0].id);
+      setQuantityText(String(localVariantOptions[0].servingSize));
+    }
+  }, [selectedVariantId, localVariantOptions]);
+
   const handleVariantChange = (variantId: string) => {
     setSelectedVariantId(variantId);
     setAdjustedValues(null);
-    if (variants) {
-      const v = variants.find((v) => v.id === variantId);
-      if (v) { setQuantityText(String(v.serving_size)); return; }
+    if (localVariantOptions.length > 0) {
+      const localVariant = localVariantOptions.find((variant) => variant.id === variantId);
+      if (localVariant) { setQuantityText(String(localVariant.servingSize)); return; }
     }
-    if (externalVariantOptions) {
-      const ev = externalVariantOptions.find((v) => v.id === variantId);
-      if (ev) { setQuantityText(String(ev.servingSize)); return; }
+    if (externalVariantOptions.length > 0) {
+      const externalVariant = externalVariantOptions.find((variant) => variant.id === variantId);
+      if (externalVariant) { setQuantityText(String(externalVariant.servingSize)); return; }
     }
   };
 
@@ -222,13 +179,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   const scaled = (value: number) => value * servings;
 
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] = useCSSVariable([
+  const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string];
 
   const buildSaveFoodPayload = () => {
     const source = adjustedValues ? displayValues : activeVariant;
@@ -336,16 +290,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   const carbsGoalPct = goalPercent(scaled(displayValues.carbs), goals?.carbs);
   const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
-  // Macro bar proportions by calorie contribution (ratios stay the same regardless of servings)
-  const proteinCals = displayValues.protein * 4;
-  const carbsCals = displayValues.carbs * 4;
-  const fatCals = displayValues.fat * 9;
-  const totalMacroCals = proteinCals + carbsCals + fatCals;
-
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
-  const otherNutrients = buildNutrientDisplayList(displayValues);
 
   return (
+    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
+    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
+    <BottomSheetModalProvider>
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
@@ -425,74 +375,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
-        {/* Food name & brand */}
-        <View className="">
-          <Text className="text-text-primary text-3xl font-bold">{adjustedValues?.name || item.name}</Text>
-          {(adjustedValues?.brand ?? item.brand) ? (
-            <Text className="text-text-secondary text-base mt-1">{adjustedValues?.brand ?? item.brand}</Text>
-          ) : null}
+        <FoodNutritionSummary
+          name={adjustedValues?.name || item.name}
+          brand={adjustedValues?.brand ?? item.brand}
+          values={displayValues}
+          servings={servings}
+          goalPercentages={isGoalsLoading ? undefined : {
+            calories: calorieGoalPct,
+            protein: proteinGoalPct,
+            carbs: carbsGoalPct,
+            fat: fatGoalPct,
+          }}
+        />
 
-        </View>
-
-        {/* Calories & Macros */}
-        <View className="bg-surface rounded-xl p-4 flex-row items-center">
-          {/* Calories — left half */}
-          <View className="flex-1 items-center pr-10">
-            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(displayValues.calories))}</Text>
-            <Text className="text-text-secondary text-base mt-2">calories</Text>
-            {isGoalsLoading ? (
-              <ActivityIndicator size="small" color={accentColor} className="mt-2" />
-            ) : calorieGoalPct !== null ? (
-              <Text className="text-text-muted text-sm mt-1">
-                {calorieGoalPct}% of goal
-              </Text>
-            ) : null}
-          </View>
-
-          {/* Macro bars — right half */}
-          <View className="flex-1 gap-3">
-            {[
-              { label: 'Protein', value: displayValues.protein, color: proteinColor, pct: proteinGoalPct },
-              { label: 'Carbs', value: displayValues.carbs, color: carbsColor, pct: carbsGoalPct },
-              { label: 'Fat', value: displayValues.fat, color: fatColor, pct: fatGoalPct },
-            ].map((macro) => (
-              <View key={macro.label}>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-text-secondary text-sm">{macro.label}</Text>
-                  <Text className="text-text-primary text-sm font-medium">
-                    {Math.round(scaled(macro.value))}g
-
-                  </Text>
-                </View>
-                <View className="h-2 rounded-full bg-progress-track overflow-hidden">
-                  {totalMacroCals > 0 && (
-                    <View
-                      className="h-full rounded-full"
-                      style={{
-                        backgroundColor: macro.color,
-                        width: `${Math.round((macro.value * (macro.label === 'Fat' ? 9 : 4) / totalMacroCals) * 100)}%`,
-                      }}
-                    />
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Additional nutrition details */}
-        {otherNutrients.length > 0 && (
-          <View className="rounded-xl">
-            {otherNutrients.map((n, i) => (
-                <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
-                  <Text className="text-text-secondary text-sm">{n.label}</Text>
-                  <Text className="text-text-primary text-sm">
-                    {Math.round(scaled(n.value))}{n.unit}
-                  </Text>
-                </View>
-              ))}
-          </View>
-        )}
         {/* Quantity control */}
         <View className="mt-2">
           <View className="flex-row items-center">
@@ -600,6 +495,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       </ScrollView>
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
     </View>
+    </BottomSheetModalProvider>
   );
 };
 

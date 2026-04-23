@@ -1,4 +1,4 @@
-import { fetchFoods, searchFoods, fetchFoodVariants, saveFood } from '../../src/services/api/foodsApi';
+import { fetchFoods, searchFoods, fetchFoodVariants, saveFood, deleteFood } from '../../src/services/api/foodsApi';
 import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
@@ -291,6 +291,60 @@ describe('foodsApi', () => {
 
       await expect(fetchFoodVariants('food-abc')).rejects.toThrow(
         'Server configuration not found.'
+      );
+    });
+  });
+
+  describe('deleteFood', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('sends DELETE request to /api/foods/:id', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ message: 'Food deleted permanently.' }),
+      });
+
+      await deleteFood('food-abc');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/foods/food-abc',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+          },
+        }),
+      );
+    });
+
+    test('returns parsed JSON response on success', async () => {
+      const responseData = { message: 'Food deleted permanently.' };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await deleteFood('food-abc');
+
+      expect(result).toEqual(responseData);
+    });
+
+    test('throws error on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('Not Found'),
+      });
+
+      await expect(deleteFood('food-abc')).rejects.toThrow(
+        'Server error: 404 - Not Found',
       );
     });
   });

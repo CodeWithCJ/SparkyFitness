@@ -4,7 +4,8 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
@@ -18,12 +19,169 @@ import { parseOptional } from '../types/foodInfo';
 import { updateFoodVariant, updateFood } from '../services/api/foodsApi';
 import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { FoodInfoItem } from '../types/foodInfo';
+import type { FoodVariantDetail } from '../types/foods';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
 type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'create-food' }>;
 type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'adjust-entry-nutrition' }>;
+type EditFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'edit-food' }>;
+
+const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
+  'servingSize',
+  'servingUnit',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'fiber',
+  'saturatedFat',
+  'transFat',
+  'sodium',
+  'sugars',
+  'potassium',
+  'cholesterol',
+  'calcium',
+  'iron',
+  'vitaminA',
+  'vitaminC',
+];
+
+const FOOD_METADATA_FIELDS: (keyof FoodFormData)[] = ['name', 'brand'];
+
+function validateFoodForm(data: FoodFormData): boolean {
+  if (!data.name.trim()) {
+    Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+    return false;
+  }
+
+  if (!parseDecimalInput(data.servingSize)) {
+    Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+    return false;
+  }
+
+  return true;
+}
+
+function hasFoodFormChanges(
+  initialValues: Partial<FoodFormData>,
+  data: FoodFormData,
+  fields: (keyof FoodFormData)[],
+): boolean {
+  return fields.some((field) => (initialValues[field] ?? '') !== data[field]);
+}
+
+function invalidateFoodCaches(queryClient: QueryClient, foodId: string) {
+  void queryClient.invalidateQueries({ queryKey: foodVariantsQueryKey(foodId), refetchType: 'all' });
+  void queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
+  void queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
+  void queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+}
+
+function updateFoodVariantCache(queryClient: QueryClient, updatedVariant: FoodVariantDetail) {
+  queryClient.setQueryData<FoodVariantDetail[] | undefined>(
+    foodVariantsQueryKey(updatedVariant.food_id),
+    (current) => {
+      if (!current) return current;
+      return current.map((variant) => (
+        variant.id === updatedVariant.id ? updatedVariant : variant
+      ));
+    },
+  );
+}
+
+function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId: string): FoodInfoItem {
+  return {
+    ...item,
+    name: data.name,
+    brand: data.brand || null,
+    servingSize: parseDecimalInput(data.servingSize) || item.servingSize,
+    servingUnit: data.servingUnit || item.servingUnit,
+    calories: parseDecimalInput(data.calories) || 0,
+    protein: parseDecimalInput(data.protein) || 0,
+    carbs: parseDecimalInput(data.carbs) || 0,
+    fat: parseDecimalInput(data.fat) || 0,
+    fiber: parseOptional(data.fiber),
+    saturatedFat: parseOptional(data.saturatedFat),
+    sodium: parseOptional(data.sodium),
+    sugars: parseOptional(data.sugars),
+    transFat: parseOptional(data.transFat),
+    potassium: parseOptional(data.potassium),
+    calcium: parseOptional(data.calcium),
+    iron: parseOptional(data.iron),
+    cholesterol: parseOptional(data.cholesterol),
+    vitaminA: parseOptional(data.vitaminA),
+    vitaminC: parseOptional(data.vitaminC),
+    variantId,
+  };
+}
+
+async function persistFoodEdits({
+  queryClient,
+  foodId,
+  variantId,
+  customNutrients,
+  data,
+  initialValues,
+}: {
+  queryClient: QueryClient;
+  foodId: string;
+  variantId: string;
+  customNutrients?: Record<string, string | number> | null;
+  data: FoodFormData;
+  initialValues: Partial<FoodFormData>;
+}): Promise<boolean> {
+  const shouldUpdateVariant = hasFoodFormChanges(initialValues, data, FOOD_VARIANT_FIELDS);
+  const shouldUpdateFood = hasFoodFormChanges(initialValues, data, FOOD_METADATA_FIELDS);
+
+  if (!shouldUpdateVariant && !shouldUpdateFood) {
+    return false;
+  }
+
+  const updates: Promise<unknown>[] = [];
+
+  if (shouldUpdateVariant) {
+    updates.push(
+      updateFoodVariant(variantId, {
+        food_id: foodId,
+        serving_size: parseDecimalInput(data.servingSize) || 0,
+        serving_unit: data.servingUnit || 'serving',
+        calories: parseDecimalInput(data.calories) || 0,
+        protein: parseDecimalInput(data.protein) || 0,
+        carbs: parseDecimalInput(data.carbs) || 0,
+        fat: parseDecimalInput(data.fat) || 0,
+        dietary_fiber: parseOptional(data.fiber),
+        saturated_fat: parseOptional(data.saturatedFat),
+        sodium: parseOptional(data.sodium),
+        sugars: parseOptional(data.sugars),
+        trans_fat: parseOptional(data.transFat),
+        potassium: parseOptional(data.potassium),
+        calcium: parseOptional(data.calcium),
+        iron: parseOptional(data.iron),
+        cholesterol: parseOptional(data.cholesterol),
+        vitamin_a: parseOptional(data.vitaminA),
+        vitamin_c: parseOptional(data.vitaminC),
+        custom_nutrients: customNutrients || undefined,
+      }).then((updatedVariant) => {
+        updateFoodVariantCache(queryClient, updatedVariant);
+        return updatedVariant;
+      }),
+    );
+  }
+
+  if (shouldUpdateFood) {
+    const foodPayload: { name?: string; brand?: string } = {};
+    if (data.name !== initialValues.name) foodPayload.name = data.name;
+    if (data.brand !== initialValues.brand) foodPayload.brand = data.brand || '';
+    updates.push(updateFood(foodId, foodPayload));
+  }
+
+  await Promise.all(updates);
+  invalidateFoodCaches(queryClient, foodId);
+  return true;
+}
 
 function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const insets = useSafeAreaInsets();
@@ -255,56 +413,23 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const [updateFoodToggle, setUpdateFoodToggle] = useState(false);
 
   const handleSubmit = (data: FoodFormData) => {
-    if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
-      return;
-    }
-    if (!parseDecimalInput(data.servingSize)) {
-      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+    if (!validateFoodForm(data)) {
       return;
     }
 
     if (updateFoodToggle && canUpdateVariant) {
-      const invalidateCaches = () => {
-        void queryClient.invalidateQueries({ queryKey: foodVariantsQueryKey(foodId) });
-        void queryClient.invalidateQueries({ queryKey: foodsQueryKey });
-        void queryClient.invalidateQueries({ queryKey: ['foodSearch'] });
-      };
       const onError = () => {
         Toast.show({ type: 'error', text1: 'Could not update food' });
       };
 
-      void updateFoodVariant(variantId, {
-        food_id: foodId,
-        serving_size: parseDecimalInput(data.servingSize) || 0,
-        serving_unit: data.servingUnit || 'serving',
-        calories: parseDecimalInput(data.calories) || 0,
-        protein: parseDecimalInput(data.protein) || 0,
-        carbs: parseDecimalInput(data.carbs) || 0,
-        fat: parseDecimalInput(data.fat) || 0,
-        dietary_fiber: parseOptional(data.fiber),
-        saturated_fat: parseOptional(data.saturatedFat),
-        sodium: parseOptional(data.sodium),
-        sugars: parseOptional(data.sugars),
-        trans_fat: parseOptional(data.transFat),
-        potassium: parseOptional(data.potassium),
-        calcium: parseOptional(data.calcium),
-        iron: parseOptional(data.iron),
-        cholesterol: parseOptional(data.cholesterol),
-        vitamin_a: parseOptional(data.vitaminA),
-        vitamin_c: parseOptional(data.vitaminC),
-        custom_nutrients: customNutrients || undefined,
-      }).then(invalidateCaches).catch(onError);
-
-      // Update name/brand on the parent food record if changed
-      const nameChanged = data.name !== initialValues.name;
-      const brandChanged = data.brand !== initialValues.brand;
-      if (nameChanged || brandChanged) {
-        const foodPayload: { name?: string; brand?: string } = {};
-        if (nameChanged) foodPayload.name = data.name;
-        if (brandChanged) foodPayload.brand = data.brand || '';
-        void updateFood(foodId, foodPayload).then(invalidateCaches).catch(onError);
-      }
+      void persistFoodEdits({
+        queryClient,
+        foodId,
+        variantId,
+        customNutrients,
+        data,
+        initialValues,
+      }).catch(onError);
     }
 
     navigation.dispatch({
@@ -352,11 +477,87 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   );
 }
 
+function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
+  const insets = useSafeAreaInsets();
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (data: FoodFormData) => {
+    if (!validateFoodForm(data)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const didPersist = await persistFoodEdits({
+        queryClient,
+        foodId,
+        variantId,
+        customNutrients,
+        data,
+        initialValues,
+      });
+
+      if (didPersist) {
+        navigation.dispatch({
+          ...CommonActions.setParams({
+            updatedItem: buildUpdatedFoodInfo(item, data, variantId),
+          }),
+          source: returnKey,
+        });
+      }
+
+      navigation.goBack();
+    } catch {
+      Toast.show({ type: 'error', text1: 'Could not update food' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10"
+        >
+          <Icon name="chevron-back" size={22} color={accentColor} />
+        </TouchableOpacity>
+        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+          Edit Food
+        </Text>
+      </View>
+
+      <FoodForm
+        onSubmit={(data) => {
+          void handleSubmit(data);
+        }}
+        initialValues={initialValues}
+        submitLabel="Save Changes"
+        isSubmitting={isSubmitting}
+      />
+    </View>
+  );
+}
+
 const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
-  if (route.params.mode === 'adjust-entry-nutrition') {
-    return <AdjustNutritionMode params={route.params} navigation={navigation} />;
-  }
-  return <CreateFoodMode params={route.params} navigation={navigation} />;
+  return (
+    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
+    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
+    <BottomSheetModalProvider>
+      {route.params.mode === 'adjust-entry-nutrition' ? (
+        <AdjustNutritionMode params={route.params} navigation={navigation} />
+      ) : route.params.mode === 'edit-food' ? (
+        <EditFoodMode params={route.params} navigation={navigation} />
+      ) : (
+        <CreateFoodMode params={route.params} navigation={navigation} />
+      )}
+    </BottomSheetModalProvider>
+  );
 };
 
 export default FoodFormScreen;

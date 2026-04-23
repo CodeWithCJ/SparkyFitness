@@ -11,19 +11,22 @@ export type TabParamList = {
   Dashboard: undefined;
   Diary: { selectedDate?: string } | undefined;
   Add: undefined;
-  Workouts: undefined;
+  Library: undefined;
   Settings: undefined;
 };
 
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
+  FoodsLibrary: undefined;
+  FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
   FoodSearch: { date?: string } | undefined;
   FoodEntryAdd: { item: FoodInfoItem; date?: string; adjustedValues?: FoodFormData };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
   FoodForm:
     | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
-    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null };
+    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null }
+    | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
   FoodScan: { date?: string } | undefined;
   ExerciseSearch: { returnKey: string };
   PresetSearch: { date?: string } | undefined;

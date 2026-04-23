@@ -215,7 +215,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
               <View className="flex-row">
                 {renderExerciseOption('Workout', 'Sets & reps', 'exercise-weights', onAddWorkout)}
                 {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running', onAddActivity)}
-                {renderExerciseOption('Preset', 'Use a template', 'bookmark', onAddFromPreset)}
+                {renderExerciseOption('Preset', 'Use a template', 'bookmark-filled', onAddFromPreset)}
               </View>
             </>
           ) : (

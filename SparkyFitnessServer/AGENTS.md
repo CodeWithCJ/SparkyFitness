@@ -1,74 +1,72 @@
 # AGENTS.md
 
-_Last updated: 2026-03-13_
+_Last updated: 2026-04-21_
 
-SparkyFitness Server is the Node.js + Express 5 backend API for the SparkyFitness monorepo. This file is the package guide for `SparkyFitnessServer/`.
+SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
-Use this file as the primary guide for work in this directory. `CLAUDE.md` is still useful as legacy context, but this file should be treated as the current package-level operating guide.
+If a task also touches `shared/`, the frontend, or the mobile app, read the relevant package guide before editing outside this directory. Use `../AGENTS.md` for monorepo-level context.
 
-If a task also changes the frontend, mobile app, or `shared/`, read the relevant package guide before editing outside this folder.
+## Scope
 
-## Project Overview
+- This file is for package-local work in `SparkyFitnessServer/`.
+- Keep changes inside this package unless the task clearly crosses package boundaries.
+- Treat `CLAUDE.md` as legacy context only; this file is the authoritative package guide when they differ.
+- Do not invent alternate boot paths, duplicate route registries, or parallel migration flows when the current startup path already covers the behavior.
 
-- Runtime entrypoint: `SparkyFitnessServer.js`
-- Stack: Express 5, PostgreSQL via `pg`, Better Auth, Jest, ESLint, TypeScript type-checking with CommonJS modules
-- Main domains: food and meal tracking, exercise logging, health metrics, reporting, chat, external integrations, family access, and admin tooling
-- API routes are primarily mounted under `/api`
-- API docs are served at:
-  - `/api/api-docs/swagger`
-  - `/api/api-docs/redoc`
-  - `/api/api-docs/json`
-- **IMPORTANT - New Code Standards**:
-  - All new backend files must be written in TypeScript
-  - All new endpoints must include Zod schemas for request/response validation
-  - All new endpoints must include automated tests
-- The codebase is currently transitioning from JavaScript to TypeScript. Existing TypeScript areas include `routes/v2/`, `schemas/`, and `types/`
+## Current Snapshot
 
-Startup behavior matters in this package:
+- Dev boot path: `pnpm start` -> `nodemon` -> `tsx index.ts`
+- `index.ts` loads `../.env`, applies file-backed secrets, runs preflight checks, then imports `SparkyFitnessServer.ts`
+- Main app shell: `SparkyFitnessServer.ts`
+- Stack: Express 5, PostgreSQL via `pg`, Better Auth, Zod, TypeScript 5, Vitest 4, ESLint 10
+- Module system: ESM with `type: "module"` and `moduleResolution: "NodeNext"`
+- The package is now effectively TypeScript-first; almost all source files are `.ts`
+- Main domains: food and meal tracking, exercise logging, health and sleep data, reporting, AI chat, onboarding, identity, admin tooling, and external provider integrations
 
-- `.env` is loaded from `../.env`
-- file-based secrets are loaded through `utils/secretLoader.js`
-- preflight env validation runs before the app boots
-- SQL migrations run on startup, then `db/rls_policies.sql` is applied
-- auth provider sync and scheduled jobs are initialized before the server begins accepting traffic
-
-## Commands
+## Verified Commands
 
 ```bash
 pnpm start
+pnpm run validate
 pnpm run typecheck
 pnpm run lint
 pnpm run lint:fix
+pnpm run format:check
+pnpm run format
 pnpm test
 pnpm run test:watch
 pnpm run test:coverage
 pnpm run test:ci
+pnpm exec vitest run tests/mealRoutes.test.ts
+pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 ```
 
-- Use `pnpm` in this package. Older docs may still show `npm`, but the repo is a `pnpm` workspace and the scripts above are verified in `package.json`.
-- `pnpm test` already includes `NODE_OPTIONS='--experimental-vm-modules'`. If you run Jest manually, keep that env var.
-- Prefer `pnpm run typecheck` after touching `routes/v2/`, `schemas/`, `types/`, or public request/response contracts.
-- Prefer `pnpm run lint` after multi-file edits, route wiring changes, or broad refactors.
-- Useful targeted test pattern:
-
-```bash
-NODE_OPTIONS='--experimental-vm-modules' pnpm exec jest tests/mealRoutes.test.js
-```
+- `pnpm start` uses hot reload through `nodemon`; `nodemon.json` ultimately executes `tsx index.ts`
+- `pnpm run validate` runs typecheck, lint, and Prettier check together
+- `pnpm test` runs `vitest run`
+- The backend default port is `3010` unless `SPARKY_FITNESS_SERVER_PORT` overrides it
+- For targeted test runs, prefer `pnpm exec vitest run tests/<name>.test.ts`
 
 ## Source Map
 
-- `SparkyFitnessServer.js` - app entrypoint, route registration, Swagger mounting, cron setup, graceful shutdown
-- `routes/` - HTTP route handlers
-- `routes/v2/` - current TypeScript route surface
+- `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
+- `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, cron setup, graceful shutdown
+- `auth.ts` - Better Auth configuration, plugins, session behavior, SSO provider syncing
+- `routes/` - primary HTTP route surface
+- `routes/v2/` - newer typed route surface; pair these changes with `schemas/`
+- `routes/auth/` - auth-specific route fragments mounted through `routes/authRoutes.ts`
 - `services/` - business logic and orchestration
-- `models/` - database repositories and persistence helpers
+- `models/` - PostgreSQL repositories and persistence helpers
 - `middleware/` - auth, permissions, uploads, and shared Express middleware
-- `integrations/` - third-party provider integrations
-- `db/` - connection pools, grants, migrations, and RLS policies
-- `config/` - logging and Swagger configuration
-- `schemas/`, `types/` - Zod schemas and TypeScript declarations
-- `utils/` - startup helpers, CORS, permissions, migrations, secret loading, OIDC env sync, and related utilities
-- `tests/`, `__mocks__/` - Jest tests and mocks
+- `integrations/` - provider adapters and ingest pipelines
+- `schemas/` - Zod route schemas
+- `types/` - TypeScript declarations, including `Express.Request` augmentation
+- `db/` - pool management, grants, migrations, and RLS policies
+- `config/` - logging and Swagger config
+- `utils/` - startup helpers, CORS, permissions, timezone loading, OIDC helpers, migration helpers
+- `ai/`, `constants/`, `data/` - supporting package data and configuration
+- `tests/` - Vitest suites plus a few utility scripts
+- `devdocs/` - local notes and debugging artifacts when present
 
 When searching, ignore noisy/generated directories unless you explicitly need them:
 
@@ -81,58 +79,31 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 
 ## Architecture
 
-### App Shell
+### Boot and App Shell
 
-- `SparkyFitnessServer.js` is the single app entrypoint. Do not create alternate boot paths unless the task explicitly calls for one.
-- Route mounting is centralized in `SparkyFitnessServer.js`. If you add a new router, wire it there.
-- Public API changes should keep Swagger output accurate. Update the relevant JSDoc-backed route docs when endpoints or payloads change.
-- Prefer Zod schemas in `schemas/` for route request/param validation. For existing public endpoints, add compatibility-first validation that matches current client contracts unless the task explicitly introduces a stricter API version.
-- Graceful shutdown drains the HTTP server and database pools through `endPool()`.
+- `index.ts` is the true local boot path used by `pnpm start`; do not bypass it for normal development because it performs env loading and preflight work
+- `SparkyFitnessServer.ts` creates the Express app, configures static upload serving, mounts auth interception, registers routes, exposes API docs, schedules cron jobs, and handles graceful shutdown
+- Startup order matters:
+  - apply pending migrations
+  - reapply `db/rls_policies.sql`
+  - upsert env-configured OIDC provider
+  - mount Better Auth
+  - sync trusted SSO providers
+  - register cron jobs
+  - optionally promote `SPARKY_FITNESS_ADMIN_EMAIL` to admin
+  - start listening
+- Public API docs live at:
+  - `/api/api-docs/swagger`
+  - `/api/api-docs/redoc`
+  - `/api/api-docs/json`
+- If you change public endpoints, keep Swagger JSDoc and `config/swagger.ts` coverage accurate
 
-### Database and RLS
+### Environment and Secrets
 
-- Use `getClient(userId, authenticatedUserId?)` from `db/poolManager.js` for normal user-scoped queries.
-- `getClient(...)` sets the app context through `public.set_app_context(...)`; this is what makes row-level security work correctly.
-- Use `getSystemClient()` only for admin, migration, startup, or policy-management tasks that intentionally bypass RLS.
-- Always release database clients in a `finally` block.
-- New migrations belong in `db/migrations/` and should use `YYYYMMDDHHMMSS_description.sql`.
-- When you add or modify a migration, also update the repo-root schema snapshot at `../db_schema_backup.sql` in the same change.
-- Startup automatically applies pending migrations via `utils/dbMigrations.js`, then reapplies `db/rls_policies.sql` via `utils/applyRlsPolicies.js`.
-- If you add a table, add user-visible data, or change access behavior, update `db/rls_policies.sql` in the same change.
-
-### Authentication and Permissions
-
-- Better Auth is mounted early under `/api/auth`.
-- The API supports cookie-backed sessions, API keys, and bearer session tokens.
-- `middleware/authMiddleware.js` distinguishes API keys from session tokens and normalizes them into the auth flow.
-- `req.authenticatedUserId` is the logged-in user. `req.userId` is the active RLS target after any allowed context switch.
-- Family access and delegated access flow through `middleware/onBehalfOfMiddleware.js` and the permission helpers/middleware.
-- If auth behavior changes, check whether the web app and mobile app depend on the same backend contract.
-
-### Integrations and Schedules
-
-- Provider-specific code lives under `integrations/`, with coordinating logic often in `services/` and persistence in `models/`.
-- Scheduled jobs currently include:
-  - daily backups at 2 AM
-  - daily session cleanup at 3 AM
-  - hourly provider syncs for Withings, Garmin, Fitbit, Polar, and Strava
-- Integration changes often touch more than one layer. Check routes, services, repositories, and cron setup together before calling the work complete.
-
-### JavaScript and TypeScript Mix
-
-- **New Code Requirements**: All new files must be written in TypeScript
-- **Existing Code**: The package is transitioning from JavaScript to TypeScript. Existing JavaScript files may remain, but new functionality should be TypeScript
-- **Validation Requirements**: All new endpoints must include Zod schemas for request/response validation (see `schemas/` directory for examples)
-- **Testing Requirements**: All new endpoints must include automated tests in the `tests/` directory
-- TypeScript is used for type checking only; there is no compile output step in normal development
-- When editing existing JavaScript files, you may maintain them as JavaScript unless specifically converting to TypeScript as part of the task
-
-## Environment and Secrets
-
-- Runtime `.env` is expected at `../.env`.
-- The tracked template lives at `../docker/.env.example`.
-- Secrets can also be loaded from files via `utils/secretLoader.js`.
-- Commonly required environment variables include:
+- Runtime `.env` is expected at `../.env`
+- The tracked template lives at `../docker/.env.example`
+- `utils/secretLoader.ts` loads `*_FILE` secrets before preflight validation
+- Current hard startup requirements enforced by `utils/preflightChecks.ts` include:
   - `SPARKY_FITNESS_DB_HOST`
   - `SPARKY_FITNESS_DB_NAME`
   - `SPARKY_FITNESS_DB_USER`
@@ -140,45 +111,97 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   - `SPARKY_FITNESS_APP_DB_USER`
   - `SPARKY_FITNESS_APP_DB_PASSWORD`
   - `SPARKY_FITNESS_FRONTEND_URL`
-  - `JWT_SECRET`
   - `SPARKY_FITNESS_API_ENCRYPTION_KEY`
-- Common operational toggles include:
-  - `SPARKY_FITNESS_SERVER_PORT`
-  - `SPARKY_FITNESS_LOG_LEVEL`
-  - `SPARKY_FITNESS_ADMIN_EMAIL`
-  - `ALLOW_PRIVATE_NETWORK_CORS`
-  - `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS`
+- `BETTER_AUTH_SECRET` is currently soft-required: startup will generate a temporary value if it is missing, but that is only appropriate for throwaway local runs because sessions will not survive restarts
+- Common operational toggles include `SPARKY_FITNESS_SERVER_PORT`, `SPARKY_FITNESS_ADMIN_EMAIL`, `ALLOW_PRIVATE_NETWORK_CORS`, `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS`, and `BETTER_AUTH_URL`
 
-## Testing
+### TypeScript and Module Conventions
 
-- Jest is configured in `jest.config.js` and runs in the Node environment.
-- The main test suite lives in `tests/*.test.js`. `jest.setup.js` loads the root `.env` and installs safe defaults for test execution.
-- Use `pnpm run test:coverage` after broad route, service, model, or middleware refactors.
-- If you touch auth, CORS, migrations, scheduled jobs, or provider sync behavior, run the closest targeted tests before stopping.
-- `tests/check_routes.js` is a utility script, not a normal `*.test.js` suite. Do not assume everything in `tests/` is auto-discovered by Jest.
+- This package is now almost entirely TypeScript; new source files should be `.ts`
+- Keep local relative imports using `.js` extensions from TypeScript files, for example `import foo from './foo.js'`
+- `eslint.config.js` enforces file extensions in imports
+- `tsconfig.json` uses `NodeNext`, `noEmit`, and `allowJs: false`
+- `@workspace/shared` resolves directly to `../shared/src/index.ts` here and in Vitest
+- New public endpoints should include TypeScript code, Zod validation, and automated tests
+
+### Database and RLS
+
+- Use `getClient(userId, authenticatedUserId?)` from `db/poolManager.ts` for normal user-scoped queries
+- `getClient(...)` sets `public.set_app_context(...)`; that is what makes row-level security work correctly
+- Use `getSystemClient()` only for admin, migration, startup, or policy-management work that intentionally bypasses RLS
+- Always release database clients in a `finally` block
+- New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
+- If you add or change a migration, also update `../db_schema_backup.sql` in the same change
+- If you add a table or change user-visible access behavior, also update `db/rls_policies.sql`
+- Startup automatically applies migrations and then reapplies RLS policies; do not create alternate migration mechanisms
+
+### Auth and Request Context
+
+- Better Auth is configured in `auth.ts` and mounted under `/api/auth`
+- `SparkyFitnessServer.ts` intercepts `/api/auth*` requests before the normal request logger and has special handling for discovery routes and sign-out cookie cleanup
+- `middleware/authMiddleware.ts` populates:
+  - `req.userId`
+  - `req.authenticatedUserId`
+  - `req.originalUserId`
+  - `req.activeUserId`
+  - `req.user`
+- `req.userId` is the active RLS target; `req.authenticatedUserId` is the logged-in actor
+- Family and delegated access flow through `middleware/checkPermissionMiddleware.ts`, `middleware/onBehalfOfMiddleware.ts`, and the auth middleware’s active-user switching
+- If you change auth behavior, check both cookie-backed sessions and API key flows
+
+### Dates, Day Strings, and Timezones
+
+- Prefer the shared helpers exported by `@workspace/shared` for day-string and timezone-aware logic
+- Common server-side helpers include `todayInZone`, `instantToDay`, `dayToUtcRange`, `dayRangeToUtcRange`, `localDateToDay`, `addDays`, `compareDays`, and `isDayString`
+- Load the user timezone through `utils/timezoneLoader.ts` before deriving "today", bucketing events by day, or building date ranges from user context
+- Treat `YYYY-MM-DD` values as calendar-day strings, not UTC-midnight timestamps
+- Avoid `toISOString().split('T')[0]` for user-facing or business-logic dates; it silently shifts dates near timezone boundaries
+- If you touch older code that still uses UTC split patterns, prefer migrating that path to the shared helpers instead of copying the pattern forward
+- Timezone/date regression coverage already exists in:
+  - `tests/timezone.test.ts`
+  - `tests/dateShifting.test.ts`
+  - `tests/measurementService.timezone.test.ts`
+
+### Integrations and Background Work
+
+- Provider-specific adapters live under `integrations/`; coordinating logic usually lives in `services/` and persistence in `models/`
+- Scheduled jobs currently include backups, session cleanup, and hourly sync loops for Withings, Garmin, Fitbit, Polar, and Strava
+- Integration work often spans route, service, repository, cron, and external-provider settings code; inspect the whole path before calling the work complete
+
+## Testing and Validation
+
+- Test runner: Vitest, not Jest
+- Auto-discovered test files match `tests/**/*.test.ts`
+- `tests/check_routes.ts` and `tests/*.script.ts` are utility scripts, not normal test suites
+- For route or contract work, targeted `supertest`-based Vitest tests are the normal validation path
+- Prefer `pnpm run typecheck` after touching `routes/v2/`, `schemas/`, `types/`, or shared request/response contracts
+- Prefer `pnpm run lint` after multi-file edits; if unrelated package-wide issues make that noisy, run targeted `pnpm exec eslint <paths>` on the touched files before stopping
+- Use `pnpm run test:coverage` after broad service, route, repository, middleware, or auth refactors
 
 ## Quick Routing
 
-- Auth or session bug:
-  inspect `auth.js`, `middleware/authMiddleware.js`, and `routes/authRoutes.js`
-- Migration, RLS, or permission issue:
-  inspect `db/migrations/`, `db/rls_policies.sql`, `db/poolManager.js`, `utils/applyRlsPolicies.js`, and permission helpers
-- Provider integration bug:
-  inspect the matching directory under `integrations/`, then the corresponding service and repository files
-- Public API change:
-  inspect the affected route file, then confirm registration in `SparkyFitnessServer.js` and Swagger coverage
 - Startup, env, or deployment issue:
-  inspect `SparkyFitnessServer.js`, `utils/preflightChecks.js`, `utils/secretLoader.js`, and `config/logging.js`
+  inspect `index.ts`, `SparkyFitnessServer.ts`, `utils/secretLoader.ts`, `utils/preflightChecks.ts`, and `config/logging.ts`
+- Auth, session, MFA, or API key issue:
+  inspect `auth.ts`, `middleware/authMiddleware.ts`, `routes/authRoutes.ts`, and `routes/auth/`
+- Migration, RLS, or permission issue:
+  inspect `db/migrations/`, `db/rls_policies.sql`, `db/poolManager.ts`, `utils/applyRlsPolicies.ts`, and the permission middleware/helpers
+- Public v2 contract issue:
+  inspect the matching file in `routes/v2/` plus the related Zod schema in `schemas/`
+- Food, barcode, or external provider issue:
+  inspect the relevant `integrations/*` code, then the matching service and repository files
+- Health data or date bucketing issue:
+  inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
 
 ## Working Rules
 
-- Keep changes isolated to this package unless the task clearly crosses package boundaries.
-- Do not invent new startup flows, duplicated route registries, or alternate migration mechanisms when the existing startup path already covers the behavior.
-- Match nearby conventions for JavaScript vs TypeScript, repository naming, and service structure instead of forcing a style migration as part of an unrelated fix.
-- When adding new persisted data, think through schema, RLS, permissions, tests, and API documentation together.
+- Match the existing service/repository/middleware layering instead of introducing parallel abstractions
+- If you add persisted or user-visible data, think through migration, RLS, permissions, tests, API docs, and downstream client contracts together
+- Validate shared-contract changes from the affected consumers, not just from this package
+- Keep package-specific guidance here; use `../AGENTS.md` only for cross-package context
 
 ## Priority Rule
 
-- For work inside `SparkyFitnessServer/`, this file is the package guide.
-- Use repo-root `../AGENTS.md` for monorepo context.
-- Treat `CLAUDE.md` as legacy reference material; if you notice drift while updating docs, prefer this file and keep the two aligned when practical.
+- For work inside `SparkyFitnessServer/`, this file wins over repo-root guidance on package-specific details
+- Use `../AGENTS.md` for monorepo context
+- If a task spans multiple packages, combine this guide with the other affected package guides instead of relying on one file alone
