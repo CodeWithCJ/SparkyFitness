@@ -40,13 +40,18 @@ export interface PasswordFormState {
 const Settings = () => {
   const { t } = useTranslation();
 
-  const location = useLocation(); // Hook to get current location
-
+  const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const defaultExpanded =
-    queryParams.get('section') === 'integrations'
-      ? ['food-and-exercise-data-providers']
-      : [];
+  const section = queryParams.get('section');
+  const defaultExpanded: string[] = [];
+
+  if (section) {
+    if (section === 'integrations') {
+      defaultExpanded.push('food-and-exercise-data-providers');
+    } else {
+      defaultExpanded.push(section);
+    }
+  }
 
   return (
     <div className="space-y-6 w-full">
@@ -57,11 +62,25 @@ const Settings = () => {
         defaultValue={defaultExpanded}
       >
         {/* Profile Information */}
-        <ProfileInformation />
+        <AccordionItem
+          value="profile-information"
+          className="border rounded-lg mb-4"
+        >
+          <ProfileInformation />
+        </AccordionItem>
+        <AccordionItem
+          value="user-preferences"
+          className="border rounded-lg mb-4"
+        >
+          <PreferenceSettings />
+        </AccordionItem>
 
-        <PreferenceSettings />
-
-        <WaterTrackingSettings />
+        <AccordionItem
+          value="water-tracking"
+          className="border rounded-lg mb-4"
+        >
+          <WaterTrackingSettings />
+        </AccordionItem>
 
         <AccordionItem
           value="custom-nutrients"

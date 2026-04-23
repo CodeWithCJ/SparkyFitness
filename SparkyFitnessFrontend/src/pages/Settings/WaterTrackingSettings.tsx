@@ -10,11 +10,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Save, Droplet } from 'lucide-react';
 import WaterContainerManager from './WaterContainerManager';
-import {
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/components/ui/accordion'; // Import Accordion components
+import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useEffect, useState } from 'react';
@@ -58,7 +54,7 @@ export const WaterTrackingSettings = () => {
   };
 
   return (
-    <AccordionItem value="water-tracking" className="border rounded-lg mb-4">
+    <>
       <AccordionTrigger
         className="flex items-center gap-2 p-4 hover:no-underline"
         description={t(
@@ -108,6 +104,6 @@ export const WaterTrackingSettings = () => {
         <Separator />
         <WaterContainerManager />
       </AccordionContent>
-    </AccordionItem>
+    </>
   );
 };
