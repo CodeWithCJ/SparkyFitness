@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
@@ -545,19 +544,13 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
 }
 
 const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
-  return (
-    // Re-wrap BottomSheetModalProvider locally so sheets inside this screen render above the
-    // native modal presentation. The root-level provider in App.tsx sits below the modal stack.
-    <BottomSheetModalProvider>
-      {route.params.mode === 'adjust-entry-nutrition' ? (
-        <AdjustNutritionMode params={route.params} navigation={navigation} />
-      ) : route.params.mode === 'edit-food' ? (
-        <EditFoodMode params={route.params} navigation={navigation} />
-      ) : (
-        <CreateFoodMode params={route.params} navigation={navigation} />
-      )}
-    </BottomSheetModalProvider>
-  );
+  if (route.params.mode === 'adjust-entry-nutrition') {
+    return <AdjustNutritionMode params={route.params} navigation={navigation} />;
+  }
+  if (route.params.mode === 'edit-food') {
+    return <EditFoodMode params={route.params} navigation={navigation} />;
+  }
+  return <CreateFoodMode params={route.params} navigation={navigation} />;
 };
 
 export default FoodFormScreen;

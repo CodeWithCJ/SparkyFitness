@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Platform,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -14,8 +15,16 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+
+// Render the sheet inside an iOS UIWindow so it sits above any native modal
+// presentation. No-op on Android.
+const sheetContainer =
+  Platform.OS === 'ios'
+    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
+    : undefined;
 
 export interface PickerOption<T> {
   label: string;
@@ -140,6 +149,7 @@ function BottomSheetPicker<T extends string | number>({
         snapPoints={snapPoints}
         enableDynamicSizing={enableDynamic}
         backdropComponent={renderBackdrop}
+        containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
