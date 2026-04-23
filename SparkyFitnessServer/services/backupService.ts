@@ -13,8 +13,13 @@ const __dirname = path.dirname(__filename);
 
 const fsp = { promises }.promises; // Use fsp for promise-based fs operations
 // const { configureSessionMiddleware } = require('../SparkyFitnessServer'); // Removed to fix circular dependency
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '../backup');
-const UPLOADS_BASE_DIR = path.join(__dirname, '../uploads');
+const BACKUP_DIR = process.env.SPARKY_FITNESS_CUSTOM_BACKUP_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_BACKUP_DIRECTORY)
+  : process.env.BACKUP_DIR || path.join(__dirname, '../backup');
+
+const UPLOADS_BASE_DIR = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, '../uploads');
 // Ensure backup directory exists
 async function ensureBackupDirectory() {
   try {

@@ -89,7 +89,6 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
           <DateTimePicker
             mode="single"
             date={dateValue}
-            maxDate={new Date()}
             onChange={handleChange}
             styles={{
               selected: { backgroundColor: accentPrimary },

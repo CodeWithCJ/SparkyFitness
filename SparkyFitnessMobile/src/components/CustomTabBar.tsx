@@ -17,7 +17,7 @@ export const TAB_BAR_ADD_BUTTON_OVERFLOW = 20;
 const TAB_ICONS: Record<string, IconName> = {
   Dashboard: 'tab-dashboard',
   Diary: 'book',
-  Workouts: 'tab-workouts',
+  Library: 'tab-library',
   Settings: 'settings',
 };
 

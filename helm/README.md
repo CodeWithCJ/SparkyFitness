@@ -20,13 +20,36 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 helm install sparkyfitness ./chart
 ```
 
-This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:80`.
+This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults.
+
+### Local Testing (Port-Forwarding)
+
+By default, the chart enables private network CORS and trusts `http://localhost:3004` to make local testing easy.
+
+In separate terminals, run:
+
+```bash
+kubectl port-forward svc/sparkyfitness-frontend 3004:80
+```
+```bash
+kubectl port-forward svc/sparkyfitness-server 3010:3010
+```
+
+Now, navigate to [http://localhost:3004](http://localhost:3004) in your browser.
+
+### Run Tests
+
+To verify that the frontend is up and running:
+
+```bash
+helm test sparkyfitness
+```
 
 ## Database
 
 ### Bundled PostgreSQL (default)
 
-Enabled by default. Credentials are auto-generated on first install and preserved across upgrades.
+Enabled by default. The chart creates a PostgreSQL `Service` + `StatefulSet` and chart-managed credentials (unless `postgresql.auth.existingSecret` is set). Passwords are auto-generated on first install when `postgresql.auth.password` is empty and preserved across upgrades.
 
 ```yaml
 postgresql:
@@ -81,7 +104,7 @@ The chart manages five separate Kubernetes Secrets:
 |--------|------|---------|
 | `<release>-app` | `api_encryption_key`, `better_auth_secret` | Server |
 | `<release>-appdb` | `username`, `password` | Server (app DB user) |
-| `<release>-postgres` | `username`, `password` | Server (DB owner) |
+| `<release>-postgres` | `username`, `password` (`database` optional) | Server (DB owner) + bundled PostgreSQL |
 | `<release>-oidc` | `client_id`, `client_secret` | Server (if OIDC enabled) |
 | `<release>-smtp` | `username`, `password` | Server (if email enabled) |
 

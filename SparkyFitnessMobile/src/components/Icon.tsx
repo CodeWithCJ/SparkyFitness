@@ -79,7 +79,7 @@ const ICON_MAP = {
 
   // Tabs
   'tab-dashboard': { sf: 'square.grid.2x2.fill', ion: 'grid' },
-  'tab-workouts': { sf: 'dumbbell.fill', ion: 'barbell-outline' },
+  'tab-library': { sf: 'books.vertical.fill', ion: 'library' },
 
   // Charts/Data
   'chart-bar': { sf: 'chart.bar.fill', ion: 'bar-chart' },

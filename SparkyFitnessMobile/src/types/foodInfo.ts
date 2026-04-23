@@ -40,6 +40,8 @@ export interface FoodInfoItem {
   id: string;
   name: string;
   brand: string | null;
+  userId?: string;
+  sharedWithPublic?: boolean;
   servingSize: number;
   servingUnit: string;
   calories: number;
@@ -57,6 +59,7 @@ export interface FoodInfoItem {
   cholesterol?: number;
   vitaminA?: number;
   vitaminC?: number;
+  customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   source: 'local' | 'external' | 'meal';
@@ -73,6 +76,8 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   id: item.id,
   name: item.name,
   brand: item.brand,
+  userId: item.user_id,
+  sharedWithPublic: item.shared_with_public,
   servingSize: item.default_variant.serving_size,
   servingUnit: item.default_variant.serving_unit,
   calories: item.default_variant.calories,
@@ -90,6 +95,7 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   cholesterol: item.default_variant.cholesterol,
   vitaminA: item.default_variant.vitamin_a,
   vitaminC: item.default_variant.vitamin_c,
+  customNutrients: item.default_variant.custom_nutrients ?? null,
   variantId: item.default_variant.id,
   source: 'local',
   originalItem: item,
