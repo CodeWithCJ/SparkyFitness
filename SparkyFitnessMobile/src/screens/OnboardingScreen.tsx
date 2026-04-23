@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   Image,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
   Pressable,
   LayoutAnimation,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 import Clipboard from '@react-native-clipboard/clipboard';
 
@@ -96,6 +95,21 @@ export default function OnboardingScreen({ navigation }: Props) {
   const [mfaMethod, setMfaMethod] = useState<'totp' | 'email'>('totp');
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // --- Navigation helpers ---
 
@@ -590,40 +604,43 @@ export default function OnboardingScreen({ navigation }: Props) {
       className="flex-1 bg-background"
       style={{ paddingTop: insets.top }}
     >
-      {page === 2 && step === 'auth' && (
-        <View className="px-2 py-1">
-          <Pressable
-            onPress={() => {
-              setError('');
-              setPage(1);
-            }}
-            className="self-start flex-row items-center gap-1 py-2 px-2"
-          >
-            <Icon name="chevron-back" size={18} color={accentPrimary} />
-            <Text className="text-base text-accent-primary font-semibold">Back</Text>
-          </Pressable>
-        </View>
-      )}
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        contentContainerStyle={{
+          flexGrow: 1,
+          padding: 24,
+          paddingBottom: Math.max(insets.bottom, 24),
+        }}
+        bottomOffset={32}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        bounces={false}
       >
-        <ScrollView
-          contentContainerStyle={{
+        <View
+          style={{
             flexGrow: 1,
-            padding: 24,
-            paddingBottom: Math.max(insets.bottom, 24),
+            justifyContent: isKeyboardVisible ? 'flex-start' : 'center',
           }}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
         >
-          <View style={{ flexGrow: 1, flexShrink: 0 }} />
+          {page === 2 && step === 'auth' && (
+            <View className="mb-3">
+              <Pressable
+                onPress={() => {
+                  setError('');
+                  setPage(1);
+                }}
+                className="self-start flex-row items-center gap-1 py-2 px-2"
+              >
+                <Icon name="chevron-back" size={18} color={accentPrimary} />
+                <Text className="text-base text-accent-primary font-semibold">Back</Text>
+              </Pressable>
+            </View>
+          )}
           <View className="w-full max-w-sm self-center">
             {page === 1 ? renderPage1() : renderPage2()}
           </View>
-          <View style={{ flexGrow: 1 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </KeyboardAwareScrollView>
 
     </View>
   );
