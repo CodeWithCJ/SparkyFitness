@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
@@ -11,23 +11,33 @@ type FormInputProps = Omit<TextInputProps, 'placeholderTextColor'> & {
  * Drop-in replacement for TextInput — accepts all TextInput props.
  */
 const FormInput = forwardRef<TextInput, FormInputProps>(
-  ({ style, placeholderTextColor, ...props }, ref) => {
-    const [textMuted, raisedBg, borderSubtle] = useCSSVariable([
+  ({ style, placeholderTextColor, onFocus, onBlur, ...props }, ref) => {
+    const [textMuted, raisedBg, borderSubtle, accentPrimary] = useCSSVariable([
       '--color-text-muted',
       '--color-raised',
       '--color-border-subtle',
-    ]) as [string, string, string];
+      '--color-accent-primary',
+    ]) as [string, string, string, string];
+    const [isFocused, setIsFocused] = useState(false);
 
     return (
       <TextInput
         ref={ref}
         className="text-base text-text-primary rounded-lg"
         placeholderTextColor={placeholderTextColor ?? textMuted}
+        onFocus={(e) => {
+          setIsFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          onBlur?.(e);
+        }}
         style={[
           {
             backgroundColor: raisedBg,
             borderWidth: 1,
-            borderColor: borderSubtle,
+            borderColor: isFocused ? accentPrimary : borderSubtle,
             paddingTop: 10,
             paddingBottom: 10,
             paddingLeft: 12,

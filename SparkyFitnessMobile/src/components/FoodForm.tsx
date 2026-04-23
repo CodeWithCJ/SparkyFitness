@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView,
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
+import FormInput from './FormInput';
 import Icon from './Icon';
 import { DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 
@@ -123,12 +124,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       <Text className="text-text-secondary text-sm font-medium">
         {label}{required ? ' *' : ''}
       </Text>
-      <TextInput
+      <FormInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
-        className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-        style={{ fontSize: 16 }}
         placeholder={placeholder}
-        placeholderTextColor={textMuted}
         value={form[field]}
         onChangeText={(v) => update(field, v)}
         autoCapitalize="words"
@@ -150,12 +148,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       <Text className="text-text-secondary text-sm font-medium">
         {label}{unit ? ` (${unit})` : ''}{required ? ' *' : ''}
       </Text>
-      <TextInput
+      <FormInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
-        className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-        style={{ fontSize: 16 }}
         placeholder="0"
-        placeholderTextColor={textMuted}
         value={form[field]}
         onChangeText={(v) => {
           if (DECIMAL_INPUT_REGEX.test(v)) update(field, v);
@@ -214,12 +209,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
             <Text className="text-text-primary text-sm font-bold">
               Calories (kcal) *
             </Text>
-            <TextInput
+            <FormInput
               ref={fieldRefs.calories}
-              className="bg-raised rounded-lg px-3 py-2.5 text-text-primary border border-border-strong"
-              style={{ fontSize: 16 }}
               placeholder="0"
-              placeholderTextColor={textMuted}
               value={form.calories}
               onChangeText={(v) => {
                 if (DECIMAL_INPUT_REGEX.test(v)) update('calories', v);

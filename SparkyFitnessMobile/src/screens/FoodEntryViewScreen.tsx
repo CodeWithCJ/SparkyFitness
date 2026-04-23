@@ -1,11 +1,12 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-native';
 import Button from '../components/ui/Button';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -410,31 +411,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             <FadeView key="edit-serving">
             <View className="mt-3">
               <View className="flex-row items-center">
-                <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(-1)}
-                    className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="remove" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                  <TextInput
-                    value={quantityText}
-                    onChangeText={updateQuantityText}
-                    onBlur={clampQuantity}
-                    keyboardType="decimal-pad"
-                    selectTextOnFocus
-                    className="text-text-primary text-base text-center w-14 h-10"
-                    style={{ fontSize: 20, lineHeight: 22 }}
-                  />
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(1)}
-                    className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="add" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                </View>
+                <StepperInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  onIncrement={() => adjustQuantity(1)}
+                  onDecrement={() => adjustQuantity(-1)}
+                  keyboardType="decimal-pad"
+                />
                 <Text className="text-text-primary text-base font-medium ml-2">
                   {displayValues.servingUnit}
                 </Text>

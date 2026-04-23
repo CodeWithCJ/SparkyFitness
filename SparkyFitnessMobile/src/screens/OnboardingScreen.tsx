@@ -64,11 +64,12 @@ type Props = RootStackScreenProps<'Onboarding'>;
 
 export default function OnboardingScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
+  const [textMuted, textSecondary, accentPrimary, borderSubtle] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
     '--color-accent-primary',
-  ]) as [string, string, string];
+    '--color-border-subtle',
+  ]) as [string, string, string, string];
 
   // Page state
   const [page, setPage] = useState<1 | 2>(1);
@@ -96,6 +97,8 @@ export default function OnboardingScreen({ navigation }: Props) {
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isServerUrlFocused, setIsServerUrlFocused] = useState(false);
+  const [isApiKeyFocused, setIsApiKeyFocused] = useState(false);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -387,7 +390,10 @@ export default function OnboardingScreen({ navigation }: Props) {
       {/* Server URL input */}
       <View className="mb-6">
         <Text className="text-sm mb-2 text-text-secondary">SparkyFitness URL</Text>
-        <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
+        <View
+          className="flex-row items-center rounded-lg pr-2.5 bg-raised"
+          style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
+        >
           <View className="flex-1">
             <TextInput
               className="p-2.5 text-base text-text-primary"
@@ -399,6 +405,8 @@ export default function OnboardingScreen({ navigation }: Props) {
                 setServerUrl(text);
                 if (error) setError('');
               }}
+              onFocus={() => setIsServerUrlFocused(true)}
+              onBlur={() => setIsServerUrlFocused(false)}
               autoCapitalize="none"
               keyboardType="url"
               autoCorrect={false}
@@ -526,7 +534,10 @@ export default function OnboardingScreen({ navigation }: Props) {
       {authTab === 'apiKey' && (
         <View className="mb-4">
           <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
-          <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
+          <View
+            className="flex-row items-center rounded-lg pr-2.5 bg-raised"
+            style={{ borderWidth: 1, borderColor: isApiKeyFocused ? accentPrimary : borderSubtle }}
+          >
             <View className="flex-1">
               <TextInput
                 className="p-2.5 text-base text-text-primary"
@@ -535,6 +546,8 @@ export default function OnboardingScreen({ navigation }: Props) {
                 placeholderTextColor={textMuted}
                 value={apiKey}
                 onChangeText={setApiKey}
+                onFocus={() => setIsApiKeyFocused(true)}
+                onBlur={() => setIsApiKeyFocused(false)}
                 secureTextEntry
               />
             </View>

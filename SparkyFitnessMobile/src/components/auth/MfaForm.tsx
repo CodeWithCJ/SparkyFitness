@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Button from '../ui/Button';
+import FormInput from '../FormInput';
 import type { MfaFactors } from '../../services/api/authService';
 
 // --- Shared auth sub-components ---
@@ -124,18 +125,16 @@ const MfaForm: React.FC<MfaFormProps> = ({
       {showCodeInput && (
         <>
           <View className="mb-4">
-            <View className="border border-border-subtle rounded-lg bg-raised">
-              <TextInput
-                className="p-2.5 text-base text-text-primary text-center tracking-[8px]"
-                placeholder="000000"
-                placeholderTextColor={textMuted}
-                value={mfaCode}
-                onChangeText={(text) => onMfaCodeChange(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                keyboardType="number-pad"
-                maxLength={6}
-                autoFocus
-              />
-            </View>
+            <FormInput
+              className="text-base text-text-primary rounded-lg text-center tracking-[8px]"
+              placeholder="000000"
+              placeholderTextColor={textMuted}
+              value={mfaCode}
+              onChangeText={(text) => onMfaCodeChange(text.replace(/[^0-9]/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+            />
           </View>
 
           <ErrorBanner message={error} />
