@@ -495,30 +495,72 @@ async function countFoods(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodDeletionImpact(foodId: any, authenticatedUserId: any) {
-  const client = await getClient(authenticatedUserId); // Client for authenticated user's RLS
-  const systemClient = await getSystemClient(); // Client to bypass RLS for cross-user checks
+async function getFoodDeletionImpact(
+  foodId: string,
+  authenticatedUserId: string
+) {
+  const client = await getClient(authenticatedUserId);
+  const systemClient = await getSystemClient();
+
   try {
-    // Check if the food is publicly shared (using systemClient to bypass RLS)
-    const publicFoodResult = await systemClient.query(
-      'SELECT shared_with_public FROM foods WHERE id = $1',
-      [foodId]
-    );
+    const [publicFoodResult, foodOwnerResult] = await Promise.all([
+      systemClient.query('SELECT shared_with_public FROM foods WHERE id = $1', [
+        foodId,
+      ]),
+      systemClient.query('SELECT user_id FROM foods WHERE id = $1', [foodId]),
+    ]);
+
     const isPubliclyShared =
       publicFoodResult.rows[0]?.shared_with_public || false;
-    // Get food owner ID (using systemClient to bypass RLS)
-    const foodOwnerResult = await systemClient.query(
-      'SELECT user_id FROM foods WHERE id = $1',
-      [foodId]
-    );
     const foodOwnerId = foodOwnerResult.rows[0]?.user_id;
-    // Count references by the authenticated user (using client with RLS)
-    const currentUserReferencesQueries = [
-      client.query(
-        'SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id = $2',
-        [foodId, authenticatedUserId]
-      ),
+
+    // Fetch actual food entry rows for the current user (RLS-scoped)
+    const currentUserEntriesResult = await client.query(
+      `SELECT id, entry_date, meal_type_id 
+       FROM food_entries
+       WHERE food_id = $1 AND user_id = $2
+       ORDER BY entry_date DESC`,
+      [foodId, authenticatedUserId]
+    );
+
+    // Fetch actual food entry rows for other users (bypass RLS)
+    const otherUserEntriesResult = await systemClient.query(
+      `SELECT id, entry_date, meal_type_id
+       FROM food_entries
+       WHERE food_id = $1 AND user_id != $2
+       ORDER BY entry_date DESC`,
+      [foodId, authenticatedUserId]
+    );
+
+    const currentUserFoodEntries = currentUserEntriesResult.rows.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (row: any) => ({
+        id: row.id,
+        entry_date: row.entry_date,
+        meal_type_id: row.meal_type_id,
+        isCurrentUser: true,
+      })
+    );
+
+    const otherUserFoodEntries = otherUserEntriesResult.rows.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (row: any) => ({
+        id: row.id,
+        entry_date: row.entry_date,
+        meal_type_id: row.meal_type_id,
+        isCurrentUser: false,
+      })
+    );
+
+    // Structural reference counts (meals, plans, templates)
+    const [
+      currentUserMealFoodsResult,
+      currentUserMealPlansResult,
+      currentUserTemplatesResult,
+      otherUserMealFoodsResult,
+      otherUserMealPlansResult,
+      otherUserTemplatesResult,
+    ] = await Promise.all([
       client.query(
         'SELECT COUNT(*) FROM meal_foods mf JOIN meals m ON mf.meal_id = m.id WHERE mf.food_id = $1 AND m.user_id = $2',
         [foodId, authenticatedUserId]
@@ -529,37 +571,6 @@ async function getFoodDeletionImpact(foodId: any, authenticatedUserId: any) {
       ),
       client.query(
         'SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id = $2',
-        [foodId, authenticatedUserId]
-      ),
-    ];
-    const currentUserReferencesResults = await Promise.all(
-      currentUserReferencesQueries
-    );
-    const currentUserFoodEntriesCount = parseInt(
-      currentUserReferencesResults[0].rows[0].count,
-      10
-    );
-    const currentUserMealFoodsCount = parseInt(
-      currentUserReferencesResults[1].rows[0].count,
-      10
-    );
-    const currentUserMealPlansCount = parseInt(
-      currentUserReferencesResults[2].rows[0].count,
-      10
-    );
-    const currentUserMealPlanTemplateAssignmentsCount = parseInt(
-      currentUserReferencesResults[3].rows[0].count,
-      10
-    );
-    const currentUserReferences =
-      currentUserFoodEntriesCount +
-      currentUserMealFoodsCount +
-      currentUserMealPlansCount +
-      currentUserMealPlanTemplateAssignmentsCount;
-    // Count references by other users (excluding the authenticated user) (using systemClient to bypass RLS)
-    const otherUserReferencesQueries = [
-      systemClient.query(
-        'SELECT COUNT(*) FROM food_entries WHERE food_id = $1 AND user_id != $2',
         [foodId, authenticatedUserId]
       ),
       systemClient.query(
@@ -574,36 +585,34 @@ async function getFoodDeletionImpact(foodId: any, authenticatedUserId: any) {
         'SELECT COUNT(*) FROM meal_plan_template_assignments mpta JOIN meal_plan_templates mpt ON mpta.template_id = mpt.id WHERE mpta.food_id = $1 AND mpt.user_id != $2',
         [foodId, authenticatedUserId]
       ),
-    ];
-    const otherUserReferencesResults = await Promise.all(
-      otherUserReferencesQueries
-    );
-    const otherUserFoodEntriesCount = parseInt(
-      otherUserReferencesResults[0].rows[0].count,
-      10
-    );
-    const otherUserMealFoodsCount = parseInt(
-      otherUserReferencesResults[1].rows[0].count,
-      10
-    );
-    const otherUserMealPlansCount = parseInt(
-      otherUserReferencesResults[2].rows[0].count,
-      10
-    );
-    const otherUserMealPlanTemplateAssignmentsCount = parseInt(
-      otherUserReferencesResults[3].rows[0].count,
-      10
-    );
+    ]);
+
+    const mealFoodsCount =
+      parseInt(currentUserMealFoodsResult.rows[0].count, 10) +
+      parseInt(otherUserMealFoodsResult.rows[0].count, 10);
+    const mealPlansCount =
+      parseInt(currentUserMealPlansResult.rows[0].count, 10) +
+      parseInt(otherUserMealPlansResult.rows[0].count, 10);
+    const mealPlanTemplateAssignmentsCount =
+      parseInt(currentUserTemplatesResult.rows[0].count, 10) +
+      parseInt(otherUserTemplatesResult.rows[0].count, 10);
+
+    const foodEntriesCount =
+      currentUserFoodEntries.length + otherUserFoodEntries.length;
+    const currentUserReferences =
+      currentUserFoodEntries.length +
+      parseInt(currentUserMealFoodsResult.rows[0].count, 10) +
+      parseInt(currentUserMealPlansResult.rows[0].count, 10) +
+      parseInt(currentUserTemplatesResult.rows[0].count, 10);
     const otherUserReferences =
-      otherUserFoodEntriesCount +
-      otherUserMealFoodsCount +
-      otherUserMealPlansCount +
-      otherUserMealPlanTemplateAssignmentsCount;
-    // Get users who have family access to this food (if the food owner is the authenticated user)
-    let familySharedUsers = [];
+      otherUserFoodEntries.length +
+      parseInt(otherUserMealFoodsResult.rows[0].count, 10) +
+      parseInt(otherUserMealPlansResult.rows[0].count, 10) +
+      parseInt(otherUserTemplatesResult.rows[0].count, 10);
+
+    let familySharedUsers: string[] = [];
     if (foodOwnerId === authenticatedUserId) {
       const familyAccessResult = await client.query(
-        // Use client with RLS for family access check
         `SELECT fa.family_user_id
          FROM family_access fa
          WHERE fa.owner_user_id = $1
@@ -617,22 +626,22 @@ async function getFoodDeletionImpact(foodId: any, authenticatedUserId: any) {
         (row: any) => row.family_user_id
       );
     }
+
     return {
-      foodEntriesCount: currentUserFoodEntriesCount + otherUserFoodEntriesCount,
-      mealFoodsCount: currentUserMealFoodsCount + otherUserMealFoodsCount,
-      mealPlansCount: currentUserMealPlansCount + otherUserMealPlansCount,
-      mealPlanTemplateAssignmentsCount:
-        currentUserMealPlanTemplateAssignmentsCount +
-        otherUserMealPlanTemplateAssignmentsCount,
+      foodEntries: [...currentUserFoodEntries, ...otherUserFoodEntries],
+      foodEntriesCount,
+      mealFoodsCount,
+      mealPlansCount,
+      mealPlanTemplateAssignmentsCount,
       totalReferences: currentUserReferences + otherUserReferences,
-      currentUserReferences: currentUserReferences,
-      otherUserReferences: otherUserReferences,
-      isPubliclyShared: isPubliclyShared,
-      familySharedUsers: familySharedUsers,
+      currentUserReferences,
+      otherUserReferences,
+      isPubliclyShared,
+      familySharedUsers,
     };
   } finally {
     client.release();
-    systemClient.release(); // Release the system client as well
+    systemClient.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

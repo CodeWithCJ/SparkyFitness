@@ -61,6 +61,13 @@ import {
 import CustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
 import { MealFilter } from '@/types/meal';
 import type { Meal } from '@/types/meal';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Link } from 'react-router-dom';
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -70,6 +77,15 @@ const FoodDatabaseManager: React.FC = () => {
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
+  const formatEntryDate = (date: Date | string) =>
+    new Date(date).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+
+  const toISODate = (date: Date | string) =>
+    new Date(date).toISOString().split('T')[0];
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
       (p) => p.view_group === 'quick_info' && p.platform === platform
@@ -108,6 +124,8 @@ const FoodDatabaseManager: React.FC = () => {
   const { mutate: togglePublicSharing } = useToggleFoodPublicMutation();
   const { mutateAsync: deleteFood } = useDeleteFoodMutation();
   const { mutateAsync: createFoodEntry } = useCreateFoodMutation();
+
+  const { data: mealTypes } = useMealTypes();
 
   const handleDeleteRequest = async (food: Food) => {
     if (!user || !activeUserId) return;
@@ -702,7 +720,7 @@ const FoodDatabaseManager: React.FC = () => {
           open={showDeleteConfirmation}
           onOpenChange={setShowDeleteConfirmation}
         >
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {t('foodDatabaseManager.deleteFoodConfirmTitle', {
@@ -711,42 +729,110 @@ const FoodDatabaseManager: React.FC = () => {
                 })}
               </DialogTitle>
             </DialogHeader>
-            <div>
-              <p>
+
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
                 {t('foodDatabaseManager.foodUsedIn', 'This food is used in:')}
               </p>
-              <ul className="list-disc pl-5 mt-2">
-                <li>
-                  {t('foodDatabaseManager.diaryEntries', {
-                    count: deletionImpact.foodEntriesCount,
-                    defaultValue: `${deletionImpact.foodEntriesCount} diary entries`,
-                  })}
-                </li>
-                <li>
-                  {t('foodDatabaseManager.mealComponents', {
+
+              <div className="space-y-1.5">
+                {/* Diary entries — collapsible */}
+                {deletionImpact.foodEntries.length > 0 ? (
+                  <Collapsible
+                    defaultOpen
+                    className="rounded-lg border border-border overflow-hidden"
+                  >
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium bg-muted/40 hover:bg-muted/70 transition-colors text-left">
+                      <span>
+                        {t('foodDatabaseManager.diaryEntries', {
+                          count: deletionImpact.foodEntriesCount,
+                          defaultValue: `${deletionImpact.foodEntriesCount} diary entries`,
+                        })}
+                      </span>
+                      <span className="text-muted-foreground text-xs">▼</span>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <div className="max-h-56 overflow-y-auto divide-y divide-border">
+                        {deletionImpact.foodEntries.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="flex items-center gap-4 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+                          >
+                            <span className="w-28 shrink-0 font-medium tabular-nums">
+                              {formatEntryDate(entry.entry_date)}
+                            </span>
+                            <span className="flex-1 text-muted-foreground capitalize">
+                              {mealTypes?.find(
+                                (mt) => mt.id === entry.meal_type_id
+                              )?.name ?? '—'}
+                            </span>
+                            {entry.isCurrentUser ? (
+                              <Link
+                                to={
+                                  '/?date=' +
+                                  toISODate(entry.entry_date) +
+                                  '&highlight=' +
+                                  foodToDelete.id
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary underline underline-offset-2 shrink-0 hover:text-primary/70 transition-colors cursor-pointer"
+                              >
+                                View
+                              </Link>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground shrink-0 px-1.5 py-0.5 rounded-full bg-muted">
+                                other user
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : (
+                  <div className="rounded-lg border border-border px-3 py-2.5 text-sm text-muted-foreground bg-muted/20">
+                    {t('foodDatabaseManager.diaryEntries', {
+                      count: 0,
+                      defaultValue: '0 diary entries',
+                    })}
+                  </div>
+                )}
+                {[
+                  {
+                    key: 'mealComponents',
                     count: deletionImpact.mealFoodsCount,
-                    defaultValue: `${deletionImpact.mealFoodsCount} meal components`,
-                  })}
-                </li>
-                <li>
-                  {t('foodDatabaseManager.mealPlanEntries', {
+                    label: 'meal components',
+                  },
+                  {
+                    key: 'mealPlanEntries',
                     count: deletionImpact.mealPlansCount,
-                    defaultValue: `${deletionImpact.mealPlansCount} meal plan entries`,
-                  })}
-                </li>
-                <li>
-                  {t('foodDatabaseManager.mealPlanTemplateEntries', {
+                    label: 'meal plan entries',
+                  },
+                  {
+                    key: 'mealPlanTemplateEntries',
                     count: deletionImpact.mealPlanTemplateAssignmentsCount,
-                    defaultValue: `${deletionImpact.mealPlanTemplateAssignmentsCount} meal plan template entries`,
-                  })}
-                </li>
-              </ul>
+                    label: 'meal plan template entries',
+                  },
+                ]
+                  .filter(({ count }) => count > 0)
+                  .map(({ key, count }) => (
+                    <div
+                      key={key}
+                      className="rounded-lg border border-border px-3 py-2.5 text-sm bg-muted/20"
+                    >
+                      <span>{t('foodDatabaseManager.' + key, { count })}</span>
+                    </div>
+                  ))}
+              </div>
+
               {deletionImpact.otherUserReferences > 0 && (
-                <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
-                  <p className="font-bold">
+                <div className="p-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm space-y-1">
+                  <p className="font-semibold">
                     {t('foodDatabaseManager.warning', 'Warning!')}
                   </p>
-                  <p>
+                  <p className="text-yellow-700 dark:text-yellow-400">
                     {t(
                       'foodDatabaseManager.foodUsedByOtherUsersWarning',
                       'This food is used by other users. You can only hide it. Hiding will prevent other users from adding this food in the future, but it will not affect their existing history, meals, or meal plans.'
@@ -755,7 +841,8 @@ const FoodDatabaseManager: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
+
+            <div className="flex justify-end space-x-2 mt-2">
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteConfirmation(false)}

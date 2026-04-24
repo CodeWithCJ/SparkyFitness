@@ -59,6 +59,7 @@ export interface Food {
 }
 
 export interface FoodDeletionImpact {
+  foodEntries: FoodEntryDeletionImpact[];
   foodEntriesCount: number;
   mealFoodsCount: number;
   mealPlansCount: number;
@@ -69,6 +70,11 @@ export interface FoodDeletionImpact {
   isPubliclyShared: boolean;
   familySharedUsers: string[];
 }
+
+export type FoodEntryDeletionImpact = Pick<
+  FoodEntry,
+  'id' | 'entry_date' | 'meal_type_id'
+> & { isCurrentUser: boolean };
 
 export interface FoodEntry {
   id: string;
