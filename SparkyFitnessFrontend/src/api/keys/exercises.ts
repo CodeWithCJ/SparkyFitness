@@ -8,11 +8,12 @@ export const exerciseKeys = {
     categoryFilter: string,
     ownershipFilter: ExerciseOwnershipFilter,
     page: number,
-    limit: number
+    limit: number,
+    sortOrder: string = 'name:asc'
   ) =>
     [
       ...exerciseKeys.lists(),
-      { searchTerm, categoryFilter, ownershipFilter, page, limit },
+      { searchTerm, categoryFilter, ownershipFilter, page, limit, sortOrder },
     ] as const,
   details: () => [...exerciseKeys.all, 'detail'] as const,
   detail: (id: string) => [...exerciseKeys.details(), id] as const,

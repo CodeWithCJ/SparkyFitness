@@ -519,7 +519,8 @@ async function getFoodDeletionImpact(
       `SELECT id, entry_date, meal_type_id 
        FROM food_entries
        WHERE food_id = $1 AND user_id = $2
-       ORDER BY entry_date DESC`,
+       ORDER BY entry_date DESC
+       LIMIT 50`,
       [foodId, authenticatedUserId]
     );
 
@@ -528,7 +529,8 @@ async function getFoodDeletionImpact(
       `SELECT id, entry_date, meal_type_id
        FROM food_entries
        WHERE food_id = $1 AND user_id != $2
-       ORDER BY entry_date DESC`,
+       ORDER BY entry_date DESC
+       LIMIT 50`,
       [foodId, authenticatedUserId]
     );
 

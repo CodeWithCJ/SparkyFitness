@@ -101,5 +101,6 @@ export function useDeleteExercise() {
     exerciseToDelete,
     handleDeleteRequest,
     confirmDelete,
+    deleteExercise,
   };
 }

@@ -80,9 +80,7 @@ describe('MealPlanCalendar', () => {
     renderWithClient(<MealPlanCalendar />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('mealPlanCalendar.noMealPlansFound')
-      ).toBeInTheDocument();
+      expect(screen.getByText('No results.')).toBeInTheDocument();
     });
   });
 });

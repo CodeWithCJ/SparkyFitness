@@ -39,10 +39,10 @@ export function useFoodDatabaseManager() {
 
   const visibleNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
-    : ['calories', 'protein', 'carbs', 'fat'];
+    : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(isMobile ? 5 : 10);
   const [currentPage, setCurrentPage] = useState(1);
   const [foodFilter, setFoodFilter] = useState<MealFilter>('all');
   const [sortOrder, setSortOrder] = useState<string>('name:asc');
@@ -76,42 +76,14 @@ export function useFoodDatabaseManager() {
 
   const canEdit = (food: Food) => food.user_id === user?.id;
 
-  const getPageNumbers = (current: number, total: number): number[] => {
-    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-    if (current <= 3) return [1, 2, 3, 4, 5];
-    if (current >= total - 2)
-      return [total - 4, total - 3, total - 2, total - 1, total];
-    return [current - 2, current - 1, current, current + 1, current + 2];
-  };
-
-  const getEmptyMessage = () => {
-    switch (foodFilter) {
-      case 'mine':
-        return t(
-          'foodDatabaseManager.noFoodsCreatedByYouFound',
-          'No foods created by you found'
-        );
-      case 'family':
-        return t(
-          'foodDatabaseManager.noFamilyFoodsFound',
-          'No family foods found'
-        );
-      case 'public':
-        return t(
-          'foodDatabaseManager.noPublicFoodsFound',
-          'No public foods found'
-        );
-      case 'needs-review':
-        return t(
-          'foodDatabaseManager.noFoodsNeedYourReview',
-          'No foods need your review'
-        );
-      default:
-        return t('foodDatabaseManager.noFoodsFound', 'No foods found');
+  const handlePageChange = (page: number, pageSize?: number) => {
+    if (pageSize !== undefined && pageSize !== itemsPerPage) {
+      setItemsPerPage(pageSize);
+      setCurrentPage(1);
+    } else {
+      setCurrentPage(page);
     }
   };
-
-  const handlePageChange = (page: number) => setCurrentPage(page);
 
   const handleEdit = (food: Food) => {
     setEditingFood(food);
@@ -191,6 +163,7 @@ export function useFoodDatabaseManager() {
     itemsPerPage,
     setItemsPerPage,
     currentPage,
+    setCurrentPage,
     foodFilter,
     setFoodFilter,
     sortOrder,
@@ -209,8 +182,6 @@ export function useFoodDatabaseManager() {
     pendingDeletion,
     togglePublicSharing,
     canEdit,
-    getPageNumbers,
-    getEmptyMessage,
     handlePageChange,
     handleEdit,
     handleSaveComplete,
@@ -219,5 +190,6 @@ export function useFoodDatabaseManager() {
     handleDeleteRequest,
     handleConfirmDelete,
     handleCancelDelete,
+    deleteFood,
   };
 }

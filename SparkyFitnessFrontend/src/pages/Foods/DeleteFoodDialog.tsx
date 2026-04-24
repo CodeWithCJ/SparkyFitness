@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/collapsible';
 import type { Food, FoodDeletionImpact } from '@/types/food';
 
-interface PendingDeletion {
+export interface PendingDeletion {
   food: Food;
   impact: FoodDeletionImpact;
 }

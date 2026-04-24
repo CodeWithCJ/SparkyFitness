@@ -86,7 +86,8 @@ export const loadExercises = async (
   categoryFilter: string = 'all',
   ownershipFilter: ExerciseOwnershipFilter = 'all',
   currentPage: number = 1,
-  itemsPerPage: number = 10
+  itemsPerPage: number = 10,
+  sortBy: string = 'name:asc'
 ): Promise<{ exercises: Exercise[]; totalCount: number }> => {
   const queryParams = new URLSearchParams({
     searchTerm,
@@ -94,6 +95,7 @@ export const loadExercises = async (
     ownershipFilter,
     currentPage: currentPage.toString(),
     itemsPerPage: itemsPerPage.toString(),
+    sortBy,
   }).toString();
 
   const response = await apiCall(`/exercises?${queryParams}`, {
