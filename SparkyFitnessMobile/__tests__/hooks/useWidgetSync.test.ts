@@ -48,10 +48,22 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../src/native/CalorieWidgetBridge', () => ({
+  CalorieWidgetBridge: {
+    setCalorieSnapshot: jest.fn(() => Promise.resolve()),
+    reloadWidget: jest.fn(() => Promise.resolve()),
+    isAvailable: true,
+  },
+}));
+
+import { CalorieWidgetBridge } from '../../src/native/CalorieWidgetBridge';
+
 const setMock = (ExtensionStorage as any).__mockSet as jest.Mock;
 const getMock = (ExtensionStorage as any).__mockGet as jest.Mock;
 const reloadMock = (ExtensionStorage as any).__mockReload as jest.Mock;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
+const androidSetSnapshot = CalorieWidgetBridge.setCalorieSnapshot as jest.Mock;
+const androidReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 
 const makeSummary = (overrides: Partial<DailySummary> = {}): DailySummary => ({
   date: getTodayDate(),
@@ -93,6 +105,8 @@ describe('useWidgetSync', () => {
     getMock.mockReset().mockReturnValue('stored');
     reloadMock.mockReset();
     mockAddLog.mockReset();
+    androidSetSnapshot.mockReset().mockResolvedValue(undefined);
+    androidReload.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(Platform, 'OS', { get: () => 'ios', configurable: true });
   });
 
@@ -136,12 +150,43 @@ describe('useWidgetSync', () => {
     expect(reloadMock).not.toHaveBeenCalled();
   });
 
-  it('writes nothing on Android', () => {
+  it('pushes calorie-only snapshot to Android bridge and does not touch iOS ExtensionStorage', async () => {
     Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
 
     renderHook(() => useWidgetSync(makeSummary()));
 
+    // iOS path must not run
     expect(setMock).not.toHaveBeenCalled();
     expect(reloadMock).not.toHaveBeenCalled();
+
+    // Flush the inner async IIFE
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(androidSetSnapshot).toHaveBeenCalledTimes(1);
+    const [payloadJson] = androidSetSnapshot.mock.calls[0];
+    const payload = JSON.parse(payloadJson as string);
+    expect(payload).toMatchObject({
+      date: getTodayDate(),
+      remaining: 460,
+      goal: 2000,
+      progress: 0.77,
+    });
+    expect(androidReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips Android push when calorieBalance is missing', async () => {
+    Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+    const summary = makeSummary({
+      calorieBalance: undefined as unknown as DailySummary['calorieBalance'],
+    });
+
+    renderHook(() => useWidgetSync(summary));
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(androidSetSnapshot).not.toHaveBeenCalled();
+    expect(androidReload).not.toHaveBeenCalled();
   });
 });

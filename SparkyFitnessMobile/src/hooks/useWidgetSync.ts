@@ -4,6 +4,7 @@ import { ExtensionStorage } from '@bacons/apple-targets';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { CalorieWidgetBridge } from '../native/CalorieWidgetBridge';
 import { addLog } from '../services/LogService';
 import type { DailySummary } from '../types/dailySummary';
 import { getTodayDate } from '../utils/dateUtils';
@@ -25,50 +26,82 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
       return;
     }
 
-    try {
-      if (Platform.OS !== 'ios') return;
-      if (!iosAppGroup) {
-        addLog('[useWidgetSync] iOS app group unavailable; widget snapshots were not written', 'WARNING');
-        return;
-      }
+    const balance = summary.calorieBalance;
+    const lastUpdated = Math.floor(Date.now() / 1000);
 
-      const lastUpdated = Math.floor(Date.now() / 1000);
-      const storage = new ExtensionStorage(iosAppGroup);
-      const balance = summary.calorieBalance;
+    if (Platform.OS === 'ios') {
+      try {
+        if (!iosAppGroup) {
+          addLog(
+            '[useWidgetSync] iOS app group unavailable; widget snapshots were not written',
+            'WARNING',
+          );
+          return;
+        }
 
-      if (balance) {
-        const { eaten, burned, goal, remaining, progress } = balance;
-        storage.set(CALORIE_SNAPSHOT_KEY, {
+        const storage = new ExtensionStorage(iosAppGroup);
+
+        if (balance) {
+          const { eaten, burned, goal, remaining, progress } = balance;
+          storage.set(CALORIE_SNAPSHOT_KEY, {
+            date,
+            food: eaten,
+            burned,
+            goal,
+            remaining,
+            progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+            lastUpdated,
+          });
+        }
+
+        storage.set(MACRO_SNAPSHOT_KEY, {
           date,
-          food: eaten,
-          burned,
-          goal,
-          remaining,
-          progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+          protein: summary.protein.consumed,
+          carbs: summary.carbs.consumed,
+          fat: summary.fat.consumed,
+          calories: summary.caloriesConsumed,
           lastUpdated,
         });
-      }
 
-      storage.set(MACRO_SNAPSHOT_KEY, {
+        if (storage.get(MACRO_SNAPSHOT_KEY) === null) {
+          addLog(
+            '[useWidgetSync] ExtensionStorage unavailable; widget snapshots were not written',
+            'WARNING',
+          );
+          return;
+        }
+
+        if (balance) {
+          ExtensionStorage.reloadWidget(WIDGET_KIND);
+        }
+        ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
+      } catch (error) {
+        addLog(`[useWidgetSync] Failed to push snapshot to widget: ${error}`, 'ERROR');
+      }
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      if (!balance) return;
+
+      const { goal, remaining, progress } = balance;
+      const clampedProgress = goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0;
+      const payload = {
         date,
-        protein: summary.protein.consumed,
-        carbs: summary.carbs.consumed,
-        fat: summary.fat.consumed,
-        calories: summary.caloriesConsumed,
+        remaining,
+        goal,
+        progress: clampedProgress,
         lastUpdated,
-      });
+      };
 
-      if (storage.get(MACRO_SNAPSHOT_KEY) === null) {
-        addLog('[useWidgetSync] ExtensionStorage unavailable; widget snapshots were not written', 'WARNING');
-        return;
-      }
-
-      if (balance) {
-        ExtensionStorage.reloadWidget(WIDGET_KIND);
-      }
-      ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
-    } catch (error) {
-      addLog(`[useWidgetSync] Failed to push snapshot to widget: ${error}`, 'ERROR');
+      void (async () => {
+        try {
+          await CalorieWidgetBridge.setCalorieSnapshot(JSON.stringify(payload));
+          await CalorieWidgetBridge.reloadWidget();
+        } catch (error) {
+          addLog(`[useWidgetSync] Android widget push failed: ${error}`, 'ERROR');
+        }
+      })();
     }
   }, [summary, date, isToday]);
 }

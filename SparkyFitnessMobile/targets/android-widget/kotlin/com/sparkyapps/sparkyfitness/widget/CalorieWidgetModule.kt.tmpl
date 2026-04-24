@@ -1,0 +1,61 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.content.Context
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.facebook.react.bridge.ReactMethod
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
+class CalorieWidgetModule(reactContext: ReactApplicationContext) :
+    ReactContextBaseJavaModule(reactContext) {
+
+    private val moduleScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    override fun getName(): String = NAME
+
+    override fun invalidate() {
+        moduleScope.cancel()
+        super.invalidate()
+    }
+
+    @ReactMethod
+    fun setCalorieSnapshot(json: String, promise: Promise) {
+        try {
+            val prefs = reactApplicationContext.getSharedPreferences(
+                CalorieWidgetReceiver.PREFS_NAME,
+                Context.MODE_PRIVATE,
+            )
+            prefs.edit().putString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, json).apply()
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("E_WRITE_FAILED", e)
+        }
+    }
+
+    @ReactMethod
+    fun reloadWidget(promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch {
+            try {
+                val manager = GlanceAppWidgetManager(ctx)
+                val widget = CalorieWidget()
+                manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                    widget.update(ctx, id)
+                }
+                promise.resolve(null)
+            } catch (e: Exception) {
+                promise.reject("E_RELOAD_FAILED", e)
+            }
+        }
+    }
+
+    companion object {
+        const val NAME = "CalorieWidget"
+    }
+}
