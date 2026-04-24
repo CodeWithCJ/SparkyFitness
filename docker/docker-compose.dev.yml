@@ -1,6 +1,7 @@
 services:
   sparkyfitness-db:
-    image: postgres:15-alpine
+    image: postgres:18.3-alpine
+    container_name: sparkyfitness-db
     restart: always
     env_file:
       - ../.env

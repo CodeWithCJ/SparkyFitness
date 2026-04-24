@@ -1,11 +1,11 @@
 # Use an official Node.js runtime as a parent image
-FROM node:22-alpine
+FROM node:24-alpine
 
 RUN corepack enable
 
 WORKDIR /app
 
-RUN apk add --no-cache postgresql-client
+RUN apk add --no-cache postgresql18-client~=18.3
 # Copy workspace root files for pnpm resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
