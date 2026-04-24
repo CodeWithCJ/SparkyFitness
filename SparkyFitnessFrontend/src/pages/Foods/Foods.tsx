@@ -1,11 +1,7 @@
-import type React from 'react';
-import { useState } from 'react';
-import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -13,12 +9,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -34,249 +24,61 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Search, Edit, Trash2, Plus, Share2, Filter, Lock } from 'lucide-react';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { useAuth } from '@/hooks/useAuth';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from '@/hooks/use-toast';
-import { info } from '@/utils/logging';
+import { Search, Plus, Filter } from 'lucide-react';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import type { Food, FoodVariant, FoodDeletionImpact } from '@/types/food';
 import MealManagement from './MealManagement';
 import MealPlanCalendar from './MealPlanCalendar';
-import {
-  foodDeletionImpactOptions,
-  useCreateFoodMutation,
-  useDeleteFoodMutation,
-  useFoods,
-  useToggleFoodPublicMutation,
-} from '@/hooks/Foods/useFoods';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  getNutrientMetadata,
-  formatNutrientValue,
-} from '@/utils/nutrientUtils';
 import CustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
 import { MealFilter } from '@/types/meal';
-import type { Meal } from '@/types/meal';
-import { useMealTypes } from '@/hooks/Diary/useMealTypes';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { Link } from 'react-router-dom';
+import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
+import { FoodCard } from './FoodCard';
 
-const FoodDatabaseManager: React.FC = () => {
+const FoodDatabaseManager = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { activeUserId } = useActiveUser();
-  const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
-  const isMobile = useIsMobile();
-  const platform = isMobile ? 'mobile' : 'desktop';
-
-  const formatEntryDate = (date: Date | string) =>
-    new Date(date).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-
-  const toISODate = (date: Date | string) =>
-    new Date(date).toISOString().split('T')[0];
-  const quickInfoPreferences =
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === platform
-    ) ||
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
-    );
-  const visibleNutrients = quickInfoPreferences
-    ? quickInfoPreferences.visible_nutrients
-    : ['calories', 'protein', 'carbs', 'fat'];
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingFood, setEditingFood] = useState<Food | null>(null);
-  const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [foodFilter, setFoodFilter] = useState<MealFilter>('all');
-  const [sortOrder, setSortOrder] = useState<string>('name:asc');
-  const [showFoodUnitSelectorDialog, setShowFoodUnitSelectorDialog] =
-    useState(false);
-  const [foodToAddToMeal, setFoodToAddToMeal] = useState<Food | null>(null);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [deletionImpact, setDeletionImpact] =
-    useState<FoodDeletionImpact | null>(null);
-  const [foodToDelete, setFoodToDelete] = useState<Food | null>(null);
-
-  const queryClient = useQueryClient();
-  const { data: foodData, isLoading: loading } = useFoods(
+  const {
+    user,
+    isAuthenticated,
+    isMobile,
+    visibleNutrients,
     searchTerm,
-    foodFilter,
-    currentPage,
+    setSearchTerm,
     itemsPerPage,
-    sortOrder
-  );
-  const { mutate: togglePublicSharing } = useToggleFoodPublicMutation();
-  const { mutateAsync: deleteFood } = useDeleteFoodMutation();
-  const { mutateAsync: createFoodEntry } = useCreateFoodMutation();
-
-  const { data: mealTypes } = useMealTypes();
-
-  const handleDeleteRequest = async (food: Food) => {
-    if (!user || !activeUserId) return;
-    const impact = await queryClient.fetchQuery(
-      foodDeletionImpactOptions(food.id)
-    );
-
-    setDeletionImpact(impact);
-    setFoodToDelete(food);
-    setShowDeleteConfirmation(true);
-  };
-
-  const confirmDelete = async (force: boolean = false) => {
-    if (!foodToDelete || !activeUserId) return;
-    info(loggingLevel, `confirmDelete called with force: ${force}`);
-    await deleteFood({ foodId: foodToDelete.id, force });
-    setShowDeleteConfirmation(false);
-    setFoodToDelete(null);
-    setDeletionImpact(null);
-  };
-
-  const handleEdit = (food: Food) => {
-    setEditingFood(food);
-    setShowEditDialog(true);
-  };
-
-  const handleSaveComplete = () => {
-    setShowEditDialog(false);
-    setEditingFood(null);
-  };
-
-  const handleFoodSelected = (item: Food | Meal, type: 'food' | 'meal') => {
-    setShowFoodSearchDialog(false);
-    if (type === 'food') {
-      setFoodToAddToMeal(item as Food);
-      setShowFoodUnitSelectorDialog(true);
-    }
-  };
-
-  const handleAddFoodToMeal = async (
-    food: Food,
-    quantity: number,
-    unit: string,
-    selectedVariant: FoodVariant
-  ) => {
-    if (!user || !activeUserId) {
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'foodDatabaseManager.userNotAuthenticated',
-          'User not authenticated.'
-        ),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    await createFoodEntry({
-      foodData: {
-        food_id: food.id!,
-        meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
-        quantity: quantity,
-        unit: unit,
-        entry_date: formatDateToYYYYMMDD(new Date()),
-        variant_id: selectedVariant.id || null,
-      },
-    });
-
-    setShowFoodUnitSelectorDialog(false);
-    setFoodToAddToMeal(null);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const canEdit = (food: Food) => {
-    // Only allow editing if the user owns the food
-    return food.user_id === user?.id;
-  };
-
-  const getFoodSourceBadge = (food: Food) => {
-    if (!food.user_id) {
-      return (
-        <Badge variant="outline" className="text-xs w-fit">
-          {t('foodDatabaseManager.system', 'System')}
-        </Badge>
-      );
-    }
-
-    if (food.user_id === user?.id) {
-      return (
-        <Badge variant="secondary" className="text-xs w-fit">
-          {t('foodDatabaseManager.private', 'Private')}
-        </Badge>
-      );
-    }
-
-    if (food.user_id !== user?.id && !food.shared_with_public) {
-      return (
-        <Badge
-          variant="outline"
-          className="text-xs w-fit bg-blue-50 text-blue-700"
-        >
-          {t('foodDatabaseManager.family', 'Family')}
-        </Badge>
-      );
-    }
-    return null; // No badge from getFoodSourceBadge if it's public and not owned by user
-  };
-
-  const getEmptyMessage = () => {
-    switch (foodFilter) {
-      case 'all':
-        return t('foodDatabaseManager.noFoodsFound', 'No foods found');
-      case 'mine':
-        return t(
-          'foodDatabaseManager.noFoodsCreatedByYouFound',
-          'No foods created by you found'
-        );
-      case 'family':
-        return t(
-          'foodDatabaseManager.noFamilyFoodsFound',
-          'No family foods found'
-        );
-      case 'public':
-        return t(
-          'foodDatabaseManager.noPublicFoodsFound',
-          'No public foods found'
-        );
-      case 'needs-review':
-        return t(
-          'foodDatabaseManager.noFoodsNeedYourReview',
-          'No foods need your review'
-        );
-      default:
-        return t('foodDatabaseManager.noFoodsFound', 'No foods found');
-    }
-  };
-
-  const totalPages = foodData
-    ? Math.ceil(foodData.totalCount / itemsPerPage)
-    : 0;
-
-  if (!user || !activeUserId) {
+    setItemsPerPage,
+    currentPage,
+    foodFilter,
+    setFoodFilter,
+    sortOrder,
+    setSortOrder,
+    foodData,
+    loading,
+    totalPages,
+    pendingDeletion,
+    handleConfirmDelete,
+    handleCancelDelete,
+    showFoodSearchDialog,
+    setShowFoodSearchDialog,
+    showEditDialog,
+    setShowEditDialog,
+    editingFood,
+    showFoodUnitSelectorDialog,
+    setShowFoodUnitSelectorDialog,
+    getPageNumbers,
+    foodToAddToMeal,
+    togglePublicSharing,
+    canEdit,
+    getEmptyMessage,
+    handlePageChange,
+    handleEdit,
+    handleSaveComplete,
+    handleFoodSelected,
+    handleAddFoodToMeal,
+    handleDeleteRequest,
+  } = useFoodDatabaseManager();
+  if (!isAuthenticated) {
     return (
       <div>
-        {t(
-          'foodDatabaseManager.pleaseSignInToManageFoodDatabase',
-          'Please sign in to manage your food database.'
-        )}
+        {t('foodDatabaseManager.pleaseSignInToManageFoodDatabase', '...')}
       </div>
     );
   }
@@ -406,6 +208,8 @@ const FoodDatabaseManager: React.FC = () => {
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="15">15</SelectItem>
                     <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -425,193 +229,16 @@ const FoodDatabaseManager: React.FC = () => {
               ) : (
                 <div className="grid gap-3">
                   {foodData?.foods.map((food) => (
-                    <div
-                      key={food.id}
-                      className="flex flex-col p-2 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-medium text-base">
-                              {food.name}
-                            </span>
-                            {food.brand && (
-                              <Badge
-                                variant="secondary"
-                                className="text-xs w-fit h-5 px-1.5"
-                              >
-                                {food.brand}
-                              </Badge>
-                            )}
-                            {getFoodSourceBadge(food)}
-                            {food.shared_with_public && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs w-fit bg-green-50 text-green-700 h-5 px-1.5"
-                              >
-                                <Share2 className="h-3 w-3 mr-1" />
-                                {t('foodDatabaseManager.public', 'Public')}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {/* Share/Lock Button */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() =>
-                                    togglePublicSharing({
-                                      foodId: food.id,
-                                      currentState:
-                                        food.shared_with_public || false,
-                                    })
-                                  }
-                                  disabled={!canEdit(food)} // Disable if not editable
-                                >
-                                  {food.shared_with_public ? (
-                                    <Share2 className="w-4 h-4" />
-                                  ) : (
-                                    <Lock className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>
-                                  {canEdit(food)
-                                    ? food.shared_with_public
-                                      ? t(
-                                          'foodDatabaseManager.makePrivate',
-                                          'Make private'
-                                        )
-                                      : t(
-                                          'foodDatabaseManager.shareWithPublic',
-                                          'Share with public'
-                                        )
-                                    : t(
-                                        'foodDatabaseManager.notEditable',
-                                        'Not editable'
-                                      )}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-
-                          {/* Edit Button */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => handleEdit(food)}
-                                  disabled={!canEdit(food)} // Disable if not editable
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>
-                                  {canEdit(food)
-                                    ? t(
-                                        'foodDatabaseManager.editFood',
-                                        'Edit food'
-                                      )
-                                    : t(
-                                        'foodDatabaseManager.notEditable',
-                                        'Not editable'
-                                      )}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-
-                          {/* Delete Button */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => handleDeleteRequest(food)}
-                                  disabled={!canEdit(food)} // Disable if not editable
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>
-                                  {canEdit(food)
-                                    ? t(
-                                        'foodDatabaseManager.deleteFood',
-                                        'Delete food'
-                                      )
-                                    : t(
-                                        'foodDatabaseManager.notEditable',
-                                        'Not editable'
-                                      )}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-2 mt-1">
-                          {t('foodDatabaseManager.perServing', {
-                            servingSize:
-                              food.default_variant?.serving_size || 0,
-                            servingUnit:
-                              food.default_variant?.serving_unit || '',
-                            defaultValue: `Per ${food.default_variant?.serving_size || 0} ${food.default_variant?.serving_unit || ''}`,
-                          })}
-                        </div>
-                      </div>
-                      <div className="mt-1">
-                        <div
-                          className="grid gap-y-1 gap-x-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5"
-                          style={{
-                            gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '70px'}, 1fr))`,
-                          }}
-                        >
-                          {visibleNutrients.map((nutrient) => {
-                            const meta = getNutrientMetadata(nutrient);
-                            const value =
-                              (food.default_variant?.[
-                                nutrient as keyof FoodVariant
-                              ] as number) ||
-                              (food.default_variant?.custom_nutrients?.[
-                                nutrient
-                              ] as number) ||
-                              0;
-
-                            return (
-                              <div key={nutrient} className="flex flex-col">
-                                <span
-                                  className={`font-medium text-sm ${meta.color}`}
-                                >
-                                  {formatNutrientValue(nutrient, value, [])}
-                                  <span className="text-xs ml-0.5 text-gray-500">
-                                    {meta.unit}
-                                  </span>
-                                </span>
-                                <span
-                                  className="text-xs text-gray-500 truncate"
-                                  title={t(meta.label, meta.defaultLabel)}
-                                >
-                                  {t(meta.label, meta.defaultLabel)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
+                    <FoodCard
+                      food={food}
+                      isMobile={isMobile}
+                      visibleNutrients={visibleNutrients}
+                      userId={user?.id}
+                      canEdit={canEdit}
+                      onEdit={handleEdit}
+                      onDelete={handleDeleteRequest}
+                      onTogglePublic={togglePublicSharing}
+                    />
                   ))}
                 </div>
               )}
@@ -634,30 +261,17 @@ const FoodDatabaseManager: React.FC = () => {
                   />
                 </PaginationItem>
 
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNumber: number;
-                  if (totalPages <= 5) {
-                    pageNumber = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNumber = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNumber = totalPages - 4 + i;
-                  } else {
-                    pageNumber = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        onClick={() => handlePageChange(pageNumber)}
-                        isActive={currentPage === pageNumber}
-                        className="cursor-pointer"
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
+                {getPageNumbers(currentPage, totalPages).map((pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(pageNumber)}
+                      isActive={currentPage === pageNumber}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
 
                 <PaginationItem>
                   <PaginationNext
@@ -715,17 +329,14 @@ const FoodDatabaseManager: React.FC = () => {
         />
       )}
 
-      {deletionImpact && foodToDelete && (
-        <Dialog
-          open={showDeleteConfirmation}
-          onOpenChange={setShowDeleteConfirmation}
-        >
-          <DialogContent className="max-w-2xl">
+      {pendingDeletion && (
+        <Dialog open onOpenChange={handleCancelDelete}>
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {t('foodDatabaseManager.deleteFoodConfirmTitle', {
-                  foodName: foodToDelete.name,
-                  defaultValue: `Delete ${foodToDelete.name}?`,
+                  foodName: pendingDeletion.food.name,
+                  defaultValue: `Delete ${pendingDeletion.food.name}?`,
                 })}
               </DialogTitle>
             </DialogHeader>
@@ -734,143 +345,73 @@ const FoodDatabaseManager: React.FC = () => {
               <p className="text-sm text-muted-foreground">
                 {t('foodDatabaseManager.foodUsedIn', 'This food is used in:')}
               </p>
-
-              <div className="space-y-1.5">
-                {/* Diary entries — collapsible */}
-                {deletionImpact.foodEntries.length > 0 ? (
-                  <Collapsible
-                    defaultOpen
-                    className="rounded-lg border border-border overflow-hidden"
-                  >
-                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium bg-muted/40 hover:bg-muted/70 transition-colors text-left">
-                      <span>
-                        {t('foodDatabaseManager.diaryEntries', {
-                          count: deletionImpact.foodEntriesCount,
-                          defaultValue: `${deletionImpact.foodEntriesCount} diary entries`,
-                        })}
-                      </span>
-                      <span className="text-muted-foreground text-xs">▼</span>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent>
-                      <div className="max-h-56 overflow-y-auto divide-y divide-border">
-                        {deletionImpact.foodEntries.map((entry) => (
-                          <div
-                            key={entry.id}
-                            className="flex items-center gap-4 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
-                          >
-                            <span className="w-28 shrink-0 font-medium tabular-nums">
-                              {formatEntryDate(entry.entry_date)}
-                            </span>
-                            <span className="flex-1 text-muted-foreground capitalize">
-                              {mealTypes?.find(
-                                (mt) => mt.id === entry.meal_type_id
-                              )?.name ?? '—'}
-                            </span>
-                            {entry.isCurrentUser ? (
-                              <Link
-                                to={
-                                  '/?date=' +
-                                  toISODate(entry.entry_date) +
-                                  '&highlight=' +
-                                  foodToDelete.id
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-primary underline underline-offset-2 shrink-0 hover:text-primary/70 transition-colors cursor-pointer"
-                              >
-                                View
-                              </Link>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground shrink-0 px-1.5 py-0.5 rounded-full bg-muted">
-                                other user
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <div className="rounded-lg border border-border px-3 py-2.5 text-sm text-muted-foreground bg-muted/20">
-                    {t('foodDatabaseManager.diaryEntries', {
-                      count: 0,
-                      defaultValue: '0 diary entries',
-                    })}
-                  </div>
-                )}
-                {[
-                  {
-                    key: 'mealComponents',
-                    count: deletionImpact.mealFoodsCount,
-                    label: 'meal components',
-                  },
-                  {
-                    key: 'mealPlanEntries',
-                    count: deletionImpact.mealPlansCount,
-                    label: 'meal plan entries',
-                  },
-                  {
-                    key: 'mealPlanTemplateEntries',
-                    count: deletionImpact.mealPlanTemplateAssignmentsCount,
-                    label: 'meal plan template entries',
-                  },
-                ]
-                  .filter(({ count }) => count > 0)
-                  .map(({ key, count }) => (
-                    <div
-                      key={key}
-                      className="rounded-lg border border-border px-3 py-2.5 text-sm bg-muted/20"
-                    >
-                      <span>{t('foodDatabaseManager.' + key, { count })}</span>
-                    </div>
-                  ))}
-              </div>
-
-              {deletionImpact.otherUserReferences > 0 && (
-                <div className="p-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm space-y-1">
-                  <p className="font-semibold">
+              <ul className="list-disc pl-5 mt-2">
+                <li>
+                  {t('foodDatabaseManager.diaryEntries', {
+                    count: pendingDeletion.impact.foodEntriesCount,
+                    defaultValue: `${pendingDeletion.impact.foodEntriesCount} diary entries`,
+                  })}
+                </li>
+                <li>
+                  {t('foodDatabaseManager.mealComponents', {
+                    count: pendingDeletion.impact.mealFoodsCount,
+                    defaultValue: `${pendingDeletion.impact.mealFoodsCount} meal components`,
+                  })}
+                </li>
+                <li>
+                  {t('foodDatabaseManager.mealPlanEntries', {
+                    count: pendingDeletion.impact.mealPlansCount,
+                    defaultValue: `${pendingDeletion.impact.mealPlansCount} meal plan entries`,
+                  })}
+                </li>
+                <li>
+                  {t('foodDatabaseManager.mealPlanTemplateEntries', {
+                    count:
+                      pendingDeletion.impact.mealPlanTemplateAssignmentsCount,
+                    defaultValue: `${pendingDeletion.impact.mealPlanTemplateAssignmentsCount} meal plan template entries`,
+                  })}
+                </li>
+              </ul>
+              {pendingDeletion.impact.otherUserReferences > 0 && (
+                <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
+                  <p className="font-bold">
                     {t('foodDatabaseManager.warning', 'Warning!')}
                   </p>
                   <p className="text-yellow-700 dark:text-yellow-400">
                     {t(
                       'foodDatabaseManager.foodUsedByOtherUsersWarning',
-                      'This food is used by other users. You can only hide it. Hiding will prevent other users from adding this food in the future, but it will not affect their existing history, meals, or meal plans.'
+                      'This food is used by other users...'
                     )}
                   </p>
                 </div>
               )}
             </div>
-
-            <div className="flex justify-end space-x-2 mt-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteConfirmation(false)}
-              >
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button variant="outline" onClick={handleCancelDelete}>
                 {t('foodDatabaseManager.cancel', 'Cancel')}
               </Button>
-              {deletionImpact.totalReferences === 0 ? (
+              {pendingDeletion.impact.totalReferences === 0 ? (
                 <Button
                   variant="destructive"
-                  onClick={() => confirmDelete(true)}
+                  onClick={() => handleConfirmDelete(true)}
                 >
                   {t('foodDatabaseManager.delete', 'Delete')}
                 </Button>
-              ) : deletionImpact.otherUserReferences > 0 ? (
-                <Button onClick={() => confirmDelete(false)}>
+              ) : pendingDeletion.impact.otherUserReferences > 0 ? (
+                <Button onClick={() => handleConfirmDelete(false)}>
                   {t('foodDatabaseManager.hide', 'Hide')}
                 </Button>
               ) : (
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => confirmDelete(false)}
+                    onClick={() => handleConfirmDelete(false)}
                   >
                     {t('foodDatabaseManager.hide', 'Hide')}
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => confirmDelete(true)}
+                    onClick={() => handleConfirmDelete(true)}
                   >
                     {t('foodDatabaseManager.forceDelete', 'Force Delete')}
                   </Button>
