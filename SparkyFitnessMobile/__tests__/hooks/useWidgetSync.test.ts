@@ -65,6 +65,11 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 const androidSetSnapshot = CalorieWidgetBridge.setCalorieSnapshot as jest.Mock;
 const androidReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 
+const flushWidgetPush = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
 const makeSummary = (overrides: Partial<DailySummary> = {}): DailySummary => ({
   date: getTodayDate(),
   calorieGoal: 2000,
@@ -107,17 +112,22 @@ describe('useWidgetSync', () => {
     mockAddLog.mockReset();
     androidSetSnapshot.mockReset().mockResolvedValue(undefined);
     androidReload.mockReset().mockResolvedValue(undefined);
-    Object.defineProperty(Platform, 'OS', { get: () => 'ios', configurable: true });
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'ios',
+      configurable: true,
+    });
   });
 
   it('writes both snapshots and reloads both widgets when calorieBalance + macros present', () => {
     renderHook(() => useWidgetSync(makeSummary()));
 
-    const keys = setMock.mock.calls.map((call) => call[0]);
+    const keys = setMock.mock.calls.map(call => call[0]);
     expect(keys).toContain('calorieSnapshot');
     expect(keys).toContain('macroSnapshot');
 
-    const macroCall = setMock.mock.calls.find((call) => call[0] === 'macroSnapshot');
+    const macroCall = setMock.mock.calls.find(
+      call => call[0] === 'macroSnapshot',
+    );
     expect(macroCall?.[1]).toMatchObject({
       protein: 92,
       carbs: 180,
@@ -125,20 +135,24 @@ describe('useWidgetSync', () => {
       calories: 1540,
     });
 
-    const reloadedKinds = reloadMock.mock.calls.map((call) => call[0]);
-    expect(reloadedKinds).toEqual(expect.arrayContaining(['widget', 'macroWidget']));
+    const reloadedKinds = reloadMock.mock.calls.map(call => call[0]);
+    expect(reloadedKinds).toEqual(
+      expect.arrayContaining(['widget', 'macroWidget']),
+    );
     expect(reloadedKinds).toHaveLength(2);
     expect(mockAddLog).not.toHaveBeenCalled();
   });
 
   it('writes only the macro snapshot when calorieBalance is undefined', () => {
-    const summary = makeSummary({ calorieBalance: undefined as unknown as DailySummary['calorieBalance'] });
+    const summary = makeSummary({
+      calorieBalance: undefined as unknown as DailySummary['calorieBalance'],
+    });
     renderHook(() => useWidgetSync(summary));
 
-    const keys = setMock.mock.calls.map((call) => call[0]);
+    const keys = setMock.mock.calls.map(call => call[0]);
     expect(keys).toEqual(['macroSnapshot']);
 
-    const reloadedKinds = reloadMock.mock.calls.map((call) => call[0]);
+    const reloadedKinds = reloadMock.mock.calls.map(call => call[0]);
     expect(reloadedKinds).toEqual(['macroWidget']);
     expect(mockAddLog).not.toHaveBeenCalled();
   });
@@ -151,7 +165,10 @@ describe('useWidgetSync', () => {
   });
 
   it('pushes calorie-only snapshot to Android bridge and does not touch iOS ExtensionStorage', async () => {
-    Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
 
     renderHook(() => useWidgetSync(makeSummary()));
 
@@ -159,9 +176,7 @@ describe('useWidgetSync', () => {
     expect(setMock).not.toHaveBeenCalled();
     expect(reloadMock).not.toHaveBeenCalled();
 
-    // Flush the inner async IIFE
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushWidgetPush();
 
     expect(androidSetSnapshot).toHaveBeenCalledTimes(1);
     const [payloadJson] = androidSetSnapshot.mock.calls[0];
@@ -175,16 +190,83 @@ describe('useWidgetSync', () => {
     expect(androidReload).toHaveBeenCalledTimes(1);
   });
 
+  it('skips Android push when only non-rendered summary fields change', async () => {
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
+
+    const { rerender } = renderHook(({ summary }) => useWidgetSync(summary), {
+      initialProps: { summary: makeSummary() },
+    });
+
+    await flushWidgetPush();
+
+    rerender({
+      summary: makeSummary({
+        caloriesConsumed: 1600,
+        protein: { consumed: 100, goal: 150 },
+        carbs: { consumed: 190, goal: 200 },
+      }),
+    });
+
+    await flushWidgetPush();
+
+    expect(androidSetSnapshot).toHaveBeenCalledTimes(1);
+    expect(androidReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('pushes Android snapshot again when rendered calorie fields change', async () => {
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
+
+    const { rerender } = renderHook(({ summary }) => useWidgetSync(summary), {
+      initialProps: { summary: makeSummary() },
+    });
+
+    await flushWidgetPush();
+
+    rerender({
+      summary: makeSummary({
+        calorieBalance: {
+          eaten: 1540,
+          burned: 200,
+          remaining: 400,
+          goal: 2000,
+          net: 1340,
+          progress: 80,
+          bmr: 1700,
+          exerciseSource: 'active',
+        },
+      }),
+    });
+
+    await flushWidgetPush();
+
+    expect(androidSetSnapshot).toHaveBeenCalledTimes(2);
+    expect(androidReload).toHaveBeenCalledTimes(2);
+    const payload = JSON.parse(androidSetSnapshot.mock.calls[1][0] as string);
+    expect(payload).toMatchObject({
+      remaining: 400,
+      goal: 2000,
+      progress: 0.8,
+    });
+  });
+
   it('skips Android push when calorieBalance is missing', async () => {
-    Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
     const summary = makeSummary({
       calorieBalance: undefined as unknown as DailySummary['calorieBalance'],
     });
 
     renderHook(() => useWidgetSync(summary));
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushWidgetPush();
 
     expect(androidSetSnapshot).not.toHaveBeenCalled();
     expect(androidReload).not.toHaveBeenCalled();

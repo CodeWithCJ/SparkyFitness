@@ -7,6 +7,8 @@ import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -20,6 +22,7 @@ import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -34,6 +37,7 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -42,17 +46,22 @@ import org.json.JSONObject
 
 class CalorieWidget : GlanceAppWidget() {
 
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = loadSnapshot(context)
+        val fallbackSnapshot = loadSnapshot(context)
         provideContent {
             GlanceTheme {
-                WidgetContent(context = context, snapshot = snapshot)
+                WidgetContent(context = context, fallbackSnapshot = fallbackSnapshot)
             }
         }
     }
 
     @Composable
-    private fun WidgetContent(context: Context, snapshot: CalorieSnapshot?) {
+    private fun WidgetContent(context: Context, fallbackSnapshot: CalorieSnapshot?) {
+        val state = currentState<Preferences>()
+        val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
+
         val remainingText: String
         val progress: Float
         if (snapshot == null) {
@@ -153,7 +162,11 @@ class CalorieWidget : GlanceAppWidget() {
             CalorieWidgetReceiver.PREFS_NAME,
             Context.MODE_PRIVATE,
         )
-        val json = prefs.getString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, null) ?: return null
+        return parseSnapshot(prefs.getString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, null))
+    }
+
+    private fun parseSnapshot(json: String?): CalorieSnapshot? {
+        if (json == null) return null
         return try {
             val obj = JSONObject(json)
             val date = obj.optString("date", "")
@@ -182,6 +195,10 @@ class CalorieWidget : GlanceAppWidget() {
 
     private fun formatInt(value: Double): String {
         return String.format(Locale.getDefault(), "%,d", value.toLong())
+    }
+
+    companion object {
+        val SNAPSHOT_STATE_KEY = stringPreferencesKey(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT)
     }
 }
 
