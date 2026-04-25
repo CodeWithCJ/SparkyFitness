@@ -64,6 +64,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const visibleTabs = useMemo(
     () => (isMealBuilderMode ? ALL_TABS.filter((tab) => tab.key !== 'meal') : ALL_TABS),
@@ -259,7 +260,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSearchBar = () => (
     <View className="px-4 py-2">
-      <View className="flex-row items-center bg-raised rounded-lg px-3">
+      <View
+        className="flex-row items-center bg-raised rounded-lg px-3"
+        style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
+      >
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
@@ -269,6 +273,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"

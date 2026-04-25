@@ -16,13 +16,15 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const date = route.params?.date;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+    '--color-border-subtle',
+  ]) as [string, string, string, string];
 
   const [searchText, setSearchText] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { presets, isLoading, isError, refetch } = useWorkoutPresets();
   const { searchResults, isSearching, isSearchActive, isSearchError } = useWorkoutPresetSearch(searchText);
@@ -117,7 +119,10 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
 
       {/* Search bar */}
       <View className="px-4 py-2">
-        <View className="flex-row items-center bg-raised rounded-lg border border-border-subtle px-3 py-2.5">
+        <View
+          className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
+          style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : borderSubtle }}
+        >
           <Icon name="search" size={18} color={textMuted} />
           <View className="flex-1 ml-2">
             <TextInput
@@ -127,6 +132,8 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
               placeholderTextColor={textMuted}
               value={searchText}
               onChangeText={setSearchText}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"

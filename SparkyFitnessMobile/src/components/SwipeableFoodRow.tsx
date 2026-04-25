@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
-import type { EntryNutrition } from './FoodSummary';
+import type { EntryNutrition } from '../utils/mealNutrition';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
@@ -93,12 +93,14 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
             activeOpacity={0.7}
             onPress={() => navigation.navigate('FoodEntryView', { entry })}
           >
-            <Text className="text-md text-text-primary" numberOfLines={1}>
-              {name}
-              <Text className="text-sm text-text-secondary">
-                {' \u00B7 '}{entry.quantity} {entry.unit}
+            <View className="flex-row flex-wrap items-baseline">
+              <Text className="text-md text-text-primary" numberOfLines={1}>
+                {name}{' · '}
               </Text>
-            </Text>
+              <Text className="text-sm text-text-secondary" numberOfLines={1}>
+                {entry.quantity} {entry.unit}
+              </Text>
+            </View>
           </TouchableOpacity>
           {canQuickAdjust ? (
             <Button

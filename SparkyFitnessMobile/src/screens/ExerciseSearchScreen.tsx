@@ -46,15 +46,17 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+    '--color-border-subtle',
+  ]) as [string, string, string, string];
   const { isConnected } = useServerConnection();
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [importingExerciseId, setImportingExerciseId] = useState<string | null>(null);
 
   const { recentExercises, topExercises, isLoading: isSuggestedLoading, isError: isSuggestedError, refetch: refetchSuggested } = useSuggestedExercises();
@@ -161,7 +163,10 @@ useEffect(() => {
 
   const renderSearchBar = () => (
     <View className="px-4 py-2">
-      <View className="flex-row items-center bg-raised rounded-lg border border-border-subtle px-3 py-2.5">
+      <View
+        className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
+        style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : borderSubtle }}
+      >
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
@@ -171,6 +176,8 @@ useEffect(() => {
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"

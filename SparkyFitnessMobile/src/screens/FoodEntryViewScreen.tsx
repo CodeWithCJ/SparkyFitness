@@ -1,11 +1,12 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-native';
 import Button from '../components/ui/Button';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -352,7 +353,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
     : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
-  const otherNutrients = buildNutrientDisplayList(displayValues);
+  const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+  const { primary: primaryNutrients, additional: additionalNutrients } = buildNutrientDisplayList(displayValues);
+  const hasAdditional = additionalNutrients.length > 0;
+  const showAdditionalRows = showMoreNutrients && hasAdditional;
+  const renderNutrientValue = (value: number, unit: string) =>
+    isEditing
+      ? `${Math.round(scaled(value))}${unit}`
+      : `${Math.round(scaledValue(value, entry))}${unit}`;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -410,31 +418,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             <FadeView key="edit-serving">
             <View className="mt-3">
               <View className="flex-row items-center">
-                <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(-1)}
-                    className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="remove" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                  <TextInput
-                    value={quantityText}
-                    onChangeText={updateQuantityText}
-                    onBlur={clampQuantity}
-                    keyboardType="decimal-pad"
-                    selectTextOnFocus
-                    className="text-text-primary text-base text-center w-14 h-10"
-                    style={{ fontSize: 20, lineHeight: 22 }}
-                  />
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(1)}
-                    className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="add" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                </View>
+                <StepperInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  onIncrement={() => adjustQuantity(1)}
+                  onDecrement={() => adjustQuantity(-1)}
+                  keyboardType="decimal-pad"
+                />
                 <Text className="text-text-primary text-base font-medium ml-2">
                   {displayValues.servingUnit}
                 </Text>
@@ -535,19 +526,60 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         </Animated.View>
 
         {/* Other Nutrients */}
-        {otherNutrients.length > 0 && (
-          <Animated.View layout={LinearTransition.duration(300)} className="rounded-xl my-2">
-            {otherNutrients.map((n, i) => (
-              <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
-                <Text className="text-text-secondary text-sm">{n.label}</Text>
-                <Text className="text-text-primary text-sm">
-                  {isEditing
-                    ? `${Math.round(scaled(n.value!))}${n.unit}`
-                    : `${Math.round(scaledValue(n.value!, entry))}${n.unit}`
-                  }
-                </Text>
+        {(primaryNutrients.length > 0 || hasAdditional) && (
+          <Animated.View layout={LinearTransition.duration(300)} className="my-2 gap-2">
+            {primaryNutrients.length > 0 && (
+              <View className="rounded-xl">
+                {primaryNutrients.map((n, i) => {
+                  const isLastVisible =
+                    i === primaryNutrients.length - 1 && !showAdditionalRows;
+                  return (
+                    <View
+                      key={n.label}
+                      className={`flex-row justify-between py-1 ${!isLastVisible ? 'border-b border-border-subtle' : ''}`}
+                    >
+                      <Text className="text-text-secondary text-sm">{n.label}</Text>
+                      <Text className="text-text-primary text-sm">
+                        {renderNutrientValue(n.value!, n.unit)}
+                      </Text>
+                    </View>
+                  );
+                })}
+                {showAdditionalRows && (
+                  <Animated.View
+                    entering={FadeIn.duration(250)}
+                    exiting={FadeOut.duration(150)}
+                    layout={LinearTransition.duration(250)}
+                  >
+                    {additionalNutrients.map((n, i) => (
+                      <View
+                        key={n.label}
+                        className={`flex-row justify-between py-1 ${i < additionalNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}
+                      >
+                        <Text className="text-text-secondary text-sm">{n.label}</Text>
+                        <Text className="text-text-primary text-sm">
+                          {renderNutrientValue(n.value!, n.unit)}
+                        </Text>
+                      </View>
+                    ))}
+                  </Animated.View>
+                )}
               </View>
-            ))}
+            )}
+            {hasAdditional && (
+              <Animated.View layout={LinearTransition.duration(250)}>
+                <Button
+                  variant="ghost"
+                  onPress={() => setShowMoreNutrients((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  className="self-start py-0 px-0"
+                >
+                  <Text style={{ color: accentColor }} className="text-sm font-medium">
+                    {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+                  </Text>
+                </Button>
+              </Animated.View>
+            )}
           </Animated.View>
         )}
 

@@ -7,6 +7,7 @@ import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
 import type { MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
+import type { MealTypeKey } from '../utils/mealNutrition';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder';
 
@@ -39,6 +40,7 @@ export type RootStackParamList = {
         returnDepth?: number;
       };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
+  MealNutrition: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:
     | {
         mode: 'create-food';

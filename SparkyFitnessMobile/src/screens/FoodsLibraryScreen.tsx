@@ -31,6 +31,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
@@ -71,7 +72,10 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
 
   const renderSearchBar = () => (
     <View className="px-4 pb-3">
-      <View className="flex-row items-center bg-raised rounded-lg px-3">
+      <View
+        className="flex-row items-center bg-raised rounded-lg px-3"
+        style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
+      >
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
@@ -81,6 +85,8 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"

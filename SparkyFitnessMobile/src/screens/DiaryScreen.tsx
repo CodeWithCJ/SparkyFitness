@@ -18,6 +18,7 @@ import { useServerConnection, useDailySummary } from '../hooks';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -64,6 +65,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
+  const openMealNutrition = useCallback((mealType: MealTypeKey) => {
+    navigation.navigate('MealNutrition', { date: selectedDate, mealType });
+  }, [navigation, selectedDate]);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
@@ -157,8 +161,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           </>
         ) : (
           <>
-            <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
-            <ExerciseSummary exerciseEntries={summary.exerciseEntries} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
+            <FoodSummary
+              foodEntries={summary.foodEntries}
+              onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}
+              onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
+              onPressMealType={openMealNutrition}
+            />
+            <ExerciseSummary exerciseEntries={summary.exerciseEntries} entryDate={selectedDate} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
               if (session.type === 'preset') {
                 navigation.navigate('WorkoutDetail', { session });
               } else {
@@ -182,7 +191,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             onNextDay={goToNextDay}
             onToday={goToToday}
             onDatePress={openCalendar}
-            hideChevrons
             showDateAlways
             skipSafeAreaTop
           />

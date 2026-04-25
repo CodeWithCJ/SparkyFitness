@@ -61,7 +61,7 @@
 
       --color-text-success:      hsl(165, 49%, 33%);
       --color-text-warning:      hsl(36, 71%, 42%);
-      --color-text-danger:       hsl(0, 100%, 97%);
+      --color-text-danger:       hsl(358, 98%, 97%);
     }
       
     @variant dark {
