@@ -1,14 +1,16 @@
 // hooks/Exercises/useExerciseFilters.ts
 import { useState } from 'react';
 import type { ExerciseOwnershipFilter } from '@/types/exercises';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function useExerciseFilters() {
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [ownershipFilter, setOwnershipFilter] =
     useState<ExerciseOwnershipFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(isMobile ? 5 : 10);
 
   const handleSetSearchTerm = (value: React.SetStateAction<string>) => {
     setSearchTerm(value);

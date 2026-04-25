@@ -43,7 +43,8 @@ export const useExercises = (
   ownershipFilter: ExerciseOwnershipFilter,
   page: number,
   itemsPerPage: number,
-  userId?: string
+  userId?: string,
+  sortOrder: string = 'name:asc'
 ) => {
   const { t } = useTranslation();
   return useQuery({
@@ -52,7 +53,8 @@ export const useExercises = (
       categoryFilter,
       ownershipFilter,
       page,
-      itemsPerPage
+      itemsPerPage,
+      sortOrder
     ),
     queryFn: () =>
       loadExercises(
@@ -60,7 +62,8 @@ export const useExercises = (
         categoryFilter,
         ownershipFilter,
         page,
-        itemsPerPage
+        itemsPerPage,
+        sortOrder
       ),
     placeholderData: keepPreviousData,
     enabled: !!userId,

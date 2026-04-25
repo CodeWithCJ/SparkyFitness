@@ -56,6 +56,8 @@ interface MealTotals {
 
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
+import { useSearchParams } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface MealCardProps {
   meal: {
@@ -119,7 +121,8 @@ const MealCard = ({
       onFoodSearchClose();
     }
   };
-
+  const [searchParams] = useSearchParams();
+  const highlightFoodId = searchParams.get('highlight') ?? null;
   const { mutate: copyFoodEntriesFromYesterday } =
     useCopyFoodEntriesFromYesterdayMutation();
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
@@ -350,7 +353,12 @@ const MealCard = ({
                 return (
                   <div
                     key={item.id} // Use item.id directly
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
+                    className={cn(
+                      'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-colors duration-300',
+                      'food_id' in item &&
+                        (item as FoodEntry).food_id === highlightFoodId &&
+                        'border-2 border-blue-500'
+                    )}
                   >
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">

@@ -8,8 +8,10 @@ export function useIsMobile() {
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'useIsMobile: Initializing useIsMobile hook.');
 
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
-    undefined
+  const [isMobile, setIsMobile] = React.useState<boolean>(
+    typeof window !== 'undefined'
+      ? window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches
+      : false
   );
 
   React.useEffect(() => {

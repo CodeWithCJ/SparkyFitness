@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -63,8 +63,11 @@ const Diary = () => {
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
   const [editingFoodEntryMeal, setEditingFoodEntryMeal] =
     useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
+  const [searchParams] = useSearchParams();
+
   const [selectedDate, setSelectedDate] = useState(
-    formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
+    searchParams.get('date') ??
+      formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
   const [date, setDate] = useState(parseDateInUserTimezone(selectedDate));
   debug(loggingLevel, 'FoodDiary component rendered for date:', selectedDate);

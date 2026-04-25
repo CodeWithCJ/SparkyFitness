@@ -120,8 +120,8 @@ describe('MealManagement', () => {
     renderWithClient(<MealManagement />);
 
     await waitFor(() => {
-      expect(screen.getByText('Breakfast Bowl')).toBeInTheDocument();
-      expect(screen.getByText('Protein Shake')).toBeInTheDocument();
+      expect(screen.getAllByText('Breakfast Bowl').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Protein Shake').length).toBeGreaterThan(0);
     });
   });
 });

@@ -1,25 +1,28 @@
-import type React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   Plus,
   Edit,
   Trash2,
   CalendarPlus,
   Loader2,
-  ChevronDown,
   Layers,
   Dumbbell,
+  CheckSquare,
+  X,
+  MoreHorizontal,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { WorkoutPreset } from '@/types/workout';
@@ -33,9 +36,20 @@ import {
 import { useLogWorkoutPresetMutation } from '@/hooks/Exercises/useExerciseEntries';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
+import { useBulkSelection } from '@/hooks/useBulkSelection';
+import BulkActionToolbar from '@/components/BulkActionToolbar';
+import BulkDeleteDialog from '@/components/BulkDeleteDialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DataTable } from '@/components/ui/DataTable';
+import { ColumnDef, RowSelectionState } from '@tanstack/react-table';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Badge } from '@/components/ui/badge';
+
 const WorkoutPresetsManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const { weightUnit } = usePreferences();
 
   const [isAddPresetDialogOpen, setIsAddPresetDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -51,7 +65,46 @@ const WorkoutPresetsManager = () => {
   const { mutateAsync: deletePreset } = useDeleteWorkoutPresetMutation();
   const { mutateAsync: logWorkoutPreset } = useLogWorkoutPresetMutation();
 
-  const presets = data?.pages.flatMap((page) => page.presets) ?? [];
+  const presets = React.useMemo(
+    () => data?.pages.flatMap((page) => page.presets) ?? [],
+    [data]
+  );
+
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  const selectedIdsFromTable = React.useMemo(() => {
+    return new Set<string>(Object.keys(rowSelection));
+  }, [rowSelection]);
+
+  const {
+    selectedIds,
+    selectAll,
+    clearSelection,
+    selectedCount,
+    isEditMode,
+    toggleEditMode,
+  } = useBulkSelection(selectedIdsFromTable);
+
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+
+  const editablePresetIds = presets
+    .filter((p) => p.user_id === user?.id)
+    .map((p) => p.id.toString());
+
+  const allSelected =
+    editablePresetIds.length > 0 && selectedCount === editablePresetIds.length;
+
+  const handleBulkDeleteConfirm = async () => {
+    try {
+      await Promise.all(Array.from(selectedIds).map((id) => deletePreset(id)));
+    } catch (err) {
+      // Error handling is handled by mutation
+    } finally {
+      clearSelection();
+      setRowSelection({});
+      setShowBulkDeleteDialog(false);
+    }
+  };
 
   const handleCreatePreset = async (
     newPresetData: Omit<
@@ -73,84 +126,314 @@ const WorkoutPresetsManager = () => {
     setSelectedPreset(null);
   };
 
-  const handleDeletePreset = async (presetId: string) => {
-    await deletePreset(presetId);
-  };
+  const handleDeletePreset = React.useCallback(
+    async (presetId: string) => {
+      await deletePreset(presetId);
+    },
+    [deletePreset]
+  );
 
-  const handleLogPresetToDiary = async (preset: WorkoutPreset) => {
-    try {
-      const today = formatDateToYYYYMMDD(new Date());
-      await logWorkoutPreset({ presetId: preset.id, date: today });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('workoutPresetsManager.logSuccess', {
-          presetName: preset.name,
-        }),
-      });
-    } catch (err) {
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('workoutPresetsManager.logError', {
-          presetName: preset.name,
-        }),
-        variant: 'destructive',
-      });
-    }
-  };
+  const handleLogPresetToDiary = React.useCallback(
+    async (preset: WorkoutPreset) => {
+      try {
+        const today = formatDateToYYYYMMDD(new Date());
+        await logWorkoutPreset({ presetId: preset.id, date: today });
+        toast({
+          title: t('common.success', 'Success'),
+          description: t('workoutPresetsManager.logSuccess', {
+            presetName: preset.name,
+          }),
+        });
+      } catch (err) {
+        toast({
+          title: t('common.error', 'Error'),
+          description: t('workoutPresetsManager.logError', {
+            presetName: preset.name,
+          }),
+          variant: 'destructive',
+        });
+      }
+    },
+    [logWorkoutPreset, t]
+  );
+
+  const columns = React.useMemo<ColumnDef<WorkoutPreset>[]>(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            disabled={row.original.user_id !== user?.id}
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
+        accessorKey: 'name',
+        header: t('workoutPresetsManager.name', 'Name'),
+        cell: ({ row }) => {
+          const preset = row.original;
+          return (
+            <div className="flex flex-col">
+              <span className="font-semibold">{preset.name}</span>
+              {preset.description && (
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {preset.description}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'exercises',
+        header: t('workoutPresetsManager.exercises', 'Exercises'),
+        cell: ({ row }) => {
+          const count = row.original.exercises?.length || 0;
+          return (
+            <Badge variant="secondary" className="font-normal">
+              {count} {count === 1 ? 'exercise' : 'exercises'}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: 'stats',
+        header: t('workoutPresetsManager.stats', 'Stats'),
+        cell: ({ row }) => {
+          const preset = row.original;
+          const totalSets =
+            preset.exercises?.reduce(
+              (sum, ex) => sum + (ex.sets?.length || 0),
+              0
+            ) ?? 0;
+          const totalWeight =
+            preset.exercises?.reduce((sum, ex) => {
+              const vol =
+                ex.sets?.reduce(
+                  (s, set) => s + (set.weight || 0) * (set.reps || 0),
+                  0
+                ) ?? 0;
+              return sum + vol;
+            }, 0) ?? 0;
+          return (
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <Layers className="w-3 h-3 text-blue-500" />
+                <span>{totalSets} sets</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Dumbbell className="w-3 h-3 text-indigo-500" />
+                <span>
+                  {totalWeight}
+                  {weightUnit}
+                </span>
+              </div>
+            </div>
+          );
+        },
+        meta: { hideOnMobile: true, colSpan: 2 },
+      },
+      {
+        id: 'actions',
+        header: t('common.actions', 'Actions'),
+        cell: ({ row }) => {
+          const preset = row.original;
+          const isOwned = preset.user_id === user?.id;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  {t('common.actions', 'Actions')}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleLogPresetToDiary(preset)}
+                >
+                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  {t('workoutPresetsManager.logToDiary', 'Log to Diary')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!isOwned}
+                  onClick={() => {
+                    setSelectedPreset(preset);
+                    setIsEditDialogOpen(true);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('common.edit', 'Edit')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!isOwned}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleDeletePreset(preset.id.toString())}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('common.delete', 'Delete')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
+    [t, user?.id, weightUnit, handleLogPresetToDiary, handleDeletePreset]
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end px-1">
-        <Button
-          onClick={() => setIsAddPresetDialogOpen(true)}
-          className="rounded-xl shadow-sm"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t('workoutPresetsManager.addPresetButton', 'Add presets')}
-        </Button>
-      </div>
-
-      {presets.length === 0 && !isLoading ? (
-        <p className="text-center text-gray-400 py-10 italic">
-          {t(
-            'workoutPresetsManager.noPresetsFound',
-            'No workout presets found.'
-          )}
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {presets.map((preset) => (
-            <WorkoutPresetItem
-              key={preset.id}
-              preset={preset}
-              userId={user?.id}
-              onLog={() => handleLogPresetToDiary(preset)}
-              onEdit={() => {
-                setSelectedPreset(preset);
-                setIsEditDialogOpen(true);
-              }}
-              onDelete={() => handleDeletePreset(preset.id.toString())}
-            />
-          ))}
-        </div>
-      )}
-
-      {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="ghost"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="text-gray-500"
-          >
-            {isFetchingNextPage ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              t('workoutPresetsManager.loadMore', 'Load more')
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+            {t(
+              'exercise.databaseManager.workoutPresetsCardTitle',
+              'Workout Presets'
             )}
-          </Button>
-        </div>
-      )}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size={isMobile ? 'icon' : 'default'}
+              onClick={toggleEditMode}
+              className={`shrink-0 ${
+                isEditMode
+                  ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                  : ''
+              }`}
+              title={
+                isEditMode
+                  ? t('common.cancel', 'Cancel')
+                  : t('common.select', 'Select')
+              }
+            >
+              {isEditMode ? (
+                isMobile ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  t('common.cancel', 'Cancel')
+                )
+              ) : isMobile ? (
+                <CheckSquare className="w-5 h-5" />
+              ) : (
+                t('common.select', 'Select')
+              )}
+            </Button>
+            <Button
+              onClick={() => setIsAddPresetDialogOpen(true)}
+              size={isMobile ? 'icon' : 'default'}
+              className="shrink-0"
+              title={t('workoutPresetsManager.addPresetButton', 'Add presets')}
+            >
+              <Plus className={isMobile ? 'w-5 h-5' : 'h-4 w-4 mr-2'} />
+              {!isMobile && (
+                <span>
+                  {t('workoutPresetsManager.addPresetButton', 'Add presets')}
+                </span>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {presets.length === 0 && !isLoading ? (
+            <p className="text-center text-gray-400 py-10 italic">
+              {t(
+                'workoutPresetsManager.noPresetsFound',
+                'No workout presets found.'
+              )}
+            </p>
+          ) : (
+            <DataTable
+              titleColumnId="name"
+              getRowId={(row) => row.id.toString()}
+              onRowDoubleClick={(preset) => {
+                if (preset.user_id === user?.id) {
+                  setSelectedPreset(preset);
+                  setIsEditDialogOpen(true);
+                }
+              }}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              columns={
+                isEditMode ? columns : columns.filter((c) => c.id !== 'select')
+              }
+              data={presets}
+              isLoading={isLoading}
+            />
+          )}
+
+          {hasNextPage && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  fetchNextPage();
+                  clearSelection();
+                }}
+                disabled={isFetchingNextPage}
+                className="text-gray-500"
+              >
+                {isFetchingNextPage ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t('workoutPresetsManager.loadMore', 'Load more')
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <BulkActionToolbar
+        selectedCount={selectedCount}
+        totalCount={editablePresetIds.length}
+        allSelected={allSelected}
+        onClear={() => {
+          clearSelection();
+          setRowSelection({});
+        }}
+        onDelete={() => setShowBulkDeleteDialog(true)}
+        onSelectAll={(checked) => {
+          if (checked) {
+            selectAll(editablePresetIds);
+            // Sync with table
+            const newSelection: RowSelectionState = {};
+            presets.forEach((p) => {
+              if (p.user_id === user?.id) newSelection[p.id.toString()] = true;
+            });
+            setRowSelection(newSelection);
+          } else {
+            clearSelection();
+            setRowSelection({});
+          }
+        }}
+      />
+
+      <BulkDeleteDialog
+        isOpen={showBulkDeleteDialog}
+        onOpenChange={setShowBulkDeleteDialog}
+        selectedCount={selectedCount}
+        entityName={t('workoutPresetsManager.presets', 'presets')}
+        onConfirm={handleBulkDeleteConfirm}
+      />
 
       <WorkoutPresetForm
         isOpen={isAddPresetDialogOpen}
@@ -174,186 +457,5 @@ const WorkoutPresetsManager = () => {
     </div>
   );
 };
-
-const WorkoutPresetItem: React.FC<{
-  preset: WorkoutPreset;
-  userId: string | undefined;
-  onLog: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}> = ({ preset, userId, onLog, onEdit, onDelete }) => {
-  const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { weightUnit } = usePreferences();
-
-  const totalSets =
-    preset.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) ?? 0;
-  const totalWeight =
-    preset.exercises?.reduce((sum, ex) => {
-      const exerciseVolume =
-        ex.sets?.reduce((setSum, set) => {
-          return setSum + (set.weight || 0) * (set.reps || 0);
-        }, 0) ?? 0;
-      return sum + exerciseVolume;
-    }, 0) ?? 0;
-
-  return (
-    <Card className="overflow-hidden border-0 shadow-md bg-white dark:bg-gray-900 rounded-xl">
-      <div className="flex">
-        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-l-xl" />
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-3 min-w-0 flex-1 text-left group"
-            >
-              <span
-                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full border-2 transition-all duration-200
-                  ${
-                    isExpanded
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-400 group-hover:border-blue-400 group-hover:text-blue-500'
-                  }`}
-              >
-                <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-                />
-              </span>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-900 dark:text-gray-50 text-base leading-tight truncate">
-                    {preset.name}
-                  </span>
-                  {preset.exercises && preset.exercises.length > 0 && (
-                    <span className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                      {preset.exercises.length}{' '}
-                      {preset.exercises.length === 1 ? 'exercise' : 'exercises'}
-                    </span>
-                  )}
-                </div>
-                {preset.description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                    {preset.description}
-                  </p>
-                )}
-              </div>
-            </button>
-
-            <div className="flex items-center gap-1">
-              <ActionButton
-                icon={<CalendarPlus className="h-3.5 w-3.5" />}
-                label={t('workoutPresetsManager.logToDiary', 'Log to Diary')}
-                onClick={onLog}
-                colorClass="hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/50"
-              />
-              {preset.user_id === userId && (
-                <>
-                  <ActionButton
-                    icon={<Edit className="h-3.5 w-3.5" />}
-                    label={t('common.edit', 'Edit')}
-                    onClick={onEdit}
-                    colorClass="hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
-                  />
-                  <ActionButton
-                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                    label={t('common.delete', 'Delete')}
-                    onClick={onDelete}
-                    colorClass="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
-                  />
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="mx-4 mb-4 mt-1 grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800 bg-gray-50 dark:bg-gray-800/60 rounded-lg overflow-hidden">
-            <StatCell
-              icon={<Layers className="w-3 h-3" />}
-              value={totalSets.toString()}
-              label={t('common.totalSets', 'Sets')}
-              color="text-blue-600 dark:text-blue-400"
-            />
-            <StatCell
-              icon={<Dumbbell className="w-3 h-3" />}
-              value={totalWeight.toString() + weightUnit}
-              label={t('common.totalWeight', 'Total Weight')}
-              color="text-indigo-600 dark:text-indigo-400"
-            />
-          </div>
-        </div>
-      </div>
-
-      {isExpanded && (
-        <CardContent className="px-4 pb-4 pt-0 border-t border-gray-100 dark:border-gray-800">
-          <div className="pt-3 space-y-2">
-            {preset.exercises?.map((ex, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all"
-              >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {ex.exercise_name}
-                </span>
-                {ex.sets && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 font-bold">
-                    {ex.sets.length} {t('common.sets', 'Sets').toUpperCase()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      )}
-    </Card>
-  );
-};
-
-const ActionButton: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  colorClass: string;
-}> = ({ icon, label, onClick, colorClass }) => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-          className={`h-8 w-8 text-gray-400 transition-colors ${colorClass}`}
-        >
-          {icon}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-);
-
-const StatCell: React.FC<{
-  icon: React.ReactNode;
-  value: string;
-  label: string;
-  color: string;
-}> = ({ icon, value, label, color }) => (
-  <div className="flex flex-col items-center justify-center py-2 px-1 gap-0.5">
-    <span className={`${color} flex items-center gap-1`}>
-      {icon}
-      <span className="font-bold text-sm text-gray-800 dark:text-gray-100">
-        {value}
-      </span>
-    </span>
-    <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide font-medium">
-      {label}
-    </span>
-  </div>
-);
 
 export default WorkoutPresetsManager;
