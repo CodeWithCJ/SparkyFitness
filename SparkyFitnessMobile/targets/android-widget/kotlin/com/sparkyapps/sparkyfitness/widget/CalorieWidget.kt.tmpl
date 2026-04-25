@@ -1,0 +1,211 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.ColorFilter
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import {{APPLICATION_ID}}.R
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import org.json.JSONObject
+
+class CalorieWidget : GlanceAppWidget() {
+
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val fallbackSnapshot = loadSnapshot(context)
+        provideContent {
+            GlanceTheme {
+                WidgetContent(context = context, fallbackSnapshot = fallbackSnapshot)
+            }
+        }
+    }
+
+    @Composable
+    private fun WidgetContent(context: Context, fallbackSnapshot: CalorieSnapshot?) {
+        val state = currentState<Preferences>()
+        val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
+
+        val remainingText: String
+        val progress: Float
+        if (snapshot == null) {
+            remainingText = "—"
+            progress = 0f
+        } else {
+            remainingText = "${formatInt(snapshot.remaining)} kcal left"
+            progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
+        }
+
+        val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
+            .setPackage(context.packageName)
+        val searchIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://search"))
+            .setPackage(context.packageName)
+        val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
+            .setPackage(context.packageName)
+
+        Box(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(GlanceTheme.colors.surface)
+                .appWidgetBackgroundCornerRadius()
+                .padding(12.dp)
+                .clickable(actionStartActivity(openAppIntent)),
+        ) {
+            Column(modifier = GlanceModifier.fillMaxSize()) {
+                Text(
+                    text = remainingText,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                )
+                Spacer(modifier = GlanceModifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(8.dp),
+                    color = GlanceTheme.colors.primary,
+                    backgroundColor = GlanceTheme.colors.surfaceVariant,
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(32.dp)
+                            .clickable(actionStartActivity(searchIntent)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_widget_search),
+                            contentDescription = "Search food",
+                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                            modifier = GlanceModifier.size(24.dp),
+                        )
+                    }
+                    Box(
+                        modifier = GlanceModifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(GlanceTheme.colors.surfaceVariant),
+                    ) {}
+                    Box(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(32.dp)
+                            .clickable(actionStartActivity(scanIntent)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_widget_scan),
+                            contentDescription = "Scan barcode",
+                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                            modifier = GlanceModifier.size(24.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private data class CalorieSnapshot(
+        val date: String,
+        val remaining: Double,
+        val goal: Double,
+        val progress: Double,
+        val lastUpdated: Long,
+    )
+
+    private fun loadSnapshot(context: Context): CalorieSnapshot? {
+        val prefs = context.getSharedPreferences(
+            CalorieWidgetReceiver.PREFS_NAME,
+            Context.MODE_PRIVATE,
+        )
+        return parseSnapshot(prefs.getString(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT, null))
+    }
+
+    private fun parseSnapshot(json: String?): CalorieSnapshot? {
+        if (json == null) return null
+        return try {
+            val obj = JSONObject(json)
+            val date = obj.optString("date", "")
+            if (!isToday(date)) return null
+            CalorieSnapshot(
+                date = date,
+                remaining = obj.optDouble("remaining", 0.0),
+                goal = obj.optDouble("goal", 0.0),
+                progress = obj.optDouble("progress", 0.0),
+                lastUpdated = obj.optLong("lastUpdated", 0L),
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun isToday(date: String): Boolean {
+        if (date.isBlank()) return false
+        return try {
+            val parsed = LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE)
+            parsed == LocalDate.now()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun formatInt(value: Double): String {
+        return String.format(Locale.getDefault(), "%,d", value.toLong())
+    }
+
+    companion object {
+        val SNAPSHOT_STATE_KEY = stringPreferencesKey(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT)
+    }
+}
+
+fun GlanceModifier.appWidgetBackgroundCornerRadius(): GlanceModifier {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        cornerRadius(android.R.dimen.system_app_widget_background_radius)
+    } else {
+        cornerRadius(16.dp)
+    }
+}
