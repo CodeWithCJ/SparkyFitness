@@ -24,20 +24,28 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUpdateProfileMutation } from '@/hooks/Settings/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Profile, ProfileFormState } from '@/types/settings';
+import { useMostRecentHeightQuery } from '@/hooks/Diary/useDailyProgress';
+import { UpdateCheckInMeasurementsRequest } from '@workspace/shared';
+import { useSaveCheckInMeasurementsMutation } from '@/hooks/CheckIn/useCheckIn';
 
 export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { formatDate } = usePreferences();
+  const { formatDate, formatDateInUserTimezone } = usePreferences();
   const { mutateAsync: updateProfile, isPending: updatingProfile } =
     useUpdateProfileMutation(user?.id || ''); // can't be undefined or null because of check inside the function
 
+  const { mutateAsync: saveCheckInMeasurements } =
+    useSaveCheckInMeasurementsMutation();
+  const { measurementUnit: defaultMeasurementUnit } = usePreferences();
+  const { data: heightData } = useMostRecentHeightQuery();
   const [profileForm, setProfileForm] = useState<ProfileFormState>({
     full_name: profile.full_name || '',
     phone: profile.phone_number || '',
     date_of_birth: profile.date_of_birth || '',
     bio: profile.bio || '',
     gender: profile.gender || '',
+    height: heightData?.height || '',
   });
 
   const handleProfileUpdate = async () => {
@@ -51,6 +59,11 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
         bio: profileForm.bio,
         gender: profileForm.gender || null,
       });
+      const measurementData: UpdateCheckInMeasurementsRequest = {
+        entry_date: formatDateInUserTimezone(new Date(), 'yyyy-MM-dd'),
+        height: Number(profileForm.height),
+      };
+      await saveCheckInMeasurements(measurementData);
     } catch (error: unknown) {
       console.error(error);
     }
@@ -165,6 +178,31 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label htmlFor="height">
+            {t('settings.profileInformation.height', 'Height')}
+          </Label>
+          <div className="relative">
+            <Input
+              id="height"
+              type="number"
+              value={profileForm.height}
+              onChange={(e) =>
+                setProfileForm((prev) => ({
+                  ...prev,
+                  height: e.target.value,
+                }))
+              }
+              placeholder={t(
+                'settings.profileInformation.enterHeight',
+                'Enter your Height'
+              )}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+              {defaultMeasurementUnit}
+            </span>
+          </div>
         </div>
         <div className="md:col-span-2">
           <Label htmlFor="bio">

@@ -64,4 +64,5 @@ export interface ProfileFormState {
   date_of_birth: string;
   bio: string;
   gender: string;
+  height: number | string;
 }

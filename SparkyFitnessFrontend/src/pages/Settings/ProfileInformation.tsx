@@ -4,11 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { User, Camera } from 'lucide-react';
-import {
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/components/ui/accordion';
+import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useTranslation } from 'react-i18next';
 import { getInitials } from '@/utils/settings';
 import { useAuth } from '@/hooks/useAuth';
@@ -66,10 +62,7 @@ export const ProfileInformation = () => {
   };
   if (isProfileLoading || !profile) return null;
   return (
-    <AccordionItem
-      value="profile-information"
-      className="border rounded-lg mb-4"
-    >
+    <>
       <AccordionTrigger
         className="flex items-center gap-2 p-4 hover:no-underline"
         description={t(
@@ -131,6 +124,6 @@ export const ProfileInformation = () => {
 
         <ProfileFormContent key={profile.id} profile={profile} />
       </AccordionContent>
-    </AccordionItem>
+    </>
   );
 };

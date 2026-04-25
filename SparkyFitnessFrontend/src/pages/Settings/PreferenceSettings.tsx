@@ -13,11 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
-import {
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/components/ui/accordion'; // Import Accordion components
+import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
 import {
   usePreferences,
@@ -99,7 +95,7 @@ export const PreferenceSettings = () => {
     }
   };
   return (
-    <AccordionItem value="user-preferences" className="border rounded-lg mb-4">
+    <>
       <AccordionTrigger
         className="flex items-center gap-2 p-4 hover:no-underline"
         description={t(
@@ -444,6 +440,6 @@ export const PreferenceSettings = () => {
             : t('settings.preferences.savePreferences', 'Save Preferences')}
         </Button>
       </AccordionContent>
-    </AccordionItem>
+    </>
   );
 };

@@ -408,31 +408,30 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           {bmr === 0 && (
             <Alert variant="destructive" className="bg-red-50 border-red-200">
               <AlertCircle className="h-4 w-4 text-red-600" />
-              <div className="flex flex-col">
-                <AlertTitle className="text-red-800 font-bold mb-1">
-                  {t(
-                    'exercise.dailyProgress.profileIncompleteTitle',
-                    'Profile Incomplete'
-                  )}
-                </AlertTitle>
-                <AlertDescription className="text-red-700 text-xs leading-relaxed">
+              <AlertTitle className="text-red-800 font-bold mb-1">
+                {t(
+                  'exercise.dailyProgress.profileIncompleteTitle',
+                  'Profile Incomplete'
+                )}
+              </AlertTitle>
+              <AlertDescription className="text-red-700 text-xs leading-relaxed flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-1 sm:gap-x-1">
+                <span>
                   {t(
                     'exercise.dailyProgress.profileIncompleteDesc',
                     'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
                   )}
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 h-auto text-red-800 font-bold ml-1 underline decoration-2 underline-offset-2"
-                    onClick={() => navigate('/settings')}
-                  >
-                    {t(
-                      'exercise.dailyProgress.updateProfile',
-                      'Update Profile'
-                    )}
-                  </Button>
-                </AlertDescription>
-              </div>
+                </span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
+                  onClick={() =>
+                    navigate('/settings?section=profile-information')
+                  }
+                >
+                  {t('exercise.dailyProgress.updateProfile', 'Update Profile')}
+                </Button>
+              </AlertDescription>
             </Alert>
           )}
 
