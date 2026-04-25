@@ -52,6 +52,32 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
+    fun setMacroSnapshot(json: String, promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch {
+            try {
+                val prefs = ctx.getSharedPreferences(
+                    MacroWidgetReceiver.PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                )
+                if (!prefs.edit().putString(MacroWidgetReceiver.PREFS_KEY_SNAPSHOT, json).commit()) {
+                    throw IllegalStateException("Failed to persist macro widget snapshot")
+                }
+
+                val manager = GlanceAppWidgetManager(ctx)
+                manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                    updateAppWidgetState(ctx, id) { state ->
+                        state[MacroWidget.SNAPSHOT_STATE_KEY] = json
+                    }
+                }
+                promise.resolve(null)
+            } catch (e: Exception) {
+                promise.reject("E_WRITE_FAILED", e)
+            }
+        }
+    }
+
+    @ReactMethod
     fun reloadWidget(promise: Promise) {
         val ctx = reactApplicationContext
         moduleScope.launch {
@@ -59,6 +85,23 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
                 val manager = GlanceAppWidgetManager(ctx)
                 val widget = CalorieWidget()
                 manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                    widget.update(ctx, id)
+                }
+                promise.resolve(null)
+            } catch (e: Exception) {
+                promise.reject("E_RELOAD_FAILED", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun reloadMacroWidget(promise: Promise) {
+        val ctx = reactApplicationContext
+        moduleScope.launch {
+            try {
+                val manager = GlanceAppWidgetManager(ctx)
+                val widget = MacroWidget()
+                manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
                     widget.update(ctx, id)
                 }
                 promise.resolve(null)

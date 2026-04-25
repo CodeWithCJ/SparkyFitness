@@ -1,0 +1,350 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.ColorFilter
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
+import {{APPLICATION_ID}}.R
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToLong
+import org.json.JSONObject
+
+class MacroWidget : GlanceAppWidget() {
+
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        setOf(
+            DpSize(140.dp, 140.dp),
+            DpSize(300.dp, 140.dp),
+        ),
+    )
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val fallbackSnapshot = loadSnapshot(context)
+        provideContent {
+            GlanceTheme {
+                WidgetContent(context = context, fallbackSnapshot = fallbackSnapshot)
+            }
+        }
+    }
+
+    @Composable
+    private fun WidgetContent(context: Context, fallbackSnapshot: MacroSnapshot?) {
+        val state = currentState<Preferences>()
+        val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
+        val isMedium = LocalSize.current.width >= 250.dp
+
+        val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
+            .setPackage(context.packageName)
+        val searchIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://search"))
+            .setPackage(context.packageName)
+        val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
+            .setPackage(context.packageName)
+
+        Box(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(GlanceTheme.colors.surface)
+                .appWidgetBackgroundCornerRadius()
+                .padding(12.dp)
+                .clickable(actionStartActivity(openAppIntent)),
+        ) {
+            if (isMedium) {
+                MediumContent(
+                    snapshot = snapshot,
+                    searchIntent = searchIntent,
+                    scanIntent = scanIntent,
+                )
+            } else {
+                SmallContent(snapshot = snapshot)
+            }
+        }
+    }
+
+    @Composable
+    private fun SmallContent(snapshot: MacroSnapshot?) {
+        Column(modifier = GlanceModifier.fillMaxSize()) {
+            CalorieHeader(snapshot = snapshot)
+            Spacer(modifier = GlanceModifier.height(8.dp))
+            MacroRows(snapshot = snapshot, spacing = 5)
+        }
+    }
+
+    @Composable
+    private fun MediumContent(
+        snapshot: MacroSnapshot?,
+        searchIntent: Intent,
+        scanIntent: Intent,
+    ) {
+        Row(
+            modifier = GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                CalorieHeader(snapshot = snapshot)
+                Spacer(modifier = GlanceModifier.height(10.dp))
+                MacroRows(snapshot = snapshot, spacing = 7)
+            }
+            Spacer(modifier = GlanceModifier.width(12.dp))
+            Box(
+                modifier = GlanceModifier
+                    .width(1.dp)
+                    .height(104.dp)
+                    .background(GlanceTheme.colors.surfaceVariant),
+            ) {}
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            Column(
+                modifier = GlanceModifier.width(34.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ActionButton(
+                    intent = searchIntent,
+                    icon = R.drawable.ic_widget_search,
+                    contentDescription = "Search food",
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                ActionButton(
+                    intent = scanIntent,
+                    icon = R.drawable.ic_widget_scan,
+                    contentDescription = "Scan barcode",
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun CalorieHeader(snapshot: MacroSnapshot?) {
+        val calories = if (snapshot?.hasData == true) formatInt(snapshot.calories) else "—"
+        Text(
+            text = "$calories kcal",
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurface,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 1,
+            modifier = GlanceModifier.fillMaxWidth(),
+        )
+    }
+
+    @Composable
+    private fun MacroRows(snapshot: MacroSnapshot?, spacing: Int) {
+        MacroRow(
+            label = "Protein",
+            grams = snapshot?.protein ?: 0.0,
+            progress = snapshot.progressFor(MacroKind.PROTEIN),
+            color = MacroPalette.protein,
+        )
+        Spacer(modifier = GlanceModifier.height(spacing.dp))
+        MacroRow(
+            label = "Carbs",
+            grams = snapshot?.carbs ?: 0.0,
+            progress = snapshot.progressFor(MacroKind.CARBS),
+            color = MacroPalette.carbs,
+        )
+        Spacer(modifier = GlanceModifier.height(spacing.dp))
+        MacroRow(
+            label = "Fat",
+            grams = snapshot?.fat ?: 0.0,
+            progress = snapshot.progressFor(MacroKind.FAT),
+            color = MacroPalette.fat,
+        )
+    }
+
+    @Composable
+    private fun MacroRow(
+        label: String,
+        grams: Double,
+        progress: Float,
+        color: ColorProvider,
+    ) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = GlanceModifier
+                        .size(8.dp)
+                        .cornerRadius(4.dp)
+                        .background(color),
+                ) {}
+                Spacer(modifier = GlanceModifier.width(6.dp))
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    ),
+                    maxLines = 1,
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Text(
+                    text = "${formatInt(grams)} g",
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+            }
+            Spacer(modifier = GlanceModifier.height(2.dp))
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = GlanceModifier.fillMaxWidth().height(4.dp),
+                color = color,
+                backgroundColor = GlanceTheme.colors.surfaceVariant,
+            )
+        }
+    }
+
+    @Composable
+    private fun ActionButton(intent: Intent, icon: Int, contentDescription: String) {
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clickable(actionStartActivity(intent)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(icon),
+                contentDescription = contentDescription,
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                modifier = GlanceModifier.size(24.dp),
+            )
+        }
+    }
+
+    private data class MacroSnapshot(
+        val date: String,
+        val protein: Double,
+        val carbs: Double,
+        val fat: Double,
+        val calories: Double,
+        val lastUpdated: Long,
+    ) {
+        val proteinKcal: Double = protein * 4.0
+        val carbsKcal: Double = carbs * 4.0
+        val fatKcal: Double = fat * 9.0
+        val macroKcalTotal: Double = proteinKcal + carbsKcal + fatKcal
+        val hasData: Boolean = macroKcalTotal > 0.0 || calories > 0.0
+    }
+
+    private enum class MacroKind {
+        PROTEIN,
+        CARBS,
+        FAT,
+    }
+
+    private fun loadSnapshot(context: Context): MacroSnapshot? {
+        val prefs = context.getSharedPreferences(
+            MacroWidgetReceiver.PREFS_NAME,
+            Context.MODE_PRIVATE,
+        )
+        return parseSnapshot(prefs.getString(MacroWidgetReceiver.PREFS_KEY_SNAPSHOT, null))
+    }
+
+    private fun parseSnapshot(json: String?): MacroSnapshot? {
+        if (json == null) return null
+        return try {
+            val obj = JSONObject(json)
+            val date = obj.optString("date", "")
+            if (!isToday(date)) return null
+            MacroSnapshot(
+                date = date,
+                protein = obj.safeDouble("protein"),
+                carbs = obj.safeDouble("carbs"),
+                fat = obj.safeDouble("fat"),
+                calories = obj.safeDouble("calories"),
+                lastUpdated = obj.optLong("lastUpdated", 0L),
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun MacroSnapshot?.progressFor(kind: MacroKind): Float {
+        val snapshot = this ?: return 0f
+        val total = snapshot.macroKcalTotal
+        if (total <= 0.0) return 0f
+
+        val value = when (kind) {
+            MacroKind.PROTEIN -> snapshot.proteinKcal
+            MacroKind.CARBS -> snapshot.carbsKcal
+            MacroKind.FAT -> snapshot.fatKcal
+        }
+        return (value / total).coerceIn(0.0, 1.0).toFloat()
+    }
+
+    private fun JSONObject.safeDouble(name: String): Double {
+        val value = optDouble(name, 0.0)
+        return if (value.isFinite()) value else 0.0
+    }
+
+    private fun isToday(date: String): Boolean {
+        if (date.isBlank()) return false
+        return try {
+            val parsed = LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE)
+            parsed == LocalDate.now()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun formatInt(value: Double): String {
+        return String.format(Locale.getDefault(), "%,d", value.roundToLong())
+    }
+
+    companion object {
+        val SNAPSHOT_STATE_KEY = stringPreferencesKey(MacroWidgetReceiver.PREFS_KEY_SNAPSHOT)
+    }
+}
+
+private object MacroPalette {
+    val protein = ColorProvider(Color(0xFFF6B151))
+    val carbs = ColorProvider(Color(0xFF7BD680))
+    val fat = ColorProvider(Color(0xFF6DCBE9))
+}

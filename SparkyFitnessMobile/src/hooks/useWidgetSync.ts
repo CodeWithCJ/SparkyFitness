@@ -21,7 +21,8 @@ const iosAppGroup = (
 export function useWidgetSync(summary: DailySummary | undefined): void {
   const date = summary?.date;
   const isToday = date === getTodayDate();
-  const lastAndroidSnapshotKeyRef = useRef<string | null>(null);
+  const lastAndroidCalorieSnapshotKeyRef = useRef<string | null>(null);
+  const lastAndroidMacroSnapshotKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isToday || !date || !summary) {
@@ -87,36 +88,74 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
     }
 
     if (Platform.OS === 'android') {
-      if (!balance) return;
+      if (balance) {
+        const { goal, remaining, progress } = balance;
+        const clampedProgress =
+          goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0;
+        const calorieSnapshot = {
+          date,
+          remaining,
+          goal,
+          progress: clampedProgress,
+        };
+        const calorieSnapshotKey = JSON.stringify(calorieSnapshot);
 
-      const { goal, remaining, progress } = balance;
-      const clampedProgress =
-        goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0;
-      const snapshot = {
+        if (lastAndroidCalorieSnapshotKeyRef.current !== calorieSnapshotKey) {
+          lastAndroidCalorieSnapshotKeyRef.current = calorieSnapshotKey;
+          const caloriePayload = {
+            ...calorieSnapshot,
+            lastUpdated,
+          };
+
+          void (async () => {
+            try {
+              await CalorieWidgetBridge.setCalorieSnapshot(
+                JSON.stringify(caloriePayload),
+              );
+              await CalorieWidgetBridge.reloadWidget();
+            } catch (error) {
+              if (
+                lastAndroidCalorieSnapshotKeyRef.current === calorieSnapshotKey
+              ) {
+                lastAndroidCalorieSnapshotKeyRef.current = null;
+              }
+              addLog(
+                `[useWidgetSync] Android calorie widget push failed: ${error}`,
+                'ERROR',
+              );
+            }
+          })();
+        }
+      }
+
+      const macroSnapshot = {
         date,
-        remaining,
-        goal,
-        progress: clampedProgress,
+        protein: summary.protein.consumed,
+        carbs: summary.carbs.consumed,
+        fat: summary.fat.consumed,
+        calories: summary.caloriesConsumed,
       };
-      const snapshotKey = JSON.stringify(snapshot);
-      if (lastAndroidSnapshotKeyRef.current === snapshotKey) return;
+      const macroSnapshotKey = JSON.stringify(macroSnapshot);
+      if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) return;
 
-      lastAndroidSnapshotKeyRef.current = snapshotKey;
-      const payload = {
-        ...snapshot,
+      lastAndroidMacroSnapshotKeyRef.current = macroSnapshotKey;
+      const macroPayload = {
+        ...macroSnapshot,
         lastUpdated,
       };
 
       void (async () => {
         try {
-          await CalorieWidgetBridge.setCalorieSnapshot(JSON.stringify(payload));
-          await CalorieWidgetBridge.reloadWidget();
+          await CalorieWidgetBridge.setMacroSnapshot(
+            JSON.stringify(macroPayload),
+          );
+          await CalorieWidgetBridge.reloadMacroWidget();
         } catch (error) {
-          if (lastAndroidSnapshotKeyRef.current === snapshotKey) {
-            lastAndroidSnapshotKeyRef.current = null;
+          if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) {
+            lastAndroidMacroSnapshotKeyRef.current = null;
           }
           addLog(
-            `[useWidgetSync] Android widget push failed: ${error}`,
+            `[useWidgetSync] Android macro widget push failed: ${error}`,
             'ERROR',
           );
         }

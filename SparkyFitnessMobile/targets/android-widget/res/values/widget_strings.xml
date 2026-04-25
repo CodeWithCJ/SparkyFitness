@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sparky_calorie_widget_name">Calories</string>
     <string name="sparky_widget_description">Daily calorie summary with quick add shortcuts</string>
+    <string name="sparky_macro_widget_name">Macros</string>
+    <string name="sparky_macro_widget_description">Today\'s protein, carbs, and fat with quick add shortcuts</string>
 </resources>

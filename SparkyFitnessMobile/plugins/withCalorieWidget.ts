@@ -17,9 +17,21 @@ import fs from 'fs';
 import path from 'path';
 
 const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
-const WIDGET_RECEIVER_FQN = `${WIDGET_PACKAGE}.CalorieWidgetReceiver`;
 const WIDGET_PACKAGE_IMPORT = `import ${WIDGET_PACKAGE}.CalorieWidgetPackage`;
 const WIDGET_PACKAGE_ADD_LINE = 'add(CalorieWidgetPackage())';
+
+const WIDGET_RECEIVERS = [
+  {
+    name: `${WIDGET_PACKAGE}.CalorieWidgetReceiver`,
+    label: '@string/sparky_calorie_widget_name',
+    provider: '@xml/sparky_calorie_widget_info',
+  },
+  {
+    name: `${WIDGET_PACKAGE}.MacroWidgetReceiver`,
+    label: '@string/sparky_macro_widget_name',
+    provider: '@xml/sparky_macro_widget_info',
+  },
+];
 
 const TEMPLATE_SUFFIX = '.tmpl';
 const SOURCE_DIR_NAME = 'targets/android-widget';
@@ -93,36 +105,48 @@ const withCalorieWidget: ConfigPlugin = (config) => {
     if (!app) return config;
 
     app.receiver = app.receiver ?? [];
-    const alreadyPresent = app.receiver.some(
-      (r: { $?: Record<string, string> }) =>
-        r.$?.['android:name'] === WIDGET_RECEIVER_FQN,
-    );
-    if (!alreadyPresent) {
-      app.receiver.push({
-        $: {
-          'android:name': WIDGET_RECEIVER_FQN,
-          'android:exported': 'false',
-        } as Record<string, string>,
-        'intent-filter': [
-          {
-            action: [
-              {
-                $: {
-                  'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
-                },
+    for (const receiver of WIDGET_RECEIVERS) {
+      const existing = app.receiver.find(
+        (r: { $?: Record<string, string> }) =>
+          r.$?.['android:name'] === receiver.name,
+      ) as
+        | {
+            $?: Record<string, string>;
+            'intent-filter'?: unknown[];
+            'meta-data'?: unknown[];
+          }
+        | undefined;
+
+      const receiverConfig = existing ?? {};
+      receiverConfig.$ = {
+        ...(receiverConfig.$ ?? {}),
+        'android:name': receiver.name,
+        'android:exported': 'false',
+        'android:label': receiver.label,
+      };
+      receiverConfig['intent-filter'] = [
+        {
+          action: [
+            {
+              $: {
+                'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
               },
-            ],
-          },
-        ],
-        'meta-data': [
-          {
-            $: {
-              'android:name': 'android.appwidget.provider',
-              'android:resource': '@xml/sparky_calorie_widget_info',
             },
+          ],
+        },
+      ];
+      receiverConfig['meta-data'] = [
+        {
+          $: {
+            'android:name': 'android.appwidget.provider',
+            'android:resource': receiver.provider,
           },
-        ],
-      } as unknown as never);
+        },
+      ];
+
+      if (!existing) {
+        app.receiver.push(receiverConfig as unknown as never);
+      }
     }
 
     return config;
