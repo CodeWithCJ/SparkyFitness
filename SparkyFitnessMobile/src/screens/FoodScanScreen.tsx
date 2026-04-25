@@ -1,5 +1,17 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image, Modal, KeyboardAvoidingView, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Platform,
+  Button,
+  StyleSheet,
+  ActivityIndicator,
+  Image,
+  Modal,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,7 +38,12 @@ const GUIDE_HEIGHT = 160;
 
 const CORNER_SIZE = 24;
 const CORNER_BORDER = 3;
-const CORNER_STYLE = { position: 'absolute' as const, width: CORNER_SIZE, height: CORNER_SIZE, borderColor: '#fff' };
+const CORNER_STYLE = {
+  position: 'absolute' as const,
+  width: CORNER_SIZE,
+  height: CORNER_SIZE,
+  borderColor: '#fff',
+};
 
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -43,6 +60,20 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [manualEntryVisible, setManualEntryVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const cameraRef = useRef<CameraView>(null);
+  const date = route.params?.date;
+  const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const returnDepth = route.params?.returnDepth;
+  const isMealBuilderMode = pickerMode === 'meal-builder';
+
+  const buildFoodFormParams = (
+    extra: Partial<Extract<RootStackScreenProps<'FoodForm'>['route']['params'], { mode: 'create-food' }>>,
+  ): Extract<RootStackScreenProps<'FoodForm'>['route']['params'], { mode: 'create-food' }> => ({
+    mode: 'create-food',
+    date,
+    pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+    returnDepth,
+    ...extra,
+  });
 
   const performBarcodeLookup = async (
     barcode: string,
@@ -57,64 +88,71 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         if (shouldFireSuccessHaptic) {
           fireSuccessHaptic();
         }
-        const dv = result.food.default_variant;
+        const defaultVariant = result.food.default_variant;
         const item: FoodInfoItem = {
           id: result.food.id,
           name: result.food.name,
           brand: result.food.brand,
-          servingSize: dv.serving_size,
-          servingUnit: dv.serving_unit,
-          calories: dv.calories,
-          protein: dv.protein,
-          carbs: dv.carbs,
-          fat: dv.fat,
-          fiber: dv.dietary_fiber,
-          saturatedFat: dv.saturated_fat,
-          sodium: dv.sodium,
-          sugars: dv.sugars,
-          transFat: dv.trans_fat,
-          potassium: dv.potassium,
-          calcium: dv.calcium,
-          iron: dv.iron,
-          cholesterol: dv.cholesterol,
-          vitaminA: dv.vitamin_a,
-          vitaminC: dv.vitamin_c,
-          variantId: dv.id,
+          servingSize: defaultVariant.serving_size,
+          servingUnit: defaultVariant.serving_unit,
+          calories: defaultVariant.calories,
+          protein: defaultVariant.protein,
+          carbs: defaultVariant.carbs,
+          fat: defaultVariant.fat,
+          fiber: defaultVariant.dietary_fiber,
+          saturatedFat: defaultVariant.saturated_fat,
+          sodium: defaultVariant.sodium,
+          sugars: defaultVariant.sugars,
+          transFat: defaultVariant.trans_fat,
+          potassium: defaultVariant.potassium,
+          calcium: defaultVariant.calcium,
+          iron: defaultVariant.iron,
+          cholesterol: defaultVariant.cholesterol,
+          vitaminA: defaultVariant.vitamin_a,
+          vitaminC: defaultVariant.vitamin_c,
+          variantId: defaultVariant.id,
           source: 'local',
           originalItem: result.food,
         };
-        navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
+        navigation.replace('FoodEntryAdd', {
+          item,
+          date,
+          pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+          returnDepth,
+        });
       } else {
         if (shouldFireSuccessHaptic) {
           fireSuccessHaptic();
         }
-        const dv = result.food.default_variant;
-        navigation.replace('FoodForm', { mode: 'create-food',
-          date: route.params?.date,
-          barcode,
-          providerType: result.source,
-          initialFood: {
-            name: result.food.name,
-            brand: result.food.brand ?? '',
-            servingSize: String(dv.serving_size),
-            servingUnit: dv.serving_unit,
-            calories: String(dv.calories),
-            protein: String(dv.protein),
-            carbs: String(dv.carbs),
-            fat: String(dv.fat),
-            fiber: toFormString(dv.dietary_fiber),
-            saturatedFat: toFormString(dv.saturated_fat),
-            sodium: toFormString(dv.sodium),
-            sugars: toFormString(dv.sugars),
-            transFat: toFormString(dv.trans_fat),
-            potassium: toFormString(dv.potassium),
-            cholesterol: toFormString(dv.cholesterol),
-            calcium: toFormString(dv.calcium),
-            iron: toFormString(dv.iron),
-            vitaminA: toFormString(dv.vitamin_a),
-            vitaminC: toFormString(dv.vitamin_c),
-          },
-        });
+        const defaultVariant = result.food.default_variant;
+        navigation.replace(
+          'FoodForm',
+          buildFoodFormParams({
+            barcode,
+            providerType: result.source,
+            initialFood: {
+              name: result.food.name,
+              brand: result.food.brand ?? '',
+              servingSize: String(defaultVariant.serving_size),
+              servingUnit: defaultVariant.serving_unit,
+              calories: String(defaultVariant.calories),
+              protein: String(defaultVariant.protein),
+              carbs: String(defaultVariant.carbs),
+              fat: String(defaultVariant.fat),
+              fiber: toFormString(defaultVariant.dietary_fiber),
+              saturatedFat: toFormString(defaultVariant.saturated_fat),
+              sodium: toFormString(defaultVariant.sodium),
+              sugars: toFormString(defaultVariant.sugars),
+              transFat: toFormString(defaultVariant.trans_fat),
+              potassium: toFormString(defaultVariant.potassium),
+              cholesterol: toFormString(defaultVariant.cholesterol),
+              calcium: toFormString(defaultVariant.calcium),
+              iron: toFormString(defaultVariant.iron),
+              vitaminA: toFormString(defaultVariant.vitamin_a),
+              vitaminC: toFormString(defaultVariant.vitamin_c),
+            },
+          }),
+        );
       }
     } catch {
       setNotFoundBarcode(barcode);
@@ -161,34 +199,40 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setLabelProcessing(true);
     try {
       const result = await scanNutritionLabel(capturedPhoto.base64, 'image/jpeg');
-      navigation.replace('FoodForm', { mode: 'create-food',
-        date: route.params?.date,
-        initialFood: {
-          name: result.name || '',
-          brand: result.brand || '',
-          servingSize: String(result.serving_size ?? ''),
-          servingUnit: result.serving_unit || 'g',
-          calories: String(result.calories ?? ''),
-          protein: String(result.protein ?? ''),
-          carbs: String(result.carbs ?? ''),
-          fat: String(result.fat ?? ''),
-          fiber: toFormString(result.fiber),
-          saturatedFat: toFormString(result.saturated_fat),
-          transFat: toFormString(result.trans_fat),
-          sodium: toFormString(result.sodium),
-          sugars: toFormString(result.sugars),
-          cholesterol: toFormString(result.cholesterol),
-          potassium: toFormString(result.potassium),
-          calcium: toFormString(result.calcium),
-          iron: toFormString(result.iron),
-          vitaminA: toFormString(result.vitamin_a),
-          vitaminC: toFormString(result.vitamin_c),
-        },
-        barcode: notFoundBarcode ?? undefined,
-        providerType: 'label_scan',
-      });
+      navigation.replace(
+        'FoodForm',
+        buildFoodFormParams({
+          initialFood: {
+            name: result.name || '',
+            brand: result.brand || '',
+            servingSize: String(result.serving_size ?? ''),
+            servingUnit: result.serving_unit || 'g',
+            calories: String(result.calories ?? ''),
+            protein: String(result.protein ?? ''),
+            carbs: String(result.carbs ?? ''),
+            fat: String(result.fat ?? ''),
+            fiber: toFormString(result.fiber),
+            saturatedFat: toFormString(result.saturated_fat),
+            transFat: toFormString(result.trans_fat),
+            sodium: toFormString(result.sodium),
+            sugars: toFormString(result.sugars),
+            cholesterol: toFormString(result.cholesterol),
+            potassium: toFormString(result.potassium),
+            calcium: toFormString(result.calcium),
+            iron: toFormString(result.iron),
+            vitaminA: toFormString(result.vitamin_a),
+            vitaminC: toFormString(result.vitamin_c),
+          },
+          barcode: notFoundBarcode ?? undefined,
+          providerType: 'label_scan',
+        }),
+      );
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to analyze nutrition label. Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to analyze nutrition label. Please try again.',
+      });
     } finally {
       setLabelProcessing(false);
     }
@@ -233,8 +277,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 justify-center items-center px-6" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-        <Text className="text-text-primary text-base text-center mb-4">We need your permission to show the camera</Text>
+      <View
+        className="flex-1 justify-center items-center px-6"
+        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      >
+        <Text className="text-text-primary text-base text-center mb-4">
+          We need your permission to show the camera
+        </Text>
         <Button onPress={requestPermission} title="Grant Permission" />
       </View>
     );
@@ -252,8 +301,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         enableTorch={flashlight}
       />
 
-      {/* Barcode guide corner brackets */}
-      {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible && (
+      {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible ? (
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
           <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 120 }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
@@ -262,10 +310,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             <View style={{ ...CORNER_STYLE, bottom: 0, right: 0, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderBottomRightRadius: 4 }} />
           </View>
         </View>
-      )}
+      ) : null}
 
-      {/* Top bar: back button + flashlight */}
-      <View className="absolute left-4 right-4 flex-row justify-between items-center" style={{ top: Platform.OS === 'android' ? insets.top + 8 : 16 }}>
+      <View
+        className="absolute left-4 right-4 flex-row justify-between items-center"
+        style={{ top: Platform.OS === 'android' ? insets.top + 8 : 16 }}
+      >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -278,21 +328,24 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           className="bg-black/50 rounded-full p-2"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name={flashlight ? 'flashlight-on' : 'flashlight-off'} size={22} color={flashlight ? accentPrimary : '#fff'} />
+          <Icon
+            name={flashlight ? 'flashlight-on' : 'flashlight-off'}
+            size={22}
+            color={flashlight ? accentPrimary : '#fff'}
+          />
         </TouchableOpacity>
       </View>
 
-      {(loading || labelProcessing) && (
+      {loading || labelProcessing ? (
         <View className="absolute inset-0 justify-center items-center bg-black/40">
           <ActivityIndicator size="large" color="#fff" />
-          {labelProcessing && (
+          {labelProcessing ? (
             <Text className="text-white text-base mt-3">Analyzing label...</Text>
-          )}
+          ) : null}
         </View>
-      )}
+      ) : null}
 
-      {/* Photo preview with Retake / Use Photo */}
-      {capturedPhoto && !labelProcessing && (
+      {capturedPhoto && !labelProcessing ? (
         <View className="absolute inset-0">
           <Image source={{ uri: capturedPhoto.uri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
           <View className="absolute bottom-12 left-4 right-4 flex-row gap-3" style={{ paddingBottom: insets.bottom }}>
@@ -304,24 +357,27 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             </TouchableOpacity>
             <UIButton
               variant="primary"
-              onPress={handleUsePhoto}
+              onPress={() => {
+                void handleUsePhoto();
+              }}
               className="flex-1 py-4 rounded-lg"
             >
               Use Photo
             </UIButton>
           </View>
         </View>
-      )}
+      ) : null}
 
-      {/* No match for barcode — floating card */}
-      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode ? (
         <View
           className="absolute left-0 right-0 items-center px-8"
           style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
-            <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
+            <Text className="text-text-secondary text-sm text-center">
+              You can scan the nutrition label or enter it manually.
+            </Text>
             <View className="gap-3 mt-2 self-stretch">
               <UIButton
                 variant="primary"
@@ -333,21 +389,24 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               </UIButton>
               <UIButton
                 variant="outline"
-                onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
-                  date: route.params?.date,
-                  barcode: notFoundBarcode,
-                })}
+                onPress={() => navigation.replace(
+                  'FoodForm',
+                  buildFoodFormParams({
+                    barcode: notFoundBarcode,
+                  }),
+                )}
                 className="rounded-lg"
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: accentPrimary }}>Add Food Manually</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: accentPrimary }}>
+                  Add Food Manually
+                </Text>
               </UIButton>
             </View>
           </View>
         </View>
-      )}
+      ) : null}
 
-      {/* Bottom controls: segmented control, shutter */}
-      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible ? (
         <View
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
@@ -360,32 +419,33 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          {!(scanMode === 'barcode' && notFoundBarcode) && (
+          {!(scanMode === 'barcode' && notFoundBarcode) ? (
             <View className="h-20 items-center justify-center">
-              {scanMode === 'barcode' && (
+              {scanMode === 'barcode' ? (
                 <TouchableOpacity
                   onPress={handleShowManualEntry}
                   className="bg-raised px-6 py-3 rounded-xl"
                 >
                   <Text className="text-text-primary text-sm font-semibold">Type Barcode Instead</Text>
                 </TouchableOpacity>
-              )}
+              ) : null}
 
-              {scanMode === 'label' && (
+              {scanMode === 'label' ? (
                 <TouchableOpacity
-                  onPress={handleLabelCapture}
+                  onPress={() => {
+                    void handleLabelCapture();
+                  }}
                   className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
                   activeOpacity={0.7}
                 >
                   <View className="w-16 h-16 rounded-full bg-white" />
                 </TouchableOpacity>
-              )}
+              ) : null}
             </View>
-          )}
+          ) : null}
         </View>
-      )}
+      ) : null}
 
-      {/* Manual barcode entry modal */}
       <Modal
         visible={manualEntryVisible}
         transparent
@@ -411,7 +471,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 autoFocus
                 value={manualBarcode}
                 onChangeText={setManualBarcode}
-                onSubmitEditing={handleManualSubmit}
+                onSubmitEditing={() => {
+                  void handleManualSubmit();
+                }}
                 style={{ textAlign: 'center' }}
               />
               <View className="flex-row gap-3">
@@ -426,7 +488,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 <UIButton
                   variant="primary"
                   disabled={!manualBarcode.trim()}
-                  onPress={handleManualSubmit}
+                  onPress={() => {
+                    void handleManualSubmit();
+                  }}
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >

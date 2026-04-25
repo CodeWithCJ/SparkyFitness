@@ -1,6 +1,6 @@
 import type { FoodItem, TopFoodItem } from './foods';
 import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
-import type { Meal } from './meals';
+import type { Meal, MealIngredientDraft } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
 import { parseDecimalInput } from '../utils/numericInput';
 
@@ -63,7 +63,13 @@ export interface FoodInfoItem {
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   source: 'local' | 'external' | 'meal';
-  originalItem: FoodItem | TopFoodItem | ExternalFoodItem | Meal | BarcodeFood;
+  originalItem:
+    | FoodItem
+    | TopFoodItem
+    | ExternalFoodItem
+    | Meal
+    | MealIngredientDraft
+    | BarcodeFood;
 }
 
 export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem => ({
@@ -160,3 +166,31 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     originalItem: meal,
   };
 };
+
+export const mealIngredientDraftToFoodInfo = (
+  ingredient: MealIngredientDraft,
+): FoodInfoItem => ({
+  id: ingredient.food_id,
+  name: ingredient.food_name || 'Food',
+  brand: ingredient.brand,
+  servingSize: ingredient.serving_size,
+  servingUnit: ingredient.serving_unit,
+  calories: ingredient.calories,
+  protein: ingredient.protein,
+  carbs: ingredient.carbs,
+  fat: ingredient.fat,
+  fiber: ingredient.dietary_fiber,
+  saturatedFat: ingredient.saturated_fat,
+  sodium: ingredient.sodium,
+  sugars: ingredient.sugars,
+  transFat: ingredient.trans_fat,
+  potassium: ingredient.potassium,
+  calcium: ingredient.calcium,
+  iron: ingredient.iron,
+  cholesterol: ingredient.cholesterol,
+  vitaminA: ingredient.vitamin_a,
+  vitaminC: ingredient.vitamin_c,
+  variantId: ingredient.variant_id,
+  source: 'local',
+  originalItem: ingredient,
+});

@@ -10,7 +10,9 @@ import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useMealTypes } from '../hooks';
+import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
@@ -20,6 +22,7 @@ import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
+import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
@@ -185,6 +188,9 @@ async function persistFoodEdits({
 function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const insets = useSafeAreaInsets();
   const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
+  const pickerMode = params.pickerMode ?? 'log-entry';
+  const returnDepth = params.returnDepth ?? 1;
+  const isMealBuilderMode = pickerMode === 'meal-builder';
 
   const initialFood = params.initialFood;
   const barcode = params.barcode;
@@ -242,14 +248,17 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
-  const { addEntry, isPending: isSubmitting, invalidateCache } = useAddFoodEntry({
+  const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
+  const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
     onSuccess: (entry) => {
       invalidateCache(normalizeDate(entry.entry_date));
       navigation.dispatch(StackActions.popToTop());
     },
   });
 
-  const handleSubmit = (data: FoodFormData) => {
+  const isSubmitting = isAddPending || isSavePending;
+
+  const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
       Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
@@ -258,6 +267,50 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
+    const saveFoodPayload = {
+      name: data.name,
+      brand: data.brand || null,
+      serving_size: parseDecimalInput(data.servingSize) || 0,
+      serving_unit: data.servingUnit || 'serving',
+      calories: parseDecimalInput(data.calories) || 0,
+      protein: parseDecimalInput(data.protein) || 0,
+      carbs: parseDecimalInput(data.carbs) || 0,
+      fat: parseDecimalInput(data.fat) || 0,
+      dietary_fiber: parseOptional(data.fiber),
+      saturated_fat: parseOptional(data.saturatedFat),
+      sodium: parseOptional(data.sodium),
+      sugars: parseOptional(data.sugars),
+      trans_fat: parseOptional(data.transFat),
+      potassium: parseOptional(data.potassium),
+      calcium: parseOptional(data.calcium),
+      iron: parseOptional(data.iron),
+      cholesterol: parseOptional(data.cholesterol),
+      vitamin_a: parseOptional(data.vitaminA),
+      vitamin_c: parseOptional(data.vitaminC),
+      is_custom: true,
+      is_quick_food: isMealBuilderMode ? false : !saveToDatabase,
+      is_default: true,
+      barcode: barcode ?? null,
+      provider_type: providerType ?? null,
+    };
+
+    if (isMealBuilderMode) {
+      try {
+        const savedFood = await saveFoodAsync(saveFoodPayload);
+        setPendingMealIngredientSelection({
+          ingredient: buildMealIngredientDraftFromSavedFood(
+            savedFood,
+            parseDecimalInput(data.servingSize) || 0,
+            data.servingUnit || 'serving',
+          ),
+        });
+        navigation.dispatch(StackActions.pop(returnDepth));
+      } catch {
+        // Error toast is handled in the save hook.
+      }
+      return;
+    }
+
     if (!quantity) {
       Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
       return;
@@ -268,32 +321,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
     }
 
     addEntry({
-      saveFoodPayload: {
-        name: data.name,
-        brand: data.brand || null,
-        serving_size: parseDecimalInput(data.servingSize) || 0,
-        serving_unit: data.servingUnit || 'serving',
-        calories: parseDecimalInput(data.calories) || 0,
-        protein: parseDecimalInput(data.protein) || 0,
-        carbs: parseDecimalInput(data.carbs) || 0,
-        fat: parseDecimalInput(data.fat) || 0,
-        dietary_fiber: parseOptional(data.fiber),
-        saturated_fat: parseOptional(data.saturatedFat),
-        sodium: parseOptional(data.sodium),
-        sugars: parseOptional(data.sugars),
-        trans_fat: parseOptional(data.transFat),
-        potassium: parseOptional(data.potassium),
-        calcium: parseOptional(data.calcium),
-        iron: parseOptional(data.iron),
-        cholesterol: parseOptional(data.cholesterol),
-        vitamin_a: parseOptional(data.vitaminA),
-        vitamin_c: parseOptional(data.vitaminC),
-        is_custom: true,
-        is_quick_food: !saveToDatabase,
-        is_default: true,
-        barcode: barcode ?? null,
-        provider_type: providerType ?? null,
-      },
+      saveFoodPayload,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,
@@ -319,9 +347,16 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         </Text>
       </View>
 
-      <FoodForm onSubmit={handleSubmit} onServingChange={handleServingChange} isSubmitting={isSubmitting} initialValues={initialFood}>
-        {/* Logging */}
-        <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
+      <FoodForm
+        onSubmit={(data) => {
+          void handleSubmit(data);
+        }}
+        onServingChange={handleServingChange}
+        isSubmitting={isSubmitting}
+        initialValues={initialFood}
+      >
+        {!isMealBuilderMode ? (
+          <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
 
           <View className="flex-row items-start">
             {/* Date */}
@@ -338,7 +373,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
             </TouchableOpacity>
 
             {/* Meal */}
-            {selectedMealType && (
+            {selectedMealType ? (
               <View className="flex-1 flex-row items-center">
                 <Text className="text-text-secondary text-base mx-3">Meal</Text>
                 <BottomSheetPicker
@@ -360,7 +395,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
                   )}
                 />
               </View>
-            )}
+            ) : null}
           </View>
           {/* Amount */}
           <View>
@@ -391,13 +426,16 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
               thumbColor="#FFFFFF"
             />
           </View>
-          {barcode && (
+          {barcode ? (
             <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
-          )}
+          ) : null}
         </View>
+        ) : null}
       </FoodForm>
 
-      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      {!isMealBuilderMode ? (
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      ) : null}
     </View>
   );
 }

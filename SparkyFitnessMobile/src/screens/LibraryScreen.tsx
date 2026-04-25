@@ -65,6 +65,13 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
         <View className="flex-row flex-wrap justify-between mb-3">
           <CreateTile
+            icon="meal-lunch"
+            title="Create meal"
+            subtitle="Combine foods"
+            onPress={() => navigation.navigate('MealBuilder')}
+            className="w-[48%] mb-3"
+          />
+          <CreateTile
             icon="food"
             title="Create food"
             subtitle="Manual entry"

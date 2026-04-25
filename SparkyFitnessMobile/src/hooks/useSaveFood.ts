@@ -18,6 +18,7 @@ export function useSaveFood() {
 
   return {
     saveFood: mutation.mutate,
+    saveFoodAsync: mutation.mutateAsync,
     isPending: mutation.isPending,
     isSaved: mutation.isSuccess,
   };
