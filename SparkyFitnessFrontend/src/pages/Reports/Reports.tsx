@@ -43,6 +43,7 @@ import {
 import { CustomCategoryReport } from './CustomCategoryReport';
 import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { useDailyGoalsRange } from '@/hooks/Goals/useGoals';
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -125,6 +126,8 @@ const Reports = () => {
     customCategories = [],
     customMeasurementsData = [],
   } = reportsData || {};
+
+  const { data: goalData } = useDailyGoalsRange(startDate, endDate);
 
   const handleStartDateChange = (date: string) => {
     debug(loggingLevel, 'Reports: Start date change handler called:', {
@@ -222,6 +225,7 @@ const Reports = () => {
               <NutritionChartsGrid
                 nutritionData={nutritionData}
                 customNutrients={customNutrients}
+                goals={goalData}
               />
             </ChartErrorBoundary>
             <ChartErrorBoundary>

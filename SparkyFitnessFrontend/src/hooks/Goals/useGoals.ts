@@ -21,11 +21,22 @@ import { DEFAULT_GOALS } from '@/constants/goals';
 // --- DAILY GOALS ---
 
 export const useDailyGoals = (date: string) => {
-  return useQuery({
+  return useQuery<ExpandedGoals>({
     queryKey: goalKeys.daily.byDate(date),
     queryFn: async () => {
       const data = await loadGoals(date);
-      return data || DEFAULT_GOALS;
+      return (data as ExpandedGoals) || DEFAULT_GOALS;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+};
+
+export const useDailyGoalsRange = (startDate: string, endDate: string) => {
+  return useQuery<Record<string, ExpandedGoals>>({
+    queryKey: goalKeys.daily.byDate(startDate, endDate),
+    queryFn: async () => {
+      const data = await loadGoals(startDate, endDate);
+      return (data as Record<string, ExpandedGoals>) || {};
     },
     placeholderData: (previousData) => previousData,
   });
