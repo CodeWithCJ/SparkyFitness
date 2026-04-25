@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
 # Stage 1: Install workspace dependencies and deploy server
-FROM node:20-slim AS backend_builder
+FROM node:24-alpine AS backend_builder
 
 RUN corepack enable
 
@@ -28,12 +28,11 @@ COPY shared/ shared/
 RUN pnpm --filter=sparkyfitnessserver deploy --legacy /deploy
 
 # Stage 2: Runtime container for backend
-FROM node:20-slim
+FROM node:24-alpine
 
 WORKDIR /app/SparkyFitnessServer
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl postgresql-client tar gzip && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl postgresql18-client~=18.3 tar gzip
 
 # Copy the deployed server (includes source + standalone node_modules)
 COPY --from=backend_builder /deploy ./

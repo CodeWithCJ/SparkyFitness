@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'The tag name of the release to attach assets to (e.g., v1.0.0)'
+        description: "The tag name of the release to attach assets to (e.g., v1.0.0)"
         required: false
         type: string
 
@@ -24,14 +24,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.32.1
 
-      
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
 
@@ -48,7 +47,7 @@ jobs:
         run: |
           mkdir -p release/frontend
           mkdir -p release/backend
-          
+
           cp -r SparkyFitnessFrontend/dist/* release/frontend/
           cp -r deploy/* release/backend/
 
@@ -64,5 +63,3 @@ jobs:
             docker/docker-compose.prod.yml
             docker/.env.example
             SparkyFitness.tar.gz
-
-        
