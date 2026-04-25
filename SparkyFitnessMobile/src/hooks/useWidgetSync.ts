@@ -134,6 +134,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         carbs: summary.carbs.consumed,
         fat: summary.fat.consumed,
         calories: summary.caloriesConsumed,
+        remaining: balance?.remaining,
       };
       const macroSnapshotKey = JSON.stringify(macroSnapshot);
       if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) return;

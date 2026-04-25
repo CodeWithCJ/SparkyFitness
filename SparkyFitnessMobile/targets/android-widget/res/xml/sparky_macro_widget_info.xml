@@ -9,6 +9,6 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/sparky_macro_widget_initial_layout"
     android:previewLayout="@layout/sparky_macro_widget_initial_layout"
-    android:resizeMode="horizontal"
+    android:resizeMode="none"
     android:description="@string/sparky_macro_widget_description"
     android:widgetCategory="home_screen" />

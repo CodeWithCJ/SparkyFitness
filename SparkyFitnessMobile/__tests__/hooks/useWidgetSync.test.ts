@@ -208,6 +208,7 @@ describe('useWidgetSync', () => {
       carbs: 180,
       fat: 55,
       calories: 1540,
+      remaining: 460,
     });
     expect(androidReloadMacro).toHaveBeenCalledTimes(1);
   });
@@ -276,8 +277,14 @@ describe('useWidgetSync', () => {
       goal: 2000,
       progress: 0.8,
     });
-    expect(androidSetMacroSnapshot).toHaveBeenCalledTimes(1);
-    expect(androidReloadMacro).toHaveBeenCalledTimes(1);
+    expect(androidSetMacroSnapshot).toHaveBeenCalledTimes(2);
+    expect(androidReloadMacro).toHaveBeenCalledTimes(2);
+    const macroPayload = JSON.parse(
+      androidSetMacroSnapshot.mock.calls[1][0] as string,
+    );
+    expect(macroPayload).toMatchObject({
+      remaining: 400,
+    });
   });
 
   it('pushes Android macro snapshot again when rendered macro fields change', async () => {

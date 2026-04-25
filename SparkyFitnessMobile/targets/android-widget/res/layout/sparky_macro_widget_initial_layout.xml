@@ -3,72 +3,209 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:gravity="center_vertical"
     android:background="#FFFFFFFF"
-    android:padding="12dp">
+    android:padding="14dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1,540 kcal"
-        android:textSize="18sp"
+        android:text="1,024 kcal left"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
         android:maxLines="1" />
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="8dp"
+        android:layout_height="10dp"
         android:text="" />
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Protein    92 g"
-        android:textSize="12sp"
-        android:textColor="#FF1F1F1F"
-        android:maxLines="1" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <TextView
+        <TextView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#FFF6B151"
+            android:text="" />
+
+        <TextView
+            android:layout_width="8dp"
+            android:layout_height="1dp"
+            android:text="" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Protein"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="51 g"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:text=""
-        android:background="#FFF6B151" />
+        android:orientation="horizontal"
+        android:background="#FFE2E4EB">
+
+        <TextView
+            android:layout_width="72dp"
+            android:layout_height="match_parent"
+            android:background="#FFF6B151"
+            android:text="" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="5dp"
+        android:layout_height="7dp"
         android:text="" />
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Carbs      180 g"
-        android:textSize="12sp"
-        android:textColor="#FF1F1F1F"
-        android:maxLines="1" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <TextView
+        <TextView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#FF7BD680"
+            android:text="" />
+
+        <TextView
+            android:layout_width="8dp"
+            android:layout_height="1dp"
+            android:text="" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Carbs"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="136 g"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:text=""
-        android:background="#FF7BD680" />
+        android:orientation="horizontal"
+        android:background="#FFE2E4EB">
+
+        <TextView
+            android:layout_width="154dp"
+            android:layout_height="match_parent"
+            android:background="#FF7BD680"
+            android:text="" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="5dp"
+        android:layout_height="7dp"
         android:text="" />
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Fat        55 g"
-        android:textSize="12sp"
-        android:textColor="#FF1F1F1F"
-        android:maxLines="1" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#FF6DCBE9"
+            android:text="" />
+
+        <TextView
+            android:layout_width="8dp"
+            android:layout_height="1dp"
+            android:text="" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Fat"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="32 g"
+            android:textSize="14sp"
+            android:textColor="#FF1F1F1F"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:orientation="horizontal"
+        android:background="#FFE2E4EB">
+
+        <TextView
+            android:layout_width="78dp"
+            android:layout_height="match_parent"
+            android:background="#FF6DCBE9"
+            android:text="" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:text=""
-        android:background="#FF6DCBE9" />
+        android:layout_height="14dp"
+        android:text="" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_widget_search"
+            android:tint="#FF3B82F6"
+            android:contentDescription="Search food" />
+
+        <TextView
+            android:layout_width="1dp"
+            android:layout_height="48dp"
+            android:background="#FFE2E4EB"
+            android:text="" />
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_widget_scan"
+            android:tint="#FF3B82F6"
+            android:contentDescription="Scan barcode" />
+    </LinearLayout>
 </LinearLayout>

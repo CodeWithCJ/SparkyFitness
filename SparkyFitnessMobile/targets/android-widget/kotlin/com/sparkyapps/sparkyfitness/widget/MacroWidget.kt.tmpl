@@ -16,7 +16,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -54,10 +53,7 @@ class MacroWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(
-            DpSize(140.dp, 140.dp),
-            DpSize(300.dp, 140.dp),
-        ),
+        setOf(DpSize(200.dp, 200.dp)),
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -73,7 +69,6 @@ class MacroWidget : GlanceAppWidget() {
     private fun WidgetContent(context: Context, fallbackSnapshot: MacroSnapshot?) {
         val state = currentState<Preferences>()
         val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
-        val isMedium = LocalSize.current.width >= 250.dp
 
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
@@ -87,80 +82,59 @@ class MacroWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(12.dp)
+                .padding(14.dp)
                 .clickable(actionStartActivity(openAppIntent)),
+            contentAlignment = Alignment.Center,
         ) {
-            if (isMedium) {
-                MediumContent(
-                    snapshot = snapshot,
-                    searchIntent = searchIntent,
-                    scanIntent = scanIntent,
-                )
-            } else {
-                SmallContent(snapshot = snapshot)
-            }
-        }
-    }
-
-    @Composable
-    private fun SmallContent(snapshot: MacroSnapshot?) {
-        Column(modifier = GlanceModifier.fillMaxSize()) {
-            CalorieHeader(snapshot = snapshot)
-            Spacer(modifier = GlanceModifier.height(8.dp))
-            MacroRows(snapshot = snapshot, spacing = 5)
-        }
-    }
-
-    @Composable
-    private fun MediumContent(
-        snapshot: MacroSnapshot?,
-        searchIntent: Intent,
-        scanIntent: Intent,
-    ) {
-        Row(
-            modifier = GlanceModifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = GlanceModifier.defaultWeight()) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
                 CalorieHeader(snapshot = snapshot)
                 Spacer(modifier = GlanceModifier.height(10.dp))
                 MacroRows(snapshot = snapshot, spacing = 7)
-            }
-            Spacer(modifier = GlanceModifier.width(12.dp))
-            Box(
-                modifier = GlanceModifier
-                    .width(1.dp)
-                    .height(104.dp)
-                    .background(GlanceTheme.colors.surfaceVariant),
-            ) {}
-            Spacer(modifier = GlanceModifier.width(8.dp))
-            Column(
-                modifier = GlanceModifier.width(34.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                ActionButton(
-                    intent = searchIntent,
-                    icon = R.drawable.ic_widget_search,
-                    contentDescription = "Search food",
-                )
-                Spacer(modifier = GlanceModifier.defaultWeight())
-                ActionButton(
-                    intent = scanIntent,
-                    icon = R.drawable.ic_widget_scan,
-                    contentDescription = "Scan barcode",
-                )
+                Spacer(modifier = GlanceModifier.height(14.dp))
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionButton(
+                        intent = searchIntent,
+                        icon = R.drawable.ic_widget_search,
+                        contentDescription = "Search food",
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(40.dp),
+                    )
+                    Box(
+                        modifier = GlanceModifier
+                            .width(1.dp)
+                            .height(48.dp)
+                            .background(GlanceTheme.colors.surfaceVariant),
+                    ) {}
+                    ActionButton(
+                        intent = scanIntent,
+                        icon = R.drawable.ic_widget_scan,
+                        contentDescription = "Scan barcode",
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(40.dp),
+                    )
+                }
             }
         }
     }
 
     @Composable
-    private fun CalorieHeader(snapshot: MacroSnapshot?) {
-        val calories = if (snapshot?.hasData == true) formatInt(snapshot.calories) else "—"
+    private fun CalorieHeader(snapshot: MacroSnapshot?, fontSize: Int = 20) {
+        val calories = snapshot?.displayCalories
+        val text = if (snapshot?.hasData == true && calories != null) {
+            "${formatInt(calories)} kcal left"
+        } else {
+            "— kcal left"
+        }
         Text(
-            text = "$calories kcal",
+            text = text,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = 18.sp,
+                fontSize = fontSize.sp,
                 fontWeight = FontWeight.Bold,
             ),
             maxLines = 1,
@@ -206,16 +180,16 @@ class MacroWidget : GlanceAppWidget() {
             ) {
                 Box(
                     modifier = GlanceModifier
-                        .size(8.dp)
-                        .cornerRadius(4.dp)
+                        .size(12.dp)
+                        .cornerRadius(6.dp)
                         .background(color),
                 ) {}
-                Spacer(modifier = GlanceModifier.width(6.dp))
+                Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
                     text = label,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                     ),
                     maxLines = 1,
                 )
@@ -224,7 +198,7 @@ class MacroWidget : GlanceAppWidget() {
                     text = "${formatInt(grams)} g",
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     ),
                     maxLines = 1,
@@ -241,12 +215,16 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun ActionButton(intent: Intent, icon: Int, contentDescription: String) {
+    private fun ActionButton(
+        intent: Intent,
+        icon: Int,
+        contentDescription: String,
+        modifier: GlanceModifier = GlanceModifier
+            .fillMaxWidth()
+            .height(42.dp),
+    ) {
         Box(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clickable(actionStartActivity(intent)),
+            modifier = modifier.clickable(actionStartActivity(intent)),
             contentAlignment = Alignment.Center,
         ) {
             Image(
@@ -264,13 +242,16 @@ class MacroWidget : GlanceAppWidget() {
         val carbs: Double,
         val fat: Double,
         val calories: Double,
+        val remaining: Double?,
         val lastUpdated: Long,
     ) {
         val proteinKcal: Double = protein * 4.0
         val carbsKcal: Double = carbs * 4.0
         val fatKcal: Double = fat * 9.0
         val macroKcalTotal: Double = proteinKcal + carbsKcal + fatKcal
-        val hasData: Boolean = macroKcalTotal > 0.0 || calories > 0.0
+        val displayCalories: Double? = remaining ?: calories
+        val hasData: Boolean =
+            macroKcalTotal > 0.0 || (displayCalories ?: 0.0) > 0.0
     }
 
     private enum class MacroKind {
@@ -299,6 +280,11 @@ class MacroWidget : GlanceAppWidget() {
                 carbs = obj.safeDouble("carbs"),
                 fat = obj.safeDouble("fat"),
                 calories = obj.safeDouble("calories"),
+                remaining = if (obj.has("remaining")) {
+                    obj.safeDouble("remaining")
+                } else {
+                    null
+                },
                 lastUpdated = obj.optLong("lastUpdated", 0L),
             )
         } catch (e: Exception) {
