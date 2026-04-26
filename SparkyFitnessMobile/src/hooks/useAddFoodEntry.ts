@@ -33,6 +33,9 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
       return createFoodEntry(input.createEntryPayload);
     },
     onSuccess: (entry) => {
+      if (entry.meal_id) {
+        queryClient.invalidateQueries({ queryKey: ['recentMeals'], refetchType: 'all' });
+      }
       options?.onSuccess?.(entry);
     },
     onError: () => {

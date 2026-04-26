@@ -13,6 +13,18 @@ export const fetchMeals = async (): Promise<Meal[]> => {
 };
 
 /**
+ * Fetches recently logged meal templates for the current user.
+ */
+export const fetchRecentMeals = async (limit = 3): Promise<Meal[]> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return apiFetch<Meal[]>({
+    endpoint: `/api/meals/recent?${params.toString()}`,
+    serviceName: 'Meals API',
+    operation: 'fetch recent meals',
+  });
+};
+
+/**
  * Searches meals by name.
  */
 export const searchMeals = async (searchTerm: string): Promise<Meal[]> => {

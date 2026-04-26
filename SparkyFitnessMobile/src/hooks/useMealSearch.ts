@@ -21,5 +21,6 @@ export function useMealSearch(searchText: string, options?: { enabled?: boolean 
     isSearching: query.isFetching,
     isSearchActive,
     isSearchError: query.isError,
+    refetch: query.refetch,
   };
 }

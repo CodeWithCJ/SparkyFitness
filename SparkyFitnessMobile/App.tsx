@@ -31,6 +31,7 @@ import MealNutritionScreen from './src/screens/MealNutritionScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
+import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import FoodDetailScreen from './src/screens/FoodDetailScreen';
 import MealBuilderScreen from './src/screens/MealBuilderScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
@@ -101,6 +102,7 @@ const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
 const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
+const SafeMealsLibrary = withErrorBoundary(MealsLibraryScreen, 'MealsLibrary', { canGoBack: true });
 const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
@@ -620,6 +622,14 @@ function AppContent() {
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="MealsLibrary"
+            component={SafeMealsLibrary}
             options={{
               headerShown: false,
               gestureEnabled: true,

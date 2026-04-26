@@ -182,6 +182,62 @@ describe('mealRepository', () => {
       ]);
     });
   });
+  describe('getRecentMeals', () => {
+    it('should return meals ordered by the current user diary usage', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeal = {
+        id: mealId,
+        user_id: userId,
+        name: 'Logged Meal',
+        description: null,
+        is_public: false,
+        serving_size: 1,
+        serving_unit: 'serving',
+      };
+      const mockMealFood = {
+        id: uuidv4(),
+        meal_id: mealId,
+        food_id: uuidv4(),
+        variant_id: uuidv4(),
+        quantity: 1,
+        unit: 'serving',
+        food_name: 'Oats',
+      };
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [mockMeal] })
+        .mockResolvedValueOnce({ rows: [mockMealFood] });
+
+      const result = await mealRepository.getRecentMeals(userId, 3);
+
+      expect(mockClient.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('FROM food_entries fe'),
+        [userId, 3]
+      );
+      expect(mockClient.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('FROM food_entry_meals fem'),
+        [userId, 3]
+      );
+      expect(mockClient.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('WHERE fe.user_id = $1'),
+        [userId, 3]
+      );
+      expect(mockClient.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('WHERE fem.user_id = $1'),
+        [userId, 3]
+      );
+      expect(mockClient.query).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
+      );
+      expect(result).toEqual([{ ...mockMeal, foods: [mockMealFood] }]);
+    });
+  });
   describe('getMealById', () => {
     it('should return a meal with its foods', async () => {
       const mealId = uuidv4();

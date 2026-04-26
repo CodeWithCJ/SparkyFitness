@@ -14,6 +14,7 @@ import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import MealLibraryRow from '../components/MealLibraryRow';
 import SegmentedControl from '../components/SegmentedControl';
 import {
   useServerConnection,
@@ -218,11 +219,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <TouchableOpacity
         onPress={openMealBuilder}
         activeOpacity={0.7}
-        className="px-4 pb-2"
+        className="px-4"
         accessibilityRole="button"
         accessibilityLabel="Create Meal"
       >
-        <Text className="text-accent-primary text-base font-medium">Create new meal...</Text>
+        <Text className="text-accent-primary text-base font-medium py-2">Create new meal...</Text>
       </TouchableOpacity>
     );
   };
@@ -396,36 +397,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     );
   };
 
-  const renderMealItem = ({ item }: { item: Meal }) => {
-    const foodInfo = mealToFoodInfo(item);
-
-    return (
-      <TouchableOpacity
-        className="px-4 py-2 border-b border-border-subtle"
-        activeOpacity={0.7}
-        onPress={() => showFoodInfo(foodInfo)}
-      >
-        <View className="flex-row justify-between items-center">
-          <View className="flex-1 mr-3">
-            <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-            {item.description ? (
-              <Text className="text-text-secondary text-sm" numberOfLines={1}>
-                {item.description}
-              </Text>
-            ) : null}
-            <Text className="text-text-muted text-xs mt-0.5">
-              {item.foods.length} {item.foods.length === 1 ? 'item' : 'items'}
-            </Text>
-          </View>
-          <View className="items-end">
-            <Text className="text-text-primary text-base font-semibold">
-              {foodInfo.calories} cal
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderMealRow = (item: Meal, isLast: boolean) => (
+    <MealLibraryRow
+      meal={item}
+      showDivider={!isLast}
+      onPress={() => showFoodInfo(mealToFoodInfo(item))}
+    />
+  );
 
   const renderMealSearchResults = () => {
     if (isMealSearching && mealSearchResults.length === 0) {
@@ -461,7 +439,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <FlatList
         data={mealSearchResults}
         keyExtractor={(item) => item.id}
-        renderItem={renderMealItem}
+        renderItem={({ item, index }) => renderMealRow(item, index === mealSearchResults.length - 1)}
         keyboardShouldPersistTaps="handled"
       />
     );
@@ -517,7 +495,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <FlatList
         data={meals}
         keyExtractor={(item) => item.id}
-        renderItem={renderMealItem}
+        renderItem={({ item, index }) => renderMealRow(item, index === meals.length - 1)}
         keyboardShouldPersistTaps="handled"
       />
     );

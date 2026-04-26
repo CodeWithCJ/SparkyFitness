@@ -54,11 +54,12 @@ function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
 
 const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, textPrimary] = useCSSVariable([
+  const [accentColor, textMuted, textPrimary, bgDanger] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-primary',
-  ]) as [string, string, string];
+    '--color-bg-danger',
+  ]) as [string, string, string, string];
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
@@ -216,7 +217,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
             <Text className="text-text-secondary text-sm font-medium">Description</Text>
             <TextInput
               className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 text-text-primary"
-              style={{ fontSize: 16, minHeight: 92, textAlignVertical: 'top' }}
+              style={{ fontSize: 16, minHeight: 64, textAlignVertical: 'top' }}
               placeholder="Optional"
               placeholderTextColor={textMuted}
               value={description}
@@ -276,7 +277,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
           <View className="flex-row items-center justify-between">
             <Text className="text-text-primary text-lg font-semibold">Foods in Meal</Text>
             <Button
-              variant="outline"
+              variant="ghost"
               onPress={openIngredientPicker}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
               accessibilityLabel="Add Food"
@@ -337,7 +338,7 @@ const MealBuilderScreen: React.FC<MealBuilderScreenProps> = ({ navigation }) => 
                           accessibilityLabel={`Remove ${ingredient.food_name || 'ingredient'}`}
                           accessibilityRole="button"
                         >
-                          <Icon name="remove-circle" size={20} color={accentColor} />
+                          <Icon name="remove-circle" size={20} color={bgDanger} />
                         </TouchableOpacity>
                       </View>
                     </View>

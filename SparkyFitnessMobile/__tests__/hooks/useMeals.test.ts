@@ -1,14 +1,16 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { useMeals } from '../../src/hooks/useMeals';
-import { mealsQueryKey } from '../../src/hooks/queryKeys';
-import { fetchMeals } from '../../src/services/api/mealsApi';
+import { useMeals, useRecentMeals } from '../../src/hooks/useMeals';
+import { mealsQueryKey, recentMealsQueryKey } from '../../src/hooks/queryKeys';
+import { fetchMeals, fetchRecentMeals } from '../../src/services/api/mealsApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/mealsApi', () => ({
   fetchMeals: jest.fn(),
+  fetchRecentMeals: jest.fn(),
 }));
 
 const mockFetchMeals = fetchMeals as jest.MockedFunction<typeof fetchMeals>;
+const mockFetchRecentMeals = fetchRecentMeals as jest.MockedFunction<typeof fetchRecentMeals>;
 
 describe('useMeals', () => {
   let queryClient: QueryClient;
@@ -105,6 +107,58 @@ describe('useMeals', () => {
   describe('query key', () => {
     test('exports correct query key', () => {
       expect(mealsQueryKey).toEqual(['meals']);
+    });
+  });
+});
+
+describe('useRecentMeals', () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  test('fetches recent meals with the requested limit', async () => {
+    mockFetchRecentMeals.mockResolvedValue([]);
+
+    renderHook(() => useRecentMeals({ limit: 3 }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockFetchRecentMeals).toHaveBeenCalledWith(3);
+    });
+  });
+
+  test('returns recent meals from the response', async () => {
+    const mealsData = [{ id: 'meal-1', name: 'Overnight Oats', foods: [] }];
+    mockFetchRecentMeals.mockResolvedValue(mealsData);
+
+    const { result } = renderHook(() => useRecentMeals({ limit: 3 }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.recentMeals).toEqual(mealsData);
+    });
+  });
+
+  test('does not fetch when enabled is false', () => {
+    renderHook(() => useRecentMeals({ enabled: false, limit: 3 }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    expect(mockFetchRecentMeals).not.toHaveBeenCalled();
+  });
+
+  describe('query key', () => {
+    test('exports correct recent meals query key', () => {
+      expect(recentMealsQueryKey(3)).toEqual(['recentMeals', 3]);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
-import { createMeal, fetchMeals } from '../services/api/mealsApi';
-import { mealsQueryKey } from './queryKeys';
+import { createMeal, fetchMeals, fetchRecentMeals } from '../services/api/mealsApi';
+import { mealsQueryKey, recentMealsQueryKey } from './queryKeys';
 import type { CreateMealPayload } from '../types/meals';
 
 export function useMeals(options?: { enabled?: boolean }) {
@@ -16,6 +16,24 @@ export function useMeals(options?: { enabled?: boolean }) {
 
   return {
     meals: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
+}
+
+export function useRecentMeals(options?: { enabled?: boolean; limit?: number }) {
+  const { enabled = true, limit = 3 } = options ?? {};
+
+  const query = useQuery({
+    queryKey: recentMealsQueryKey(limit),
+    queryFn: () => fetchRecentMeals(limit),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled,
+  });
+
+  return {
+    recentMeals: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

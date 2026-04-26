@@ -51,6 +51,7 @@ const ICON_MAP = {
   'food': { sf: 'fork.knife', ion: 'restaurant' },
 
   // Meals
+  'meal': { sf: 'square.stack.3d.up.fill', ion: 'layers' },
   'meal-breakfast': { sf: 'sunrise.fill', ion: 'sunny' },
   'meal-lunch': { sf: 'sun.max.fill', ion: 'partly-sunny' },
   'meal-dinner': { sf: 'moon.stars.fill', ion: 'moon' },

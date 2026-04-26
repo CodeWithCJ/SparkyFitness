@@ -23,6 +23,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
   FoodsLibrary: undefined;
+  MealsLibrary: undefined;
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
   FoodSearch:
     | {

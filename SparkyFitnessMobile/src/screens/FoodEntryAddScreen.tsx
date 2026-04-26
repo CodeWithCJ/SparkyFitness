@@ -616,7 +616,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           {isAddPending || isSavePending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text className="text-white text-base font-semibold">Add Food</Text>
+            <Text className="text-white text-base font-semibold">
+              {item.source === 'meal' ? 'Add Meal' : 'Add Food'}
+            </Text>
           )}
         </Button>
       </ScrollView>
