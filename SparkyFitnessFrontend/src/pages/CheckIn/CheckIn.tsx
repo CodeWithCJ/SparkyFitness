@@ -7,6 +7,7 @@ import { CheckInForm } from './CheckInForm';
 import { RecentActivity } from './RecentActivity';
 import { CheckInTopRow } from './CheckInTopRow';
 import { useCheckInLogic } from '@/hooks/CheckIn/useCheckInLogic';
+import { useSearchParams } from 'react-router-dom';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -51,12 +52,15 @@ const CheckIn = () => {
     weight,
   } = useCheckInLogic(currentUserId);
 
+  const [, setSearchParams] = useSearchParams();
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <CheckInPreferences
         selectedDate={selectedDate}
         onDateChange={(dateString) => {
           setSelectedDate(dateString);
+          setSearchParams({ date: dateString });
         }}
       />
 

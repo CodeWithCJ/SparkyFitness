@@ -44,6 +44,7 @@ import { CustomCategoryReport } from './CustomCategoryReport';
 import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
 import { CustomCategoriesResponse } from '@workspace/shared';
 import { useDailyGoalsRange } from '@/hooks/Goals/useGoals';
+import { useSearchParams } from 'react-router-dom';
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -77,15 +78,22 @@ const Reports = () => {
       console.warn = originalConsoleWarn;
     };
   }, []);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [startDate, setStartDate] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('startDate')) return params.get('startDate')!;
     const date = new Date();
     date.setDate(date.getDate() - 14);
     return formatDateInUserTimezone(date, 'yyyy-MM-dd');
   });
 
-  const [endDate, setEndDate] = useState<string>(() => {
-    return formatDateInUserTimezone(new Date(), 'yyyy-MM-dd');
-  });
+  const [endDate, setEndDate] = useState(
+    searchParams.get('endDate') ??
+      formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
+  );
+
   const [activeTab, setActiveTab] = useState('charts');
 
   const { data: customNutrients = [], isLoading: customNutrientsLoading } =
@@ -135,6 +143,10 @@ const Reports = () => {
       currentStartDate: startDate,
     });
     setStartDate(date);
+    setSearchParams((prev) => {
+      prev.set('startDate', date);
+      return prev;
+    });
   };
 
   const handleEndDateChange = (date: string) => {
@@ -143,6 +155,10 @@ const Reports = () => {
       currentEndDate: endDate,
     });
     setEndDate(date);
+    setSearchParams((prev) => {
+      prev.set('endDate', date);
+      return prev;
+    });
   };
 
   info(loggingLevel, 'Reports: Rendering reports component.');

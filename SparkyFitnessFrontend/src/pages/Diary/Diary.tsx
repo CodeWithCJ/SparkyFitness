@@ -63,7 +63,7 @@ const Diary = () => {
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
   const [editingFoodEntryMeal, setEditingFoodEntryMeal] =
     useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedDate, setSelectedDate] = useState(
     searchParams.get('date') ??
@@ -193,6 +193,7 @@ const Diary = () => {
       const dateString = formatDateToYYYYMMDD(newDate);
       info(loggingLevel, 'Date selected:', dateString);
       setSelectedDate(dateString);
+      setSearchParams({ date: dateString });
     }
   };
 
