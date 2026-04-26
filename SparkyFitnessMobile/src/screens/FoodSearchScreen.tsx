@@ -727,7 +727,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Icon name="close" size={22} color={accentColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Add
+          Search Food
         </Text>
         <Button
           variant="ghost"

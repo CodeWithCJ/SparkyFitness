@@ -86,7 +86,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   useWidgetSync(summary);
 
-  const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
+  const weightUnit: 'kg' | 'lbs' =
+    (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
   const weightData = useMemo(() => {
     if (weightUnit === 'kg') return rawWeightData;
     return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));

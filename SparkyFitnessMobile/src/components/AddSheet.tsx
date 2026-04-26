@@ -22,6 +22,7 @@ interface AddSheetProps {
   onAddFromPreset: () => void;
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
+  onAddMeasurements: () => void;
 }
 
 interface ActionCard {
@@ -31,7 +32,7 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan, onAddMeasurements }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -136,7 +137,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const cards: ActionCard[] = [
       { label: 'Food', icon: 'food', onPress: onAddFood },
       { label: 'Exercise', icon: 'exercise-weights' },
-      { label: 'Sync Health Data', icon: 'sync', onPress: onSyncHealthData },
+      { label: 'Measurements', icon: 'measurements', onPress: onAddMeasurements },
       { label: 'Barcode Scan', icon: 'scan', onPress: onBarcodeScan },
     ];
 
@@ -158,6 +159,20 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         <Icon name={card.icon} size={32} color={accentPrimary} />
         <Text className="text-text-primary text-sm font-medium mt-2">
           {card.label}
+        </Text>
+      </Button>
+    );
+
+    const renderSecondaryRow = (label: string, icon: IconName, onPress: () => void) => (
+      <Button
+        variant="primary"
+        className="flex-row items-center justify-center py-3 mx-1.5 mt-3"
+        style={{ backgroundColor: raisedBg }}
+        onPress={() => handleAction(onPress)}
+      >
+        <Icon name={icon} size={20} color={accentPrimary} />
+        <Text className="text-text-primary text-sm font-medium ml-2">
+          {label}
         </Text>
       </Button>
     );
@@ -228,6 +243,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[2])}
                 {renderCard(cards[3])}
               </View>
+              {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}
             </>
           )}
         </BottomSheetView>

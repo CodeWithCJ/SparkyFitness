@@ -27,6 +27,7 @@ export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
 export { useDailySummary } from './useDailySummary';
 export { useMeasurements } from './useMeasurements';
+export { useUpsertCheckIn } from './useUpsertCheckIn';
 export { usePreferences } from './usePreferences';
 export { useRefetchOnFocus } from './useRefetchOnFocus';
 export { useWaterIntakeMutation } from './useWaterIntakeMutation';

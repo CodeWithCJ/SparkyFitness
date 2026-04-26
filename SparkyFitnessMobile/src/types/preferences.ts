@@ -8,9 +8,9 @@ export interface UserPreferences {
   default_food_data_provider_id?: string;
   default_barcode_provider_id?: string;
 
-  default_weight_unit?: 'kg' | 'lbs';
+  default_weight_unit?: 'kg' | 'lbs' | 'st_lbs';
   default_distance_unit?: 'km' | 'miles';
-  default_measurement_unit?: 'cm' | 'inches';
+  default_measurement_unit?: 'cm' | 'inches' | 'ft_in';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string;
   energy_unit?: 'kcal' | 'kJ';
   water_display_unit?: 'ml' | 'oz' | 'liter';

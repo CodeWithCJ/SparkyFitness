@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
 
 const mockBottomSheetControls = {
@@ -77,6 +77,7 @@ describe('AddSheet', () => {
         onAddFromPreset={jest.fn()}
         onSyncHealthData={jest.fn()}
         onBarcodeScan={jest.fn()}
+        onAddMeasurements={jest.fn()}
       />,
     );
 
@@ -93,5 +94,48 @@ describe('AddSheet', () => {
     mockBottomSheetControls.onDismiss?.();
 
     expect(mockBottomSheetControls.openCount).toBe(2);
+  });
+
+  it('renders the Measurements tile in the main grid', () => {
+    const ref = React.createRef<AddSheetRef>();
+
+    const { getByText } = render(
+      <AddSheet
+        ref={ref}
+        onAddFood={jest.fn()}
+        onAddWorkout={jest.fn()}
+        onAddActivity={jest.fn()}
+        onAddFromPreset={jest.fn()}
+        onSyncHealthData={jest.fn()}
+        onBarcodeScan={jest.fn()}
+        onAddMeasurements={jest.fn()}
+      />,
+    );
+
+    ref.current?.present();
+    expect(getByText('Measurements')).toBeTruthy();
+  });
+
+  it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {
+    const ref = React.createRef<AddSheetRef>();
+    const onSyncHealthData = jest.fn();
+
+    const { getByText } = render(
+      <AddSheet
+        ref={ref}
+        onAddFood={jest.fn()}
+        onAddWorkout={jest.fn()}
+        onAddActivity={jest.fn()}
+        onAddFromPreset={jest.fn()}
+        onSyncHealthData={onSyncHealthData}
+        onBarcodeScan={jest.fn()}
+        onAddMeasurements={jest.fn()}
+      />,
+    );
+
+    ref.current?.present();
+    fireEvent.press(getByText('Sync Health Data'));
+
+    expect(onSyncHealthData).toHaveBeenCalledTimes(1);
   });
 });

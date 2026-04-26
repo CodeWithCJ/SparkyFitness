@@ -1,4 +1,10 @@
-import { fetchMeasurements, fetchWaterIntake, fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
+import {
+  fetchMeasurements,
+  fetchWaterIntake,
+  fetchWaterContainers,
+  changeWaterIntake,
+  upsertCheckIn,
+} from '../../src/services/api/measurementsApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
@@ -307,6 +313,135 @@ describe('measurementsApi', () => {
       await expect(
         changeWaterIntake({ entryDate: '2024-06-15', changeDrinks: 1, containerId: 1 })
       ).rejects.toThrow('Server error: 500 - Internal Server Error');
+    });
+  });
+
+  describe('upsertCheckIn', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('throws error when no server config exists', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(
+        upsertCheckIn({ entryDate: '2024-06-15', weight: 70 })
+      ).rejects.toThrow('Server configuration not found.');
+    });
+
+    test('sends POST to /api/measurements/check-in with snake-case body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ entry_date: '2024-06-15', weight: 70 }),
+      });
+
+      await upsertCheckIn({
+        entryDate: '2024-06-15',
+        weight: 70,
+        bodyFatPercentage: 15.5,
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/measurements/check-in');
+      expect(init.method).toBe('POST');
+      expect(init.headers).toEqual({
+        Authorization: 'Bearer test-api-key-12345',
+        'Content-Type': 'application/json',
+      });
+
+      const parsedBody = JSON.parse(init.body);
+      expect(parsedBody).toEqual({
+        entry_date: '2024-06-15',
+        weight: 70,
+        body_fat_percentage: 15.5,
+      });
+    });
+
+    test('omits undefined fields from the request body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ entry_date: '2024-06-15' }),
+      });
+
+      await upsertCheckIn({
+        entryDate: '2024-06-15',
+        weight: 70,
+      });
+
+      const [, init] = mockFetch.mock.calls[0];
+      const parsedBody = JSON.parse(init.body);
+
+      expect(parsedBody).toEqual({
+        entry_date: '2024-06-15',
+        weight: 70,
+      });
+      expect(parsedBody).not.toHaveProperty('neck');
+      expect(parsedBody).not.toHaveProperty('waist');
+      expect(parsedBody).not.toHaveProperty('hips');
+      expect(parsedBody).not.toHaveProperty('steps');
+      expect(parsedBody).not.toHaveProperty('height');
+      expect(parsedBody).not.toHaveProperty('body_fat_percentage');
+    });
+
+    test('passes explicit null values through to clear server-side', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ entry_date: '2024-06-15' }),
+      });
+
+      await upsertCheckIn({
+        entryDate: '2024-06-15',
+        weight: 70,
+        neck: null,
+        bodyFatPercentage: null,
+      });
+
+      const [, init] = mockFetch.mock.calls[0];
+      const parsedBody = JSON.parse(init.body);
+
+      expect(parsedBody).toEqual({
+        entry_date: '2024-06-15',
+        weight: 70,
+        neck: null,
+        body_fat_percentage: null,
+      });
+    });
+
+    test('returns parsed JSON response on success', async () => {
+      const responseData = {
+        entry_date: '2024-06-15',
+        weight: 70,
+        neck: 38,
+        waist: 85,
+        hips: 95,
+        steps: 10000,
+        height: 180,
+        body_fat_percentage: 15,
+      };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await upsertCheckIn({
+        entryDate: '2024-06-15',
+        weight: 70,
+        neck: 38,
+        waist: 85,
+        hips: 95,
+        steps: 10000,
+        height: 180,
+        bodyFatPercentage: 15,
+      });
+
+      expect(result).toEqual(responseData);
     });
   });
 });
