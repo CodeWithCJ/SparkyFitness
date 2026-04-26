@@ -162,8 +162,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     });
   };
 
-  const openMealBuilder = () => {
-    navigation.navigate('MealBuilder');
+  const openMealAdd = () => {
+    navigation.navigate('MealAdd');
   };
 
   const openFoodScan = () => {
@@ -176,7 +176,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const handleHeaderActionPress = () => {
     if (!isMealBuilderMode && activeTab === 'meal') {
-      openMealBuilder();
+      openMealAdd();
       return;
     }
 
@@ -217,7 +217,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     return (
       <TouchableOpacity
-        onPress={openMealBuilder}
+        onPress={openMealAdd}
         activeOpacity={0.7}
         className="px-4"
         accessibilityRole="button"

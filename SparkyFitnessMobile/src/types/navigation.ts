@@ -61,7 +61,7 @@ export type RootStackParamList = {
         returnDepth?: number;
       }
     | undefined;
-  MealBuilder:
+  MealAdd:
     | {
         selectedIngredient?: MealIngredientDraft;
         ingredientIndex?: number;

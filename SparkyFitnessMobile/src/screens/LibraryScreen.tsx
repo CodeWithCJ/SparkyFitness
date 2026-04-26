@@ -80,7 +80,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             icon="meal"
             title="Meal"
             subtitle="Group foods"
-            onPress={() => navigation.navigate('MealBuilder')}
+            onPress={() => navigation.navigate('MealAdd')}
             className="w-[48%] mb-3"
           />
           <CreateTile
@@ -96,7 +96,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           <Text className="text-lg font-semibold text-text-primary">Meals</Text>
           <Button
             variant="link"
-            className="px-0 py-0"
+            className="px-0 py-0 pr-4"
             textClassName="text-sm"
             onPress={() => navigation.navigate('MealsLibrary')}
           >
@@ -151,7 +151,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           <Text className="text-lg font-semibold text-text-primary">Foods</Text>
           <Button
             variant="link"
-            className="px-0 py-0"
+            className="px-0 py-0 pr-4"
             textClassName="text-sm"
             onPress={() => navigation.navigate('FoodsLibrary')}
           >

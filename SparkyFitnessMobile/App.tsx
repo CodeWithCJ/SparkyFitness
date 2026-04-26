@@ -33,7 +33,7 @@ import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import FoodDetailScreen from './src/screens/FoodDetailScreen';
-import MealBuilderScreen from './src/screens/MealBuilderScreen';
+import MealAddScreen from './src/screens/MealAddScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
@@ -108,7 +108,7 @@ const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGo
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
-const SafeMealBuilder = withErrorBoundary(MealBuilderScreen, 'MealBuilder', { canGoBack: true });
+const SafeMealAdd = withErrorBoundary(MealAddScreen, 'MealAdd', { canGoBack: true });
 const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
 const SafeMealNutrition = withErrorBoundary(MealNutritionScreen, 'MealNutrition', { canGoBack: true });
 const SafeExerciseSearch = withErrorBoundary(ExerciseSearchScreen, 'ExerciseSearch', { canGoBack: true });
@@ -684,8 +684,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="MealBuilder"
-            component={SafeMealBuilder}
+            name="MealAdd"
+            component={SafeMealAdd}
             options={{
               presentation: 'modal',
               headerShown: false,

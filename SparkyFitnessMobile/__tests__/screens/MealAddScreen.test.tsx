@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import MealBuilderScreen from '../../src/screens/MealBuilderScreen';
+import MealAddScreen from '../../src/screens/MealAddScreen';
 import { useCreateMeal } from '../../src/hooks';
 import { consumePendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import type { MealIngredientDraft } from '../../src/types/meals';
@@ -108,7 +108,7 @@ function buildIngredient(
   };
 }
 
-describe('MealBuilderScreen', () => {
+describe('MealAddScreen', () => {
   const navigation = {
     goBack: jest.fn(),
     push: jest.fn(),
@@ -116,8 +116,8 @@ describe('MealBuilderScreen', () => {
   } as any;
 
   const route = {
-    key: 'MealBuilder-key',
-    name: 'MealBuilder' as const,
+    key: 'MealAdd-key',
+    name: 'MealAdd' as const,
     params: undefined,
   };
 
@@ -127,7 +127,7 @@ describe('MealBuilderScreen', () => {
   const renderScreen = () =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <MealBuilderScreen navigation={navigation} route={route} />
+        <MealAddScreen navigation={navigation} route={route} />
       </SafeAreaProvider>,
     );
 
@@ -220,7 +220,7 @@ describe('MealBuilderScreen', () => {
     });
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  My Meal  ');
-    fireEvent.changeText(screen.getByPlaceholderText('Optional'), '  Tasty  ');
+    fireEvent.changeText(screen.getByPlaceholderText('Notes about this meal'), '  Tasty  ');
     fireEvent.changeText(screen.getByPlaceholderText('1'), '2');
     fireEvent.press(screen.getByText('Save Meal'));
 
@@ -264,7 +264,7 @@ describe('MealBuilderScreen', () => {
     act(() => {
       focusCallback?.();
     });
-    expect(screen.getByText('Chicken')).toBeTruthy();
+    expect(screen.getByText(/Chicken/)).toBeTruthy();
 
     mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
       ingredient: buildIngredient({
@@ -276,7 +276,7 @@ describe('MealBuilderScreen', () => {
     act(() => {
       focusCallback?.();
     });
-    expect(screen.getByText('Rice')).toBeTruthy();
+    expect(screen.getByText(/Rice/)).toBeTruthy();
 
     mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
       ingredient: buildIngredient({
@@ -290,8 +290,8 @@ describe('MealBuilderScreen', () => {
       focusCallback?.();
     });
 
-    expect(screen.queryByText('Chicken')).toBeNull();
-    expect(screen.getByText('Salmon')).toBeTruthy();
-    expect(screen.getByText('Rice')).toBeTruthy();
+    expect(screen.queryByText(/Chicken/)).toBeNull();
+    expect(screen.getByText(/Salmon/)).toBeTruthy();
+    expect(screen.getByText(/Rice/)).toBeTruthy();
   });
 });
