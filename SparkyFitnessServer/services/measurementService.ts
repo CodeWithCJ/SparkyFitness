@@ -180,9 +180,7 @@ function normalizeHeightForCheckIn(value: unknown, unit: unknown) {
     return numericValue;
   }
 
-  return numericValue <= 3
-    ? parseFloat((numericValue * 100).toFixed(2))
-    : numericValue;
+  return null;
 }
 /**
  * Resolve the entry date, timestamp, and hour for a health data record using
@@ -551,7 +549,7 @@ async function processHealthData(
           );
           if (heightCm === null) {
             errors.push({
-              error: `Invalid value for ${type}. Must be a positive number.`,
+              error: `Invalid value for ${type}. Must be a positive number in meters or centimeters.`,
               entry: dataEntry,
             });
             break;

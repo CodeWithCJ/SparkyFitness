@@ -140,6 +140,35 @@ describe('processHealthData default units (#567)', () => {
       ).not.toHaveBeenCalled();
     }
   );
+  it('rejects height with an unsupported unit instead of guessing', async () => {
+    measurementRepository.upsertCheckInMeasurements = vi.fn();
+
+    await expect(
+      measurementService.processHealthData(
+        [
+          {
+            type: 'height',
+            value: 70,
+            date: '2025-02-01',
+            source: 'HealthConnect',
+            unit: 'inches',
+          },
+        ],
+        userId,
+        actingUserId
+      )
+    ).rejects.toThrow(
+      'Invalid value for height. Must be a positive number in meters or centimeters.'
+    );
+
+    expect(
+      measurementRepository.upsertCheckInMeasurements
+    ).not.toHaveBeenCalled();
+    expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
+  });
 });
 describe('Aggregated health metric default units', () => {
   const userId = 'user-123';
