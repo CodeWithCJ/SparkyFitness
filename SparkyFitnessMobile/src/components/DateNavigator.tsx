@@ -3,7 +3,7 @@ import { Platform, View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-import { formatDateLabel, formatDate, getTodayDate } from '../utils/dateUtils';
+import { formatDateLabel, formatDate } from '../utils/dateUtils';
 
 interface DateNavigatorProps {
   title: string;
@@ -35,7 +35,6 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   const insets = useSafeAreaInsets();
   const secondaryTextColor = useCSSVariable('--color-text-secondary') as string;
   const primaryTextColor = useCSSVariable('--color-text-primary') as string;
-  const isToday = selectedDate === getTodayDate();
 
   const dateLabel = showDateAlways
     ? formatDate(selectedDate)
@@ -64,8 +63,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           )}
         </TouchableOpacity>
         {!hideChevrons && (
-          <TouchableOpacity onPress={onNextDay} disabled={isToday}
-                            className="p-2" style={isToday ? { opacity: 0.3 } : undefined}>
+          <TouchableOpacity onPress={onNextDay} className="p-2">
             <Icon name="chevron-forward" size={18} color={secondaryTextColor} />
           </TouchableOpacity>
         )}

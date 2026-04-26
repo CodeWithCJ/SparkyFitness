@@ -54,11 +54,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   }, [navigation, selectedDate]);
 
   const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
-  const goToNextDay = useCallback(() => setSelectedDate(prev => {
-    const today = getTodayDate();
-    const next = addDays(prev, 1);
-    return next > today ? prev : next;
-  }), []);
+  const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
 
   const swipeGesture = useMemo(() => Gesture.Race(

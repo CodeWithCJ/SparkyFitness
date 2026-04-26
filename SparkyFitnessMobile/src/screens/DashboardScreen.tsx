@@ -54,11 +54,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   );
 
   const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
-  const goToNextDay = () => setSelectedDate(prev => {
-    const today = getTodayDate();
-    const next = addDays(prev, 1);
-    return next > today ? prev : next;
-  });
+  const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));
   const goToToday = () => setSelectedDate(getTodayDate());
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
