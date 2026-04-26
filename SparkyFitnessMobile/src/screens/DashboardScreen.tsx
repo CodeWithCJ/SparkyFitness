@@ -275,11 +275,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         )}
 
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
-          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0 || summary.activeCalories > 0) && (
+          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
           <ExerciseProgressCard
             exerciseMinutes={summary.exerciseMinutes}
             exerciseMinutesGoal={summary.exerciseMinutesGoal}
-            exerciseCalories={summary.otherExerciseCalories > 0 ? summary.otherExerciseCalories : summary.activeCalories}
+            exerciseCalories={summary.otherExerciseCalories}
             exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
           />
         )}

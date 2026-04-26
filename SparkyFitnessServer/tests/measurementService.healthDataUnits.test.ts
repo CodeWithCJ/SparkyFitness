@@ -103,6 +103,43 @@ describe('processHealthData default units (#567)', () => {
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('m');
   });
+  it.each([
+    ['Health Connect', 'height', 1.75, 'm', 175],
+    ['HealthKit', 'height', 1.82, 'm', 182],
+    ['HealthKit', 'Height', 180, 'cm', 180],
+  ])(
+    'stores %s %s in check-in measurements as centimeters',
+    async (source, type, value, unit, expectedHeight) => {
+      measurementRepository.upsertCheckInMeasurements = vi
+        .fn()
+        .mockResolvedValue({ id: 'check-in-1', height: expectedHeight });
+
+      const result = await measurementService.processHealthData(
+        [
+          {
+            type,
+            value,
+            date: '2025-02-01',
+            source,
+            unit,
+          },
+        ],
+        userId,
+        actingUserId
+      );
+
+      expect(result.processed).toHaveLength(1);
+      expect(
+        measurementRepository.upsertCheckInMeasurements
+      ).toHaveBeenCalledWith(userId, actingUserId, '2025-02-01', {
+        height: expectedHeight,
+      });
+      expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
+      expect(
+        measurementRepository.upsertCustomMeasurement
+      ).not.toHaveBeenCalled();
+    }
+  );
 });
 describe('Aggregated health metric default units', () => {
   const userId = 'user-123';

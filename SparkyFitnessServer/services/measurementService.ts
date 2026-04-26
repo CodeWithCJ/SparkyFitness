@@ -155,6 +155,35 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   // Last types
   cycling_ftp: 'W',
 };
+const METER_HEIGHT_UNITS = new Set(['m', 'meter', 'meters', 'metre', 'metres']);
+const CENTIMETER_HEIGHT_UNITS = new Set([
+  'cm',
+  'centimeter',
+  'centimeters',
+  'centimetre',
+  'centimetres',
+]);
+
+function normalizeHeightForCheckIn(value: unknown, unit: unknown) {
+  const numericValue =
+    typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(numericValue) || numericValue <= 0) {
+    return null;
+  }
+
+  const normalizedUnit =
+    typeof unit === 'string' ? unit.trim().toLowerCase() : '';
+  if (METER_HEIGHT_UNITS.has(normalizedUnit)) {
+    return parseFloat((numericValue * 100).toFixed(2));
+  }
+  if (CENTIMETER_HEIGHT_UNITS.has(normalizedUnit)) {
+    return numericValue;
+  }
+
+  return numericValue <= 3
+    ? parseFloat((numericValue * 100).toFixed(2))
+    : numericValue;
+}
 /**
  * Resolve the entry date, timestamp, and hour for a health data record using
  * the per-record timezone fallback chain:
@@ -510,6 +539,28 @@ async function processHealthData(
             actingUserId,
             parsedDate,
             checkInMeasurements
+          );
+          processedResults.push({ type, status: 'success', data: result });
+          break;
+        }
+        case 'height':
+        case 'Height': {
+          const heightCm = normalizeHeightForCheckIn(
+            value,
+            dataEntry.unit ?? dataEntry.measurementType
+          );
+          if (heightCm === null) {
+            errors.push({
+              error: `Invalid value for ${type}. Must be a positive number.`,
+              entry: dataEntry,
+            });
+            break;
+          }
+          result = await measurementRepository.upsertCheckInMeasurements(
+            userId,
+            actingUserId,
+            parsedDate,
+            { height: heightCm }
           );
           processedResults.push({ type, status: 'success', data: result });
           break;

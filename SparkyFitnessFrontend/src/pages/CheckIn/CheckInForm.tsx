@@ -49,12 +49,14 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   customValues,
   handleCalculateBodyFat,
   handleSubmit,
+  height,
   hips,
   loading,
   neck,
   setBodyFatPercentage,
   setCustomNotes,
   setCustomValues,
+  setHeight,
   setHips,
   setNeck,
   setSteps,
@@ -89,6 +91,17 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 unit={defaultWeightUnit}
                 value={weight}
                 onChange={(val) => setWeight(val.toString())}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="height">{t('checkIn.height', 'Height')}</Label>
+              <UnitInput
+                id="height"
+                type="height"
+                unit={defaultMeasurementUnit}
+                value={height}
+                onChange={(val) => setHeight(val.toString())}
               />
             </div>
 

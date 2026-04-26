@@ -18,6 +18,7 @@ import {
   useRecentStandardMeasurements,
   useSaveCheckInMeasurementsMutation,
   useSaveCustomMeasurementMutation,
+  useMostRecentMeasurement,
   useUpdateCheckInMeasurementFieldMutation,
 } from '@/hooks/CheckIn/useCheckIn';
 import {
@@ -110,6 +111,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     endDate
   );
   const { data: recentFasting = [] } = useFastingHistory(10, 0);
+  const { data: mostRecentHeightData } = useMostRecentMeasurement('height');
 
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] =
     useState(false);
@@ -148,11 +150,19 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   }, [existingCheckIn?.hips]);
 
   const derivedHeight = useMemo(() => {
+    // Height rarely changes day to day. If the selected date's row has a
+    // valid height use it; otherwise fall back to the user's most recent
+    // recorded height so the field isn't empty on a fresh check-in.
     const h = existingCheckIn?.height;
-    if (h == null) return '';
-    // State should be Metric (cm).
-    return h.toString();
-  }, [existingCheckIn?.height]);
+    if (h != null && h > 0) {
+      return h.toString();
+    }
+    const recent = mostRecentHeightData?.height;
+    if (recent != null && recent > 0) {
+      return recent.toString();
+    }
+    return '';
+  }, [existingCheckIn?.height, mostRecentHeightData?.height]);
 
   const derivedBodyFat = useMemo(() => {
     return existingCheckIn?.body_fat_percentage?.toString() || '';
