@@ -11,9 +11,11 @@ import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
 
 export interface AddSheetRef {
-  present: () => void;
+  present: (options?: { initialMenu?: 'exercise' }) => void;
   dismiss: () => void;
 }
+
+export const addSheetRef = React.createRef<AddSheetRef>();
 
 interface AddSheetProps {
   onAddFood: () => void;
@@ -37,6 +39,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
     const pendingPresentRef = useRef(false);
+    const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
@@ -67,11 +70,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, [clearScheduledPresent]);
 
     useImperativeHandle(ref, () => ({
-      present: () => {
+      present: (options) => {
+        const initialMenu = options?.initialMenu ?? null;
         if (isOpenRef.current || (pendingPresentRef.current && !isDismissingRef.current)) {
           return;
         }
         pendingPresentRef.current = true;
+        pendingInitialMenuRef.current = initialMenu;
+        setShowExerciseMenu(initialMenu === 'exercise');
         if (isDismissingRef.current) {
           return;
         }
@@ -79,6 +85,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       },
       dismiss: () => {
         pendingPresentRef.current = false;
+        pendingInitialMenuRef.current = null;
         isDismissingRef.current = true;
         clearScheduledPresent();
         bottomSheetRef.current?.dismiss();
@@ -113,9 +120,11 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const handleDismiss = useCallback(() => {
       isDismissingRef.current = false;
       isOpenRef.current = false;
-      setShowExerciseMenu(false);
+      setShowExerciseMenu(pendingPresentRef.current && pendingInitialMenuRef.current === 'exercise');
       if (pendingPresentRef.current) {
         schedulePresent();
+      } else {
+        pendingInitialMenuRef.current = null;
       }
     }, [schedulePresent]);
 

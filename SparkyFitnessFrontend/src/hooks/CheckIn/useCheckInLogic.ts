@@ -222,9 +222,19 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const [neck, setNeck] = useDerivedState<string>(derivedNeck, selectedDate);
   const [waist, setWaist] = useDerivedState<string>(derivedWaist, selectedDate);
   const [hips, setHips] = useDerivedState<string>(derivedHips, selectedDate);
-  const [height, setHeight] = useDerivedState<string>(
+  const [height, setHeightState] = useDerivedState<string>(
     derivedHeight,
     selectedDate
+  );
+  const [heightTouchedDates, setHeightTouchedDates] = useState<
+    Record<string, boolean>
+  >({});
+  const setHeight = useCallback(
+    (value: string) => {
+      setHeightTouchedDates((prev) => ({ ...prev, [selectedDate]: true }));
+      setHeightState(value);
+    },
+    [selectedDate, setHeightState]
   );
   const [steps, setSteps] = useDerivedState<string>(derivedSteps, selectedDate);
   const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
@@ -464,7 +474,11 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       if (steps) {
         measurementData.steps = parseInt(steps);
       }
-      if (height) {
+      const shouldSubmitHeight =
+        height !== '' &&
+        ((existingCheckIn?.height != null && existingCheckIn.height > 0) ||
+          heightTouchedDates[selectedDate] === true);
+      if (shouldSubmitHeight) {
         measurementData.height = parseFloat(height);
       }
       if (bodyFatPercentage) {

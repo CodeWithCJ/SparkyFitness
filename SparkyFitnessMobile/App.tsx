@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
+  CommonActions,
   NavigationContainer,
   type LinkingOptions,
   type NavigationProp,
@@ -78,7 +79,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
-import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
+import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
@@ -88,6 +89,14 @@ SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+type TabStateSnapshot = {
+  index?: number;
+  routes: Array<{
+    name: string;
+    params?: unknown;
+  }>;
+};
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
 const androidModalAnimation =
@@ -153,7 +162,6 @@ function AppContent() {
     determine();
   }, []);
 
-  const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);
   const backgroundEnteredAtRef = useRef<number | null>(null);
@@ -194,10 +202,17 @@ function AppContent() {
 
   const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
-    if (!navigation) return undefined;
+    const state =
+      navigation?.getState() ??
+      (rootNavigationRef.isReady()
+        ? (rootNavigationRef
+            .getRootState()
+            .routes.find((route) => route.name === 'Tabs')
+            ?.state as TabStateSnapshot | undefined)
+        : undefined);
+    if (!state) return undefined;
 
-    const state = navigation.getState();
-    const activeRoute = state.routes[state.index];
+    const activeRoute = state.routes[state.index ?? 0];
     const diaryParams =
       activeRoute.name === 'Diary'
         ? (activeRoute.params as { selectedDate?: string } | undefined)
@@ -220,7 +235,12 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodScan', { date });
   }, [getActiveDiaryDate]);
 
-  const navigateFromSheet = useCallback((screen: string, params?: Record<string, unknown>) => {
+  const navigateFromSheet = useCallback((screen: keyof RootStackParamList, params?: RootStackParamList[keyof RootStackParamList]) => {
+    if (rootNavigationRef.isReady()) {
+      rootNavigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
+      return;
+    }
+
     navigationRef.current?.getParent()?.navigate(screen, params);
   }, []);
 
