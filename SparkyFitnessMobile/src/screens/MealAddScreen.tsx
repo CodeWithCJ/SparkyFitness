@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,14 @@ import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
-import { useCreateMeal } from '../hooks';
+import { useCreateMeal, useMeal, useUpdateMeal } from '../hooks';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
-import type { MealIngredientDraft } from '../types/meals';
+import type { MealFoodPayload, MealIngredientDraft } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
+import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
@@ -72,7 +74,14 @@ function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
   );
 }
 
-const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation }) => {
+const mealIngredientToPayload = ({
+  brand: _brand,
+  ...ingredient
+}: MealIngredientDraft): MealFoodPayload => ingredient;
+
+const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
+  const isEditMode = route.params?.mode === 'edit';
+  const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
@@ -87,8 +96,26 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation }) => {
   const [servingSizeText, setServingSizeText] = useState('1');
   const [servingUnit, setServingUnit] = useState('serving');
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
+  const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
 
   const { createMealAsync, isPending } = useCreateMeal();
+  const { meal: editMeal, isLoading: isEditMealLoading, isError: isEditMealError, refetch } = useMeal(editMealId, {
+    enabled: isEditMode,
+  });
+  const { updateMealAsync, isPending: isUpdatePending } = useUpdateMeal({
+    mealId: editMealId,
+  });
+
+  useEffect(() => {
+    if (!isEditMode || !editMeal || initializedMealId === editMeal.id) return;
+
+    setMealName(editMeal.name);
+    setDescription(editMeal.description ?? '');
+    setServingSizeText(String(editMeal.serving_size));
+    setServingUnit(editMeal.serving_unit);
+    setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
+    setInitializedMealId(editMeal.id);
+  }, [editMeal, initializedMealId, isEditMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -198,40 +225,85 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation }) => {
     }
 
     try {
-      await createMealAsync({
+      const payload = {
         name: trimmedMealName,
         description: description.trim() || null,
-        is_public: false,
         serving_size: parsedServingSize,
         serving_unit: servingUnit,
-        foods: ingredients.map(({ brand: _brand, ...ingredient }) => ingredient),
-      });
+        foods: ingredients.map(mealIngredientToPayload),
+      };
+
+      if (isEditMode) {
+        await updateMealAsync(payload);
+      } else {
+        await createMealAsync({
+          ...payload,
+          is_public: false,
+        });
+      }
       navigation.goBack();
     } catch {
       // Error toast is handled in the mutation hook.
     }
   };
 
+  const isSaving = isPending || isUpdatePending;
+
+  const renderHeader = () => (
+    <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        className="z-10 min-h-11 min-w-11 items-start justify-center"
+        accessibilityLabel="Back"
+        accessibilityRole="button"
+      >
+        <Icon name="chevron-back" size={22} color={accentColor} />
+      </TouchableOpacity>
+      <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+        {isEditMode ? 'Edit Meal' : 'Create Meal'}
+      </Text>
+      <View className="min-h-11 min-w-11" />
+    </View>
+  );
+
+  if (isEditMode && isEditMealLoading && !editMeal) {
+    return (
+      <View
+        className="flex-1 bg-background"
+        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      >
+        {renderHeader()}
+        <StatusView loading title="Loading meal..." />
+      </View>
+    );
+  }
+
+  if (isEditMode && (isEditMealError || !editMeal)) {
+    return (
+      <View
+        className="flex-1 bg-background"
+        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      >
+        {renderHeader()}
+        <StatusView
+          icon="alert-circle"
+          iconColor="#EF4444"
+          iconSize={64}
+          title="Failed to load meal"
+          subtitle="Please check your connection and try again."
+          action={{ label: 'Retry', onPress: () => void refetch(), variant: 'primary' }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 min-h-11 min-w-11 items-start justify-center"
-          accessibilityLabel="Back"
-          accessibilityRole="button"
-        >
-          <Icon name="chevron-back" size={22} color={accentColor} />
-        </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Create Meal
-        </Text>
-        <View className="min-h-11 min-w-11" />
-      </View>
+      {renderHeader()}
 
       <ScrollView
         className="flex-1"
@@ -439,12 +511,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation }) => {
           onPress={() => {
             void handleSaveMeal();
           }}
-          disabled={isPending}
+          disabled={isSaving}
         >
-          {isPending ? (
+          {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text className="text-white text-base font-semibold">Save Meal</Text>
+            <Text className="text-white text-base font-semibold">
+              {isEditMode ? 'Save Changes' : 'Save Meal'}
+            </Text>
           )}
         </Button>
       </ScrollView>

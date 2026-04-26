@@ -138,13 +138,10 @@ describe('LibraryScreen', () => {
     fireEvent.press(screen.getByText('Breakfast Bowl'));
     expect(navigation.navigate).toHaveBeenNthCalledWith(
       1,
-      'FoodEntryAdd',
+      'MealDetail',
       expect.objectContaining({
-        item: expect.objectContaining({
-          id: 'm1',
-          name: 'Breakfast Bowl',
-          source: 'meal',
-        }),
+        mealId: 'm1',
+        initialMeal: expect.objectContaining({ name: 'Breakfast Bowl' }),
       }),
     );
 

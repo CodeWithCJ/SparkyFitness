@@ -5,7 +5,7 @@ import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
-import type { MealIngredientDraft } from './meals';
+import type { Meal, MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 
@@ -24,6 +24,7 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
   FoodSearch:
     | {
@@ -63,6 +64,12 @@ export type RootStackParamList = {
     | undefined;
   MealAdd:
     | {
+        mode: 'edit';
+        mealId: string;
+        initialMeal?: Meal;
+      }
+    | {
+        mode?: 'create';
         selectedIngredient?: MealIngredientDraft;
         ingredientIndex?: number;
       }

@@ -95,7 +95,7 @@ describe('MealsLibraryScreen', () => {
     });
   });
 
-  it('lists meals and navigates to FoodEntryAdd when a meal is pressed', () => {
+  it('lists meals and navigates to MealDetail when a meal is pressed', () => {
     mockUseMeals.mockReturnValue({
       meals: [
         createMeal('meal-1', 'Overnight Oats', 350),
@@ -114,13 +114,10 @@ describe('MealsLibraryScreen', () => {
 
     fireEvent.press(screen.getByText('Overnight Oats'));
     expect(navigation.navigate).toHaveBeenCalledWith(
-      'FoodEntryAdd',
+      'MealDetail',
       expect.objectContaining({
-        item: expect.objectContaining({
-          id: 'meal-1',
-          name: 'Overnight Oats',
-          source: 'meal',
-        }),
+        mealId: 'meal-1',
+        initialMeal: expect.objectContaining({ name: 'Overnight Oats' }),
       }),
     );
   });

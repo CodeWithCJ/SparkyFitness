@@ -18,9 +18,15 @@ export const foodsLibraryQueryKey = (searchTerm: string) => ['foodsLibrary', sea
 
 export const mealsQueryKey = ['meals'] as const;
 
-export const recentMealsQueryKey = (limit: number) => ['recentMeals', limit] as const;
+export const mealDetailQueryKey = (id: string) => ['mealDetail', id] as const;
 
-export const mealSearchQueryKey = (searchTerm: string) => ['mealSearch', searchTerm] as const;
+export const recentMealsQueryKeyRoot = ['recentMeals'] as const;
+
+export const recentMealsQueryKey = (limit: number) => [...recentMealsQueryKeyRoot, limit] as const;
+
+export const mealSearchQueryKeyRoot = ['mealSearch'] as const;
+
+export const mealSearchQueryKey = (searchTerm: string) => [...mealSearchQueryKeyRoot, searchTerm] as const;
 
 export const externalProvidersQueryKey = ['externalProviders'] as const;
 

@@ -69,7 +69,7 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   steps: 'Steps',
 };
 
-const FIELD_FORM_KEYS: Record<FieldKey, Array<keyof FormState>> = {
+const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
   weight: ['weight', 'weightStones'],
   neck: ['neck'],
   waist: ['waist'],
@@ -107,12 +107,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textPrimary, borderSubtle, textSecondary] = useCSSVariable([
+  const [accentPrimary, borderSubtle, textSecondary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-primary',
     '--color-border-subtle',
     '--color-text-secondary',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
 
   const initialDate = route.params?.date ?? getTodayDate();
   const [selectedDate, setSelectedDate] = useState<string>(initialDate);

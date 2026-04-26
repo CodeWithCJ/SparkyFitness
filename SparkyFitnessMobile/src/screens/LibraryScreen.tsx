@@ -11,7 +11,7 @@ import FoodLibraryRow from '../components/FoodLibraryRow';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
 import { useFoods, useRecentMeals, useServerConnection } from '../hooks';
-import { foodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
+import { foodItemToFoodInfo } from '../types/foodInfo';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type LibraryScreenProps = CompositeScreenProps<
@@ -132,7 +132,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                 key={meal.id}
                 meal={meal}
                 showDivider={index < previewMeals.length - 1}
-                onPress={() => navigation.navigate('FoodEntryAdd', { item: mealToFoodInfo(meal) })}
+                onPress={() => navigation.navigate('MealDetail', { mealId: meal.id, initialMeal: meal })}
               />
             ))
           ) : (

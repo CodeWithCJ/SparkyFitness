@@ -3,9 +3,9 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MealAddScreen from '../../src/screens/MealAddScreen';
-import { useCreateMeal } from '../../src/hooks';
+import { useCreateMeal, useMeal, useUpdateMeal } from '../../src/hooks';
 import { consumePendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
-import type { MealIngredientDraft } from '../../src/types/meals';
+import type { Meal, MealIngredientDraft } from '../../src/types/meals';
 
 const mockUseFocusEffect = jest.fn();
 
@@ -19,6 +19,8 @@ jest.mock('@react-navigation/native', () => {
 
 jest.mock('../../src/hooks', () => ({
   useCreateMeal: jest.fn(),
+  useMeal: jest.fn(),
+  useUpdateMeal: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
@@ -79,6 +81,8 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
 });
 
 const mockUseCreateMeal = useCreateMeal as jest.MockedFunction<typeof useCreateMeal>;
+const mockUseMeal = useMeal as jest.MockedFunction<typeof useMeal>;
+const mockUseUpdateMeal = useUpdateMeal as jest.MockedFunction<typeof useUpdateMeal>;
 const mockConsumePendingMealIngredientSelection =
   consumePendingMealIngredientSelection as jest.MockedFunction<
     typeof consumePendingMealIngredientSelection
@@ -108,6 +112,38 @@ function buildIngredient(
   };
 }
 
+function buildMeal(overrides: Partial<Meal> = {}): Meal {
+  return {
+    id: 'meal-1',
+    user_id: 'user-1',
+    name: 'Lunch Bowl',
+    description: 'Tasty',
+    is_public: true,
+    serving_size: 2,
+    serving_unit: 'serving',
+    created_at: '2026-04-01T00:00:00.000Z',
+    updated_at: '2026-04-01T00:00:00.000Z',
+    foods: [
+      {
+        id: 'meal-food-1',
+        food_id: 'food-1',
+        variant_id: 'variant-1',
+        quantity: 1,
+        unit: 'cup',
+        food_name: 'Chicken',
+        brand: 'Brand Co',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 210,
+        protein: 28,
+        carbs: 0,
+        fat: 7,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe('MealAddScreen', () => {
   const navigation = {
     goBack: jest.fn(),
@@ -123,11 +159,12 @@ describe('MealAddScreen', () => {
 
   let focusCallback: (() => void) | undefined;
   const mockCreateMealAsync = jest.fn();
+  const mockUpdateMealAsync = jest.fn();
 
-  const renderScreen = () =>
+  const renderScreen = (routeOverride: any = route) =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <MealAddScreen navigation={navigation} route={route} />
+        <MealAddScreen navigation={navigation} route={routeOverride} />
       </SafeAreaProvider>,
     );
 
@@ -142,8 +179,20 @@ describe('MealAddScreen', () => {
       createMealAsync: mockCreateMealAsync,
       isPending: false,
     });
+    mockUseMeal.mockReturnValue({
+      meal: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    mockUseUpdateMeal.mockReturnValue({
+      updateMeal: jest.fn(),
+      updateMealAsync: mockUpdateMealAsync,
+      isPending: false,
+    });
     mockConsumePendingMealIngredientSelection.mockReturnValue(null);
     mockCreateMealAsync.mockResolvedValue(undefined);
+    mockUpdateMealAsync.mockResolvedValue(undefined);
   });
 
   it('shows an error when the meal name is missing and does not submit', () => {
@@ -292,6 +341,105 @@ describe('MealAddScreen', () => {
 
     expect(screen.queryByText(/Chicken/)).toBeNull();
     expect(screen.getByText(/Salmon/)).toBeTruthy();
+    expect(screen.getByText(/Rice/)).toBeTruthy();
+  });
+
+  it('preloads an existing meal in edit mode', () => {
+    const meal = buildMeal();
+    mockUseMeal.mockReturnValue({
+      meal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      ...route,
+      params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
+    });
+
+    expect(screen.getByText('Edit Meal')).toBeTruthy();
+    expect(screen.getByDisplayValue('Lunch Bowl')).toBeTruthy();
+    expect(screen.getByDisplayValue('Tasty')).toBeTruthy();
+    expect(screen.getByDisplayValue('2')).toBeTruthy();
+    expect(screen.getByText(/Chicken/)).toBeTruthy();
+  });
+
+  it('updates an existing meal without changing public visibility', async () => {
+    const meal = buildMeal({ is_public: true });
+    mockUseMeal.mockReturnValue({
+      meal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      ...route,
+      params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  Edited Meal  ');
+    fireEvent.press(screen.getByText('Save Changes'));
+
+    await waitFor(() => {
+      expect(mockUpdateMealAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mockUpdateMealAsync.mock.calls[0][0];
+    expect(payload).toEqual({
+      name: 'Edited Meal',
+      description: 'Tasty',
+      serving_size: 2,
+      serving_unit: 'serving',
+      foods: [
+        {
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: 1,
+          unit: 'cup',
+          food_name: 'Chicken',
+          serving_size: 1,
+          serving_unit: 'cup',
+          calories: 210,
+          protein: 28,
+          carbs: 0,
+          fat: 7,
+        },
+      ],
+    });
+    expect(payload).not.toHaveProperty('is_public');
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not overwrite local edits when returning with an ingredient selection', () => {
+    const meal = buildMeal();
+    mockUseMeal.mockReturnValue({
+      meal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      ...route,
+      params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Changed Name');
+    mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
+      ingredient: buildIngredient({
+        food_id: 'food-2',
+        variant_id: 'variant-2',
+        food_name: 'Rice',
+      }),
+    } as any);
+
+    act(() => {
+      focusCallback?.();
+    });
+
+    expect(screen.getByDisplayValue('Changed Name')).toBeTruthy();
     expect(screen.getByText(/Rice/)).toBeTruthy();
   });
 });

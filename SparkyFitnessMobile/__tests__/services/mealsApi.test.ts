@@ -1,4 +1,10 @@
-import { fetchRecentMeals } from '../../src/services/api/mealsApi';
+import {
+  deleteMeal,
+  fetchMeal,
+  fetchMealDeletionImpact,
+  fetchRecentMeals,
+  updateMeal,
+} from '../../src/services/api/mealsApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
@@ -65,6 +71,112 @@ describe('mealsApi', () => {
       const result = await fetchRecentMeals();
 
       expect(result).toEqual(responseData);
+    });
+  });
+
+  describe('fetchMeal', () => {
+    test('sends GET request to /api/meals/:id', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'meal-1', name: 'Overnight Oats', foods: [] }),
+      });
+
+      await fetchMeal('meal-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/meals/meal-1',
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+          },
+        }),
+      );
+    });
+  });
+
+  describe('updateMeal', () => {
+    test('updates the meal and refetches expanded detail', async () => {
+      const updatedMeal = { id: 'meal-1', name: 'Updated Meal', foods: [] };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ id: 'meal-1', name: 'Updated Meal' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(updatedMeal),
+        });
+
+      const result = await updateMeal('meal-1', {
+        name: 'Updated Meal',
+        foods: [],
+      });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'https://example.com/api/meals/meal-1',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'Updated Meal',
+            foods: [],
+          }),
+        }),
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'https://example.com/api/meals/meal-1',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(result).toEqual(updatedMeal);
+    });
+  });
+
+  describe('deleteMeal', () => {
+    test('sends DELETE request to /api/meals/:id', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ message: 'Meal deleted successfully.' }),
+      });
+
+      await deleteMeal('meal-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/meals/meal-1',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+          },
+        }),
+      );
+    });
+  });
+
+  describe('fetchMealDeletionImpact', () => {
+    test('fetches deletion impact for a meal', async () => {
+      const impact = { usedByOtherUsers: false, usedByCurrentUser: true };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(impact),
+      });
+
+      const result = await fetchMealDeletionImpact('meal-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/meals/meal-1/deletion-impact',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(result).toEqual(impact);
     });
   });
 });

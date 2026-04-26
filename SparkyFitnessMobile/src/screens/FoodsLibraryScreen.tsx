@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -80,7 +81,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16 }}
+            style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
             placeholder="Search foods..."
             placeholderTextColor={textMuted}
             value={searchText}

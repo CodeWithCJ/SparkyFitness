@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -15,7 +16,6 @@ import StatusView from '../components/StatusView';
 import MealLibraryRow from '../components/MealLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useMealSearch, useMeals, useServerConnection } from '../hooks';
-import { mealToFoodInfo } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
 
@@ -55,7 +55,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const isError = isSearchActive ? isSearchError : isMealsError;
 
   const handleMealPress = useCallback((meal: Meal) => {
-    navigation.navigate('FoodEntryAdd', { item: mealToFoodInfo(meal) });
+    navigation.navigate('MealDetail', { mealId: meal.id, initialMeal: meal });
   }, [navigation]);
 
   const onRefresh = useCallback(async () => {
@@ -92,7 +92,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16 }}
+            style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
             placeholder="Search meals..."
             placeholderTextColor={textMuted}
             value={searchText}
