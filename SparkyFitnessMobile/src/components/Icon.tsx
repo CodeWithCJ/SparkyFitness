@@ -61,6 +61,7 @@ const ICON_MAP = {
   'timer': { sf: 'timer', ion: 'timer-outline' },
   'exercise': { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },
+  'exercise-running-filled': { sf: 'figure.run', ion: 'walk' },
   'exercise-cycling': { sf: 'figure.outdoor.cycle', ion: 'bicycle-outline' },
   'exercise-swimming': { sf: 'figure.pool.swim', ion: 'water-outline' },
   'exercise-walking': { sf: 'figure.walk', ion: 'walk-outline' },

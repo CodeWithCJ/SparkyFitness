@@ -65,8 +65,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
-  const openMealNutrition = useCallback((mealType: MealTypeKey) => {
-    navigation.navigate('MealNutrition', { date: selectedDate, mealType });
+  const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
+    navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
   }, [navigation, selectedDate]);
 
   const { preferences } = usePreferences();
@@ -165,7 +165,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               foodEntries={summary.foodEntries}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}
               onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
-              onPressMealType={openMealNutrition}
+              onPressMealType={openMealTypeDetail}
             />
             <ExerciseSummary exerciseEntries={summary.exerciseEntries} entryDate={selectedDate} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
               if (session.type === 'preset') {

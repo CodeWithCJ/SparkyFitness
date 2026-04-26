@@ -41,7 +41,7 @@ export type RootStackParamList = {
         returnDepth?: number;
       };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
-  MealNutrition: { date: string; mealType: MealTypeKey; mealLabel?: string };
+  MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:
     | {
         mode: 'create-food';
