@@ -13,7 +13,7 @@
 **How did you implement the solution?**
 (Brief technical approach.)
 
-Linked Issue: #
+Linked Issue: Closes #
 
 ## How to Test
 
@@ -38,7 +38,7 @@ Linked Issue: #
 
 - [ ] **[MANDATORY for new feature] Alignment**: I have raised a GitHub issue and it was reviewed/approved by maintainers or it was approved on Discord.
 
-**Frontend changes (`SparkyFitnessFrontend/` or `src/`):**
+**Frontend changes (`SparkyFitnessFrontend/`):**
 
 - [ ] **[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.
 - [ ] **[MANDATORY for Frontend changes] Translations**: I have only updated the English (`en`) translation file.
@@ -51,6 +51,10 @@ Linked Issue: #
 **UI changes (components, screens, pages):**
 
 - [ ] **[MANDATORY for UI changes] Screenshots**: I have attached Before/After screenshots below.
+
+**Mobile changes (`SparkyFitnessMobile/`):**
+
+- [ ] **[MANDATORY for Mobile changes] Tested on device or emulator**: I have verified the changes work on iOS or Android.
 
 ## Screenshots
 
