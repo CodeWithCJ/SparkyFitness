@@ -34,6 +34,7 @@ import {
   UpdateCustomMeasurementsRequest,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
+import { useSearchParams } from 'react-router-dom';
 
 function useDerivedState<T>(derivedValue: T, selectedDate: string) {
   const [stateMap, setStateMap] = useState<Record<string, T>>({});
@@ -71,8 +72,11 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     bodyFatAlgorithm,
   } = usePreferences();
 
+  const [searchParams] = useSearchParams();
+
   const [selectedDate, setSelectedDate] = useState(
-    formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
+    searchParams.get('date') ??
+      formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
 
   const { mutateAsync: saveCheckInMeasurements, isPending: isSavingCheckIn } =

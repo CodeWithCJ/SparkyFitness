@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -10,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import DiaryTopControls, { DayTotals } from './DiaryTopControls';
@@ -63,7 +62,7 @@ const Diary = () => {
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
   const [editingFoodEntryMeal, setEditingFoodEntryMeal] =
     useState<FoodEntryMeal | null>(null); // State for editing logged meal entry
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedDate, setSelectedDate] = useState(
     searchParams.get('date') ??
@@ -193,6 +192,7 @@ const Diary = () => {
       const dateString = formatDateToYYYYMMDD(newDate);
       info(loggingLevel, 'Date selected:', dateString);
       setSelectedDate(dateString);
+      setSearchParams({ date: dateString });
     }
   };
 
@@ -329,61 +329,63 @@ const Diary = () => {
   return (
     <div className="space-y-6">
       {/* Date Navigation */}
-      <Card className="dark:text-slate-300">
-        <CardHeader>
-          <div className="flex flex-col space-y-4 items-center sm:flex-row sm:justify-between sm:space-y-0">
-            <CardTitle className="text-xl font-semibold ">
-              {t('foodDiary.title', 'Food Diary')}
-            </CardTitle>
-            <div className="flex items-center gap-2">
+      <div className="flex justify-center mb-5 gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground h-9 px-3 rounded-full border border-border/60"
+          onClick={() => handleDateSelect(new Date())}
+        >
+          Today
+        </Button>
+        <div className="flex items-center gap-0 rounded-full border border-border/60 bg-background overflow-hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePreviousDay}
+            className="h-9 w-9 rounded-none border-r border-border/60"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
               <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePreviousDay}
-                className="h-8 w-8"
+                variant="ghost"
+                className="h-9 px-4 rounded-none font-normal text-sm gap-2"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                {date ? (
+                  formatDate(date)
+                ) : (
+                  <span className="text-muted-foreground">
+                    {t('foodDiary.pickADate', 'Pick a Date')}
+                  </span>
+                )}
               </Button>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal',
-                      !date && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? (
-                      formatDate(date)
-                    ) : (
-                      <span>{t('foodDiary.pickADate', 'Pick a Date')}</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateSelect}
-                    yearsRange={10} // Default to 10 years for general date selection
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNextDay}
-                className="h-8 w-8"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-0"
+              align="center"
+              sideOffset={8}
+            >
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={handleDateSelect}
+                yearsRange={10}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNextDay}
+            className="h-9 w-9 rounded-none border-l border-border/60"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       {/* Top Controls Section */}
       {goals && (
