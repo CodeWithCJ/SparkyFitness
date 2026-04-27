@@ -31,7 +31,11 @@ export const useDailyGoals = (date: string) => {
   });
 };
 
-export const useDailyGoalsRange = (startDate: string, endDate: string) => {
+export const useDailyGoalsRange = (
+  startDate: string,
+  endDate: string,
+  enabled: boolean = true
+) => {
   return useQuery<Record<string, ExpandedGoals>>({
     queryKey: goalKeys.daily.byDate(startDate, endDate),
     queryFn: async () => {
@@ -39,6 +43,7 @@ export const useDailyGoalsRange = (startDate: string, endDate: string) => {
       return (data as Record<string, ExpandedGoals>) || {};
     },
     placeholderData: (previousData) => previousData,
+    enabled: enabled,
   });
 };
 

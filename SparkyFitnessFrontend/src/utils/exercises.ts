@@ -7,6 +7,7 @@ import {
   requiredHeaders,
 } from '@/constants/exercises';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
+import { DailyExerciseEntry } from '@/types/reports';
 
 import Papa from 'papaparse';
 
@@ -52,3 +53,14 @@ export const parseCSV = (
 
 export const generateUniqueId = () =>
   `temp_${Math.random().toString(36).slice(2, 11)}`;
+
+export function calcExerciseStatsFlat(entries: DailyExerciseEntry[]) {
+  return {
+    otherCalories: entries.reduce(
+      (acc, e) => acc + Number(e.calories_burned || 0),
+      0
+    ),
+    activeCalories: 0,
+    activitySteps: entries.reduce((acc, e) => acc + Number(e['steps'] || 0), 0),
+  };
+}

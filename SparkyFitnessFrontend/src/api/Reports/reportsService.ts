@@ -1,30 +1,11 @@
 import { apiCall } from '@/api/api';
-import type { SleepAnalyticsData } from '../../types';
-import {
-  DailyExerciseEntry,
-  DailyFoodEntry,
-  ExerciseDashboardData,
-  NutritionData,
-} from '@/types/reports';
-import {
-  CheckInMeasurementsResponse,
-  CustomCategoriesResponse,
-  CustomMeasurementsResponse,
-} from '@workspace/shared';
+import { ExerciseDashboardData, ReportResponse } from '@/types/reports';
 
 export const loadReportsData = async (
   startDate: string,
   endDate: string,
   userId?: string
-): Promise<{
-  nutritionData: NutritionData[];
-  tabularData: DailyFoodEntry[];
-  exerciseEntries: DailyExerciseEntry[];
-  measurementData: CheckInMeasurementsResponse[];
-  customCategories: CustomCategoriesResponse[];
-  customMeasurementsData: CustomMeasurementsResponse[];
-  sleepAnalyticsData: SleepAnalyticsData[];
-}> => {
+): Promise<ReportResponse> => {
   const params = new URLSearchParams({
     startDate,
     endDate,

@@ -66,3 +66,14 @@ export interface ProfileFormState {
   gender: string;
   height: number | string;
 }
+
+export interface AdaptiveTdeeResult {
+  tdee: number;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  weightTrend?: number;
+  isFallback: boolean;
+  fallbackReason?: string;
+  avgIntake?: number;
+  daysOfData?: number;
+  lastCalculated: string;
+}

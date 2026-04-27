@@ -1,15 +1,7 @@
 import { api } from '@/api/api';
+import { AdaptiveTdeeResult } from '@/types/settings';
 
-export interface AdaptiveTdeeResult {
-  tdee: number;
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  weightTrend?: number;
-  isFallback: boolean;
-  fallbackReason?: string;
-  avgIntake?: number;
-  daysOfData?: number;
-  lastCalculated: string;
-}
+export type { AdaptiveTdeeResult };
 
 export const adaptiveTdeeService = {
   getAdaptiveTdee: async (date: string): Promise<AdaptiveTdeeResult> => {

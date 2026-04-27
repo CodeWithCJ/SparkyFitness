@@ -48,14 +48,15 @@ export const useRawStressData = (userId?: string | null) => {
 export const useReportsData = (
   startDate: string,
   endDate: string,
-  userId: string | null
+  userId: string | null,
+  enabled: boolean = true
 ) => {
   const { t } = useTranslation();
 
   return useQuery({
     queryKey: reportKeys.core(startDate, endDate, userId!),
     queryFn: () => loadReportsData(startDate, endDate, userId!),
-    enabled: Boolean(startDate && endDate) && !!userId,
+    enabled: Boolean(startDate && endDate) && !!userId && enabled,
     meta: {
       errorMessage: t(
         'reports.failedToLoadCoreData',
@@ -74,7 +75,6 @@ export const useExerciseDashboardData = (
   exercise: string | null = null
 ) => {
   const { t } = useTranslation();
-
   return useQuery({
     queryKey: reportKeys.exerciseDashboard(
       startDate,

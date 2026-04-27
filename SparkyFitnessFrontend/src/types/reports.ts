@@ -175,3 +175,30 @@ export interface ChartDataPoint {
   runCadence: number;
   elevation: number | null;
 }
+
+import {
+  CheckInMeasurementsResponse,
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
+
+export interface SleepAnalyticsData {
+  date: string;
+  total_sleep_hours: number;
+  deep_sleep_hours: number;
+  rem_sleep_hours: number;
+  light_sleep_hours: number;
+  awake_hours: number;
+  sleep_score: number;
+  time_in_bed_hours: number;
+}
+
+export interface ReportResponse {
+  nutritionData: NutritionData[];
+  tabularData: DailyFoodEntry[];
+  exerciseEntries: DailyExerciseEntry[];
+  measurementData: CheckInMeasurementsResponse[];
+  customCategories: CustomCategoriesResponse[];
+  customMeasurementsData: CustomMeasurementsResponse[];
+  sleepAnalyticsData: SleepAnalyticsData[];
+}

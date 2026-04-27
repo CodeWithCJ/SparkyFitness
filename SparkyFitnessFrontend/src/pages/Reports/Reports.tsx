@@ -1,19 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  BarChart3,
-  TrendingUp,
-  Dumbbell,
-  BedDouble,
-  Activity,
-} from 'lucide-react';
 import { FastingReport } from '@/pages/Reports/FastingReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import ReportsControls from '@/pages/Reports/ReportsControls';
-import NutritionChartsGrid from '@/pages/Reports/NutritionChartsGrid';
+import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
 import MeasurementChartsGrid from '@/pages/Reports/MeasurementChartsGrid';
 import ReportsTables from '@/pages/Reports/ReportsTables';
 import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
@@ -94,7 +86,17 @@ const Reports = () => {
       formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
   );
 
-  const [activeTab, setActiveTab] = useState('charts');
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get('tab') || 'charts'
+  );
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams((prev) => {
+      prev.set('tab', value);
+      return prev;
+    });
+  };
 
   const { data: customNutrients = [], isLoading: customNutrientsLoading } =
     useCustomNutrients();
@@ -162,101 +164,31 @@ const Reports = () => {
   };
 
   info(loggingLevel, 'Reports: Rendering reports component.');
-  return (
-    <div className="space-y-6">
-      {startDate && endDate ? ( // Only render ReportsControls if dates are initialized
-        <ReportsControls
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={handleStartDateChange}
-          onEndDateChange={handleEndDateChange}
-        />
-      ) : (
-        <div>
-          {t('reports.loadingDateControls', 'Loading date controls...')}
-        </div> // Or a loading spinner
-      )}
-      {loading ? (
-        <div>{t('reports.loadingReports', 'Loading reports...')}</div>
-      ) : (
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
-          <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-1 bg-slate-200/60 dark:bg-muted/50 no-scrollbar">
-            <TabsTrigger
-              value="charts"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span className="text-sm">
-                {t('reports.chartsTab', 'Charts')}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="fasting"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">
-                {t('reports.fasting.insightsTab', 'Fasting')}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="exercise-charts"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <Dumbbell className="w-4 h-4" />
-              <span className="text-sm">
-                {t('reports.exerciseProgressTab', 'Exercise')}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="sleep-analytics"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <BedDouble className="w-4 h-4" />
-              <span className="text-sm">{t('reports.sleepTab', 'Sleep')}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="stress-analytics"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <Activity className="w-4 h-4" />
-              <span className="text-sm">
-                {t('reports.stressTab', 'Stress')}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="table"
-              className="flex items-center gap-2 shrink-0 px-4 py-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">{t('reports.tableTab', 'Table')}</span>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="charts" className="space-y-6">
-            <ChartErrorBoundary>
-              <NutritionChartsGrid
-                nutritionData={nutritionData}
-                customNutrients={customNutrients}
-                goals={goalData}
-              />
-            </ChartErrorBoundary>
+
+  const renderActiveContent = () => {
+    switch (activeTab) {
+      case 'charts':
+        return (
+          <ChartErrorBoundary>
+            <NutritionPeriodSummary
+              nutritionData={nutritionData}
+              customNutrients={customNutrients}
+              goals={goalData}
+            />
+          </ChartErrorBoundary>
+        );
+      case 'measurements':
+        return (
+          <div className="space-y-6">
             <ChartErrorBoundary>
               <MeasurementChartsGrid measurementData={measurementData ?? []} />
             </ChartErrorBoundary>
-
-            {/* Body Battery Card */}
             <ChartErrorBoundary>
               <BodyBatteryCard
                 categories={customCategories}
                 measurementsData={customMeasurementsData}
               />
             </ChartErrorBoundary>
-
-            {/* Respiration Card */}
             <ChartErrorBoundary>
               <RespirationCard
                 categories={customCategories}
@@ -269,29 +201,33 @@ const Reports = () => {
                 customMeasurementsData={customMeasurementsData}
               />
             </ChartErrorBoundary>
-          </TabsContent>
-          {/* Custom Measurements Charts (excluding dedicated cards) */}
-          <TabsContent value="fasting" className="space-y-6">
-            <ChartErrorBoundary>
-              <FastingReport fastingData={fastingData} />
-            </ChartErrorBoundary>
-          </TabsContent>
-          <TabsContent value="exercise-charts" className="space-y-6">
-            {/* Existing exercise charts content */}
-            <ChartErrorBoundary>
-              <ExerciseReportsDashboard
-                exerciseDashboardData={exerciseDashboardData}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            </ChartErrorBoundary>
-          </TabsContent>
-          <TabsContent value="sleep-analytics" className="space-y-6">
-            <ChartErrorBoundary>
-              <SleepReport startDate={startDate} endDate={endDate} />
-            </ChartErrorBoundary>
-          </TabsContent>
-          <TabsContent value="stress-analytics" className="space-y-6">
+          </div>
+        );
+      case 'fasting':
+        return (
+          <ChartErrorBoundary>
+            <FastingReport fastingData={fastingData} />
+          </ChartErrorBoundary>
+        );
+      case 'exercise-charts':
+        return (
+          <ChartErrorBoundary>
+            <ExerciseReportsDashboard
+              exerciseDashboardData={exerciseDashboardData}
+              startDate={startDate}
+              endDate={endDate}
+            />
+          </ChartErrorBoundary>
+        );
+      case 'sleep-analytics':
+        return (
+          <ChartErrorBoundary>
+            <SleepReport startDate={startDate} endDate={endDate} />
+          </ChartErrorBoundary>
+        );
+      case 'stress-analytics':
+        return (
+          <div className="space-y-6">
             <ChartErrorBoundary>
               {rawStressData?.length > 0 ? (
                 <StressChart
@@ -320,68 +256,95 @@ const Reports = () => {
                 </p>
               )}
             </ChartErrorBoundary>
-          </TabsContent>
+          </div>
+        );
+      case 'table':
+        return (
+          <ChartErrorBoundary>
+            <ReportsTables
+              tabularData={tabularData}
+              exerciseEntries={exerciseEntries}
+              measurementData={measurementData}
+              customCategories={customCategories}
+              customMeasurementsData={customMeasurementsData}
+              prData={exerciseDashboardData?.prData}
+              onExportFoodDiary={() =>
+                exportFoodDiary({
+                  loggingLevel,
+                  tabularData,
+                  energyUnit,
+                  customNutrients,
+                  startDate,
+                  endDate,
+                  formatDateInUserTimezone,
+                  convertEnergy,
+                })
+              }
+              onExportBodyMeasurements={() =>
+                exportBodyMeasurements({
+                  loggingLevel,
+                  startDate,
+                  endDate,
+                  measurementData,
+                  defaultWeightUnit,
+                  defaultMeasurementUnit,
+                  formatDateInUserTimezone,
+                })
+              }
+              onExportCustomMeasurements={(
+                category: CustomCategoriesResponse
+              ) =>
+                exportCustomMeasurement({
+                  loggingLevel,
+                  startDate,
+                  endDate,
+                  category,
+                  customMeasurementsData,
+                  formatDateInUserTimezone,
+                })
+              }
+              onExportExerciseEntries={() =>
+                exportExerciseEntries({
+                  loggingLevel,
+                  energyUnit,
+                  exerciseEntries,
+                  startDate,
+                  endDate,
+                  formatDateInUserTimezone,
+                  convertEnergy,
+                })
+              }
+              customNutrients={customNutrients}
+            />
+          </ChartErrorBoundary>
+        );
+      default:
+        return null;
+    }
+  };
 
-          <TabsContent value="table" className="space-y-6">
-            <ChartErrorBoundary>
-              <ReportsTables
-                tabularData={tabularData}
-                exerciseEntries={exerciseEntries} // Pass exerciseEntries
-                measurementData={measurementData}
-                customCategories={customCategories}
-                customMeasurementsData={customMeasurementsData}
-                prData={exerciseDashboardData?.prData}
-                onExportFoodDiary={() =>
-                  exportFoodDiary({
-                    loggingLevel,
-                    tabularData,
-                    energyUnit,
-                    customNutrients,
-                    startDate,
-                    endDate,
-                    formatDateInUserTimezone,
-                    convertEnergy,
-                  })
-                }
-                onExportBodyMeasurements={() =>
-                  exportBodyMeasurements({
-                    loggingLevel,
-                    startDate,
-                    endDate,
-                    measurementData,
-                    defaultWeightUnit,
-                    defaultMeasurementUnit,
-                    formatDateInUserTimezone,
-                  })
-                }
-                onExportCustomMeasurements={(
-                  category: CustomCategoriesResponse
-                ) =>
-                  exportCustomMeasurement({
-                    loggingLevel,
-                    startDate,
-                    endDate,
-                    category,
-                    customMeasurementsData,
-                    formatDateInUserTimezone,
-                  })
-                }
-                onExportExerciseEntries={() =>
-                  exportExerciseEntries({
-                    loggingLevel,
-                    energyUnit,
-                    exerciseEntries,
-                    startDate,
-                    endDate,
-                    formatDateInUserTimezone,
-                    convertEnergy,
-                  })
-                } // Pass export function
-                customNutrients={customNutrients} // Pass customNutrients
-              />
-            </ChartErrorBoundary>
-          </TabsContent>
-        </Tabs>
+  return (
+    <div className="space-y-10">
+      {startDate && endDate ? (
+        <ReportsControls
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={handleStartDateChange}
+          onEndDateChange={handleEndDateChange}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+      ) : (
+        <div>
+          {t('reports.loadingDateControls', 'Loading date controls...')}
+        </div>
+      )}
+      {loading ? (
+        <div>{t('reports.loadingReports', 'Loading reports...')}</div>
+      ) : (
+        <div className="w-full animate-in fade-in duration-500">
+          {renderActiveContent()}
+        </div>
       )}
     </div>
   );

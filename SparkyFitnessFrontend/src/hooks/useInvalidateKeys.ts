@@ -12,6 +12,7 @@ import { chatbotKeys } from '@/api/keys/ai';
 import { mealKeys } from '@/api/keys/meals';
 import { userAiConfigKeys } from '@/api/keys/admin';
 import { goalKeys } from '@/api/keys/goals';
+import { reportKeys } from '@/api/keys/reports';
 
 export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
@@ -23,6 +24,7 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     queryClient.invalidateQueries({ queryKey: goalKeys.all });
+    queryClient.invalidateQueries({ queryKey: reportKeys.all });
   }, [queryClient]);
 };
 
@@ -43,6 +45,7 @@ export const useFoodEntryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    queryClient.invalidateQueries({ queryKey: reportKeys.all });
     queryClient.invalidateQueries({
       queryKey: diaryReportKeys.all,
     });
