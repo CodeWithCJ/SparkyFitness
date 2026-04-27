@@ -9,12 +9,15 @@ import Icon from '../components/Icon';
 import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
+import MeasurementsSummary from '../components/MeasurementsSummary';
+import { addSheetRef } from '../components/AddSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary } from '../hooks';
+import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
@@ -51,11 +54,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   }, [navigation, selectedDate]);
 
   const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
-  const goToNextDay = useCallback(() => setSelectedDate(prev => {
-    const today = getTodayDate();
-    const next = addDays(prev, 1);
-    return next > today ? prev : next;
-  }), []);
+  const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
 
   const swipeGesture = useMemo(() => Gesture.Race(
@@ -65,13 +64,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
-  const openMealNutrition = useCallback((mealType: MealTypeKey) => {
-    navigation.navigate('MealNutrition', { date: selectedDate, mealType });
+  const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
+    navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
   }, [navigation, selectedDate]);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const weightMode = preferences?.default_weight_unit ?? 'kg';
+  const bodyUnit: 'cm' | 'inches' =
+    preferences?.default_measurement_unit === 'inches' ? 'inches' : 'cm';
+  const heightMode = preferences?.default_measurement_unit ?? 'cm';
   const { getImageSource } = useExerciseImageSource();
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -79,6 +82,22 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+  const { measurements, refetch: refetchMeasurements } = useMeasurements({
+    date: selectedDate,
+    enabled: isConnected,
+  });
+  const hasAnyMeasurement = useMemo(() => {
+    if (!measurements) return false;
+    return (
+      measurements.weight != null ||
+      measurements.body_fat_percentage != null ||
+      measurements.height != null ||
+      measurements.neck != null ||
+      measurements.waist != null ||
+      measurements.hips != null ||
+      measurements.steps != null
+    );
+  }, [measurements]);
 
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
@@ -87,9 +106,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchMeasurements()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refetchMeasurements]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -148,7 +167,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
+        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 && !hasAnyMeasurement ? (
           <>
             <EmptyDayIllustration />
             <Button
@@ -165,15 +184,30 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               foodEntries={summary.foodEntries}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}
               onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
-              onPressMealType={openMealNutrition}
+              onPressMealType={openMealTypeDetail}
             />
-            <ExerciseSummary exerciseEntries={summary.exerciseEntries} entryDate={selectedDate} getImageSource={getImageSource} weightUnit={weightUnit} distanceUnit={distanceUnit} onPressWorkout={(session) => {
-              if (session.type === 'preset') {
-                navigation.navigate('WorkoutDetail', { session });
-              } else {
-                navigation.navigate('ActivityDetail', { session });
-              }
-            }} />
+            <ExerciseSummary
+              exerciseEntries={summary.exerciseEntries}
+              entryDate={selectedDate}
+              getImageSource={getImageSource}
+              weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
+              onAddExercise={() => addSheetRef.current?.present({ initialMenu: 'exercise' })}
+              onPressWorkout={(session) => {
+                if (session.type === 'preset') {
+                  navigation.navigate('WorkoutDetail', { session });
+                } else {
+                  navigation.navigate('ActivityDetail', { session });
+                }
+              }}
+            />
+            <MeasurementsSummary
+              measurements={measurements}
+              weightMode={weightMode}
+              bodyUnit={bodyUnit}
+              heightMode={heightMode}
+              onPress={() => navigation.navigate('MeasurementsAdd', { date: selectedDate })}
+            />
           </>
         )}
       </ScrollView>

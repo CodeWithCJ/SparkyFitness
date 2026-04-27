@@ -37,6 +37,7 @@ const ICON_MAP = {
   'pause': { sf: 'pause.fill', ion: 'pause' },
   'play': { sf: 'play.fill', ion: 'play' },
   'forward': { sf: 'forward.fill', ion: 'play-skip-forward' },
+  'measurements': { sf: 'ruler', ion: 'analytics-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },
@@ -51,6 +52,7 @@ const ICON_MAP = {
   'food': { sf: 'fork.knife', ion: 'restaurant' },
 
   // Meals
+  'meal': { sf: 'square.stack.3d.up.fill', ion: 'layers' },
   'meal-breakfast': { sf: 'sunrise.fill', ion: 'sunny' },
   'meal-lunch': { sf: 'sun.max.fill', ion: 'partly-sunny' },
   'meal-dinner': { sf: 'moon.stars.fill', ion: 'moon' },
@@ -60,6 +62,7 @@ const ICON_MAP = {
   'timer': { sf: 'timer', ion: 'timer-outline' },
   'exercise': { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },
+  'exercise-running-filled': { sf: 'figure.run', ion: 'walk' },
   'exercise-cycling': { sf: 'figure.outdoor.cycle', ion: 'bicycle-outline' },
   'exercise-swimming': { sf: 'figure.pool.swim', ion: 'water-outline' },
   'exercise-walking': { sf: 'figure.walk', ion: 'walk-outline' },

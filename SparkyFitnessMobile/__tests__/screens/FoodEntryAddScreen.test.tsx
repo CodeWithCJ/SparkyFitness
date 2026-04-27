@@ -429,7 +429,7 @@ describe('FoodEntryAddScreen', () => {
       pickerMode: 'meal-builder',
     });
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('Add Meal'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',

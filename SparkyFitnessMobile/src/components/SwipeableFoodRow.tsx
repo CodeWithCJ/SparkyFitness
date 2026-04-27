@@ -67,7 +67,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
 
   const renderRightActions = () => (
     <TouchableOpacity
-      className="bg-bg-danger justify-center items-center"
+      className="bg-bg-danger justify-center items-center ml-4"
       style={{ width: DELETE_ACTION_WIDTH }}
       onPress={confirmAndDelete}
       activeOpacity={0.7}

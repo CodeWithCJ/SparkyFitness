@@ -18,6 +18,7 @@ import {
   useRecentStandardMeasurements,
   useSaveCheckInMeasurementsMutation,
   useSaveCustomMeasurementMutation,
+  useMostRecentMeasurement,
   useUpdateCheckInMeasurementFieldMutation,
 } from '@/hooks/CheckIn/useCheckIn';
 import {
@@ -110,6 +111,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     endDate
   );
   const { data: recentFasting = [] } = useFastingHistory(10, 0);
+  const { data: mostRecentHeightData } = useMostRecentMeasurement('height');
 
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] =
     useState(false);
@@ -148,11 +150,19 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   }, [existingCheckIn?.hips]);
 
   const derivedHeight = useMemo(() => {
+    // Height rarely changes day to day. If the selected date's row has a
+    // valid height use it; otherwise fall back to the user's most recent
+    // recorded height so the field isn't empty on a fresh check-in.
     const h = existingCheckIn?.height;
-    if (h == null) return '';
-    // State should be Metric (cm).
-    return h.toString();
-  }, [existingCheckIn?.height]);
+    if (h != null && h > 0) {
+      return h.toString();
+    }
+    const recent = mostRecentHeightData?.height;
+    if (recent != null && recent > 0) {
+      return recent.toString();
+    }
+    return '';
+  }, [existingCheckIn?.height, mostRecentHeightData?.height]);
 
   const derivedBodyFat = useMemo(() => {
     return existingCheckIn?.body_fat_percentage?.toString() || '';
@@ -212,9 +222,19 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const [neck, setNeck] = useDerivedState<string>(derivedNeck, selectedDate);
   const [waist, setWaist] = useDerivedState<string>(derivedWaist, selectedDate);
   const [hips, setHips] = useDerivedState<string>(derivedHips, selectedDate);
-  const [height, setHeight] = useDerivedState<string>(
+  const [height, setHeightState] = useDerivedState<string>(
     derivedHeight,
     selectedDate
+  );
+  const [heightTouchedDates, setHeightTouchedDates] = useState<
+    Record<string, boolean>
+  >({});
+  const setHeight = useCallback(
+    (value: string) => {
+      setHeightTouchedDates((prev) => ({ ...prev, [selectedDate]: true }));
+      setHeightState(value);
+    },
+    [selectedDate, setHeightState]
   );
   const [steps, setSteps] = useDerivedState<string>(derivedSteps, selectedDate);
   const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
@@ -454,7 +474,11 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       if (steps) {
         measurementData.steps = parseInt(steps);
       }
-      if (height) {
+      const shouldSubmitHeight =
+        height !== '' &&
+        ((existingCheckIn?.height != null && existingCheckIn.height > 0) ||
+          heightTouchedDates[selectedDate] === true);
+      if (shouldSubmitHeight) {
         measurementData.height = parseFloat(height);
       }
       if (bodyFatPercentage) {

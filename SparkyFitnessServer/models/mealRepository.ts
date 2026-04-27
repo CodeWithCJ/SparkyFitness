@@ -506,38 +506,52 @@ async function deleteMealPlanEntriesByTemplateId(templateId: any, userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getRecentMeals(userId: any, limit = null) {
+async function getRecentMeals(userId: any, limit = 3) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query = `
-      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
-      FROM meals
-      ORDER BY updated_at DESC`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const queryParams: any = [];
-    if (limit !== null) {
-      query += ' LIMIT $2';
-      queryParams.push(limit);
-    }
-    const result = await client.query(query, queryParams);
-    const meals = result.rows;
-    for (const meal of meals) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [meal.id]
-      );
-      meal.foods = mealFoodsResult.rows;
-    }
-    return meals;
+    const result = await client.query(
+      `WITH recent_usage AS (
+        SELECT
+          fe.meal_id,
+          fe.entry_date,
+          fe.created_at
+        FROM food_entries fe
+        WHERE fe.user_id = $1
+          AND fe.meal_id IS NOT NULL
+        UNION ALL
+        SELECT
+          fem.meal_template_id AS meal_id,
+          fem.entry_date,
+          fem.created_at
+        FROM food_entry_meals fem
+        WHERE fem.user_id = $1
+          AND fem.meal_template_id IS NOT NULL
+      ),
+      latest_usage AS (
+        SELECT DISTINCT ON (meal_id)
+          meal_id,
+          entry_date AS last_used_date,
+          created_at AS last_used_at
+        FROM recent_usage
+        ORDER BY meal_id, entry_date DESC, created_at DESC
+      )
+      SELECT
+        m.id,
+        m.user_id,
+        m.name,
+        m.description,
+        m.is_public,
+        m.serving_size,
+        m.serving_unit,
+        m.created_at,
+        m.updated_at
+      FROM latest_usage lu
+      JOIN meals m ON m.id = lu.meal_id
+      ORDER BY lu.last_used_date DESC, lu.last_used_at DESC, m.name ASC
+      LIMIT $2`,
+      [userId, limit]
+    );
+    return attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }

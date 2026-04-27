@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { saveFood, type SaveFoodPayload } from '../services/api/foodsApi';
 import { createFoodEntry, type CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
-import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
+import { dailySummaryQueryKey, foodsQueryKey, recentMealsQueryKeyRoot } from './queryKeys';
 import type { FoodEntry } from '../types/foodEntries';
 
 export interface AddFoodEntryInput {
@@ -33,6 +33,9 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
       return createFoodEntry(input.createEntryPayload);
     },
     onSuccess: (entry) => {
+      if (entry.meal_id) {
+        queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+      }
       options?.onSuccess?.(entry);
     },
     onError: () => {

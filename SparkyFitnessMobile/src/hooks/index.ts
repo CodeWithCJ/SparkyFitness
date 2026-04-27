@@ -9,6 +9,10 @@ export {
   foodSearchQueryKey,
   foodsLibraryQueryKey,
   mealsQueryKey,
+  mealDetailQueryKey,
+  recentMealsQueryKeyRoot,
+  recentMealsQueryKey,
+  mealSearchQueryKeyRoot,
   mealSearchQueryKey,
   externalProvidersQueryKey,
   externalFoodSearchQueryKey,
@@ -26,6 +30,7 @@ export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
 export { useDailySummary } from './useDailySummary';
 export { useMeasurements } from './useMeasurements';
+export { useUpsertCheckIn } from './useUpsertCheckIn';
 export { usePreferences } from './usePreferences';
 export { useRefetchOnFocus } from './useRefetchOnFocus';
 export { useWaterIntakeMutation } from './useWaterIntakeMutation';
@@ -33,7 +38,7 @@ export { useFoods } from './useFoods';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
 export { useFoodsLibrary } from './useFoodsLibrary';
-export { useMeals, useCreateMeal } from './useMeals';
+export { useMeals, useRecentMeals, useMeal, useCreateMeal, useUpdateMeal, useDeleteMeal } from './useMeals';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';

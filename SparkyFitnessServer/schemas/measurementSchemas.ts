@@ -79,13 +79,13 @@ export type UpdateWaterIntakeBody = z.infer<typeof UpdateWaterIntakeBodySchema>;
 export const UpsertCheckInBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
-    weight: optionalLegacyNumber,
-    neck: optionalLegacyNumber,
-    waist: optionalLegacyNumber,
-    hips: optionalLegacyNumber,
-    steps: optionalLegacyNumber,
-    height: optionalLegacyNumber,
-    body_fat_percentage: optionalLegacyNumber,
+    weight: nullableOptionalLegacyNumber,
+    neck: nullableOptionalLegacyNumber,
+    waist: nullableOptionalLegacyNumber,
+    hips: nullableOptionalLegacyNumber,
+    steps: nullableOptionalLegacyNumber,
+    height: nullableOptionalLegacyNumber,
+    body_fat_percentage: nullableOptionalLegacyNumber,
   })
   .loose();
 

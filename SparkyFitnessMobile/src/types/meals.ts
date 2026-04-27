@@ -67,6 +67,20 @@ export interface CreateMealPayload {
   foods: MealFoodPayload[];
 }
 
+export interface UpdateMealPayload {
+  name?: string;
+  description?: string | null;
+  is_public?: boolean;
+  serving_size?: number;
+  serving_unit?: string;
+  foods?: MealFoodPayload[];
+}
+
+export interface MealDeletionImpact {
+  usedByOtherUsers: boolean;
+  usedByCurrentUser: boolean;
+}
+
 export interface MealIngredientDraft extends MealFoodPayload {
   brand: string | null;
   serving_size: number;

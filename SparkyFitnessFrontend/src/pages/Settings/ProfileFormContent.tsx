@@ -27,6 +27,7 @@ import { Profile, ProfileFormState } from '@/types/settings';
 import { useMostRecentHeightQuery } from '@/hooks/Diary/useDailyProgress';
 import { UpdateCheckInMeasurementsRequest } from '@workspace/shared';
 import { useSaveCheckInMeasurementsMutation } from '@/hooks/CheckIn/useCheckIn';
+import { UnitInput } from '@/components/ui/UnitInput';
 
 export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
   const { t } = useTranslation();
@@ -45,8 +46,12 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
     date_of_birth: profile.date_of_birth || '',
     bio: profile.bio || '',
     gender: profile.gender || '',
-    height: heightData?.height || '',
+    height: '',
   });
+  const [heightTouched, setHeightTouched] = useState(false);
+  const heightValue = heightTouched
+    ? profileForm.height
+    : (heightData?.height?.toString() ?? '');
 
   const handleProfileUpdate = async () => {
     if (!user?.id) return;
@@ -59,11 +64,21 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
         bio: profileForm.bio,
         gender: profileForm.gender || null,
       });
-      const measurementData: UpdateCheckInMeasurementsRequest = {
-        entry_date: formatDateInUserTimezone(new Date(), 'yyyy-MM-dd'),
-        height: Number(profileForm.height),
-      };
-      await saveCheckInMeasurements(measurementData);
+      if (heightTouched) {
+        const heightCm =
+          typeof profileForm.height === 'number'
+            ? profileForm.height
+            : parseFloat(profileForm.height);
+        const heightChanged =
+          !isNaN(heightCm) && heightCm > 0 && heightCm !== heightData?.height;
+        if (heightChanged) {
+          const measurementData: UpdateCheckInMeasurementsRequest = {
+            entry_date: formatDateInUserTimezone(new Date(), 'yyyy-MM-dd'),
+            height: heightCm,
+          };
+          await saveCheckInMeasurements(measurementData);
+        }
+      }
     } catch (error: unknown) {
       console.error(error);
     }
@@ -183,26 +198,23 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
           <Label htmlFor="height">
             {t('settings.profileInformation.height', 'Height')}
           </Label>
-          <div className="relative">
-            <Input
-              id="height"
-              type="number"
-              value={profileForm.height}
-              onChange={(e) =>
-                setProfileForm((prev) => ({
-                  ...prev,
-                  height: e.target.value,
-                }))
-              }
-              placeholder={t(
-                'settings.profileInformation.enterHeight',
-                'Enter your Height'
-              )}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
-              {defaultMeasurementUnit}
-            </span>
-          </div>
+          <UnitInput
+            id="height"
+            type="height"
+            unit={defaultMeasurementUnit}
+            value={heightValue}
+            onChange={(val) => {
+              setHeightTouched(true);
+              setProfileForm((prev) => ({
+                ...prev,
+                height: val ? val.toString() : '',
+              }));
+            }}
+            placeholder={t(
+              'settings.profileInformation.enterHeight',
+              'Enter your Height'
+            )}
+          />
         </div>
         <div className="md:col-span-2">
           <Label htmlFor="bio">

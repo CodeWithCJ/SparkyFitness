@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
+  CommonActions,
   NavigationContainer,
   type LinkingOptions,
   type NavigationProp,
@@ -27,12 +28,14 @@ import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
-import MealNutritionScreen from './src/screens/MealNutritionScreen';
+import MealTypeDetailScreen from './src/screens/MealTypeDetailScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
+import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import FoodDetailScreen from './src/screens/FoodDetailScreen';
-import MealBuilderScreen from './src/screens/MealBuilderScreen';
+import MealDetailScreen from './src/screens/MealDetailScreen';
+import MealAddScreen from './src/screens/MealAddScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
@@ -41,6 +44,7 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
+import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
@@ -76,7 +80,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
-import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
+import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
@@ -86,6 +90,14 @@ SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+type TabStateSnapshot = {
+  index?: number;
+  routes: Array<{
+    name: string;
+    params?: unknown;
+  }>;
+};
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
 const androidModalAnimation =
@@ -101,14 +113,16 @@ const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
 // Stack screens — with Go Back
 const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
+const SafeMealsLibrary = withErrorBoundary(MealsLibraryScreen, 'MealsLibrary', { canGoBack: true });
 const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
+const SafeMealDetail = withErrorBoundary(MealDetailScreen, 'MealDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
-const SafeMealBuilder = withErrorBoundary(MealBuilderScreen, 'MealBuilder', { canGoBack: true });
+const SafeMealAdd = withErrorBoundary(MealAddScreen, 'MealAdd', { canGoBack: true });
 const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
-const SafeMealNutrition = withErrorBoundary(MealNutritionScreen, 'MealNutrition', { canGoBack: true });
+const SafeMealTypeDetail = withErrorBoundary(MealTypeDetailScreen, 'MealTypeDetail', { canGoBack: true });
 const SafeExerciseSearch = withErrorBoundary(ExerciseSearchScreen, 'ExerciseSearch', { canGoBack: true });
 const SafePresetSearch = withErrorBoundary(PresetSearchScreen, 'PresetSearch', { canGoBack: true });
 const SafeWorkoutAdd = withErrorBoundary(WorkoutAddScreen, 'WorkoutAdd', { canGoBack: true });
@@ -117,6 +131,7 @@ const SafeWorkoutDetail = withErrorBoundary(WorkoutDetailScreen, 'WorkoutDetail'
 const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDetail', { canGoBack: true });
 const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
+const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 
@@ -149,7 +164,6 @@ function AppContent() {
     determine();
   }, []);
 
-  const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);
   const backgroundEnteredAtRef = useRef<number | null>(null);
@@ -190,10 +204,17 @@ function AppContent() {
 
   const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
-    if (!navigation) return undefined;
+    const state =
+      navigation?.getState() ??
+      (rootNavigationRef.isReady()
+        ? (rootNavigationRef
+            .getRootState()
+            .routes.find((route) => route.name === 'Tabs')
+            ?.state as TabStateSnapshot | undefined)
+        : undefined);
+    if (!state) return undefined;
 
-    const state = navigation.getState();
-    const activeRoute = state.routes[state.index];
+    const activeRoute = state.routes[state.index ?? 0];
     const diaryParams =
       activeRoute.name === 'Diary'
         ? (activeRoute.params as { selectedDate?: string } | undefined)
@@ -216,7 +237,12 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodScan', { date });
   }, [getActiveDiaryDate]);
 
-  const navigateFromSheet = useCallback((screen: string, params?: Record<string, unknown>) => {
+  const navigateFromSheet = useCallback((screen: keyof RootStackParamList, params?: RootStackParamList[keyof RootStackParamList]) => {
+    if (rootNavigationRef.isReady()) {
+      rootNavigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
+      return;
+    }
+
     navigationRef.current?.getParent()?.navigate(screen, params);
   }, []);
 
@@ -287,6 +313,11 @@ function AppContent() {
   const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
+
+  const handleAddMeasurements = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('MeasurementsAdd', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
     if (syncMutation.isPending || isSyncClaimed()) return;
@@ -626,8 +657,24 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="MealsLibrary"
+            component={SafeMealsLibrary}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="MealDetail"
+            component={SafeMealDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -674,8 +721,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="MealBuilder"
-            component={SafeMealBuilder}
+            name="MealAdd"
+            component={SafeMealAdd}
             options={{
               presentation: 'modal',
               headerShown: false,
@@ -692,8 +739,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="MealNutrition"
-            component={SafeMealNutrition}
+            name="MealTypeDetail"
+            component={SafeMealTypeDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -762,6 +809,16 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="MeasurementsAdd"
+            component={SafeMeasurementsAdd}
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              gestureEnabled: true,
+              ...androidModalAnimation,
+            }}
+          />
+          <Stack.Screen
             name="CalorieSettings"
             component={SafeCalorieSettings}
             options={{
@@ -776,7 +833,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

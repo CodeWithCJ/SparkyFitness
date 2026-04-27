@@ -19,9 +19,9 @@ import {
 import { getMealTypeLabel } from '../constants/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 
-type MealNutritionScreenProps = RootStackScreenProps<'MealNutrition'>;
+type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
-const MealNutritionScreen: React.FC<MealNutritionScreenProps> = ({ navigation, route }) => {
+const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
   const { date, mealType, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -159,4 +159,4 @@ const MealNutritionScreen: React.FC<MealNutritionScreenProps> = ({ navigation, r
   );
 };
 
-export default MealNutritionScreen;
+export default MealTypeDetailScreen;

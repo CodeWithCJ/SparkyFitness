@@ -54,11 +54,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   );
 
   const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
-  const goToNextDay = () => setSelectedDate(prev => {
-    const today = getTodayDate();
-    const next = addDays(prev, 1);
-    return next > today ? prev : next;
-  });
+  const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));
   const goToToday = () => setSelectedDate(getTodayDate());
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
@@ -86,7 +82,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   useWidgetSync(summary);
 
-  const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
+  const weightUnit: 'kg' | 'lbs' =
+    (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
   const weightData = useMemo(() => {
     if (weightUnit === 'kg') return rawWeightData;
     return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
@@ -273,11 +271,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         )}
 
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
-          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0 || summary.activeCalories > 0) && (
+          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
           <ExerciseProgressCard
             exerciseMinutes={summary.exerciseMinutes}
             exerciseMinutesGoal={summary.exerciseMinutesGoal}
-            exerciseCalories={summary.otherExerciseCalories > 0 ? summary.otherExerciseCalories : summary.activeCalories}
+            exerciseCalories={summary.otherExerciseCalories}
             exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
           />
         )}

@@ -4,6 +4,17 @@ import mealService from '../services/mealService.js';
 import { log } from '../config/logging.js';
 const router = express.Router();
 router.use(express.json());
+
+function parseRecentMealsLimit(value: unknown) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const parsed =
+    typeof rawValue === 'string' && /^\d+$/.test(rawValue)
+      ? Number.parseInt(rawValue, 10)
+      : NaN;
+
+  if (!Number.isFinite(parsed)) return 3;
+  return Math.min(20, Math.max(1, parsed));
+}
 // --- Meal Plan Routes ---
 /**
  * @swagger
@@ -315,6 +326,38 @@ router.get('/', authenticate, async (req, res, next) => {
     res.status(200).json(meals);
   } catch (error) {
     log('error', 'Error getting meals:', error);
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /meals/recent:
+ *   get:
+ *     summary: Get recently logged meal templates
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves meal templates recently logged by the authenticated user.
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 3
+ *           minimum: 1
+ *           maximum: 20
+ *         description: The maximum number of recent meals to return.
+ *     responses:
+ *       200:
+ *         description: A list of recently logged meal templates.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
+router.get('/recent', authenticate, async (req, res, next) => {
+  try {
+    const limit = parseRecentMealsLimit(req.query.limit);
+    const meals = await mealService.getRecentMeals(req.userId, limit);
+    res.status(200).json(meals);
+  } catch (error) {
+    log('error', 'Error getting recent meals:', error);
     next(error);
   }
 });

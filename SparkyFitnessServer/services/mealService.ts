@@ -73,6 +73,19 @@ async function getMeals(userId: any, filter = 'all', searchTerm = '') {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getRecentMeals(userId: any, limit = 3) {
+  try {
+    return await mealRepository.getRecentMeals(userId, limit);
+  } catch (error) {
+    log(
+      'error',
+      `Error in mealService.getRecentMeals for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getMealById(userId: any, mealId: any) {
   try {
     log(
@@ -601,6 +614,7 @@ async function createMealFromDiaryEntries(
 }
 export { createMeal };
 export { getMeals };
+export { getRecentMeals };
 export { getMealById };
 export { updateMeal };
 export { deleteMeal };
@@ -618,6 +632,7 @@ export { createMealFromDiaryEntries };
 export default {
   createMeal,
   getMeals,
+  getRecentMeals,
   getMealById,
   updateMeal,
   deleteMeal,

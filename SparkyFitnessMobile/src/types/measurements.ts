@@ -1,25 +1,25 @@
 export interface CheckInMeasurement {
   entry_date: string;
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-  height?: number;
-  body_fat_percentage?: number;
+  weight?: number | null;
+  neck?: number | null;
+  waist?: number | null;
+  hips?: number | null;
+  steps?: number | null;
+  height?: number | null;
+  body_fat_percentage?: number | null;
 }
 
 export interface CheckInMeasurementRange {
   id: string;
   user_id: string;
   entry_date: string;
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-  height?: number;
-  body_fat_percentage?: number;
+  weight?: number | null;
+  neck?: number | null;
+  waist?: number | null;
+  hips?: number | null;
+  steps?: number | null;
+  height?: number | null;
+  body_fat_percentage?: number | null;
   updated_at: string;
 }
 

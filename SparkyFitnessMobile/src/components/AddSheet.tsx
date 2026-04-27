@@ -11,9 +11,11 @@ import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
 
 export interface AddSheetRef {
-  present: () => void;
+  present: (options?: { initialMenu?: 'exercise' }) => void;
   dismiss: () => void;
 }
+
+export const addSheetRef = React.createRef<AddSheetRef>();
 
 interface AddSheetProps {
   onAddFood: () => void;
@@ -22,6 +24,7 @@ interface AddSheetProps {
   onAddFromPreset: () => void;
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
+  onAddMeasurements: () => void;
 }
 
 interface ActionCard {
@@ -31,11 +34,12 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan, onAddMeasurements }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
     const pendingPresentRef = useRef(false);
+    const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
@@ -66,11 +70,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, [clearScheduledPresent]);
 
     useImperativeHandle(ref, () => ({
-      present: () => {
+      present: (options) => {
+        const initialMenu = options?.initialMenu ?? null;
         if (isOpenRef.current || (pendingPresentRef.current && !isDismissingRef.current)) {
           return;
         }
         pendingPresentRef.current = true;
+        pendingInitialMenuRef.current = initialMenu;
+        setShowExerciseMenu(initialMenu === 'exercise');
         if (isDismissingRef.current) {
           return;
         }
@@ -78,6 +85,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       },
       dismiss: () => {
         pendingPresentRef.current = false;
+        pendingInitialMenuRef.current = null;
         isDismissingRef.current = true;
         clearScheduledPresent();
         bottomSheetRef.current?.dismiss();
@@ -112,9 +120,11 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const handleDismiss = useCallback(() => {
       isDismissingRef.current = false;
       isOpenRef.current = false;
-      setShowExerciseMenu(false);
+      setShowExerciseMenu(pendingPresentRef.current && pendingInitialMenuRef.current === 'exercise');
       if (pendingPresentRef.current) {
         schedulePresent();
+      } else {
+        pendingInitialMenuRef.current = null;
       }
     }, [schedulePresent]);
 
@@ -136,7 +146,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const cards: ActionCard[] = [
       { label: 'Food', icon: 'food', onPress: onAddFood },
       { label: 'Exercise', icon: 'exercise-weights' },
-      { label: 'Sync Health Data', icon: 'sync', onPress: onSyncHealthData },
+      { label: 'Measurements', icon: 'measurements', onPress: onAddMeasurements },
       { label: 'Barcode Scan', icon: 'scan', onPress: onBarcodeScan },
     ];
 
@@ -158,6 +168,20 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         <Icon name={card.icon} size={32} color={accentPrimary} />
         <Text className="text-text-primary text-sm font-medium mt-2">
           {card.label}
+        </Text>
+      </Button>
+    );
+
+    const renderSecondaryRow = (label: string, icon: IconName, onPress: () => void) => (
+      <Button
+        variant="primary"
+        className="flex-row items-center justify-center py-3 mx-1.5 mt-3"
+        style={{ backgroundColor: raisedBg }}
+        onPress={() => handleAction(onPress)}
+      >
+        <Icon name={icon} size={20} color={accentPrimary} />
+        <Text className="text-text-primary text-sm font-medium ml-2">
+          {label}
         </Text>
       </Button>
     );
@@ -214,7 +238,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
               </Pressable>
               <View className="flex-row">
                 {renderExerciseOption('Workout', 'Sets & reps', 'exercise-weights', onAddWorkout)}
-                {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running', onAddActivity)}
+                {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running-filled', onAddActivity)}
                 {renderExerciseOption('Preset', 'Use a template', 'bookmark-filled', onAddFromPreset)}
               </View>
             </>
@@ -228,6 +252,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[2])}
                 {renderCard(cards[3])}
               </View>
+              {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}
             </>
           )}
         </BottomSheetView>

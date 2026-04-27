@@ -13,16 +13,15 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
-import FoodLibraryRow from '../components/FoodLibraryRow';
+import MealLibraryRow from '../components/MealLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFoodsLibrary, useServerConnection } from '../hooks';
-import { foodItemToFoodInfo } from '../types/foodInfo';
+import { useMealSearch, useMeals, useServerConnection } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { FoodItem } from '../types/foods';
+import type { Meal } from '../types/meals';
 
-type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
+type MealsLibraryScreenProps = RootStackScreenProps<'MealsLibrary'>;
 
-const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textMuted] = useCSSVariable([
@@ -36,26 +35,38 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
-    foods,
-    isLoading,
+    meals,
+    isLoading: isMealsLoading,
+    isError: isMealsError,
+    refetch: refetchMeals,
+  } = useMeals({ enabled: isConnected });
+  const {
+    searchResults,
     isSearching,
-    isError,
-    isFetchNextPageError,
-    hasNextPage,
-    isFetchingNextPage,
-    loadMore,
-    refetch,
-  } = useFoodsLibrary(searchText, { enabled: isConnected });
+    isSearchActive,
+    isSearchError,
+    refetch: refetchSearch,
+  } = useMealSearch(searchText, { enabled: isConnected });
 
-  const handleFoodPress = useCallback((food: FoodItem) => {
-    navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
+  const displayedMeals = isSearchActive ? searchResults : meals;
+  const isLoading = isSearchActive
+    ? isSearching && searchResults.length === 0
+    : isMealsLoading;
+  const isError = isSearchActive ? isSearchError : isMealsError;
+
+  const handleMealPress = useCallback((meal: Meal) => {
+    navigation.navigate('MealDetail', { mealId: meal.id, initialMeal: meal });
   }, [navigation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    if (isSearchActive) {
+      await refetchSearch();
+    } else {
+      await refetchMeals();
+    }
     setRefreshing(false);
-  }, [refetch]);
+  }, [isSearchActive, refetchMeals, refetchSearch]);
 
   const renderHeader = () => (
     <View className="flex-row items-center px-4 pt-4 pb-5">
@@ -67,7 +78,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       >
         <Icon name="chevron-back" size={22} color={accentColor} />
       </Button>
-      <Text className="text-2xl font-bold text-text-primary">Foods</Text>
+      <Text className="text-2xl font-bold text-text-primary">Meals</Text>
     </View>
   );
 
@@ -82,7 +93,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
-            placeholder="Search foods..."
+            placeholder="Search meals..."
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -100,40 +111,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     </View>
   );
 
-  const renderFooter = () => {
-    if (isFetchingNextPage) {
-      return (
-        <View className="py-5 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-
-    if (isFetchNextPageError) {
-      return (
-        <View className="px-4 py-4 items-center">
-          <Text className="text-text-secondary text-sm text-center mb-3">
-            Failed to load more foods.
-          </Text>
-          <Button variant="secondary" className="px-6" onPress={loadMore}>
-            Retry
-          </Button>
-        </View>
-      );
-    }
-
-    return <View className="h-4" />;
-  };
-
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        {isSearchActive ? 'No matching meals found' : 'No meals found'}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
-        {searchText.trim().length > 0
-          ? 'Try a different search term to find saved foods.'
-          : 'Foods you save or log will appear here.'}
+        {isSearchActive
+          ? 'Try a different search term to find saved meals.'
+          : 'Meals you create will appear here.'}
       </Text>
     </View>
   );
@@ -146,14 +132,14 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           iconColor="#9CA3AF"
           iconSize={64}
           title="No server configured"
-          subtitle="Configure your server connection in Settings to view your food library."
+          subtitle="Configure your server connection in Settings to view your meal library."
           action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title="Loading meals..." />;
     }
 
     if (isError) {
@@ -162,33 +148,26 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load foods"
+          title={isSearchActive ? 'Failed to search meals' : 'Failed to load meals'}
           subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          action={{ label: 'Retry', onPress: () => void (isSearchActive ? refetchSearch() : refetchMeals()), variant: 'primary' }}
         />
       );
     }
 
     return (
       <FlatList
-        data={foods}
+        data={displayedMeals}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <FoodLibraryRow
-            food={item}
-            showDivider={index < foods.length - 1}
-            onPress={() => handleFoodPress(item)}
+          <MealLibraryRow
+            meal={item}
+            showDivider={index < displayedMeals.length - 1}
+            onPress={() => handleMealPress(item)}
           />
         )}
         ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
         keyboardShouldPersistTaps="handled"
-        onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
-            loadMore();
-          }
-        }}
-        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -206,4 +185,4 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   );
 };
 
-export default FoodsLibraryScreen;
+export default MealsLibraryScreen;

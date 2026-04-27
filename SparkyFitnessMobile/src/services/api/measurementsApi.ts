@@ -46,6 +46,40 @@ export const fetchMeasurementsRange = async (startDate: string, endDate: string)
 };
 
 /**
+ * Upserts a check-in measurement record for a given date.
+ *
+ * `undefined` fields are stripped by `JSON.stringify` and left unchanged
+ * server-side. Pass `null` to explicitly clear a previously-saved value.
+ */
+export const upsertCheckIn = async (params: {
+  entryDate: string;
+  weight?: number | null;
+  neck?: number | null;
+  waist?: number | null;
+  hips?: number | null;
+  steps?: number | null;
+  height?: number | null;
+  bodyFatPercentage?: number | null;
+}): Promise<CheckInMeasurement> => {
+  return apiFetch<CheckInMeasurement>({
+    endpoint: '/api/measurements/check-in',
+    serviceName: 'Measurements API',
+    operation: 'upsert check-in',
+    method: 'POST',
+    body: {
+      entry_date: params.entryDate,
+      weight: params.weight,
+      neck: params.neck,
+      waist: params.waist,
+      hips: params.hips,
+      steps: params.steps,
+      height: params.height,
+      body_fat_percentage: params.bodyFatPercentage,
+    },
+  });
+};
+
+/**
  * Changes water intake by adding or removing a drink.
  */
 export const changeWaterIntake = async (params: {
