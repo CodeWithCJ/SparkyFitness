@@ -64,28 +64,44 @@ jobs:
               body.includes('[x] New Feature') ||
               body.includes('[X] New Feature');
 
-            // ---- Labeling ----
-            const toAdd = [];
+              const isIssue = /-\s*\[x\]\s*Issue/i.test(body);
+              const isNewFeature = /-\s*\[x\]\s*New Feature/i.test(body);
+              const isRefactor = /-\s*\[x\]\s*Refactor/i.test(body);
+              const isDocs = /-\s*\[x\]\s*Documentation/i.test(body);
 
-            if (/^fix(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('issue') || b.includes('bug'))) {
-              toAdd.push('bug');
-            }
-            if (/^feat(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('new feature'))) {
-              toAdd.push('enhancement');
-            }
-            if (/^docs(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.includes('documentation'))) {
-              toAdd.push('documentation');
-            }
-            if (/^refactor(\(.+\))?:/.test(title) || checkedBoxes.some(b => b.startsWith('refactor'))) {
-              toAdd.push('refactor');
-            }
-            if (/^security(\(.+\))?:/.test(title)) {
-              toAdd.push('security');
-            }
-            if (hasFrontendChanges) toAdd.push('frontend');
-            if (hasBackendChanges)  toAdd.push('backend');
-            if (hasMobileChanges)   toAdd.push('mobile');
+              const toAdd = [];
 
+              if (/^fix(\(.+\))?:/.test(title) || isIssue) {
+                toAdd.push('bug');
+              }
+
+              if (/^feat(\(.+\))?:/.test(title) || isNewFeature) {
+                toAdd.push('enhancement');
+              }
+
+              if (/^docs(\(.+\))?:/.test(title) || isDocs) {
+                toAdd.push('documentation');
+              }
+
+              if (/^refactor(\(.+\))?:/.test(title) || isRefactor) {
+                toAdd.push('refactor');
+              }
+
+              if (/^security(\(.+\))?:/.test(title)) {
+                toAdd.push('security');
+              }
+
+              if (hasFrontendChanges) {
+                toAdd.push('frontend');
+              }
+
+              if (hasBackendChanges) {
+                toAdd.push('backend');
+              }
+
+              if (hasMobileChanges) {
+                toAdd.push('mobile');
+              }
             if (toAdd.length > 0) {
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
@@ -141,11 +157,7 @@ jobs:
               }
             }
 
-            const hasType =
-              body.includes('[x] Issue')         || body.includes('[X] Issue')    ||
-              body.includes('[x] New Feature')    || body.includes('[X] New Feature') ||
-              body.includes('[x] Refactor')       || body.includes('[X] Refactor') ||
-              body.includes('[x] Documentation')  || body.includes('[X] Documentation');
+            const hasType = isIssue || isNewFeature || isRefactor || isDocs;
 
             if (!hasType) {
               warnings.push('Please select a PR type (Issue, New Feature, Refactor, or Documentation).');
