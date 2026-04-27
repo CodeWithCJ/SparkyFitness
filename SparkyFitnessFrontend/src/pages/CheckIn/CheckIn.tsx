@@ -55,7 +55,7 @@ const CheckIn = () => {
   const [, setSearchParams] = useSearchParams();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6">
       <CheckInPreferences
         selectedDate={selectedDate}
         onDateChange={(dateString) => {
