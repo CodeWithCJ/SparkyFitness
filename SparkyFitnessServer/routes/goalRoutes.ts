@@ -76,7 +76,7 @@ router.get(
   authenticate,
   checkPermissionMiddleware('diary'),
   async (req, res, next) => {
-    const { date, userId } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
+    const { date, userId, end_date } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
     if (!date) {
       return res.status(400).json({ error: 'Date is required.' });
     }
@@ -84,8 +84,20 @@ router.get(
 
     const targetUserId = userId || req.userId;
     try {
-      const goals = await goalService.getUserGoals(targetUserId, date);
-      res.status(200).json(goals);
+      if (end_date) {
+        const goals = await goalService.getUserGoalsForRange(
+          targetUserId as string,
+          date as string,
+          end_date as string
+        );
+        res.status(200).json(goals);
+      } else {
+        const goals = await goalService.getUserGoals(
+          targetUserId as string,
+          date as string
+        );
+        res.status(200).json(goals);
+      }
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       if (error.message.startsWith('Forbidden')) {

@@ -25,15 +25,18 @@ import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { formatNutrientValue } from '@/utils/nutrientUtils';
 import { NutritionData } from '@/types/reports';
 import { calculateAverage } from '@/utils/reportUtil';
+import { ExpandedGoals } from '@/types/goals';
 
 interface NutritionChartsGridProps {
   nutritionData: NutritionData[];
-  customNutrients: UserCustomNutrient[]; // Add customNutrients prop
+  customNutrients: UserCustomNutrient[];
+  goals?: Record<string, ExpandedGoals>;
 }
 
 const NutritionChartsGrid = ({
   nutritionData,
   customNutrients,
+  goals,
 }: NutritionChartsGridProps) => {
   const { t } = useTranslation();
   const {
@@ -58,11 +61,23 @@ const NutritionChartsGrid = ({
   // Helper function to prepare chart data with optional incomplete day exclusion
   const prepareChartData = (data: NutritionData[], chartKey: string) => {
     const config = getChartConfig(chartKey);
-    if (config.excludeIncompleteDay) {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      return excludeIncompleteDay(data, today);
+    let result = config.excludeIncompleteDay
+      ? excludeIncompleteDay(data, format(new Date(), 'yyyy-MM-dd'))
+      : data;
+
+    // Merge goal value per date if goals is a map
+    if (goals && typeof goals === 'object' && !('calories' in goals)) {
+      result = result.map((point) => {
+        const goalValue = (goals as Record<string, ExpandedGoals>)[
+          point.date
+        ]?.[chartKey as keyof ExpandedGoals];
+        return goalValue !== undefined
+          ? { ...point, [`${chartKey}_goal`]: goalValue }
+          : point;
+      }) as NutritionData[];
     }
-    return data;
+
+    return result;
   };
 
   // Helper function to get smart Y-axis domain for nutrition metrics
@@ -250,6 +265,16 @@ const NutritionChartsGrid = ({
                           strokeWidth={2}
                           dot={false}
                           isAnimationActive={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={`${chart.key}_goal`}
+                          stroke={chart.color}
+                          strokeWidth={1}
+                          strokeDasharray="7 3"
+                          dot={false}
+                          isAnimationActive={false}
+                          name="Goal"
                         />
                       </LineChart>
                     </ResponsiveContainer>

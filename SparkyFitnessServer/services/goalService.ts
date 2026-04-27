@@ -2,10 +2,12 @@ import goalRepository from '../models/goalRepository.js';
 import weeklyGoalPlanRepository from '../models/weeklyGoalPlanRepository.js';
 import goalPresetRepository from '../models/goalPresetRepository.js';
 import { log } from '../config/logging.js';
-import { format, getDay } from 'date-fns';
+import { addDays, format, getDay, isAfter, parseISO } from 'date-fns';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
+import { DEFAULT_GOALS } from '../constants/goals.js';
+import { Goals } from '../types/goals.js';
 // Helper function to calculate grams from percentages
 function calculateGramsFromPercentages(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,143 +24,128 @@ function calculateGramsFromPercentages(
   const fat_grams = (calories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getUserGoals(targetUserId: any, selectedDate: any) {
+
+async function getUserGoalsForRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const explicitGoals = await goalRepository.getGoalsInRange(
+    userId,
+    startDate,
+    endDate
+  );
+  const explicitByDate = Object.fromEntries(
+    explicitGoals.map((g: Goals) => [
+      format(new Date(g.goal_date), 'yyyy-MM-dd'),
+      g,
+    ])
+  );
+
+  const activeWeeklyPlan =
+    await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(userId, startDate);
+  const presetCache: Record<string, unknown> = {};
+  const getPreset = async (presetId: string) => {
+    if (!presetCache[presetId]) {
+      presetCache[presetId] = await goalPresetRepository.getGoalPresetById(
+        presetId,
+        userId
+      );
+    }
+    return presetCache[presetId];
+  };
+
+  const fallback = await goalRepository.getMostRecentGoalBeforeDate(
+    userId,
+    startDate
+  );
+
+  const DAY_PRESETS = [
+    'sunday_preset_id',
+    'monday_preset_id',
+    'tuesday_preset_id',
+    'wednesday_preset_id',
+    'thursday_preset_id',
+    'friday_preset_id',
+    'saturday_preset_id',
+  ];
+
+  let currentFallback = (fallback ?? DEFAULT_GOALS) as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  let cursor = parseISO(startDate);
+  const end = parseISO(endDate);
+
+  while (!isAfter(cursor, end)) {
+    const dateStr = format(cursor, 'yyyy-MM-dd');
+    let goals = explicitByDate[dateStr] ?? null;
+
+    if (goals) {
+      currentFallback = goals;
+    } else if (activeWeeklyPlan) {
+      const presetId = activeWeeklyPlan[DAY_PRESETS[getDay(cursor)]];
+      if (presetId) {
+        goals = await getPreset(presetId);
+        // We don't necessarily update currentFallback with weekly plan presets
+        // as they are day-of-week specific, but the user might expect them to cascade
+        // if they are considered "new goals". However, usually fallbacks are explicit goals.
+      }
+    }
+
+    if (!goals) {
+      goals = currentFallback;
+    }
+
+    // Clone to avoid mutating the source in the cache or repository
+    let processedGoals = { ...goals };
+
+    if (
+      processedGoals.protein_percentage !== null &&
+      processedGoals.carbs_percentage !== null &&
+      processedGoals.fat_percentage !== null
+    ) {
+      const { protein_grams, carbs_grams, fat_grams } =
+        calculateGramsFromPercentages(
+          processedGoals.calories,
+          processedGoals.protein_percentage,
+          processedGoals.carbs_percentage,
+          processedGoals.fat_percentage
+        );
+      processedGoals = {
+        ...processedGoals,
+        protein: protein_grams,
+        carbs: carbs_grams,
+        fat: fat_grams,
+      };
+    }
+
+    result[dateStr] = processedGoals;
+    cursor = addDays(cursor, 1);
+  }
+
+  return result;
+}
+async function getUserGoals(
+  targetUserId: string,
+  selectedDate: string,
+  endDate?: string
+) {
   try {
     if (!targetUserId) {
       log(
         'error',
         'getUserGoals: targetUserId is undefined. Returning default goals.'
       );
-      return {
-        calories: 2000,
-        protein: 150,
-        carbs: 250,
-        fat: 67,
-        water_goal_ml: 1920, // Default 8 glasses * 240ml
-        saturated_fat: 20,
-        polyunsaturated_fat: 10,
-        monounsaturated_fat: 25,
-        trans_fat: 0,
-        cholesterol: 300,
-        sodium: 2300,
-        potassium: 3500,
-        dietary_fiber: 25,
-        sugars: 50,
-        vitamin_a: 900,
-        vitamin_c: 90,
-        calcium: 1000,
-        iron: 18,
-        target_exercise_calories_burned: 0,
-        target_exercise_duration_minutes: 0,
-        protein_percentage: null,
-        carbs_percentage: null,
-        fat_percentage: null,
-        breakfast_percentage: 25,
-        lunch_percentage: 25,
-        dinner_percentage: 25,
-        snacks_percentage: 25,
-      };
+      return DEFAULT_GOALS;
     }
-    let goals = await goalRepository.getGoalByDate(targetUserId, selectedDate);
-    if (!goals) {
-      // Check active weekly plan
-      const activeWeeklyPlan =
-        await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(
-          targetUserId,
-          selectedDate
-        );
-      if (activeWeeklyPlan) {
-        const dayOfWeek = getDay(new Date(selectedDate)); // Sunday is 0, Monday is 1, etc.
-        let presetId;
-        switch (dayOfWeek) {
-          case 0:
-            presetId = activeWeeklyPlan.sunday_preset_id;
-            break;
-          case 1:
-            presetId = activeWeeklyPlan.monday_preset_id;
-            break;
-          case 2:
-            presetId = activeWeeklyPlan.tuesday_preset_id;
-            break;
-          case 3:
-            presetId = activeWeeklyPlan.wednesday_preset_id;
-            break;
-          case 4:
-            presetId = activeWeeklyPlan.thursday_preset_id;
-            break;
-          case 5:
-            presetId = activeWeeklyPlan.friday_preset_id;
-            break;
-          case 6:
-            presetId = activeWeeklyPlan.saturday_preset_id;
-            break;
-        }
-        if (presetId) {
-          goals = await goalPresetRepository.getGoalPresetById(
-            presetId,
-            targetUserId
-          );
-        }
-      }
+    if (endDate) {
+      return getUserGoalsForRange(targetUserId, selectedDate, endDate);
     }
-    if (!goals) {
-      // Fallback to most recent goal before date (which includes default goal if goal_date is NULL)
-      goals = await goalRepository.getMostRecentGoalBeforeDate(
-        targetUserId,
-        selectedDate
-      );
-    }
-    // If still no goals, return hardcoded defaults
-    if (!goals) {
-      goals = {
-        calories: 2000,
-        protein: 150,
-        carbs: 250,
-        fat: 67,
-        water_goal_ml: 1920, // Default 8 glasses * 240ml
-        saturated_fat: 20,
-        polyunsaturated_fat: 10,
-        monounsaturated_fat: 25,
-        trans_fat: 0,
-        cholesterol: 300,
-        sodium: 2300,
-        potassium: 3500,
-        dietary_fiber: 25,
-        sugars: 50,
-        vitamin_a: 900,
-        vitamin_c: 90,
-        calcium: 1000,
-        iron: 18,
-        target_exercise_calories_burned: 0,
-        target_exercise_duration_minutes: 0,
-        protein_percentage: null,
-        carbs_percentage: null,
-        fat_percentage: null,
-        breakfast_percentage: 25,
-        lunch_percentage: 25,
-        dinner_percentage: 25,
-        snacks_percentage: 25,
-      };
-    }
-    // If percentages are set, calculate absolute grams for return
-    if (
-      goals.protein_percentage !== null &&
-      goals.carbs_percentage !== null &&
-      goals.fat_percentage !== null
-    ) {
-      const { protein_grams, carbs_grams, fat_grams } =
-        calculateGramsFromPercentages(
-          goals.calories,
-          goals.protein_percentage,
-          goals.carbs_percentage,
-          goals.fat_percentage
-        );
-      goals.protein = protein_grams;
-      goals.carbs = carbs_grams;
-      goals.fat = fat_grams;
-    }
-    return goals;
+    const rangeGoals = await getUserGoalsForRange(
+      targetUserId,
+      selectedDate,
+      selectedDate
+    );
+    return rangeGoals[selectedDate] || DEFAULT_GOALS;
   } catch (error) {
     log(
       'error',
@@ -168,8 +155,9 @@ async function getUserGoals(targetUserId: any, selectedDate: any) {
     throw error;
   }
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function manageGoalTimeline(authenticatedUserId: any, goalData: any) {
+async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
   try {
     const {
       p_start_date,
@@ -368,5 +356,6 @@ export { getUserGoals };
 export { manageGoalTimeline };
 export default {
   getUserGoals,
+  getUserGoalsForRange,
   manageGoalTimeline,
 };
