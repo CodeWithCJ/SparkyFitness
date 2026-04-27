@@ -32,7 +32,7 @@ Linked Issue: Closes #
 
 **All PRs:**
 
-- [ ] **[MANDATORY - ALL] Integrity & License**: I certify this is my own work, free of malicious code, and I agree to the [License terms](LICENSE).
+- [ ] **[MANDATORY - ALL] Integrity & License**: I certify this is my own work, free of malicious code, and I agree to the [License terms](../LICENSE).
 
 **New features only:**
 
