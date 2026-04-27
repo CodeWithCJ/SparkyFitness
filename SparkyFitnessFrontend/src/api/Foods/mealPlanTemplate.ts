@@ -48,10 +48,3 @@ export const deleteMealPlanTemplate = async (
   }
   await api.delete(url);
 };
-
-export const getMealDayPresets = async (userId: string): Promise<[]> => {
-  const response = await api.get(
-    `/meal-plan-templates/presets?userId=${userId}`
-  );
-  return response.data;
-};
