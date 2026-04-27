@@ -59,6 +59,16 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
+
+const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
+  string,
+  { label: string; defaultLabel: string }
+> = {
+  carbs: { label: 'nutrition.carbs', defaultLabel: 'Carbs' },
+  dietary_fiber: { label: 'nutrition.fiber', defaultLabel: 'Fiber' },
+};
+
 interface MealCardProps {
   meal: {
     name: string;
@@ -324,6 +334,20 @@ const MealCard = ({
                 const isFoodEntry = !isFoodEntryMeal;
                 const isFromMealPlan =
                   isFoodEntry && (item as FoodEntry).meal_plan_template_id;
+                const entryName = isFoodEntryMeal
+                  ? (item as FoodEntryMeal).name
+                  : (item as FoodEntry).food_name;
+                const entryDescription = isFoodEntryMeal
+                  ? (item as FoodEntryMeal).description
+                  : (item as FoodEntry).brand_name;
+                const quantity = (item as FoodEntry | FoodEntryMeal).quantity;
+                const unit = (item as FoodEntry | FoodEntryMeal).unit;
+                const servingLabel = [quantity, unit]
+                  .filter((value) => value !== undefined && value !== null)
+                  .join(' ');
+                const entryIsHighlighted =
+                  'food_id' in item &&
+                  (item as FoodEntry).food_id === highlightFoodId;
 
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null =
@@ -350,35 +374,197 @@ const MealCard = ({
                   }`
                 );
 
+                const getNutrientDisplay = (nutrient: string) => {
+                  const metadata = getNutrientMetadata(
+                    nutrient,
+                    customNutrients
+                  );
+                  const value =
+                    (entryNutrition[nutrient as keyof MealTotals] as number) ??
+                    entryNutrition.custom_nutrients?.[nutrient] ??
+                    0;
+
+                  const displayValue =
+                    nutrient === 'calories'
+                      ? Math.round(
+                          convertEnergy(value, 'kcal', energyUnit)
+                        ).toString()
+                      : formatNutrientValue(nutrient, value, customNutrients);
+
+                  const unitDisplay =
+                    nutrient === 'calories'
+                      ? getEnergyUnitString(energyUnit)
+                      : metadata.unit;
+
+                  return { metadata, displayValue, unitDisplay };
+                };
+
+                const mobileCalories = visibleNutrientsForGrid.includes(
+                  'calories'
+                )
+                  ? getNutrientDisplay('calories')
+                  : null;
+                const mobileNutrients = visibleNutrientsForGrid
+                  .filter((nutrient) => nutrient !== 'calories')
+                  .slice(0, MOBILE_ENTRY_NUTRIENT_LIMIT);
+
+                if (isMobile) {
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'rounded-xl border bg-card p-4 shadow-sm transition-colors duration-300 dark:bg-secondary/50',
+                        entryIsHighlighted && 'border-2 border-blue-500'
+                      )}
+                    >
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                        <div className="min-w-0">
+                          <div className="text-base font-semibold leading-tight text-card-foreground">
+                            {entryName}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            {entryDescription && (
+                              <span className="break-words">
+                                {entryDescription}
+                              </span>
+                            )}
+                            {entryDescription && servingLabel && (
+                              <span aria-hidden="true">&bull;</span>
+                            )}
+                            {servingLabel && <span>{servingLabel}</span>}
+                            {isFromMealPlan && (
+                              <Badge variant="outline" className="text-[10px]">
+                                From Plan
+                              </Badge>
+                            )}
+                            {giValue &&
+                              validGiValues.includes(
+                                giValue as GlycemicIndex
+                              ) &&
+                              quickInfoNutrients.includes('glycemic_index') && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] font-medium"
+                                >
+                                  GI: {giValue}
+                                </Badge>
+                              )}
+                          </div>
+                        </div>
+                        {mobileCalories && (
+                          <div className="text-right">
+                            <div
+                              className={cn(
+                                'text-xl font-semibold leading-none',
+                                mobileCalories.metadata.color
+                              )}
+                            >
+                              {mobileCalories.displayValue}
+                            </div>
+                            <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                              {mobileCalories.unitDisplay}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {mobileNutrients.length > 0 && (
+                        <div
+                          className="mt-3 grid gap-2 border-t pt-3"
+                          style={{
+                            gridTemplateColumns: `repeat(${mobileNutrients.length}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {mobileNutrients.map((nutrient) => {
+                            const { metadata, displayValue, unitDisplay } =
+                              getNutrientDisplay(nutrient);
+                            const labelOverride =
+                              MOBILE_NUTRIENT_LABEL_OVERRIDES[nutrient];
+
+                            return (
+                              <div key={nutrient} className="min-w-0">
+                                <div
+                                  className={cn(
+                                    'text-sm font-medium leading-tight',
+                                    metadata.color
+                                  )}
+                                >
+                                  {displayValue}
+                                  {unitDisplay}
+                                </div>
+                                <div className="mt-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  {labelOverride
+                                    ? t(
+                                        labelOverride.label,
+                                        labelOverride.defaultLabel
+                                      )
+                                    : t(metadata.label, metadata.defaultLabel)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center gap-2 border-t pt-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 text-muted-foreground"
+                          onClick={() => {
+                            debug(
+                              loggingLevel,
+                              'MealCard: Edit entry button clicked:',
+                              item.id
+                            );
+                            onEditEntry(item);
+                          }}
+                          title="Edit entry"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 text-muted-foreground"
+                          onClick={() => {
+                            debug(
+                              loggingLevel,
+                              'MealCard: Remove entry button clicked:',
+                              item.id
+                            );
+                            onRemoveEntry(
+                              item.id,
+                              isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
+                            );
+                          }}
+                          title="Remove entry"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={item.id} // Use item.id directly
                     className={cn(
                       'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-colors duration-300',
-                      'food_id' in item &&
-                        (item as FoodEntry).food_id === highlightFoodId &&
-                        'border-2 border-blue-500'
+                      entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <span className="font-medium">
-                          {isFoodEntryMeal
-                            ? (item as FoodEntryMeal).name
-                            : (item as FoodEntry).food_name}
-                        </span>
-                        {(isFoodEntryMeal &&
-                          (item as FoodEntryMeal).description) ||
-                        (isFoodEntry && (item as FoodEntry).brand_name) ? (
+                        <span className="font-medium">{entryName}</span>
+                        {entryDescription ? (
                           <Badge variant="secondary" className="text-xs w-fit">
-                            {isFoodEntryMeal
-                              ? (item as FoodEntryMeal).description
-                              : (item as FoodEntry).brand_name}
+                            {entryDescription}
                           </Badge>
                         ) : null}
                         <span className="text-sm text-gray-500">
-                          {(item as FoodEntry | FoodEntryMeal).quantity}{' '}
-                          {(item as FoodEntry | FoodEntryMeal).unit}
+                          {servingLabel}
                         </span>
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
@@ -403,32 +589,8 @@ const MealCard = ({
                         }}
                       >
                         {visibleNutrientsForGrid.map((nutrient) => {
-                          const metadata = getNutrientMetadata(
-                            nutrient,
-                            customNutrients
-                          );
-                          const value =
-                            (entryNutrition[
-                              nutrient as keyof MealTotals
-                            ] as number) ??
-                            entryNutrition.custom_nutrients?.[nutrient] ??
-                            0;
-
-                          const displayValue =
-                            nutrient === 'calories'
-                              ? Math.round(
-                                  convertEnergy(value, 'kcal', energyUnit)
-                                ).toString()
-                              : formatNutrientValue(
-                                  nutrient,
-                                  value,
-                                  customNutrients
-                                );
-
-                          const unitDisplay =
-                            nutrient === 'calories'
-                              ? getEnergyUnitString(energyUnit)
-                              : metadata.unit;
+                          const { metadata, displayValue, unitDisplay } =
+                            getNutrientDisplay(nutrient);
 
                           return (
                             <div
