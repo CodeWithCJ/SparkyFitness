@@ -14,9 +14,10 @@ interface ZoomableChartProps {
     | ((isMaximized: boolean, zoomLevel: number) => React.ReactNode)
     | React.ReactNode;
   title: string;
+  className?: string;
 }
 
-const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
+const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -46,7 +47,7 @@ const ZoomableChart = ({ children, title }: ZoomableChartProps) => {
 
   return (
     <>
-      <div className="relative group min-w-0">
+      <div className={`relative group min-w-0 ${className}`}>
         <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
           <Button
             variant="outline"

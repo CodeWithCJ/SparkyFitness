@@ -20,6 +20,7 @@ import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
 import { dailyProgressKeys } from '@/api/keys/diary';
 import { UpdateExerciseEntryRequest } from '@workspace/shared';
+import { useDiaryInvalidation } from '../useInvalidateKeys';
 
 // --- Queries ---
 
@@ -56,19 +57,12 @@ export const useInfiniteExerciseHistoryV2 = (
 };
 
 export const useCreateExerciseEntryMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: createExerciseEntry,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: dailyProgressKeys.all,
-      });
-    },
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'diary.exerciseEntry.createSuccess',
@@ -83,7 +77,7 @@ export const useCreateExerciseEntryMutation = () => {
 };
 
 export const useUpdateExerciseEntryMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useDiaryInvalidation();
   const { t } = useTranslation();
 
   return useMutation({
@@ -94,14 +88,7 @@ export const useUpdateExerciseEntryMutation = () => {
       id: string;
       data: UpdateExerciseEntryRequest & { imageFile: File | null };
     }) => updateExerciseEntry(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: dailyProgressKeys.all,
-      });
-    },
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'diary.exerciseEntry.updateSuccess',
@@ -116,17 +103,12 @@ export const useUpdateExerciseEntryMutation = () => {
 };
 
 export const useDeleteExerciseEntryMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useDiaryInvalidation();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: deleteExerciseEntry,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
-      queryClient.invalidateQueries({
-        queryKey: dailyProgressKeys.all,
-      });
-    },
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'diary.exerciseEntry.deleteSuccess',

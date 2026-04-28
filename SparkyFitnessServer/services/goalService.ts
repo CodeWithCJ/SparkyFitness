@@ -41,7 +41,6 @@ async function getUserGoalsForRange(
       g,
     ])
   );
-
   const activeWeeklyPlan =
     await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(userId, startDate);
   const presetCache: Record<string, unknown> = {};
@@ -353,6 +352,7 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
   }
 }
 export { getUserGoals };
+export { getUserGoalsForRange };
 export { manageGoalTimeline };
 export default {
   getUserGoals,
