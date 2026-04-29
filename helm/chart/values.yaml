@@ -18,7 +18,7 @@ global:
   # postgresql.image.repository/tag directly — matching how HelmForge itself
   # constructs the image reference. Configure postgresql.image.repository
   # with the full registry path if you mirror the image to a private registry.
-  imageRegistry: ""
+  imageRegistry: "ghcr.io"
   # -- Global image pull secrets, e.g. [{name: "regcred"}]
   imagePullSecrets: []
   # -- Default StorageClass for all PVCs (overridable per component)
@@ -46,9 +46,14 @@ config:
   adminEmail: ""
 
   # -- Allow CORS from private network ranges (only for self-hosted/private networks)
-  allowPrivateNetworkCors: true
+  # This shouldn't be necessary for Kubernetes since traffic is going to be exposed
+  # via ingress to the web browser but may be useful if you don't have local DNS
+  # setup.
+  allowPrivateNetworkCors: false
   # -- Extra trusted origins, comma-separated (e.g. "http://192.168.1.5:8080")
-  extraTrustedOrigins: "http://localhost:3004"
+  # For local testin and port forwarding, you can use the below commented value.
+  # extraTrustedOrigins: "http://localhost:3004"
+  extraTrustedOrigins: ""
 
   # -- Force email/password login to be enabled (fail-safe against OIDC lockout)
   forceEmailLogin: true
@@ -113,7 +118,8 @@ config:
     saveMockData: false
 
 # ========================== 3. NETWORKING ====================================
-
+# -- If enabling this network policy, you should also set `postgresql.networkPolicy.enabled=true`
+# to use HelmForge's built-in NetworkPolicy for the database.
 networkPolicy:
   enabled: false
 
@@ -141,7 +147,7 @@ httpRoute:
 # -- Server (Node.js backend API — node:20-slim, UID 1000)
 server:
   image:
-    repository: codewithcj/sparkyfitness_server
+    repository: codewithcj/sparkyfitness-server
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
@@ -237,7 +243,7 @@ server:
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
 frontend:
   image:
-    repository: codewithcj/sparkyfitness_frontend_nonroot
+    repository: codewithcj/sparkyfitness-frontend
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
@@ -297,7 +303,7 @@ frontend:
 # Only deployed when config.garmin.enabled=true
 garmin:
   image:
-    repository: codewithcj/sparkyfitness_garmin
+    repository: codewithcj/sparkyfitness-garmin
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
@@ -344,42 +350,12 @@ garmin:
 
 # -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
+# See https://github.com/helmforgedev/charts/blob/main/charts/postgresql/values.yaml for details
+# on accepted values.
 postgresql:
   enabled: true
   image:
-    repository: postgres
-    tag: "18.3-trixie"
-    pullPolicy: IfNotPresent
-  livenessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    failureThreshold: 5
-  readinessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop: [ALL]
+    tag: 18.3-trixie
   config:
     postgresql: |
       log_statement = none
@@ -396,6 +372,7 @@ postgresql:
     #     created automatically by the app on first startup. Used for all normal
     #     application queries with RLS enforced.
     username: sparky_admin
+    # -- DB owner password (auto-generated if empty).
     password: ""
     # -- Use an existing K8s Secret (keys: postgres-password, user-password, replication-password)
     existingSecret: ""

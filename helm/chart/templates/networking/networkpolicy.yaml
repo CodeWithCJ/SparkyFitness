@@ -95,35 +95,6 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
-{{- if .Values.postgresql.enabled }}
----
-# PostgreSQL: accept from server only
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "sparkyfitness.fullname" . }}-postgresql
-  labels:
-    {{- include "sparkyfitness.labels" . | nindent 4 }}
-    app.kubernetes.io/component: postgresql
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "sparkyfitness.bundledPostgresqlSelectorLabels" . | nindent 6 }}
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: server
-        {{- if include "sparkyfitness.databaseBackupEnabled" . }}
-        - podSelector:
-            matchLabels:
-              {{- include "sparkyfitness.databaseBackupComponentLabels" . | nindent 14 }}
-        {{- end }}
-      ports:
-        - port: 5432
-{{- end }}
 {{- if .Values.config.garmin.enabled }}
 ---
 # Garmin: accept from server, egress to Garmin API + DNS

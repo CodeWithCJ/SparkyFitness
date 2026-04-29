@@ -52,16 +52,25 @@ For Kubernetes routing, the chart's Ingress and HTTPRoute send `/api` and `/uplo
 ### Bundled PostgreSQL (default)
 
 Enabled by default. The chart now pulls PostgreSQL from the namespace-scoped `helmforge/postgresql` dependency and uses the official `postgres` image.
+See [HelmForge's Documentation](https://github.com/helmforgedev/charts/tree/main/charts/postgresql) for
+all options and behavior.
+
+> [!WARNING]
+> Unless defined below, the database version is managed by HelmForge, see [their values](https://github.com/helmforgedev/charts/blob/main/charts/postgresql/values.yaml#L30)
+> for details.
+>
+> It is recommended to define an explicit tag here so upgrading the chart doesn't inadvertently perform a major upgrade of the
+> database.
 
 ```yaml
 postgresql:
   enabled: true
   auth:
     database: sparkyfitness
-    username: sparky
+    username: sparky_admin
     # password: ""  # auto-generated if empty
   image:
-    tag: "18.3-trixie"
+    tag: 18.3-trixie
 ```
 
 ### Scheduled backups
