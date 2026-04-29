@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
     app.kubernetes.io/component: database-backup
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   accessModes:
     - {{ .Values.databaseBackup.persistence.accessMode | quote }}
