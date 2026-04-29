@@ -39,7 +39,7 @@ module.exports = (config) => {
 
   return {
     type: 'widget',
-    name: 'Calorie Tracker',
+    name: 'CalorieTracker',
     icon: '../../assets/icons/adaptiveicon.png',
     entitlements: {
       'com.apple.security.application-groups': [appGroup],
