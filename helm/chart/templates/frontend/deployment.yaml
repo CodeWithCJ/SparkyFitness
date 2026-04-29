@@ -48,6 +48,10 @@ spec:
           env:
             - name: SPARKY_FITNESS_FRONTEND_URL
               value: {{ include "sparkyfitness.frontendUrl" . | quote }}
+            - name: SPARKY_FITNESS_SERVER_HOST
+              value: {{ include "sparkyfitness.fullname" . }}-server
+            - name: SPARKY_FITNESS_SERVER_PORT
+              value: {{ .Values.server.port | quote }}
             {{- range $k, $v := .Values.frontend.extraEnv }}
             - name: {{ $k }}
               value: {{ $v | quote }}
