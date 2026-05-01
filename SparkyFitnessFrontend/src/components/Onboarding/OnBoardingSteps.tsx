@@ -257,6 +257,7 @@ export const OnboardingSteps = ({
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">
                 <Calendar
+                  captionLayout="dropdown"
                   mode="single"
                   selected={
                     formData.birthDate
