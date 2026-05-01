@@ -12,7 +12,7 @@ import type {
 } from '@/types/exercises';
 import { getErrorMessage } from '@/utils/api';
 import { CSV_DUMMY_DATA } from '@/constants/exercises';
-
+import { v4 as uuidv4 } from 'uuid';
 interface FailedEntry {
   entry: { exercise_name: string };
   reason: string;
@@ -340,7 +340,7 @@ export function useExerciseHistoryImport(
   };
 
   const handleAddNewEntry = () => {
-    const newEntryId = `manual_entry_${crypto.randomUUID()}`;
+    const newEntryId = `manual_entry_${uuidv4()}`;
     setGroupedEntries((prev) => [
       ...prev,
       {

@@ -43,6 +43,7 @@ import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
 import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { cn } from '@/lib/utils';
 import { CardioLog } from '../Exercises/CardioLog';
+import { v4 as uuidv4 } from 'uuid';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -110,7 +111,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       return initialSets.map((set) => ({
         ...set,
         weight: Number(set.weight) || 0,
-        _dndId: crypto.randomUUID(),
+        _dndId: uuidv4(),
       }));
     }
     return [
@@ -119,7 +120,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         set_type: 'Working Set',
         reps: 10,
         weight: 0,
-        _dndId: crypto.randomUUID(),
+        _dndId: uuidv4(),
       },
     ];
   });
@@ -147,7 +148,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         {
           ...lastSet,
           set_number: prev.length + 1,
-          _dndId: crypto.randomUUID(),
+          _dndId: uuidv4(),
         },
       ];
     });
@@ -159,7 +160,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       if (!setToDuplicate) return prev;
       return [
         ...prev.slice(0, index + 1),
-        { ...setToDuplicate, _dndId: crypto.randomUUID() },
+        { ...setToDuplicate, _dndId: uuidv4() },
         ...prev.slice(index + 1),
       ].map((s, i) => ({ ...s, set_number: i + 1 }));
     });
