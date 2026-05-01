@@ -6,14 +6,14 @@ import {
   forceMap,
   mechanicMap,
 } from './wgerNameMapping.js';
-import { WGER_LANGUAGE_MAP } from 'constants/wger.ts';
+import { WGER_LANGUAGE_MAP } from '../../constants/wger.ts';
 import {
   WgerExerciseTranslation,
   WgerPaginatedResponse,
   WgerExerciseInfo,
   WgerMuscle,
   WgerEquipment,
-} from 'types/wger.ts';
+} from '../../types/wger.ts';
 
 const WGER_API_BASE_URL = 'https://wger.de/api/v2';
 const WGER_CACHE_DURATION_SECONDS = 3600;
