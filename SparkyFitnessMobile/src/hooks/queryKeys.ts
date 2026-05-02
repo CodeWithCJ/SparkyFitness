@@ -58,3 +58,6 @@ export const externalExerciseSearchQueryKey = (providerType: string, searchTerm:
 export const workoutPresetsQueryKey = ['workoutPresets'] as const;
 
 export const workoutPresetSearchQueryKey = (searchTerm: string) => ['workoutPresetSearch', searchTerm] as const;
+
+export const workoutPresetsLibraryQueryKey = (searchTerm: string) =>
+  ['workoutPresetsLibrary', searchTerm] as const;

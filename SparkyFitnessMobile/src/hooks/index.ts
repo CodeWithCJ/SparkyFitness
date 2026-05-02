@@ -26,6 +26,7 @@ export {
   externalExerciseSearchQueryKey,
   workoutPresetsQueryKey,
   workoutPresetSearchQueryKey,
+  workoutPresetsLibraryQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -73,6 +74,7 @@ export {
 } from './useExerciseMutations';
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
+export { useWorkoutPresetsLibrary } from './useWorkoutPresetsLibrary';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
 export { useProfile } from './useProfile';

@@ -6,6 +6,7 @@ import LibraryScreen from '../../src/screens/LibraryScreen';
 import { useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../../src/hooks';
 import { fetchExercisesCount } from '../../src/services/api/exerciseApi';
 import { fetchFoodsPage } from '../../src/services/api/foodsApi';
+import { fetchWorkoutPresetsPage } from '../../src/services/api/workoutPresetsApi';
 
 jest.mock('../../src/hooks', () => ({
   useFoods: jest.fn(),
@@ -23,6 +24,10 @@ jest.mock('../../src/services/api/exerciseApi', () => ({
   fetchExercisesCount: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/workoutPresetsApi', () => ({
+  fetchWorkoutPresetsPage: jest.fn(),
+}));
+
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: jest.fn(() => 0),
 }));
@@ -34,6 +39,7 @@ const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeo
 const mockUseSuggestedExercises = useSuggestedExercises as jest.MockedFunction<typeof useSuggestedExercises>;
 const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoodsPage>;
 const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<typeof fetchExercisesCount>;
+const mockFetchWorkoutPresetsPage = fetchWorkoutPresetsPage as jest.MockedFunction<typeof fetchWorkoutPresetsPage>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -152,6 +158,10 @@ describe('LibraryScreen', () => {
       pagination: { page: 1, pageSize: 1, totalCount: 0, hasMore: false },
     });
     mockFetchExercisesCount.mockResolvedValue(0);
+    mockFetchWorkoutPresetsPage.mockResolvedValue({
+      presets: [],
+      pagination: { page: 1, pageSize: 1, totalCount: 0, hasMore: false },
+    });
   });
 
   it('shows meals, foods, and exercises totals', async () => {
@@ -274,6 +284,23 @@ describe('LibraryScreen', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Exercises'));
     expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
+  });
+
+  it('navigates to WorkoutPresetsLibrary when the Workout presets row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Workout presets'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetsLibrary');
+  });
+
+  it('shows the workout presets count from the API', async () => {
+    mockFetchWorkoutPresetsPage.mockResolvedValue({
+      presets: [],
+      pagination: { page: 1, pageSize: 1, totalCount: 9, hasMore: true },
+    });
+
+    const screen = renderScreen();
+
+    await waitFor(() => expect(screen.getByText('9')).toBeTruthy());
   });
 
   it('renders recent exercises in the combined Recent list and navigates to ExerciseDetail on press', () => {

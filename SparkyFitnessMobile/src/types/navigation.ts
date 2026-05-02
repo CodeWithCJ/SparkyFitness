@@ -25,6 +25,8 @@ export type RootStackParamList = {
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
   ExercisesLibrary: undefined;
+  WorkoutPresetsLibrary: undefined;
+  WorkoutPresetDetail: { preset: WorkoutPreset };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
   ExerciseDetail: { item: Exercise; updatedItem?: Exercise };

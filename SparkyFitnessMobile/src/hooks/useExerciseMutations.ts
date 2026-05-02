@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import type { CreatePresetSessionRequest, UpdatePresetSessionRequest } from '@workspace/shared';
 import {
   createWorkout,
   updateWorkout,
@@ -33,7 +34,6 @@ const isAuthzError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
   return error.message.includes('403') || error.message.includes('404');
 };
-import type { CreatePresetSessionRequest, UpdatePresetSessionRequest } from '@workspace/shared';
 
 // ---------------------------------------------------------------------------
 // Internal factories

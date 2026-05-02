@@ -96,7 +96,7 @@ interface ExerciseFormBodyProps {
 }
 
 const labelForOption = (
-  options: ReadonlyArray<{ label: string; value: string }>,
+  options: readonly { label: string; value: string }[],
   value: string | null,
 ): string => {
   if (!value) return 'Select…';
