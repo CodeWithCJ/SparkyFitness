@@ -8,11 +8,13 @@ import {
   createExerciseEntry,
   updateExerciseEntry,
   deleteExerciseEntry as deleteExerciseEntryApi,
+  createExercise,
   type CreateExerciseEntryPayload,
 } from '../services/api/exerciseApi';
 import { normalizeDate } from '../utils/dateUtils';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
+import { suggestedExercisesQueryKey } from './queryKeys';
 import type { CreatePresetSessionRequest, UpdatePresetSessionRequest } from '@workspace/shared';
 
 // ---------------------------------------------------------------------------
@@ -134,6 +136,32 @@ export function useUpdateExerciseEntry() {
     errorTitle: 'Failed to update activity',
   });
   return { updateEntry: mutate, ...rest };
+}
+
+// Bypasses useCrudMutation because that helper invalidates exercise *entry*
+// caches keyed to a date — irrelevant for creating a catalog row. We instead
+// invalidate the recents/count and reset the infinite ExercisesLibrary list.
+export function useCreateExercise() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: createExercise,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ['exercises', 'count'] });
+      // useExercisesLibrary is an infinite query — resetQueries (not
+      // invalidateQueries) so returning to ExercisesLibrary refetches just
+      // page 1, matching the useFoodsLibrary pattern.
+      void queryClient.resetQueries({ queryKey: ['exercisesLibrary'] });
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: 'Could not create exercise',
+        text2: 'Please try again.',
+      });
+    },
+  });
+  return { createExerciseAsync: mutation.mutateAsync, isPending: mutation.isPending };
 }
 
 // ---------------------------------------------------------------------------

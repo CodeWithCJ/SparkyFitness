@@ -1,4 +1,7 @@
-import { apiFetch } from './apiClient';
+import { apiFetch, normalizeUrl } from './apiClient';
+import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import { getAuthHeaders, notifySessionExpired } from './authService';
+import { addLog } from '../LogService';
 import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise';
 import type {
   ExerciseHistoryResponse,
@@ -86,6 +89,92 @@ export const fetchExercisesCount = async (): Promise<number> => {
   });
   return response.totalCount;
 };
+
+export interface CreateExercisePayload {
+  name: string;
+  category: string;
+  /** Omit when blank — server defaults missing/falsy values to 0. */
+  calories_per_hour?: number;
+  description: string | null;
+}
+
+const parseJsonArray = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === 'string' && raw.length > 0) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const transformExerciseRow = (row: Record<string, unknown>): Exercise => ({
+  id: String(row.id),
+  name: String(row.name),
+  category: (row.category as string | null) ?? null,
+  equipment: parseJsonArray(row.equipment),
+  primary_muscles: parseJsonArray(row.primary_muscles),
+  secondary_muscles: parseJsonArray(row.secondary_muscles),
+  calories_per_hour:
+    typeof row.calories_per_hour === 'number'
+      ? row.calories_per_hour
+      : Number(row.calories_per_hour) || 0,
+  source: String(row.source ?? ''),
+  images: parseJsonArray(row.images),
+  tags: [],
+  force: (row.force as string | null) ?? null,
+  level: (row.level as string | null) ?? null,
+  mechanic: (row.mechanic as string | null) ?? null,
+  instructions: parseJsonArray(row.instructions),
+  description: (row.description as string | null) ?? null,
+});
+
+/**
+ * Creates a custom exercise. The server endpoint is multipart-only, so this
+ * bypasses {@link apiFetch} (which always JSON-stringifies) and uses raw
+ * fetch with FormData, mirroring the auth/proxy header injection pattern in
+ * {@link healthDataApi}.
+ */
+export async function createExercise(payload: CreateExercisePayload): Promise<Exercise> {
+  const config = await getActiveServerConfig();
+  if (!config) throw new Error('Server configuration not found.');
+  const baseUrl = normalizeUrl(config.url);
+
+  const exerciseData = {
+    ...payload,
+    source: 'custom',
+    is_custom: true,
+    shared_with_public: false,
+  };
+
+  const form = new FormData();
+  form.append('exerciseData', JSON.stringify(exerciseData));
+
+  const response = await fetch(`${baseUrl}/api/exercises/`, {
+    method: 'POST',
+    headers: {
+      ...proxyHeadersToRecord(config.proxyHeaders),
+      ...getAuthHeaders(config),
+      // Do NOT set Content-Type — fetch will add the multipart boundary.
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 && config.authType === 'session') {
+      notifySessionExpired(config.id);
+    }
+    const text = await response.text();
+    addLog('[Exercise API] Failed to create exercise', 'ERROR', [text]);
+    throw new Error(`Server error: ${response.status} - ${text}`);
+  }
+
+  const raw = await response.json();
+  return transformExerciseRow(raw);
+}
 
 export const createWorkout = async (
   payload: CreatePresetSessionRequest,

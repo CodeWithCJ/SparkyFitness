@@ -350,15 +350,22 @@ describe('LibraryScreen', () => {
     expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
-  it('navigates to FoodForm in create-food mode when the Manual entry row is pressed', () => {
+  it('navigates to FoodForm in create-food mode when the Food create tile is pressed', () => {
     const screen = renderScreen();
 
-    expect(screen.getByText('Manual entry')).toBeTruthy();
-
-    fireEvent.press(screen.getByText('Manual entry'));
+    fireEvent.press(screen.getByText('Food'));
     expect(navigation.navigate).toHaveBeenCalledWith('FoodForm', {
       mode: 'create-food',
       pickerMode: 'library',
+    });
+  });
+
+  it('navigates to ExerciseForm in create-exercise mode when the Exercise create tile is pressed', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Exercise'));
+    expect(navigation.navigate).toHaveBeenCalledWith('ExerciseForm', {
+      mode: 'create-exercise',
     });
   });
 });

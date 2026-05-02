@@ -30,6 +30,7 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import MealTypeDetailScreen from './src/screens/MealTypeDetailScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
+import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
@@ -123,6 +124,7 @@ const SafeExerciseDetail = withErrorBoundary(ExerciseDetailScreen, 'ExerciseDeta
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
+const SafeExerciseForm = withErrorBoundary(ExerciseFormScreen, 'ExerciseForm', { canGoBack: true });
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
 const SafeMealAdd = withErrorBoundary(MealAddScreen, 'MealAdd', { canGoBack: true });
 const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
@@ -723,6 +725,16 @@ function AppContent() {
           <Stack.Screen
             name="FoodForm"
             component={SafeFoodForm}
+            options={{
+              presentation: 'modal',
+              headerShown: false,
+              gestureEnabled: true,
+              ...androidModalAnimation,
+            }}
+          />
+          <Stack.Screen
+            name="ExerciseForm"
+            component={SafeExerciseForm}
             options={{
               presentation: 'modal',
               headerShown: false,

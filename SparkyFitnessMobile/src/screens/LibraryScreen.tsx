@@ -204,6 +204,13 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' })}
             className="w-[48%] mb-3"
           />
+          <CreateTile
+            icon="exercise-weights"
+            title="Exercise"
+            subtitle="Manual entry"
+            onPress={() => navigation.navigate('ExerciseForm', { mode: 'create-exercise' })}
+            className="w-[48%] mb-3"
+          />
         </View>
 
         <View className="bg-surface rounded-xl mb-6 shadow-sm overflow-hidden">
