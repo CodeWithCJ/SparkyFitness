@@ -3,10 +3,13 @@ import {
   updateExerciseEntry,
   fetchSuggestedExercises,
   searchExercises,
+  fetchExercisesPage,
   createWorkout,
   updateWorkout,
   deleteWorkout,
   deleteExerciseEntry,
+  updateExercise,
+  deleteExerciseFromLibrary,
   type CreateExerciseEntryPayload,
 } from '../../../src/services/api/exerciseApi';
 import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
@@ -199,10 +202,32 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       expect(url).toContain('limit=10');
     });
 
-    it('returns parsed response', async () => {
+    it('runs every row through the transformer (surfaces userId/isCustom)', async () => {
       const responseData = {
-        recentExercises: [{ id: 'ex-1', name: 'Running' }],
-        topExercises: [{ id: 'ex-2', name: 'Bench Press' }],
+        recentExercises: [
+          {
+            id: 'ex-1',
+            name: 'Running',
+            user_id: 'user-1',
+            is_custom: true,
+            equipment: '[]',
+            primary_muscles: '[]',
+            secondary_muscles: '[]',
+            instructions: '[]',
+          },
+        ],
+        topExercises: [
+          {
+            id: 'ex-2',
+            name: 'Bench Press',
+            user_id: null,
+            is_custom: false,
+            equipment: '["barbell"]',
+            primary_muscles: '[]',
+            secondary_muscles: '[]',
+            instructions: '[]',
+          },
+        ],
       };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
@@ -211,7 +236,19 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       });
 
       const result = await fetchSuggestedExercises();
-      expect(result).toEqual(responseData);
+
+      expect(result.recentExercises[0]).toMatchObject({
+        id: 'ex-1',
+        name: 'Running',
+        userId: 'user-1',
+        isCustom: true,
+      });
+      expect(result.topExercises[0]).toMatchObject({
+        id: 'ex-2',
+        userId: null,
+        isCustom: false,
+        equipment: ['barbell'],
+      });
     });
   });
 
@@ -229,8 +266,19 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       expect(url).toContain('/api/exercises/search?searchTerm=bench%20press');
     });
 
-    it('returns parsed response', async () => {
-      const responseData = [{ id: 'ex-1', name: 'Bench Press' }];
+    it('runs each result through the transformer', async () => {
+      const responseData = [
+        {
+          id: 'ex-1',
+          name: 'Bench Press',
+          user_id: 'user-1',
+          is_custom: true,
+          equipment: '["barbell","bench"]',
+          primary_muscles: '[]',
+          secondary_muscles: '[]',
+          instructions: '[]',
+        },
+      ];
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -238,7 +286,155 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       });
 
       const result = await searchExercises('bench');
-      expect(result).toEqual(responseData);
+      expect(result[0]).toMatchObject({
+        id: 'ex-1',
+        name: 'Bench Press',
+        userId: 'user-1',
+        isCustom: true,
+        equipment: ['barbell', 'bench'],
+      });
+    });
+  });
+
+  describe('fetchExercisesPage', () => {
+    it('runs each exercise through the transformer and preserves pagination', async () => {
+      const responseData = {
+        exercises: [
+          {
+            id: 'ex-1',
+            name: 'Squat',
+            user_id: 'user-2',
+            is_custom: false,
+            equipment: '[]',
+            primary_muscles: '["quadriceps"]',
+            secondary_muscles: '[]',
+            instructions: '[]',
+          },
+        ],
+        pagination: { page: 1, pageSize: 20, totalCount: 1, totalPages: 1 },
+      };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await fetchExercisesPage({ page: 1, pageSize: 20 });
+
+      expect(result.pagination).toEqual(responseData.pagination);
+      expect(result.exercises[0]).toMatchObject({
+        id: 'ex-1',
+        userId: 'user-2',
+        isCustom: false,
+        primary_muscles: ['quadriceps'],
+      });
+    });
+
+    it('normalizes nested JSON array strings from exercise endpoints', async () => {
+      const responseData = {
+        exercises: [
+          {
+            id: 'ex-1',
+            name: 'Custom Movement',
+            equipment: ['["barbell","bench"]'],
+            primary_muscles: '"[\\"chest\\"]"',
+            secondary_muscles: '[]',
+            instructions: ['[]'],
+            images: ['[]'],
+          },
+        ],
+        pagination: { page: 1, pageSize: 20, totalCount: 1, totalPages: 1 },
+      };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await fetchExercisesPage({ page: 1, pageSize: 20 });
+
+      expect(result.exercises[0]).toMatchObject({
+        equipment: ['barbell', 'bench'],
+        primary_muscles: ['chest'],
+        secondary_muscles: [],
+        instructions: [],
+        images: [],
+      });
+    });
+  });
+
+  describe('updateExercise', () => {
+    it('sends multipart PUT to /api/exercises/:id with exerciseData JSON', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: 'ex-1',
+            name: 'Updated Bench Press',
+            user_id: 'user-1',
+            is_custom: true,
+            equipment: '[]',
+            primary_muscles: '[]',
+            secondary_muscles: '[]',
+            instructions: '[]',
+          }),
+      });
+
+      const result = await updateExercise('ex-1', { name: 'Updated Bench Press' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/exercises/ex-1',
+        expect.objectContaining({ method: 'PUT' }),
+      );
+      const init = mockFetch.mock.calls[0][1] as RequestInit;
+      expect((init.body as FormData).get('exerciseData')).toEqual(
+        JSON.stringify({ name: 'Updated Bench Press' }),
+      );
+      expect(result).toMatchObject({ id: 'ex-1', userId: 'user-1', isCustom: true });
+    });
+
+    it('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(updateExercise('ex-1', { name: 'X' })).rejects.toThrow(
+        'Server error: 403 - Forbidden',
+      );
+    });
+  });
+
+  describe('deleteExerciseFromLibrary', () => {
+    it('sends DELETE to /api/exercises/:id', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(undefined),
+      });
+
+      await deleteExerciseFromLibrary('ex-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/exercises/ex-1',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('throws on 403', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(deleteExerciseFromLibrary('ex-1')).rejects.toThrow(
+        'Server error: 403 - Forbidden',
+      );
     });
   });
 

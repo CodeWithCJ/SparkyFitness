@@ -14,6 +14,8 @@ export interface Exercise {
   mechanic?: string | null;
   instructions?: string[];
   description?: string | null;
+  userId?: string | null;
+  isCustom?: boolean;
 }
 
 export interface SuggestedExercisesResponse {

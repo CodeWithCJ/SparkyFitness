@@ -27,7 +27,7 @@ export type RootStackParamList = {
   ExercisesLibrary: undefined;
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
-  ExerciseDetail: { item: Exercise };
+  ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
   FoodSearch:
     | {
         date?: string;
@@ -57,7 +57,9 @@ export type RootStackParamList = {
       }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null }
     | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
-  ExerciseForm: { mode: 'create-exercise' };
+  ExerciseForm:
+    | { mode: 'create-exercise' }
+    | { mode: 'edit-exercise'; exercise: Exercise; returnKey: string };
   FoodScan:
     | {
         date?: string;

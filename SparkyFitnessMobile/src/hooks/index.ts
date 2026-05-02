@@ -57,9 +57,20 @@ export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
 export { useExercisesLibrary } from './useExercisesLibrary';
 export { useExternalExerciseSearch } from './useExternalExerciseSearch';
-export { useCreateWorkout, useCreateExerciseEntry, useUpdateExerciseEntry, useCreateExercise } from './useExerciseMutations';
+export {
+  useCreateWorkout,
+  useCreateExerciseEntry,
+  useUpdateExerciseEntry,
+  useCreateExercise,
+  useUpdateExercise,
+} from './useExerciseMutations';
 export { useActivityForm } from './useActivityForm';
-export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './useExerciseMutations';
+export {
+  useDeleteExerciseEntry,
+  useDeleteWorkout,
+  useUpdateWorkout,
+  useDeleteExerciseLibrary,
+} from './useExerciseMutations';
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
 export { useExerciseSetEditing } from './useExerciseSetEditing';

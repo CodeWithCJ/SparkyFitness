@@ -36,19 +36,27 @@ export const fetchExerciseHistory = async (
 export const fetchSuggestedExercises = async (
   limit: number = 10,
 ): Promise<SuggestedExercisesResponse> => {
-  return apiFetch<SuggestedExercisesResponse>({
+  const response = await apiFetch<{
+    recentExercises: Record<string, unknown>[];
+    topExercises: Record<string, unknown>[];
+  }>({
     endpoint: `/api/exercises/suggested?limit=${limit}`,
     serviceName: 'Exercise API',
     operation: 'fetch suggested exercises',
   });
+  return {
+    recentExercises: (response.recentExercises ?? []).map(transformExerciseRow),
+    topExercises: (response.topExercises ?? []).map(transformExerciseRow),
+  };
 };
 
 export const searchExercises = async (searchTerm: string): Promise<Exercise[]> => {
-  return apiFetch<Exercise[]>({
+  const response = await apiFetch<Record<string, unknown>[]>({
     endpoint: `/api/exercises/search?searchTerm=${encodeURIComponent(searchTerm)}`,
     serviceName: 'Exercise API',
     operation: 'search exercises',
   });
+  return (response ?? []).map(transformExerciseRow);
 };
 
 export interface FetchExercisesPageOptions {
@@ -74,11 +82,18 @@ export const fetchExercisesPage = async ({
   if (searchTerm) {
     params.set('searchTerm', searchTerm);
   }
-  return apiFetch<PaginatedExercisesPage>({
+  const response = await apiFetch<{
+    exercises: Record<string, unknown>[];
+    pagination: Pagination;
+  }>({
     endpoint: `/api/v2/exercises/search?${params.toString()}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercises page',
   });
+  return {
+    exercises: (response.exercises ?? []).map(transformExerciseRow),
+    pagination: response.pagination,
+  };
 };
 
 export const fetchExercisesCount = async (): Promise<number> => {
@@ -98,15 +113,66 @@ export interface CreateExercisePayload {
   description: string | null;
 }
 
-const parseJsonArray = (raw: unknown): string[] => {
-  if (Array.isArray(raw)) return raw as string[];
-  if (typeof raw === 'string' && raw.length > 0) {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+export interface UpdateExercisePayload {
+  name?: string;
+  category?: string;
+  calories_per_hour?: number;
+  /** Empty string clears, omitted/null preserves (server COALESCEs nulls). */
+  description?: string | null;
+  equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
+  level?: string;
+  force?: string;
+  mechanic?: string;
+}
+
+const parseJsonValue = (raw: unknown): unknown => {
+  let value = raw;
+  for (let i = 0; i < 3; i += 1) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return value;
     }
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+};
+
+const parseStringArrayValue = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) {
+    return raw.flatMap(parseStringArrayValue);
+  }
+  if (typeof raw !== 'string') {
+    return [];
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  const parsed = parseJsonValue(trimmed);
+  if (Array.isArray(parsed)) {
+    return parsed.flatMap(parseStringArrayValue);
+  }
+  if (typeof parsed === 'string' && parsed !== trimmed) {
+    return parseStringArrayValue(parsed);
+  }
+  if (trimmed === '[]') {
+    return [];
+  }
+  return [trimmed];
+};
+
+const parseJsonArray = (raw: unknown): string[] => {
+  const parsed = parseJsonValue(raw);
+  if (Array.isArray(parsed)) {
+    return parsed.flatMap(parseStringArrayValue);
   }
   return [];
 };
@@ -130,6 +196,9 @@ const transformExerciseRow = (row: Record<string, unknown>): Exercise => ({
   mechanic: (row.mechanic as string | null) ?? null,
   instructions: parseJsonArray(row.instructions),
   description: (row.description as string | null) ?? null,
+  userId: row.user_id != null ? String(row.user_id) : null,
+  isCustom:
+    typeof row.is_custom === 'boolean' ? row.is_custom : Boolean(row.is_custom),
 });
 
 /**
@@ -173,6 +242,10 @@ export async function createExercise(payload: CreateExercisePayload): Promise<Ex
   }
 
   const raw = await response.json();
+  addLog('[Exercise API] createExercise raw response', 'DEBUG', [
+    `images type=${Array.isArray(raw.images) ? 'array' : typeof raw.images}`,
+    `images value=${JSON.stringify(raw.images)}`,
+  ]);
   return transformExerciseRow(raw);
 }
 
@@ -262,6 +335,55 @@ export const deleteExerciseEntry = async (id: string): Promise<void> => {
     endpoint: `/api/exercise-entries/${id}`,
     serviceName: 'Exercise API',
     operation: 'delete exercise entry',
+    method: 'DELETE',
+  });
+};
+
+/**
+ * Updates a custom exercise. Like {@link createExercise} the server endpoint
+ * is multipart-only, so this bypasses {@link apiFetch} and posts FormData.
+ * Server COALESCEs nulls — omit a field to preserve it; pass `''` to clear
+ * a text column.
+ */
+export async function updateExercise(
+  id: string,
+  payload: UpdateExercisePayload,
+): Promise<Exercise> {
+  const config = await getActiveServerConfig();
+  if (!config) throw new Error('Server configuration not found.');
+  const baseUrl = normalizeUrl(config.url);
+
+  const form = new FormData();
+  form.append('exerciseData', JSON.stringify(payload));
+
+  const response = await fetch(`${baseUrl}/api/exercises/${id}`, {
+    method: 'PUT',
+    headers: {
+      ...proxyHeadersToRecord(config.proxyHeaders),
+      ...getAuthHeaders(config),
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 && config.authType === 'session') {
+      notifySessionExpired(config.id);
+    }
+    const text = await response.text();
+    addLog('[Exercise API] Failed to update exercise', 'ERROR', [text]);
+    throw new Error(`Server error: ${response.status} - ${text}`);
+  }
+
+  const raw = await response.json();
+  addLog('[Exercise API] Updated exercise', 'INFO', [String(id)]);
+  return transformExerciseRow(raw);
+}
+
+export const deleteExerciseFromLibrary = async (id: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercises/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'delete exercise',
     method: 'DELETE',
   });
 };

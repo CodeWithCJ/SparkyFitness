@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
 import { useCSSVariable } from 'uniwind';
@@ -7,6 +8,11 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import {
+  useDeleteExerciseLibrary,
+  useProfile,
+  useServerConnection,
+} from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
@@ -30,30 +36,48 @@ const cleanSteps = (steps: string[] | undefined) =>
     .filter((step): step is string => Boolean(step && step.length > 0));
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation, route }) => {
-  const { item } = route.params;
+  const { item, updatedItem } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const { getImageSource } = useExerciseImageSource();
+  const { profile } = useProfile();
+  const { isConnected } = useServerConnection();
+
+  const exercise = updatedItem ?? item;
+
+  const canManageExercise = !!(
+    isConnected &&
+    exercise.userId &&
+    profile?.id === exercise.userId
+  );
+
+  const { confirmAndDelete, isPending: isDeletePending } = useDeleteExerciseLibrary({
+    exerciseId: exercise.id,
+    onSuccess: () => {
+      Toast.show({ type: 'success', text1: 'Exercise deleted' });
+      navigation.goBack();
+    },
+  });
 
   const imageSources = useMemo(() => {
-    return (item.images ?? [])
+    return (exercise.images ?? [])
       .map((path) => (path ? getImageSource(path) : null))
       .filter((source): source is { uri: string; headers: Record<string, string> } =>
         source !== null,
       );
-  }, [item.images, getImageSource]);
+  }, [exercise.images, getImageSource]);
 
-  const equipmentText = formatList(item.equipment ?? []);
-  const primaryMusclesText = formatList(item.primary_muscles ?? []);
-  const secondaryMusclesText = formatList(item.secondary_muscles ?? []);
-  const description = item.description?.trim() ?? '';
-  const levelText = item.level ? capitalize(item.level) : '';
-  const forceText = item.force ? capitalize(item.force) : '';
-  const mechanicText = item.mechanic ? capitalize(item.mechanic) : '';
-  const sourceText = item.source ?? '';
+  const equipmentText = formatList(exercise.equipment ?? []);
+  const primaryMusclesText = formatList(exercise.primary_muscles ?? []);
+  const secondaryMusclesText = formatList(exercise.secondary_muscles ?? []);
+  const description = exercise.description?.trim() ?? '';
+  const levelText = exercise.level ? capitalize(exercise.level) : '';
+  const forceText = exercise.force ? capitalize(exercise.force) : '';
+  const mechanicText = exercise.mechanic ? capitalize(exercise.mechanic) : '';
+  const sourceText = exercise.source ?? '';
   const hasDetails = Boolean(levelText || forceText || mechanicText || sourceText);
-  const instructionSteps = cleanSteps(item.instructions);
+  const instructionSteps = cleanSteps(exercise.instructions);
 
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
@@ -76,8 +100,16 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const handleLog = () => {
     navigation.navigate('ActivityAdd', {
-      selectedExercise: item,
+      selectedExercise: exercise,
       selectionNonce: Date.now(),
+    });
+  };
+
+  const handleEdit = () => {
+    navigation.navigate('ExerciseForm', {
+      mode: 'edit-exercise',
+      exercise,
+      returnKey: route.key,
     });
   };
 
@@ -90,6 +122,18 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
+        {canManageExercise && (
+          <View className="ml-auto">
+            <Button
+              variant="ghost"
+              onPress={handleEdit}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              textClassName="font-medium"
+            >
+              Edit
+            </Button>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -102,9 +146,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
         }}
       >
         <View className="bg-surface rounded-xl p-4">
-          <Text className="text-2xl font-bold text-text-primary">{item.name}</Text>
-          {item.category ? (
-            <Text className="text-text-secondary text-base mt-1">{item.category}</Text>
+          <Text className="text-2xl font-bold text-text-primary">{exercise.name}</Text>
+          {exercise.category ? (
+            <Text className="text-text-secondary text-base mt-1">{exercise.category}</Text>
           ) : null}
         </View>
 
@@ -151,11 +195,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           </View>
         ) : null}
 
-        {item.calories_per_hour > 0 ? (
+        {exercise.calories_per_hour > 0 ? (
           <View className="bg-surface rounded-xl p-4">
             <Text className="text-text-secondary text-sm">Calories / hour</Text>
             <Text className="text-text-primary text-xl font-semibold mt-1">
-              {item.calories_per_hour}
+              {exercise.calories_per_hour}
             </Text>
           </View>
         ) : null}
@@ -318,6 +362,17 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
         <Button variant="primary" onPress={handleLog}>
           <Text className="text-white text-base font-semibold">Log Exercise</Text>
         </Button>
+
+        {canManageExercise && (
+          <Button
+            variant="ghost"
+            onPress={confirmAndDelete}
+            disabled={isDeletePending}
+            textClassName="text-bg-danger font-medium"
+          >
+            {isDeletePending ? 'Deleting...' : 'Delete Exercise'}
+          </Button>
+        )}
       </ScrollView>
     </View>
   );
