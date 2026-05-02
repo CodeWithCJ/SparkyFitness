@@ -31,6 +31,8 @@ import { ApiSettings } from './ApiSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
+import { DataManagementSettings } from './DataManagementSettings';
+import { Database } from 'lucide-react';
 
 export interface PasswordFormState {
   current_password: string;
@@ -235,6 +237,22 @@ const Settings = () => {
               )}
             />
             <AIServiceSettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="data-management"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description="Exporter ou gérer vos données"
+          >
+            <Database className="h-5 w-5" />
+            Gestion des Données
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <DataManagementSettings />
           </AccordionContent>
         </AccordionItem>
 
