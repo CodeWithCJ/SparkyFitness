@@ -288,6 +288,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           protein: item.protein,
           carbs: item.carbs,
           fat: item.fat,
+          dietary_fiber: item.fiber,
+          saturated_fat: item.saturatedFat,
+          sodium: item.sodium,
+          sugars: item.sugars,
+          trans_fat: item.transFat,
+          potassium: item.potassium,
+          calcium: item.calcium,
+          iron: item.iron,
+          cholesterol: item.cholesterol,
+          vitamin_a: item.vitaminA,
+          vitamin_c: item.vitaminC,
         };
     }
   };

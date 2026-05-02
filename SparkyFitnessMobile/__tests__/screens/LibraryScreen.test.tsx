@@ -1,13 +1,20 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LibraryScreen from '../../src/screens/LibraryScreen';
-import { useFoods, useRecentMeals, useServerConnection } from '../../src/hooks';
+import { useFoods, useMeals, useRecentMeals, useServerConnection } from '../../src/hooks';
+import { fetchFoodsPage } from '../../src/services/api/foodsApi';
 
 jest.mock('../../src/hooks', () => ({
   useFoods: jest.fn(),
+  useMeals: jest.fn(),
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/foodsApi', () => ({
+  fetchFoodsPage: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -15,8 +22,10 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 }));
 
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
+const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoodsPage>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -81,12 +90,18 @@ describe('LibraryScreen', () => {
     params: undefined,
   };
 
-  const renderScreen = () =>
-    render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <LibraryScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+  const renderScreen = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <LibraryScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
     );
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -111,52 +126,67 @@ describe('LibraryScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
-  });
-
-  it('shows a 3-item meals preview before foods and navigates from rows and View all', () => {
-    mockUseRecentMeals.mockReturnValue({
-      recentMeals: [
-        createMeal('m1', 'Breakfast Bowl', 350),
-        createMeal('m2', 'Protein Plate', 420),
-        createMeal('m3', 'Snack Box', 250),
-        createMeal('m4', 'Dinner Combo', 600),
-      ],
+    mockUseMeals.mockReturnValue({
+      meals: [],
       isLoading: false,
       isError: false,
       refetch: jest.fn(),
+    });
+    mockFetchFoodsPage.mockResolvedValue({
+      foods: [],
+      pagination: { page: 1, pageSize: 1, totalCount: 0, hasMore: false },
+    });
+  });
+
+  it('shows meals and foods totals from useMeals and the count query', async () => {
+    mockUseMeals.mockReturnValue({
+      meals: [createMeal('m1', 'A', 100), createMeal('m2', 'B', 200)] as any,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    mockFetchFoodsPage.mockResolvedValue({
+      foods: [],
+      pagination: { page: 1, pageSize: 1, totalCount: 448, hasMore: true },
     });
 
     const screen = renderScreen();
 
     expect(screen.getByText('Meals')).toBeTruthy();
     expect(screen.getByText('Foods')).toBeTruthy();
-    expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
-    expect(screen.getByText('Protein Plate')).toBeTruthy();
-    expect(screen.getByText('Snack Box')).toBeTruthy();
-    expect(screen.queryByText('Dinner Combo')).toBeNull();
-
-    fireEvent.press(screen.getByText('Breakfast Bowl'));
-    expect(navigation.navigate).toHaveBeenNthCalledWith(
-      1,
-      'MealDetail',
-      expect.objectContaining({
-        mealId: 'm1',
-        initialMeal: expect.objectContaining({ name: 'Breakfast Bowl' }),
-      }),
-    );
-
-    fireEvent.press(screen.getAllByText('View all')[0]);
-    expect(navigation.navigate).toHaveBeenNthCalledWith(2, 'MealsLibrary');
+    expect(screen.getByText('2')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('448')).toBeTruthy());
   });
 
-  it('shows a 3-item foods preview and navigates from rows and View all', () => {
+  it('navigates to MealsLibrary when the Meals row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Meals'));
+    expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
+  });
+
+  it('navigates to FoodsLibrary when the Foods row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Foods'));
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodsLibrary');
+  });
+
+  it('shows a single combined Recent list of up to 4 items mixing meals and foods', () => {
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [
+        createMeal('m1', 'Breakfast Bowl', 350),
+        createMeal('m2', 'Protein Plate', 420),
+        createMeal('m3', 'Snack Box', 250),
+        createMeal('m4', 'Dinner Combo', 600),
+      ] as any,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
     mockUseFoods.mockReturnValue({
       recentFoods: [
         createFood('1', 'Apple', 95),
         createFood('2', 'Banana', 105),
-        createFood('3', 'Oats', 150),
-        createFood('4', 'Yogurt', 120),
-      ],
+      ] as any,
       topFoods: [],
       isLoading: false,
       isError: false,
@@ -166,39 +196,59 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Foods')).toBeTruthy();
+    expect(screen.getByText('Recent')).toBeTruthy();
+    // Interleaved: meal, food, meal, food → 4 items total.
+    expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
     expect(screen.getByText('Apple')).toBeTruthy();
+    expect(screen.getByText('Protein Plate')).toBeTruthy();
     expect(screen.getByText('Banana')).toBeTruthy();
-    expect(screen.getByText('Oats')).toBeTruthy();
-    expect(screen.queryByText('Yogurt')).toBeNull();
-
-    fireEvent.press(screen.getByText('Apple'));
-    expect(navigation.navigate).toHaveBeenNthCalledWith(
-      1,
-      'FoodDetail',
-      expect.objectContaining({
-        item: expect.objectContaining({
-          id: '1',
-          name: 'Apple',
-          source: 'local',
-        }),
-      }),
-    );
-
-    fireEvent.press(screen.getAllByText('View all')[1]);
-    expect(navigation.navigate).toHaveBeenNthCalledWith(2, 'FoodsLibrary');
+    // Beyond the 4-item cap.
+    expect(screen.queryByText('Snack Box')).toBeNull();
+    expect(screen.queryByText('Dinner Combo')).toBeNull();
   });
 
+  it('navigates from a recent meal row to MealDetail', () => {
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [createMeal('m1', 'Breakfast Bowl', 350)] as any,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
 
-
-  it('keeps the meals section visible when there are no recent meals', () => {
     const screen = renderScreen();
+    fireEvent.press(screen.getByText('Breakfast Bowl'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'MealDetail',
+      expect.objectContaining({
+        mealId: 'm1',
+        initialMeal: expect.objectContaining({ name: 'Breakfast Bowl' }),
+      }),
+    );
+  });
 
-    expect(screen.getByText('Meals')).toBeTruthy();
-    expect(screen.getByText('No recent meals yet')).toBeTruthy();
+  it('navigates from a recent food row to FoodDetail', () => {
+    mockUseFoods.mockReturnValue({
+      recentFoods: [createFood('1', 'Apple', 95)] as any,
+      topFoods: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
 
-    fireEvent.press(screen.getAllByText('View all')[0]);
-    expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Apple'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodDetail',
+      expect.objectContaining({
+        item: expect.objectContaining({ id: '1', name: 'Apple', source: 'local' }),
+      }),
+    );
+  });
+
+  it('shows the empty state when there are no recent items', () => {
+    const screen = renderScreen();
+    expect(screen.getByText('No recent items yet')).toBeTruthy();
   });
 
   it('navigates to FoodForm in create-food mode when the Manual entry row is pressed', () => {
