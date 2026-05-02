@@ -70,6 +70,14 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
   return response;
 };
 
+export const downloadDiaryExport = async (): Promise<Blob> => {
+  const response = await apiCall('/food-entries/export/csv', {
+    method: 'GET',
+    responseType: 'blob',
+  });
+  return response;
+};
+
 export const loadDiaryGoals = async (date: string): Promise<ExpandedGoals> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {

@@ -3,7 +3,14 @@ import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import mealService from './mealService.js';
 import { log } from '../config/logging.js';
 import mealTypeRepository from '../models/mealType.js';
+import goalRepository from '../models/goalRepository.js';
+import measurementRepository from '../models/measurementRepository.js';
+import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
+
+// @ts-expect-error TS7016: Could not find a declaration file for module 'papaparse'.
+import Papa from 'papaparse';
+import express from 'express';
 // Helper functions (already defined)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getGlycemicIndexValue(category: any) {
@@ -1385,6 +1392,435 @@ async function deleteFoodEntryMeal(
     throw error;
   }
 }
+
+// Helpers for CSV Export
+const translateMealType = (meal: string) => {
+  const map: Record<string, string> = {
+    breakfast: 'Petit-déjeuner',
+    lunch: 'Déjeuner',
+    dinner: 'Dîner',
+    snacks: 'Collations',
+  };
+  return map[meal?.toLowerCase()] || meal;
+};
+
+const formatFrenchNumber = (num: number | string) => {
+  if (num === null || num === undefined || num === '') return '';
+  return String(num).replace('.', ',');
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const formatDateFrench = (dateInput: any) => {
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    return String(dateInput);
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getSummaryForDate(userId: any, dateStr: string) {
+  // Use dayToPickerDate to ensure YYYY-MM-DD format for DB
+  const d = new Date(dateStr);
+  const formattedDate = isNaN(d.getTime())
+    ? dateStr
+    : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const [nutrition, goal, waterEntries, exerciseEntries] = await Promise.all([
+    foodRepository.getDailyNutritionSummary(userId, formattedDate),
+    goalRepository.getMostRecentGoalBeforeDate(userId, formattedDate),
+    measurementRepository.getWaterIntakeByDate(userId, formattedDate),
+    reportRepository.getExerciseEntries(
+      userId,
+      formattedDate,
+      formattedDate,
+      null,
+      null,
+      null
+    ),
+  ]);
+
+  const waterTotal = parseFloat(waterEntries?.water_ml) || 0;
+  let caloriesBurned = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseEntries.forEach((ex: any) => {
+    caloriesBurned += parseFloat(ex.calories_burned) || 0;
+  });
+
+  return {
+    nutrition,
+    goal,
+    waterTotal,
+    caloriesBurned,
+  };
+}
+
+async function exportAllDiaryEntriesToCSVStream(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  res: express.Response
+) {
+  log('info', `exportAllDiaryEntriesToCSVStream: Started for user ${userId}`);
+
+  const BATCH_SIZE = 500;
+  let offset = 0;
+  let hasMore = true;
+  let isFirstBatch = true;
+
+  // State for daily summaries
+  let currentDateProcessed: string | null = null;
+  const summariesCache = new Map();
+
+  try {
+    // Write BOM for Excel UTF-8
+    res.write('\ufeff');
+
+    while (hasMore) {
+      const batch = await foodRepository.getFoodEntriesBatch(
+        userId,
+        BATCH_SIZE,
+        offset
+      );
+
+      if (batch.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      // Map entry_date to YYYY-MM-DD string so Set properly deduplicates
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uniqueDates = Array.from(
+        new Set(
+          batch.map((e: any) => {
+            const d = new Date(e.entry_date);
+            return isNaN(d.getTime())
+              ? String(e.entry_date)
+              : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })
+        )
+      );
+
+      // Pre-fetch summaries for dates we haven't seen yet
+      for (const dateStr of uniqueDates) {
+        if (!summariesCache.has(dateStr)) {
+          const summary = await getSummaryForDate(userId, dateStr);
+          summariesCache.set(dateStr, summary);
+        }
+      }
+
+      const rowsToExport = [];
+
+      for (const entry of batch) {
+        const d = new Date(entry.entry_date);
+        const dateStr = isNaN(d.getTime())
+          ? String(entry.entry_date)
+          : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        // Did the date change? Insert the summary for the PREVIOUS date
+        if (currentDateProcessed !== null && currentDateProcessed !== dateStr) {
+          const sumData = summariesCache.get(currentDateProcessed);
+          if (sumData) {
+            const sumDateFormatted = formatDateFrench(currentDateProcessed);
+
+            rowsToExport.push(
+              {
+                Date: sumDateFormatted,
+                Repas: 'BILAN DU JOUR',
+                Aliment: 'Total Consommé',
+                Marque: '',
+                'Quantité Consommée': '',
+                Unité: '',
+                'Calories (kcal)': formatFrenchNumber(
+                  (parseFloat(sumData.nutrition?.total_calories) || 0).toFixed(
+                    1
+                  )
+                ),
+                'Protéines (g)': formatFrenchNumber(
+                  (parseFloat(sumData.nutrition?.total_protein) || 0).toFixed(1)
+                ),
+                'Glucides (g)': formatFrenchNumber(
+                  (parseFloat(sumData.nutrition?.total_carbs) || 0).toFixed(1)
+                ),
+                'Lipides (g)': formatFrenchNumber(
+                  (parseFloat(sumData.nutrition?.total_fat) || 0).toFixed(1)
+                ),
+                'Gras Saturés (g)': '',
+                'Fibres (g)': formatFrenchNumber(
+                  (
+                    parseFloat(sumData.nutrition?.total_dietary_fiber) || 0
+                  ).toFixed(1)
+                ),
+                'Sucres (g)': '',
+                'Sodium (mg)': '',
+                'Cholestérol (mg)': '',
+                'Eau (ml)': '',
+              },
+              {
+                Date: sumDateFormatted,
+                Repas: 'BILAN DU JOUR',
+                Aliment: 'Objectifs du jour',
+                Marque: '',
+                'Quantité Consommée': '',
+                Unité: '',
+                'Calories (kcal)': sumData.goal
+                  ? formatFrenchNumber(sumData.goal.calories)
+                  : '',
+                'Protéines (g)': sumData.goal
+                  ? formatFrenchNumber(sumData.goal.protein)
+                  : '',
+                'Glucides (g)': sumData.goal
+                  ? formatFrenchNumber(sumData.goal.carbs)
+                  : '',
+                'Lipides (g)': sumData.goal
+                  ? formatFrenchNumber(sumData.goal.fat)
+                  : '',
+                'Gras Saturés (g)': '',
+                'Fibres (g)': '',
+                'Sucres (g)': '',
+                'Sodium (mg)': '',
+                'Cholestérol (mg)': '',
+                'Eau (ml)': '',
+              },
+              {
+                Date: sumDateFormatted,
+                Repas: 'BILAN DU JOUR',
+                Aliment: 'Calories Brûlées (Exercices)',
+                Marque: '',
+                'Quantité Consommée': '',
+                Unité: '',
+                'Calories (kcal)': formatFrenchNumber(
+                  sumData.caloriesBurned.toFixed(1)
+                ),
+                'Protéines (g)': '',
+                'Glucides (g)': '',
+                'Lipides (g)': '',
+                'Gras Saturés (g)': '',
+                'Fibres (g)': '',
+                'Sucres (g)': '',
+                'Sodium (mg)': '',
+                'Cholestérol (mg)': '',
+                'Eau (ml)': '',
+              },
+              {
+                Date: sumDateFormatted,
+                Repas: 'BILAN DU JOUR',
+                Aliment: 'Eau Consommée',
+                Marque: '',
+                'Quantité Consommée': '',
+                Unité: '',
+                'Calories (kcal)': '',
+                'Protéines (g)': '',
+                'Glucides (g)': '',
+                'Lipides (g)': '',
+                'Gras Saturés (g)': '',
+                'Fibres (g)': '',
+                'Sucres (g)': '',
+                'Sodium (mg)': '',
+                'Cholestérol (mg)': '',
+                'Eau (ml)': formatFrenchNumber(sumData.waterTotal),
+              }
+            );
+
+            // Free memory
+            summariesCache.delete(currentDateProcessed);
+          }
+        }
+
+        currentDateProcessed = dateStr;
+
+        const scale =
+          entry.serving_size && entry.serving_size > 0
+            ? entry.quantity / entry.serving_size
+            : 1;
+
+        // Regular food entry
+        rowsToExport.push({
+          Date: formatDateFrench(entry.entry_date),
+          Repas: translateMealType(entry.meal_type || ''),
+          Aliment: entry.food_name || '',
+          Marque: entry.brand_name || '',
+          'Quantité Consommée': formatFrenchNumber(entry.quantity),
+          Unité: entry.unit || '',
+          'Calories (kcal)': entry.calories
+            ? formatFrenchNumber((entry.calories * scale).toFixed(1))
+            : '0',
+          'Protéines (g)': entry.protein
+            ? formatFrenchNumber((entry.protein * scale).toFixed(1))
+            : '0',
+          'Glucides (g)': entry.carbs
+            ? formatFrenchNumber((entry.carbs * scale).toFixed(1))
+            : '0',
+          'Lipides (g)': entry.fat
+            ? formatFrenchNumber((entry.fat * scale).toFixed(1))
+            : '0',
+          'Gras Saturés (g)': entry.saturated_fat
+            ? formatFrenchNumber((entry.saturated_fat * scale).toFixed(1))
+            : '0',
+          'Fibres (g)': entry.dietary_fiber
+            ? formatFrenchNumber((entry.dietary_fiber * scale).toFixed(1))
+            : '0',
+          'Sucres (g)': entry.sugars
+            ? formatFrenchNumber((entry.sugars * scale).toFixed(1))
+            : '0',
+          'Sodium (mg)': entry.sodium
+            ? formatFrenchNumber((entry.sodium * scale).toFixed(1))
+            : '0',
+          'Cholestérol (mg)': entry.cholesterol
+            ? formatFrenchNumber((entry.cholesterol * scale).toFixed(1))
+            : '0',
+          'Eau (ml)': '',
+        });
+      }
+
+      // Parse to CSV chunk
+      const csvChunk = Papa.unparse(rowsToExport, {
+        header: isFirstBatch,
+        delimiter: ';', // Force semicolon for Excel FR
+      });
+
+      // Write chunk to stream
+      res.write(csvChunk + '\n');
+
+      isFirstBatch = false;
+      offset += BATCH_SIZE;
+      hasMore = batch.length === BATCH_SIZE;
+    }
+
+    // Print summary for the VERY LAST date processed
+    if (currentDateProcessed !== null) {
+      const sumData = summariesCache.get(currentDateProcessed);
+      if (sumData) {
+        const sumDateFormatted = formatDateFrench(currentDateProcessed);
+        const finalRows = [
+          {
+            Date: sumDateFormatted,
+            Repas: 'BILAN DU JOUR',
+            Aliment: 'Total Consommé',
+            Marque: '',
+            'Quantité Consommée': '',
+            Unité: '',
+            'Calories (kcal)': formatFrenchNumber(
+              (parseFloat(sumData.nutrition?.total_calories) || 0).toFixed(1)
+            ),
+            'Protéines (g)': formatFrenchNumber(
+              (parseFloat(sumData.nutrition?.total_protein) || 0).toFixed(1)
+            ),
+            'Glucides (g)': formatFrenchNumber(
+              (parseFloat(sumData.nutrition?.total_carbs) || 0).toFixed(1)
+            ),
+            'Lipides (g)': formatFrenchNumber(
+              (parseFloat(sumData.nutrition?.total_fat) || 0).toFixed(1)
+            ),
+            'Gras Saturés (g)': '',
+            'Fibres (g)': formatFrenchNumber(
+              (parseFloat(sumData.nutrition?.total_dietary_fiber) || 0).toFixed(
+                1
+              )
+            ),
+            'Sucres (g)': '',
+            'Sodium (mg)': '',
+            'Cholestérol (mg)': '',
+            'Eau (ml)': '',
+          },
+          {
+            Date: sumDateFormatted,
+            Repas: 'BILAN DU JOUR',
+            Aliment: 'Objectifs du jour',
+            Marque: '',
+            'Quantité Consommée': '',
+            Unité: '',
+            'Calories (kcal)': sumData.goal
+              ? formatFrenchNumber(sumData.goal.calories)
+              : '',
+            'Protéines (g)': sumData.goal
+              ? formatFrenchNumber(sumData.goal.protein)
+              : '',
+            'Glucides (g)': sumData.goal
+              ? formatFrenchNumber(sumData.goal.carbs)
+              : '',
+            'Lipides (g)': sumData.goal
+              ? formatFrenchNumber(sumData.goal.fat)
+              : '',
+            'Gras Saturés (g)': '',
+            'Fibres (g)': '',
+            'Sucres (g)': '',
+            'Sodium (mg)': '',
+            'Cholestérol (mg)': '',
+            'Eau (ml)': '',
+          },
+          {
+            Date: sumDateFormatted,
+            Repas: 'BILAN DU JOUR',
+            Aliment: 'Calories Brûlées (Exercices)',
+            Marque: '',
+            'Quantité Consommée': '',
+            Unité: '',
+            'Calories (kcal)': formatFrenchNumber(
+              sumData.caloriesBurned.toFixed(1)
+            ),
+            'Protéines (g)': '',
+            'Glucides (g)': '',
+            'Lipides (g)': '',
+            'Gras Saturés (g)': '',
+            'Fibres (g)': '',
+            'Sucres (g)': '',
+            'Sodium (mg)': '',
+            'Cholestérol (mg)': '',
+            'Eau (ml)': '',
+          },
+          {
+            Date: sumDateFormatted,
+            Repas: 'BILAN DU JOUR',
+            Aliment: 'Eau Consommée',
+            Marque: '',
+            'Quantité Consommée': '',
+            Unité: '',
+            'Calories (kcal)': '',
+            'Protéines (g)': '',
+            'Glucides (g)': '',
+            'Lipides (g)': '',
+            'Gras Saturés (g)': '',
+            'Fibres (g)': '',
+            'Sucres (g)': '',
+            'Sodium (mg)': '',
+            'Cholestérol (mg)': '',
+            'Eau (ml)': formatFrenchNumber(sumData.waterTotal),
+          },
+        ];
+
+        const finalChunk = Papa.unparse(finalRows, {
+          header: false,
+          delimiter: ';',
+        });
+
+        res.write(finalChunk + '\n');
+      }
+    }
+
+    res.end();
+    log(
+      'info',
+      `exportAllDiaryEntriesToCSVStream: Completed successfully for user ${userId}.`
+    );
+  } catch (error) {
+    log(
+      'error',
+      `Error in exportAllDiaryEntriesToCSVStream for user ${userId}:`,
+      error
+    );
+    if (!res.headersSent) {
+      res.status(500).send('Internal Server Error during CSV generation');
+    } else {
+      res.end('\nERROR: Failed to complete export.');
+    }
+  }
+}
+
 export { createFoodEntry };
 export { deleteFoodEntry };
 export { updateFoodEntry };
@@ -1400,6 +1836,7 @@ export { updateFoodEntryMeal };
 export { getFoodEntryMealWithComponents };
 export { getFoodEntryMealsByDate };
 export { deleteFoodEntryMeal };
+export { exportAllDiaryEntriesToCSVStream };
 export default {
   createFoodEntry,
   deleteFoodEntry,
@@ -1416,4 +1853,5 @@ export default {
   getFoodEntryMealWithComponents,
   getFoodEntryMealsByDate,
   deleteFoodEntryMeal,
+  exportAllDiaryEntriesToCSVStream,
 };
