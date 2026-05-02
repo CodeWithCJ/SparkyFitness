@@ -50,6 +50,8 @@ export const suggestedExercisesQueryKey = ['suggestedExercises'] as const;
 
 export const exerciseSearchQueryKey = (searchTerm: string) => ['exerciseSearch', searchTerm] as const;
 
+export const exercisesLibraryQueryKey = (searchTerm: string) => ['exercisesLibrary', searchTerm] as const;
+
 export const externalExerciseSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string) =>
   ['externalExerciseSearch', providerType, searchTerm, providerId] as const;
 

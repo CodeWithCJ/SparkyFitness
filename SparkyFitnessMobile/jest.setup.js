@@ -388,6 +388,18 @@ jest.mock('react-native-toast-message', () => {
   return { __esModule: true, default: MockToast };
 });
 
+// Mock react-native-pager-view
+jest.mock('react-native-pager-view', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef(({ children, ...props }, ref) =>
+      React.createElement(View, { testID: 'pager-view', ref, ...props }, children),
+    ),
+  };
+});
+
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');

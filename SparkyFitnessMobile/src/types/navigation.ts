@@ -24,8 +24,10 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  ExercisesLibrary: undefined;
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
+  ExerciseDetail: { item: Exercise };
   FoodSearch:
     | {
         date?: string;

@@ -20,8 +20,10 @@ import FoodLibraryRow from '../components/FoodLibraryRow';
 import Icon from '../components/Icon';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
-import { useFoods, useMeals, useRecentMeals, useServerConnection } from '../hooks';
+import { useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../hooks';
+import { fetchExercisesCount } from '../services/api/exerciseApi';
 import { fetchFoodsPage } from '../services/api/foodsApi';
+import type { Exercise } from '../types/exercise';
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import type { FoodItem } from '../types/foods';
 import type { Meal } from '../types/meals';
@@ -36,7 +38,8 @@ const RECENT_LIMIT = 4;
 
 type RecentItem =
   | { type: 'meal'; data: Meal }
-  | { type: 'food'; data: FoodItem };
+  | { type: 'food'; data: FoodItem }
+  | { type: 'exercise'; data: Exercise };
 
 const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -57,11 +60,23 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     refetch: refetchRecentMeals,
   } = useRecentMeals({ enabled: isConnected, limit: RECENT_LIMIT });
   const { meals, refetch: refetchMeals } = useMeals({ enabled: isConnected });
+  const {
+    recentExercises,
+    isLoading: isRecentExercisesLoading,
+    isError: isRecentExercisesError,
+    refetch: refetchRecentExercises,
+  } = useSuggestedExercises();
   // Foods count uses the ['foods', ...] prefix so it is invalidated by the
   // existing `foodsQueryKey` invalidations in useSaveFood / useDeleteFood.
   const { data: foodsCount, refetch: refetchFoodsCount } = useQuery({
     queryKey: ['foods', 'count'] as const,
     queryFn: () => fetchFoodsPage({ page: 1, itemsPerPage: 1 }).then((r) => r.pagination.totalCount),
+    enabled: isConnected,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: exercisesCount, refetch: refetchExercisesCount } = useQuery({
+    queryKey: ['exercises', 'count'] as const,
+    queryFn: fetchExercisesCount,
     enabled: isConnected,
     staleTime: 1000 * 60 * 5,
   });
@@ -75,36 +90,55 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         refetchRecentMeals(),
         refetchMeals(),
         refetchFoodsCount(),
+        refetchExercisesCount(),
+        refetchRecentExercises(),
       ]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [isConnected, refetchFoods, refetchRecentMeals, refetchMeals, refetchFoodsCount]);
+  }, [
+    isConnected,
+    refetchFoods,
+    refetchRecentMeals,
+    refetchMeals,
+    refetchFoodsCount,
+    refetchExercisesCount,
+    refetchRecentExercises,
+  ]);
 
   const recentItems = useMemo<RecentItem[]>(() => {
     const items: RecentItem[] = [];
     let mi = 0;
     let fi = 0;
+    let ei = 0;
     while (items.length < RECENT_LIMIT) {
       const hasMeal = mi < recentMeals.length;
       const hasFood = fi < recentFoods.length;
-      if (!hasMeal && !hasFood) break;
+      const hasExercise = ei < recentExercises.length;
+      if (!hasMeal && !hasFood && !hasExercise) break;
       if (hasMeal) {
         items.push({ type: 'meal', data: recentMeals[mi++] });
         if (items.length >= RECENT_LIMIT) break;
       }
-      if (hasFood) items.push({ type: 'food', data: recentFoods[fi++] });
+      if (hasFood) {
+        items.push({ type: 'food', data: recentFoods[fi++] });
+        if (items.length >= RECENT_LIMIT) break;
+      }
+      if (hasExercise) items.push({ type: 'exercise', data: recentExercises[ei++] });
     }
     return items;
-  }, [recentMeals, recentFoods]);
+  }, [recentMeals, recentFoods, recentExercises]);
 
-  const isRecentLoading = isFoodsLoading || isRecentMealsLoading;
+  const isRecentLoading = isFoodsLoading || isRecentMealsLoading || isRecentExercisesLoading;
   const showRecentError =
-    !isRecentLoading && recentItems.length === 0 && (isFoodsError || isRecentMealsError);
+    !isRecentLoading
+    && recentItems.length === 0
+    && (isFoodsError || isRecentMealsError || isRecentExercisesError);
 
   const retryRecent = () => {
     void refetchFoods();
     void refetchRecentMeals();
+    void refetchRecentExercises();
   };
 
   if (!isConnectionLoading && !isConnected) {
@@ -185,13 +219,24 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             </View>
           </Pressable>
           <Pressable
-            className="px-4 py-4 flex-row items-center justify-between"
+            className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => navigation.navigate('FoodsLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
             <Text className="text-base font-semibold text-text-primary">Foods</Text>
             <View className="flex-row items-center">
               <Text className="text-text-secondary text-base mr-2">{foodsCount ?? '—'}</Text>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </View>
+          </Pressable>
+          <Pressable
+            className="px-4 py-4 flex-row items-center justify-between"
+            onPress={() => navigation.navigate('ExercisesLibrary')}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <Text className="text-base font-semibold text-text-primary">Exercises</Text>
+            <View className="flex-row items-center">
+              <Text className="text-text-secondary text-base mr-2">{exercisesCount ?? '—'}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>
@@ -241,15 +286,32 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                   />
                 );
               }
+              if (item.type === 'food') {
+                return (
+                  <FoodLibraryRow
+                    key={`food-${item.data.id}`}
+                    food={item.data}
+                    showDivider={showDivider}
+                    onPress={() =>
+                      navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(item.data) })
+                    }
+                  />
+                );
+              }
               return (
-                <FoodLibraryRow
-                  key={`food-${item.data.id}`}
-                  food={item.data}
-                  showDivider={showDivider}
-                  onPress={() =>
-                    navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(item.data) })
-                  }
-                />
+                <Pressable
+                  key={`exercise-${item.data.id}`}
+                  className={`px-4 py-3 ${showDivider ? 'border-b border-border-subtle' : ''}`}
+                  onPress={() => navigation.navigate('ExerciseDetail', { item: item.data })}
+                  style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+                >
+                  <Text className="text-text-primary text-base font-medium">{item.data.name}</Text>
+                  {item.data.category ? (
+                    <Text className="text-text-secondary text-sm mt-0.5">
+                      {item.data.category}
+                    </Text>
+                  ) : null}
+                </Pressable>
               );
             })
           ) : (
@@ -258,7 +320,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                 No recent items yet
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                Foods and meals you log will appear here for quick access.
+                Foods, meals, and exercises you log will appear here for quick access.
               </Text>
             </View>
           )}

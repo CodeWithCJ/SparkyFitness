@@ -7,6 +7,7 @@ import type {
   UpdatePresetSessionRequest,
   PresetSessionResponse,
   ExerciseEntryResponse,
+  Pagination,
 } from '@workspace/shared';
 
 export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
@@ -45,6 +46,45 @@ export const searchExercises = async (searchTerm: string): Promise<Exercise[]> =
     serviceName: 'Exercise API',
     operation: 'search exercises',
   });
+};
+
+export interface FetchExercisesPageOptions {
+  searchTerm?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedExercisesPage {
+  exercises: Exercise[];
+  pagination: Pagination;
+}
+
+export const fetchExercisesPage = async ({
+  searchTerm = '',
+  page = 1,
+  pageSize = 20,
+}: FetchExercisesPageOptions = {}): Promise<PaginatedExercisesPage> => {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  if (searchTerm) {
+    params.set('searchTerm', searchTerm);
+  }
+  return apiFetch<PaginatedExercisesPage>({
+    endpoint: `/api/v2/exercises/search?${params.toString()}`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercises page',
+  });
+};
+
+export const fetchExercisesCount = async (): Promise<number> => {
+  const response = await apiFetch<{ exercises: Exercise[]; totalCount: number }>({
+    endpoint: `/api/exercises/?currentPage=1&itemsPerPage=1`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercises count',
+  });
+  return response.totalCount;
 };
 
 export const createWorkout = async (

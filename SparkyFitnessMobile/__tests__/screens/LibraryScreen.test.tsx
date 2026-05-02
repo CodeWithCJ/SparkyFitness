@@ -3,7 +3,8 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LibraryScreen from '../../src/screens/LibraryScreen';
-import { useFoods, useMeals, useRecentMeals, useServerConnection } from '../../src/hooks';
+import { useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../../src/hooks';
+import { fetchExercisesCount } from '../../src/services/api/exerciseApi';
 import { fetchFoodsPage } from '../../src/services/api/foodsApi';
 
 jest.mock('../../src/hooks', () => ({
@@ -11,10 +12,15 @@ jest.mock('../../src/hooks', () => ({
   useMeals: jest.fn(),
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
+  useSuggestedExercises: jest.fn(),
 }));
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   fetchFoodsPage: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  fetchExercisesCount: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -25,7 +31,9 @@ const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseSuggestedExercises = useSuggestedExercises as jest.MockedFunction<typeof useSuggestedExercises>;
 const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoodsPage>;
+const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<typeof fetchExercisesCount>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -132,13 +140,21 @@ describe('LibraryScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
+    mockUseSuggestedExercises.mockReturnValue({
+      recentExercises: [],
+      topExercises: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
     mockFetchFoodsPage.mockResolvedValue({
       foods: [],
       pagination: { page: 1, pageSize: 1, totalCount: 0, hasMore: false },
     });
+    mockFetchExercisesCount.mockResolvedValue(0);
   });
 
-  it('shows meals and foods totals from useMeals and the count query', async () => {
+  it('shows meals, foods, and exercises totals', async () => {
     mockUseMeals.mockReturnValue({
       meals: [createMeal('m1', 'A', 100), createMeal('m2', 'B', 200)] as any,
       isLoading: false,
@@ -149,13 +165,16 @@ describe('LibraryScreen', () => {
       foods: [],
       pagination: { page: 1, pageSize: 1, totalCount: 448, hasMore: true },
     });
+    mockFetchExercisesCount.mockResolvedValue(17);
 
     const screen = renderScreen();
 
     expect(screen.getByText('Meals')).toBeTruthy();
     expect(screen.getByText('Foods')).toBeTruthy();
+    expect(screen.getByText('Exercises')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('448')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('17')).toBeTruthy());
   });
 
   it('navigates to MealsLibrary when the Meals row is pressed', () => {
@@ -249,6 +268,86 @@ describe('LibraryScreen', () => {
   it('shows the empty state when there are no recent items', () => {
     const screen = renderScreen();
     expect(screen.getByText('No recent items yet')).toBeTruthy();
+  });
+
+  it('navigates to ExercisesLibrary when the Exercises browse row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Exercises'));
+    expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
+  });
+
+  it('renders recent exercises in the combined Recent list and navigates to ExerciseDetail on press', () => {
+    const exercise = {
+      id: 'ex-1',
+      name: 'Bench Press',
+      category: 'strength',
+      equipment: ['barbell'],
+      primary_muscles: ['chest'],
+      secondary_muscles: ['triceps'],
+      calories_per_hour: 300,
+      source: 'sparky',
+      images: [],
+    };
+    mockUseSuggestedExercises.mockReturnValue({
+      recentExercises: [exercise],
+      topExercises: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('Recent')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Bench Press'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'ExerciseDetail',
+      expect.objectContaining({ item: expect.objectContaining({ id: 'ex-1' }) }),
+    );
+  });
+
+  it('interleaves meals, foods, and exercises in the combined Recent list', () => {
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [createMeal('m1', 'Breakfast Bowl', 350)] as any,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    mockUseFoods.mockReturnValue({
+      recentFoods: [createFood('1', 'Apple', 95)] as any,
+      topFoods: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    mockUseSuggestedExercises.mockReturnValue({
+      recentExercises: [
+        {
+          id: 'ex-1',
+          name: 'Bench Press',
+          category: 'strength',
+          equipment: ['barbell'],
+          primary_muscles: ['chest'],
+          secondary_muscles: ['triceps'],
+          calories_per_hour: 300,
+          source: 'sparky',
+          images: [],
+        },
+      ],
+      topExercises: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
+    expect(screen.getByText('Apple')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
   it('navigates to FoodForm in create-food mode when the Manual entry row is pressed', () => {

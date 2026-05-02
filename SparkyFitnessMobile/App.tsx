@@ -33,8 +33,10 @@ import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
+import ExercisesLibraryScreen from './src/screens/ExercisesLibraryScreen';
 import FoodDetailScreen from './src/screens/FoodDetailScreen';
 import MealDetailScreen from './src/screens/MealDetailScreen';
+import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
 import MealAddScreen from './src/screens/MealAddScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
@@ -114,8 +116,10 @@ const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 // Stack screens — with Go Back
 const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibrary', { canGoBack: true });
 const SafeMealsLibrary = withErrorBoundary(MealsLibraryScreen, 'MealsLibrary', { canGoBack: true });
+const SafeExercisesLibrary = withErrorBoundary(ExercisesLibraryScreen, 'ExercisesLibrary', { canGoBack: true });
 const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });
 const SafeMealDetail = withErrorBoundary(MealDetailScreen, 'MealDetail', { canGoBack: true });
+const SafeExerciseDetail = withErrorBoundary(ExerciseDetailScreen, 'ExerciseDetail', { canGoBack: true });
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
@@ -243,7 +247,7 @@ function AppContent() {
       return;
     }
 
-    navigationRef.current?.getParent()?.navigate(screen, params);
+    navigationRef.current?.getParent()?.dispatch(CommonActions.navigate({ name: screen, params }));
   }, []);
 
   const handleStartExerciseForm = useCallback(
@@ -665,6 +669,14 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="ExercisesLibrary"
+            component={SafeExercisesLibrary}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
             options={{
@@ -675,6 +687,14 @@ function AppContent() {
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="ExerciseDetail"
+            component={SafeExerciseDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,

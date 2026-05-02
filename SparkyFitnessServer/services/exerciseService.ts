@@ -146,6 +146,58 @@ async function searchExercises(
     throw error;
   }
 }
+async function searchExercisesPaginated(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  name: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  targetUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  equipmentFilter: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  muscleGroupFilter: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  limit: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  offset: any
+) {
+  try {
+    const { exercises, totalCount } = await exerciseDb.searchExercisesPaginated(
+      name,
+      targetUserId,
+      equipmentFilter,
+      muscleGroupFilter,
+      limit,
+      offset
+    );
+    const taggedExercises = await Promise.all(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      exercises.map(async (exercise: any) => {
+        const tags = [];
+        const isOwner = exercise.user_id === authenticatedUserId;
+        if (isOwner) {
+          tags.push('private');
+        }
+        if (exercise.shared_with_public) {
+          tags.push('public');
+        }
+        if (!isOwner && !exercise.shared_with_public) {
+          tags.push('family');
+        }
+        return { ...exercise, tags };
+      })
+    );
+    return { exercises: taggedExercises, totalCount };
+  } catch (error) {
+    log(
+      'error',
+      `Error searching exercises (paginated) for user ${authenticatedUserId} with name "${name}":`,
+      error
+    );
+    throw error;
+  }
+}
 async function getAvailableEquipment() {
   try {
     const equipment = await exerciseDb.getDistinctEquipment();
@@ -2174,6 +2226,7 @@ export { getOrCreateActiveCaloriesExercise };
 export { upsertExerciseEntryData };
 export { getExercisesWithPagination };
 export { searchExercises };
+export { searchExercisesPaginated };
 export { getAvailableEquipment };
 export { getAvailableMuscleGroups };
 export { createExercise };
@@ -2209,6 +2262,7 @@ export default {
   upsertExerciseEntryData,
   getExercisesWithPagination,
   searchExercises,
+  searchExercisesPaginated,
   getAvailableEquipment,
   getAvailableMuscleGroups,
   createExercise,

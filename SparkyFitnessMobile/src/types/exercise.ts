@@ -8,6 +8,12 @@ export interface Exercise {
   calories_per_hour: number;
   source: string;
   images: string[];
+  tags: string[];
+  force?: string | null;
+  level?: string | null;
+  mechanic?: string | null;
+  instructions?: string[];
+  description?: string | null;
 }
 
 export interface SuggestedExercisesResponse {

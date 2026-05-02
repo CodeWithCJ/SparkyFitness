@@ -22,6 +22,7 @@ export {
   exerciseHistoryQueryKey,
   suggestedExercisesQueryKey,
   exerciseSearchQueryKey,
+  exercisesLibraryQueryKey,
   externalExerciseSearchQueryKey,
   workoutPresetsQueryKey,
   workoutPresetSearchQueryKey,
@@ -54,6 +55,7 @@ export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasureme
 export { useExerciseHistory } from './useExerciseHistory';
 export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
+export { useExercisesLibrary } from './useExercisesLibrary';
 export { useExternalExerciseSearch } from './useExternalExerciseSearch';
 export { useCreateWorkout, useCreateExerciseEntry, useUpdateExerciseEntry } from './useExerciseMutations';
 export { useActivityForm } from './useActivityForm';

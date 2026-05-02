@@ -17,6 +17,7 @@ const makeExercise = (overrides?: Partial<Exercise>): Exercise => ({
   calories_per_hour: 600,
   source: 'system',
   images: [],
+  tags: [],
   ...overrides,
 });
 
