@@ -191,6 +191,8 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isLibraryMode = pickerMode === 'library';
+  const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
 
   const initialFood = params.initialFood;
   const barcode = params.barcode;
@@ -288,7 +290,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       vitamin_a: parseOptional(data.vitaminA),
       vitamin_c: parseOptional(data.vitaminC),
       is_custom: true,
-      is_quick_food: isMealBuilderMode ? false : !saveToDatabase,
+      is_quick_food: isLogEntryMode ? !saveToDatabase : false,
       is_default: true,
       barcode: barcode ?? null,
       provider_type: providerType ?? null,
@@ -304,6 +306,17 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
             data.servingUnit || 'serving',
           ),
         });
+        navigation.dispatch(StackActions.pop(returnDepth));
+      } catch {
+        // Error toast is handled in the save hook.
+      }
+      return;
+    }
+
+    if (isLibraryMode) {
+      try {
+        await saveFoodAsync(saveFoodPayload);
+        Toast.show({ type: 'success', text1: 'Food saved' });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -354,8 +367,9 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         onServingChange={handleServingChange}
         isSubmitting={isSubmitting}
         initialValues={initialFood}
+        submitLabel={isLibraryMode ? 'Save Food' : undefined}
       >
-        {!isMealBuilderMode ? (
+        {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
 
           <View className="flex-row items-start">
@@ -433,7 +447,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         ) : null}
       </FoodForm>
 
-      {!isMealBuilderMode ? (
+      {isLogEntryMode ? (
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
       ) : null}
     </View>

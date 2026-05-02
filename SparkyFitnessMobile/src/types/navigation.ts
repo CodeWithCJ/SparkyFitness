@@ -9,7 +9,7 @@ import type { Meal, MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 
-export type FoodPickerMode = 'log-entry' | 'meal-builder';
+export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
 export type TabParamList = {
   Dashboard: undefined;

@@ -207,6 +207,9 @@ describe('LibraryScreen', () => {
     expect(screen.getByText('Manual entry')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Manual entry'));
-    expect(navigation.navigate).toHaveBeenCalledWith('FoodForm', { mode: 'create-food' });
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodForm', {
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
   });
 });

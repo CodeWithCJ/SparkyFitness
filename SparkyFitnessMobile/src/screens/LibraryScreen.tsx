@@ -87,7 +87,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             icon="food"
             title="Food"
             subtitle="Manual entry"
-            onPress={() => navigation.navigate('FoodForm', { mode: 'create-food' })}
+            onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' })}
             className="w-[48%] mb-3"
           />
         </View>
