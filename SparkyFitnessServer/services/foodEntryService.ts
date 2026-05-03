@@ -1751,6 +1751,7 @@ async function exportAllDiaryEntriesToCSVStream(
       const csvChunk = Papa.unparse(rowsToExport, {
         header: isFirstBatch,
         delimiter: delimiter, // configurable
+        quotes: true, // Forces double quotes around all fields
       });
 
       // Write chunk to stream
@@ -1920,6 +1921,7 @@ async function exportAllDiaryEntriesToCSVStream(
         const finalChunk = Papa.unparse(finalRows, {
           header: false,
           delimiter: delimiter,
+          quotes: true,
         });
 
         res.write(finalChunk + '\n');
