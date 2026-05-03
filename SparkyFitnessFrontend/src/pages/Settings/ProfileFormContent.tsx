@@ -147,6 +147,7 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
+                captionLayout="dropdown"
                 selected={
                   profileForm.date_of_birth
                     ? parseISO(profileForm.date_of_birth)
