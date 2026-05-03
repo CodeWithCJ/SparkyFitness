@@ -261,7 +261,7 @@ async function findFoodByBarcode(barcode: any, userId: any) {
         ) AS default_variant
       FROM foods f
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
-      WHERE f.barcode = $1 AND f.user_id = $2
+      WHERE f.barcode = $1 AND f.user_id = $2 AND f.is_quick_food = FALSE
       LIMIT 1`,
       [barcode, userId]
     );
