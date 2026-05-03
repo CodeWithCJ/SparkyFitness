@@ -136,6 +136,20 @@ async function getWaterIntakeByDate(userId: any, date: any, source = null) {
     client.release();
   }
 }
+
+async function getWaterIntakesByDates(userId: string, dates: string[]) {
+  const client = await getClient(userId);
+  try {
+    const query =
+      'SELECT entry_date, SUM(water_ml) as water_ml FROM water_intake WHERE user_id = $1 AND entry_date = ANY($2::date[]) GROUP BY entry_date';
+    const values = [userId, dates];
+    const result = await client.query(query, values);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWaterIntakeEntryById(id: any, userId: any) {
   const client = await getClient(userId);
@@ -897,7 +911,7 @@ async function getMostRecentMeasurement(userId: any, measurementType: any) {
 }
 export { upsertStepData };
 export { upsertWaterData };
-export { getWaterIntakeByDate };
+export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
 export { getWaterIntakeEntryOwnerId };
 export { updateWaterIntake };
@@ -926,6 +940,7 @@ export default {
   upsertStepData,
   upsertWaterData,
   getWaterIntakeByDate,
+  getWaterIntakesByDates,
   getWaterIntakeEntryById,
   getWaterIntakeEntryOwnerId,
   updateWaterIntake,
