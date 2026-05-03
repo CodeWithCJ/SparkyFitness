@@ -24,6 +24,31 @@ async function getGoalByDate(userId: any, selectedDate: any) {
   }
 }
 
+async function getAllHistoricalGoals(userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT DISTINCT ON (goal_date)
+              goal_date,
+              calories, protein, carbs, fat, water_goal_ml,
+              saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+              cholesterol, sodium, potassium, dietary_fiber, sugars,
+              vitamin_a, vitamin_c, calcium, iron,
+              target_exercise_calories_burned, target_exercise_duration_minutes,
+              protein_percentage, carbs_percentage, fat_percentage,
+              breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
+              custom_meal_percentages, custom_nutrients
+       FROM user_goals
+       WHERE user_id = $1
+       ORDER BY goal_date DESC, updated_at DESC, created_at DESC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getGoalsInRange(
   userId: string,
   startDate: string,
@@ -201,6 +226,7 @@ async function deleteDefaultGoal(userId: any) {
 }
 export { getGoalByDate };
 export { getMostRecentGoalBeforeDate };
+export { getAllHistoricalGoals };
 export { upsertGoal };
 export { deleteGoalsInRange };
 export { deleteDefaultGoal };
@@ -208,6 +234,7 @@ export { getGoalsInRange };
 export default {
   getGoalByDate,
   getMostRecentGoalBeforeDate,
+  getAllHistoricalGoals,
   upsertGoal,
   deleteGoalsInRange,
   deleteDefaultGoal,

@@ -37,7 +37,13 @@ router.get(
       );
 
       // Let the service handle the streaming to the response object
-      await foodEntryService.exportAllDiaryEntriesToCSVStream(req.userId, res);
+      const delimiter =
+        typeof req.query.delimiter === 'string' ? req.query.delimiter : ';';
+      await foodEntryService.exportAllDiaryEntriesToCSVStream(
+        req.userId,
+        res,
+        delimiter
+      );
     } catch (error) {
       next(error);
     }

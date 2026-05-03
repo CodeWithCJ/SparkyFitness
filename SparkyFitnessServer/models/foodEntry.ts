@@ -834,8 +834,7 @@ async function deleteFoodEntryComponentsByFoodEntryMealId(
 }
 
 async function getFoodEntriesBatch(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
+  userId: string,
   limit: number,
   offset: number
 ) {
@@ -869,7 +868,8 @@ async function getFoodEntriesBatch(
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
-        fe.glycemic_index
+        fe.glycemic_index,
+        fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        WHERE fe.user_id = $1
