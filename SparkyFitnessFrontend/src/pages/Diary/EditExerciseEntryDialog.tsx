@@ -47,7 +47,7 @@ import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
 import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { CardioLog } from '../Exercises/CardioLog';
 import { cn } from '@/lib/utils';
-
+import { v4 as uuidv4 } from 'uuid';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -71,7 +71,7 @@ const EditExerciseEntryDialog = ({
     ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
       weight: Number(set.weight) || 0,
-      _dndId: crypto.randomUUID(),
+      _dndId: uuidv4(),
     }))
   );
   const [notes, setNotes] = useState(entry.notes || '');
@@ -151,14 +151,14 @@ const EditExerciseEntryDialog = ({
         set_type: 'Working Set' as const,
         reps: 10,
         weight: 0,
-        _dndId: crypto.randomUUID(),
+        _dndId: uuidv4(),
       };
       return [
         ...prev,
         {
           ...lastSet,
           set_number: prev.length + 1,
-          _dndId: crypto.randomUUID(),
+          _dndId: uuidv4(),
         },
       ];
     });
@@ -171,7 +171,7 @@ const EditExerciseEntryDialog = ({
       if (!setToDuplicate) return prev;
       return [
         ...prev.slice(0, setIndex + 1),
-        { ...setToDuplicate, _dndId: crypto.randomUUID() },
+        { ...setToDuplicate, _dndId: uuidv4() },
         ...prev.slice(setIndex + 1),
       ].map((s, i) => ({ ...s, set_number: i + 1 }));
     });
