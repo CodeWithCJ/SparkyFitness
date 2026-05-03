@@ -38,6 +38,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
+    const isPresentingRef = useRef(false);
     const pendingPresentRef = useRef(false);
     const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
@@ -63,6 +64,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
     const schedulePresent = useCallback(() => {
       clearScheduledPresent();
+      isPresentingRef.current = true;
       presentFrameRef.current = requestAnimationFrame(() => {
         presentFrameRef.current = null;
         bottomSheetRef.current?.present();
@@ -72,20 +74,26 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     useImperativeHandle(ref, () => ({
       present: (options) => {
         const initialMenu = options?.initialMenu ?? null;
-        if (isOpenRef.current || (pendingPresentRef.current && !isDismissingRef.current)) {
-          return;
-        }
-        pendingPresentRef.current = true;
-        pendingInitialMenuRef.current = initialMenu;
-        setShowExerciseMenu(initialMenu === 'exercise');
         if (isDismissingRef.current) {
+          pendingPresentRef.current = true;
+          pendingInitialMenuRef.current = initialMenu;
+          setShowExerciseMenu(initialMenu === 'exercise');
           return;
         }
+
+        if (isOpenRef.current || isPresentingRef.current) {
+          return;
+        }
+
+        pendingPresentRef.current = false;
+        pendingInitialMenuRef.current = null;
+        setShowExerciseMenu(initialMenu === 'exercise');
         schedulePresent();
       },
       dismiss: () => {
         pendingPresentRef.current = false;
         pendingInitialMenuRef.current = null;
+        isPresentingRef.current = false;
         isDismissingRef.current = true;
         clearScheduledPresent();
         bottomSheetRef.current?.dismiss();
@@ -113,17 +121,26 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     );
 
     const handleAction = useCallback((action?: () => void) => {
+      pendingPresentRef.current = false;
+      pendingInitialMenuRef.current = null;
+      isPresentingRef.current = false;
+      isDismissingRef.current = true;
+      clearScheduledPresent();
       bottomSheetRef.current?.dismiss();
       action?.();
-    }, []);
+    }, [clearScheduledPresent]);
 
     const handleDismiss = useCallback(() => {
       isDismissingRef.current = false;
       isOpenRef.current = false;
-      setShowExerciseMenu(pendingPresentRef.current && pendingInitialMenuRef.current === 'exercise');
       if (pendingPresentRef.current) {
+        const initialMenu = pendingInitialMenuRef.current;
+        pendingPresentRef.current = false;
+        pendingInitialMenuRef.current = null;
+        setShowExerciseMenu(initialMenu === 'exercise');
         schedulePresent();
       } else {
+        isPresentingRef.current = false;
         pendingInitialMenuRef.current = null;
       }
     }, [schedulePresent]);
@@ -132,13 +149,16 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       if (fromIndex >= 0 && toIndex === -1) {
         isDismissingRef.current = true;
         isOpenRef.current = false;
+        isPresentingRef.current = false;
         return;
       }
 
       if (toIndex >= 0) {
         isDismissingRef.current = false;
         isOpenRef.current = true;
+        isPresentingRef.current = false;
         pendingPresentRef.current = false;
+        pendingInitialMenuRef.current = null;
         clearScheduledPresent();
       }
     }, [clearScheduledPresent]);

@@ -96,6 +96,31 @@ describe('AddSheet', () => {
     expect(mockBottomSheetControls.openCount).toBe(2);
   });
 
+  it('does not re-present after dismiss when no new present was requested', () => {
+    const ref = React.createRef<AddSheetRef>();
+
+    render(
+      <AddSheet
+        ref={ref}
+        onAddFood={jest.fn()}
+        onAddWorkout={jest.fn()}
+        onAddActivity={jest.fn()}
+        onAddFromPreset={jest.fn()}
+        onSyncHealthData={jest.fn()}
+        onBarcodeScan={jest.fn()}
+        onAddMeasurements={jest.fn()}
+      />,
+    );
+
+    ref.current?.present();
+    expect(mockBottomSheetControls.openCount).toBe(1);
+
+    mockBottomSheetControls.onAnimate?.(0, -1);
+    mockBottomSheetControls.onDismiss?.();
+
+    expect(mockBottomSheetControls.openCount).toBe(1);
+  });
+
   it('renders the Measurements tile in the main grid', () => {
     const ref = React.createRef<AddSheetRef>();
 
