@@ -26,7 +26,10 @@ export type RootStackParamList = {
   MealsLibrary: undefined;
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
-  WorkoutPresetDetail: { preset: WorkoutPreset };
+  WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
+  WorkoutPresetForm:
+    | { mode: 'create-preset'; selectedExercise?: Exercise; selectionNonce?: number }
+    | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
   ExerciseDetail: { item: Exercise; updatedItem?: Exercise };

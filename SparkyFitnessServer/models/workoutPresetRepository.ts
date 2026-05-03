@@ -78,6 +78,7 @@ async function getWorkoutPresetByName(userId: any, name: any) {
                wpe.image_url,
                wpe.sort_order,
                e.name as exercise_name,
+               e.category as category,
                COALESCE(
                  (SELECT json_agg(set_data ORDER BY set_data.set_number)
                   FROM (
@@ -176,6 +177,7 @@ async function getWorkoutPresetById(presetId: any, userId: any) {
                 wpe.exercise_id,
                 wpe.image_url,
                 e.name as exercise_name,
+                e.category as category,
                 COALESCE(
                   (SELECT json_agg(set_data ORDER BY set_data.set_number)
                    FROM (
@@ -384,6 +386,7 @@ async function searchWorkoutPresets(
                wpe.exercise_id,
                wpe.image_url,
                e.name as exercise_name,
+               e.category as category,
                COALESCE(
                  (SELECT json_agg(set_data ORDER BY set_data.set_number)
                   FROM (

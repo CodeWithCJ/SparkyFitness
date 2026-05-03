@@ -1,18 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
+import FormScreenChrome from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
 import { useCreateExercise, useUpdateExercise } from '../hooks';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -324,72 +317,6 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   );
 };
 
-interface FormChromeProps {
-  title: string;
-  saveLabel: string;
-  savingLabel: string;
-  isSaving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
-  children: React.ReactNode;
-}
-
-const FormChrome: React.FC<FormChromeProps> = ({
-  title,
-  saveLabel,
-  savingLabel,
-  isSaving,
-  onSave,
-  onCancel,
-  children,
-}) => {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={onCancel}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          disabled={isSaving}
-        >
-          <Text className="text-base text-accent-primary">Cancel</Text>
-        </TouchableOpacity>
-        <Text className="text-text-primary text-lg font-semibold">{title}</Text>
-        <TouchableOpacity
-          onPress={onSave}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          disabled={isSaving}
-        >
-          <Text
-            className={`text-base font-semibold ${
-              isSaving ? 'text-text-muted' : 'text-accent-primary'
-            }`}
-          >
-            {isSaving ? savingLabel : saveLabel}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      >
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 pt-4 pb-20 gap-4"
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
-  );
-};
-
 const validateAndParseCalories = (
   text: string,
 ): { ok: true; value?: number } | { ok: false } => {
@@ -458,7 +385,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   };
 
   return (
-    <FormChrome
+    <FormScreenChrome
       title="New Exercise"
       saveLabel="Save"
       savingLabel="Saving…"
@@ -469,7 +396,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
       onCancel={() => navigation.goBack()}
     >
       <ExerciseFormBody state={state} setState={setState} showCategory />
-    </FormChrome>
+    </FormScreenChrome>
   );
 };
 
@@ -602,7 +529,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   };
 
   return (
-    <FormChrome
+    <FormScreenChrome
       title="Edit Exercise"
       saveLabel="Save Changes"
       savingLabel="Saving…"
@@ -613,7 +540,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
       onCancel={() => navigation.goBack()}
     >
       <ExerciseFormBody state={state} setState={setState} showCategory />
-    </FormChrome>
+    </FormScreenChrome>
   );
 };
 

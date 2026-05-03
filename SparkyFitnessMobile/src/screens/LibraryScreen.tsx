@@ -201,17 +201,17 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
         <View className="flex-row flex-wrap justify-between mb-6">
           <CreateTile
-            icon="meal"
-            title="Meal"
-            subtitle="Group foods"
-            onPress={() => navigation.navigate('MealAdd')}
-            className="w-[48%] mb-3"
-          />
-          <CreateTile
             icon="food"
             title="Food"
             subtitle="Manual entry"
             onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' })}
+            className="w-[48%] mb-3"
+          />
+          <CreateTile
+            icon="meal"
+            title="Meal"
+            subtitle="Group foods"
+            onPress={() => navigation.navigate('MealAdd')}
             className="w-[48%] mb-3"
           />
           <CreateTile
@@ -221,20 +221,16 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('ExerciseForm', { mode: 'create-exercise' })}
             className="w-[48%] mb-3"
           />
+          <CreateTile
+            icon="bookmark-filled"
+            title="Preset"
+            subtitle="Workout routine"
+            onPress={() => navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' })}
+            className="w-[48%] mb-3"
+          />
         </View>
 
         <View className="bg-surface rounded-xl mb-6 shadow-sm overflow-hidden">
-          <Pressable
-            className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
-            onPress={() => navigation.navigate('MealsLibrary')}
-            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-          >
-            <Text className="text-base font-semibold text-text-primary">Meals</Text>
-            <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{meals.length}</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </View>
-          </Pressable>
           <Pressable
             className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => navigation.navigate('FoodsLibrary')}
@@ -243,6 +239,18 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             <Text className="text-base font-semibold text-text-primary">Foods</Text>
             <View className="flex-row items-center">
               <Text className="text-text-secondary text-base mr-2">{foodsCount ?? '—'}</Text>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </View>
+          </Pressable>
+
+          <Pressable
+            className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+            onPress={() => navigation.navigate('MealsLibrary')}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <Text className="text-base font-semibold text-text-primary">Meals</Text>
+            <View className="flex-row items-center">
+              <Text className="text-text-secondary text-base mr-2">{meals.length}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>

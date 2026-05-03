@@ -1,12 +1,18 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { usePreferences } from '../hooks';
+import {
+  useDeleteWorkoutPreset,
+  usePreferences,
+  useProfile,
+  useServerConnection,
+} from '../hooks';
 import { weightFromKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
@@ -50,7 +56,7 @@ const PresetExerciseRow: React.FC<PresetExerciseRowProps> = ({ exercise, weightU
             }`}
           >
             <View className="flex-row items-center flex-1">
-              <Text className="text-sm text-text-muted w-10">Set {set.set_number}</Text>
+              <Text className="text-sm text-text-muted w-10">{set.set_number}</Text>
               <Text className="text-sm text-text-primary ml-2">
                 {formatSetSummary(set, weightUnit)}
               </Text>
@@ -67,19 +73,43 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { preset } = route.params;
+  const preset = route.params.updatedPreset ?? route.params.preset;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const { preferences } = usePreferences();
+  const { profile } = useProfile();
+  const { isConnected } = useServerConnection();
   // Workout screens only know how to display kg or lbs. Coerce st_lbs to lbs so
   // we never quietly hand an unsupported unit to weightFromKg.
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
   const exerciseCount = preset.exercises?.length ?? 0;
 
+  // WorkoutPreset uses snake_case `user_id` (it's a thin wrapper over server
+  // JSON), unlike Exercise/FoodInfoItem which use camelCase `userId`.
+  const canManagePreset = !!(
+    isConnected && preset.user_id && profile?.id === preset.user_id
+  );
+
+  const { confirmAndDelete, isPending: isDeletePending } = useDeleteWorkoutPreset({
+    presetId: preset.id,
+    onSuccess: () => {
+      Toast.show({ type: 'success', text1: 'Workout preset deleted' });
+      navigation.goBack();
+    },
+  });
+
   const handleStartWorkout = () => {
     navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
+  };
+
+  const handleEdit = () => {
+    navigation.navigate('WorkoutPresetForm', {
+      mode: 'edit-preset',
+      preset,
+      returnKey: route.key,
+    });
   };
 
   return (
@@ -91,6 +121,18 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
+        {canManagePreset && (
+          <View className="ml-auto">
+            <Button
+              variant="ghost"
+              onPress={handleEdit}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              textClassName="font-medium"
+            >
+              Edit
+            </Button>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -120,6 +162,18 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
           <Text className="text-white text-base font-semibold">Start workout</Text>
         </Button>
+
+        {canManagePreset && (
+          <Button
+            variant="ghost"
+            onPress={confirmAndDelete}
+            disabled={isDeletePending}
+            className="mt-3"
+            textClassName="text-bg-danger font-medium"
+          >
+            {isDeletePending ? 'Deleting...' : 'Delete preset'}
+          </Button>
+        )}
       </ScrollView>
     </View>
   );

@@ -75,6 +75,11 @@ export {
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
 export { useWorkoutPresetsLibrary } from './useWorkoutPresetsLibrary';
+export {
+  useCreateWorkoutPreset,
+  useUpdateWorkoutPreset,
+  useDeleteWorkoutPreset,
+} from './useWorkoutPresetMutations';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
 export { useProfile } from './useProfile';

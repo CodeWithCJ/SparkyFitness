@@ -8,6 +8,9 @@ import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPre
 
 jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
+  useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
+  useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -174,6 +177,29 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     expect(screen.getByText('5 × 220.5 lbs')).toBeTruthy();
+  });
+
+  it('renders per-set rest_time so mixed-rest presets keep their accuracy', () => {
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [
+            buildSet({ id: 's-1', set_number: 1, reps: 5, weight: 100, rest_time: 45 }),
+            buildSet({ id: 's-2', set_number: 2, reps: 5, weight: 100, rest_time: 90 }),
+            buildSet({ id: 's-3', set_number: 3, reps: 5, weight: 100, rest_time: 120 }),
+          ],
+        },
+      ],
+    });
+    const screen = renderScreen(preset);
+
+    expect(screen.getByText('Rest · 45s')).toBeTruthy();
+    expect(screen.getByText('Rest · 1:30')).toBeTruthy();
+    expect(screen.getByText('Rest · 2:00')).toBeTruthy();
   });
 
   it('renders time-based (duration-only) sets as a duration string', () => {

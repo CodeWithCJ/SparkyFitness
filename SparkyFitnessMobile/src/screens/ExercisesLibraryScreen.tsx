@@ -1,18 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Platform,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import LibrarySearchBar from '../components/LibrarySearchBar';
+import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useExercisesLibrary, useServerConnection } from '../hooks';
@@ -24,14 +17,12 @@ type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textSecondary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
 
@@ -68,35 +59,6 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     </View>
   );
 
-  const renderSearchBar = () => (
-    <View className="px-4 pb-3">
-      <View
-        className="flex-row items-center bg-raised rounded-lg px-3"
-        style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
-      >
-        <Icon name="search" size={18} color={textMuted} />
-        <View className="flex-1 ml-2">
-          <TextInput
-            className="text-text-primary"
-            style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
-            placeholder="Search exercises..."
-            placeholderTextColor={textMuted}
-            value={searchText}
-            onChangeText={setSearchText}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-        </View>
-        {isSearching ? (
-          <ActivityIndicator size="small" color={accentColor} />
-        ) : null}
-      </View>
-    </View>
-  );
-
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
@@ -124,31 +86,6 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       ) : null}
     </TouchableOpacity>
   );
-
-  const renderFooter = () => {
-    if (isFetchingNextPage) {
-      return (
-        <View className="py-5 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-
-    if (isFetchNextPageError) {
-      return (
-        <View className="px-4 py-4 items-center">
-          <Text className="text-text-secondary text-sm text-center mb-3">
-            Failed to load more exercises.
-          </Text>
-          <Button variant="secondary" className="px-6" onPress={loadMore}>
-            Retry
-          </Button>
-        </View>
-      );
-    }
-
-    return null;
-  };
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -197,7 +134,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         keyExtractor={(item) => item.id}
         renderItem={renderRow}
         ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
+        ListFooterComponent={
+          <PaginatedLibraryFooter
+            isFetchingNextPage={isFetchingNextPage}
+            isFetchNextPageError={isFetchNextPageError}
+            errorMessage="Failed to load more exercises."
+            onRetry={loadMore}
+          />
+        }
         keyboardShouldPersistTaps="handled"
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
@@ -220,7 +164,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {renderHeader()}
-      {isConnected ? renderSearchBar() : null}
+      {isConnected ? (
+        <LibrarySearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Search exercises..."
+          isSearching={isSearching}
+        />
+      ) : null}
       {renderContent()}
     </View>
   );
