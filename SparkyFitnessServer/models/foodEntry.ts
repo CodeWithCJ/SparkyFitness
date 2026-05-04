@@ -844,6 +844,8 @@ async function getFoodEntriesBatch(
       `SELECT
         fe.id, 
         mt.name as meal_type,
+        fe.food_entry_meal_id,
+        fem.name as meal_name,
         fe.quantity, 
         fe.unit, 
         fe.entry_date, 
@@ -872,6 +874,7 @@ async function getFoodEntriesBatch(
         fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
+       LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        WHERE fe.user_id = $1
        ORDER BY fe.entry_date ASC, fe.created_at ASC
        LIMIT $2 OFFSET $3`,
