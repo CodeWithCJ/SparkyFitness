@@ -327,6 +327,19 @@ async function addExerciseToWorkoutPreset(
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
+    const existingExerciseResult = await client.query(
+      `SELECT id
+       FROM workout_preset_exercises
+       WHERE workout_preset_id = $1 AND exercise_id = $2
+       ORDER BY id ASC
+       LIMIT 1`,
+      [workoutPresetId, exerciseId]
+    );
+    if (existingExerciseResult.rows.length > 0) {
+      await client.query('COMMIT');
+      return existingExerciseResult.rows[0].id;
+    }
+
     const exerciseResult = await client.query(
       `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
        VALUES ($1, $2, $3, $4) RETURNING id`,
