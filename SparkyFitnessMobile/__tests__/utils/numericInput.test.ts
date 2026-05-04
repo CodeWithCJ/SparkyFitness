@@ -49,16 +49,8 @@ describe('parseDecimalInput', () => {
       expect(parseDecimalInput('1,234,567.89')).toBeCloseTo(1234567.89);
     });
 
-    it('parses comma-thousands with no decimal part', () => {
+    it('parses multi-group comma-thousands with no decimal part', () => {
       expect(parseDecimalInput('1,000,000')).toBe(1000000);
-    });
-
-    it('parses a single-group thousands value as an integer', () => {
-      // 3-decimal-place precision is unused in the app; 4-digit integer
-      // values (1500 kcal, 2000 ml, 2300 mg sodium) are everywhere.
-      expect(parseDecimalInput('1,234')).toBe(1234);
-      expect(parseDecimalInput('1,500')).toBe(1500);
-      expect(parseDecimalInput('999,000')).toBe(999000);
     });
   });
 
@@ -68,13 +60,8 @@ describe('parseDecimalInput', () => {
       expect(parseDecimalInput('1.234.567,89')).toBeCloseTo(1234567.89);
     });
 
-    it('parses dot-thousands with no decimal part', () => {
+    it('parses multi-group dot-thousands with no decimal part', () => {
       expect(parseDecimalInput('1.000.000')).toBe(1000000);
-    });
-
-    it('parses a single-group thousands value as an integer', () => {
-      expect(parseDecimalInput('1.234')).toBe(1234);
-      expect(parseDecimalInput('1.500')).toBe(1500);
     });
   });
 
@@ -94,11 +81,26 @@ describe('parseDecimalInput', () => {
   });
 
   describe('single-separator decimal vs thousands disambiguation', () => {
-    // A trailing group of exactly 3 digits is treated as thousands.
-    // A trailing group of 1–2 digits (or anything else) is a decimal.
-    it('treats single-group thousands as an integer', () => {
-      expect(parseDecimalInput('1,000')).toBe(1000);
-      expect(parseDecimalInput('1.000')).toBe(1000);
+    // A naked single-group value with an exactly-3-digit trailing group
+    // ("1,234" / "28.349") is genuinely ambiguous and resolves to the
+    // decimal interpretation — see the comment in numericInput.ts for why.
+    // Naked thousands require ≥2 groups; values with an explicit decimal
+    // portion ("1,234.56" / "1.234,56") still parse as thousands.
+    it('treats single-group naked values as decimals', () => {
+      expect(parseDecimalInput('1,000')).toBe(1);
+      expect(parseDecimalInput('1.000')).toBe(1);
+      expect(parseDecimalInput('1,234')).toBe(1.234);
+      expect(parseDecimalInput('1.234')).toBe(1.234);
+      expect(parseDecimalInput('1,500')).toBe(1.5);
+      expect(parseDecimalInput('1.500')).toBe(1.5);
+      expect(parseDecimalInput('999,000')).toBe(999);
+    });
+    it('reads a precise decimal like 28.349 (1 oz in g) as 28.349, not 28349', () => {
+      // Regression: parseDecimalInput("28.349") used to match the EU
+      // thousands shape and silently return 28349, mangling Open Food
+      // Facts serving sizes on save.
+      expect(parseDecimalInput('28.349')).toBeCloseTo(28.349);
+      expect(parseDecimalInput('100.500')).toBe(100.5);
     });
     it('keeps short trailing groups as decimals', () => {
       expect(parseDecimalInput('1,5')).toBe(1.5);
@@ -171,7 +173,7 @@ describe('parseDecimalInput', () => {
       // outer whitespace is safe because it cannot change the structural
       // interpretation of what's between.
       expect(parseDecimalInput('  1234  ')).toBe(1234);
-      expect(parseDecimalInput('\t1,234\n')).toBe(1234);
+      expect(parseDecimalInput('\t1,234\n')).toBe(1.234);
       expect(parseDecimalInput('  1 234,5  ')).toBe(1234.5);
     });
   });
