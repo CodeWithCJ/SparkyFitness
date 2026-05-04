@@ -11,8 +11,14 @@ fullnameOverride: ""
 # ========================== 1. GLOBAL ========================================
 
 global:
-  # -- Container image registry prefix (e.g. "registry.example.com")
-  imageRegistry: ""
+  # -- Container image registry prefix (e.g. "registry.example.com").
+  # Applied by the sparkyfitness.image helper to the server and frontend images.
+  # NOTE: This does NOT apply to the bundled HelmForge postgresql subchart
+  # (postgresql.*) or the wait-for-db init container, which use
+  # postgresql.image.repository/tag directly — matching how HelmForge itself
+  # constructs the image reference. Configure postgresql.image.repository
+  # with the full registry path if you mirror the image to a private registry.
+  imageRegistry: "ghcr.io"
   # -- Global image pull secrets, e.g. [{name: "regcred"}]
   imagePullSecrets: []
   # -- Default StorageClass for all PVCs (overridable per component)
@@ -40,9 +46,14 @@ config:
   adminEmail: ""
 
   # -- Allow CORS from private network ranges (only for self-hosted/private networks)
-  allowPrivateNetworkCors: true
+  # This shouldn't be necessary for Kubernetes since traffic is going to be exposed
+  # via ingress to the web browser but may be useful if you don't have local DNS
+  # setup.
+  allowPrivateNetworkCors: false
   # -- Extra trusted origins, comma-separated (e.g. "http://192.168.1.5:8080")
-  extraTrustedOrigins: "http://localhost:3004"
+  # For local testin and port forwarding, you can use the below commented value.
+  # extraTrustedOrigins: "http://localhost:3004"
+  extraTrustedOrigins: ""
 
   # -- Force email/password login to be enabled (fail-safe against OIDC lockout)
   forceEmailLogin: true
@@ -107,7 +118,8 @@ config:
     saveMockData: false
 
 # ========================== 3. NETWORKING ====================================
-
+# -- If enabling this network policy, you should also set `postgresql.networkPolicy.enabled=true`
+# to use HelmForge's built-in NetworkPolicy for the database.
 networkPolicy:
   enabled: false
 
@@ -135,7 +147,7 @@ httpRoute:
 # -- Server (Node.js backend API — node:20-slim, UID 1000)
 server:
   image:
-    repository: codewithcj/sparkyfitness_server
+    repository: codewithcj/sparkyfitness-server
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
@@ -189,7 +201,7 @@ server:
   # -- Application database credentials (limited-privilege user for runtime queries)
   appDatabase:
     # -- Username for the limited-privilege app DB user
-    username: "sparkyapp"
+    username: "sparky"
     # -- Password (auto-generated if empty)
     password: ""
     # -- Use an existing K8s Secret (keys: username, password)
@@ -216,21 +228,27 @@ server:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the server container
   extraEnvFrom: []
+  # -- Extra volumes to add to the server pod
+  extraVolumes: []
+  # -- Extra volume mounts to add to the server container
+  extraVolumeMounts: []
+  # -- Init containers to run before the server container starts
+  initContainers: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
 
-# -- Frontend (nginx:alpine, runs as root for port 80)
+# -- Frontend (nginx, runs as non-root on port 8080)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
 frontend:
   image:
-    repository: codewithcj/sparkyfitness
+    repository: codewithcj/sparkyfitness-frontend
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
   replicas: 1
-  port: 80
+  port: 8080
   livenessProbe:
     httpGet:
       path: /
@@ -254,15 +272,21 @@ frontend:
       cpu: 500m
       memory: 256Mi
   podSecurityContext:
-    runAsNonRoot: false
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containerSecurityContext:
+    runAsUser: 101
+    runAsGroup: 101
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-      add: [CHOWN, NET_BIND_SERVICE, SETGID, SETUID]
+      add: []
   service:
     type: ClusterIP
     annotations: {}
@@ -279,7 +303,7 @@ frontend:
 # Only deployed when config.garmin.enabled=true
 garmin:
   image:
-    repository: codewithcj/sparkyfitness_garmin
+    repository: codewithcj/sparkyfitness-garmin
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
@@ -324,54 +348,63 @@ garmin:
     automountServiceAccountToken: false
     annotations: {}
 
-# -- Bundled PostgreSQL (postgres:15-alpine, UID 999)
+# -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
+# See https://github.com/helmforgedev/charts/blob/main/charts/postgresql/values.yaml for details
+# on accepted values.
 postgresql:
   enabled: true
   image:
-    repository: postgres
-    tag: "18-alpine"
-    pullPolicy: IfNotPresent
-  extraEnv:
-    - name: PGDATA
-      value: /var/lib/postgresql/data/pgdata
-  livenessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    failureThreshold: 5
-  readinessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop: [ALL]
+    tag: 18.3-trixie
+  config:
+    postgresql: |
+      log_statement = none
+      log_min_duration_statement = 1000
   auth:
     database: sparkyfitness
-    username: sparky
-    # -- Password for PostgreSQL owner user (auto-generated if empty)
+    # -- DB owner username. This becomes SPARKY_FITNESS_DB_USER in the server.
+    # The application uses two database roles:
+    #   - sparky_admin (this user): DB owner used for migrations, schema management,
+    #     RLS policy application, and cross-user queries. Must have CREATEROLE so the
+    #     app can create the app user on first startup. Matches the upstream docs at
+    #     https://codewithcj.github.io/SparkyFitness/install/external-database/
+    #   - sparky (server.appDatabase.username): limited-privilege runtime user
+    #     created automatically by the app on first startup. Used for all normal
+    #     application queries with RLS enforced.
+    username: sparky_admin
+    # -- DB owner password (auto-generated if empty).
     password: ""
-    # -- Use an existing K8s Secret (keys: username, password; optional: database)
+    # -- Use an existing K8s Secret (keys: postgres-password, user-password, replication-password)
     existingSecret: ""
+  # -- First-boot initialization: reassign DB ownership to the DB owner, grant
+  # CREATEROLE so the app can create the app user on first startup, and install
+  # required PostgreSQL extensions.
+  # Reference: https://codewithcj.github.io/SparkyFitness/install/external-database/
+  #
+  # WARNING: The DB owner is granted CREATEROLE so the application can automatically
+  # create the limited-privilege app user (sparky) on first startup. The upstream
+  # docs recommend revoking this after first startup, but future app updates that add
+  # new roles will fail without it. See "Security Hardening" in the link above.
+  initdb:
+    scripts:
+      02-sparky-admin-setup.sh: |
+        #!/bin/bash
+        set -euo pipefail
+        export PGPASSWORD="${POSTGRES_PASSWORD}"
+        # The postgres entrypoint pre-creates POSTGRES_DB owned by the postgres
+        # superuser before initdb scripts run. Reassign ownership to the DB owner
+        # so it can create schemas and manage RLS during migrations.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER DATABASE \"${APP_DATABASE}\" OWNER TO \"${APP_USERNAME}\""
+        # Grant CREATEROLE so the app can create the sparky role on first startup.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER USER \"${APP_USERNAME}\" CREATEROLE"
+        # Install required extensions and grant function execution (must run as superuser).
+        psql --username "${POSTGRES_USER}" --dbname "${APP_DATABASE}" \
+          -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"' \
+          -c "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO \"${APP_USERNAME}\" WITH GRANT OPTION"
   persistence:
     enabled: true
     size: 8Gi
@@ -384,6 +417,67 @@ postgresql:
     limits:
       cpu: 500m
       memory: 512Mi
+  backup:
+    enabled: false
+
+# -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
+# Requires postgresql.enabled=true (the bundled HelmForge subchart). PVC backups
+# are not supported with an external database (externalDatabase.*).
+# Leave disabled to use the bundled chart's built-in S3 backup mode instead.
+#
+# Image: by default the backup job uses the same postgres image as the bundled
+# subchart (postgresql.image.*) so no separate pull is needed and versions always
+# stay in sync. To override, set image.repository to a non-empty value;
+# global.imageRegistry will then be prepended via the sparkyfitness.image helper.
+#
+# Security context: defaults below run as the standard postgres UID 999. Override
+# podSecurityContext or containerSecurityContext here to match your cluster's
+# requirements. readOnlyRootFilesystem is true by default; do not disable it.
+databaseBackup:
+  enabled: false
+  schedule: "0 4 * * *"
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  archivePrefix: sparkyfitness
+  # -- Override the backup container image. Leave repository empty (default) to
+  # automatically use postgresql.image (same version, no extra pull needed).
+  # When set, global.imageRegistry is prepended via sparkyfitness.image helper.
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  persistence:
+    existingClaim: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+    mountPath: /backup
+  retention:
+    days: 7
+    weeks: 5
+    months: 3
+  resources: {}
+  database:
+    pgDumpAllArgs: "--clean --if-exists"
 
 # -- External database (used when postgresql.enabled=false)
 externalDatabase:

@@ -38,7 +38,8 @@ COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 
 # Copy and set up the entrypoint script
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh \
+    && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d
 
 # Set default values for environment variables
 ENV SPARKY_FITNESS_SERVER_HOST=sparkyfitness-server

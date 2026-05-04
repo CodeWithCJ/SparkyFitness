@@ -22,6 +22,20 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "sparkyfitness.fullname" $ }}-server
+                port:
+                  name: http
+          - path: /uploads
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "sparkyfitness.fullname" $ }}-server
+                port:
+                  name: http
           {{- range .paths }}
           - path: {{ .path }}
             pathType: {{ .pathType }}

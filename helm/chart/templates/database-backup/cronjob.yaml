@@ -1,0 +1,102 @@
+{{- if include "sparkyfitness.databaseBackupEnabled" . }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-database-backup
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-backup
+spec:
+  schedule: {{ .Values.databaseBackup.schedule | quote }}
+  suspend: {{ .Values.databaseBackup.suspend }}
+  concurrencyPolicy: {{ .Values.databaseBackup.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.databaseBackup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.databaseBackup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.databaseBackup.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "sparkyfitness.databaseBackupComponentLabels" . | nindent 12 }}
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          {{- include "sparkyfitness.imagePullSecrets" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.databaseBackup.podSecurityContext | nindent 12 }}
+          containers:
+            - name: pg-dumpall
+              {{- /*
+              Use the postgresql subchart image by default so the backup container
+              always matches the running database version and no extra pull is needed.
+              HelmForge does not use global.imageRegistry, so we mirror its raw
+              repository:tag pattern here. When the user overrides databaseBackup.image,
+              global.imageRegistry is applied via the sparkyfitness.image helper.
+              */}}
+              {{- if .Values.databaseBackup.image.repository }}
+              {{- $tag := .Values.databaseBackup.image.tag | default .Values.postgresql.image.tag -}}
+              {{- $img := dict "repository" .Values.databaseBackup.image.repository "tag" $tag }}
+              image: {{ include "sparkyfitness.image" (dict "image" $img "global" .Values.global "appVersion" .Chart.AppVersion) | quote }}
+              {{- else }}
+              image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+              {{- end }}
+              imagePullPolicy: {{ .Values.databaseBackup.image.pullPolicy }}
+              command: ["/bin/bash", "/scripts/database-backup.sh"]
+              securityContext:
+                {{- toYaml .Values.databaseBackup.containerSecurityContext | nindent 16 }}
+              env:
+                - name: BACKUP_ROOT
+                  value: {{ .Values.databaseBackup.persistence.mountPath | quote }}
+                - name: BACKUP_ARCHIVE_PREFIX
+                  value: {{ .Values.databaseBackup.archivePrefix | quote }}
+                - name: PG_DUMPALL_EXTRA_ARGS
+                  value: {{ .Values.databaseBackup.database.pgDumpAllArgs | quote }}
+                - name: RETENTION_DAYS
+                  value: {{ .Values.databaseBackup.retention.days | toString | quote }}
+                - name: RETENTION_WEEKS
+                  value: {{ .Values.databaseBackup.retention.weeks | toString | quote }}
+                - name: RETENTION_MONTHS
+                  value: {{ .Values.databaseBackup.retention.months | toString | quote }}
+                - name: DB_HOST
+                  value: {{ include "sparkyfitness.databaseHost" . | quote }}
+                - name: DB_PORT
+                  value: {{ include "sparkyfitness.databasePort" . | toString | quote }}
+                - name: DB_USER
+                  {{- if .Values.postgresql.enabled }}
+                  value: "postgres"
+                  {{- else }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "sparkyfitness.databaseSecretName" . }}
+                      key: username
+                  {{- end }}
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "sparkyfitness.databaseSecretName" . }}
+                      {{- if .Values.postgresql.enabled }}
+                      key: postgres-password
+                      {{- else }}
+                      key: password
+                      {{- end }}
+              resources:
+                {{- toYaml .Values.databaseBackup.resources | nindent 16 }}
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-storage
+                  mountPath: {{ .Values.databaseBackup.persistence.mountPath }}
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: scripts
+              configMap:
+                name: {{ include "sparkyfitness.fullname" . }}-database-backup-scripts
+                defaultMode: 0755
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: {{ include "sparkyfitness.databaseBackupPvcName" . }}
+            - name: tmp
+              emptyDir: {}
+{{- end }}

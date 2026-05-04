@@ -29,6 +29,34 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-db
+          {{- /*
+          Image is constructed as repository:tag to exactly match how the
+          HelmForge postgresql subchart references its own image. HelmForge
+          exposes no image helper and does not honour global.imageRegistry,
+          so using sparkyfitness.image here would be inconsistent and could
+          double-apply a registry prefix. Set postgresql.image.repository to
+          the full registry path if mirroring to a private registry.
+          */}}
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ include "sparkyfitness.databaseHost" . }} -p {{ include "sparkyfitness.databasePort" . }}; do echo "Waiting for database..."; sleep 2; done
+          securityContext:
+            runAsUser: {{ .Values.postgresql.podSecurityContext.runAsUser | default 999 }}
+            runAsGroup: {{ .Values.postgresql.podSecurityContext.runAsGroup | default 999 }}
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+        {{- end }}
+        {{- with .Values.server.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       containers:
         - name: server
           image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
@@ -76,15 +104,23 @@ spec:
                   key: password
             # --- Database credentials (owner) ---
             - name: SPARKY_FITNESS_DB_USER
+              {{- if .Values.postgresql.enabled }}
+              value: {{ .Values.postgresql.auth.username | quote }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.databaseSecretName" . }}
                   key: username
+              {{- end }}
             - name: SPARKY_FITNESS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  {{- if .Values.postgresql.enabled }}
+                  key: user-password
+                  {{- else }}
                   key: password
+                  {{- end }}
             {{- if .Values.config.oidc.enabled }}
             # --- OIDC credentials ---
             - name: SPARKY_FITNESS_OIDC_CLIENT_ID
@@ -132,6 +168,9 @@ spec:
               mountPath: {{ .Values.server.persistence.tempUploads.mountPath }}
             - name: tmp
               mountPath: /tmp
+            {{- with .Values.server.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: backup
           persistentVolumeClaim:
@@ -143,3 +182,6 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        {{- with .Values.server.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
