@@ -17,6 +17,7 @@ import {
   type FoodEntryMealUpdateData,
   loadDiaryGoals,
   downloadDiaryExport,
+  DownloadDiaryExportOptions,
 } from '@/api/Diary/foodEntryService';
 
 import { goalKeys } from '@/api/keys/goals';
@@ -251,6 +252,7 @@ export const useDeleteFoodEntryMealMutation = () => {
 
 export const useDownloadDiaryExport = () => {
   return useMutation({
-    mutationFn: downloadDiaryExport,
+    mutationFn: (options?: DownloadDiaryExportOptions) =>
+      downloadDiaryExport(options),
   });
 };

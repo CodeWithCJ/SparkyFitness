@@ -1395,41 +1395,57 @@ async function deleteFoodEntryMeal(
 }
 
 // Helpers for CSV Export
-const translateMealType = (meal: string) => {
-  const map: Record<string, string> = {
-    breakfast: 'Petit-déjeuner',
-    lunch: 'Déjeuner',
-    dinner: 'Dîner',
-    snacks: 'Collations',
-  };
-  return map[meal?.toLowerCase()] || meal;
+const translateMealType = (meal: string, locale: string) => {
+  if (!meal) return '';
+  const isFr = locale.startsWith('fr');
+  if (isFr) {
+    const mapFr: Record<string, string> = {
+      breakfast: 'Petit-déjeuner',
+      lunch: 'Déjeuner',
+      dinner: 'Dîner',
+      snacks: 'Collations',
+    };
+    return mapFr[meal?.toLowerCase()] || meal;
+  } else {
+    const mapEn: Record<string, string> = {
+      breakfast: 'Breakfast',
+      lunch: 'Lunch',
+      dinner: 'Dinner',
+      snacks: 'Snacks',
+    };
+    return mapEn[meal?.toLowerCase()] || meal;
+  }
 };
 
-const formatFrenchNumber = (num: number | string) => {
+const formatLocalizedNumber = (num: number | string, locale: string) => {
   if (num === null || num === undefined || num === '') return '';
-  return String(num).replace('.', ',');
+  const isFr = locale.startsWith('fr');
+  return isFr ? String(num).replace('.', ',') : String(num);
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const formatDateFrench = (dateInput: any) => {
+const formatDateLocalized = (dateInput: any, locale: string) => {
   try {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return String(dateInput);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    const isFr = locale.startsWith('fr');
+    const dateStr = getDayString(dateInput); // robust parsing
+    const [year, month, day] = dateStr.split('-');
+    return isFr ? `${day}/${month}/${year}` : `${year}-${month}-${day}`;
   } catch {
     return String(dateInput);
   }
 };
 
-const CSV_LABELS = {
-  SUMMARY_ROW: 'BILAN DU JOUR',
-  TOTAL_CONSUMED: 'Total Consommé',
-  DAILY_GOALS: 'Objectifs du jour',
-  EXERCISE_CALORIES: 'Calories Brûlées (Exercices)',
-  WATER_CONSUMED: 'Eau Consommée',
+const getCSVLabels = (locale: string) => {
+  const isFr = locale.startsWith('fr');
+  return {
+    SUMMARY_ROW: isFr ? 'BILAN DU JOUR' : 'DAILY SUMMARY',
+    TOTAL_CONSUMED: isFr ? 'Total Consommé' : 'Total Consumed',
+    DAILY_GOALS: isFr ? 'Objectifs du jour' : 'Daily Goals',
+    EXERCISE_CALORIES: isFr
+      ? 'Calories Brûlées (Exercices)'
+      : 'Burned Calories (Exercises)',
+    WATER_CONSUMED: isFr ? 'Eau Consommée' : 'Water Consumed',
+  };
 };
 
 function getDayString(dateInput: string | number | Date | unknown): string {
@@ -1447,7 +1463,8 @@ function getDayString(dateInput: string | number | Date | unknown): string {
 async function exportAllDiaryEntriesToCSVStream(
   userId: string,
   res: express.Response,
-  delimiter: string = ';'
+  delimiter: string = ';',
+  locale: string = 'fr'
 ) {
   log(
     'info',
@@ -1461,6 +1478,47 @@ async function exportAllDiaryEntriesToCSVStream(
 
   // State for daily summaries
   let currentDateProcessed: string | null = null;
+
+  const isFr = locale.startsWith('fr');
+  const CSV_LABELS = getCSVLabels(locale);
+
+  const baseHeaders = isFr
+    ? [
+        'Date',
+        'Type de repas',
+        "Nom de l'aliment",
+        'Marque',
+        'Quantité Consommée',
+        'Unité',
+        'Calories (kcal)',
+        'Protéines (g)',
+        'Glucides (g)',
+        'Lipides (g)',
+        'Gras Saturés (g)',
+        'Fibres (g)',
+        'Sucres (g)',
+        'Sodium (mg)',
+        'Cholestérol (mg)',
+        'Eau (ml)',
+      ]
+    : [
+        'Date',
+        'Meal Type',
+        'Food Name',
+        'Brand',
+        'Quantity Consumed',
+        'Unit',
+        'Calories (kcal)',
+        'Protein (g)',
+        'Carbs (g)',
+        'Fat (g)',
+        'Saturated Fat (g)',
+        'Fiber (g)',
+        'Sugars (g)',
+        'Sodium (mg)',
+        'Cholesterol (mg)',
+        'Water (ml)',
+      ];
 
   try {
     // Write BOM for Excel UTF-8
@@ -1571,69 +1629,79 @@ async function exportAllDiaryEntriesToCSVStream(
         if (currentDateProcessed !== null && currentDateProcessed !== dateStr) {
           const sumData = summariesCache.get(currentDateProcessed);
           if (sumData) {
-            const sumDateFormatted = formatDateFrench(currentDateProcessed);
+            const sumDateFormatted = formatDateLocalized(
+              currentDateProcessed,
+              locale
+            );
 
             const sumRow1: Record<string, string> = {
-              Date: sumDateFormatted,
-              Repas: CSV_LABELS.SUMMARY_ROW,
-              Aliment: CSV_LABELS.TOTAL_CONSUMED,
-              Marque: '',
-              'Quantité Consommée': '',
-              Unité: '',
-              'Calories (kcal)': formatFrenchNumber(
-                (Number(sumData.nutrition?.total_calories) || 0).toFixed(1)
+              [baseHeaders[0]]: sumDateFormatted,
+              [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+              [baseHeaders[2]]: CSV_LABELS.TOTAL_CONSUMED,
+              [baseHeaders[3]]: '',
+              [baseHeaders[4]]: '',
+              [baseHeaders[5]]: '',
+              [baseHeaders[6]]: formatLocalizedNumber(
+                (Number(sumData.nutrition?.total_calories) || 0).toFixed(1),
+                locale
               ),
-              'Protéines (g)': formatFrenchNumber(
-                (Number(sumData.nutrition?.total_protein) || 0).toFixed(1)
+              [baseHeaders[7]]: formatLocalizedNumber(
+                (Number(sumData.nutrition?.total_protein) || 0).toFixed(1),
+                locale
               ),
-              'Glucides (g)': formatFrenchNumber(
-                (Number(sumData.nutrition?.total_carbs) || 0).toFixed(1)
+              [baseHeaders[8]]: formatLocalizedNumber(
+                (Number(sumData.nutrition?.total_carbs) || 0).toFixed(1),
+                locale
               ),
-              'Lipides (g)': formatFrenchNumber(
-                (Number(sumData.nutrition?.total_fat) || 0).toFixed(1)
+              [baseHeaders[9]]: formatLocalizedNumber(
+                (Number(sumData.nutrition?.total_fat) || 0).toFixed(1),
+                locale
               ),
-              'Gras Saturés (g)': '',
-              'Fibres (g)': formatFrenchNumber(
-                (Number(sumData.nutrition?.total_dietary_fiber) || 0).toFixed(1)
+              [baseHeaders[10]]: '',
+              [baseHeaders[11]]: formatLocalizedNumber(
+                (Number(sumData.nutrition?.total_dietary_fiber) || 0).toFixed(
+                  1
+                ),
+                locale
               ),
-              'Sucres (g)': '',
-              'Sodium (mg)': '',
-              'Cholestérol (mg)': '',
-              'Eau (ml)': '',
+              [baseHeaders[12]]: '',
+              [baseHeaders[13]]: '',
+              [baseHeaders[14]]: '',
+              [baseHeaders[15]]: '',
             };
 
             for (const cn of userCustomNutrients) {
               const val = sumData.nutrition?.total_custom_nutrients?.[cn.name];
               sumRow1[`${cn.name} (${cn.unit})`] = val
-                ? formatFrenchNumber((Number(val) || 0).toFixed(1))
+                ? formatLocalizedNumber((Number(val) || 0).toFixed(1), locale)
                 : '0';
             }
 
             const sumRow2: Record<string, string> = {
-              Date: sumDateFormatted,
-              Repas: CSV_LABELS.SUMMARY_ROW,
-              Aliment: CSV_LABELS.DAILY_GOALS,
-              Marque: '',
-              'Quantité Consommée': '',
-              Unité: '',
-              'Calories (kcal)': sumData.goal
-                ? formatFrenchNumber(sumData.goal.calories)
+              [baseHeaders[0]]: sumDateFormatted,
+              [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+              [baseHeaders[2]]: CSV_LABELS.DAILY_GOALS,
+              [baseHeaders[3]]: '',
+              [baseHeaders[4]]: '',
+              [baseHeaders[5]]: '',
+              [baseHeaders[6]]: sumData.goal
+                ? formatLocalizedNumber(sumData.goal.calories, locale)
                 : '',
-              'Protéines (g)': sumData.goal
-                ? formatFrenchNumber(sumData.goal.protein)
+              [baseHeaders[7]]: sumData.goal
+                ? formatLocalizedNumber(sumData.goal.protein, locale)
                 : '',
-              'Glucides (g)': sumData.goal
-                ? formatFrenchNumber(sumData.goal.carbs)
+              [baseHeaders[8]]: sumData.goal
+                ? formatLocalizedNumber(sumData.goal.carbs, locale)
                 : '',
-              'Lipides (g)': sumData.goal
-                ? formatFrenchNumber(sumData.goal.fat)
+              [baseHeaders[9]]: sumData.goal
+                ? formatLocalizedNumber(sumData.goal.fat, locale)
                 : '',
-              'Gras Saturés (g)': '',
-              'Fibres (g)': '',
-              'Sucres (g)': '',
-              'Sodium (mg)': '',
-              'Cholestérol (mg)': '',
-              'Eau (ml)': '',
+              [baseHeaders[10]]: '',
+              [baseHeaders[11]]: '',
+              [baseHeaders[12]]: '',
+              [baseHeaders[13]]: '',
+              [baseHeaders[14]]: '',
+              [baseHeaders[15]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1641,24 +1709,25 @@ async function exportAllDiaryEntriesToCSVStream(
             }
 
             const sumRow3: Record<string, string> = {
-              Date: sumDateFormatted,
-              Repas: CSV_LABELS.SUMMARY_ROW,
-              Aliment: CSV_LABELS.EXERCISE_CALORIES,
-              Marque: '',
-              'Quantité Consommée': '',
-              Unité: '',
-              'Calories (kcal)': formatFrenchNumber(
-                sumData.caloriesBurned.toFixed(1)
+              [baseHeaders[0]]: sumDateFormatted,
+              [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+              [baseHeaders[2]]: CSV_LABELS.EXERCISE_CALORIES,
+              [baseHeaders[3]]: '',
+              [baseHeaders[4]]: '',
+              [baseHeaders[5]]: '',
+              [baseHeaders[6]]: formatLocalizedNumber(
+                sumData.caloriesBurned.toFixed(1),
+                locale
               ),
-              'Protéines (g)': '',
-              'Glucides (g)': '',
-              'Lipides (g)': '',
-              'Gras Saturés (g)': '',
-              'Fibres (g)': '',
-              'Sucres (g)': '',
-              'Sodium (mg)': '',
-              'Cholestérol (mg)': '',
-              'Eau (ml)': '',
+              [baseHeaders[7]]: '',
+              [baseHeaders[8]]: '',
+              [baseHeaders[9]]: '',
+              [baseHeaders[10]]: '',
+              [baseHeaders[11]]: '',
+              [baseHeaders[12]]: '',
+              [baseHeaders[13]]: '',
+              [baseHeaders[14]]: '',
+              [baseHeaders[15]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1666,22 +1735,25 @@ async function exportAllDiaryEntriesToCSVStream(
             }
 
             const sumRow4: Record<string, string> = {
-              Date: sumDateFormatted,
-              Repas: CSV_LABELS.SUMMARY_ROW,
-              Aliment: CSV_LABELS.WATER_CONSUMED,
-              Marque: '',
-              'Quantité Consommée': '',
-              Unité: '',
-              'Calories (kcal)': '',
-              'Protéines (g)': '',
-              'Glucides (g)': '',
-              'Lipides (g)': '',
-              'Gras Saturés (g)': '',
-              'Fibres (g)': '',
-              'Sucres (g)': '',
-              'Sodium (mg)': '',
-              'Cholestérol (mg)': '',
-              'Eau (ml)': formatFrenchNumber(sumData.waterTotal),
+              [baseHeaders[0]]: sumDateFormatted,
+              [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+              [baseHeaders[2]]: CSV_LABELS.WATER_CONSUMED,
+              [baseHeaders[3]]: '',
+              [baseHeaders[4]]: '',
+              [baseHeaders[5]]: '',
+              [baseHeaders[6]]: '',
+              [baseHeaders[7]]: '',
+              [baseHeaders[8]]: '',
+              [baseHeaders[9]]: '',
+              [baseHeaders[10]]: '',
+              [baseHeaders[11]]: '',
+              [baseHeaders[12]]: '',
+              [baseHeaders[13]]: '',
+              [baseHeaders[14]]: '',
+              [baseHeaders[15]]: formatLocalizedNumber(
+                sumData.waterTotal,
+                locale
+              ),
             };
 
             for (const cn of userCustomNutrients) {
@@ -1701,46 +1773,55 @@ async function exportAllDiaryEntriesToCSVStream(
 
         // Regular food entry
         const entryRow: Record<string, string> = {
-          Date: formatDateFrench(entry.entry_date),
-          Repas: translateMealType(entry.meal_type || ''),
-          Aliment: entry.food_name || '',
-          Marque: entry.brand_name || '',
-          'Quantité Consommée': formatFrenchNumber(entry.quantity),
-          Unité: entry.unit || '',
-          'Calories (kcal)': entry.calories
-            ? formatFrenchNumber((entry.calories * scale).toFixed(1))
+          [baseHeaders[0]]: formatDateLocalized(entry.entry_date, locale),
+          [baseHeaders[1]]: translateMealType(entry.meal_type || '', locale),
+          [baseHeaders[2]]: entry.food_name || '',
+          [baseHeaders[3]]: entry.brand_name || '',
+          [baseHeaders[4]]: formatLocalizedNumber(entry.quantity, locale),
+          [baseHeaders[5]]: entry.unit || '',
+          [baseHeaders[6]]: entry.calories
+            ? formatLocalizedNumber((entry.calories * scale).toFixed(1), locale)
             : '0',
-          'Protéines (g)': entry.protein
-            ? formatFrenchNumber((entry.protein * scale).toFixed(1))
+          [baseHeaders[7]]: entry.protein
+            ? formatLocalizedNumber((entry.protein * scale).toFixed(1), locale)
             : '0',
-          'Glucides (g)': entry.carbs
-            ? formatFrenchNumber((entry.carbs * scale).toFixed(1))
+          [baseHeaders[8]]: entry.carbs
+            ? formatLocalizedNumber((entry.carbs * scale).toFixed(1), locale)
             : '0',
-          'Lipides (g)': entry.fat
-            ? formatFrenchNumber((entry.fat * scale).toFixed(1))
+          [baseHeaders[9]]: entry.fat
+            ? formatLocalizedNumber((entry.fat * scale).toFixed(1), locale)
             : '0',
-          'Gras Saturés (g)': entry.saturated_fat
-            ? formatFrenchNumber((entry.saturated_fat * scale).toFixed(1))
+          [baseHeaders[10]]: entry.saturated_fat
+            ? formatLocalizedNumber(
+                (entry.saturated_fat * scale).toFixed(1),
+                locale
+              )
             : '0',
-          'Fibres (g)': entry.dietary_fiber
-            ? formatFrenchNumber((entry.dietary_fiber * scale).toFixed(1))
+          [baseHeaders[11]]: entry.dietary_fiber
+            ? formatLocalizedNumber(
+                (entry.dietary_fiber * scale).toFixed(1),
+                locale
+              )
             : '0',
-          'Sucres (g)': entry.sugars
-            ? formatFrenchNumber((entry.sugars * scale).toFixed(1))
+          [baseHeaders[12]]: entry.sugars
+            ? formatLocalizedNumber((entry.sugars * scale).toFixed(1), locale)
             : '0',
-          'Sodium (mg)': entry.sodium
-            ? formatFrenchNumber((entry.sodium * scale).toFixed(1))
+          [baseHeaders[13]]: entry.sodium
+            ? formatLocalizedNumber((entry.sodium * scale).toFixed(1), locale)
             : '0',
-          'Cholestérol (mg)': entry.cholesterol
-            ? formatFrenchNumber((entry.cholesterol * scale).toFixed(1))
+          [baseHeaders[14]]: entry.cholesterol
+            ? formatLocalizedNumber(
+                (entry.cholesterol * scale).toFixed(1),
+                locale
+              )
             : '0',
-          'Eau (ml)': '',
+          [baseHeaders[15]]: '',
         };
 
         for (const cn of userCustomNutrients) {
           const val = entry.custom_nutrients?.[cn.name];
           entryRow[`${cn.name} (${cn.unit})`] = val
-            ? formatFrenchNumber((Number(val) * scale).toFixed(1))
+            ? formatLocalizedNumber((Number(val) * scale).toFixed(1), locale)
             : '0';
         }
 
@@ -1799,69 +1880,77 @@ async function exportAllDiaryEntriesToCSVStream(
       };
 
       if (sumData) {
-        const sumDateFormatted = formatDateFrench(currentDateProcessed);
+        const sumDateFormatted = formatDateLocalized(
+          currentDateProcessed,
+          locale
+        );
 
         const finalRow1: Record<string, string> = {
-          Date: sumDateFormatted,
-          Repas: CSV_LABELS.SUMMARY_ROW,
-          Aliment: CSV_LABELS.TOTAL_CONSUMED,
-          Marque: '',
-          'Quantité Consommée': '',
-          Unité: '',
-          'Calories (kcal)': formatFrenchNumber(
-            (Number(sumData.nutrition?.total_calories) || 0).toFixed(1)
+          [baseHeaders[0]]: sumDateFormatted,
+          [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+          [baseHeaders[2]]: CSV_LABELS.TOTAL_CONSUMED,
+          [baseHeaders[3]]: '',
+          [baseHeaders[4]]: '',
+          [baseHeaders[5]]: '',
+          [baseHeaders[6]]: formatLocalizedNumber(
+            (Number(sumData.nutrition?.total_calories) || 0).toFixed(1),
+            locale
           ),
-          'Protéines (g)': formatFrenchNumber(
-            (Number(sumData.nutrition?.total_protein) || 0).toFixed(1)
+          [baseHeaders[7]]: formatLocalizedNumber(
+            (Number(sumData.nutrition?.total_protein) || 0).toFixed(1),
+            locale
           ),
-          'Glucides (g)': formatFrenchNumber(
-            (Number(sumData.nutrition?.total_carbs) || 0).toFixed(1)
+          [baseHeaders[8]]: formatLocalizedNumber(
+            (Number(sumData.nutrition?.total_carbs) || 0).toFixed(1),
+            locale
           ),
-          'Lipides (g)': formatFrenchNumber(
-            (Number(sumData.nutrition?.total_fat) || 0).toFixed(1)
+          [baseHeaders[9]]: formatLocalizedNumber(
+            (Number(sumData.nutrition?.total_fat) || 0).toFixed(1),
+            locale
           ),
-          'Gras Saturés (g)': '',
-          'Fibres (g)': formatFrenchNumber(
-            (Number(sumData.nutrition?.total_dietary_fiber) || 0).toFixed(1)
+          [baseHeaders[10]]: '',
+          [baseHeaders[11]]: formatLocalizedNumber(
+            (Number(sumData.nutrition?.total_dietary_fiber) || 0).toFixed(1),
+            locale
           ),
-          'Sucres (g)': '',
-          'Sodium (mg)': '',
-          'Cholestérol (mg)': '',
-          'Eau (ml)': '',
+          [baseHeaders[12]]: '',
+          [baseHeaders[13]]: '',
+          [baseHeaders[14]]: '',
+          [baseHeaders[15]]: '',
         };
 
         for (const cn of userCustomNutrients) {
           const val = sumData.nutrition?.total_custom_nutrients?.[cn.name];
           finalRow1[`${cn.name} (${cn.unit})`] = val
-            ? formatFrenchNumber((Number(val) || 0).toFixed(1))
+            ? formatLocalizedNumber((Number(val) || 0).toFixed(1), locale)
             : '0';
         }
 
         const finalRow2: Record<string, string> = {
-          Date: sumDateFormatted,
-          Repas: CSV_LABELS.SUMMARY_ROW,
-          Aliment: CSV_LABELS.DAILY_GOALS,
-          Marque: '',
-          'Quantité Consommée': '',
-          Unité: '',
-          'Calories (kcal)': sumData.goal
-            ? formatFrenchNumber(sumData.goal.calories)
+          [baseHeaders[0]]: sumDateFormatted,
+          [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+          [baseHeaders[2]]: CSV_LABELS.DAILY_GOALS,
+          [baseHeaders[3]]: '',
+          [baseHeaders[4]]: '',
+          [baseHeaders[5]]: '',
+          [baseHeaders[6]]: sumData.goal
+            ? formatLocalizedNumber(sumData.goal.calories, locale)
             : '',
-          'Protéines (g)': sumData.goal
-            ? formatFrenchNumber(sumData.goal.protein)
+          [baseHeaders[7]]: sumData.goal
+            ? formatLocalizedNumber(sumData.goal.protein, locale)
             : '',
-          'Glucides (g)': sumData.goal
-            ? formatFrenchNumber(sumData.goal.carbs)
+          [baseHeaders[8]]: sumData.goal
+            ? formatLocalizedNumber(sumData.goal.carbs, locale)
             : '',
-          'Lipides (g)': sumData.goal
-            ? formatFrenchNumber(sumData.goal.fat)
+          [baseHeaders[9]]: sumData.goal
+            ? formatLocalizedNumber(sumData.goal.fat, locale)
             : '',
-          'Gras Saturés (g)': '',
-          'Fibres (g)': '',
-          'Sucres (g)': '',
-          'Sodium (mg)': '',
-          'Cholestérol (mg)': '',
-          'Eau (ml)': '',
+          [baseHeaders[10]]: '',
+          [baseHeaders[11]]: '',
+          [baseHeaders[12]]: '',
+          [baseHeaders[13]]: '',
+          [baseHeaders[14]]: '',
+          [baseHeaders[15]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -1869,24 +1958,25 @@ async function exportAllDiaryEntriesToCSVStream(
         }
 
         const finalRow3: Record<string, string> = {
-          Date: sumDateFormatted,
-          Repas: CSV_LABELS.SUMMARY_ROW,
-          Aliment: CSV_LABELS.EXERCISE_CALORIES,
-          Marque: '',
-          'Quantité Consommée': '',
-          Unité: '',
-          'Calories (kcal)': formatFrenchNumber(
-            sumData.caloriesBurned.toFixed(1)
+          [baseHeaders[0]]: sumDateFormatted,
+          [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+          [baseHeaders[2]]: CSV_LABELS.EXERCISE_CALORIES,
+          [baseHeaders[3]]: '',
+          [baseHeaders[4]]: '',
+          [baseHeaders[5]]: '',
+          [baseHeaders[6]]: formatLocalizedNumber(
+            sumData.caloriesBurned.toFixed(1),
+            locale
           ),
-          'Protéines (g)': '',
-          'Glucides (g)': '',
-          'Lipides (g)': '',
-          'Gras Saturés (g)': '',
-          'Fibres (g)': '',
-          'Sucres (g)': '',
-          'Sodium (mg)': '',
-          'Cholestérol (mg)': '',
-          'Eau (ml)': '',
+          [baseHeaders[7]]: '',
+          [baseHeaders[8]]: '',
+          [baseHeaders[9]]: '',
+          [baseHeaders[10]]: '',
+          [baseHeaders[11]]: '',
+          [baseHeaders[12]]: '',
+          [baseHeaders[13]]: '',
+          [baseHeaders[14]]: '',
+          [baseHeaders[15]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -1894,22 +1984,22 @@ async function exportAllDiaryEntriesToCSVStream(
         }
 
         const finalRow4: Record<string, string> = {
-          Date: sumDateFormatted,
-          Repas: CSV_LABELS.SUMMARY_ROW,
-          Aliment: CSV_LABELS.WATER_CONSUMED,
-          Marque: '',
-          'Quantité Consommée': '',
-          Unité: '',
-          'Calories (kcal)': '',
-          'Protéines (g)': '',
-          'Glucides (g)': '',
-          'Lipides (g)': '',
-          'Gras Saturés (g)': '',
-          'Fibres (g)': '',
-          'Sucres (g)': '',
-          'Sodium (mg)': '',
-          'Cholestérol (mg)': '',
-          'Eau (ml)': formatFrenchNumber(sumData.waterTotal),
+          [baseHeaders[0]]: sumDateFormatted,
+          [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+          [baseHeaders[2]]: CSV_LABELS.WATER_CONSUMED,
+          [baseHeaders[3]]: '',
+          [baseHeaders[4]]: '',
+          [baseHeaders[5]]: '',
+          [baseHeaders[6]]: '',
+          [baseHeaders[7]]: '',
+          [baseHeaders[8]]: '',
+          [baseHeaders[9]]: '',
+          [baseHeaders[10]]: '',
+          [baseHeaders[11]]: '',
+          [baseHeaders[12]]: '',
+          [baseHeaders[13]]: '',
+          [baseHeaders[14]]: '',
+          [baseHeaders[15]]: formatLocalizedNumber(sumData.waterTotal, locale),
         };
 
         for (const cn of userCustomNutrients) {
