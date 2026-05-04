@@ -9,7 +9,7 @@ import type { Meal, MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 
-export type FoodPickerMode = 'log-entry' | 'meal-builder';
+export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -24,8 +24,15 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  ExercisesLibrary: undefined;
+  WorkoutPresetsLibrary: undefined;
+  WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
+  WorkoutPresetForm:
+    | { mode: 'create-preset'; selectedExercise?: Exercise; selectionNonce?: number }
+    | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
+  ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
   FoodSearch:
     | {
         date?: string;
@@ -55,6 +62,9 @@ export type RootStackParamList = {
       }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null }
     | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
+  ExerciseForm:
+    | { mode: 'create-exercise' }
+    | { mode: 'edit-exercise'; exercise: Exercise; returnKey: string };
   FoodScan:
     | {
         date?: string;

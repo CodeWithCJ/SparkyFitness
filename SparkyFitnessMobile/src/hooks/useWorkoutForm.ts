@@ -220,7 +220,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           clientId: generateClientId(),
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_name,
-          exerciseCategory: null,
+          exerciseCategory: exercise.category ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),

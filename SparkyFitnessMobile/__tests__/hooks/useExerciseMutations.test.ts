@@ -8,6 +8,9 @@ import {
   useUpdateExerciseEntry,
   useDeleteWorkout,
   useDeleteExerciseEntry,
+  useCreateExercise,
+  useUpdateExercise,
+  useDeleteExerciseLibrary,
 } from '../../src/hooks/useExerciseMutations';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
 import type { QueryClient } from './queryTestUtils';
@@ -20,6 +23,9 @@ jest.mock('../../src/services/api/exerciseApi', () => ({
   createExerciseEntry: jest.fn(),
   updateExerciseEntry: jest.fn(),
   deleteExerciseEntry: jest.fn(),
+  createExercise: jest.fn(),
+  updateExercise: jest.fn(),
+  deleteExerciseFromLibrary: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/invalidateExerciseCache', () => ({
@@ -41,6 +47,9 @@ const {
   createExerciseEntry: mockCreateExerciseEntry,
   updateExerciseEntry: mockUpdateExerciseEntry,
   deleteExerciseEntry: mockDeleteExerciseEntry,
+  createExercise: mockCreateExercise,
+  updateExercise: mockUpdateExercise,
+  deleteExerciseFromLibrary: mockDeleteExerciseFromLibrary,
 } = jest.requireMock('../../src/services/api/exerciseApi');
 
 const { invalidateExerciseCache: mockInvalidateCache } = jest.requireMock(
@@ -279,6 +288,176 @@ describe('useExerciseMutations', () => {
         expect(mockDeleteExerciseEntry).toHaveBeenCalledWith('entry-1');
         expect(onSuccess).toHaveBeenCalled();
         expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
+      });
+    });
+  });
+
+  describe('useCreateExercise', () => {
+    it('invalidates suggested, count, library, and search caches on success', async () => {
+      mockCreateExercise.mockResolvedValue({ id: 'ex-1', name: 'Test' });
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      const resetSpy = jest.spyOn(queryClient, 'resetQueries');
+
+      const { result } = renderHook(() => useCreateExercise(), { wrapper });
+
+      await act(async () => {
+        await result.current.createExerciseAsync({ name: 'Test', category: 'general', description: null });
+      });
+
+      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(invalidatedKeys).toEqual(
+        expect.arrayContaining([
+          ['suggestedExercises'],
+          ['exercises', 'count'],
+          ['exerciseSearch'],
+        ]),
+      );
+      const resetKeys = resetSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(resetKeys).toEqual(expect.arrayContaining([['exercisesLibrary']]));
+    });
+  });
+
+  describe('useUpdateExercise', () => {
+    it('calls updateExercise and invalidates library caches on success', async () => {
+      mockUpdateExercise.mockResolvedValue({ id: 'ex-1', name: 'Updated' });
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateExercise(), { wrapper });
+
+      await act(async () => {
+        await result.current.updateExerciseAsync({
+          id: 'ex-1',
+          payload: { name: 'Updated' },
+        });
+      });
+
+      expect(mockUpdateExercise).toHaveBeenCalledWith('ex-1', { name: 'Updated' });
+      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(invalidatedKeys).toEqual(
+        expect.arrayContaining([
+          ['suggestedExercises'],
+          ['exercises', 'count'],
+          ['exerciseSearch'],
+        ]),
+      );
+    });
+
+    it('shows permission toast on 403', async () => {
+      mockUpdateExercise.mockRejectedValue(new Error('Server error: 403 - Forbidden'));
+
+      const { result } = renderHook(() => useUpdateExercise(), { wrapper });
+
+      await act(async () => {
+        try {
+          await result.current.updateExerciseAsync({ id: 'ex-1', payload: { name: 'X' } });
+        } catch {
+          // expected
+        }
+      });
+
+      await waitFor(() => {
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'error',
+          text1: 'Failed to update exercise',
+          text2: "You don't have permission to edit this exercise.",
+        });
+      });
+    });
+
+    it('shows permission toast on 404', async () => {
+      mockUpdateExercise.mockRejectedValue(new Error('Server error: 404 - not authorized'));
+
+      const { result } = renderHook(() => useUpdateExercise(), { wrapper });
+
+      await act(async () => {
+        try {
+          await result.current.updateExerciseAsync({ id: 'ex-1', payload: { name: 'X' } });
+        } catch {
+          // expected
+        }
+      });
+
+      await waitFor(() => {
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text2: "You don't have permission to edit this exercise.",
+          }),
+        );
+      });
+    });
+  });
+
+  describe('useDeleteExerciseLibrary', () => {
+    it('shows confirmation dialog with exercise-specific text', () => {
+      const { result } = renderHook(
+        () => useDeleteExerciseLibrary({ exerciseId: 'ex-1' }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.confirmAndDelete();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Delete Exercise?',
+        expect.stringContaining('removed from your library'),
+        expect.any(Array),
+      );
+    });
+
+    it('calls deleteExerciseFromLibrary and fires onSuccess on confirm', async () => {
+      mockDeleteExerciseFromLibrary.mockResolvedValue(undefined);
+      const onSuccess = jest.fn();
+
+      const { result } = renderHook(
+        () => useDeleteExerciseLibrary({ exerciseId: 'ex-1', onSuccess }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.confirmAndDelete();
+      });
+
+      const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
+      const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+
+      await act(async () => {
+        deleteButton.onPress();
+      });
+
+      await waitFor(() => {
+        expect(mockDeleteExerciseFromLibrary).toHaveBeenCalledWith('ex-1');
+        expect(onSuccess).toHaveBeenCalled();
+      });
+    });
+
+    it('shows permission toast on 403', async () => {
+      mockDeleteExerciseFromLibrary.mockRejectedValue(
+        new Error('Server error: 403 - Forbidden'),
+      );
+
+      const { result } = renderHook(
+        () => useDeleteExerciseLibrary({ exerciseId: 'ex-1' }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.confirmAndDelete();
+      });
+
+      const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
+      const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+
+      await act(async () => {
+        deleteButton.onPress();
+      });
+
+      await waitFor(() => {
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'error',
+          text1: 'Failed to delete exercise',
+          text2: "You don't have permission to delete this exercise.",
+        });
       });
     });
   });

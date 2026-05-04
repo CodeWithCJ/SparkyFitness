@@ -13,6 +13,7 @@ import {
   calculateOtherExerciseCalories,
   calculateExerciseDuration,
   buildExercisesPayload,
+  buildPresetExercisesPayload,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
@@ -1038,6 +1039,205 @@ describe('workoutSession', () => {
         expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
         expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
       });
+    });
+  });
+
+  describe('buildPresetExercisesPayload', () => {
+    const makeDraftExercise = (overrides?: Partial<WorkoutDraftExercise>): WorkoutDraftExercise => ({
+      clientId: 'c1',
+      exerciseId: 'ex-1',
+      exerciseName: 'Bench Press',
+      exerciseCategory: 'Strength',
+      images: [],
+      sets: [],
+      ...overrides,
+    });
+
+    it('returns empty array for no exercises', () => {
+      expect(buildPresetExercisesPayload([], 'kg')).toEqual([]);
+    });
+
+    it('preserves exercises with zero sets so saving an unrelated edit does not delete them', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({ exerciseId: 'ex-1', sets: [] }),
+          makeDraftExercise({
+            exerciseId: 'ex-2',
+            sets: [{ clientId: 's1', weight: '50', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload).toHaveLength(2);
+      expect(payload[0].exercise_id).toBe('ex-1');
+      expect(payload[0].sort_order).toBe(0);
+      expect(payload[0].sets).toEqual([]);
+      expect(payload[1].exercise_id).toBe('ex-2');
+      expect(payload[1].sort_order).toBe(1);
+    });
+
+    it('preserves a weight of 0 (not collapsed to null)', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '0', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].weight).toBe(0);
+      expect(payload[0].sets[0].reps).toBe(10);
+    });
+
+    it('preserves reps of 0 (not collapsed to null)', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '50', reps: '0' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].reps).toBe(0);
+    });
+
+    it('returns null for non-numeric reps and weight', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '', reps: '' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].weight).toBeNull();
+      expect(payload[0].sets[0].reps).toBeNull();
+    });
+
+    it('converts weight from lbs to kg when unit is lbs', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '225', reps: '5' }],
+          }),
+        ],
+        'lbs',
+      );
+      expect(payload[0].sets[0].weight).toBeCloseTo(102.058, 1);
+    });
+
+    it('defaults set_type to "normal" when not provided', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '50', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].set_type).toBe('normal');
+    });
+
+    it('round-trips set_type, duration, and notes from the draft', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [
+              {
+                clientId: 's1',
+                weight: '50',
+                reps: '10',
+                setType: 'warmup',
+                duration: 45,
+                notes: 'easy set',
+              },
+            ],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].set_type).toBe('warmup');
+      expect(payload[0].sets[0].duration).toBe(45);
+      expect(payload[0].sets[0].notes).toBe('easy set');
+    });
+
+    it('defaults duration and notes to null when not provided', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [{ clientId: 's1', weight: '50', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].duration).toBeNull();
+      expect(payload[0].sets[0].notes).toBeNull();
+    });
+
+    it('uses set restTime, defaulting null when undefined', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [
+              { clientId: 's1', weight: '50', reps: '10', restTime: 120 },
+              { clientId: 's2', weight: '50', reps: '8' },
+            ],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].rest_time).toBe(120);
+      expect(payload[0].sets[1].rest_time).toBeNull();
+    });
+
+    it('takes the first image as image_url', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            images: ['first.jpg', 'second.jpg'],
+            sets: [{ clientId: 's1', weight: '50', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].image_url).toBe('first.jpg');
+    });
+
+    it('emits null image_url when no images', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            images: [],
+            sets: [{ clientId: 's1', weight: '50', reps: '10' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].image_url).toBeNull();
+    });
+
+    it('assigns 1-based set_number and 0-based sort_order', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            exerciseId: 'ex-1',
+            sets: [
+              { clientId: 's1', weight: '50', reps: '10' },
+              { clientId: 's2', weight: '50', reps: '8' },
+            ],
+          }),
+          makeDraftExercise({
+            exerciseId: 'ex-2',
+            sets: [{ clientId: 's3', weight: '70', reps: '5' }],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sort_order).toBe(0);
+      expect(payload[0].sets[0].set_number).toBe(1);
+      expect(payload[0].sets[1].set_number).toBe(2);
+      expect(payload[1].sort_order).toBe(1);
+      expect(payload[1].sets[0].set_number).toBe(1);
     });
   });
 });

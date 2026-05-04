@@ -6,6 +6,10 @@ export interface WorkoutDraftSet {
   restTime?: number | null;
   weight: string;
   reps: string;
+  /** Round-tripped from the preset on edit; the form has no UI for these. */
+  setType?: string;
+  duration?: number | null;
+  notes?: string | null;
 }
 
 export interface WorkoutDraftExercise {

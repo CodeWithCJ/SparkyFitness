@@ -390,6 +390,104 @@ async function searchExercises(
     client.release();
   }
 }
+async function searchExercisesPaginated(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  name: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  equipmentFilter: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  muscleGroupFilter: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  limit: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  offset: any
+) {
+  const client = await getClient(userId);
+  try {
+    const whereClauses = ['is_quick_exercise = FALSE'];
+    const queryParams = [];
+    let paramIndex = 1;
+    if (name) {
+      whereClauses.push(`name ILIKE $${paramIndex}`);
+      queryParams.push(`%${name}%`);
+      paramIndex++;
+    }
+    if (equipmentFilter && equipmentFilter.length > 0) {
+      whereClauses.push(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_: any, i: any) => `$${paramIndex + i}`).join(',')}]`
+      );
+      queryParams.push(...equipmentFilter);
+      paramIndex += equipmentFilter.length;
+    }
+    if (muscleGroupFilter && muscleGroupFilter.length > 0) {
+      const primaryMusclesPlaceholders = muscleGroupFilter
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((_: any, i: any) => `$${paramIndex + i}`)
+        .join(',');
+      const secondaryMusclesPlaceholders = muscleGroupFilter
+        .map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (_: any, i: any) => `$${paramIndex + muscleGroupFilter.length + i}`
+        )
+        .join(',');
+      whereClauses.push(
+        `(primary_muscles::jsonb ?| ARRAY[${primaryMusclesPlaceholders}] OR secondary_muscles::jsonb ?| ARRAY[${secondaryMusclesPlaceholders}])`
+      );
+      queryParams.push(...muscleGroupFilter);
+      queryParams.push(...muscleGroupFilter);
+      paramIndex += muscleGroupFilter.length * 2;
+    }
+    const whereSql = whereClauses.join(' AND ');
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count FROM exercises WHERE ${whereSql}`,
+      queryParams
+    );
+    const totalCount = countResult.rows[0]?.count ?? 0;
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
+    const finalQuery = `
+      SELECT id, source, source_id, name, force, level, mechanic, equipment,
+              primary_muscles, secondary_muscles, instructions, category, images,
+              calories_per_hour, description, user_id, is_custom, shared_with_public
+       FROM exercises
+       WHERE ${whereSql}
+       ORDER BY name ASC
+       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
+    const result = await client.query(finalQuery, [
+      ...queryParams,
+      limit,
+      offset,
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const exercises = result.rows.map((row: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parseJsonbField = (field: any) => {
+        if (row[field]) {
+          try {
+            const parsed = JSON.parse(row[field]);
+            return Array.isArray(parsed) ? parsed : [parsed];
+          } catch (e) {
+            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
+            return [];
+          }
+        }
+        return [];
+      };
+      row.equipment = parseJsonbField('equipment');
+      row.primary_muscles = parseJsonbField('primary_muscles');
+      row.secondary_muscles = parseJsonbField('secondary_muscles');
+      row.instructions = parseJsonbField('instructions');
+      row.images = parseJsonbField('images');
+      return row;
+    });
+    return { exercises, totalCount };
+  } finally {
+    client.release();
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createExercise(exerciseData: any) {
   const client = await getClient(exerciseData.user_id);
@@ -853,6 +951,7 @@ export { countExercises };
 export { getDistinctEquipment };
 export { getDistinctMuscleGroups };
 export { searchExercises };
+export { searchExercisesPaginated };
 export { createExercise };
 export { updateExercise };
 export { deleteExercise };
@@ -871,6 +970,7 @@ export default {
   getDistinctEquipment,
   getDistinctMuscleGroups,
   searchExercises,
+  searchExercisesPaginated,
   createExercise,
   updateExercise,
   deleteExercise,

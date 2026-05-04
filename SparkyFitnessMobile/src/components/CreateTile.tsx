@@ -27,7 +27,7 @@ const CreateTile: React.FC<CreateTileProps> = ({
       className={`bg-surface rounded-xl px-3 py-3 flex-row items-center shadow-sm ${className}`}
     >
       <Icon name={icon} size={24} color={accentPrimary} />
-      <View className="flex-1 ml-2">
+      <View className="flex-1 ml-4">
         <Text className="text-text-primary text-sm font-medium" numberOfLines={1}>
           {title}
         </Text>

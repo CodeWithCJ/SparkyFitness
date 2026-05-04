@@ -22,9 +22,11 @@ export {
   exerciseHistoryQueryKey,
   suggestedExercisesQueryKey,
   exerciseSearchQueryKey,
+  exercisesLibraryQueryKey,
   externalExerciseSearchQueryKey,
   workoutPresetsQueryKey,
   workoutPresetSearchQueryKey,
+  workoutPresetsLibraryQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -54,12 +56,30 @@ export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasureme
 export { useExerciseHistory } from './useExerciseHistory';
 export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
+export { useExercisesLibrary } from './useExercisesLibrary';
 export { useExternalExerciseSearch } from './useExternalExerciseSearch';
-export { useCreateWorkout, useCreateExerciseEntry, useUpdateExerciseEntry } from './useExerciseMutations';
+export {
+  useCreateWorkout,
+  useCreateExerciseEntry,
+  useUpdateExerciseEntry,
+  useCreateExercise,
+  useUpdateExercise,
+} from './useExerciseMutations';
 export { useActivityForm } from './useActivityForm';
-export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './useExerciseMutations';
+export {
+  useDeleteExerciseEntry,
+  useDeleteWorkout,
+  useUpdateWorkout,
+  useDeleteExerciseLibrary,
+} from './useExerciseMutations';
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
+export { useWorkoutPresetsLibrary } from './useWorkoutPresetsLibrary';
+export {
+  useCreateWorkoutPreset,
+  useUpdateWorkoutPreset,
+  useDeleteWorkoutPreset,
+} from './useWorkoutPresetMutations';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
 export { useProfile } from './useProfile';

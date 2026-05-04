@@ -1,6 +1,7 @@
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { WorkoutDraftExercise } from '../types/drafts';
+import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
 
@@ -272,6 +273,33 @@ export function buildExercisesPayload(
         weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
         reps: isNaN(reps) ? null : reps,
         ...(set.restTime != null ? { rest_time: set.restTime } : {}),
+      };
+    }),
+  }));
+}
+
+export function buildPresetExercisesPayload(
+  exercises: WorkoutDraftExercise[],
+  weightUnit: 'kg' | 'lbs',
+): WorkoutPresetExercisePayload[] {
+  // Preset exercises with zero sets are valid on the server and render as
+  // "No sets" in the detail view. Do NOT filter them out — saving an unrelated
+  // edit would silently delete the user's zero-set rows from the preset.
+  return exercises.map((exercise, index) => ({
+    exercise_id: exercise.exerciseId,
+    image_url: exercise.images[0] ?? null,
+    sort_order: index,
+    sets: exercise.sets.map((set, setIndex) => {
+      const weight = parseDecimalInput(set.weight);
+      const reps = parseInt(set.reps, 10);
+      return {
+        set_number: setIndex + 1,
+        set_type: set.setType ?? 'normal',
+        reps: isNaN(reps) ? null : reps,
+        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+        duration: set.duration ?? null,
+        rest_time: set.restTime ?? null,
+        notes: set.notes ?? null,
       };
     }),
   }));

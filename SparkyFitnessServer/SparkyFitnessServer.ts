@@ -15,6 +15,8 @@ import foodRoutes from './routes/foodRoutes.js';
 import v2FoodRoutes from './routes/v2/foodRoutes.js';
 // @ts-expect-error TS1192
 import v2ExerciseEntryRoutes from './routes/v2/exerciseEntryRoutes.js';
+// @ts-expect-error TS1192
+import v2ExerciseRoutes from './routes/v2/exerciseRoutes.js';
 import mealRoutes from './routes/mealRoutes.js';
 import foodEntryRoutes from './routes/foodEntryRoutes.js';
 import foodEntryMealRoutes from './routes/foodEntryMealRoutes.js';
@@ -321,6 +323,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/v2/foods', v2FoodRoutes);
 app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
+app.use('/api/v2/exercises', v2ExerciseRoutes);
 app.use('/api/food-entries', foodEntryRoutes);
 app.use('/api/food-entry-meals', foodEntryMealRoutes);
 app.use('/api/meals', mealRoutes);

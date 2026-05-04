@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -7,26 +7,27 @@ import Icon from '../components/Icon';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
-import FoodLibraryRow from '../components/FoodLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFoodsLibrary, useServerConnection } from '../hooks';
-import { foodItemToFoodInfo } from '../types/foodInfo';
+import { useExercisesLibrary, useServerConnection } from '../hooks';
+import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { FoodItem } from '../types/foods';
 
-type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
+type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
-const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const [accentColor, textSecondary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-secondary',
+  ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+
   const {
-    foods,
+    exercises,
     isLoading,
     isSearching,
     isError,
@@ -35,17 +36,14 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     isFetchingNextPage,
     loadMore,
     refetch,
-  } = useFoodsLibrary(searchText, { enabled: isConnected });
+  } = useExercisesLibrary(searchText, { enabled: isConnected });
 
-  const handleFoodPress = useCallback((food: FoodItem) => {
-    navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
-  }, [navigation]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
+  const handleExercisePress = useCallback(
+    (exercise: Exercise) => {
+      navigation.navigate('ExerciseDetail', { item: exercise });
+    },
+    [navigation],
+  );
 
   const renderHeader = () => (
     <View className="flex-row items-center px-4 pt-4 pb-5">
@@ -57,21 +55,36 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       >
         <Icon name="chevron-back" size={22} color={accentColor} />
       </Button>
-      <Text className="text-2xl font-bold text-text-primary">Foods</Text>
+      <Text className="text-2xl font-bold text-text-primary">Exercises</Text>
     </View>
   );
 
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        {searchText.trim().length > 0 ? 'No matching exercises found' : 'No exercises found'}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
         {searchText.trim().length > 0
-          ? 'Try a different search term to find saved foods.'
-          : 'Foods you save or log will appear here.'}
+          ? 'Try a different search term to find saved exercises.'
+          : 'Exercises you save or log will appear here.'}
       </Text>
     </View>
+  );
+
+  const renderRow = ({ item, index }: { item: Exercise; index: number }) => (
+    <TouchableOpacity
+      className={`px-4 py-3 ${index < exercises.length - 1 ? 'border-b border-border-subtle' : ''}`}
+      activeOpacity={0.7}
+      onPress={() => handleExercisePress(item)}
+    >
+      <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+      {item.category ? (
+        <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+          {item.category}
+        </Text>
+      ) : null}
+    </TouchableOpacity>
   );
 
   const renderContent = () => {
@@ -82,14 +95,18 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           iconColor="#9CA3AF"
           iconSize={64}
           title="No server configured"
-          subtitle="Configure your server connection in Settings to view your food library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          subtitle="Configure your server connection in Settings to view your exercise library."
+          action={{
+            label: 'Go to Settings',
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title="Loading exercises..." />;
     }
 
     if (isError) {
@@ -98,30 +115,30 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load foods"
+          title="Failed to load exercises"
           subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          action={{
+            label: 'Retry',
+            onPress: () => {
+              void refetch();
+            },
+            variant: 'primary',
+          }}
         />
       );
     }
 
     return (
       <FlatList
-        data={foods}
+        data={exercises}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <FoodLibraryRow
-            food={item}
-            showDivider={index < foods.length - 1}
-            onPress={() => handleFoodPress(item)}
-          />
-        )}
+        renderItem={renderRow}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more foods."
+            errorMessage="Failed to load more exercises."
             onRetry={loadMore}
           />
         }
@@ -133,7 +150,11 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         }}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl
+            refreshing={isSearching}
+            onRefresh={refetch}
+            tintColor={accentColor}
+          />
         }
         contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
       />
@@ -147,7 +168,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search foods..."
+          placeholder="Search exercises..."
           isSearching={isSearching}
         />
       ) : null}
@@ -156,4 +177,4 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   );
 };
 
-export default FoodsLibraryScreen;
+export default ExercisesLibraryScreen;

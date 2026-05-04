@@ -14,6 +14,7 @@ export interface WorkoutPresetExercise {
   exercise_id: string;
   image_url: string | null;
   exercise_name: string;
+  category?: string | null;
   sets: WorkoutPresetSet[];
 }
 
