@@ -7,6 +7,52 @@ const router = express.Router();
 router.use(express.json());
 // Apply diary permission check to all food entry routes
 router.use(checkPermissionMiddleware('diary'));
+
+/**
+ * @swagger
+ * /food-entries/export/csv:
+ *   get:
+ *     summary: Export all food entries as CSV
+ *     tags: [Nutrition & Meals]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: A CSV stream of all food entries
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
+router.get(
+  '/export/csv',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="sparkyfitness_diary_export.csv"'
+      );
+
+      // Let the service handle the streaming to the response object
+      const delimiter =
+        typeof req.query.delimiter === 'string' ? req.query.delimiter : ';';
+      const locale =
+        typeof req.query.locale === 'string' ? req.query.locale : 'fr'; // default to French to avoid breaking current expectations, although we will dynamically handle it
+      await foodEntryService.exportAllDiaryEntriesToCSVStream(
+        req.userId,
+        res,
+        delimiter,
+        locale
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 /**
  * @swagger
  * /food-entries:

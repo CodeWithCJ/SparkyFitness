@@ -15,7 +15,6 @@ import calorieCalculationService from './CalorieCalculationService.js';
 import fs from 'fs';
 import path from 'path';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-// @ts-expect-error TS(7016): Could not find a declaration file for module 'papa... Remove this comment to see the full error message
 import papa from 'papaparse';
 import {
   getGroupedExerciseSessionById,
@@ -1387,7 +1386,7 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
       log('error', 'CSV parsing errors:', errors);
       throw new Error('CSV parsing failed. Please check file format.');
     }
-    for (const row of data) {
+    for (const row of data as Record<string, string>[]) {
       try {
         const exerciseName = row.name ? row.name.trim() : null;
         if (!exerciseName) {

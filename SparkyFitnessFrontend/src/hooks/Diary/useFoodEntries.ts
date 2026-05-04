@@ -16,6 +16,8 @@ import {
   deleteFoodEntryMeal,
   type FoodEntryMealUpdateData,
   loadDiaryGoals,
+  downloadDiaryExport,
+  DownloadDiaryExportOptions,
 } from '@/api/Diary/foodEntryService';
 
 import { goalKeys } from '@/api/keys/goals';
@@ -245,5 +247,12 @@ export const useDeleteFoodEntryMealMutation = () => {
       successMessage: t('diary.mealDeleteSuccess', 'Meal deleted.'),
       errorMessage: t('diary.mealDeleteError', 'Failed to delete meal.'),
     },
+  });
+};
+
+export const useDownloadDiaryExport = () => {
+  return useMutation({
+    mutationFn: (options?: DownloadDiaryExportOptions) =>
+      downloadDiaryExport(options),
   });
 };

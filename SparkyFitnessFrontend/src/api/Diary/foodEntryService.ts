@@ -70,6 +70,26 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
   return response;
 };
 
+export interface DownloadDiaryExportOptions {
+  delimiter?: string;
+  locale?: string;
+}
+
+export const downloadDiaryExport = async (
+  options?: DownloadDiaryExportOptions
+): Promise<Blob> => {
+  const params = new URLSearchParams();
+  if (options?.delimiter) params.append('delimiter', options.delimiter);
+  if (options?.locale) params.append('locale', options.locale);
+
+  const url = `/food-entries/export/csv${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await apiCall(url, {
+    method: 'GET',
+    responseType: 'blob',
+  });
+  return response;
+};
+
 export const loadDiaryGoals = async (date: string): Promise<ExpandedGoals> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {

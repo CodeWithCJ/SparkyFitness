@@ -186,6 +186,47 @@ async function getDailyNutritionSummary(userId: any, date: any) {
     client.release();
   }
 }
+
+async function getDailyNutritionSummariesByDates(
+  userId: string,
+  dates: string[]
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        fe.entry_date,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
+        COALESCE(
+          (
+            SELECT jsonb_object_agg(key, value)
+            FROM (
+              SELECT
+                key,
+                SUM((NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
+              FROM food_entries fe2
+              CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
+              WHERE fe2.user_id = fe.user_id AND fe2.entry_date = fe.entry_date
+              GROUP BY key
+            ) custom_agg
+          ),
+          '{}'::jsonb
+        ) AS total_custom_nutrients
+       FROM food_entries fe
+       WHERE fe.user_id = $1 AND fe.entry_date = ANY($2::date[])
+       GROUP BY fe.user_id, fe.entry_date`,
+      [userId, dates]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getFoodsNeedingReview(userId: any) {
   const client = await getClient(userId); // User-specific operation
@@ -306,7 +347,7 @@ async function clearUserIgnoredUpdate(userId: any, variantId: any) {
 export { getFoodDataProviderById };
 export { getRecentFoods };
 export { getTopFoods };
-export { getDailyNutritionSummary };
+export { getDailyNutritionSummary, getDailyNutritionSummariesByDates };
 export { getFoodsNeedingReview };
 export { updateFoodEntriesSnapshot };
 export { clearUserIgnoredUpdate };
@@ -315,6 +356,7 @@ export default {
   getRecentFoods,
   getTopFoods,
   getDailyNutritionSummary,
+  getDailyNutritionSummariesByDates,
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,
   clearUserIgnoredUpdate,
