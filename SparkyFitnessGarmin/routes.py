@@ -247,95 +247,154 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                     "body_battery",
                 ]
             ):
+                steps_value = None
+                summary_data = None
                 try:
                     summary_data = garmin.get_user_summary(current_date)
                     logger.info(
                         f"[GARMIN_SYNC] get_user_summary({current_date}) RAW RESPONSE KEYS: {list(summary_data.keys()) if summary_data else None}"
                     )
-                    if summary_data:
-                        if "steps" in metric_types_to_fetch:
-                            health_data["steps"].append(
-                                {
-                                    "date": current_date,
-                                    "value": summary_data.get("totalSteps"),
-                                }
-                            )
-                        if "total_distance" in metric_types_to_fetch:
-                            distance = (
-                                summary_data.get("totalDistance")
-                                or summary_data.get("totalDistanceMeters")
-                                or summary_data.get("distance")
-                            )
-                            health_data["total_distance"].append(
-                                {
-                                    "date": current_date,
-                                    "value": safe_convert(distance, meters_to_km),
-                                }
-                            )
-                        if "highly_active_seconds" in metric_types_to_fetch:
-                            health_data["highly_active_seconds"].append(
-                                {
-                                    "date": current_date,
-                                    "value": safe_convert(
-                                        summary_data.get("highlyActiveSeconds"),
-                                        seconds_to_minutes,
-                                    ),
-                                }
-                            )
-                        if "active_seconds" in metric_types_to_fetch:
-                            health_data["active_seconds"].append(
-                                {
-                                    "date": current_date,
-                                    "value": safe_convert(
-                                        summary_data.get("activeSeconds"),
-                                        seconds_to_minutes,
-                                    ),
-                                }
-                            )
-                        if "sedentary_seconds" in metric_types_to_fetch:
-                            health_data["sedentary_seconds"].append(
-                                {
-                                    "date": current_date,
-                                    "value": safe_convert(
-                                        summary_data.get("sedentarySeconds"),
-                                        seconds_to_minutes,
-                                    ),
-                                }
-                            )
-                        # Body Battery from user_summary (preferred source)
-                        if "body_battery" in metric_types_to_fetch:
-                            bb_highest = summary_data.get("bodyBatteryHighestValue")
-                            bb_lowest = summary_data.get("bodyBatteryLowestValue")
-                            bb_at_wake = summary_data.get("bodyBatteryAtWakeTime")
-                            bb_charged = summary_data.get("bodyBatteryChargedValue")
-                            bb_drained = summary_data.get("bodyBatteryDrainedValue")
-                            bb_current = summary_data.get("bodyBatteryMostRecentValue")
-                            if any(
-                                [
-                                    bb_highest,
-                                    bb_lowest,
-                                    bb_at_wake,
-                                    bb_charged,
-                                    bb_drained,
-                                ]
-                            ):
-                                logger.info(
-                                    f"[GARMIN_SYNC] Body battery from user_summary: highest={bb_highest}, lowest={bb_lowest}, atWake={bb_at_wake}, charged={bb_charged}, drained={bb_drained}, current={bb_current}"
-                                )
-                                health_data["body_battery"].append(
-                                    {
-                                        "date": current_date,
-                                        "body_battery_highest": bb_highest,
-                                        "body_battery_lowest": bb_lowest,
-                                        "body_battery_at_wake": bb_at_wake,
-                                        "body_battery_charged": bb_charged,
-                                        "body_battery_drained": bb_drained,
-                                        "body_battery_current": bb_current,
-                                    }
-                                )
                 except Exception as e:
                     logger.warning(
                         f"Could not retrieve daily summary for {current_date}: {e}"
+                    )
+
+                if summary_data:
+                    if "steps" in metric_types_to_fetch:
+                        steps_value = summary_data.get("totalSteps")
+                        if steps_value is None:
+                            steps_value = summary_data.get("steps")
+                        if steps_value is None:
+                            steps_value = summary_data.get("dailySteps")
+                        if steps_value is None:
+                            steps_value = summary_data.get("stepCount")
+                        if steps_value is None:
+                            steps_value = summary_data.get("total_steps")
+                        if steps_value is None:
+                            steps_value = summary_data.get("step_count")
+                    if "total_distance" in metric_types_to_fetch:
+                        distance = (
+                            summary_data.get("totalDistance")
+                            or summary_data.get("totalDistanceMeters")
+                            or summary_data.get("distance")
+                        )
+                        health_data["total_distance"].append(
+                            {
+                                "date": current_date,
+                                "value": safe_convert(distance, meters_to_km),
+                            }
+                        )
+                    if "highly_active_seconds" in metric_types_to_fetch:
+                        health_data["highly_active_seconds"].append(
+                            {
+                                "date": current_date,
+                                "value": safe_convert(
+                                    summary_data.get("highlyActiveSeconds"),
+                                    seconds_to_minutes,
+                                ),
+                            }
+                        )
+                    if "active_seconds" in metric_types_to_fetch:
+                        health_data["active_seconds"].append(
+                            {
+                                "date": current_date,
+                                "value": safe_convert(
+                                    summary_data.get("activeSeconds"),
+                                    seconds_to_minutes,
+                                ),
+                            }
+                        )
+                    if "sedentary_seconds" in metric_types_to_fetch:
+                        health_data["sedentary_seconds"].append(
+                            {
+                                "date": current_date,
+                                "value": safe_convert(
+                                    summary_data.get("sedentarySeconds"),
+                                    seconds_to_minutes,
+                                ),
+                            }
+                        )
+                    # Body Battery from user_summary (preferred source)
+                    if "body_battery" in metric_types_to_fetch:
+                        bb_highest = summary_data.get("bodyBatteryHighestValue")
+                        bb_lowest = summary_data.get("bodyBatteryLowestValue")
+                        bb_at_wake = summary_data.get("bodyBatteryAtWakeTime")
+                        bb_charged = summary_data.get("bodyBatteryChargedValue")
+                        bb_drained = summary_data.get("bodyBatteryDrainedValue")
+                        bb_current = summary_data.get("bodyBatteryMostRecentValue")
+                        if any(
+                            [
+                                bb_highest,
+                                bb_lowest,
+                                bb_at_wake,
+                                bb_charged,
+                                bb_drained,
+                            ]
+                        ):
+                            logger.info(
+                                f"[GARMIN_SYNC] Body battery from user_summary: highest={bb_highest}, lowest={bb_lowest}, atWake={bb_at_wake}, charged={bb_charged}, drained={bb_drained}, current={bb_current}"
+                            )
+                            health_data["body_battery"].append(
+                                {
+                                    "date": current_date,
+                                    "body_battery_highest": bb_highest,
+                                    "body_battery_lowest": bb_lowest,
+                                    "body_battery_at_wake": bb_at_wake,
+                                    "body_battery_charged": bb_charged,
+                                    "body_battery_drained": bb_drained,
+                                    "body_battery_current": bb_current,
+                                }
+                            )
+
+                # Fallback: if summary failed/omitted steps, use the daily steps endpoint.
+                if "steps" in metric_types_to_fetch and steps_value is None:
+                    try:
+                        daily_steps = garmin.get_daily_steps(current_date, current_date)
+                        logger.info(
+                            f"[GARMIN_SYNC] get_daily_steps({current_date}, {current_date}) RAW RESPONSE: {daily_steps}"
+                        )
+                        if isinstance(daily_steps, list):
+                            for day_entry in daily_steps:
+                                if not isinstance(day_entry, dict):
+                                    continue
+                                day_date = (
+                                    day_entry.get("date")
+                                    or day_entry.get("calendarDate")
+                                    or day_entry.get("startDate")
+                                )
+                                if day_date and str(day_date)[:10] != current_date:
+                                    continue
+
+                                for source in (day_entry, day_entry.get("values", {})):
+                                    if not isinstance(source, dict):
+                                        continue
+                                    for key in (
+                                        "totalSteps",
+                                        "steps",
+                                        "dailySteps",
+                                        "stepCount",
+                                        "total_steps",
+                                        "step_count",
+                                    ):
+                                        value = source.get(key)
+                                        if value is not None:
+                                            steps_value = value
+                                            break
+                                    if steps_value is not None:
+                                        break
+                                if steps_value is not None:
+                                    break
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not retrieve steps via get_daily_steps for {current_date}: {e}"
+                        )
+
+                if "steps" in metric_types_to_fetch and steps_value is not None:
+                    health_data["steps"].append(
+                        {
+                            "date": current_date,
+                            "value": steps_value,
+                        }
                     )
 
             # Hydration
