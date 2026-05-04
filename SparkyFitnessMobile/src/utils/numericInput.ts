@@ -36,19 +36,23 @@ const SPACE_THOUSANDS = /^\d{1,3}(?:[\s\u00a0\u202f]\d{3})+(?:[.,]\d+)?$/;
 
 // Well-formed number shapes, checked in order of specificity.
 //
-// A strict single thousand group (`1,234` / `1.234`) is interpreted as
-// thousands, not decimal. Three-decimal-place precision is effectively
-// unused in SparkyFitness (weight/distance use 1 decimal, macros use
-// integers), while 4-digit integer values — 1500 kcal burned, 2000 ml
-// water, 2300 mg sodium, 1800 kcal goal — come up constantly. A user
-// pasting `"1,234"` for calories almost always means 1234. A value like
-// `"1,5"` stays a decimal because the trailing group is too short to be a
-// thousand group.
+// A naked single-group value like `"1.234"` or `"1,234"` is genuinely
+// ambiguous: it could be 1234 (thousands) or 1.234 (decimal). We default
+// to the decimal interpretation — the naked thousands forms below require
+// ≥2 groups (`"1.234.567"`, `"1,234,567"`) — because 3-decimal precision
+// is real in this app: Open Food Facts returns serving sizes like
+// `28.349 g` (1 oz). A single-group thousands rule used to silently
+// inflate those to `28349 g` on save. The reverse failure mode — pasting
+// `"1,234"` for 1234 calories and getting 1.234 — surfaces immediately
+// (1 cal vs 1234 cal is impossible to miss), so we prefer it to silent
+// integer inflation. Values with an explicit decimal portion
+// (`"1,234.56"` / `"1.234,56"`) stay unambiguous and still parse as
+// thousands even with a single group.
 const PLAIN_INT = /^\d+$/;
 const US_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:,\d{3})+\.\d+$/;   // 1,234.56 / 1,234,567.89
-const US_THOUSANDS = /^\d{1,3}(?:,\d{3})+$/;                      // 1,234 / 1,234,567
-const EU_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:\.\d{3})+,\d+$/;    // 1.234,56
-const EU_THOUSANDS = /^\d{1,3}(?:\.\d{3})+$/;                     // 1.234 / 1.234.567
+const US_THOUSANDS = /^\d{1,3}(?:,\d{3}){2,}$/;                   // 1,234,567 (≥2 groups)
+const EU_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:\.\d{3})+,\d+$/;    // 1.234,56 / 1.234.567,89
+const EU_THOUSANDS = /^\d{1,3}(?:\.\d{3}){2,}$/;                  // 1.234.567 (≥2 groups)
 const DOT_DECIMAL = /^(?:\d+\.\d*|\.\d+)$/;                       // 1.5 / 1. / .5
 const COMMA_DECIMAL = /^(?:\d+,\d*|,\d+)$/;                       // 1,5 / 1, / ,5
 
