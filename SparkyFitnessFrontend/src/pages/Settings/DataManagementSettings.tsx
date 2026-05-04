@@ -1,16 +1,30 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useDownloadDiaryExport } from '@/hooks/Diary/useFoodEntries';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export const DataManagementSettings = () => {
+  const { i18n } = useTranslation();
+  const [delimiter, setDelimiter] = useState<string>(';');
   const { toast } = useToast();
   const { mutateAsync: exportDiary, isPending: isExporting } =
     useDownloadDiaryExport();
 
   const handleExportDiary = async () => {
     try {
-      const blob = await exportDiary();
+      const blob = await exportDiary({
+        delimiter,
+        locale: i18n.language,
+      });
 
       // Create a link to download the blob
       const url = window.URL.createObjectURL(blob);
@@ -48,7 +62,21 @@ export const DataManagementSettings = () => {
           Le fichier contiendra tous vos repas avec le détail des aliments, des
           portions et des macros (calories, protéines, glucides, lipides...).
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Format du séparateur CSV
+            </label>
+            <Select value={delimiter} onValueChange={setDelimiter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Séparateur" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value=";">Point-virgule (;)</SelectItem>
+                <SelectItem value=",">Virgule (,)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             onClick={handleExportDiary}
             disabled={isExporting}

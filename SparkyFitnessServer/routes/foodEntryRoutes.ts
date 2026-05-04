@@ -39,10 +39,13 @@ router.get(
       // Let the service handle the streaming to the response object
       const delimiter =
         typeof req.query.delimiter === 'string' ? req.query.delimiter : ';';
+      const locale =
+        typeof req.query.locale === 'string' ? req.query.locale : 'fr'; // default to French to avoid breaking current expectations, although we will dynamically handle it
       await foodEntryService.exportAllDiaryEntriesToCSVStream(
         req.userId,
         res,
-        delimiter
+        delimiter,
+        locale
       );
     } catch (error) {
       next(error);
