@@ -12,6 +12,37 @@ import moment from 'moment';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import sleepRepository from '../models/sleepRepository.js';
+
+const GARMIN_CARDIO_CATEGORY_INDICATORS = [
+  'running',
+  'walking',
+  'cycling',
+  'biking',
+  'hiking',
+  'swimming',
+  'rowing',
+  'elliptical',
+  'treadmill',
+  'cardio',
+];
+
+function mapGarminExerciseCategory(rawCategory: unknown): string | null {
+  if (typeof rawCategory !== 'string' || rawCategory.trim().length === 0) {
+    return null;
+  }
+
+  const normalized = rawCategory.trim().toLowerCase();
+  if (
+    GARMIN_CARDIO_CATEGORY_INDICATORS.some((indicator) =>
+      normalized.includes(indicator)
+    )
+  ) {
+    return 'cardio';
+  }
+
+  return rawCategory;
+}
+
 async function processActivitiesAndWorkouts(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -458,7 +489,9 @@ async function processGarminWorkoutSession(
         exercise = await exerciseRepository.createExercise({
           user_id: userId,
           name: exerciseName,
-          category: exerciseDetails.category || 'Uncategorized',
+          category:
+            mapGarminExerciseCategory(exerciseDetails.category) ||
+            'Uncategorized',
           source: 'garmin',
           is_custom: true,
           shared_with_public: false,
@@ -591,7 +624,9 @@ async function processGarminWorkoutDefinition(userId: any, workoutData: any) {
                 exercise = await exerciseRepository.createExercise({
                   user_id: userId,
                   name: exerciseName,
-                  category: individualStep.category || 'Uncategorized',
+                  category:
+                    mapGarminExerciseCategory(individualStep.category) ||
+                    'Uncategorized',
                   source: 'garmin',
                   is_custom: true,
                   shared_with_public: false,
@@ -645,14 +680,24 @@ async function processGarminSimpleActivity(
     exerciseName,
     userId
   );
+  const mappedCategory =
+    mapGarminExerciseCategory(activity.activityType?.typeKey) ||
+    'Uncategorized';
   if (!exercise) {
     exercise = await exerciseRepository.createExercise({
       user_id: userId,
       name: exerciseName,
-      category: activity.activityType?.typeKey || 'Uncategorized',
+      category: mappedCategory,
       source: 'garmin',
       is_custom: true,
       shared_with_public: false,
+    });
+  } else if (
+    exercise.user_id === userId &&
+    exercise.category !== mappedCategory
+  ) {
+    await exerciseRepository.updateExercise(exercise.id, userId, {
+      category: mappedCategory,
     });
   }
   const entryDate = activity.startTimeLocal
