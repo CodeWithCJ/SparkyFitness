@@ -1529,12 +1529,22 @@ async function exportAllDiaryEntriesToCSVStream(
     // Fetch all historical goals ONCE (O(1) query instead of N+1)
     const historicalGoals = await goalRepository.getAllHistoricalGoals(userId);
     const getGoalForDate = (dateStr: string) => {
-      // Find the first goal where goal_date <= dateStr
-      return (
-        historicalGoals.find((g: { goal_date: string | Date }) => {
+      // First, find the most recent goal with a specific date that is <= dateStr
+      // Skip goals with NULL goal_date (they are default/fallback goals)
+      const datedGoal = historicalGoals.find(
+        (g: { goal_date: string | Date | null }) => {
+          if (!g.goal_date) return false; // Skip NULL-dated default goals
           const gDate = getDayString(g.goal_date);
           return gDate <= dateStr;
-        }) ||
+        }
+      );
+      if (datedGoal) return datedGoal;
+
+      // Fallback: use the default goal (NULL goal_date) or the oldest goal
+      return (
+        historicalGoals.find(
+          (g: { goal_date: string | Date | null }) => !g.goal_date
+        ) ||
         historicalGoals[historicalGoals.length - 1] ||
         null
       );
@@ -1688,16 +1698,28 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[4]]: '',
               [baseHeaders[5]]: '',
               [baseHeaders[6]]: sumData.goal
-                ? formatLocalizedNumber(sumData.goal.calories, locale)
+                ? formatLocalizedNumber(
+                    Number(sumData.goal.calories).toFixed(1),
+                    locale
+                  )
                 : '',
               [baseHeaders[7]]: sumData.goal
-                ? formatLocalizedNumber(sumData.goal.protein, locale)
+                ? formatLocalizedNumber(
+                    Number(sumData.goal.protein).toFixed(1),
+                    locale
+                  )
                 : '',
               [baseHeaders[8]]: sumData.goal
-                ? formatLocalizedNumber(sumData.goal.carbs, locale)
+                ? formatLocalizedNumber(
+                    Number(sumData.goal.carbs).toFixed(1),
+                    locale
+                  )
                 : '',
               [baseHeaders[9]]: sumData.goal
-                ? formatLocalizedNumber(sumData.goal.fat, locale)
+                ? formatLocalizedNumber(
+                    Number(sumData.goal.fat).toFixed(1),
+                    locale
+                  )
                 : '',
               [baseHeaders[10]]: '',
               [baseHeaders[11]]: '',
@@ -1942,16 +1964,25 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[4]]: '',
           [baseHeaders[5]]: '',
           [baseHeaders[6]]: sumData.goal
-            ? formatLocalizedNumber(sumData.goal.calories, locale)
+            ? formatLocalizedNumber(
+                Number(sumData.goal.calories).toFixed(1),
+                locale
+              )
             : '',
           [baseHeaders[7]]: sumData.goal
-            ? formatLocalizedNumber(sumData.goal.protein, locale)
+            ? formatLocalizedNumber(
+                Number(sumData.goal.protein).toFixed(1),
+                locale
+              )
             : '',
           [baseHeaders[8]]: sumData.goal
-            ? formatLocalizedNumber(sumData.goal.carbs, locale)
+            ? formatLocalizedNumber(
+                Number(sumData.goal.carbs).toFixed(1),
+                locale
+              )
             : '',
           [baseHeaders[9]]: sumData.goal
-            ? formatLocalizedNumber(sumData.goal.fat, locale)
+            ? formatLocalizedNumber(Number(sumData.goal.fat).toFixed(1), locale)
             : '',
           [baseHeaders[10]]: '',
           [baseHeaders[11]]: '',
