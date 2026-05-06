@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 
 export const DataManagementSettings = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [delimiter, setDelimiter] = useState<string>(';');
   const { toast } = useToast();
   const { mutateAsync: exportDiary, isPending: isExporting } =
@@ -39,15 +39,20 @@ export const DataManagementSettings = () => {
       window.URL.revokeObjectURL(url);
 
       toast({
-        title: 'Export réussi',
-        description: 'Votre journal a été exporté avec succès.',
+        title: t('settings.dataManagement.exportSuccess', 'Export successful'),
+        description: t(
+          'settings.dataManagement.exportSuccessDescription',
+          'Your diary has been exported successfully.'
+        ),
       });
     } catch (error) {
       console.error('Error exporting diary:', error);
       toast({
-        title: "Erreur d'export",
-        description:
-          'Impossible de télécharger votre journal. Veuillez réessayer plus tard.',
+        title: t('settings.dataManagement.exportError', 'Export error'),
+        description: t(
+          'settings.dataManagement.exportErrorDescription',
+          'Unable to download your diary. Please try again later.'
+        ),
         variant: 'destructive',
       });
     }
@@ -56,24 +61,39 @@ export const DataManagementSettings = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-medium">Exportation des données</h3>
+        <h3 className="text-lg font-medium">
+          {t('settings.dataManagement.title', 'Data Export')}
+        </h3>
         <p className="text-sm text-muted-foreground">
-          Téléchargez l'intégralité de votre journal alimentaire au format CSV.
-          Le fichier contiendra tous vos repas avec le détail des aliments, des
-          portions et des macros (calories, protéines, glucides, lipides...).
+          {t(
+            'settings.dataManagement.description',
+            'Download your entire food diary in CSV format. The file will contain all your meals with food details, portions and macros (calories, protein, carbs, fat...).'
+          )}
         </p>
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">
-              Format du séparateur CSV
+              {t(
+                'settings.dataManagement.delimiterLabel',
+                'CSV delimiter format'
+              )}
             </label>
             <Select value={delimiter} onValueChange={setDelimiter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Séparateur" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.dataManagement.delimiterPlaceholder',
+                    'Delimiter'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value=";">Point-virgule (;)</SelectItem>
-                <SelectItem value=",">Virgule (,)</SelectItem>
+                <SelectItem value=";">
+                  {t('settings.dataManagement.semicolon', 'Semicolon (;)')}
+                </SelectItem>
+                <SelectItem value=",">
+                  {t('settings.dataManagement.comma', 'Comma (,)')}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -88,8 +108,11 @@ export const DataManagementSettings = () => {
               <Download className="h-4 w-4" />
             )}
             {isExporting
-              ? 'Préparation en cours...'
-              : 'Exporter mon journal (CSV)'}
+              ? t('settings.dataManagement.exporting', 'Preparing...')
+              : t(
+                  'settings.dataManagement.exportButton',
+                  'Export my diary (CSV)'
+                )}
           </Button>
         </div>
       </div>

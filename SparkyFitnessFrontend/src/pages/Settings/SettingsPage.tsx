@@ -90,10 +90,13 @@ const Settings = () => {
         >
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description="Manage your custom nutrient definitions"
+            description={t(
+              'settings.customNutrients.subtitle',
+              'Manage your custom nutrient definitions'
+            )}
           >
             <ListChecks className="h-5 w-5" />
-            Custom Nutrients
+            {t('settings.customNutrients.title', 'Custom Nutrients')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <CustomNutrientsSettings />
@@ -177,8 +180,8 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              'settings.customMeals.description',
-              'Create and manage custom meals types'
+              'settings.customMeals.subtitle',
+              'Create and manage custom meal types'
             )}
           >
             <UtensilsCrossed className="h-5 w-5" />
@@ -246,10 +249,13 @@ const Settings = () => {
         >
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description="Exporter ou gérer vos données"
+            description={t(
+              'settings.dataManagement.subtitle',
+              'Export or manage your data'
+            )}
           >
             <Database className="h-5 w-5" />
-            Gestion des Données
+            {t('settings.dataManagement.sectionTitle', 'Data Management')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <DataManagementSettings />
