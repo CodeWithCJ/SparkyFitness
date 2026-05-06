@@ -76,7 +76,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     </TouchableOpacity>
   );
 
-  const canQuickAdjust = !!onAdjustServing && entry.serving_size > 0 && !entry.food_entry_meal_id;
+  const canQuickAdjust = !!onAdjustServing && Number(entry.serving_size) > 0;
   const name = entry.food_name || 'Unknown food';
 
   return (
