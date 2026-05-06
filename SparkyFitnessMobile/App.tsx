@@ -51,6 +51,7 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -147,6 +148,7 @@ const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
+const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -905,6 +907,13 @@ function AppContent() {
           <Stack.Screen
             name="FoodSettings"
             component={SafeFoodSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="About"
+            component={SafeAbout}
             options={{
               headerShown: false,
             }}

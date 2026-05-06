@@ -264,6 +264,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               No personal health or food data is included. Nothing is sent automatically.
             </Text>
 
+            <TouchableOpacity
+              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+              onPress={() => navigation.navigate('About')}
+              activeOpacity={0.7}
+            >
+              <Text className="text-base font-semibold text-text-primary">About</Text>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+
             {__DEV__ &&
               (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
                 Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
