@@ -82,30 +82,6 @@
       "title": "Catégories Personnalisées",
       "description": "Créer et gérer des catégories de mesure personnalisées"
     },
-    "customNutrients": {
-      "title": "Nutriments Personnalisés",
-      "subtitle": "Gérez vos définitions de nutriments personnalisés"
-    },
-    "customMeals": {
-      "title": "Repas Personnalisés",
-      "subtitle": "Créer et gérer les types de repas personnalisés"
-    },
-    "dataManagement": {
-      "sectionTitle": "Gestion des Données",
-      "subtitle": "Exporter ou gérer vos données",
-      "title": "Exportation des données",
-      "description": "Téléchargez l'intégralité de votre journal alimentaire au format CSV. Le fichier contiendra tous vos repas avec le détail des aliments, des portions et des macros (calories, protéines, glucides, lipides...).",
-      "delimiterLabel": "Format du séparateur CSV",
-      "delimiterPlaceholder": "Séparateur",
-      "semicolon": "Point-virgule (;)",
-      "comma": "Virgule (,)",
-      "exportButton": "Exporter mon journal (CSV)",
-      "exporting": "Préparation en cours...",
-      "exportSuccess": "Export réussi",
-      "exportSuccessDescription": "Votre journal a été exporté avec succès.",
-      "exportError": "Erreur d'export",
-      "exportErrorDescription": "Impossible de télécharger votre journal. Veuillez réessayer plus tard."
-    },
     "foodExerciseDataProviders": {
       "title": "Fournisseurs de données pour la Nourriture et les Exercices",
       "description": "Configurer les sources de données externes relatives à l'alimentation et à l'exercice physique et synchronisez les données avec Garmin Connect",
