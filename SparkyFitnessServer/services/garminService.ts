@@ -26,12 +26,33 @@ const GARMIN_CARDIO_CATEGORY_INDICATORS = [
   'cardio',
 ];
 
-function mapGarminExerciseCategory(rawCategory: unknown): string | null {
+/**
+ * Maps Garmin categories to user-defined categories.
+ * Supported categories: general, strength, cardio, yoga, powerlifting, olympic weightlifting, strongman, plyometrics, stretching, isometrics.
+ */
+function mapGarminExerciseCategory(rawCategory: unknown): string {
   if (typeof rawCategory !== 'string' || rawCategory.trim().length === 0) {
-    return null;
+    return 'general';
   }
 
   const normalized = rawCategory.trim().toLowerCase();
+
+  // Yoga
+  if (normalized.includes('yoga')) {
+    return 'yoga';
+  }
+
+  // Stretching
+  if (normalized.includes('stretching') || normalized.includes('flexibility')) {
+    return 'stretching';
+  }
+
+  // Plyometrics
+  if (normalized.includes('plyometrics')) {
+    return 'plyometrics';
+  }
+
+  // Cardio indicators
   if (
     GARMIN_CARDIO_CATEGORY_INDICATORS.some((indicator) =>
       normalized.includes(indicator)
@@ -40,7 +61,146 @@ function mapGarminExerciseCategory(rawCategory: unknown): string | null {
     return 'cardio';
   }
 
-  return rawCategory;
+  // Olympic
+  if (
+    normalized.includes('olympic') ||
+    normalized.includes('weightlifting') ||
+    normalized.includes('weight_lifting')
+  ) {
+    if (normalized.includes('olympic')) return 'olympic weightlifting';
+  }
+  // Strength
+  if (
+    normalized.includes('strength_training') ||
+    normalized.includes('strength') ||
+    normalized.includes('weight_lifting') ||
+    normalized.includes('weightlifting')
+  ) {
+    return 'strength';
+  }
+
+  // Powerlifting
+  if (normalized.includes('powerlifting')) {
+    return 'powerlifting';
+  }
+
+  // Strongman
+  if (normalized.includes('strongman')) {
+    return 'strongman';
+  }
+
+  // Isometrics
+  if (normalized.includes('isometric')) {
+    return 'isometrics';
+  }
+
+  // If the category itself looks like an exercise (e.g. LEG_CURL), it's likely strength
+  if (normalized.includes('_')) {
+    return 'strength';
+  }
+
+  return 'general';
+}
+
+/**
+ * Formats an exercise name to Title Case.
+ * Example: "LEG_CURL" -> "Leg Curl", "LEG CURL" -> "Leg Curl"
+ */
+function formatExerciseName(name: string): string {
+  if (!name) return 'Unknown Exercise';
+
+  return name
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .split(' ')
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Gets an existing exercise or creates a new one, ensuring name is Title Case
+ * and handling potential duplicates from previous Garmin imports.
+ */
+async function getOrCreateGarminExercise(
+  userId: string,
+  rawName: string,
+  rawCategory: unknown,
+  source = 'garmin'
+) {
+  const formattedName = formatExerciseName(rawName);
+  const mappedCategory = mapGarminExerciseCategory(rawCategory);
+
+  // 1. Try to find by formatted name (Title Case)
+  let exercise = await exerciseRepository.findExerciseByNameAndUserId(
+    formattedName,
+    userId
+  );
+
+  if (exercise) {
+    // If found and it's a user's exercise, ensure category is updated if it was previously general/uncategorized
+    if (
+      exercise.user_id === userId &&
+      (exercise.category === 'general' ||
+        exercise.category === 'Uncategorized') &&
+      mappedCategory !== 'general'
+    ) {
+      await exerciseRepository.updateExercise(exercise.id, userId, {
+        category: mappedCategory,
+      });
+      exercise.category = mappedCategory;
+    }
+    return exercise;
+  }
+
+  // 2. Try to find by uppercase name (to catch existing "LEG CURL" style entries)
+  const uppercaseName = rawName.toUpperCase().replace(/_/g, ' ');
+  if (uppercaseName !== formattedName) {
+    exercise = await exerciseRepository.findExerciseByNameAndUserId(
+      uppercaseName,
+      userId
+    );
+
+    if (exercise) {
+      // If found by uppercase name, rename it to Title Case
+      log(
+        'info',
+        `[garminService] Renaming existing exercise "${exercise.name}" (ID: ${exercise.id}) to "${formattedName}"`
+      );
+
+      if (exercise.user_id === userId) {
+        await exerciseRepository.updateExercise(exercise.id, userId, {
+          name: formattedName,
+          category: mappedCategory,
+        });
+        exercise.name = formattedName;
+        exercise.category = mappedCategory;
+      }
+      return exercise;
+    }
+  }
+
+  // 3. Not found, create new exercise
+  log(
+    'info',
+    `[garminService] Creating new Garmin exercise: "${formattedName}" (Category: ${mappedCategory})`
+  );
+  return await exerciseRepository.createExercise({
+    user_id: userId,
+    name: formattedName,
+    category: mappedCategory,
+    source: source,
+    is_custom: true,
+    shared_with_public: false,
+    force: null,
+    level: null,
+    mechanic: null,
+    equipment: null,
+    primary_muscles: null,
+    secondary_muscles: null,
+    instructions: null,
+    images: null,
+  });
 }
 
 async function processActivitiesAndWorkouts(
@@ -340,21 +500,16 @@ async function processGarminWorkoutSession(
         garminExerciseName = 'Unknown Exercise';
       }
       if (garminExerciseName) {
-        // @ts-expect-error TS(7022): 'exerciseName' implicitly has type 'any' because i... Remove this comment to see the full error message
-        const exerciseName = garminExerciseName
-          .replace(/_/g, ' ')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .replace(/\b\w/g, (l: any) => l.toUpperCase());
         const stepIndex = garminSet.stepIndex || garminSet.wktStepId || null;
         if (
           !currentGroup ||
-          currentGroup.name !== exerciseName ||
+          currentGroup.name !== garminExerciseName ||
           (stepIndex !== null &&
             currentGroup.stepIndex !== null &&
             currentGroup.stepIndex !== stepIndex)
         ) {
           currentGroup = {
-            name: exerciseName,
+            name: garminExerciseName,
             stepIndex: stepIndex,
             exerciseDetails: { category: garminCategory },
             sets: [],
@@ -472,7 +627,7 @@ async function processGarminWorkoutSession(
     }
     let exerciseSortOrder = 0;
     for (const group of groupedExercises) {
-      const exerciseName = group.name;
+      const rawExerciseName = group.name;
       const {
         exerciseDetails,
         sets,
@@ -481,30 +636,14 @@ async function processGarminWorkoutSession(
         startTime,
         endTime,
       } = group;
-      let exercise = await exerciseRepository.findExerciseByNameAndUserId(
-        exerciseName,
-        userId
+
+      const exercise = await getOrCreateGarminExercise(
+        userId,
+        rawExerciseName,
+        exerciseDetails.category
       );
-      if (!exercise) {
-        exercise = await exerciseRepository.createExercise({
-          user_id: userId,
-          name: exerciseName,
-          category:
-            mapGarminExerciseCategory(exerciseDetails.category) ||
-            'Uncategorized',
-          source: 'garmin',
-          is_custom: true,
-          shared_with_public: false,
-          force: null,
-          level: null,
-          mechanic: null,
-          equipment: null,
-          primary_muscles: null,
-          secondary_muscles: null,
-          instructions: null,
-          images: null,
-        });
-      }
+
+      const exerciseName = exercise.name; // Use the formatted name from the database
       let perExerciseCaloriesBurned = 0;
       if (totalActiveDurationSeconds > 0 && activity.active_calories) {
         perExerciseCaloriesBurned =
@@ -559,20 +698,14 @@ async function processGarminWorkoutSession(
         'garmin',
         newExercisePresetEntry.id
       );
-      const existingExerciseInPreset = workoutPreset.exercises?.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (e: any) => e.exercise_id === exercise.id
+      await workoutPresetRepository.addExerciseToWorkoutPreset(
+        userId,
+        workoutPreset.id,
+        exercise.id,
+        null, // image_url
+        sets,
+        exerciseSortOrder
       );
-      if (isNewWorkoutPreset || !existingExerciseInPreset) {
-        await workoutPresetRepository.addExerciseToWorkoutPreset(
-          userId,
-          workoutPreset.id,
-          exercise.id,
-          null, // image_url
-          isNewWorkoutPreset ? sets : [], // Only add sets to the preset if it's a new preset
-          exerciseSortOrder
-        );
-      }
       exerciseSortOrder++;
     }
   }
@@ -611,27 +744,12 @@ async function processGarminWorkoutDefinition(userId: any, workoutData: any) {
               individualStep.exerciseName
             ) {
               const garminExerciseName = individualStep.exerciseName;
-              const exerciseName = garminExerciseName
-                .replace(/_/g, ' ')
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .replace(/\b\w/g, (l: any) => l.toUpperCase());
-              let exercise =
-                await exerciseRepository.findExerciseByNameAndUserId(
-                  exerciseName,
-                  userId
-                );
-              if (!exercise) {
-                exercise = await exerciseRepository.createExercise({
-                  user_id: userId,
-                  name: exerciseName,
-                  category:
-                    mapGarminExerciseCategory(individualStep.category) ||
-                    'Uncategorized',
-                  source: 'garmin',
-                  is_custom: true,
-                  shared_with_public: false,
-                });
-              }
+              const exercise = await getOrCreateGarminExercise(
+                userId,
+                garminExerciseName,
+                individualStep.category
+              );
+
               const sets = [
                 {
                   set_number: 1,
@@ -670,36 +788,15 @@ async function processGarminSimpleActivity(
   timezone = 'UTC'
 ) {
   const { activity } = activityData;
-  const exerciseName = activity.activityType?.typeKey
-    ? activity.activityType.typeKey
-        .replace(/_/g, ' ')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .replace(/\b\w/g, (l: any) => l.toUpperCase())
-    : 'Garmin Activity';
-  let exercise = await exerciseRepository.findExerciseByNameAndUserId(
-    exerciseName,
-    userId
+  const garminExerciseName =
+    activity.activityType?.typeKey || 'Garmin Activity';
+
+  const exercise = await getOrCreateGarminExercise(
+    userId,
+    garminExerciseName,
+    activity.activityType?.typeKey
   );
-  const mappedCategory =
-    mapGarminExerciseCategory(activity.activityType?.typeKey) ||
-    'Uncategorized';
-  if (!exercise) {
-    exercise = await exerciseRepository.createExercise({
-      user_id: userId,
-      name: exerciseName,
-      category: mappedCategory,
-      source: 'garmin',
-      is_custom: true,
-      shared_with_public: false,
-    });
-  } else if (
-    exercise.user_id === userId &&
-    exercise.category !== mappedCategory
-  ) {
-    await exerciseRepository.updateExercise(exercise.id, userId, {
-      category: mappedCategory,
-    });
-  }
+
   const entryDate = activity.startTimeLocal
     ? activity.startTimeLocal.substring(0, 10)
     : todayInZone(timezone);
@@ -972,13 +1069,17 @@ async function syncGarminData(
   log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
   return results;
 }
-export { processActivitiesAndWorkouts };
-export { processGarminWorkoutSession };
-export { processGarminWorkoutDefinition };
-export { processGarminSimpleActivity };
-export { processGarminSleepData };
-export { processGarminHealthAndWellnessData };
-export { syncGarminData };
+export {
+  processActivitiesAndWorkouts,
+  processGarminWorkoutSession,
+  processGarminWorkoutDefinition,
+  processGarminSimpleActivity,
+  processGarminSleepData,
+  processGarminHealthAndWellnessData,
+  syncGarminData,
+  mapGarminExerciseCategory,
+  formatExerciseName,
+};
 export default {
   processActivitiesAndWorkouts,
   processGarminWorkoutSession,

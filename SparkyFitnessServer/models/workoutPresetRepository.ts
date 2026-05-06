@@ -335,21 +335,33 @@ async function addExerciseToWorkoutPreset(
        LIMIT 1`,
       [workoutPresetId, exerciseId]
     );
+
+    let exercisePresetId;
     if (existingExerciseResult.rows.length > 0) {
-      await client.query('COMMIT');
-      return existingExerciseResult.rows[0].id;
+      exercisePresetId = existingExerciseResult.rows[0].id;
+      // Check if it already has sets
+      const setsCountResult = await client.query(
+        'SELECT COUNT(*) FROM workout_preset_exercise_sets WHERE workout_preset_exercise_id = $1',
+        [exercisePresetId]
+      );
+      if (parseInt(setsCountResult.rows[0].count, 10) > 0) {
+        await client.query('COMMIT');
+        return exercisePresetId;
+      }
+      // If no sets, proceed to add them below
+    } else {
+      const exerciseResult = await client.query(
+        `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [workoutPresetId, exerciseId, imageUrl, sortOrder]
+      );
+      exercisePresetId = exerciseResult.rows[0].id;
     }
 
-    const exerciseResult = await client.query(
-      `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [workoutPresetId, exerciseId, imageUrl, sortOrder]
-    );
-    const newExerciseId = exerciseResult.rows[0].id;
     if (sets && sets.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const setsValues = sets.map((set: any) => [
-        newExerciseId,
+        exercisePresetId,
         set.set_number,
         set.set_type,
         set.reps,
@@ -365,7 +377,7 @@ async function addExerciseToWorkoutPreset(
       await client.query(setsQuery);
     }
     await client.query('COMMIT');
-    return newExerciseId;
+    return exercisePresetId;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
