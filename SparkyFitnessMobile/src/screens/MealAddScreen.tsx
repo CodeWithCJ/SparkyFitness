@@ -307,7 +307,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-8 gap-4"
+        contentContainerClassName="px-4 pt-4 pb-safe-or-8 gap-4"
         keyboardShouldPersistTaps="handled"
       >
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">

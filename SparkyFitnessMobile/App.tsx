@@ -13,7 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
@@ -615,6 +615,7 @@ function AppContent() {
       }}
     >
       <SafeAreaProvider>
+        <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
@@ -938,6 +939,14 @@ function AppContent() {
 function SafeAreaToast() {
   const insets = useSafeAreaInsets();
   return <Toast config={toastConfig} topOffset={insets.top + 8} />;
+}
+
+function UniwindInsetsBridge() {
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    Uniwind.updateInsets(insets);
+  }, [insets]);
+  return null;
 }
 
 function App() {

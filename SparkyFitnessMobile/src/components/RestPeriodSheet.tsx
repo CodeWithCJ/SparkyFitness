@@ -131,7 +131,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
-        <BottomSheetView className="px-6 pb-8">
+        <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-4">
             Rest period
           </Text>

@@ -503,7 +503,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         )}
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
+      <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-safe-or-4 gap-4">
         <FoodNutritionSummary
           name={adjustedValues?.name || item.name}
           brand={adjustedValues?.brand ?? item.brand}

@@ -335,6 +335,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -393,6 +394,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -441,6 +443,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => renderMealRow(item, index === mealSearchResults.length - 1)}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -497,6 +500,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => renderMealRow(item, index === meals.length - 1)}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -569,6 +573,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalFoodItem}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
         ListFooterComponent={
           isFetchNextPageError ? (
             <Button

@@ -213,6 +213,7 @@ useEffect(() => {
         keyExtractor={(item) => item.id}
         renderItem={renderExerciseRow}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -252,6 +253,7 @@ useEffect(() => {
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
       />
     );
   };
@@ -335,6 +337,7 @@ useEffect(() => {
         keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalExerciseItem}
         keyboardShouldPersistTaps="handled"
+        contentContainerClassName="pb-safe-or-4"
         ListFooterComponent={renderOnlineFooter()}
       />
     );
