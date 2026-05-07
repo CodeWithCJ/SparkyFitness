@@ -2,6 +2,7 @@ import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import {
   CommonActions,
   NavigationContainer,
@@ -13,7 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
@@ -195,6 +196,17 @@ function AppContent() {
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    try {
+      NavigationBar.setStyle(isDarkMode ? 'dark' : 'light');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to update Android navigation bar style: ${message}`, 'WARNING');
+    }
+  }, [isDarkMode]);
 
   const navigationTheme = useMemo<Theme>(() => ({
     dark: isDarkMode,
@@ -615,6 +627,7 @@ function AppContent() {
       }}
     >
       <SafeAreaProvider>
+        <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
@@ -938,6 +951,14 @@ function AppContent() {
 function SafeAreaToast() {
   const insets = useSafeAreaInsets();
   return <Toast config={toastConfig} topOffset={insets.top + 8} />;
+}
+
+function UniwindInsetsBridge() {
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    Uniwind.updateInsets(insets);
+  }, [insets]);
+  return null;
 }
 
 function App() {

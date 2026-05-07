@@ -120,7 +120,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
       backgroundStyle={{ backgroundColor: surfaceBg }}
       handleIndicatorStyle={{ backgroundColor: textMuted }}
     >
-      <BottomSheetView className="px-6 pb-8">
+      <BottomSheetView className="px-6 pb-safe-or-8">
         {entry && (
           <>
             {/* Header */}

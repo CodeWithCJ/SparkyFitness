@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -33,7 +33,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     invalidateCacheRef.current();
   };
 
-  const { confirmAndDelete, invalidateCache } = useDeleteFoodEntry({
+  const { confirmAndDelete, deleteEntry, invalidateCache } = useDeleteFoodEntry({
     entryId: entry.id,
     entryDate: entry.entry_date,
     onSuccess: () => {
@@ -76,8 +76,22 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     </TouchableOpacity>
   );
 
-  const canQuickAdjust = !!onAdjustServing && entry.serving_size > 0 && !entry.food_entry_meal_id;
+  const canQuickAdjust = !!onAdjustServing && Number(entry.serving_size) > 0;
   const name = entry.food_name || 'Unknown food';
+
+  const handleLongPress = () => {
+    const buttons: {
+      text: string;
+      style?: 'cancel' | 'destructive';
+      onPress?: () => void;
+    }[] = [];
+    if (canQuickAdjust) {
+      buttons.push({ text: 'Adjust serving', onPress: () => onAdjustServing!(entry) });
+    }
+    buttons.push({ text: 'Delete', style: 'destructive', onPress: deleteEntry });
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(name, undefined, buttons);
+  };
 
   return (
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
@@ -92,6 +106,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
             className="flex-1 mr-2"
             activeOpacity={0.7}
             onPress={() => navigation.navigate('FoodEntryView', { entry })}
+            onLongPress={handleLongPress}
           >
             <View className="flex-row flex-wrap items-baseline">
               <Text className="text-md text-text-primary" numberOfLines={1}>

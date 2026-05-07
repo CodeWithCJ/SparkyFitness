@@ -154,7 +154,7 @@ function BottomSheetPicker<T extends string | number>({
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         {enableDynamic ? (
-          <BottomSheetView className="pb-5">
+          <BottomSheetView className="pb-safe-or-5">
             {title && (
               <View className="px-4 py-4 border-b border-border-subtle">
                 <Text className="text-lg font-semibold text-center text-text-primary">
@@ -165,7 +165,7 @@ function BottomSheetPicker<T extends string | number>({
             {options.map(renderOption)}
           </BottomSheetView>
         ) : (
-          <BottomSheetScrollView contentContainerStyle={styles.listContent}>
+          <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
             {title && (
               <View className="px-4 py-4 border-b border-border-subtle">
                 <Text className="text-lg font-semibold text-center text-text-primary">
@@ -180,11 +180,5 @@ function BottomSheetPicker<T extends string | number>({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  listContent: {
-    paddingBottom: 20,
-  },
-});
 
 export default BottomSheetPicker;

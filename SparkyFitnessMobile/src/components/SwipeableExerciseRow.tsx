@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, Pressable, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, Pressable, TouchableOpacity } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -79,7 +79,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     onSuccess: onDeleteSuccess,
   });
 
-  const { confirmAndDelete, invalidateCache } =
+  const { confirmAndDelete, deleteEntry, invalidateCache } =
     session.type === 'preset' ? workoutDelete : exerciseDelete;
 
   invalidateCacheRef.current = invalidateCache;
@@ -120,6 +120,13 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
   const subtitle = buildSessionSubtitle(session, duration, calories, weightUnit, distanceUnit);
 
+  const handleLongPress = () => {
+    Alert.alert(name, undefined, [
+      { text: 'Delete', style: 'destructive', onPress: deleteEntry },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
@@ -128,7 +135,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
         overshootRight={false}
         rightThreshold={40}
       >
-        <Pressable className="py-2.5 bg-surface" onPress={onPress}>
+        <Pressable className="py-2.5 bg-surface" onPress={onPress} onLongPress={handleLongPress}>
           <View className="flex-row items-center">
             <View className="mr-3 items-center justify-center" style={{ width: 36, height: 36 }}>
               <SafeImage

@@ -24,10 +24,12 @@
     "onlyBuiltDependencies": [
       "@scarf/scarf",
       "@swc/core",
+      "@parcel/watcher",
       "bcrypt",
       "sharp",
       "esbuild",
-      "unrs-resolver"
+      "unrs-resolver",
+      "vue-demi"
     ],
     "patchedDependencies": {}
   },

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
+import { Alert, View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
@@ -93,6 +93,13 @@ function EditableSetRow({
   const handleRemove = useCallback(() => {
     onRemoveSet(exerciseClientId, setClientId);
   }, [exerciseClientId, onRemoveSet, setClientId]);
+
+  const handleConfirmRemove = useCallback(() => {
+    Alert.alert(`Set ${setNumber}`, undefined, [
+      { text: 'Delete', style: 'destructive', onPress: handleRemove },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [handleRemove, setNumber]);
 
   const handleAdvance = useCallback(() => {
     // For within-row advance, move focus directly via ref so iOS keeps the
@@ -219,6 +226,7 @@ function EditableSetRow({
         <TouchableOpacity
           className="flex-1 py-1"
           onPress={handleActivateWeight}
+          onLongPress={handleConfirmRemove}
           activeOpacity={0.6}
         >
           <Text className="text-base text-text-primary text-center">{displayWeight}</Text>
@@ -226,6 +234,7 @@ function EditableSetRow({
         <TouchableOpacity
           className="flex-1 py-1"
           onPress={handleActivateReps}
+          onLongPress={handleConfirmRemove}
           activeOpacity={0.6}
         >
           <Text className="text-base text-text-primary text-center">{displayReps}</Text>

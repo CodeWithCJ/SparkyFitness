@@ -95,7 +95,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
-        <BottomSheetView className="pb-5 px-2">
+        <BottomSheetView className="pb-safe-or-5 px-2">
           <DateTimePicker
             mode="single"
             date={dateValue}

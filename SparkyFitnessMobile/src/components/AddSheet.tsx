@@ -241,7 +241,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         onAnimate={handleAnimate}
         onDismiss={handleDismiss}
       >
-        <BottomSheetView className="pb-5 px-2.5">
+        <BottomSheetView className="pb-safe-or-5 px-2.5">
           {showExerciseMenu ? (
             <>
               <Pressable
