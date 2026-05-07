@@ -327,16 +327,41 @@ async function addExerciseToWorkoutPreset(
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-    const exerciseResult = await client.query(
-      `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [workoutPresetId, exerciseId, imageUrl, sortOrder]
+    const existingExerciseResult = await client.query(
+      `SELECT id
+       FROM workout_preset_exercises
+       WHERE workout_preset_id = $1 AND exercise_id = $2
+       ORDER BY id ASC
+       LIMIT 1`,
+      [workoutPresetId, exerciseId]
     );
-    const newExerciseId = exerciseResult.rows[0].id;
+
+    let exercisePresetId;
+    if (existingExerciseResult.rows.length > 0) {
+      exercisePresetId = existingExerciseResult.rows[0].id;
+      // Check if it already has sets
+      const setsCountResult = await client.query(
+        'SELECT COUNT(*) FROM workout_preset_exercise_sets WHERE workout_preset_exercise_id = $1',
+        [exercisePresetId]
+      );
+      if (parseInt(setsCountResult.rows[0].count, 10) > 0) {
+        await client.query('COMMIT');
+        return exercisePresetId;
+      }
+      // If no sets, proceed to add them below
+    } else {
+      const exerciseResult = await client.query(
+        `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [workoutPresetId, exerciseId, imageUrl, sortOrder]
+      );
+      exercisePresetId = exerciseResult.rows[0].id;
+    }
+
     if (sets && sets.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const setsValues = sets.map((set: any) => [
-        newExerciseId,
+        exercisePresetId,
         set.set_number,
         set.set_type,
         set.reps,
@@ -352,7 +377,7 @@ async function addExerciseToWorkoutPreset(
       await client.query(setsQuery);
     }
     await client.query('COMMIT');
-    return newExerciseId;
+    return exercisePresetId;
   } catch (error) {
     await client.query('ROLLBACK');
     log(

@@ -1,6 +1,10 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
+import {
+  exerciseEntryKeys,
+  exerciseKeys,
+  presetKeys,
+} from '@/api/keys/exercises';
 import {
   dailyProgressKeys,
   diaryReportKeys,
@@ -19,6 +23,8 @@ export const useDiaryInvalidation = () => {
 
   return useCallback(() => {
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
+    queryClient.invalidateQueries({ queryKey: presetKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });

@@ -18,6 +18,36 @@ const garminMeasurementMapping = {
     dataType: 'integer',
     measurementType: 'count',
   },
+  totalSteps: {
+    targetType: 'check_in',
+    field: 'steps',
+    dataType: 'integer',
+    measurementType: 'count',
+  },
+  dailySteps: {
+    targetType: 'check_in',
+    field: 'steps',
+    dataType: 'integer',
+    measurementType: 'count',
+  },
+  stepCount: {
+    targetType: 'check_in',
+    field: 'steps',
+    dataType: 'integer',
+    measurementType: 'count',
+  },
+  total_steps: {
+    targetType: 'check_in',
+    field: 'steps',
+    dataType: 'integer',
+    measurementType: 'count',
+  },
+  step_count: {
+    targetType: 'check_in',
+    field: 'steps',
+    dataType: 'integer',
+    measurementType: 'count',
+  },
   bmi: {
     targetType: 'custom',
     name: 'BMI',
