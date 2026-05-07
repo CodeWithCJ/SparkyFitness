@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-*Last updated: 2026-04-22*
+*Last updated: 2026-05-06*
 
 SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
@@ -30,20 +30,22 @@ tsc --noEmit                                   # Type check only
 
 ### Source Structure (`src/`)
 
-- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI, auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding, dashboard, diary, settings, sync, logs, library (`LibraryScreen` tab + `FoodsLibraryScreen` paginated list + `FoodDetailScreen`), workouts/activities (add + detail), exercise/preset search, food search/scan/form/entry. `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI, auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
+- **screens/** — Top-level screens for onboarding, dashboard, diary, settings, sync, logs; library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
   - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
   - `healthkit/` — iOS equivalents plus `backgroundDelivery`
   - `shared/` — `preferences.ts` factory + `healthPermissionMigration.ts`
-  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `storage`, `LogService`, `themeService`, `workoutDraftService`, `diagnosticReportService`, `healthDiagnosticService` (Android-only), `notifications` (rest-timer scheduling), `haptics`.
+  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `autoSyncCoordinator` (in-memory lock + cooldown shared by background sync and sync-on-open), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection` (cross-screen pending-ingredient handoff), `diagnosticReportService`, `healthDiagnosticService` (Android-only), `notifications` (rest-timer scheduling), `haptics`.
 - **stores/** — Zustand stores (persisted via `zustand/middleware`). See **Workout timer** below for `activeWorkoutStore`.
-- **hooks/** — React Query hooks organized by domain (food, exercise/workout, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
+- **hooks/** — React Query hooks organized by domain (food, meals, exercise/workout, workout presets, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
+- **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
 - **types/** — TypeScript interfaces. Core exercise session types (`ExerciseSessionResponse`, `IndividualSessionResponse`, `PresetSessionResponse`, `ExerciseHistoryResponse`) come from `@workspace/shared`.
 - **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `rateLimiter`.
 - **constants/** — `meals.ts` (meal types, icons, time-based defaults).
 - **HealthMetrics.ts** — Health metric definitions filtered by platform and enabled status at runtime.
+- **plugins/** — Expo config plugins applied at prebuild: `withCalorieWidget` (copies `targets/android-widget/` Kotlin + res into the generated Android project and wires up Glance widget receivers), `withGlanceAndroidSupport`, `withNetworkSecurityConfig`. Edit `targets/`, never the generated `android/` or `ios/` folders.
 
 ### Platform-Specific Code
 
@@ -61,6 +63,8 @@ Both orchestrators use batched concurrent metric fetching via `runTasksInBatches
 - `fetchWithTimeout` wraps fetch with `AbortController` (`FETCH_TIMEOUT_MS = 30_000`)
 - `fetchWithRetry` adds exponential backoff (up to `MAX_RETRIES = 3`, skips 4xx); triggers `notifySessionExpired` on 401 for session auth
 
+`services/autoSyncCoordinator.ts` mediates between background-task syncs and foreground sync-on-open: an in-memory `tryClaimAutoSync()` lock prevents double-fires within an app-open window, and a per-config `AUTO_SYNC_COOLDOWN_MS = 5min` cooldown stored under `@AutoSync:lastAutoSyncAt:<configId>` gates `shouldRunForegroundResumeAutoSync()`. Call `recordAutoSyncTime(configId)` after any successful auto-sync.
+
 ### React Query
 
 - `staleTime: Infinity` on the global client — manual refresh only (some hooks override, e.g., preferences uses 30min)
@@ -72,7 +76,7 @@ Both orchestrators use batched concurrent metric fetching via `runTasksInBatches
 TailwindCSS v4 with Uniwind for React Native. Theme variables in `global.css`:
 - `className="bg-surface text-text-primary rounded-md p-4"`
 - `useCSSVariable('--color-accent-primary')` for JS access (used extensively in Skia charts)
-- Themes: **Light**, **Dark**, **AMOLED** (true black), **System** — managed by `themeService.ts`, stored in AsyncStorage
+- Themes: **Light**, **Dark**, **AMOLED** (true black), **System** — managed by `themeService.ts`, stored in AsyncStorage. On Android, `App.tsx` keeps the system navigation bar in sync via `expo-navigation-bar` (`NavigationBar.setStyle('dark' | 'light')`)
 - CSS variable categories: backgrounds, borders, text, accents, tabs, forms, data colors (`calories`, `macro-*`, `hydration`, `exercise`), progress, status
 
 ### Charts
@@ -141,11 +145,26 @@ When changing widget display: update both the Swift view and the TS snapshot sha
 
 App Icons live under `targets/widget/assets/AppIcon.appiconset/` (colocated because the config plugin owns the iOS asset catalog). Edit there, not the generated `ios/` files.
 
-### Food Library
+### Android Widget Extension
 
-The **Library** tab (`LibraryScreen`) is the entry point for browsing saved foods. It shows "Create food" tiles + a 3-item preview of recent foods, with "View all" pushing `FoodsLibraryScreen` (paginated, infinite-scroll search over `/api/foods/foods-paginated`). Rows push `FoodDetailScreen`, which renders nutrition via `FoodNutritionSummary`, exposes a serving-variant picker (`useFoodVariants`), and offers Log / Edit / Delete. Edit jumps to `FoodFormScreen` in `edit-food` mode (a third mode alongside `create-food` and `adjust-entry-nutrition`); Delete uses `useDeleteFood`. Edit/Delete are gated on `profile.id === food.userId` (owner-only). Nutrition value transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, and `FoodFormScreen`.
+Android home-screen widgets are Glance-based and live under `targets/android-widget/` (Kotlin sources + `res/`). They are stamped into the generated Android project at prebuild by `plugins/withCalorieWidget.ts`, which copies the tree, expands `.kt.tmpl` files (substituting the resolved `applicationId`), registers each receiver in `AndroidManifest.xml`, and adds `CalorieWidgetPackage` to the React `MainApplication`. Two widgets ship today: `CalorieWidget` (kind `widget`) and `MacroWidget` (kind `macroWidget`), each with its own `Receiver`, `Module`, `*_widget_info.xml`, and `PREFS_*` namespace.
 
-`useFoodsLibrary` (infinite query) uses `queryClient.resetQueries` instead of `query.refetch()` on focus/pull-to-refresh — `refetch()` re-downloads every cached page, so a user deep in the list pays for pages 1..N on every focus. Same pattern as `useExerciseHistory`. `loadMore` gates on `isFetching` (not just `isFetchingNextPage`) so pagination cannot overlap with a reset and leave gaps.
+Data flow: `useWidgetSync` calls into `src/native/CalorieWidgetBridge.ts` (Android branch) which invokes the native module to push snapshots and reload Glance. Same `summary` payload as iOS — keep the snapshot shape in `useWidgetSync` aligned with both Swift views and Kotlin composables. After any change to `targets/android-widget/` or the plugin, run `npx expo prebuild -c`.
+
+Pattern for adding a third widget is documented at the top of `plugins/withCalorieWidget.ts` (drop new `*.kt.tmpl` pair, add an `xml` info file, extend the receivers list, and add a kind-aware reload to `CalorieWidgetBridge`).
+
+### Library Tab
+
+The **Library** tab (`LibraryScreen`) is the entry point for all user-saved content — foods, meals, exercises, and workout presets. It surfaces "Create" tiles plus a recent-items preview per section, with "View all" pushing the section-specific paginated list:
+
+- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, and `FoodFormScreen`. `FoodForm` includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes.
+- **Meals** — `MealsLibraryScreen` → `MealDetailScreen` and `MealAddScreen` (meal builder). Cross-screen ingredient handoff uses `services/mealBuilderSelection.ts` (set/consume pending selection). `MealTypeDetailScreen` shows a single meal type's day view from the diary.
+- **Exercises** — `ExercisesLibraryScreen` → `ExerciseDetailScreen` → `ExerciseFormScreen` for user-created exercises (advanced fields supported).
+- **Workout Presets** — `WorkoutPresetsLibraryScreen` → `WorkoutPresetDetailScreen` → `WorkoutPresetFormScreen` for managing reusable presets that feed `WorkoutAddScreen`.
+
+Edit/Delete actions are gated on `profile.id === <entity>.userId` (owner-only). Diary rows (`SwipeableFoodRow`, `SwipeableExerciseRow`) support both swipe-to-delete and long-press delete confirmation.
+
+`useFoodsLibrary` (infinite query) uses `queryClient.resetQueries` instead of `query.refetch()` on focus/pull-to-refresh — `refetch()` re-downloads every cached page, so a user deep in the list pays for pages 1..N on every focus. Same pattern as `useExerciseHistory`. `loadMore` gates on `isFetching` (not just `isFetchingNextPage`) so pagination cannot overlap with a reset and leave gaps. Apply this pattern to other paginated library hooks (meals, exercises, presets) when revisiting them.
 
 `BottomSheetPicker` and `CalendarSheet` pass `containerComponent={FullWindowOverlay}` (iOS only) so the sheets render in a UIWindow above any native modal presentation. Earlier versions wrapped modal-presented screens in a local `BottomSheetModalProvider`, but that polluted the root provider's bottom-inset state and left the AddSheet with stale padding after dismissal — using `FullWindowOverlay` per-sheet avoids the nested provider entirely.
 
@@ -172,7 +191,7 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | Endpoint | Purpose | Service |
 |----------|---------|---------|
 | `POST /api/health-data` | Send health data array | `healthDataApi` |
-| `GET /auth/user` | Connection check | `healthDataApi` |
+| `GET /api/identity/user` | Connection check | `healthDataApi` |
 | `GET /api/daily-summary?date={date}` | Unified daily summary (goals + food + exercise + water) | `dailySummaryApi` |
 | `GET /api/goals/for-date?date={date}` | Daily nutrition goals | `goalsApi` |
 | `GET /api/food-entries/by-date/{date}` | Food entries by date | `foodEntriesApi` |
@@ -188,19 +207,26 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
-| `GET /api/foods/openfoodfacts/search` | Search Open Food Facts | `externalFoodSearchApi` |
-| `GET /api/foods/usda/search` | Search USDA FoodData Central | `externalFoodSearchApi` |
-| `GET /api/foods/fatsecret/search` | Search FatSecret | `externalFoodSearchApi` |
-| `GET /api/foods/fatsecret/nutrients` | FatSecret detailed nutrients | `externalFoodSearchApi` |
-| `GET /api/foods/mealie/search` | Mealie recipe search | `externalFoodSearchApi` |
+| `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
+| `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |
+| `GET /api/v2/foods/barcode/{barcode}` | External barcode lookup across providers | `externalFoodSearchApi` |
+| `GET /api/foods/openfoodfacts/search` | Search Open Food Facts (legacy direct path) | `externalFoodSearchApi` |
+| `GET /api/foods/usda/search` | Search USDA FoodData Central (legacy direct path) | `externalFoodSearchApi` |
+| `GET /api/foods/fatsecret/search` | Search FatSecret (legacy direct path) | `externalFoodSearchApi` |
+| `GET /api/foods/fatsecret/nutrients` | FatSecret detailed nutrients (legacy direct path) | `externalFoodSearchApi` |
+| `GET /api/foods/mealie/search` | Mealie recipe search (legacy direct path) | `externalFoodSearchApi` |
 | `GET /api/meals` | All saved meals | `mealsApi` |
+| `GET /api/meals/recent` | Recently used meals | `mealsApi` |
 | `GET /api/meals/search` | Search meals | `mealsApi` |
+| `POST /api/meals` | Create a meal | `mealsApi` |
+| `PUT /api/meals/{id}` | Update a meal | `mealsApi` |
+| `DELETE /api/meals/{id}` | Delete a meal | `mealsApi` |
 | `GET /api/meal-types` | Meal type definitions | `mealTypesApi` |
 | `GET /api/external-providers` | Configured external providers | `externalProvidersApi` |
 | `GET /api/v2/exercise-entries/by-date?selectedDate={date}` | Exercise entries by date | `exerciseApi` |
 | `GET /api/v2/exercise-entries/history?page={p}&pageSize={n}` | Paginated exercise session history | `exerciseApi` |
 | `GET /api/exercises/suggested?limit={n}` | Recent + popular exercises | `exerciseApi` |
-| `GET /api/exercises/search?searchTerm={term}` | Search local exercises | `exerciseApi` |
+| `GET /api/v2/exercises/search?searchTerm={term}` | Search local exercises | `exerciseApi` |
 | `POST /api/exercise-preset-entries/` | Create preset workout session | `exerciseApi` |
 | `PUT /api/exercise-preset-entries/{id}` | Update preset workout session | `exerciseApi` |
 | `DELETE /api/exercise-preset-entries/{id}` | Delete preset workout session | `exerciseApi` |
@@ -212,6 +238,9 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `POST /api/freeexercisedb/add` | Import Free Exercise DB exercise | `externalExerciseSearchApi` |
 | `GET /api/workout-presets` | List workout presets | `workoutPresetsApi` |
 | `GET /api/workout-presets/search` | Search workout presets | `workoutPresetsApi` |
+| `POST /api/workout-presets` | Create workout preset | `workoutPresetsApi` |
+| `PUT /api/workout-presets/{id}` | Update workout preset | `workoutPresetsApi` |
+| `DELETE /api/workout-presets/{id}` | Delete workout preset | `workoutPresetsApi` |
 | `GET /api/measurements/check-in/{date}` | Health measurements | `measurementsApi` |
 | `GET /api/measurements/check-in-measurements-range/{start}/{end}` | Measurements over date range | `measurementsApi` |
 | `GET /api/measurements/water-intake/{date}` | Water intake for date | `measurementsApi` |
@@ -219,7 +248,8 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `GET /api/water-containers` | Water container presets | `measurementsApi` |
 | `GET /api/user-preferences` | User preferences | `preferencesApi` |
 | `PUT /api/user-preferences` | Update user preferences (COALESCE — only updates provided fields) | `preferencesApi` |
-| `GET /api/auth/profiles` | User profile | `profileApi` |
+| `POST /api/user-preferences/bootstrap-timezone` | First-launch timezone bootstrap | `preferencesApi` |
+| `GET /api/identity/profiles` | User profile | `profileApi` |
 
 ## Testing
 
