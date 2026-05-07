@@ -31,9 +31,15 @@ export interface PickerOption<T> {
   value: T;
 }
 
+export interface PickerSection<T> {
+  title?: string;
+  options: PickerOption<T>[];
+}
+
 interface BottomSheetPickerProps<T extends string | number> {
   value: T;
-  options: PickerOption<T>[];
+  options?: PickerOption<T>[];
+  sections?: PickerSection<T>[];
   onSelect: (value: T) => void;
   placeholder?: string;
   title?: string;
@@ -44,6 +50,7 @@ interface BottomSheetPickerProps<T extends string | number> {
 function BottomSheetPicker<T extends string | number>({
   value,
   options,
+  sections,
   onSelect,
   placeholder = 'Select an option',
   title,
@@ -59,12 +66,24 @@ function BottomSheetPicker<T extends string | number>({
   ]) as [string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const normalizedSections = useMemo<PickerSection<T>[]>(() => {
+    if (sections && sections.length > 0) {
+      return sections;
+    }
+    return [{ options: options ?? [] }];
+  }, [options, sections]);
+
+  const flatOptions = useMemo(
+    () => normalizedSections.flatMap((section) => section.options),
+    [normalizedSections],
+  );
+
+  const selectedOption = flatOptions.find((opt) => opt.value === value);
   const displayText = selectedOption?.label || placeholder;
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly
-  const enableDynamic = options.length <= 8;
+  const enableDynamic = flatOptions.length <= 8;
   const snapPoints = useMemo(() => {
     return enableDynamic ? undefined : [500];
   }, [enableDynamic]);
@@ -123,6 +142,28 @@ function BottomSheetPicker<T extends string | number>({
     );
   };
 
+  const renderSectionHeader = (section: PickerSection<T>, index: number) => {
+    if (!section.title) return null;
+
+    return (
+      <View
+        key={`section-${section.title}-${index}`}
+        className="px-4 py-2 bg-surface"
+      >
+        <Text className="text-xs font-semibold uppercase text-text-muted">
+          {section.title}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderSections = () => normalizedSections.map((section, index) => (
+    <React.Fragment key={`section-${section.title ?? 'default'}-${index}`}>
+      {renderSectionHeader(section, index)}
+      {section.options.map(renderOption)}
+    </React.Fragment>
+  ));
+
   return (
     <>
       {renderTrigger ? (
@@ -162,7 +203,7 @@ function BottomSheetPicker<T extends string | number>({
                 </Text>
               </View>
             )}
-            {options.map(renderOption)}
+            {renderSections()}
           </BottomSheetView>
         ) : (
           <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
@@ -173,7 +214,7 @@ function BottomSheetPicker<T extends string | number>({
                 </Text>
               </View>
             )}
-            {options.map(renderOption)}
+            {renderSections()}
           </BottomSheetScrollView>
         )}
       </BottomSheetModal>

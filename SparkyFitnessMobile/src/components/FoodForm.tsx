@@ -6,6 +6,7 @@ import Button from './ui/Button';
 import FormInput from './FormInput';
 import Icon from './Icon';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
 
 export interface FoodFormData {
   name: string;
@@ -38,11 +39,10 @@ export interface FoodFormProps {
   children?: React.ReactNode;
 }
 
-const SERVING_UNIT_OPTIONS = [
-  'serving', 'g', 'oz', 'cup', 'piece', 'slice', 'scoop', 'tbsp', 'tsp',
-  'bowl', 'plate', 'handful', 'bar', 'stick', 'can', 'bottle', 'packet', 'bag', 'whole',
-  'ml', 'l', 'kg', 'lb', 'mg',
-].map((u) => ({ label: u, value: u }));
+const SERVING_UNIT_SECTIONS = FOOD_FORM_UNIT_GROUPS.map((group) => ({
+  title: group.label,
+  options: group.units.map((unit) => ({ label: unit, value: unit })),
+}));
 
 const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
   'calories',
@@ -252,7 +252,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
               <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
               <BottomSheetPicker
                 value={form.servingUnit}
-                options={SERVING_UNIT_OPTIONS}
+                sections={SERVING_UNIT_SECTIONS}
                 onSelect={(v) => update('servingUnit', v)}
                 title="Select Unit"
                 placeholder="unit"

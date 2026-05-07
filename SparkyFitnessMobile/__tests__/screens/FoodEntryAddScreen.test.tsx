@@ -4,15 +4,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
 import { useMealTypes } from '../../src/hooks';
-import { useFoodVariants } from '../../src/hooks/useFoodVariants';
+import {
+  useCreateFoodVariant,
+  useFoodVariants,
+} from '../../src/hooks/useFoodVariants';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
-import {
-  buildMealIngredientDraft,
-  buildMealIngredientDraftFromSavedFood,
-} from '../../src/utils/mealBuilderDraft';
+import { buildMealIngredientDraftFromSavedFood } from '../../src/utils/mealBuilderDraft';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
@@ -38,6 +38,7 @@ jest.mock('../../src/hooks', () => ({
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({
   useFoodVariants: jest.fn(),
+  useCreateFoodVariant: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useSaveFood', () => ({
@@ -117,6 +118,44 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   };
 });
 
+jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ variants, onSelect, renderTrigger }: any) => (
+      <View>
+        {renderTrigger?.({ onPress: () => {} })}
+        {variants.map((variant: any, index: number) => (
+          <Pressable
+            key={variant.id ?? `variant-${index}`}
+            onPress={() => onSelect({ kind: 'existing', variant })}
+          >
+            <Text>{`${variant.serving_size} ${variant.serving_unit} (${Math.round(variant.calories)} cal)`}</Text>
+          </Pressable>
+        ))}
+        <Pressable
+          onPress={() =>
+            onSelect({
+              kind: 'draft',
+              variant: {
+                serving_size: 1,
+                serving_unit: 'oz',
+                calories: 120,
+                protein: 10,
+                carbs: 8,
+                fat: 4,
+              },
+            })
+          }
+        >
+          <Text>Create Draft Unit</Text>
+        </Pressable>
+      </View>
+    ),
+  };
+});
+
 jest.mock('../../src/components/FoodNutritionSummary', () => {
   const { Text } = require('react-native');
   return {
@@ -128,12 +167,14 @@ jest.mock('../../src/components/FoodNutritionSummary', () => {
 jest.mock('../../src/components/CalendarSheet', () => {
   const React = require('react');
   const { View } = require('react-native');
+  const MockCalendarSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
+    return <View testID="calendar-sheet" />;
+  });
+  MockCalendarSheet.displayName = 'MockCalendarSheet';
   return {
     __esModule: true,
-    default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
-      return <View testID="calendar-sheet" />;
-    }),
+    default: MockCalendarSheet,
   };
 });
 
@@ -149,13 +190,14 @@ jest.mock('../../src/utils/mealBuilderDraft', () => {
 const { useQuery } = jest.requireMock('@tanstack/react-query') as { useQuery: jest.Mock };
 const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
+const mockUseCreateFoodVariant =
+  useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
 const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
 const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
-const mockUseAddFoodEntryMeal = useAddFoodEntryMeal as jest.MockedFunction<typeof useAddFoodEntryMeal>;
+const mockUseAddFoodEntryMeal =
+  useAddFoodEntryMeal as jest.MockedFunction<typeof useAddFoodEntryMeal>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
-const mockBuildMealIngredientDraft =
-  buildMealIngredientDraft as jest.MockedFunction<typeof buildMealIngredientDraft>;
 const mockBuildMealIngredientDraftFromSavedFood =
   buildMealIngredientDraftFromSavedFood as jest.MockedFunction<
     typeof buildMealIngredientDraftFromSavedFood
@@ -175,9 +217,11 @@ describe('FoodEntryAddScreen', () => {
 
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
+  const mockAddEntryAsync = jest.fn();
   const mockInvalidateCache = jest.fn();
   const mockAddMeal = jest.fn();
   const mockInvalidateMealCache = jest.fn();
+  const mockCreateVariant = jest.fn();
 
   const baseLocalItem = {
     id: 'food-1',
@@ -258,21 +302,28 @@ describe('FoodEntryAddScreen', () => {
       isLoading: false,
       isError: false,
     });
-    mockUseFoodVariants.mockReturnValue({
-      variants: [
-        {
-          id: 'variant-1',
-          food_id: 'food-1',
-          serving_size: 1,
-          serving_unit: 'cup',
-          calories: 100,
-          protein: 15,
-          carbs: 6,
-          fat: 0,
-        },
-      ] as any,
+    mockUseFoodVariants.mockImplementation((foodId, options) => ({
+      variants:
+        foodId === 'food-1' && options?.enabled !== false
+          ? ([
+              {
+                id: 'variant-1',
+                food_id: 'food-1',
+                serving_size: 1,
+                serving_unit: 'cup',
+                calories: 100,
+                protein: 15,
+                carbs: 6,
+                fat: 0,
+              },
+            ] as any)
+          : undefined,
       isLoading: false,
       isError: false,
+    }));
+    mockUseCreateFoodVariant.mockReturnValue({
+      createVariant: mockCreateVariant,
+      isPending: false,
     });
     mockUseSaveFood.mockReturnValue({
       saveFood: jest.fn(),
@@ -280,11 +331,19 @@ describe('FoodEntryAddScreen', () => {
       isPending: false,
       isSaved: false,
     });
-    mockUseAddFoodEntry.mockReturnValue({
-      addEntry: mockAddEntry,
+    mockUseAddFoodEntry.mockImplementation((options) => ({
+      addEntry: (input: any) => {
+        mockAddEntry(input);
+        options?.onSuccess?.({ entry_date: '2026-04-23' } as any);
+      },
+      addEntryAsync: async (input: any) => {
+        mockAddEntryAsync(input);
+        options?.onSuccess?.({ entry_date: '2026-04-23' } as any);
+        return { id: 'entry-1' } as any;
+      },
       isPending: false,
       invalidateCache: mockInvalidateCache,
-    });
+    }));
     mockUseAddFoodEntryMeal.mockReturnValue({
       addMeal: mockAddMeal,
       isPending: false,
@@ -478,7 +537,6 @@ describe('FoodEntryAddScreen', () => {
   });
 
   it('dispatches addMeal when logging a meal item (not addEntry)', () => {
-    // useFoodVariants is enabled only for local foods in production, so simulate empty variants.
     mockUseFoodVariants.mockReturnValueOnce({
       variants: [],
       isLoading: false,
@@ -530,5 +588,214 @@ describe('FoodEntryAddScreen', () => {
       },
     });
     expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
+  });
+
+  it('creates a local converted unit immediately and logs that new variant', async () => {
+    mockCreateVariant.mockResolvedValue({
+      id: 'variant-oz',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'oz',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+    });
+
+    const screen = renderScreen({
+      item: baseLocalItem,
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Create Draft Unit'));
+
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledWith({
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        dietary_fiber: undefined,
+        saturated_fat: undefined,
+        polyunsaturated_fat: undefined,
+        monounsaturated_fat: undefined,
+        sodium: undefined,
+        sugars: undefined,
+        trans_fat: undefined,
+        potassium: undefined,
+        calcium: undefined,
+        iron: undefined,
+        cholesterol: undefined,
+        vitamin_a: undefined,
+        vitamin_c: undefined,
+        glycemic_index: undefined,
+        custom_nutrients: undefined,
+      });
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockAddEntry).toHaveBeenCalledWith({
+      saveFoodPayload: undefined,
+      createEntryPayload: {
+        meal_type_id: 'meal-1',
+        quantity: 1,
+        unit: 'oz',
+        entry_date: '2026-04-23',
+        food_id: 'food-1',
+        variant_id: 'variant-oz',
+      },
+    });
+  });
+
+  it('switches a saved external draft unit into the local logging flow', async () => {
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Protein Bar',
+      brand: 'Remote Brand',
+      is_custom: false,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 1,
+        serving_unit: 'bar',
+        calories: 200,
+        protein: 20,
+        carbs: 22,
+        fat: 7,
+      },
+    });
+    mockCreateVariant.mockResolvedValue({
+      id: 'saved-variant-oz',
+      food_id: 'saved-food-1',
+      serving_size: 1,
+      serving_unit: 'oz',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+    });
+
+    const screen = renderScreen({
+      item: baseExternalItem,
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Create Draft Unit'));
+
+    expect(screen.getByText('1 oz (120 cal)')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Save Food'));
+
+    await waitFor(() => {
+      expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateVariant).toHaveBeenCalledWith({
+      food_id: 'saved-food-1',
+      serving_size: 1,
+      serving_unit: 'oz',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      dietary_fiber: undefined,
+      saturated_fat: undefined,
+      polyunsaturated_fat: undefined,
+      monounsaturated_fat: undefined,
+      sodium: undefined,
+      sugars: undefined,
+      trans_fat: undefined,
+      potassium: undefined,
+      calcium: undefined,
+      iron: undefined,
+      cholesterol: undefined,
+      vitamin_a: undefined,
+      vitamin_c: undefined,
+      glycemic_index: undefined,
+      custom_nutrients: undefined,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockAddEntry).toHaveBeenCalledWith({
+      saveFoodPayload: undefined,
+      createEntryPayload: {
+        meal_type_id: 'meal-1',
+        quantity: 1,
+        unit: 'oz',
+        entry_date: '2026-04-23',
+        food_id: 'saved-food-1',
+        variant_id: 'saved-variant-oz',
+      },
+    });
+    expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+    expect(mockAddEntryAsync).not.toHaveBeenCalled();
+  });
+
+  it('chains save and create-variant when an external converted unit is selected', async () => {
+    const screen = renderScreen({
+      item: baseExternalItem,
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Create Draft Unit'));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntryAsync).toHaveBeenCalledWith({
+        saveFoodPayload: {
+          name: 'Protein Bar',
+          brand: 'Remote Brand',
+          serving_size: 1,
+          serving_unit: 'bar',
+          calories: 200,
+          protein: 20,
+          carbs: 22,
+          fat: 7,
+          dietary_fiber: undefined,
+          saturated_fat: undefined,
+          sodium: undefined,
+          sugars: undefined,
+          trans_fat: undefined,
+          potassium: undefined,
+          calcium: undefined,
+          iron: undefined,
+          cholesterol: undefined,
+          vitamin_a: undefined,
+          vitamin_c: undefined,
+        },
+        saveThenCreateVariantPayload: {
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+          dietary_fiber: undefined,
+          saturated_fat: undefined,
+          polyunsaturated_fat: undefined,
+          monounsaturated_fat: undefined,
+          sodium: undefined,
+          sugars: undefined,
+          trans_fat: undefined,
+          potassium: undefined,
+          calcium: undefined,
+          iron: undefined,
+          cholesterol: undefined,
+          vitamin_a: undefined,
+          vitamin_c: undefined,
+          glycemic_index: undefined,
+          custom_nutrients: undefined,
+        },
+        createEntryPayload: {
+          meal_type_id: 'meal-1',
+          quantity: 1,
+          unit: 'oz',
+          entry_date: '2026-04-23',
+        },
+      });
+    });
   });
 });

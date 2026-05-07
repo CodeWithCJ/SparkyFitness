@@ -77,6 +77,44 @@ export const fetchFoodVariants = async (foodId: string): Promise<FoodVariantDeta
   });
 };
 
+export interface CreateFoodVariantPayload {
+  food_id: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  sodium?: number;
+  sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  glycemic_index?: string;
+  custom_nutrients?: Record<string, string | number>;
+}
+
+/**
+ * Creates a new food variant for an existing food.
+ */
+export const createFoodVariant = async (payload: CreateFoodVariantPayload): Promise<FoodVariantDetail> => {
+  return apiFetch<FoodVariantDetail>({
+    endpoint: '/api/foods/food-variants',
+    serviceName: 'Foods API',
+    operation: 'create food variant',
+    method: 'POST',
+    body: payload,
+  });
+};
+
 
 export interface SaveFoodPayload {
   name: string;

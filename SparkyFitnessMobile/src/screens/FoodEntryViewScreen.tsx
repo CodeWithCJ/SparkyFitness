@@ -1,7 +1,18 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import Button from '../components/ui/Button';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -10,10 +21,16 @@ import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import FoodUnitSelectorSheet, {
+  type FoodUnitSelectionResult,
+} from '../components/FoodUnitSelectorSheet';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes } from '../hooks';
-import { useFoodVariants } from '../hooks/useFoodVariants';
+import {
+  useCreateFoodVariant,
+  useFoodVariants,
+} from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
@@ -22,7 +39,13 @@ import type { FoodFormData } from '../components/FoodForm';
 import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
+import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  buildCreateFoodVariantPayload,
+  buildLocalUnitVariants,
+  unitVariantToDisplayValues,
+} from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
@@ -32,8 +55,59 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
   return (value * entry.quantity) / entry.serving_size;
 };
 
-const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
+const foodEntryToUnitVariant = (entry: FoodEntry): FoodUnitVariant => ({
+  id: entry.variant_id,
+  food_id: entry.food_id,
+  serving_size: entry.serving_size,
+  serving_unit: entry.unit,
+  calories: entry.calories,
+  protein: entry.protein ?? 0,
+  carbs: entry.carbs ?? 0,
+  fat: entry.fat ?? 0,
+  saturated_fat: entry.saturated_fat,
+  polyunsaturated_fat: entry.polyunsaturated_fat,
+  monounsaturated_fat: entry.monounsaturated_fat,
+  trans_fat: entry.trans_fat,
+  cholesterol: entry.cholesterol,
+  sodium: entry.sodium,
+  potassium: entry.potassium,
+  dietary_fiber: entry.dietary_fiber,
+  sugars: entry.sugars,
+  vitamin_a: entry.vitamin_a,
+  vitamin_c: entry.vitamin_c,
+  calcium: entry.calcium,
+  iron: entry.iron,
+  glycemic_index: entry.glycemic_index,
+  custom_nutrients: entry.custom_nutrients ?? null,
+});
+
+const entryToDisplayValues = (entry: FoodEntry) => ({
+  servingSize: entry.serving_size,
+  servingUnit: entry.unit,
+  calories: entry.calories,
+  protein: entry.protein ?? 0,
+  carbs: entry.carbs ?? 0,
+  fat: entry.fat ?? 0,
+  fiber: entry.dietary_fiber,
+  saturatedFat: entry.saturated_fat,
+  transFat: entry.trans_fat,
+  sodium: entry.sodium,
+  sugars: entry.sugars,
+  potassium: entry.potassium,
+  calcium: entry.calcium,
+  iron: entry.iron,
+  cholesterol: entry.cholesterol,
+  vitaminA: entry.vitamin_a,
+  vitaminC: entry.vitamin_c,
+});
+
+const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const [entry, setEntry] = useState(route.params.entry);
+  const [createdVariantOverride, setCreatedVariantOverride] =
+    useState<FoodUnitVariant | null>(null);
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { profile } = useProfile();
@@ -45,7 +119,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     }
   }, [entry.food_entry_meal_id, navigation]);
 
-  const canEdit = !!(entry.user_id && profile?.id === entry.user_id && !entry.food_entry_meal_id);
+  const canEdit = !!(
+    entry.user_id &&
+    profile?.id === entry.user_id &&
+    !entry.food_entry_meal_id
+  );
 
   interface EditState {
     isEditing: boolean;
@@ -66,67 +144,104 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     adjustedValues: null,
   });
 
-  const { isEditing, selectedDate, selectedMealId, selectedVariantId, quantityText, adjustedValues } = editState;
-  const updateEdit = useCallback((patch: Partial<EditState>) => setEditState(prev => ({ ...prev, ...patch })), []);
+  const {
+    isEditing,
+    selectedDate,
+    selectedMealId,
+    selectedVariantId,
+    quantityText,
+    adjustedValues,
+  } = editState;
+  const updateEdit = useCallback(
+    (patch: Partial<EditState>) => setEditState((prev) => ({ ...prev, ...patch })),
+    [],
+  );
 
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
-  // Fetch variants if entry has a food_id
-  const { variants } = useFoodVariants(entry.food_id!, { enabled: !!entry.food_id });
+  const { variants } = useFoodVariants(entry.food_id!, {
+    enabled: !!entry.food_id,
+  });
+  const { createVariant, isPending: isCreateVariantPending } =
+    useCreateFoodVariant();
 
-  // Active variant: the currently selected variant's data, or fallback to entry snapshot
+  const selectorVariants = useMemo(() => {
+    if (!entry.food_id) return [];
+    const loadedVariants = buildLocalUnitVariants(variants);
+    if (
+      createdVariantOverride?.id &&
+      !loadedVariants.some((variant) => variant.id === createdVariantOverride.id)
+    ) {
+      return [createdVariantOverride, ...loadedVariants];
+    }
+    return loadedVariants.length > 0
+      ? loadedVariants
+      : [foodEntryToUnitVariant(entry)];
+  }, [createdVariantOverride, entry, variants]);
+
   const activeVariant = useMemo(() => {
+    if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
+      return unitVariantToDisplayValues(createdVariantOverride);
+    }
+
     if (variants && selectedVariantId && selectedVariantId !== entry.variant_id) {
-      const v = variants.find((v: FoodVariantDetail) => v.id === selectedVariantId);
-      if (v) {
+      const variant = variants.find(
+        (candidate: FoodVariantDetail) => candidate.id === selectedVariantId,
+      );
+      if (variant) {
         return {
-          servingSize: v.serving_size,
-          servingUnit: v.serving_unit,
-          calories: v.calories,
-          protein: v.protein,
-          carbs: v.carbs,
-          fat: v.fat,
-          fiber: v.dietary_fiber,
-          saturatedFat: v.saturated_fat,
-          sodium: v.sodium,
-          sugars: v.sugars,
-          transFat: v.trans_fat,
-          potassium: v.potassium,
-          calcium: v.calcium,
-          iron: v.iron,
-          cholesterol: v.cholesterol,
-          vitaminA: v.vitamin_a,
-          vitaminC: v.vitamin_c,
+          servingSize: variant.serving_size,
+          servingUnit: variant.serving_unit,
+          calories: variant.calories,
+          protein: variant.protein,
+          carbs: variant.carbs,
+          fat: variant.fat,
+          fiber: variant.dietary_fiber,
+          saturatedFat: variant.saturated_fat,
+          transFat: variant.trans_fat,
+          sodium: variant.sodium,
+          sugars: variant.sugars,
+          potassium: variant.potassium,
+          calcium: variant.calcium,
+          iron: variant.iron,
+          cholesterol: variant.cholesterol,
+          vitaminA: variant.vitamin_a,
+          vitaminC: variant.vitamin_c,
         };
       }
     }
-    return {
-      servingSize: entry.serving_size,
-      servingUnit: entry.unit,
-      calories: entry.calories,
-      protein: entry.protein ?? 0,
-      carbs: entry.carbs ?? 0,
-      fat: entry.fat ?? 0,
-      fiber: entry.dietary_fiber,
-      saturatedFat: entry.saturated_fat,
-      transFat: entry.trans_fat,
-      sodium: entry.sodium,
-      sugars: entry.sugars,
-      potassium: entry.potassium,
-      calcium: entry.calcium,
-      iron: entry.iron,
-      cholesterol: entry.cholesterol,
-      vitaminA: entry.vitamin_a,
-      vitaminC: entry.vitamin_c,
-    };
-  }, [variants, selectedVariantId, entry]);
+
+    return entryToDisplayValues(entry);
+  }, [createdVariantOverride, entry, selectedVariantId, variants]);
+
+  const selectedCustomNutrients = useMemo(() => {
+    if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
+      return createdVariantOverride.custom_nutrients ?? null;
+    }
+
+    if (variants && selectedVariantId) {
+      const selectedVariant = variants.find(
+        (candidate: FoodVariantDetail) => candidate.id === selectedVariantId,
+      );
+      if (selectedVariant) {
+        return selectedVariant.custom_nutrients ?? null;
+      }
+    }
+
+    if (selectedVariantId === entry.variant_id) {
+      return entry.custom_nutrients ?? null;
+    }
+
+    return undefined;
+  }, [createdVariantOverride, entry, selectedVariantId, variants]);
 
   const displayValues = useMemo(() => {
     if (!adjustedValues) return activeVariant;
     return {
-      servingSize: parseDecimalInput(adjustedValues.servingSize) || activeVariant.servingSize,
+      servingSize:
+        parseDecimalInput(adjustedValues.servingSize) || activeVariant.servingSize,
       servingUnit: adjustedValues.servingUnit || activeVariant.servingUnit,
       calories: parseDecimalInput(adjustedValues.calories) || 0,
       protein: parseDecimalInput(adjustedValues.protein) || 0,
@@ -147,20 +262,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   }, [adjustedValues, activeVariant]);
 
   const quantity = parseDecimalInput(quantityText) || 0;
-  const editServings = displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
+  const editServings =
+    displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const scaled = (value: number) => value * editServings;
   const servingSizeRef = useRef(displayValues.servingSize);
 
-  // Variant picker options
-  const variantPickerOptions = useMemo(() => {
-    if (!variants || variants.length <= 1) return [];
-    return variants.map((v: FoodVariantDetail) => ({
-      label: `${v.serving_size} ${v.serving_unit} (${v.calories} cal)`,
-      value: v.id,
-    }));
-  }, [variants]);
+  const mealPickerOptions = mealTypes.map((mealType) => ({
+    label: getMealTypeLabel(mealType.name),
+    value: mealType.id,
+  }));
 
-  // Watch for adjusted values returned from FoodForm
   const adjustedFromNav = route.params?.adjustedValues;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
@@ -169,24 +280,59 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   useEffect(() => {
     if (adjustedFromNav) {
       const previousServingSize = servingSizeRef.current;
-      const newServingSize = parseDecimalInput(adjustedFromNav.servingSize) || previousServingSize;
+      const newServingSize =
+        parseDecimalInput(adjustedFromNav.servingSize) || previousServingSize;
       updateEdit({
         adjustedValues: adjustedFromNav,
-        ...(newServingSize !== previousServingSize ? { quantityText: String(newServingSize) } : {}),
+        ...(newServingSize !== previousServingSize
+          ? { quantityText: String(newServingSize) }
+          : {}),
       });
-      // Clear route params so variant changes don't replay stale overrides
       navigation.setParams({ adjustedValues: undefined });
     }
   }, [adjustedFromNav, navigation, updateEdit]);
 
-  const handleVariantChange = (variantId: string) => {
-    const v = variants?.find((v: FoodVariantDetail) => v.id === variantId);
-    updateEdit({
-      selectedVariantId: variantId,
-      adjustedValues: null,
-      ...(v ? { quantityText: String(v.serving_size) } : {}),
-    });
-  };
+  const handleVariantChange = useCallback(
+    (variantId: string) => {
+      const variant = variants?.find(
+        (candidate: FoodVariantDetail) => candidate.id === variantId,
+      );
+      setCreatedVariantOverride(null);
+      updateEdit({
+        selectedVariantId: variantId,
+        adjustedValues: null,
+        ...(variant ? { quantityText: String(variant.serving_size) } : {}),
+      });
+    },
+    [updateEdit, variants],
+  );
+
+  const handleUnitSelection = useCallback(
+    async (selection: FoodUnitSelectionResult) => {
+      if (selection.kind === 'existing') {
+        setCreatedVariantOverride(null);
+        if (selection.variant.id) {
+          handleVariantChange(selection.variant.id);
+        }
+        return;
+      }
+
+      if (!entry.food_id) {
+        throw new Error('Missing food ID for unit conversion');
+      }
+
+      const createdVariant = await createVariant(
+        buildCreateFoodVariantPayload(entry.food_id, selection.variant),
+      );
+      setCreatedVariantOverride(createdVariant);
+      updateEdit({
+        selectedVariantId: createdVariant.id,
+        adjustedValues: null,
+        quantityText: String(createdVariant.serving_size),
+      });
+    },
+    [createVariant, entry.food_id, handleVariantChange, updateEdit],
+  );
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
@@ -194,9 +340,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     }
   };
 
- const clampQuantity = () => {
+  const clampQuantity = () => {
     if (quantity <= 0) {
-      const minQuantity = (displayValues.servingSize * 0.5) || 1;
+      const minQuantity = displayValues.servingSize * 0.5 || 1;
       updateEdit({ quantityText: String(minQuantity) });
     }
   };
@@ -208,7 +354,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       delta > 0
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
-    const next = boundary !== quantity ? boundary : quantity + delta * increment;
+    const next =
+      boundary !== quantity ? boundary : quantity + delta * increment;
     updateEdit({ quantityText: String(Math.max(increment, next)) });
   };
 
@@ -219,12 +366,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       returnKey: route.key,
       foodId: entry.food_id ?? undefined,
       variantId: selectedVariantId,
-      customNutrients: variants
-        ? (() => {
-            const selectedVariant = variants.find((v: FoodVariantDetail) => v.id === selectedVariantId);
-            return selectedVariant ? (selectedVariant.custom_nutrients ?? null) : undefined;
-          })()
-        : undefined,
+      customNutrients: selectedCustomNutrients,
       initialValues: {
         name: adjustedValues?.name || entry.food_name || '',
         brand: adjustedValues?.brand ?? entry.brand_name ?? '',
@@ -249,32 +391,34 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     });
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
-
-  // --- Update mutation ---
-  const { updateEntry, isPending: isUpdatePending, invalidateCache: invalidateUpdateCache } = useUpdateFoodEntry({
-    entryId: entry.id,
-    entryDate: entry.entry_date,
-    onSuccess: (updatedEntry) => {
-      invalidateUpdateCache(selectedDate);
-      // Merge with current entry to preserve fields the API doesn't return (e.g. meal_type name)
-      const mergedEntry = { ...entry, ...updatedEntry };
-      // If meal type changed, update the name from our local mealTypes list
-      if (updatedEntry.meal_type_id && updatedEntry.meal_type_id !== entry.meal_type_id) {
-        const mt = mealTypes.find((m) => m.id === updatedEntry.meal_type_id);
-        if (mt) mergedEntry.meal_type = mt.name;
-      }
-      setEntry(mergedEntry);
-      setEditState({
-        isEditing: false,
-        selectedDate: normalizeDate(mergedEntry.entry_date),
-        selectedMealId: mergedEntry.meal_type_id,
-        selectedVariantId: mergedEntry.variant_id,
-        quantityText: String(mergedEntry.quantity),
-        adjustedValues: null,
-      });
-    },
-  });
+  const { updateEntry, isPending: isUpdatePending, invalidateCache: invalidateUpdateCache } =
+    useUpdateFoodEntry({
+      entryId: entry.id,
+      entryDate: entry.entry_date,
+      onSuccess: (updatedEntry) => {
+        invalidateUpdateCache(selectedDate);
+        const mergedEntry = { ...entry, ...updatedEntry };
+        if (
+          updatedEntry.meal_type_id &&
+          updatedEntry.meal_type_id !== entry.meal_type_id
+        ) {
+          const mealType = mealTypes.find(
+            (candidate) => candidate.id === updatedEntry.meal_type_id,
+          );
+          if (mealType) mergedEntry.meal_type = mealType.name;
+        }
+        setCreatedVariantOverride(null);
+        setEntry(mergedEntry);
+        setEditState({
+          isEditing: false,
+          selectedDate: normalizeDate(mergedEntry.entry_date),
+          selectedMealId: mergedEntry.meal_type_id,
+          selectedVariantId: mergedEntry.variant_id,
+          quantityText: String(mergedEntry.quantity),
+          adjustedValues: null,
+        });
+      },
+    });
 
   const handleSave = () => {
     const payload: UpdateFoodEntryPayload = {};
@@ -285,7 +429,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       payload.unit = displayValues.servingUnit;
     }
     if (selectedDate !== initialDate) payload.entry_date = selectedDate;
-    if (effectiveMealId && effectiveMealId !== entry.meal_type_id) payload.meal_type_id = effectiveMealId;
+    if (effectiveMealId && effectiveMealId !== entry.meal_type_id) {
+      payload.meal_type_id = effectiveMealId;
+    }
 
     if (adjustedValues) {
       payload.food_name = adjustedValues.name;
@@ -309,7 +455,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       payload.vitamin_c = displayValues.vitaminC;
     }
 
-    // Nothing changed — just exit edit mode
     if (Object.keys(payload).length === 0) {
       updateEdit({ isEditing: false });
       return;
@@ -318,26 +463,25 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     updateEntry(payload);
   };
 
-  // --- Delete mutation ---
-  const { confirmAndDelete, isPending: isDeletePending, invalidateCache: invalidateDeleteCache } = useDeleteFoodEntry({
-    entryId: entry.id,
-    entryDate: entry.entry_date,
-    onSuccess: () => {
-      invalidateDeleteCache();
-      navigation.goBack();
-    },
-  });
+  const { confirmAndDelete, isPending: isDeletePending, invalidateCache: invalidateDeleteCache } =
+    useDeleteFoodEntry({
+      entryId: entry.id,
+      entryDate: entry.entry_date,
+      onSuccess: () => {
+        invalidateDeleteCache();
+        navigation.goBack();
+      },
+    });
 
-  // --- CSS variables ---
-  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-primary',
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-  ]) as [string, string, string, string, string];
+  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-text-primary',
+      '--color-macro-protein',
+      '--color-macro-carbs',
+      '--color-macro-fat',
+    ]) as [string, string, string, string, string];
 
-  // --- View mode computed values ---
   const viewCalories = Math.round(scaledValue(entry.calories, entry));
   const viewProtein = Math.round(scaledValue(entry.protein, entry));
   const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
@@ -346,21 +490,28 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const viewProteinCals = viewProtein * 4;
   const viewCarbsCals = viewCarbs * 4;
   const viewFatCals = viewFat * 9;
-  const viewTotalMacroCals = viewProteinCals + viewCarbsCals + viewFatCals;
+  const viewTotalMacroCals =
+    viewProteinCals + viewCarbsCals + viewFatCals;
 
-  // --- Edit mode computed values ---
   const editProteinCals = displayValues.protein * 4;
   const editCarbsCals = displayValues.carbs * 4;
   const editFatCals = displayValues.fat * 9;
-  const editTotalMacroCals = editProteinCals + editCarbsCals + editFatCals;
+  const editTotalMacroCals =
+    editProteinCals + editCarbsCals + editFatCals;
 
-  const servings = entry.serving_size ? entry.quantity / entry.serving_size : entry.quantity;
-  const servingsDisplay = servings === 1
-    ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
-    : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
+  const servings = entry.serving_size
+    ? entry.quantity / entry.serving_size
+    : entry.quantity;
+  const servingsCount =
+    servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2));
+  const servingsDisplay =
+    servings === 1
+      ? `1 serving - ${entry.serving_size} ${entry.unit} per serving`
+      : `${servingsCount} servings - ${entry.serving_size} ${entry.unit} per serving`;
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
-  const { primary: primaryNutrients, additional: additionalNutrients } = buildNutrientDisplayList(displayValues);
+  const { primary: primaryNutrients, additional: additionalNutrients } =
+    buildNutrientDisplayList(displayValues);
   const hasAdditional = additionalNutrients.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
   const renderNutrientValue = (value: number, unit: string) =>
@@ -370,7 +521,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -396,7 +546,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             <Button
               variant="ghost"
               onPress={handleSave}
-              disabled={isUpdatePending || quantity <= 0}
+              disabled={isUpdatePending || isCreateVariantPending || quantity <= 0}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               Done
@@ -408,9 +558,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-4 py-4 gap-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
+        }}
       >
-        {/* Food name & brand */}
         <Animated.View layout={LinearTransition.duration(300)}>
           <Text className="text-text-primary text-3xl font-bold">
             {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
@@ -422,131 +573,222 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           )}
           {isEditing ? (
             <FadeView key="edit-serving">
-            <View className="mt-3">
-              <View className="flex-row items-center">
-                <StepperInput
-                  value={quantityText}
-                  onChangeText={updateQuantityText}
-                  onBlur={clampQuantity}
-                  onIncrement={() => adjustQuantity(1)}
-                  onDecrement={() => adjustQuantity(-1)}
-                  keyboardType="decimal-pad"
-                />
-                <Text className="text-text-primary text-base font-medium ml-2">
-                  {displayValues.servingUnit}
-                </Text>
-              </View>
-              <View className="flex-row items-center mt-2">
-                <Text className="text-text-secondary text-sm">
-                  {editServings % 1 === 0 ? editServings : parseFloat(editServings.toFixed(2))} {editServings === 1 ? 'serving' : 'servings'}
-                </Text>
-                {variantPickerOptions.length > 1 ? (
-                  <BottomSheetPicker
-                    value={selectedVariantId!}
-                    options={variantPickerOptions}
-                    onSelect={handleVariantChange}
-                    title="Select Serving"
-                    renderTrigger={({ onPress }) => (
-                      <TouchableOpacity
-                        onPress={onPress}
-                        activeOpacity={0.7}
-                        className="flex-row items-center ml-1"
-                      >
-                        <Text className="text-text-secondary text-sm">
-                          {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
-                        </Text>
-                        <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
-                      </TouchableOpacity>
-                    )}
+              <View className="mt-3">
+                <View className="flex-row items-center">
+                  <StepperInput
+                    value={quantityText}
+                    onChangeText={updateQuantityText}
+                    onBlur={clampQuantity}
+                    onIncrement={() => adjustQuantity(1)}
+                    onDecrement={() => adjustQuantity(-1)}
+                    keyboardType="decimal-pad"
                   />
-                ) : (
-                  <Text className="text-text-secondary text-sm">
-                    {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
+                  <Text className="text-text-primary text-base font-medium ml-2">
+                    {displayValues.servingUnit}
                   </Text>
-                )}
+                </View>
+                <View className="flex-row items-center mt-2">
+                  <Text className="text-text-secondary text-sm">
+                    {editServings % 1 === 0
+                      ? editServings
+                      : parseFloat(editServings.toFixed(2))}{' '}
+                    {editServings === 1 ? 'serving' : 'servings'}
+                  </Text>
+                  {selectorVariants.length > 0 ? (
+                    <FoodUnitSelectorSheet
+                      variants={selectorVariants}
+                      selectedVariantId={selectedVariantId}
+                      title="Select Serving"
+                      onSelect={handleUnitSelection}
+                      renderTrigger={({ onPress }) => (
+                        <TouchableOpacity
+                          onPress={onPress}
+                          activeOpacity={0.7}
+                          className="flex-row items-center ml-1"
+                          disabled={isCreateVariantPending}
+                        >
+                          <Text className="text-text-secondary text-sm">
+                            {' - '}
+                            {displayValues.servingSize} {displayValues.servingUnit} per
+                            serving
+                          </Text>
+                          {isCreateVariantPending ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={accentColor}
+                              style={{ marginLeft: 6 }}
+                            />
+                          ) : (
+                            <Icon
+                              name="chevron-down"
+                              size={12}
+                              color={textPrimary}
+                              style={{ marginLeft: 4 }}
+                              weight="medium"
+                            />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    />
+                  ) : (
+                    <Text className="text-text-secondary text-sm">
+                      {' - '}
+                      {displayValues.servingSize} {displayValues.servingUnit} per
+                      serving
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
             </FadeView>
           ) : (
             <FadeView key="view-serving">
-              <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
+              <Text className="text-text-secondary text-sm mt-3">
+                {servingsDisplay}
+              </Text>
             </FadeView>
           )}
         </Animated.View>
 
-        {/* Calories & Macros */}
-        <Animated.View layout={LinearTransition.duration(300)} className="bg-surface rounded-xl p-4 shadow-sm">
-        <Pressable
-          onPress={isEditing ? navigateToNutritionForm : undefined}
-          disabled={!isEditing}
+        <Animated.View
+          layout={LinearTransition.duration(300)}
+          className="bg-surface rounded-xl p-4 shadow-sm"
         >
-          <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
-            <View className="flex-1 items-center pr-10">
-              <Text className="text-text-primary text-3xl font-medium">
-                {isEditing ? Math.round(scaled(displayValues.calories)) : viewCalories}
-              </Text>
-              <Text className="text-text-secondary text-base mt-1">calories</Text>
-            </View>
-            <Animated.View layout={LinearTransition.duration(300)} className="flex-2 gap-3">
-              {(isEditing
-                ? [
-                    { label: 'Protein', value: displayValues.protein, color: proteinColor, calFactor: 4, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.protein)) },
-                    { label: 'Carbs', value: displayValues.carbs, color: carbsColor, calFactor: 4, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.carbs)) },
-                    { label: 'Fat', value: displayValues.fat, color: fatColor, calFactor: 9, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.fat)) },
-                  ]
-                : [
-                    { label: 'Protein', value: viewProtein, color: proteinColor, calFactor: 4, totalCals: viewTotalMacroCals, displayValue: viewProtein },
-                    { label: 'Carbs', value: viewCarbs, color: carbsColor, calFactor: 4, totalCals: viewTotalMacroCals, displayValue: viewCarbs },
-                    { label: 'Fat', value: viewFat, color: fatColor, calFactor: 9, totalCals: viewTotalMacroCals, displayValue: viewFat },
-                  ]
-              ).map((macro) => (
-                <View key={macro.label} className="flex-row items-center">
-                  <Text className="text-text-secondary text-sm w-14">{macro.label}</Text>
-                  <View className="flex-1 h-2 rounded-full bg-progress-track overflow-hidden mx-2">
-                    {macro.totalCals > 0 && (
-                      <View
-                        className="h-full rounded-full"
-                        style={{
-                          backgroundColor: macro.color,
-                          width: `${Math.round((macro.value * macro.calFactor / macro.totalCals) * 100)}%`,
-                        }}
-                      />
-                    )}
+          <Pressable onPress={isEditing ? navigateToNutritionForm : undefined} disabled={!isEditing}>
+            <Animated.View
+              layout={LinearTransition.duration(300)}
+              className="flex-row items-center"
+            >
+              <View className="flex-1 items-center pr-10">
+                <Text className="text-text-primary text-3xl font-medium">
+                  {isEditing
+                    ? Math.round(scaled(displayValues.calories))
+                    : viewCalories}
+                </Text>
+                <Text className="text-text-secondary text-base mt-1">
+                  calories
+                </Text>
+              </View>
+              <Animated.View
+                layout={LinearTransition.duration(300)}
+                className="flex-2 gap-3"
+              >
+                {(isEditing
+                  ? [
+                      {
+                        label: 'Protein',
+                        value: displayValues.protein,
+                        color: proteinColor,
+                        calFactor: 4,
+                        totalCals: editTotalMacroCals,
+                        displayValue: Math.round(scaled(displayValues.protein)),
+                      },
+                      {
+                        label: 'Carbs',
+                        value: displayValues.carbs,
+                        color: carbsColor,
+                        calFactor: 4,
+                        totalCals: editTotalMacroCals,
+                        displayValue: Math.round(scaled(displayValues.carbs)),
+                      },
+                      {
+                        label: 'Fat',
+                        value: displayValues.fat,
+                        color: fatColor,
+                        calFactor: 9,
+                        totalCals: editTotalMacroCals,
+                        displayValue: Math.round(scaled(displayValues.fat)),
+                      },
+                    ]
+                  : [
+                      {
+                        label: 'Protein',
+                        value: viewProtein,
+                        color: proteinColor,
+                        calFactor: 4,
+                        totalCals: viewTotalMacroCals,
+                        displayValue: viewProtein,
+                      },
+                      {
+                        label: 'Carbs',
+                        value: viewCarbs,
+                        color: carbsColor,
+                        calFactor: 4,
+                        totalCals: viewTotalMacroCals,
+                        displayValue: viewCarbs,
+                      },
+                      {
+                        label: 'Fat',
+                        value: viewFat,
+                        color: fatColor,
+                        calFactor: 9,
+                        totalCals: viewTotalMacroCals,
+                        displayValue: viewFat,
+                      },
+                    ]
+                ).map((macro) => (
+                  <View key={macro.label} className="flex-row items-center">
+                    <Text className="text-text-secondary text-sm w-14">
+                      {macro.label}
+                    </Text>
+                    <View className="flex-1 h-2 rounded-full bg-progress-track overflow-hidden mx-2">
+                      {macro.totalCals > 0 && (
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            backgroundColor: macro.color,
+                            width: `${Math.round(
+                              (macro.value * macro.calFactor / macro.totalCals) * 100,
+                            )}%`,
+                          }}
+                        />
+                      )}
+                    </View>
+                    <Text className="text-text-primary text-sm font-medium w-10 text-right">
+                      {macro.displayValue}g
+                    </Text>
                   </View>
-                  <Text className="text-text-primary text-sm font-medium w-10 text-right">{macro.displayValue}g</Text>
-                </View>
-              ))}
+                ))}
+              </Animated.View>
+              {isEditing && (
+                <FadeView>
+                  <Icon
+                    name="chevron-forward"
+                    size={16}
+                    color={textPrimary}
+                    style={{ marginLeft: 8 }}
+                  />
+                </FadeView>
+              )}
             </Animated.View>
             {isEditing && (
               <FadeView>
-                <Icon name="chevron-forward" size={16} color={textPrimary} style={{ marginLeft: 8 }} />
+                <Text className="text-text-secondary text-xs text-center mt-4">
+                  Tap to edit nutrition
+                </Text>
               </FadeView>
             )}
-          </Animated.View>
-          {isEditing && (
-            <FadeView>
-              <Text className="text-text-secondary text-xs text-center mt-4">Tap to edit nutrition</Text>
-            </FadeView>
-          )}
-        </Pressable>
+          </Pressable>
         </Animated.View>
 
-        {/* Other Nutrients */}
         {(primaryNutrients.length > 0 || hasAdditional) && (
           <Animated.View layout={LinearTransition.duration(300)} className="my-2 gap-2">
             {primaryNutrients.length > 0 && (
               <View className="rounded-xl">
-                {primaryNutrients.map((n, i) => {
+                {primaryNutrients.map((nutrient, index) => {
                   const isLastVisible =
-                    i === primaryNutrients.length - 1 && !showAdditionalRows;
+                    index === primaryNutrients.length - 1 && !showAdditionalRows;
                   return (
                     <View
-                      key={n.label}
-                      className={`flex-row justify-between py-1 ${!isLastVisible ? 'border-b border-border-subtle' : ''}`}
+                      key={nutrient.label}
+                      className={`flex-row justify-between py-1 ${
+                        !isLastVisible ? 'border-b border-border-subtle' : ''
+                      }`}
                     >
-                      <Text className="text-text-secondary text-sm">{n.label}</Text>
+                      <Text className="text-text-secondary text-sm">
+                        {nutrient.label}
+                      </Text>
                       <Text className="text-text-primary text-sm">
-                        {renderNutrientValue(n.value!, n.unit)}
+                        {renderNutrientValue(nutrient.value, nutrient.unit)}
                       </Text>
                     </View>
                   );
@@ -557,14 +799,20 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                     exiting={FadeOut.duration(150)}
                     layout={LinearTransition.duration(250)}
                   >
-                    {additionalNutrients.map((n, i) => (
+                    {additionalNutrients.map((nutrient, index) => (
                       <View
-                        key={n.label}
-                        className={`flex-row justify-between py-1 ${i < additionalNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}
+                        key={nutrient.label}
+                        className={`flex-row justify-between py-1 ${
+                          index < additionalNutrients.length - 1
+                            ? 'border-b border-border-subtle'
+                            : ''
+                        }`}
                       >
-                        <Text className="text-text-secondary text-sm">{n.label}</Text>
+                        <Text className="text-text-secondary text-sm">
+                          {nutrient.label}
+                        </Text>
                         <Text className="text-text-primary text-sm">
-                          {renderNutrientValue(n.value!, n.unit)}
+                          {renderNutrientValue(nutrient.value, nutrient.unit)}
                         </Text>
                       </View>
                     ))}
@@ -581,7 +829,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                   className="self-start py-0 px-0"
                 >
                   <Text style={{ color: accentColor }} className="text-sm font-medium">
-                    {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+                    {showMoreNutrients
+                      ? 'Hide extra nutrients'
+                      : 'Show more nutrients'}
                   </Text>
                 </Button>
               </Animated.View>
@@ -589,9 +839,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </Animated.View>
         )}
 
-        {/* Date & Meal type */}
-        <Animated.View layout={LinearTransition.duration(300)} className="mt-2 flex-row items-center">
-          {/* Date */}
+        <Animated.View
+          layout={LinearTransition.duration(300)}
+          className="mt-2 flex-row items-center"
+        >
           <View className="flex-1 flex-row items-center">
             <Text className="text-text-secondary text-base mr-2">Date</Text>
             {isEditing ? (
@@ -603,7 +854,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                 <Text className="text-text-primary text-base font-medium">
                   {formatDateLabel(selectedDate)}
                 </Text>
-                <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textPrimary}
+                  style={{ marginLeft: 6 }}
+                  weight="medium"
+                />
               </TouchableOpacity>
             ) : (
               <Text className="text-text-primary text-base font-medium">
@@ -612,7 +869,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             )}
           </View>
 
-          {/* Meal type */}
           <View className="flex-1 flex-row items-center">
             <Text className="text-text-secondary text-base mr-2">Meal</Text>
             {isEditing && selectedMealType ? (
@@ -630,7 +886,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                     <Text className="text-text-primary text-base font-medium">
                       {getMealTypeLabel(selectedMealType.name)}
                     </Text>
-                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+                    <Icon
+                      name="chevron-down"
+                      size={12}
+                      color={textPrimary}
+                      style={{ marginLeft: 6 }}
+                      weight="medium"
+                    />
                   </TouchableOpacity>
                 )}
               />
@@ -642,7 +904,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </View>
         </Animated.View>
 
-        {/* Delete button */}
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="ghost"
@@ -657,7 +918,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       </ScrollView>
 
       {isEditing && (
-        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={(date) => updateEdit({ selectedDate: date })} />
+        <CalendarSheet
+          ref={calendarRef}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => updateEdit({ selectedDate: date })}
+        />
       )}
     </View>
   );
