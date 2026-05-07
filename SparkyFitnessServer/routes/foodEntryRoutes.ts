@@ -40,7 +40,7 @@ router.get(
       const delimiter =
         typeof req.query.delimiter === 'string' ? req.query.delimiter : ';';
       const locale =
-        typeof req.query.locale === 'string' ? req.query.locale : 'fr'; // default to French to avoid breaking current expectations, although we will dynamically handle it
+        typeof req.query.locale === 'string' ? req.query.locale : 'en';
       await foodEntryService.exportAllDiaryEntriesToCSVStream(
         req.userId,
         res,
