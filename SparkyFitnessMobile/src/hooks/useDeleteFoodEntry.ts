@@ -32,12 +32,15 @@ export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteF
     ]);
   };
 
+  const deleteEntry = () => mutation.mutate();
+
   const invalidateCache = () => {
     queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(normalizedDate) });
   };
 
   return {
     confirmAndDelete,
+    deleteEntry,
     isPending: mutation.isPending,
     invalidateCache,
   };

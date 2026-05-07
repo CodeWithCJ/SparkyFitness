@@ -108,8 +108,11 @@ function useDeleteMutation({
     ]);
   };
 
+  const deleteEntry = () => mutation.mutate();
+
   return {
     confirmAndDelete,
+    deleteEntry,
     isPending: mutation.isPending,
     invalidateCache: () => invalidateExerciseCache(queryClient, normalizedDate),
   };

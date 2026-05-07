@@ -395,58 +395,52 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleLongPressSet = (setId: string) => {
-    const storeState = useActiveWorkoutStore.getState();
+    const buttons: {
+      text: string;
+      style?: 'cancel' | 'destructive';
+      onPress?: () => void;
+    }[] = [];
 
-    // Inactive path — either no workout running, or a different workout is
-    // active. Same behavior as before: offer to start this one at the
-    // long-pressed set.
-    if (!isWorkoutActive) {
-      if (storeState.sessionId !== null) {
-        Alert.alert('Another workout is in progress', 'Finish or clear it first.');
-        return;
-      }
-      Alert.alert(
-        'Start workout here?',
-        'Sets before this will be marked completed.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Start',
-            onPress: () => {
-              void ensureNotificationPermission();
-              useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
-            },
-          },
-        ],
-      );
-      return;
+    if (isSparky) {
+      buttons.push({ text: 'Edit', onPress: startEditing });
     }
 
-    // Active path — confirm a forward-only jump. Reject backward targets
-    // silently since we never jump backward in the list. When the workout is
-    // finished (`activeSetId == null`) the cursor is past the last set, so
-    // every target is behind it and no jump is possible.
-    const activeIndex =
-      storeState.activeSetId == null
-        ? storeState.steps.length
-        : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
-    const targetIndex = storeState.steps.findIndex((s) => s.setId === setId);
-    if (targetIndex < 0) return;
-    if (targetIndex <= activeIndex) return;
-
-    Alert.alert(
-      'Jump to this set?',
-      'Sets before this will be marked completed.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Jump',
+    if (!isWorkoutActive) {
+      buttons.push({
+        text: 'Start workout here',
+        onPress: () => {
+          if (useActiveWorkoutStore.getState().sessionId !== null) {
+            Alert.alert('Another workout is in progress', 'Finish or clear it first.');
+            return;
+          }
+          void ensureNotificationPermission();
+          useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
+        },
+      });
+    } else {
+      // Forward-only jump. Reject backward targets silently. When the workout
+      // is finished (`activeSetId == null`) the cursor is past the last set,
+      // so every target is behind it and no jump is possible.
+      const storeState = useActiveWorkoutStore.getState();
+      const activeIndex =
+        storeState.activeSetId == null
+          ? storeState.steps.length
+          : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
+      const targetIndex = storeState.steps.findIndex((s) => s.setId === setId);
+      if (targetIndex >= 0 && targetIndex > activeIndex) {
+        buttons.push({
+          text: 'Jump to this set',
           onPress: () => {
             useActiveWorkoutStore.getState().jumpToSet(setId);
           },
-        },
-      ],
-    );
+        });
+      }
+    }
+
+    if (buttons.length === 0) return;
+
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(name, undefined, buttons);
   };
 
   const handlePressSet = (setId: string) => {
