@@ -1,6 +1,7 @@
 export { queryClient } from './queryClient';
 export {
   serverConnectionQueryKey,
+  serverConfigsQueryKey,
   dailySummaryQueryKey,
   measurementsQueryKey,
   preferencesQueryKey,
@@ -29,6 +30,7 @@ export {
   workoutPresetsLibraryQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
+export { useServerConfigs } from './useServerConfigs';
 export { useSyncHealthData } from './useSyncHealthData';
 export { useDailySummary } from './useDailySummary';
 export { useMeasurements } from './useMeasurements';

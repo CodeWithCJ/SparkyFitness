@@ -17,7 +17,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -51,6 +51,7 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
+import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -148,6 +149,7 @@ const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
+const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 
 function AppContent() {
@@ -912,6 +914,13 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="ServerSettings"
+            component={SafeServerSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
             name="About"
             component={SafeAbout}
             options={{
@@ -941,6 +950,7 @@ function AppContent() {
               handleLoginSuccess();
             }
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
+            queryClient.invalidateQueries({ queryKey: serverConfigsQueryKey });
           }}
           onDismiss={() => {
             if (showApiKeySwitchModal) {

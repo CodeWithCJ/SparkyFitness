@@ -47,6 +47,7 @@ const ICON_MAP = {
   'info-circle': { sf: 'info.circle', ion: 'information-circle-outline' },
   'wrench': { sf: 'wrench', ion: 'build-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
+  'wifi': { sf: 'wifi', ion: 'wifi-outline' },
 
   // Food
   'food': { sf: 'fork.knife', ion: 'restaurant' },
