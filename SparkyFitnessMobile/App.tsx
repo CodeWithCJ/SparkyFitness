@@ -2,6 +2,7 @@ import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import {
   CommonActions,
   NavigationContainer,
@@ -195,6 +196,17 @@ function AppContent() {
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    try {
+      NavigationBar.setStyle(isDarkMode ? 'dark' : 'light');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to update Android navigation bar style: ${message}`, 'WARNING');
+    }
+  }, [isDarkMode]);
 
   const navigationTheme = useMemo<Theme>(() => ({
     dark: isDarkMode,
