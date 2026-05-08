@@ -266,21 +266,12 @@ jobs:
 
       - name: Install chart
         run: |
-          # kind-specific override: kind's containerd does not ambient-promote
-          # NET_BIND_SERVICE for non-root containers, so nginx in the upstream
-          # frontend image (hardcoded `listen 80;`) cannot bind even with the
-          # cap added. The unprivileged-port-start sysctl is a safe sysctl
-          # since K8s 1.21. Real clusters (Talos, kubeadm, etc.) handle this
-          # correctly via the cap alone, so this stays out of the chart default.
           helm install sparkyfitness helm/chart \
             --create-namespace \
             --namespace sparkyfitness \
             --wait \
             --timeout 5m \
-            --set server.replicas=1 \
-            --set frontend.replicas=1 \
-            --set 'frontend.podSecurityContext.sysctls[0].name=net.ipv4.ip_unprivileged_port_start' \
-            --set-string 'frontend.podSecurityContext.sysctls[0].value=0'
+            -f helm/chart/ci-values.yaml
 
       - name: Show release status
         if: always()

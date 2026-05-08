@@ -1,0 +1,24 @@
+# Values overrides used only by the CI install-test job (kind cluster).
+# Real clusters (Talos, kubeadm, GKE/EKS/AKS) work with the chart defaults.
+# Do not reference this file in production deployments.
+
+server:
+  replicas: 1
+
+frontend:
+  replicas: 1
+  podSecurityContext:
+    # kind's containerd does not ambient-promote NET_BIND_SERVICE for
+    # non-root containers, so the cap added in the default values is not
+    # effective in kind. The unprivileged-port-start sysctl is a K8s "safe"
+    # sysctl since 1.21 and works without kubelet configuration.
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+    sysctls:
+      - name: net.ipv4.ip_unprivileged_port_start
+        value: "0"
