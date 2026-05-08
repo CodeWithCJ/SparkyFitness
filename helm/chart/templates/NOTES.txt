@@ -39,6 +39,55 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
         config.email.secrets.existingSecret     (keys: username, password)
         postgresql.auth.existingSecret          (keys: username, password)
 {{- end }}
+{{- if .Values.networkPolicy.enabled }}
+{{- $frontendFrom := (.Values.frontend.networkPolicy | default dict).from | default list }}
+{{- if not (gt (len $frontendFrom) 0) }}
+
+  WARNING: NETWORKPOLICY INGRESS NOT RESTRICTED FOR FRONTEND
+
+  networkPolicy.enabled=true but frontend.networkPolicy.from is empty. The
+  frontend NetworkPolicy currently allows ingress on port {{ .Values.frontend.port }}
+  from ANY source in the cluster.
+
+  Restrict by setting frontend.networkPolicy.from, e.g.:
+    frontend:
+      networkPolicy:
+        from:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: ingress-nginx
+{{- end }}
+{{- end }}
+{{- if .Values.networkPolicy.enabled }}
+{{- $unrestricted := list }}
+{{- if .Values.config.oidc.enabled }}
+  {{- $oidcTo := (.Values.config.oidc.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $oidcTo) 0) }}{{- $unrestricted = append $unrestricted "config.oidc.networkPolicy.to (port 443)" }}{{- end }}
+{{- end }}
+{{- if .Values.config.email.enabled }}
+  {{- $smtpTo := (.Values.config.email.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $smtpTo) 0) }}{{- $unrestricted = append $unrestricted (printf "config.email.networkPolicy.to (port %v)" (.Values.config.email.port | default 587)) }}{{- end }}
+{{- end }}
+{{- if .Values.config.garmin.enabled }}
+  {{- $garminTo := (.Values.config.garmin.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $garminTo) 0) }}{{- $unrestricted = append $unrestricted "config.garmin.networkPolicy.to (port 443)" }}{{- end }}
+{{- end }}
+{{- if gt (len $unrestricted) 0 }}
+
+  WARNING: NETWORKPOLICY EGRESS NOT RESTRICTED FOR EXTERNAL TARGETS
+
+  networkPolicy.enabled=true but the following egress paths are unrestricted
+  (permissive — any destination on the listed port):
+{{- range $unrestricted }}
+    - {{ . }}
+{{- end }}
+
+  Restrict by setting the listed values to a list of NetworkPolicyPeer entries
+  (ipBlock / namespaceSelector / podSelector). Note: plain Kubernetes
+  NetworkPolicy cannot restrict by FQDN — pin to known IP ranges, or use a
+  CNI with FQDN policies (e.g. Cilium).
+{{- end }}
+{{- end }}
 {{- if and .Values.networkPolicy.enabled (not .Values.postgresql.enabled) }}
 {{- $extNp := .Values.externalDatabase.networkPolicy | default dict }}
 {{- $cidrs := $extNp.cidrs | default list }}
@@ -95,7 +144,7 @@ To access the application locally via port-forwarding, run the following command
 in separate terminal windows:
 
   1. Port-forward the Frontend to localhost:3004:
-     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-frontend 3004:80
+     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-frontend 3004:{{ .Values.frontend.service.port | default .Values.frontend.port }}
 
   2. Port-forward the Server to localhost:3010:
      kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-server 3010:3010
