@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Security
+
+- **NetworkPolicy egress for external database is now restrictable** — added `externalDatabase.networkPolicy.cidrs` / `namespaceSelector` / `podSelector` to lock down the server's egress to an external PostgreSQL when `networkPolicy.enabled=true`. Default is unchanged (permissive egress to the DB port) for backward compatibility; a NOTES.txt warning is emitted when the permissive path is active.
+
+### Documentation
+
+- **GitOps caveat for chart-managed secrets documented** — `server.secrets.generate=true` relies on a Kubernetes API `lookup` to persist `api_encryption_key` / `better_auth_secret` across upgrades. In pure `helm template` mode (no cluster access — some ArgoCD/Flux setups, offline rendering), each render produces new random values, which would rotate the keys on apply and render existing `api_encryption_key`-encrypted data unrecoverable. Documented in `values.yaml` and `NOTES.txt`; recommended path for GitOps remains `externalSecrets.*` or pre-created secrets.
+
 ### Features
 
 - **GHCR Images** - Changed to use ghcr images instead of Docker Hub.
