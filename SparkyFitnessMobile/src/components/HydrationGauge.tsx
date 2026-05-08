@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 import Button from './ui/Button';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
@@ -11,9 +11,12 @@ interface HydrationGaugeProps {
   goal: number;     // ml
   unit?: string;
   containerVolume?: number; // ml per button press
+  containerName?: string;
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
+  onSwapContainer?: () => void;
+  canSwapContainer?: boolean;
 }
 
 const UNIT_LABELS: Record<string, string> = {
@@ -38,10 +41,11 @@ const FILL_TOP = 28;
 const FILL_BOTTOM = 124;
 const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 
-const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', containerVolume, onIncrement, onDecrement, disableDecrement }) => {
+const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', containerVolume, containerName, onIncrement, onDecrement, disableDecrement, onSwapContainer, canSwapContainer }) => {
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
+  const textMutedColor = useCSSVariable('--color-text-muted') as string;
 
   const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
 
@@ -156,9 +160,18 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
         </View>
       </View>
       {showButtons && containerVolume != null && (
-        <Text className="text-xs text-text-muted text-center mt-2">
-          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
-        </Text>
+        <Pressable
+          onPress={canSwapContainer ? onSwapContainer : undefined}
+          className="flex-row items-center justify-center mt-2"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text className="text-xs text-text-muted text-center">
+            {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel}{containerName ? ` · ${containerName}` : ' per bottle'}
+          </Text>
+          {canSwapContainer && (
+            <Icon name="sync" size={13} color={textMutedColor} style={{ marginLeft: 4 }} />
+          )}
+        </Pressable>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Alert } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,10 +71,26 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
-  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded } = useWaterIntakeMutation({
+  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded, containers: waterContainers, activeContainer: activeWaterContainer, selectContainer: selectWaterContainer } = useWaterIntakeMutation({
     date: selectedDate,
     enabled: isConnected,
   });
+
+  const handleSwapWaterContainer = () => {
+    if (!waterContainers || waterContainers.length <= 1) return;
+    const UNIT_LABELS: Record<string, string> = { ml: 'ml', oz: 'oz', liter: 'L' };
+    Alert.alert(
+      'Select Container',
+      'Choose which container to use for water tracking',
+      [
+        ...waterContainers.map(c => ({
+          text: `${c.name} (${(c.volume / (c.servings_per_container || 1)).toLocaleString()} ${UNIT_LABELS[c.unit] ?? c.unit})${activeWaterContainer?.id === c.id ? ' ✓' : ''}`,
+          onPress: () => selectWaterContainer(c.id),
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
+  };
   const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
     range: stepsRange,
     enabled: isConnected,
@@ -285,9 +301,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           goal={summary.waterGoal}
           unit={waterUnit}
           containerVolume={servingVolume}
+          containerName={activeWaterContainer?.name}
           onIncrement={isContainersLoaded ? incrementWater : undefined}
           onDecrement={isContainersLoaded ? decrementWater : undefined}
           disableDecrement={summary.waterConsumed <= 0}
+          canSwapContainer={(waterContainers?.length ?? 0) > 1}
+          onSwapContainer={handleSwapWaterContainer}
         />
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>

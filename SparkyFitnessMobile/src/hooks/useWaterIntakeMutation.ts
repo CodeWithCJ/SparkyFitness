@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
+
+const SELECTED_CONTAINER_KEY = '@SparkyFitness/selected-water-container';
 
 interface UseWaterIntakeMutationOptions {
   date: string;
@@ -11,6 +15,13 @@ interface UseWaterIntakeMutationOptions {
 
 export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
   const queryClient = useQueryClient();
+  const [selectedContainerId, setSelectedContainerId] = useState<number | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_CONTAINER_KEY).then((val) => {
+      if (val != null) setSelectedContainerId(Number(val));
+    });
+  }, []);
 
   const { data: containers, isSuccess: isContainersLoaded } = useQuery({
     queryKey: [...waterContainersQueryKey],
@@ -19,8 +30,19 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     enabled,
   });
 
-  const primaryContainer = containers?.find(c => c.is_primary)
+  // Resolve active container: user selection → primary → single fallback
+  const activeContainer =
+    (selectedContainerId != null ? containers?.find(c => c.id === selectedContainerId) : undefined)
+    ?? containers?.find(c => c.is_primary)
     ?? (containers?.length === 1 ? containers[0] : undefined);
+
+  const selectContainer = (id: number) => {
+    setSelectedContainerId(id);
+    void AsyncStorage.setItem(SELECTED_CONTAINER_KEY, String(id));
+  };
+
+  // Keep using primaryContainer name internally for the alert message
+  const primaryContainer = activeContainer;
 
   const mutation = useMutation({
     mutationFn: async (changeDrinks: number) => {
@@ -94,5 +116,8 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     isContainersLoaded,
     unit: primaryContainer?.unit,
     servingVolume: primaryContainer ? primaryContainer.volume / (primaryContainer.servings_per_container || 1) : undefined,
+    containers,
+    activeContainer,
+    selectContainer,
   };
 }
