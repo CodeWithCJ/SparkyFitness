@@ -86,13 +86,15 @@ spec:
         - ipBlock:
             cidr: {{ . | quote }}
         {{- end }}
-        {{- if gt (len $nsSel) 0 }}
-        - namespaceSelector:
+        {{- if or (gt (len $nsSel) 0) (gt (len $podSel) 0) }}
+        - {{- if gt (len $nsSel) 0 }}
+          namespaceSelector:
             {{- toYaml $nsSel | nindent 12 }}
-        {{- end }}
-        {{- if gt (len $podSel) 0 }}
-        - podSelector:
+          {{- end }}
+          {{- if gt (len $podSel) 0 }}
+          podSelector:
             {{- toYaml $podSel | nindent 12 }}
+          {{- end }}
         {{- end }}
       ports:
         - port: {{ .Values.externalDatabase.port | default 5432 }}
