@@ -366,7 +366,11 @@ frontend:
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-      add: []
+      # -- NET_BIND_SERVICE is required because nginx in the upstream image
+      # binds port 80. The file capability on the nginx binary is stripped
+      # at execve under allowPrivilegeEscalation: false (NoNewPrivs=1), so
+      # the cap must be granted via the pod spec instead.
+      add: [NET_BIND_SERVICE]
   service:
     type: ClusterIP
     annotations: {}
