@@ -65,9 +65,34 @@ spec:
       ports:
         - port: 5432
     {{- else }}
-    # → external PostgreSQL (allow all on DB port)
+    # → external PostgreSQL
+    {{- $extNp := .Values.externalDatabase.networkPolicy | default dict }}
+    {{- $cidrs := $extNp.cidrs | default list }}
+    {{- $nsSel := $extNp.namespaceSelector | default dict }}
+    {{- $podSel := $extNp.podSelector | default dict }}
+    {{- if or (gt (len $cidrs) 0) (gt (len $nsSel) 0) (gt (len $podSel) 0) }}
+    - to:
+        {{- range $cidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+        {{- if gt (len $nsSel) 0 }}
+        - namespaceSelector:
+            {{- toYaml $nsSel | nindent 12 }}
+        {{- end }}
+        {{- if gt (len $podSel) 0 }}
+        - podSelector:
+            {{- toYaml $podSel | nindent 12 }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.externalDatabase.port | default 5432 }}
+    {{- else }}
+    # Legacy permissive egress — no destination restriction.
+    # Set externalDatabase.networkPolicy.cidrs / namespaceSelector / podSelector
+    # to restrict. See NOTES.txt for guidance.
     - ports:
         - port: {{ .Values.externalDatabase.port | default 5432 }}
+    {{- end }}
     {{- end }}
     {{- if .Values.config.garmin.enabled }}
     # → Garmin microservice
