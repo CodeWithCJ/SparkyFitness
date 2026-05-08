@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: {{ .Values.server.replicas }}
   strategy:
-    type: Recreate
+    {{- toYaml .Values.server.strategy | nindent 4 }}
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
