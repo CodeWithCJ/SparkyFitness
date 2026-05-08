@@ -93,18 +93,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     try {
       const wasActive = configId === activeConfig?.id;
       await deleteServerConfig(configId);
-      if (wasActive) {
-        const remaining = await getAllServerConfigs();
-        if (remaining.length > 0) {
-          await setActiveServerConfig(remaining[0].id);
-        }
+      const remaining = await getAllServerConfigs();
+      if (wasActive && remaining.length > 0) {
+        await setActiveServerConfig(remaining[0].id);
       }
       await invalidateServerConfigs();
       refetchConnection();
       addLog('Server configuration deleted.', 'INFO');
 
-      const remainingAfter = await getAllServerConfigs();
-      if (remainingAfter.length === 0) {
+      if (remaining.length === 0) {
         Alert.alert('Success', 'Server configuration deleted.', [
           { text: 'OK', onPress: () => notifyNoConfigs() },
         ]);
