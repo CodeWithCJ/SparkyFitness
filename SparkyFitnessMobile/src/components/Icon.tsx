@@ -97,10 +97,10 @@ const ICON_MAP = {
   
   // Settings
   'server': { sf: 'server.rack', ion: 'server-outline' },
-  'health-data-sync': { sf: 'heart.text.square', ion: 'heart-outline' },
+  'health-data-sync': { sf: 'heart', ion: 'heart-outline' },
   'calorie-settings': { sf: 'flame', ion: 'flame-outline' },
   'food-search-settings': { sf: 'magnifyingglass', ion: 'search-outline' },
-  'appearance': { sf: 'wand.and.stars', ion: 'color-palette-outline' },
+  'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
   'about': { sf: 'info.circle', ion: 'information-circle-outline' },
 } as const;

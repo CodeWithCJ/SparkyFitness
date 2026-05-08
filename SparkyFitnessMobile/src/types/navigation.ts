@@ -104,6 +104,7 @@ export type RootStackParamList = {
   CalorieSettings: undefined;
   FoodSettings: undefined;
   ServerSettings: undefined;
+  AppSettings: undefined;
   About: undefined;
 };
 

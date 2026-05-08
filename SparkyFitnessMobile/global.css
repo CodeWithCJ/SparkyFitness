@@ -158,9 +158,9 @@
       --color-exercise:          hsl(158, 49%, 48%);
 
       --color-cat-slate:         hsl(220, 10%, 48%);
-      --color-cat-pink:          hsl(340, 60%, 55%);
-      --color-cat-violet:        hsl(265, 55%, 60%);
-      --color-cat-orange:        hsl(22, 78%, 62%);
+      --color-cat-pink:          hsl(340, 35%, 60%);
+      --color-cat-violet:        hsl(265, 35%, 60%);
+      --color-cat-orange:        hsl(22, 45%, 60%);
 
       --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);

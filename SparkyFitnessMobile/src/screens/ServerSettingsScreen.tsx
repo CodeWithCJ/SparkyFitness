@@ -46,7 +46,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
   ]) as [string, string, string, string, string];
 
   const queryClient = useQueryClient();
-  const { allConfigs, activeConfig } = useServerConfigs();
+  const { allConfigs, activeConfig, refetch: refetchServerConfigs } = useServerConfigs();
   const { isConnected, refetch: refetchConnection } = useServerConnection();
 
   const [unifiedModalVisible, setUnifiedModalVisible] = useState(false);
@@ -74,7 +74,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     try {
       await setActiveServerConfig(configId);
       queryClient.clear();
-      await queryClient.refetchQueries({ queryKey: serverConfigsQueryKey });
+      await refetchServerConfigs();
       refetchConnection();
       Toast.show({ type: 'success', text1: 'Active server changed' });
       addLog('Active server configuration changed.', 'INFO');

@@ -52,6 +52,7 @@ import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
+import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -81,6 +82,7 @@ import {
   recordAutoSyncTime,
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
+import { initializeHaptics } from './src/services/haptics';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
@@ -150,6 +152,7 @@ const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'Measuremen
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
+const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 
 function AppContent() {
@@ -416,6 +419,7 @@ function AppContent() {
 
     // Initialize theme from storage on app start
     initializeTheme();
+    initializeHaptics();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
@@ -916,6 +920,13 @@ function AppContent() {
           <Stack.Screen
             name="ServerSettings"
             component={SafeServerSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="AppSettings"
+            component={SafeAppSettings}
             options={{
               headerShown: false,
             }}

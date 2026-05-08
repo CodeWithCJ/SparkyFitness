@@ -1,16 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
-import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import { useServerConnection, useServerConfigs, usePreferences, queryClient } from '../hooks';
-import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
-import * as Application from 'expo-application';
 import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -56,7 +53,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
     : 'Never synced';
 
-  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories] = useCSSVariable([
+  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration] = useCSSVariable([
     '--color-text-success',
     '--color-bg-danger',
     '--color-cat-slate',
@@ -64,7 +61,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     '--color-cat-violet',
     '--color-cat-orange',
     '--color-calories',
-  ]) as [string, string, string, string, string, string, string];
+    '--color-hydration',
+  ]) as [string, string, string, string, string, string, string, string];
 
   const serverSubtitle = activeConfig ? (
     <View className="flex-row items-center">
@@ -117,8 +115,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 130 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
-        <View className="flex-1 p-4 pb-20">
+      <ScrollView contentContainerStyle={{ paddingBottom: 80 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
+        <View className="flex-1 p-4">
+          <View className="mb-6">
+            <Text className="text-2xl font-bold text-text-primary">Settings</Text>
+          </View>
+
           <SettingsRow
             icon="server"
             title="Server"
@@ -153,25 +155,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   icon="food-search-settings"
                   title="Food Search Settings"
                   onPress={() => navigation.navigate('FoodSettings')}
-                  iconColor={catViolet}
+                  iconColor={catOrange}
                 />
               </SettingsRowGroup>
             )}
 
-            <AppearanceSettings />
-
             <SettingsRowGroup>
+              <SettingsRow
+                icon="app-settings"
+                title="App Settings"
+                onPress={() => navigation.navigate('AppSettings')}
+                iconColor={catViolet}
+              />
               <SettingsRow
                 icon="document-text"
                 title="View Logs"
                 onPress={() => navigation.navigate('Logs')}
-                iconColor={catOrange}
+                iconColor={catSlate}
               />
               <SettingsRow
                 icon="info-circle"
                 title="About"
                 onPress={() => navigation.navigate('About')}
-                iconColor={catOrange}
+                iconColor={hydration}
               />
             </SettingsRowGroup>
 
@@ -184,7 +190,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               rightAccessory={isSharing ? <ActivityIndicator size="small" /> : undefined}
             />
             <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
-              Exports a local diagnostic report (app version, sync status, logs).{'\n'}
+              Exports a local diagnostic report (app version, sync status, logs).
               No personal health or food data is included. Nothing is sent automatically.
             </Text>
 
@@ -195,12 +201,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
 
 
-            <View className="items-center z-100">
-              <Button variant="ghost" onPress={() => setShowPrivacyModal(true)} className="p-0 mb-2">
-                Privacy Policy
-              </Button>
-              <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
-            </View>
           </SectionErrorBoundary>
         </View>
       </ScrollView>
