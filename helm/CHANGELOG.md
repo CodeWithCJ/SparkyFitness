@@ -5,10 +5,21 @@
 ### Security
 
 - **NetworkPolicy egress for external database is now restrictable** — added `externalDatabase.networkPolicy.cidrs` / `namespaceSelector` / `podSelector` to lock down the server's egress to an external PostgreSQL when `networkPolicy.enabled=true`. Default is unchanged (permissive egress to the DB port) for backward compatibility; a NOTES.txt warning is emitted when the permissive path is active.
+- **NetworkPolicy ingress for the frontend is now restrictable** — added `frontend.networkPolicy.from` (list of `NetworkPolicyPeer`). Default is unchanged (permissive ingress on the frontend port from any source) for backward compatibility; a NOTES.txt warning is emitted when the permissive path is active. Set this to e.g. an `ingress-nginx` namespace selector when the frontend is only meant to be reached through an ingress controller.
+- **NetworkPolicy egress for OIDC, SMTP, and the Garmin Connect API is now restrictable** — added `config.oidc.networkPolicy.to`, `config.email.networkPolicy.to`, and `config.garmin.networkPolicy.to` (each a list of `NetworkPolicyPeer`). Default is unchanged (permissive egress on the listed ports) for backward compatibility; a NOTES.txt warning is emitted for each unrestricted target when `networkPolicy.enabled=true`. Plain Kubernetes NetworkPolicy cannot restrict by FQDN — pin to known IP ranges, or use a CNI with FQDN policies.
 
 ### Documentation
 
 - **GitOps caveat for chart-managed secrets documented** — `server.secrets.generate=true` relies on a Kubernetes API `lookup` to persist `api_encryption_key` / `better_auth_secret` across upgrades. In pure `helm template` mode (no cluster access — some ArgoCD/Flux setups, offline rendering), each render produces new random values, which would rotate the keys on apply and render existing `api_encryption_key`-encrypted data unrecoverable. Documented in `values.yaml` and `NOTES.txt`; recommended path for GitOps remains `externalSecrets.*` or pre-created secrets.
+
+### Features
+
+- **Configurable server `strategy`** — `server.strategy` (default `{type: Recreate}`) now overridable. Useful for clusters where the server PVCs use ReadWriteMany and zero-downtime upgrades are wanted (`type: RollingUpdate` with `maxUnavailable: 0`).
+
+### Bug Fixes
+
+- **`helm test` connection pod fixed** — previously targeted `:80`, but the frontend service exposes `frontend.port` (default `8080`), so `helm test` always failed. Now uses the actual service port. The test pod is also hardened (PSS `restricted`-conform: `runAsNonRoot`, dropped capabilities, read-only root filesystem, `seccompProfile`), runs as UID 65534, pins `busybox:1.37` instead of `latest`, sets `helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded`, and uses `wget --spider --timeout=5`.
+- **NOTES.txt port-forward command for frontend fixed** — was `3004:80`, now `3004:{frontend service port}`.
 
 ### Features
 
