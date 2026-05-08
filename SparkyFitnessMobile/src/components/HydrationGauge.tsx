@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { WATER_UNIT_LABELS } from '../utils/unitConversions';
 
 interface HydrationGaugeProps {
   consumed: number; // ml
@@ -18,12 +19,6 @@ interface HydrationGaugeProps {
   onSwapContainer?: () => void;
   canSwapContainer?: boolean;
 }
-
-const UNIT_LABELS: Record<string, string> = {
-  ml: 'ml',
-  oz: 'oz',
-  liter: 'L',
-};
 
 function convertFromMl(ml: number, unit: string): number {
   switch (unit) {
@@ -108,7 +103,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
   const useDecimals = unit === 'liter' || unit === 'oz';
   const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
   const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
-  const unitLabel = UNIT_LABELS[unit] ?? unit;
+  const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
   const noContainer = containerVolume == null;

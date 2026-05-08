@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import WaterContainerSheet, { type WaterContainerSheetRef } from '../components/WaterContainerSheet';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import HydrationGauge from '../components/HydrationGauge';
@@ -41,6 +42,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const waterContainerSheetRef = useRef<WaterContainerSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
   useFocusEffect(
@@ -78,18 +80,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const handleSwapWaterContainer = () => {
     if (!waterContainers || waterContainers.length <= 1) return;
-    const UNIT_LABELS: Record<string, string> = { ml: 'ml', oz: 'oz', liter: 'L' };
-    Alert.alert(
-      'Select Container',
-      'Choose which container to use for water tracking',
-      [
-        ...waterContainers.map(c => ({
-          text: `${c.name} (${(c.volume / (c.servings_per_container || 1)).toLocaleString()} ${UNIT_LABELS[c.unit] ?? c.unit})${activeWaterContainer?.id === c.id ? ' ✓' : ''}`,
-          onPress: () => selectWaterContainer(c.id),
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]
-    );
+    waterContainerSheetRef.current?.present();
   };
   const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
     range: stepsRange,
@@ -331,6 +322,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       {renderContent()}
 
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      <WaterContainerSheet
+        ref={waterContainerSheetRef}
+        containers={waterContainers ?? []}
+        activeContainerId={activeWaterContainer?.id}
+        onSelect={selectWaterContainer}
+      />
     </View>
   );
 };
