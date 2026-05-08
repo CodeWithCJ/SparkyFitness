@@ -63,6 +63,18 @@ config:
   # -- OIDC authentication (OpenID Connect SSO)
   oidc:
     enabled: false
+    # -- NetworkPolicy egress targets for the OIDC provider (TCP/443).
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer (ipBlock, namespaceSelector, podSelector). If empty,
+    # the chart falls back to a permissive egress on port 443 (any destination)
+    # for backward compatibility and emits a NOTES.txt warning.
+    # Example:
+    #   networkPolicy:
+    #     to:
+    #       - ipBlock:
+    #           cidr: 192.0.2.5/32
+    networkPolicy:
+      to: []
     providerSlug: ""
     providerName: ""
     issuerUrl: ""
@@ -87,6 +99,13 @@ config:
   # -- Email / SMTP notifications
   email:
     enabled: false
+    # -- NetworkPolicy egress targets for the SMTP server.
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer. If empty, the chart falls back to a permissive
+    # egress on the SMTP port (any destination) for backward compatibility
+    # and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
     host: ""
     port: 587
     secure: false
@@ -102,6 +121,13 @@ config:
   garmin:
     enabled: false
     isChinaRegion: false
+    # -- NetworkPolicy egress targets for the Garmin Connect API (TCP/443),
+    # applied to the garmin pod itself (not the server).
+    # Only relevant when networkPolicy.enabled=true and garmin.enabled=true.
+    # Each item is a NetworkPolicyPeer. If empty, the chart falls back to a
+    # permissive egress on 443 and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
 
   # -- API key rate limiting (leave empty for app defaults: 100 req / 60s)
   rateLimiting:
@@ -153,6 +179,11 @@ server:
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3010
+  # -- Deployment update strategy. Default `Recreate` is required when the
+  # server PVCs are ReadWriteOnce (default). Switch to `RollingUpdate` only
+  # if the backup/uploads PVCs use a ReadWriteMany StorageClass.
+  strategy:
+    type: Recreate
   livenessProbe:
     httpGet:
       path: /api/health
@@ -297,6 +328,19 @@ frontend:
   service:
     type: ClusterIP
     annotations: {}
+  # -- NetworkPolicy ingress restriction for the frontend pod.
+  # Only relevant when networkPolicy.enabled=true. Each item is a
+  # NetworkPolicyPeer (namespaceSelector, podSelector, ipBlock).
+  # If empty, the chart falls back to a permissive ingress (any source on
+  # frontend.port) for backward compatibility and emits a NOTES.txt warning.
+  # Example for ingress-nginx in its own namespace:
+  #   networkPolicy:
+  #     from:
+  #       - namespaceSelector:
+  #           matchLabels:
+  #             kubernetes.io/metadata.name: ingress-nginx
+  networkPolicy:
+    from: []
   # -- Extra environment variables injected into the frontend container (key: value)
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
