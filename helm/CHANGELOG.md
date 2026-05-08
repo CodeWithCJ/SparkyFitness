@@ -18,6 +18,8 @@
 - **Image digest support** — each component image (`server`, `frontend`, `garmin`) now accepts an `image.digest` value. When set, it takes precedence over `image.tag` and renders `<repo>@<digest>`. Tag-mutability risk avoided.
 - **Pod scheduling controls** — every workload (`server`, `frontend`, `garmin`) now exposes `affinity`, `nodeSelector`, `tolerations`, and `topologySpreadConstraints` (all default empty / no-op).
 - **PodDisruptionBudget (opt-in)** — `<component>.podDisruptionBudget.enabled=true` (server / frontend / garmin) renders a per-component PDB. Set exactly one of `minAvailable` or `maxUnavailable`. Default disabled (no behavior change for `replicas: 1`).
+- **Configurable ExternalSecret `refreshInterval`** — `externalSecrets.refreshInterval` (default `1h`) replaces the hardcoded value across all five chart-managed ExternalSecrets (app, appdb, oidc, postgres, smtp). Set to `0` to disable polling.
+- **SecretStore auth methods extended** — `externalSecrets.secretStore.auth.method` now accepts `kubernetes` (default — backward-compatible), `appRole`, or `token`. AppRole uses `auth.appRole.{path,roleId,secretRef}`; token uses `auth.tokenSecretRef.{name,key}`. Required fields are enforced via `required` with clear error messages.
 - **Configurable server `strategy`** — `server.strategy` (default `{type: Recreate}`) now overridable. Useful for clusters where the server PVCs use ReadWriteMany and zero-downtime upgrades are wanted (`type: RollingUpdate` with `maxUnavailable: 0`).
 
 ### Bug Fixes
