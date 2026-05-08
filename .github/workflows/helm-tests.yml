@@ -40,7 +40,9 @@ jobs:
 
       - name: Helm dependency build
         working-directory: helm/chart
-        run: helm dependency build
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
 
       - name: Helm lint
         run: helm lint helm/chart
@@ -147,7 +149,9 @@ jobs:
 
       - name: Helm dependency build
         working-directory: helm/chart
-        run: helm dependency build
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
 
       - name: Render full feature surface
         run: |
@@ -198,7 +202,9 @@ jobs:
 
       - name: Helm dependency build
         working-directory: helm/chart
-        run: helm dependency build
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
 
       - name: Render
         run: helm template t helm/chart > /tmp/manifests.yaml
@@ -233,7 +239,9 @@ jobs:
 
       - name: Helm dependency build
         working-directory: helm/chart
-        run: helm dependency build
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
 
       - name: Install chart
         run: |
