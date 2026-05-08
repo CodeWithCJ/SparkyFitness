@@ -23,3 +23,7 @@ export interface FoodUnitVariant {
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
 }
+
+export type FoodUnitSelectionResult =
+  | { kind: 'existing'; variant: FoodUnitVariant }
+  | { kind: 'draft'; variant: FoodUnitVariant };

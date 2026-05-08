@@ -1,8 +1,9 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import FoodForm from '../../src/components/FoodForm';
 
 const mockBottomSheetPicker = jest.fn();
+const mockFoodUnitSelectorSheet = jest.fn();
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const React = require('react');
@@ -23,6 +24,39 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   };
 });
 
+jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props: any) => {
+      mockFoodUnitSelectorSheet(props);
+      return (
+        <View>
+          {props.renderTrigger?.({ onPress: () => {} })}
+          <Pressable
+            onPress={() =>
+              props.onSelect({
+                kind: 'draft',
+                variant: {
+                  serving_size: 1,
+                  serving_unit: 'oz',
+                  calories: 120,
+                  protein: 10,
+                  carbs: 8,
+                  fat: 4,
+                },
+              })
+            }
+          >
+            <Text>Use Converted Unit</Text>
+          </Pressable>
+        </View>
+      );
+    },
+  };
+});
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -34,6 +68,7 @@ jest.mock('../../src/components/Icon', () => {
 describe('FoodForm', () => {
   beforeEach(() => {
     mockBottomSheetPicker.mockClear();
+    mockFoodUnitSelectorSheet.mockClear();
   });
 
   it('scales nutrition values when auto scale is enabled and serving size changes', () => {
@@ -139,5 +174,78 @@ describe('FoodForm', () => {
         }),
       ]),
     );
+  });
+
+  it('uses the unit selector sheet when conversion options are provided', async () => {
+    const onUnitSelectionChange = jest.fn((selection) => ({
+      kind: 'existing',
+      variant: {
+        ...selection.variant,
+        id: 'variant-oz',
+      },
+    }));
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange,
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    expect(onUnitSelectionChange).toHaveBeenCalledWith({
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('1')).toBeTruthy();
+    });
+    expect(screen.getByText('oz')).toBeTruthy();
+    expect(mockFoodUnitSelectorSheet).toHaveBeenCalled();
   });
 });

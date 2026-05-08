@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { setPendingMealIngredientSelection } from '../services/mealBuilderSelect
 import { useMealTypes } from '../hooks';
 import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
+import { useCreateFoodVariant } from '../hooks/useFoodVariants';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { parseOptional } from '../types/foodInfo';
@@ -22,6 +23,8 @@ import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
+import type { FoodUnitSelectionResult } from '../types/foodUnitVariants';
+import { buildCreateFoodVariantPayload } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
@@ -456,13 +459,58 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 }
 
 function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
-  const { initialValues, returnKey, foodId, variantId, customNutrients } = params;
+  const {
+    initialValues,
+    returnKey,
+    foodId,
+    variantId,
+    customNutrients,
+    availableUnitVariants,
+    selectedUnitSelection,
+  } = params;
   const insets = useSafeAreaInsets();
   const [accentColor, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string];
   const queryClient = useQueryClient();
+  const { createVariant } = useCreateFoodVariant();
 
-  const canUpdateVariant = !!(foodId && variantId && customNutrients !== undefined);
+  const [pendingUnitSelection, setPendingUnitSelection] =
+    useState<FoodUnitSelectionResult | null>(selectedUnitSelection ?? null);
+  const [currentVariantId, setCurrentVariantId] = useState(variantId);
+  const canUpdateVariant = !!(
+    foodId &&
+    currentVariantId &&
+    customNutrients !== undefined
+  );
   const [updateFoodToggle, setUpdateFoodToggle] = useState(false);
+
+  const handleUnitSelectionChange = useCallback(
+    async (
+      selection: FoodUnitSelectionResult,
+    ): Promise<FoodUnitSelectionResult> => {
+      if (selection.kind === 'existing') {
+        setPendingUnitSelection(selection);
+        setCurrentVariantId(selection.variant.id ?? variantId);
+        return selection;
+      }
+
+      if (!foodId) {
+        setPendingUnitSelection(selection);
+        return selection;
+      }
+
+      const createdVariant = await createVariant(
+        buildCreateFoodVariantPayload(foodId, selection.variant),
+      );
+      const nextSelection: FoodUnitSelectionResult = {
+        kind: 'existing',
+        variant: createdVariant,
+      };
+      setPendingUnitSelection(nextSelection);
+      setCurrentVariantId(createdVariant.id);
+      return nextSelection;
+    },
+    [createVariant, foodId, variantId],
+  );
 
   const handleSubmit = (data: FoodFormData) => {
     if (!validateFoodForm(data)) {
@@ -477,7 +525,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       void persistFoodEdits({
         queryClient,
         foodId,
-        variantId,
+        variantId: currentVariantId,
         customNutrients,
         data,
         initialValues,
@@ -485,7 +533,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     }
 
     navigation.dispatch({
-      ...CommonActions.setParams({ adjustedValues: data }),
+      ...CommonActions.setParams({
+        adjustedValues: data,
+        adjustedUnitSelection: pendingUnitSelection ?? undefined,
+      }),
       source: returnKey,
     });
     navigation.goBack();
@@ -511,6 +562,15 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         initialValues={initialValues}
         submitLabel="Update Values"
         showAutoScaleNutrition
+        unitSelector={
+          availableUnitVariants && availableUnitVariants.length > 0
+            ? {
+                variants: availableUnitVariants,
+                selectedSelection: pendingUnitSelection,
+                onUnitSelectionChange: handleUnitSelectionChange,
+              }
+            : undefined
+        }
       >
         {canUpdateVariant && (
           <View className="bg-surface rounded-xl p-4 shadow-sm">

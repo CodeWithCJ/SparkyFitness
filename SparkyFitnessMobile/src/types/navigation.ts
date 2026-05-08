@@ -7,6 +7,10 @@ import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
 import type { Meal, MealIngredientDraft } from './meals';
 import type { FoodEntryMeal } from './foodEntryMeals';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from './foodUnitVariants';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 
@@ -41,15 +45,21 @@ export type RootStackParamList = {
       }
     | undefined;
   FoodEntryAdd:
-    | {
+      | {
         item: FoodInfoItem;
         date?: string;
         adjustedValues?: FoodFormData;
+        adjustedUnitSelection?: FoodUnitSelectionResult;
         pickerMode?: FoodPickerMode;
         ingredientIndex?: number;
         returnDepth?: number;
       };
-  FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
+  EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
+  FoodEntryView: {
+    entry: FoodEntry;
+    adjustedValues?: FoodFormData;
+    adjustedUnitSelection?: FoodUnitSelectionResult;
+  };
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:
@@ -62,7 +72,17 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
       }
-    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null }
+    | {
+        mode: 'adjust-entry-nutrition';
+        initialValues: Partial<FoodFormData>;
+        returnTo: 'FoodEntryAdd' | 'FoodEntryView';
+        returnKey: string;
+        foodId?: string;
+        variantId?: string;
+        customNutrients?: Record<string, string | number> | null;
+        availableUnitVariants?: FoodUnitVariant[];
+        selectedUnitSelection?: FoodUnitSelectionResult;
+      }
     | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
   ExerciseForm:
     | { mode: 'create-exercise' }

@@ -6,6 +6,7 @@ import FoodFormScreen from '../../src/screens/FoodFormScreen';
 import { useMealTypes } from '../../src/hooks';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
+import { useCreateFoodVariant } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
@@ -33,6 +34,10 @@ jest.mock('../../src/hooks/useSaveFood', () => ({
 
 jest.mock('../../src/hooks/useAddFoodEntry', () => ({
   useAddFoodEntry: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useFoodVariants', () => ({
+  useCreateFoodVariant: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
@@ -114,10 +119,29 @@ jest.mock('../../src/components/FoodForm', () => {
     __esModule: true,
     default: (props: any) => {
       mockFoodForm(props);
-      const { onSubmit, children, submitLabel = 'Add Food' } = props;
+      const { onSubmit, children, submitLabel = 'Add Food', unitSelector } = props;
       return (
         <View>
           {children}
+          {unitSelector ? (
+            <Pressable
+              onPress={() =>
+                unitSelector.onUnitSelectionChange?.({
+                  kind: 'draft',
+                  variant: {
+                    serving_size: 1,
+                    serving_unit: 'oz',
+                    calories: 120,
+                    protein: 10,
+                    carbs: 8,
+                    fat: 4,
+                  },
+                })
+              }
+            >
+              <Text>Select Converted Unit</Text>
+            </Pressable>
+          ) : null}
           <Pressable onPress={() => onSubmit(mockSubmittedFoodFormData)}>
             <Text>{submitLabel}</Text>
           </Pressable>
@@ -130,6 +154,8 @@ jest.mock('../../src/components/FoodForm', () => {
 const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
 const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
 const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
+const mockUseCreateFoodVariant =
+  useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
 const mockToast = Toast as unknown as { show: jest.Mock };
@@ -147,6 +173,7 @@ describe('FoodFormScreen', () => {
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
   const mockInvalidateCache = jest.fn();
+  const mockCreateVariant = jest.fn();
 
   const renderScreen = (params: any) =>
     render(
@@ -197,6 +224,10 @@ describe('FoodFormScreen', () => {
       saveFoodAsync: mockSaveFoodAsync,
       isPending: false,
       isSaved: false,
+    });
+    mockUseCreateFoodVariant.mockReturnValue({
+      createVariant: mockCreateVariant,
+      isPending: false,
     });
     mockUseAddFoodEntry.mockImplementation((options) => ({
       addEntry: (input: any) => {
@@ -347,6 +378,107 @@ describe('FoodFormScreen', () => {
       mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
     expect(adjustModeCall?.submitLabel).toBe('Update Values');
+  });
+
+  it('passes unit selection through the adjust nutrition return flow', async () => {
+    mockCreateVariant.mockResolvedValue({
+      id: 'variant-oz',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'oz',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+    });
+
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: null,
+      availableUnitVariants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      selectedUnitSelection: {
+        kind: 'existing',
+        variant: {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
+    });
+
+    fireEvent.press(screen.getByText('Select Converted Unit'));
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledWith({
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        dietary_fiber: undefined,
+        saturated_fat: undefined,
+        polyunsaturated_fat: undefined,
+        monounsaturated_fat: undefined,
+        sodium: undefined,
+        sugars: undefined,
+        trans_fat: undefined,
+        potassium: undefined,
+        calcium: undefined,
+        iron: undefined,
+        cholesterol: undefined,
+        vitamin_a: undefined,
+        vitamin_c: undefined,
+        glycemic_index: undefined,
+        custom_nutrients: undefined,
+      });
+    });
+
+    fireEvent.press(screen.getByText('Update Values'));
+
+    expect(navigation.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: {
+          params: {
+            adjustedValues: mockSubmittedFoodFormData,
+            adjustedUnitSelection: {
+              kind: 'existing',
+              variant: expect.objectContaining({
+                id: 'variant-oz',
+                serving_unit: 'oz',
+              }),
+            },
+          },
+        },
+        source: 'FoodEntryAdd-key',
+      }),
+    );
   });
 
   it('blocks submit when the name is missing', () => {

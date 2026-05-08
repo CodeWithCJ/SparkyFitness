@@ -17,7 +17,10 @@ import { useCSSVariable, useUniwind } from 'uniwind';
 import FormInput from './FormInput';
 import Button from './ui/Button';
 import Icon from './Icon';
-import type { FoodUnitVariant } from '../types/foodUnitVariants';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from '../types/foodUnitVariants';
 import { canAutoConvertToUnit, useUnitConversion } from '../hooks/useUnitConversion';
 import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
 import { DECIMAL_INPUT_REGEX } from '../utils/numericInput';
@@ -28,10 +31,6 @@ const sheetContainer =
         <FullWindowOverlay>{children}</FullWindowOverlay>
       )
     : undefined;
-
-export type FoodUnitSelectionResult =
-  | { kind: 'existing'; variant: FoodUnitVariant }
-  | { kind: 'draft'; variant: FoodUnitVariant };
 
 interface FoodUnitSelectorSheetProps {
   variants: FoodUnitVariant[];

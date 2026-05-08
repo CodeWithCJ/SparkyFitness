@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Pressable,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import Animated, {
@@ -21,16 +20,10 @@ import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import FoodUnitSelectorSheet, {
-  type FoodUnitSelectionResult,
-} from '../components/FoodUnitSelectorSheet';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes } from '../hooks';
-import {
-  useCreateFoodVariant,
-  useFoodVariants,
-} from '../hooks/useFoodVariants';
+import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
@@ -39,10 +32,13 @@ import type { FoodFormData } from '../components/FoodForm';
 import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
-import type { FoodUnitVariant } from '../types/foodUnitVariants';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
-  buildCreateFoodVariantPayload,
+  formatVariantLabel,
   buildLocalUnitVariants,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
@@ -164,8 +160,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { variants } = useFoodVariants(entry.food_id!, {
     enabled: !!entry.food_id,
   });
-  const { createVariant, isPending: isCreateVariantPending } =
-    useCreateFoodVariant();
 
   const selectorVariants = useMemo(() => {
     if (!entry.food_id) return [];
@@ -180,6 +174,68 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? loadedVariants
       : [foodEntryToUnitVariant(entry)];
   }, [createdVariantOverride, entry, variants]);
+
+  const variantPickerOptions = useMemo(() => {
+    const baseOptions = (variants ?? []).map((variant) => ({
+      id: variant.id,
+      label: formatVariantLabel({
+        servingSize: variant.serving_size,
+        servingUnit: variant.serving_unit,
+        calories: variant.calories,
+      }),
+      servingSize: variant.serving_size,
+      servingUnit: variant.serving_unit,
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fat: variant.fat,
+      fiber: variant.dietary_fiber,
+      saturatedFat: variant.saturated_fat,
+      sodium: variant.sodium,
+      sugars: variant.sugars,
+      transFat: variant.trans_fat,
+      potassium: variant.potassium,
+      calcium: variant.calcium,
+      iron: variant.iron,
+      cholesterol: variant.cholesterol,
+      vitaminA: variant.vitamin_a,
+      vitaminC: variant.vitamin_c,
+    }));
+
+    if (!createdVariantOverride?.id) {
+      return baseOptions;
+    }
+
+    if (baseOptions.some((variant) => variant.id === createdVariantOverride.id)) {
+      return baseOptions;
+    }
+
+    return [
+      {
+        id: createdVariantOverride.id,
+        label: formatVariantLabel(
+          unitVariantToDisplayValues(createdVariantOverride),
+        ),
+        ...unitVariantToDisplayValues(createdVariantOverride),
+      },
+      ...baseOptions,
+    ];
+  }, [createdVariantOverride, variants]);
+
+  const selectedUnitSelection = useMemo<FoodUnitSelectionResult | undefined>(() => {
+    if (createdVariantOverride?.id === selectedVariantId) {
+      return {
+        kind: 'existing',
+        variant: createdVariantOverride,
+      };
+    }
+
+    const selectedVariant =
+      selectorVariants.find((variant) => variant.id === selectedVariantId) ?? null;
+    return selectedVariant
+      ? { kind: 'existing', variant: selectedVariant }
+      : undefined;
+  }, [createdVariantOverride, selectedVariantId, selectorVariants]);
 
   const activeVariant = useMemo(() => {
     if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
@@ -273,24 +329,53 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }));
 
   const adjustedFromNav = route.params?.adjustedValues;
+  const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
 
   useEffect(() => {
-    if (adjustedFromNav) {
-      const previousServingSize = servingSizeRef.current;
-      const newServingSize =
-        parseDecimalInput(adjustedFromNav.servingSize) || previousServingSize;
-      updateEdit({
-        adjustedValues: adjustedFromNav,
-        ...(newServingSize !== previousServingSize
-          ? { quantityText: String(newServingSize) }
-          : {}),
-      });
-      navigation.setParams({ adjustedValues: undefined });
+    if (!adjustedFromNav && !adjustedUnitSelectionFromNav) {
+      return;
     }
-  }, [adjustedFromNav, navigation, updateEdit]);
+
+    const previousServingSize = servingSizeRef.current;
+    const nextServingSize =
+      parseDecimalInput(adjustedFromNav?.servingSize ?? '') ||
+      adjustedUnitSelectionFromNav?.variant.serving_size ||
+      previousServingSize;
+
+    if (adjustedUnitSelectionFromNav) {
+      const isKnownVariant = (variants ?? []).some(
+        (variant) => variant.id === adjustedUnitSelectionFromNav.variant.id,
+      );
+      setCreatedVariantOverride(
+        isKnownVariant ? null : adjustedUnitSelectionFromNav.variant,
+      );
+      if (adjustedUnitSelectionFromNav.variant.id) {
+        updateEdit({
+          selectedVariantId: adjustedUnitSelectionFromNav.variant.id,
+        });
+      }
+    }
+
+    updateEdit({
+      ...(adjustedFromNav ? { adjustedValues: adjustedFromNav } : {}),
+      ...(nextServingSize !== previousServingSize
+        ? { quantityText: String(nextServingSize) }
+        : {}),
+    });
+    navigation.setParams({
+      adjustedValues: undefined,
+      adjustedUnitSelection: undefined,
+    });
+  }, [
+    adjustedFromNav,
+    adjustedUnitSelectionFromNav,
+    navigation,
+    updateEdit,
+    variants,
+  ]);
 
   const handleVariantChange = useCallback(
     (variantId: string) => {
@@ -305,33 +390,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       });
     },
     [updateEdit, variants],
-  );
-
-  const handleUnitSelection = useCallback(
-    async (selection: FoodUnitSelectionResult) => {
-      if (selection.kind === 'existing') {
-        setCreatedVariantOverride(null);
-        if (selection.variant.id) {
-          handleVariantChange(selection.variant.id);
-        }
-        return;
-      }
-
-      if (!entry.food_id) {
-        throw new Error('Missing food ID for unit conversion');
-      }
-
-      const createdVariant = await createVariant(
-        buildCreateFoodVariantPayload(entry.food_id, selection.variant),
-      );
-      setCreatedVariantOverride(createdVariant);
-      updateEdit({
-        selectedVariantId: createdVariant.id,
-        adjustedValues: null,
-        quantityText: String(createdVariant.serving_size),
-      });
-    },
-    [createVariant, entry.food_id, handleVariantChange, updateEdit],
   );
 
   const updateQuantityText = (text: string) => {
@@ -367,6 +425,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       foodId: entry.food_id ?? undefined,
       variantId: selectedVariantId,
       customNutrients: selectedCustomNutrients,
+      availableUnitVariants: selectorVariants,
+      selectedUnitSelection,
       initialValues: {
         name: adjustedValues?.name || entry.food_name || '',
         brand: adjustedValues?.brand ?? entry.brand_name ?? '',
@@ -546,7 +606,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             <Button
               variant="ghost"
               onPress={handleSave}
-              disabled={isUpdatePending || isCreateVariantPending || quantity <= 0}
+              disabled={isUpdatePending || quantity <= 0}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               Done
@@ -594,39 +654,33 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                       : parseFloat(editServings.toFixed(2))}{' '}
                     {editServings === 1 ? 'serving' : 'servings'}
                   </Text>
-                  {selectorVariants.length > 0 ? (
-                    <FoodUnitSelectorSheet
-                      variants={selectorVariants}
-                      selectedVariantId={selectedVariantId}
+                  {variantPickerOptions.length > 1 ? (
+                    <BottomSheetPicker
+                      value={selectedVariantId ?? variantPickerOptions[0]?.id}
+                      options={variantPickerOptions.map((variant) => ({
+                        label: variant.label,
+                        value: variant.id,
+                      }))}
+                      onSelect={handleVariantChange}
                       title="Select Serving"
-                      onSelect={handleUnitSelection}
                       renderTrigger={({ onPress }) => (
                         <TouchableOpacity
                           onPress={onPress}
                           activeOpacity={0.7}
                           className="flex-row items-center ml-1"
-                          disabled={isCreateVariantPending}
                         >
                           <Text className="text-text-secondary text-sm">
                             {' - '}
                             {displayValues.servingSize} {displayValues.servingUnit} per
                             serving
                           </Text>
-                          {isCreateVariantPending ? (
-                            <ActivityIndicator
-                              size="small"
-                              color={accentColor}
-                              style={{ marginLeft: 6 }}
-                            />
-                          ) : (
-                            <Icon
-                              name="chevron-down"
-                              size={12}
-                              color={textPrimary}
-                              style={{ marginLeft: 4 }}
-                              weight="medium"
-                            />
-                          )}
+                          <Icon
+                            name="chevron-down"
+                            size={12}
+                            color={textPrimary}
+                            style={{ marginLeft: 4 }}
+                            weight="medium"
+                          />
                         </TouchableOpacity>
                       )}
                     />

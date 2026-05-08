@@ -109,39 +109,10 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
 
 jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
   const React = require('react');
-  const { Pressable, Text, View } = require('react-native');
+  const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ variants, onSelect, renderTrigger }: any) => (
-      <View>
-        {renderTrigger?.({ onPress: () => {} })}
-        {variants.map((variant: any, index: number) => (
-          <Pressable
-            key={variant.id ?? `variant-${index}`}
-            onPress={() => onSelect({ kind: 'existing', variant })}
-          >
-            <Text>{`${variant.serving_size} ${variant.serving_unit} (${Math.round(variant.calories)} cal)`}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          onPress={() =>
-            onSelect({
-              kind: 'draft',
-              variant: {
-                serving_size: 1,
-                serving_unit: 'oz',
-                calories: 120,
-                protein: 10,
-                carbs: 8,
-                fat: 4,
-              },
-            })
-          }
-        >
-          <Text>Create Draft Unit</Text>
-        </Pressable>
-      </View>
-    ),
+    default: ({ renderTrigger }: any) => <View>{renderTrigger?.({ onPress: () => {} })}</View>,
   };
 });
 
@@ -202,7 +173,7 @@ describe('FoodEntryViewScreen', () => {
     fat: 0,
   };
 
-  const renderScreen = (entry = baseEntry) =>
+  const renderScreen = (params?: Record<string, unknown>) =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodEntryViewScreen
@@ -210,7 +181,7 @@ describe('FoodEntryViewScreen', () => {
           route={{
             key: 'FoodEntryView-key',
             name: 'FoodEntryView',
-            params: { entry },
+            params: { entry: baseEntry, ...params },
           } as any}
         />
       </SafeAreaProvider>,
@@ -264,7 +235,7 @@ describe('FoodEntryViewScreen', () => {
   });
 
   it('redirects to EditLoggedMeal when the entry has food_entry_meal_id', () => {
-    renderScreen({ ...baseEntry, food_entry_meal_id: 'fem-99' });
+    renderScreen({ entry: { ...baseEntry, food_entry_meal_id: 'fem-99' } });
     expect(navigation.replace).toHaveBeenCalledWith('EditLoggedMeal', {
       foodEntryMealId: 'fem-99',
     });
@@ -275,55 +246,63 @@ describe('FoodEntryViewScreen', () => {
     expect(navigation.replace).not.toHaveBeenCalled();
   });
 
-  it('creates a converted unit and saves the entry against the new variant', async () => {
-    mockCreateVariant.mockResolvedValue({
-      id: 'variant-oz',
-      food_id: 'food-1',
-      serving_size: 1,
-      serving_unit: 'oz',
-      calories: 120,
-      protein: 10,
-      carbs: 8,
-      fat: 4,
+  it('applies the unit returned from adjust nutrition and saves against that variant', async () => {
+    const screen = renderScreen({
+      adjustedValues: {
+        name: 'Greek Yogurt',
+        brand: 'Sparky',
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+        fiber: '',
+        saturatedFat: '',
+        sodium: '',
+        sugars: '',
+        transFat: '',
+        potassium: '',
+        calcium: '',
+        iron: '',
+        cholesterol: '',
+        vitaminA: '',
+        vitaminC: '',
+      },
+      adjustedUnitSelection: {
+        kind: 'existing',
+        variant: {
+          id: 'variant-oz',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
     });
 
-    const screen = renderScreen();
-
-    fireEvent.press(screen.getByText('Edit'));
-    fireEvent.press(screen.getByText('Create Draft Unit'));
-
     await waitFor(() => {
-      expect(mockCreateVariant).toHaveBeenCalledWith({
-        food_id: 'food-1',
-        serving_size: 1,
-        serving_unit: 'oz',
-        calories: 120,
-        protein: 10,
-        carbs: 8,
-        fat: 4,
-        dietary_fiber: undefined,
-        saturated_fat: undefined,
-        polyunsaturated_fat: undefined,
-        monounsaturated_fat: undefined,
-        sodium: undefined,
-        sugars: undefined,
-        trans_fat: undefined,
-        potassium: undefined,
-        calcium: undefined,
-        iron: undefined,
-        cholesterol: undefined,
-        vitamin_a: undefined,
-        vitamin_c: undefined,
-        glycemic_index: undefined,
-        custom_nutrients: undefined,
+      expect(navigation.setParams).toHaveBeenCalledWith({
+        adjustedValues: undefined,
+        adjustedUnitSelection: undefined,
       });
     });
 
+    fireEvent.press(screen.getByText('Edit'));
     fireEvent.press(screen.getByText('Done'));
 
-    expect(mockUpdateEntry).toHaveBeenCalledWith({
-      variant_id: 'variant-oz',
-      unit: 'oz',
-    });
+    expect(mockUpdateEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant_id: 'variant-oz',
+        unit: 'oz',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+      }),
+    );
+    expect(screen.queryByText('Create Draft Unit')).toBeNull();
   });
 });

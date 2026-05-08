@@ -5,6 +5,11 @@ import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
 import FormInput from './FormInput';
 import Icon from './Icon';
+import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from '../types/foodUnitVariants';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
 
@@ -37,6 +42,16 @@ export interface FoodFormProps {
   submitLabel?: string;
   isSubmitting?: boolean;
   showAutoScaleNutrition?: boolean;
+  unitSelector?: {
+    variants: FoodUnitVariant[];
+    selectedSelection?: FoodUnitSelectionResult | null;
+    onUnitSelectionChange?: (
+      selection: FoodUnitSelectionResult,
+    ) =>
+      | Promise<FoodUnitSelectionResult | void>
+      | FoodUnitSelectionResult
+      | void;
+  };
   children?: React.ReactNode;
 }
 
@@ -85,6 +100,55 @@ const EMPTY_FORM: FoodFormData = {
   vitaminC: '',
 };
 
+const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
+
+function formatFormValue(value: number | undefined): string {
+  return value == null ? '' : String(value);
+}
+
+function normalizeSelectedUnitSelection(
+  selection?: FoodUnitSelectionResult | null,
+): FoodUnitSelectionResult | null {
+  if (!selection) return null;
+  if (selection.kind === 'existing' || selection.variant.id) {
+    return selection;
+  }
+
+  return {
+    ...selection,
+    variant: {
+      ...selection.variant,
+      id: FORM_DRAFT_UNIT_ID,
+    },
+  };
+}
+
+function applyVariantToFormState(
+  previous: FoodFormData,
+  variant: FoodUnitVariant,
+): FoodFormData {
+  return {
+    ...previous,
+    servingSize: formatFormValue(variant.serving_size),
+    servingUnit: variant.serving_unit,
+    calories: formatFormValue(variant.calories),
+    protein: formatFormValue(variant.protein),
+    carbs: formatFormValue(variant.carbs),
+    fat: formatFormValue(variant.fat),
+    fiber: formatFormValue(variant.dietary_fiber),
+    saturatedFat: formatFormValue(variant.saturated_fat),
+    transFat: formatFormValue(variant.trans_fat),
+    sodium: formatFormValue(variant.sodium),
+    sugars: formatFormValue(variant.sugars),
+    potassium: formatFormValue(variant.potassium),
+    cholesterol: formatFormValue(variant.cholesterol),
+    calcium: formatFormValue(variant.calcium),
+    iron: formatFormValue(variant.iron),
+    vitaminA: formatFormValue(variant.vitamin_a),
+    vitaminC: formatFormValue(variant.vitamin_c),
+  };
+}
+
 function isPositiveNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
@@ -109,11 +173,16 @@ const FoodForm: React.FC<FoodFormProps> = ({
   submitLabel = 'Add Food',
   isSubmitting = false,
   showAutoScaleNutrition = false,
+  unitSelector,
   children,
 }) => {
   const [form, setForm] = useState<FoodFormData>({ ...EMPTY_FORM, ...initialValues });
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
   const [autoScaleNutrition, setAutoScaleNutrition] = useState(false);
+  const [selectedUnitSelection, setSelectedUnitSelection] =
+    useState<FoodUnitSelectionResult | null>(() =>
+      normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
+    );
   const [textMuted, accentColor, formEnabled, formDisabled] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
@@ -186,6 +255,45 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
   }, [form.servingSize]);
 
+  useEffect(() => {
+    setSelectedUnitSelection(
+      normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
+    );
+  }, [unitSelector?.selectedSelection]);
+
+  const unitSelectorVariants = React.useMemo(() => {
+    if (!unitSelector) return [];
+
+    const normalizedSelection = normalizeSelectedUnitSelection(
+      selectedUnitSelection,
+    );
+    if (
+      normalizedSelection?.variant.id &&
+      !unitSelector.variants.some(
+        (variant) => variant.id === normalizedSelection.variant.id,
+      )
+    ) {
+      return [normalizedSelection.variant, ...unitSelector.variants];
+    }
+
+    return unitSelector.variants;
+  }, [selectedUnitSelection, unitSelector]);
+
+  const handleUnitSelectorSelection = async (
+    selection: FoodUnitSelectionResult,
+  ) => {
+    const nextSelection = normalizeSelectedUnitSelection(
+      (await unitSelector?.onUnitSelectionChange?.(selection)) ?? selection,
+    );
+
+    if (!nextSelection) return;
+
+    setSelectedUnitSelection(nextSelection);
+    setForm((previous) =>
+      applyVariantToFormState(previous, nextSelection.variant),
+    );
+  };
+
   const renderTextField = (
     label: string,
     field: keyof FoodFormData,
@@ -252,29 +360,61 @@ const FoodForm: React.FC<FoodFormProps> = ({
             {renderNumericField('Serving Size', 'servingSize', undefined, false, 'calories')}
             <View className="gap-1.5 flex-1">
               <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
-              <BottomSheetPicker
-                value={form.servingUnit}
-                sections={SERVING_UNIT_SECTIONS}
-                onSelect={(v) => update('servingUnit', v)}
-                title="Select Unit"
-                placeholder="unit"
-                renderTrigger={({ onPress, selectedOption }) => (
-                  <TouchableOpacity
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                    className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
-                    style={{ height: 44 }}
-                  >
-                    <Text
-                      className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
-                      style={{ fontSize: 16 }}
+              {unitSelector ? (
+                <FoodUnitSelectorSheet
+                  variants={unitSelectorVariants}
+                  selectedVariantId={selectedUnitSelection?.variant.id}
+                  title="Select Serving Unit"
+                  onSelect={handleUnitSelectorSelection}
+                  renderTrigger={({ onPress }) => (
+                    <TouchableOpacity
+                      onPress={onPress}
+                      activeOpacity={0.7}
+                      className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
+                      style={{ height: 44 }}
                     >
-                      {selectedOption?.label ?? 'unit'}
-                    </Text>
-                    <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
-                  </TouchableOpacity>
-                )}
-              />
+                      <Text className="text-text-primary" style={{ fontSize: 16 }}>
+                        {form.servingUnit || 'unit'}
+                      </Text>
+                      <Icon
+                        name="chevron-down"
+                        size={12}
+                        color={textMuted}
+                        weight="medium"
+                      />
+                    </TouchableOpacity>
+                  )}
+                />
+              ) : (
+                <BottomSheetPicker
+                  value={form.servingUnit}
+                  sections={SERVING_UNIT_SECTIONS}
+                  onSelect={(v) => update('servingUnit', v)}
+                  title="Select Unit"
+                  placeholder="unit"
+                  renderTrigger={({ onPress, selectedOption }) => (
+                    <TouchableOpacity
+                      onPress={onPress}
+                      activeOpacity={0.7}
+                      className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
+                      style={{ height: 44 }}
+                    >
+                      <Text
+                        className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
+                        style={{ fontSize: 16 }}
+                      >
+                        {selectedOption?.label ?? 'unit'}
+                      </Text>
+                      <Icon
+                        name="chevron-down"
+                        size={12}
+                        color={textMuted}
+                        weight="medium"
+                      />
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
             </View>
           </View>
 

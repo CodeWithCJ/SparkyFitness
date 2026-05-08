@@ -16,9 +16,6 @@ import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import FoodUnitSelectorSheet, {
-  type FoodUnitSelectionResult,
-} from '../components/FoodUnitSelectorSheet';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
@@ -38,7 +35,10 @@ import type { FoodEntryMealCreateData } from '../types/foodEntryMeals';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodFormData } from '../components/FoodForm';
 import type { MealIngredientDraft } from '../types/meals';
-import type { FoodUnitVariant } from '../types/foodUnitVariants';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from '../types/foodUnitVariants';
 import {
   type FoodInfoItem,
   foodItemToFoodInfo,
@@ -54,6 +54,7 @@ import {
   buildLocalUnitVariants,
   buildLocalVariantOptions,
   foodInfoToUnitVariant,
+  formatVariantLabel,
   resolveFoodDisplayValues,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
@@ -148,6 +149,55 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     localUnitVariants,
     selectedVariantOverride,
   ]);
+
+  const variantPickerOptions = useMemo(() => {
+    const baseOptions = isLocalFood ? localVariantOptions : externalVariantOptions;
+    if (
+      !selectedVariantOverride?.id ||
+      selectedVariantOverride.id === EXTERNAL_DRAFT_VARIANT_ID
+    ) {
+      return baseOptions;
+    }
+
+    if (baseOptions.some((variant) => variant.id === selectedVariantOverride.id)) {
+      return baseOptions;
+    }
+
+    return [
+      {
+        id: selectedVariantOverride.id,
+        label: formatVariantLabel(
+          unitVariantToDisplayValues(selectedVariantOverride),
+        ),
+        ...unitVariantToDisplayValues(selectedVariantOverride),
+      },
+      ...baseOptions,
+    ];
+  }, [
+    externalVariantOptions,
+    isLocalFood,
+    localVariantOptions,
+    selectedVariantOverride,
+  ]);
+
+  const selectedUnitSelection = useMemo<FoodUnitSelectionResult | undefined>(() => {
+    if (selectedVariantOverride) {
+      return {
+        kind:
+          !selectedVariantOverride.id ||
+          selectedVariantOverride.id === EXTERNAL_DRAFT_VARIANT_ID
+            ? 'draft'
+            : 'existing',
+        variant: selectedVariantOverride,
+      };
+    }
+
+    const selectedVariant =
+      selectorVariants.find((variant) => variant.id === selectedVariantId) ?? null;
+    return selectedVariant
+      ? { kind: 'existing', variant: selectedVariant }
+      : undefined;
+  }, [selectedVariantId, selectedVariantOverride, selectorVariants]);
 
   const selectedBaseVariant = useMemo(
     () =>
@@ -273,22 +323,65 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const servingSizeRef = useRef(displayValues.servingSize);
 
   const adjustedFromNav = route.params?.adjustedValues;
+  const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
 
   useEffect(() => {
-    if (adjustedFromNav) {
-      const previousServingSize = servingSizeRef.current;
-      const newServingSize =
-        parseDecimalInput(adjustedFromNav.servingSize) || previousServingSize;
-      setAdjustedValues(adjustedFromNav);
-      if (newServingSize !== previousServingSize) {
-        setQuantityText(String(newServingSize));
-      }
-      navigation.setParams({ adjustedValues: undefined });
+    if (!adjustedFromNav && !adjustedUnitSelectionFromNav) {
+      return;
     }
-  }, [adjustedFromNav, navigation]);
+
+    const previousServingSize = servingSizeRef.current;
+    const nextServingSize =
+      parseDecimalInput(adjustedFromNav?.servingSize ?? '') ||
+      adjustedUnitSelectionFromNav?.variant.serving_size ||
+      previousServingSize;
+
+    if (adjustedUnitSelectionFromNav) {
+      if (adjustedUnitSelectionFromNav.kind === 'draft') {
+        const draftVariant = {
+          ...adjustedUnitSelectionFromNav.variant,
+          id:
+            adjustedUnitSelectionFromNav.variant.id ?? EXTERNAL_DRAFT_VARIANT_ID,
+        };
+        setSelectedVariantOverride(draftVariant);
+        setSelectedVariantId(draftVariant.id);
+      } else {
+        const knownVariants = isLocalFood ? localUnitVariants : externalUnitVariants;
+        const isKnownVariant = knownVariants.some(
+          (variant) => variant.id === adjustedUnitSelectionFromNav.variant.id,
+        );
+        setSelectedVariantOverride(
+          isKnownVariant ? null : adjustedUnitSelectionFromNav.variant,
+        );
+        if (adjustedUnitSelectionFromNav.variant.id) {
+          setSelectedVariantId(adjustedUnitSelectionFromNav.variant.id);
+        }
+      }
+    }
+
+    if (adjustedFromNav) {
+      setAdjustedValues(adjustedFromNav);
+    }
+
+    if (nextServingSize !== previousServingSize) {
+      setQuantityText(String(nextServingSize));
+    }
+
+    navigation.setParams({
+      adjustedValues: undefined,
+      adjustedUnitSelection: undefined,
+    });
+  }, [
+    adjustedFromNav,
+    adjustedUnitSelectionFromNav,
+    externalUnitVariants,
+    isLocalFood,
+    localUnitVariants,
+    navigation,
+  ]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -321,59 +414,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       }
     },
     [externalVariantOptions, localVariantOptions],
-  );
-
-  const handleUnitSelection = useCallback(
-    async (selection: FoodUnitSelectionResult) => {
-      if (selection.kind === 'existing') {
-        if (
-          selectedVariantOverride &&
-          selection.variant.id === selectedVariantOverride.id
-        ) {
-          setAdjustedValues(null);
-          setSelectedVariantId(selection.variant.id);
-          setQuantityText(String(selection.variant.serving_size));
-          return;
-        }
-
-        setSelectedVariantOverride(null);
-        setAdjustedValues(null);
-
-        if (selection.variant.id) {
-          handleVariantChange(selection.variant.id);
-        } else {
-          setQuantityText(String(selection.variant.serving_size));
-        }
-        return;
-      }
-
-      if (isLocalFood) {
-        const createdVariant = await createVariant(
-          buildCreateFoodVariantPayload(activeItem.id, selection.variant),
-        );
-        setSelectedVariantOverride(createdVariant);
-        setSelectedVariantId(createdVariant.id);
-        setAdjustedValues(null);
-        setQuantityText(String(createdVariant.serving_size));
-        return;
-      }
-
-      const draftVariant = {
-        ...selection.variant,
-        id: selection.variant.id ?? EXTERNAL_DRAFT_VARIANT_ID,
-      };
-      setSelectedVariantOverride(draftVariant);
-      setSelectedVariantId(draftVariant.id);
-      setAdjustedValues(null);
-      setQuantityText(String(draftVariant.serving_size));
-    },
-    [
-      activeItem.id,
-      createVariant,
-      handleVariantChange,
-      isLocalFood,
-      selectedVariantOverride,
-    ],
   );
 
   const updateQuantityText = (text: string) => {
@@ -718,6 +758,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   foodId: isLocalFood ? activeItem.id : undefined,
                   variantId: isLocalFood ? selectedVariantId : undefined,
                   customNutrients: isLocalFood ? selectedCustomNutrients : undefined,
+                  availableUnitVariants: selectorVariants,
+                  selectedUnitSelection,
                   initialValues: {
                     name: adjustedValues?.name || activeItem.name,
                     brand: adjustedValues?.brand ?? activeItem.brand ?? '',
@@ -810,12 +852,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               {servings % 1 === 0 ? servings : servings.toFixed(1)}{' '}
               {servings === 1 ? 'serving' : 'servings'}
             </Text>
-            {selectorVariants.length > 0 ? (
-              <FoodUnitSelectorSheet
-                variants={selectorVariants}
-                selectedVariantId={selectedVariantId}
+            {variantPickerOptions.length > 1 ? (
+              <BottomSheetPicker
+                value={selectedVariantId ?? variantPickerOptions[0]?.id}
+                options={variantPickerOptions.map((variant) => ({
+                  label: variant.label,
+                  value: variant.id,
+                }))}
+                onSelect={handleVariantChange}
                 title="Select Serving"
-                onSelect={handleUnitSelection}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}

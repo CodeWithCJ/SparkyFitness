@@ -590,49 +590,50 @@ describe('FoodEntryAddScreen', () => {
     expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
   });
 
-  it('creates a local converted unit immediately and logs that new variant', async () => {
-    mockCreateVariant.mockResolvedValue({
-      id: 'variant-oz',
-      food_id: 'food-1',
-      serving_size: 1,
-      serving_unit: 'oz',
-      calories: 120,
-      protein: 10,
-      carbs: 8,
-      fat: 4,
-    });
-
+  it('keeps converted local units in the adjust flow and logs the returned variant', async () => {
     const screen = renderScreen({
       item: baseLocalItem,
       date: '2026-04-23',
+      adjustedValues: {
+        name: 'Greek Yogurt',
+        brand: 'Sparky',
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+        fiber: '',
+        saturatedFat: '',
+        sodium: '',
+        sugars: '',
+        transFat: '',
+        potassium: '',
+        calcium: '',
+        iron: '',
+        cholesterol: '',
+        vitaminA: '',
+        vitaminC: '',
+      },
+      adjustedUnitSelection: {
+        kind: 'existing',
+        variant: {
+          id: 'variant-oz',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
     });
 
-    fireEvent.press(screen.getByText('Create Draft Unit'));
-
     await waitFor(() => {
-      expect(mockCreateVariant).toHaveBeenCalledWith({
-        food_id: 'food-1',
-        serving_size: 1,
-        serving_unit: 'oz',
-        calories: 120,
-        protein: 10,
-        carbs: 8,
-        fat: 4,
-        dietary_fiber: undefined,
-        saturated_fat: undefined,
-        polyunsaturated_fat: undefined,
-        monounsaturated_fat: undefined,
-        sodium: undefined,
-        sugars: undefined,
-        trans_fat: undefined,
-        potassium: undefined,
-        calcium: undefined,
-        iron: undefined,
-        cholesterol: undefined,
-        vitamin_a: undefined,
-        vitamin_c: undefined,
-        glycemic_index: undefined,
-        custom_nutrients: undefined,
+      expect(navigation.setParams).toHaveBeenCalledWith({
+        adjustedValues: undefined,
+        adjustedUnitSelection: undefined,
       });
     });
 
@@ -640,15 +641,19 @@ describe('FoodEntryAddScreen', () => {
 
     expect(mockAddEntry).toHaveBeenCalledWith({
       saveFoodPayload: undefined,
-      createEntryPayload: {
+      createEntryPayload: expect.objectContaining({
         meal_type_id: 'meal-1',
         quantity: 1,
         unit: 'oz',
         entry_date: '2026-04-23',
         food_id: 'food-1',
         variant_id: 'variant-oz',
-      },
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+      }),
     });
+    expect(screen.queryByText('Create Draft Unit')).toBeNull();
   });
 
   it('switches a saved external draft unit into the local logging flow', async () => {
@@ -681,54 +686,96 @@ describe('FoodEntryAddScreen', () => {
     const screen = renderScreen({
       item: baseExternalItem,
       date: '2026-04-23',
+      adjustedValues: {
+        name: 'Protein Bar',
+        brand: 'Remote Brand',
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+        fiber: '',
+        saturatedFat: '',
+        sodium: '',
+        sugars: '',
+        transFat: '',
+        potassium: '',
+        calcium: '',
+        iron: '',
+        cholesterol: '',
+        vitaminA: '',
+        vitaminC: '',
+      },
+      adjustedUnitSelection: {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
     });
 
-    fireEvent.press(screen.getByText('Create Draft Unit'));
+    await waitFor(() => {
+      expect(navigation.setParams).toHaveBeenCalledWith({
+        adjustedValues: undefined,
+        adjustedUnitSelection: undefined,
+      });
+    });
 
-    expect(screen.getByText('1 oz (120 cal)')).toBeTruthy();
+    expect(screen.getByText(/1 oz per serving/)).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Save Food'));
 
     await waitFor(() => {
       expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
     });
-    expect(mockCreateVariant).toHaveBeenCalledWith({
-      food_id: 'saved-food-1',
-      serving_size: 1,
-      serving_unit: 'oz',
-      calories: 120,
-      protein: 10,
-      carbs: 8,
-      fat: 4,
-      dietary_fiber: undefined,
-      saturated_fat: undefined,
-      polyunsaturated_fat: undefined,
-      monounsaturated_fat: undefined,
-      sodium: undefined,
-      sugars: undefined,
-      trans_fat: undefined,
-      potassium: undefined,
-      calcium: undefined,
-      iron: undefined,
-      cholesterol: undefined,
-      vitamin_a: undefined,
-      vitamin_c: undefined,
-      glycemic_index: undefined,
-      custom_nutrients: undefined,
+
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledWith({
+        food_id: 'saved-food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        dietary_fiber: undefined,
+        saturated_fat: undefined,
+        polyunsaturated_fat: undefined,
+        monounsaturated_fat: undefined,
+        sodium: undefined,
+        sugars: undefined,
+        trans_fat: undefined,
+        potassium: undefined,
+        calcium: undefined,
+        iron: undefined,
+        cholesterol: undefined,
+        vitamin_a: undefined,
+        vitamin_c: undefined,
+        glycemic_index: undefined,
+        custom_nutrients: undefined,
+      });
     });
 
     fireEvent.press(screen.getByText('Add Food'));
 
-    expect(mockAddEntry).toHaveBeenCalledWith({
-      saveFoodPayload: undefined,
-      createEntryPayload: {
-        meal_type_id: 'meal-1',
-        quantity: 1,
-        unit: 'oz',
-        entry_date: '2026-04-23',
-        food_id: 'saved-food-1',
-        variant_id: 'saved-variant-oz',
-      },
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith({
+        saveFoodPayload: undefined,
+        createEntryPayload: {
+          meal_type_id: 'meal-1',
+          quantity: 1,
+          unit: 'oz',
+          entry_date: '2026-04-23',
+          food_id: 'saved-food-1',
+          variant_id: 'saved-variant-oz',
+        },
+      });
     });
     expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
     expect(mockAddEntryAsync).not.toHaveBeenCalled();
@@ -738,9 +785,47 @@ describe('FoodEntryAddScreen', () => {
     const screen = renderScreen({
       item: baseExternalItem,
       date: '2026-04-23',
+      adjustedValues: {
+        name: 'Protein Bar',
+        brand: 'Remote Brand',
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+        fiber: '',
+        saturatedFat: '',
+        sodium: '',
+        sugars: '',
+        transFat: '',
+        potassium: '',
+        calcium: '',
+        iron: '',
+        cholesterol: '',
+        vitaminA: '',
+        vitaminC: '',
+      },
+      adjustedUnitSelection: {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
     });
 
-    fireEvent.press(screen.getByText('Create Draft Unit'));
+    await waitFor(() => {
+      expect(navigation.setParams).toHaveBeenCalledWith({
+        adjustedValues: undefined,
+        adjustedUnitSelection: undefined,
+      });
+    });
+
     fireEvent.press(screen.getByText('Add Food'));
 
     await waitFor(() => {
