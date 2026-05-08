@@ -233,6 +233,10 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   };
 
   const handleClear = () => {
+    if (isWorkoutComplete) {
+      useActiveWorkoutStore.getState().clearWorkout();
+      return;
+    }
     Alert.alert(
       'Clear workout?',
       'This will end the current workout without saving progress.',
@@ -314,9 +318,21 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   //  - ready  → Play (complete the active set, advance + start rest)
   //  - resting → Check (skip rest / mark next ready)
   //  - paused → Play (resume the rest timer)
-  //  - complete → hidden; the X on the left is the only way out
+  //  - complete → filled checkmark to finish and dismiss the bar
   const rightButton = (() => {
-    if (isWorkoutComplete) return null;
+    if (isWorkoutComplete) {
+      return (
+        <Pressable
+          onPress={() => useActiveWorkoutStore.getState().clearWorkout()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Finish workout"
+          className="h-9 w-9 items-center justify-center rounded-full bg-accent-primary"
+        >
+          <Icon name="checkmark" size={20} color="#fff" weight="bold" />
+        </Pressable>
+      );
+    }
     if (restState === 'resting') {
       return (
         <Pressable
