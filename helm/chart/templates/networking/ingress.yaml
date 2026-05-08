@@ -19,7 +19,7 @@ spec:
     {{- toYaml .Values.ingress.tls | nindent 4 }}
   {{- end }}
   rules:
-    {{- $serverPaths := .Values.ingress.serverPaths | default (list "/api" "/uploads") }}
+    {{- $serverPaths := .Values.ingress.serverPaths | default list }}
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:

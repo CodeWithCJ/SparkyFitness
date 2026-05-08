@@ -18,7 +18,7 @@ spec:
   hostnames:
     - {{ .Values.httpRoute.hostname | quote }}
   rules:
-    {{- $serverPaths := .Values.httpRoute.serverPaths | default (list "/api" "/uploads") }}
+    {{- $serverPaths := .Values.httpRoute.serverPaths | default list }}
     {{- range $serverPaths }}
     - matches:
         - path:

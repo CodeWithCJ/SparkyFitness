@@ -159,12 +159,15 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
-  # -- Path prefixes routed to the server service (everything else goes to
-  # frontend). Extend when the backend adds new top-level paths (e.g. /sse,
-  # /ws, /oauth) so you don't have to patch the chart.
-  serverPaths:
-    - /api
-    - /uploads
+  # -- Path prefixes routed directly to the server service. Default empty:
+  # the frontend image's nginx already proxies /api/, /uploads/, /health-data
+  # to the server, so a single rule "/" → frontend is enough. Set this list
+  # only if you want to bypass the frontend nginx hop for specific prefixes.
+  # Example to bypass the frontend for backend traffic:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 httpRoute:
   enabled: false
@@ -173,11 +176,13 @@ httpRoute:
     name: ""
     namespace: ""
     sectionName: ""
-  # -- Path prefixes routed to the server service. Same semantics as
+  # -- Path prefixes routed directly to the server service. Same semantics as
   # ingress.serverPaths.
-  serverPaths:
-    - /api
-    - /uploads
+  # Example:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 # ========================== 4. DEPLOYMENTS / STATEFULSETS ====================
 
