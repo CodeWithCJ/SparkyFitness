@@ -189,6 +189,13 @@ server:
     capabilities:
       drop: [ALL]
   # -- Application secrets (encryption keys, auth tokens)
+  # GitOps caveat: chart-managed generation persists existing values across
+  # upgrades via a Kubernetes API `lookup`. In pure `helm template` mode
+  # (no cluster access — some ArgoCD/Flux setups, offline rendering),
+  # `lookup` returns empty and EACH render produces NEW random values.
+  # Applying that output rotates the keys and renders existing
+  # api_encryption_key-encrypted data unrecoverable. For GitOps,
+  # use externalSecrets.* or set server.secrets.existingSecret.
   secrets:
     # -- Auto-generate random secrets on first install (set false to require explicit values)
     generate: true
@@ -488,6 +495,19 @@ externalDatabase:
     username: ""
     password: ""
     existingSecret: ""
+  # -- NetworkPolicy egress restriction for the external database.
+  # Only relevant when networkPolicy.enabled=true and postgresql.enabled=false.
+  # Set at least one of cidrs / namespaceSelector / podSelector to restrict the
+  # server's egress to the external DB. If all are empty, the chart falls back
+  # to a permissive egress on the DB port (cluster-wide pods + 0.0.0.0/0) for
+  # backward compatibility and emits a warning in NOTES.txt.
+  networkPolicy:
+    # -- Allowed destination CIDRs (e.g. ["10.0.0.5/32"])
+    cidrs: []
+    # -- Allowed destination namespace selector (for in-cluster external DBs)
+    namespaceSelector: {}
+    # -- Allowed destination pod selector (for in-cluster external DBs)
+    podSelector: {}
 
 # ========================== 5. EXTERNAL SECRETS (Advanced) ===================
 # When enabled, secrets are fetched from an external provider (e.g. Vault) via ESO.
