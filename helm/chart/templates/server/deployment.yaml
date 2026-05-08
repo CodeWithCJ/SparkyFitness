@@ -17,6 +17,18 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/server/configmap.yaml") . | sha256sum }}
+        {{- if include "sparkyfitness.createAppSecret" . }}
+        checksum/secret-app: {{ include (print $.Template.BasePath "/server/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if include "sparkyfitness.createAppDbSecret" . }}
+        checksum/secret-appdb: {{ include (print $.Template.BasePath "/secrets/appdb.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if include "sparkyfitness.createOidcSecret" . }}
+        checksum/secret-oidc: {{ include (print $.Template.BasePath "/secrets/oidc.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if include "sparkyfitness.createSmtpSecret" . }}
+        checksum/secret-smtp: {{ include (print $.Template.BasePath "/secrets/smtp.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: server
@@ -185,3 +197,19 @@ spec:
         {{- with .Values.server.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
