@@ -34,9 +34,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
 
       - name: Helm dependency build
         working-directory: helm/chart
@@ -135,9 +137,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
 
       - name: Install kubeconform
         run: |
@@ -196,9 +200,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
 
       - name: Helm dependency build
         working-directory: helm/chart
@@ -239,9 +245,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
 
       - name: Create kind cluster
         uses: helm/kind-action@v1
