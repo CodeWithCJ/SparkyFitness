@@ -63,6 +63,18 @@ config:
   # -- OIDC authentication (OpenID Connect SSO)
   oidc:
     enabled: false
+    # -- NetworkPolicy egress targets for the OIDC provider (TCP/443).
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer (ipBlock, namespaceSelector, podSelector). If empty,
+    # the chart falls back to a permissive egress on port 443 (any destination)
+    # for backward compatibility and emits a NOTES.txt warning.
+    # Example:
+    #   networkPolicy:
+    #     to:
+    #       - ipBlock:
+    #           cidr: 192.0.2.5/32
+    networkPolicy:
+      to: []
     providerSlug: ""
     providerName: ""
     issuerUrl: ""
@@ -87,6 +99,13 @@ config:
   # -- Email / SMTP notifications
   email:
     enabled: false
+    # -- NetworkPolicy egress targets for the SMTP server.
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer. If empty, the chart falls back to a permissive
+    # egress on the SMTP port (any destination) for backward compatibility
+    # and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
     host: ""
     port: 587
     secure: false
@@ -102,6 +121,13 @@ config:
   garmin:
     enabled: false
     isChinaRegion: false
+    # -- NetworkPolicy egress targets for the Garmin Connect API (TCP/443),
+    # applied to the garmin pod itself (not the server).
+    # Only relevant when networkPolicy.enabled=true and garmin.enabled=true.
+    # Each item is a NetworkPolicyPeer. If empty, the chart falls back to a
+    # permissive egress on 443 and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
 
   # -- API key rate limiting (leave empty for app defaults: 100 req / 60s)
   rateLimiting:
@@ -133,6 +159,15 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+  # -- Path prefixes routed directly to the server service. Default empty:
+  # the frontend image's nginx already proxies /api/, /uploads/, /health-data
+  # to the server, so a single rule "/" → frontend is enough. Set this list
+  # only if you want to bypass the frontend nginx hop for specific prefixes.
+  # Example to bypass the frontend for backend traffic:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 httpRoute:
   enabled: false
@@ -141,6 +176,13 @@ httpRoute:
     name: ""
     namespace: ""
     sectionName: ""
+  # -- Path prefixes routed directly to the server service. Same semantics as
+  # ingress.serverPaths.
+  # Example:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 # ========================== 4. DEPLOYMENTS / STATEFULSETS ====================
 
@@ -150,9 +192,16 @@ server:
     repository: codewithcj/sparkyfitness-server
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3010
+  # -- Deployment update strategy. Default `Recreate` is required when the
+  # server PVCs are ReadWriteOnce (default). Switch to `RollingUpdate` only
+  # if the backup/uploads PVCs use a ReadWriteMany StorageClass.
+  strategy:
+    type: Recreate
   livenessProbe:
     httpGet:
       path: /api/health
@@ -168,6 +217,10 @@ server:
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 10
+  # NOTE: CPU limits cause cgroup throttling that often hurts latency more
+  # than it protects neighbors. If your cluster has working ResourceQuotas /
+  # LimitRanges, consider removing `limits.cpu` and keeping only `requests.cpu`.
+  # Memory limit is kept (OOM guard).
   resources:
     requests:
       cpu: 200m
@@ -189,6 +242,13 @@ server:
     capabilities:
       drop: [ALL]
   # -- Application secrets (encryption keys, auth tokens)
+  # GitOps caveat: chart-managed generation persists existing values across
+  # upgrades via a Kubernetes API `lookup`. In pure `helm template` mode
+  # (no cluster access — some ArgoCD/Flux setups, offline rendering),
+  # `lookup` returns empty and EACH render produces NEW random values.
+  # Applying that output rotates the keys and renders existing
+  # api_encryption_key-encrypted data unrecoverable. For GitOps,
+  # use externalSecrets.* or set server.secrets.existingSecret.
   secrets:
     # -- Auto-generate random secrets on first install (set false to require explicit values)
     generate: true
@@ -238,17 +298,38 @@ server:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
-# -- Frontend (nginx, runs as non-root on port 8080)
+# -- Frontend (nginx, runs as non-root)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
+# The container listens on port 80 because the upstream image's nginx template
+# has `listen 80;` hardcoded. To bind 80 as non-root with cap-drop ALL +
+# allowPrivilegeEscalation: false, NET_BIND_SERVICE is added back via the
+# pod spec (see frontend.containerSecurityContext.capabilities.add).
 frontend:
   image:
     repository: codewithcj/sparkyfitness-frontend
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
-  port: 8080
+  port: 80
+  # -- nginx rate limit zone for /api/auth/ endpoints (passed as NGINX_RATE_LIMIT
+  # to the image entrypoint, which envsubsts it into the rendered nginx config).
+  # Format: "<requests>r/s" or "<requests>r/m".
+  rateLimit: 5r/s
   livenessProbe:
     httpGet:
       path: /
@@ -286,26 +367,65 @@ frontend:
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-      add: []
+      # -- NET_BIND_SERVICE is required because nginx in the upstream image
+      # binds port 80. The file capability on the nginx binary is stripped
+      # at execve under allowPrivilegeEscalation: false (NoNewPrivs=1), so
+      # the cap must be granted via the pod spec instead.
+      add: [NET_BIND_SERVICE]
   service:
     type: ClusterIP
     annotations: {}
+  # -- NetworkPolicy ingress restriction for the frontend pod.
+  # Only relevant when networkPolicy.enabled=true. Each item is a
+  # NetworkPolicyPeer (namespaceSelector, podSelector, ipBlock).
+  # If empty, the chart falls back to a permissive ingress (any source on
+  # frontend.port) for backward compatibility and emits a NOTES.txt warning.
+  # Example for ingress-nginx in its own namespace:
+  #   networkPolicy:
+  #     from:
+  #       - namespaceSelector:
+  #           matchLabels:
+  #             kubernetes.io/metadata.name: ingress-nginx
+  networkPolicy:
+    from: []
   # -- Extra environment variables injected into the frontend container (key: value)
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
   extraEnvFrom: []
+  # -- Extra volumes added to the frontend pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the frontend container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Garmin microservice (python, USER daemon UID 1)
-# Only deployed when config.garmin.enabled=true
+# Only deployed when config.garmin.enabled=true.
+# NOTE: The upstream image bakes USER=daemon (UID 1). Some Pod Security
+# admission controllers (Kyverno/OPA Gatekeeper enforcing PSS `restricted`
+# strictly) block UIDs < 1000. If your cluster does, override the image
+# (`garmin.image.repository`) with one that uses a higher UID, or relax
+# the policy for this namespace.
 garmin:
   image:
     repository: codewithcj/sparkyfitness-garmin
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8000
@@ -343,10 +463,25 @@ garmin:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the garmin container
   extraEnvFrom: []
+  # -- Extra volumes added to the garmin pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the garmin container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
@@ -488,6 +623,19 @@ externalDatabase:
     username: ""
     password: ""
     existingSecret: ""
+  # -- NetworkPolicy egress restriction for the external database.
+  # Only relevant when networkPolicy.enabled=true and postgresql.enabled=false.
+  # Set at least one of cidrs / namespaceSelector / podSelector to restrict the
+  # server's egress to the external DB. If all are empty, the chart falls back
+  # to a permissive egress on the DB port (cluster-wide pods + 0.0.0.0/0) for
+  # backward compatibility and emits a warning in NOTES.txt.
+  networkPolicy:
+    # -- Allowed destination CIDRs (e.g. ["10.0.0.5/32"])
+    cidrs: []
+    # -- Allowed destination namespace selector (for in-cluster external DBs)
+    namespaceSelector: {}
+    # -- Allowed destination pod selector (for in-cluster external DBs)
+    podSelector: {}
 
 # ========================== 5. EXTERNAL SECRETS (Advanced) ===================
 # When enabled, secrets are fetched from an external provider (e.g. Vault) via ESO.
@@ -496,6 +644,9 @@ externalSecrets:
   enabled: false
   # -- ESO CRD API version. Use "v1beta1" for ESO < 0.10.0, "v1" for >= 0.10.0
   apiVersion: v1
+  # -- ExternalSecret refreshInterval (Go duration, e.g. "1h", "15m", "0" to disable polling).
+  # Applied to all chart-managed ExternalSecrets (app, appdb, oidc, postgres, smtp).
+  refreshInterval: 1h
   secretStore:
     name: sparkyfitness
     vaultPath: sparkyfitness
@@ -505,8 +656,22 @@ externalSecrets:
       name: ""
       key: ""
     auth:
+      # -- Auth method: one of `kubernetes` (default), `appRole`, `token`.
+      method: kubernetes
+      # --- method=kubernetes ---
       mountPath: kubernetes
       role: external-secrets
+      # --- method=appRole ---
+      appRole:
+        path: approle
+        roleId: ""
+        secretRef:
+          name: ""
+          key: ""
+      # --- method=token ---
+      tokenSecretRef:
+        name: ""
+        key: ""
   app:
     enabled: false
     remoteKey: app_secret

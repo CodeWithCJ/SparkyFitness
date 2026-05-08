@@ -52,6 +52,8 @@ spec:
               value: {{ include "sparkyfitness.fullname" . }}-server
             - name: SPARKY_FITNESS_SERVER_PORT
               value: {{ .Values.server.port | quote }}
+            - name: NGINX_RATE_LIMIT
+              value: {{ .Values.frontend.rateLimit | default "5r/s" | quote }}
             {{- range $k, $v := .Values.frontend.extraEnv }}
             - name: {{ $k }}
               value: {{ $v | quote }}
@@ -70,9 +72,12 @@ spec:
             - name: nginx-cache
               mountPath: /var/cache/nginx
             - name: nginx-run
-              mountPath: /var/run
+              mountPath: /run
             - name: nginx-conf
               mountPath: /etc/nginx/conf.d
+            {{- with .Values.frontend.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
@@ -82,3 +87,22 @@ spec:
           emptyDir: {}
         - name: nginx-conf
           emptyDir: {}
+        {{- with .Values.frontend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

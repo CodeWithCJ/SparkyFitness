@@ -40,16 +40,25 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/*
 Build a container image string with optional global.imageRegistry prefix.
+If image.digest is set, it takes precedence over image.tag and produces
+`<repo>@<digest>` (or `<registry>/<repo>@<digest>`).
 Usage: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
 */}}
 {{- define "sparkyfitness.image" -}}
 {{- $registry := .global.imageRegistry | default "" -}}
 {{- $repo := .image.repository -}}
+{{- $digest := .image.digest | default "" -}}
 {{- $tag := .image.tag | default .appVersion -}}
-{{- if $registry -}}
-{{- printf "%s/%s:%s" $registry $repo $tag -}}
+{{- $ref := "" -}}
+{{- if $digest -}}
+{{- $ref = printf "%s@%s" $repo $digest -}}
 {{- else -}}
-{{- printf "%s:%s" $repo $tag -}}
+{{- $ref = printf "%s:%s" $repo $tag -}}
+{{- end -}}
+{{- if $registry -}}
+{{- printf "%s/%s" $registry $ref -}}
+{{- else -}}
+{{- $ref -}}
 {{- end -}}
 {{- end }}
 
@@ -261,6 +270,21 @@ Whether the chart should create the database credentials secret.
 {{- end -}}
 {{- if and (not $dbAuth.existingSecret) (not (and .Values.externalSecrets.enabled .Values.externalSecrets.postgres.enabled)) -}}
 true
+{{- end -}}
+{{- end }}
+
+{{/* ================================================================== */}}
+{{/* Routing validation                                                  */}}
+{{/* ================================================================== */}}
+
+{{/*
+Fail when both Ingress and HTTPRoute are enabled — the chart routes
+identical paths to identical backends in both, which causes duplicate
+routing and is almost always a misconfiguration.
+*/}}
+{{- define "sparkyfitness.validateRouting" -}}
+{{- if and .Values.ingress.enabled .Values.httpRoute.enabled -}}
+{{- fail "ingress.enabled and httpRoute.enabled cannot both be true; choose one routing approach" -}}
 {{- end -}}
 {{- end }}
 

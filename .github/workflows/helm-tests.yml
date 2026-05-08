@@ -1,0 +1,299 @@
+name: Helm Chart Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "helm/**"
+      - ".github/workflows/helm-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "helm/**"
+      - ".github/workflows/helm-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HELM_VERSION: v3.16.3
+  KUBECONFORM_VERSION: v0.6.7
+  KIND_VERSION: v0.24.0
+  K8S_NODE_IMAGE: kindest/node:v1.31.0
+
+jobs:
+  lint:
+    name: Lint & Render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Helm
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
+
+      - name: Helm dependency build
+        working-directory: helm/chart
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
+
+      - name: Helm lint
+        run: helm lint helm/chart
+
+      - name: Render — defaults (bundled postgres)
+        run: helm template t helm/chart > /dev/null
+
+      - name: Render — external DB with NetworkPolicy
+        run: |
+          helm template t helm/chart \
+            --set postgresql.enabled=false \
+            --set externalDatabase.host=db.example.com \
+            --set externalDatabase.database=sf \
+            --set externalDatabase.auth.username=u \
+            --set externalDatabase.auth.password=p \
+            --set networkPolicy.enabled=true \
+            --set 'externalDatabase.networkPolicy.cidrs[0]=10.0.0.5/32' \
+            > /dev/null
+
+      - name: Render — full feature surface
+        run: |
+          helm template t helm/chart \
+            --set networkPolicy.enabled=true \
+            --set 'frontend.networkPolicy.from[0].namespaceSelector.matchLabels.kubernetes\.io/metadata\.name=ingress-nginx' \
+            --set config.oidc.enabled=true \
+            --set config.oidc.providerSlug=s \
+            --set config.oidc.providerName=n \
+            --set config.oidc.issuerUrl=https://x \
+            --set config.oidc.secrets.clientId=c \
+            --set config.oidc.secrets.clientSecret=s \
+            --set config.email.enabled=true \
+            --set config.email.host=smtp \
+            --set config.email.from=a@b \
+            --set config.email.secrets.username=u \
+            --set config.email.secrets.password=p \
+            --set config.garmin.enabled=true \
+            --set ingress.enabled=true \
+            --set server.podDisruptionBudget.enabled=true \
+            --set server.podDisruptionBudget.minAvailable=1 \
+            --set 'server.image.digest=sha256:0000000000000000000000000000000000000000000000000000000000000000' \
+            > /dev/null
+
+      - name: Render — ExternalSecrets with appRole auth
+        run: |
+          helm template t helm/chart \
+            --set externalSecrets.enabled=true \
+            --set externalSecrets.app.enabled=true \
+            --set externalSecrets.appdb.enabled=true \
+            --set externalSecrets.refreshInterval=15m \
+            --set externalSecrets.secretStore.vaultServer=https://v \
+            --set externalSecrets.secretStore.auth.method=appRole \
+            --set externalSecrets.secretStore.auth.appRole.roleId=xxx \
+            --set externalSecrets.secretStore.auth.appRole.secretRef.name=approle-secret \
+            --set externalSecrets.secretStore.auth.appRole.secretRef.key=secretId \
+            > /dev/null
+
+      - name: Render — must fail when ingress + httpRoute both enabled
+        run: |
+          if helm template t helm/chart \
+              --set ingress.enabled=true \
+              --set httpRoute.enabled=true \
+              --set httpRoute.parentRef.name=gw \
+              --set httpRoute.hostname=x.example \
+              > /dev/null 2>&1; then
+            echo "::error::Expected mutual-exclusion fail did not trigger"
+            exit 1
+          fi
+
+      - name: Render — must fail on unknown SecretStore auth method
+        run: |
+          if helm template t helm/chart \
+              --set externalSecrets.enabled=true \
+              --set externalSecrets.secretStore.vaultServer=https://v \
+              --set externalSecrets.secretStore.auth.method=ldap \
+              > /dev/null 2>&1; then
+            echo "::error::Expected auth-method validation fail did not trigger"
+            exit 1
+          fi
+
+  kubeconform:
+    name: Schema validation (k8s ${{ matrix.k8s }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s: ["1.28.0", "1.29.0", "1.30.0", "1.31.0"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Helm
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
+
+      - name: Install kubeconform
+        run: |
+          curl -sSLo kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar xf kubeconform.tar.gz
+          sudo mv kubeconform /usr/local/bin/
+          kubeconform -v
+
+      - name: Helm dependency build
+        working-directory: helm/chart
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
+
+      - name: Render full feature surface
+        run: |
+          helm template t helm/chart \
+            --set networkPolicy.enabled=true \
+            --set ingress.enabled=true \
+            --set config.oidc.enabled=true \
+            --set config.oidc.providerSlug=s \
+            --set config.oidc.providerName=n \
+            --set config.oidc.issuerUrl=https://x \
+            --set config.oidc.secrets.clientId=c \
+            --set config.oidc.secrets.clientSecret=s \
+            --set config.email.enabled=true \
+            --set config.email.host=smtp \
+            --set config.email.from=a@b \
+            --set config.email.secrets.username=u \
+            --set config.email.secrets.password=p \
+            --set config.garmin.enabled=true \
+            --set externalSecrets.enabled=true \
+            --set externalSecrets.app.enabled=true \
+            --set externalSecrets.secretStore.vaultServer=https://v \
+            --set server.podDisruptionBudget.enabled=true \
+            --set server.podDisruptionBudget.minAvailable=1 \
+            > /tmp/manifests.yaml
+
+      - name: Validate against k8s ${{ matrix.k8s }}
+        run: |
+          kubeconform \
+            -kubernetes-version ${{ matrix.k8s }} \
+            -strict \
+            -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            /tmp/manifests.yaml
+
+  kube-linter:
+    name: kube-linter
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Helm
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
+
+      - name: Helm dependency build
+        working-directory: helm/chart
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
+
+      - name: Render
+        run: helm template t helm/chart > /tmp/manifests.yaml
+
+      - name: Install kube-linter
+        run: |
+          curl -sSLo kube-linter.tar.gz \
+            https://github.com/stackrox/kube-linter/releases/download/v0.7.5/kube-linter-linux.tar.gz
+          tar xf kube-linter.tar.gz
+          sudo mv kube-linter /usr/local/bin/
+          kube-linter version
+
+      - name: Run kube-linter (informational)
+        run: |
+          {
+            echo "## kube-linter findings (informational)"
+            echo
+            echo '```'
+            kube-linter lint /tmp/manifests.yaml 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Always exit 0 — kube-linter is advisory, not gating.
+          kube-linter lint /tmp/manifests.yaml || true
+
+  install-test:
+    name: Install on kind cluster
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Helm
+        run: |
+          curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version --short
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.K8S_NODE_IMAGE }}
+          cluster_name: sparkyfitness-ci
+
+      - name: Helm dependency build
+        working-directory: helm/chart
+        run: |
+          helm repo add helmforge https://repo.helmforge.dev
+          helm dependency build
+
+      - name: Install chart
+        run: |
+          helm install sparkyfitness helm/chart \
+            --create-namespace \
+            --namespace sparkyfitness \
+            --wait \
+            --timeout 5m \
+            -f helm/chart/ci-values.yaml
+
+      - name: Show release status
+        if: always()
+        run: |
+          kubectl -n sparkyfitness get all
+          kubectl -n sparkyfitness get pvc
+
+      - name: Helm test
+        run: helm test sparkyfitness -n sparkyfitness --logs
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== Events ==="
+          kubectl -n sparkyfitness get events --sort-by .lastTimestamp || true
+          echo "=== Pods ==="
+          kubectl -n sparkyfitness describe pods || true
+          echo "=== Server logs (current) ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=server --all-containers --tail=200 || true
+          echo "=== Frontend logs (current, full) ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=frontend --all-containers --tail=-1 || true
+          echo "=== Frontend logs (previous instance, full) ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=frontend --all-containers --previous --tail=-1 || true
+          echo "=== Postgres logs ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/name=postgresql --all-containers --tail=200 || true
