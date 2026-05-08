@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -132,7 +132,7 @@ jobs:
         k8s: ["1.28.0", "1.29.0", "1.30.0", "1.31.0"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -193,7 +193,7 @@ jobs:
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -209,12 +209,25 @@ jobs:
       - name: Render
         run: helm template t helm/chart > /tmp/manifests.yaml
 
-      - name: Run kube-linter
-        uses: stackrox/kube-linter-action@v1.0.5
-        with:
-          directory: /tmp/manifests.yaml
-          format: plain
-        continue-on-error: true
+      - name: Install kube-linter
+        run: |
+          curl -sSLo kube-linter.tar.gz \
+            https://github.com/stackrox/kube-linter/releases/download/v0.7.5/kube-linter-linux.tar.gz
+          tar xf kube-linter.tar.gz
+          sudo mv kube-linter /usr/local/bin/
+          kube-linter version
+
+      - name: Run kube-linter (informational)
+        run: |
+          {
+            echo "## kube-linter findings (informational)"
+            echo
+            echo '```'
+            kube-linter lint /tmp/manifests.yaml 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Always exit 0 — kube-linter is advisory, not gating.
+          kube-linter lint /tmp/manifests.yaml || true
 
   install-test:
     name: Install on kind cluster
@@ -223,7 +236,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Helm
         uses: azure/setup-helm@v4
