@@ -47,6 +47,7 @@ const ICON_MAP = {
   'info-circle': { sf: 'info.circle', ion: 'information-circle-outline' },
   'wrench': { sf: 'wrench', ion: 'build-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
+  'wifi': { sf: 'wifi', ion: 'wifi-outline' },
 
   // Food
   'food': { sf: 'fork.knife', ion: 'restaurant' },
@@ -88,9 +89,20 @@ const ICON_MAP = {
   'chart-bar': { sf: 'chart.bar.fill', ion: 'bar-chart' },
   'sync': { sf: 'arrow.triangle.2.circlepath', ion: 'sync' },
   'book': { sf: 'book.fill', ion: 'book' },
+  'document-text': { sf: 'doc.text', ion: 'document-text-outline' },
+  'flame': { sf: 'flame', ion: 'flame-outline' },
   'scan': { sf: 'barcode.viewfinder', ion: 'barcode-outline' },
   'flashlight-on': { sf: 'flashlight.on.fill', ion: 'flash' },
   'flashlight-off': { sf: 'flashlight.off.fill', ion: 'flash-off' },
+  
+  // Settings
+  'server': { sf: 'server.rack', ion: 'server-outline' },
+  'health-data-sync': { sf: 'heart', ion: 'heart-outline' },
+  'calorie-settings': { sf: 'flame', ion: 'flame-outline' },
+  'food-search-settings': { sf: 'magnifyingglass', ion: 'search-outline' },
+  'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
+  'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
+  'about': { sf: 'info.circle', ion: 'information-circle-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
