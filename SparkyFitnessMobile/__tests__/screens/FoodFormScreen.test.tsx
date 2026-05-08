@@ -10,6 +10,7 @@ import { setPendingMealIngredientSelection } from '../../src/services/mealBuilde
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
+const mockFoodForm = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -36,6 +37,13 @@ jest.mock('../../src/hooks/useAddFoodEntry', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+}));
+
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: jest.fn(),
+    invalidateQueries: jest.fn(),
+  }),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -86,12 +94,14 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
 jest.mock('../../src/components/CalendarSheet', () => {
   const React = require('react');
   const { View } = require('react-native');
+  const MockCalendarSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
+    return <View testID="calendar-sheet" />;
+  });
+  MockCalendarSheet.displayName = 'MockCalendarSheet';
   return {
     __esModule: true,
-    default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
-      return <View testID="calendar-sheet" />;
-    }),
+    default: MockCalendarSheet,
   };
 });
 
@@ -102,14 +112,18 @@ jest.mock('../../src/components/FoodForm', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ onSubmit, children, submitLabel = 'Add Food' }: any) => (
-      <View>
-        {children}
-        <Pressable onPress={() => onSubmit(mockSubmittedFoodFormData)}>
-          <Text>{submitLabel}</Text>
-        </Pressable>
-      </View>
-    ),
+    default: (props: any) => {
+      mockFoodForm(props);
+      const { onSubmit, children, submitLabel = 'Add Food' } = props;
+      return (
+        <View>
+          {children}
+          <Pressable onPress={() => onSubmit(mockSubmittedFoodFormData)}>
+            <Text>{submitLabel}</Text>
+          </Pressable>
+        </View>
+      );
+    },
   };
 });
 
@@ -150,6 +164,7 @@ describe('FoodFormScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFoodForm.mockClear();
     mockSubmittedFoodFormData = {
       name: 'Custom Meal Food',
       brand: 'Brand Co',
@@ -295,6 +310,43 @@ describe('FoodFormScreen', () => {
     expect(screen.getByText('Save to Database')).toBeTruthy();
     expect(screen.getByText('Barcode will be saved.')).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
+  });
+
+  it('enables auto scale for meal-builder and adjust-nutrition flows only', () => {
+    renderScreen({
+      mode: 'create-food',
+      barcode: '0123456789',
+    });
+
+    const createModeCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(createModeCall?.showAutoScaleNutrition).toBe(false);
+
+    renderScreen({
+      mode: 'create-food',
+      pickerMode: 'meal-builder',
+    });
+
+    const mealBuilderCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(mealBuilderCall?.showAutoScaleNutrition).toBe(true);
+
+    renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+    });
+
+    const adjustModeCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
+    expect(adjustModeCall?.submitLabel).toBe('Update Values');
   });
 
   it('blocks submit when the name is missing', () => {

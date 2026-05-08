@@ -39,6 +39,7 @@ describe('FoodForm', () => {
   it('scales nutrition values when auto scale is enabled and serving size changes', () => {
     const screen = render(
       <FoodForm
+        showAutoScaleNutrition
         initialValues={{
           name: 'Greek Yogurt',
           servingSize: '100',
@@ -65,6 +66,7 @@ describe('FoodForm', () => {
   it('leaves nutrition values unchanged when auto scale is disabled', () => {
     const screen = render(
       <FoodForm
+        showAutoScaleNutrition
         initialValues={{
           name: 'Greek Yogurt',
           servingSize: '100',
@@ -84,6 +86,25 @@ describe('FoodForm', () => {
     expect(screen.getByDisplayValue('10')).toBeTruthy();
     expect(screen.getByDisplayValue('8')).toBeTruthy();
     expect(screen.getByDisplayValue('4')).toBeTruthy();
+  });
+
+  it('hides auto scale by default', () => {
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Auto Scale Nutrition')).toBeNull();
   });
 
   it('passes grouped serving-unit sections to the picker', () => {

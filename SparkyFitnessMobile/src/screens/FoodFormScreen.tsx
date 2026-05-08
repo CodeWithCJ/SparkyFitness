@@ -368,6 +368,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         isSubmitting={isSubmitting}
         initialValues={initialFood}
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
+        showAutoScaleNutrition={isMealBuilderMode}
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
@@ -509,6 +510,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         onSubmit={handleSubmit}
         initialValues={initialValues}
         submitLabel="Update Values"
+        showAutoScaleNutrition
       >
         {canUpdateVariant && (
           <View className="bg-surface rounded-xl p-4 shadow-sm">

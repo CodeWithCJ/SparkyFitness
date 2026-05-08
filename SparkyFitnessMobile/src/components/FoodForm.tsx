@@ -36,6 +36,7 @@ export interface FoodFormProps {
   onServingChange?: (servingSize: string, servingUnit: string) => void;
   submitLabel?: string;
   isSubmitting?: boolean;
+  showAutoScaleNutrition?: boolean;
   children?: React.ReactNode;
 }
 
@@ -107,6 +108,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onServingChange,
   submitLabel = 'Add Food',
   isSubmitting = false,
+  showAutoScaleNutrition = false,
   children,
 }) => {
   const [form, setForm] = useState<FoodFormData>({ ...EMPTY_FORM, ...initialValues });
@@ -276,16 +278,18 @@ const FoodForm: React.FC<FoodFormProps> = ({
             </View>
           </View>
 
-          <View className="flex-row items-center justify-between mt-1.5">
-            <Text className="text-text-secondary text-base">Auto Scale Nutrition</Text>
-            <Switch
-              accessibilityLabel="Auto Scale Nutrition"
-              value={autoScaleNutrition}
-              onValueChange={setAutoScaleNutrition}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
+          {showAutoScaleNutrition ? (
+            <View className="flex-row items-center justify-between mt-1.5">
+              <Text className="text-text-secondary text-base">Auto Scale Nutrition</Text>
+              <Switch
+                accessibilityLabel="Auto Scale Nutrition"
+                value={autoScaleNutrition}
+                onValueChange={setAutoScaleNutrition}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          ) : null}
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
