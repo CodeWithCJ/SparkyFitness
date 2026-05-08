@@ -282,9 +282,11 @@ jobs:
           kubectl -n sparkyfitness get events --sort-by .lastTimestamp || true
           echo "=== Pods ==="
           kubectl -n sparkyfitness describe pods || true
-          echo "=== Server logs ==="
+          echo "=== Server logs (current) ==="
           kubectl -n sparkyfitness logs -l app.kubernetes.io/component=server --all-containers --tail=200 || true
-          echo "=== Frontend logs ==="
-          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=frontend --all-containers --tail=100 || true
+          echo "=== Frontend logs (current, full) ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=frontend --all-containers --tail=-1 || true
+          echo "=== Frontend logs (previous instance, full) ==="
+          kubectl -n sparkyfitness logs -l app.kubernetes.io/component=frontend --all-containers --previous --tail=-1 || true
           echo "=== Postgres logs ==="
           kubectl -n sparkyfitness logs -l app.kubernetes.io/name=postgresql --all-containers --tail=200 || true
