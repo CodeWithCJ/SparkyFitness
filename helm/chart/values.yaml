@@ -159,6 +159,12 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+  # -- Path prefixes routed to the server service (everything else goes to
+  # frontend). Extend when the backend adds new top-level paths (e.g. /sse,
+  # /ws, /oauth) so you don't have to patch the chart.
+  serverPaths:
+    - /api
+    - /uploads
 
 httpRoute:
   enabled: false
@@ -167,6 +173,11 @@ httpRoute:
     name: ""
     namespace: ""
     sectionName: ""
+  # -- Path prefixes routed to the server service. Same semantics as
+  # ingress.serverPaths.
+  serverPaths:
+    - /api
+    - /uploads
 
 # ========================== 4. DEPLOYMENTS / STATEFULSETS ====================
 
@@ -294,8 +305,11 @@ server:
   tolerations: []
   topologySpreadConstraints: []
 
-# -- Frontend (nginx, runs as non-root on port 8080)
+# -- Frontend (nginx, runs as non-root)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
+# The container listens on port 80 because the upstream image's nginx template
+# has `listen 80;` hardcoded. nginx binds 80 even under cap-drop ALL because
+# the nginx binary in alpine has cap_net_bind_service as a file capability.
 frontend:
   image:
     repository: codewithcj/sparkyfitness-frontend
@@ -305,7 +319,11 @@ frontend:
     digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
-  port: 8080
+  port: 80
+  # -- nginx rate limit zone for /api/auth/ endpoints (passed as NGINX_RATE_LIMIT
+  # to the image entrypoint, which envsubsts it into the rendered nginx config).
+  # Format: "<requests>r/s" or "<requests>r/m".
+  rateLimit: 5r/s
   livenessProbe:
     httpGet:
       path: /
@@ -364,6 +382,10 @@ frontend:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
   extraEnvFrom: []
+  # -- Extra volumes added to the frontend pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the frontend container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
@@ -431,6 +453,10 @@ garmin:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the garmin container
   extraEnvFrom: []
+  # -- Extra volumes added to the garmin pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the garmin container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
