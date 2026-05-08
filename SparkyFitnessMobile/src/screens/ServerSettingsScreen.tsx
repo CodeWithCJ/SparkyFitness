@@ -235,7 +235,8 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
             <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <Pressable
               onPress={() => showConfigMenu(activeConfig)}
-              accessibilityLabel={`${isConnected ? 'Connected' : 'Connection failed'}. Options for ${activeConfig.url}`}
+              accessibilityLabel={`Options for ${activeConfig.url}`}
+              accessibilityHint={isConnected ? 'Connected' : 'Connection failed'}
               accessibilityRole="button"
               className="flex-row items-center"
             >

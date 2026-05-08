@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCSSVariable } from 'uniwind';
 import { useServerConnection, useServerConfigs, usePreferences, queryClient } from '../hooks';
-import ConnectionStatus from '../components/ConnectionStatus';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import * as Application from 'expo-application';
-import Icon from '../components/Icon';
 import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { loadLastSyncedTime } from '../services/storage';
+import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -35,6 +38,51 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
   const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      loadLastSyncedTime().then((time) => {
+        if (!cancelled) setLastSyncedTime(time);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const syncSubtitle = lastSyncedTime
+    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
+    : 'Never synced';
+
+  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories] = useCSSVariable([
+    '--color-text-success',
+    '--color-bg-danger',
+    '--color-cat-slate',
+    '--color-cat-pink',
+    '--color-cat-violet',
+    '--color-cat-orange',
+    '--color-calories',
+  ]) as [string, string, string, string, string, string, string];
+
+  const serverSubtitle = activeConfig ? (
+    <View className="flex-row items-center">
+      <View
+        className="w-2 h-2 rounded-full mr-2"
+        style={{ backgroundColor: isConnected ? success : danger }}
+      />
+      <Text
+        className="text-sm text-text-secondary flex-1"
+        numberOfLines={1}
+        ellipsizeMode="middle"
+      >
+        {activeConfig.url}
+      </Text>
+    </View>
+  ) : (
+    'Tap to add a server'
+  );
 
   const handleShareDiagnosticReport = async (): Promise<void> => {
     setIsSharing(true);
@@ -71,107 +119,74 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 130 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
         <View className="flex-1 p-4 pb-20">
-          <TouchableOpacity
-            className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
+          <SettingsRow
+            icon="server"
+            title="Server"
+            subtitle={serverSubtitle}
             onPress={() => navigation.navigate('ServerSettings')}
-            accessibilityLabel="Server settings"
-            accessibilityRole="button"
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-semibold text-text-primary">Server</Text>
-              <ConnectionStatus
-                isConnected={isConnected}
-                hasConfig={!!activeConfig}
-                variant="inline"
-              />
-            </View>
-            {activeConfig ? (
-              <View className="flex-row items-center justify-between mt-2">
-                <Text
-                  className="text-sm text-text-secondary shrink mr-2"
-                  numberOfLines={1}
-                  ellipsizeMode="middle"
-                >
-                  {activeConfig.url}
-                </Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </View>
-            ) : (
-              <View className="flex-row items-center justify-between mt-2">
-                <Text className="text-sm text-text-secondary">Tap to add a server</Text>
-                <Icon name="chevron-forward" size={20} color="#999" />
-              </View>
-            )}
-          </TouchableOpacity>
+            iconColor={catSlate}
+            accessibilityLabel={
+              activeConfig
+                ? `Server settings. ${isConnected ? 'Connected' : 'Connection failed'}.`
+                : 'Server settings. No server configured.'
+            }
+          />
 
           <SectionErrorBoundary sectionName="Settings">
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            <SettingsRow
+              icon="health-data-sync"
+              title="Health Data Sync"
+              subtitle={syncSubtitle}
               onPress={() => navigation.navigate('Sync')}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-text-primary">Health Data Sync</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
+              iconColor={catPink}
+            />
 
             {isConnected && (
-              <View className="bg-surface rounded-xl mb-4 shadow-sm">
-                <TouchableOpacity
-                  className="p-4 flex-row items-center justify-between border-b border-border-subtle"
+              <SettingsRowGroup>
+                <SettingsRow
+                  icon="calorie-settings"
+                  title="Calorie Settings"
                   onPress={() => navigation.navigate('CalorieSettings')}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
-                  <Icon name="chevron-forward" size={20} color="#999" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="p-4 flex-row items-center justify-between"
+                  iconColor={catCalories}
+                />
+                <SettingsRow
+                  icon="food-search-settings"
+                  title="Food Search Settings"
                   onPress={() => navigation.navigate('FoodSettings')}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
-                  <Icon name="chevron-forward" size={20} color="#999" />
-                </TouchableOpacity>
-              </View>
+                  iconColor={catViolet}
+                />
+              </SettingsRowGroup>
             )}
 
             <AppearanceSettings />
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-              onPress={() => navigation.navigate('Logs')}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-text-primary">View Logs</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+
+            <SettingsRowGroup>
+              <SettingsRow
+                icon="document-text"
+                title="View Logs"
+                onPress={() => navigation.navigate('Logs')}
+                iconColor={catOrange}
+              />
+              <SettingsRow
+                icon="info-circle"
+                title="About"
+                onPress={() => navigation.navigate('About')}
+                iconColor={catOrange}
+              />
+            </SettingsRowGroup>
+
+            <SettingsRow
+              icon="share"
+              title="Share Diagnostic Report"
               onPress={handleShareDiagnosticReport}
-              activeOpacity={0.7}
               disabled={isSharing}
-            >
-              <Text className="text-base font-semibold text-text-primary">Share Diagnostic Report</Text>
-              {isSharing ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <Icon name="share" size={20} color="#999" />
-              )}
-            </TouchableOpacity>
+              iconColor={catSlate}
+              rightAccessory={isSharing ? <ActivityIndicator size="small" /> : undefined}
+            />
             <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
               Exports a local diagnostic report (app version, sync status, logs).{'\n'}
               No personal health or food data is included. Nothing is sent automatically.
             </Text>
-
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-              onPress={() => navigation.navigate('About')}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-text-primary">About</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
 
             {__DEV__ &&
               (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
