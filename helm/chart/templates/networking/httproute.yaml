@@ -1,3 +1,4 @@
+{{- include "sparkyfitness.validateRouting" . }}
 {{- if .Values.httpRoute.enabled }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -7,8 +8,10 @@ metadata:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
 spec:
   parentRefs:
-    - name: {{ .Values.httpRoute.parentRef.name }}
-      namespace: {{ .Values.httpRoute.parentRef.namespace }}
+    - name: {{ required "httpRoute.parentRef.name is required when httpRoute.enabled=true" .Values.httpRoute.parentRef.name }}
+      {{- with .Values.httpRoute.parentRef.namespace }}
+      namespace: {{ . }}
+      {{- end }}
       {{- with .Values.httpRoute.parentRef.sectionName }}
       sectionName: {{ . }}
       {{- end }}
