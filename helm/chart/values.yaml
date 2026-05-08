@@ -201,6 +201,10 @@ server:
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 10
+  # NOTE: CPU limits cause cgroup throttling that often hurts latency more
+  # than it protects neighbors. If your cluster has working ResourceQuotas /
+  # LimitRanges, consider removing `limits.cpu` and keeping only `requests.cpu`.
+  # Memory limit is kept (OOM guard).
   resources:
     requests:
       cpu: 200m
@@ -604,6 +608,9 @@ externalSecrets:
   enabled: false
   # -- ESO CRD API version. Use "v1beta1" for ESO < 0.10.0, "v1" for >= 0.10.0
   apiVersion: v1
+  # -- ExternalSecret refreshInterval (Go duration, e.g. "1h", "15m", "0" to disable polling).
+  # Applied to all chart-managed ExternalSecrets (app, appdb, oidc, postgres, smtp).
+  refreshInterval: 1h
   secretStore:
     name: sparkyfitness
     vaultPath: sparkyfitness
@@ -613,8 +620,22 @@ externalSecrets:
       name: ""
       key: ""
     auth:
+      # -- Auth method: one of `kubernetes` (default), `appRole`, `token`.
+      method: kubernetes
+      # --- method=kubernetes ---
       mountPath: kubernetes
       role: external-secrets
+      # --- method=appRole ---
+      appRole:
+        path: approle
+        roleId: ""
+        secretRef:
+          name: ""
+          key: ""
+      # --- method=token ---
+      tokenSecretRef:
+        name: ""
+        key: ""
   app:
     enabled: false
     remoteKey: app_secret
