@@ -15,8 +15,18 @@ spec:
       app.kubernetes.io/component: frontend
   policyTypes: [Ingress, Egress]
   ingress:
+    {{- $frontendFrom := (.Values.frontend.networkPolicy | default dict).from | default list }}
+    {{- if gt (len $frontendFrom) 0 }}
+    - from:
+        {{- toYaml $frontendFrom | nindent 8 }}
+      ports:
+        - port: {{ .Values.frontend.port }}
+    {{- else }}
+    # Legacy permissive ingress — allows any source on frontend.port.
+    # Set frontend.networkPolicy.from to restrict.
     - ports:
         - port: {{ .Values.frontend.port }}
+    {{- end }}
   egress:
     # → server
     - to:
@@ -106,13 +116,31 @@ spec:
     {{- end }}
     {{- if .Values.config.oidc.enabled }}
     # → OIDC provider (HTTPS)
+    {{- $oidcTo := (.Values.config.oidc.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $oidcTo) 0 }}
+    - to:
+        {{- toYaml $oidcTo | nindent 8 }}
+      ports:
+        - port: 443
+    {{- else }}
+    # Legacy permissive egress — set config.oidc.networkPolicy.to to restrict.
     - ports:
         - port: 443
     {{- end }}
+    {{- end }}
     {{- if .Values.config.email.enabled }}
     # → SMTP
+    {{- $smtpTo := (.Values.config.email.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $smtpTo) 0 }}
+    - to:
+        {{- toYaml $smtpTo | nindent 8 }}
+      ports:
+        - port: {{ .Values.config.email.port | default 587 }}
+    {{- else }}
+    # Legacy permissive egress — set config.email.networkPolicy.to to restrict.
     - ports:
         - port: {{ .Values.config.email.port | default 587 }}
+    {{- end }}
     {{- end }}
     # → DNS
     - ports:
@@ -146,8 +174,17 @@ spec:
         - port: {{ .Values.garmin.port }}
   egress:
     # → Garmin Connect API (HTTPS)
+    {{- $garminTo := (.Values.config.garmin.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $garminTo) 0 }}
+    - to:
+        {{- toYaml $garminTo | nindent 8 }}
+      ports:
+        - port: 443
+    {{- else }}
+    # Legacy permissive egress — set config.garmin.networkPolicy.to to restrict.
     - ports:
         - port: 443
+    {{- end }}
     # → DNS
     - ports:
         - port: 53
