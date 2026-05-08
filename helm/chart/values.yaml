@@ -176,6 +176,8 @@ server:
     repository: codewithcj/sparkyfitness-server
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3010
@@ -276,6 +278,17 @@ server:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Frontend (nginx, runs as non-root on port 8080)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
@@ -284,6 +297,8 @@ frontend:
     repository: codewithcj/sparkyfitness-frontend
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8080
@@ -349,14 +364,32 @@ frontend:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Garmin microservice (python, USER daemon UID 1)
-# Only deployed when config.garmin.enabled=true
+# Only deployed when config.garmin.enabled=true.
+# NOTE: The upstream image bakes USER=daemon (UID 1). Some Pod Security
+# admission controllers (Kyverno/OPA Gatekeeper enforcing PSS `restricted`
+# strictly) block UIDs < 1000. If your cluster does, override the image
+# (`garmin.image.repository`) with one that uses a higher UID, or relax
+# the policy for this namespace.
 garmin:
   image:
     repository: codewithcj/sparkyfitness-garmin
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8000
@@ -398,6 +431,17 @@ garmin:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
