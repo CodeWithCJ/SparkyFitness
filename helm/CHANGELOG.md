@@ -14,10 +14,16 @@
 
 ### Features
 
+- **Chart metadata expanded** — `Chart.yaml` now declares `kubeVersion: ">= 1.28.0-0"`, `home`, `sources`, `keywords`, `maintainers`, and ArtifactHub `annotations`.
+- **Image digest support** — each component image (`server`, `frontend`, `garmin`) now accepts an `image.digest` value. When set, it takes precedence over `image.tag` and renders `<repo>@<digest>`. Tag-mutability risk avoided.
+- **Pod scheduling controls** — every workload (`server`, `frontend`, `garmin`) now exposes `affinity`, `nodeSelector`, `tolerations`, and `topologySpreadConstraints` (all default empty / no-op).
+- **PodDisruptionBudget (opt-in)** — `<component>.podDisruptionBudget.enabled=true` (server / frontend / garmin) renders a per-component PDB. Set exactly one of `minAvailable` or `maxUnavailable`. Default disabled (no behavior change for `replicas: 1`).
 - **Configurable server `strategy`** — `server.strategy` (default `{type: Recreate}`) now overridable. Useful for clusters where the server PVCs use ReadWriteMany and zero-downtime upgrades are wanted (`type: RollingUpdate` with `maxUnavailable: 0`).
 
 ### Bug Fixes
 
+- **Server pod restarts on chart-managed secret rotation** — added `checksum/secret-app`, `checksum/secret-appdb`, `checksum/secret-oidc`, and `checksum/secret-smtp` annotations on the server pod template. Previously only `checksum/config` was tracked, so chart-managed secret rotations did not roll the deployment.
+- **`ingress` and `httpRoute` cannot both be enabled** — both rendered identical path routing to identical backends, causing duplicate routes. The chart now `fail`s with a clear message; `httpRoute.parentRef.name` is `required` when `httpRoute.enabled=true`; `httpRoute.parentRef.namespace` is now omitted from the rendered output when empty (was rendered as `namespace: ""` and silently treated as the default namespace).
 - **`helm test` connection pod fixed** — previously targeted `:80`, but the frontend service exposes `frontend.port` (default `8080`), so `helm test` always failed. Now uses the actual service port. The test pod is also hardened (PSS `restricted`-conform: `runAsNonRoot`, dropped capabilities, read-only root filesystem, `seccompProfile`), runs as UID 65534, pins `busybox:1.37` instead of `latest`, sets `helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded`, and uses `wget --spider --timeout=5`.
 - **NOTES.txt port-forward command for frontend fixed** — was `3004:80`, now `3004:{frontend service port}`.
 
