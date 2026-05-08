@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-05-07*
+*Last updated: 2026-05-08*
 
 SparkyFitness Mobile is a React Native 0.81.5 + Expo SDK 54 app for syncing HealthKit / Health Connect data to the SparkyFitness backend, tracking daily nutrition, measurements, and exercise, managing saved foods, meal templates, custom exercises, and workout presets, and powering iOS / Android widgets plus the in-app active workout HUD.
 
@@ -60,7 +60,7 @@ npx expo prebuild -c
 - Root providers are layered as `QueryClientProvider` -> `KeyboardProvider` -> `GestureHandlerRootView` -> `BottomSheetModalProvider` -> `NavigationContainer` -> `SafeAreaProvider`.
 - `App.tsx` also mounts the global `AddSheet`, `ReauthModal`, `ServerConfigModal`, floating `ActiveWorkoutBar`, and safe-area-aware toast host.
 - `App.tsx` bridges safe-area insets into Uniwind, drives React Navigation colors from CSS variables, and keeps the Android navigation bar style aligned with the current theme.
-- App startup initializes theme state, notifications, log service, timezone bootstrap, background sync, pending cache refresh flushes, and iOS HealthKit observers from the root.
+- App startup initializes theme state, haptic preferences, notifications, log service, timezone bootstrap, background sync, pending cache refresh flushes, and iOS HealthKit observers from the root.
 - Initial routing is decided at startup with `getActiveServerConfig()`: users without an active server config land on `Onboarding`, otherwise they enter `Tabs`.
 - Deep linking is intentionally gated until the user reaches `Tabs`, so widget links are ignored during first-run onboarding but work afterward.
 
@@ -98,6 +98,9 @@ npx expo prebuild -c
   - `MeasurementsAdd`
   - `CalorieSettings`
   - `FoodSettings`
+  - `ServerSettings`
+  - `AppSettings`
+  - `About`
 - Tabs are `Dashboard`, `Diary`, `Add`, `Library`, and `Settings`.
 - `CustomTabBar` in `src/components/CustomTabBar.tsx` owns the tab UI. `Add` is a center action button, not a real content screen.
 - Tapping `Add` opens `src/components/AddSheet.tsx`, whose main grid offers Food, Exercise, Measurements, and Barcode Scan, plus a secondary Sync Health Data action. The Exercise tile drills into Workout, Activity, and Preset flows.
@@ -114,11 +117,14 @@ npx expo prebuild -c
 - `DashboardScreen` and `DiaryScreen` use `DateNavigator` plus `CalendarSheet` for day selection. `DiaryScreen` also uses fling gestures for date navigation, shows `MeasurementsSummary`, and mounts `ServingAdjustSheet` for quick food-entry serving adjustments.
 - Food and exercise diary rows support swipe-to-delete plus long-press delete menus. Food rows can also open `ServingAdjustSheet` when serving data is available.
 - Current deep links use the `sparkyfitnessmobile://` prefix and route `scan` -> `FoodScan` and `search` -> `FoodSearch`.
+- `SettingsScreen` is now a hub rather than the full settings editor. It links to `ServerSettings`, `Sync`, `CalorieSettings`, `FoodSettings`, `AppSettings`, `Logs`, and `About`, and owns diagnostic-report sharing plus the privacy modal entry point.
+- `ServerSettingsScreen` owns server list management, active-server switching, connection testing, opening the web dashboard, and `ServerConfigModal` add/edit flows.
+- `AppSettingsScreen` owns app theme selection and the persisted haptic-feedback toggle. `AboutScreen` owns app version metadata plus project, docs, and privacy-policy links.
 - There are no per-tab nested stack navigators right now. When changing routes, update `src/types/navigation.ts`, `App.tsx`, and the linking config together.
 
 ### Source Structure (`src/`)
 
-- `components/` - reusable UI including the custom tab bar, add sheet, workout HUD, auth/config modals, charts, settings controls, form chrome, library search/footer rows, swipeable diary rows, serving adjustment sheets, measurement summaries, and food-library / workout UI such as `CreateTile`, `FoodLibraryRow`, `MealLibraryRow`, `FoodNutritionSummary`, and `WorkoutEditableExerciseList`
+- `components/` - reusable UI including the custom tab bar, add sheet, workout HUD, auth/config modals, `SettingsRow`, charts, settings controls, form chrome, library search/footer rows, swipeable diary rows, serving adjustment sheets, measurement summaries, and food-library / workout UI such as `CreateTile`, `FoodLibraryRow`, `MealLibraryRow`, `FoodNutritionSummary`, and `WorkoutEditableExerciseList`
 - `components/auth/` - MFA-related auth UI used by onboarding, setup, and reauth flows
 - `components/ui/` - shared primitives such as `Button` and the toast configuration
 - `screens/` - top-level screens including onboarding, dashboard, diary, the library tab, full food/meal/exercise/preset library and detail flows, measurement entry, sync, settings, logs, food entry, meal builder, and exercise flows
@@ -127,7 +133,7 @@ npx expo prebuild -c
 - `services/healthconnect/` - Android Health Connect reading, aggregation, transformation, and preference logic
 - `services/healthkit/` - iOS HealthKit reading, aggregation, transformation, background delivery, and preference logic
 - `services/shared/` - platform-shared helpers used by both health stacks
-- `services/` - also contains background sync, auto-sync coordination, diagnostics, theme state, storage, notifications, health display helpers, and workout draft persistence
+- `services/` - also contains background sync, auto-sync coordination, diagnostics, theme state, haptic preferences, storage, notifications, health display helpers, and workout draft persistence
 - `native/` - TypeScript bridge wrappers for app-native modules, currently the Android calorie/macro widget bridge
 - `stores/` - Zustand state, currently including `activeWorkoutStore.ts`
 - `constants/`, `types/`, `utils/` - app-wide config, contracts, and helpers
@@ -175,18 +181,20 @@ These are not thin wrappers. Both contain substantial sync logic. For sync chang
 - Many visual components read CSS variables from JS via `useCSSVariable`.
 - Skia is used for custom charts and gauges; Victory Native is used for chart-style visualizations.
 - `src/components/Icon.tsx` is the cross-platform icon abstraction. It maps semantic icon names to SF Symbols on iOS and Ionicons on Android. Verify symbol names before adding new icons.
+- Settings rows use `SettingsRow` / `SettingsRowGroup`, semantic icon names from `Icon.tsx`, and category color tokens from `global.css` such as `--color-cat-slate`, `--color-cat-pink`, `--color-cat-violet`, and `--color-cat-orange`.
 
 ### Authentication and Networking
 
 - The app supports two auth modes per server config: `apiKey` and `session`.
 - First-run connection setup is handled by `src/screens/OnboardingScreen.tsx`, which supports URL validation, session sign-in, API keys, MFA, and a finish-without-connection path into Settings.
 - Ongoing config management is handled in two places:
-  - `SettingsScreen` via `ServerConfigComponent` + `ServerConfigModal`
+  - `ServerSettingsScreen`, reached from `SettingsScreen`, via `useServerConfigs`, `useServerConnection`, and `ServerConfigModal`
   - global auth recovery flows via `useAuth()`, `ReauthModal`, and the root-level `ServerConfigModal`
 - Server configs live in `src/services/storage.ts`. IDs and URLs are stored in AsyncStorage; API keys, session tokens, and proxy headers are stored in SecureStore.
 - `src/services/api/apiClient.ts` injects proxy headers and auth headers into standard API requests.
 - `src/services/api/healthDataApi.ts` uses raw `fetch`, but still injects proxy headers and auth headers, plus its own timeout/retry/chunking logic. If auth behavior changes, verify both codepaths.
 - In production, HTTP server URLs are rejected. Preserve the HTTPS guard in onboarding, settings, API fetches, and health sync paths.
+- Active-server switches clear the React Query cache before refetching connection state. Preserve that behavior when changing `ServerSettingsScreen` or server-config storage.
 
 ## Native and Monorepo Rules
 
@@ -239,7 +247,9 @@ const androidService = require('../../src/services/healthConnectService.ts');
   - `__tests__/services/workoutDraftService.loadActiveDraft.test.ts`
 - If you change onboarding, setup, or auth recovery flows, rerun the related tests:
   - `__tests__/components/ServerConfigModal.test.tsx`
+  - `__tests__/screens/ServerSettingsScreen.test.tsx`
   - `__tests__/hooks/useAuth.test.ts`
+  - `__tests__/hooks/useServerConnection.test.ts`
   - `__tests__/screens/OnboardingScreen.test.tsx`
   - `__tests__/services/storage.test.ts`
   - `__tests__/services/authService.test.ts`
@@ -292,6 +302,14 @@ const androidService = require('../../src/services/healthConnectService.ts');
   - `__tests__/hooks/useUpdateFoodEntry.test.ts`
   - `__tests__/hooks/useCreateExerciseEntry.test.ts`
   - `__tests__/hooks/useExerciseMutations.test.ts`
+- If you change barcode or nutrition-label scan flows, rerun the related tests:
+  - `__tests__/screens/FoodScanScreen.test.tsx`
+  - `__tests__/services/externalFoodSearchApi.test.ts`
+  - `__tests__/services/haptics.test.ts`
+- If you change app settings, theme, haptic behavior, or settings-row chrome, rerun the related tests:
+  - `__tests__/services/haptics.test.ts`
+  - `__tests__/services/notifications.test.ts`
+  - `__tests__/stores/activeWorkoutStore.test.ts`
 - If you change manual measurements, measurement summaries, or check-in API behavior, rerun the related tests:
   - `__tests__/hooks/useMeasurements.test.ts`
   - `__tests__/hooks/useMeasurementsRange.test.ts`
@@ -309,6 +327,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 
 - After file moves or import refactors, run the full Jest suite immediately and verify asset and `require(...)` paths before reporting completion.
 - If you change routes, modal entry points, or the add sheet, verify `src/types/navigation.ts`, `App.tsx`, deep-link config, and any route-param consumers stay aligned.
+- If you change settings navigation or server/app/about settings screens, keep `SettingsScreen`, `ServerSettingsScreen`, `AppSettingsScreen`, `AboutScreen`, `SettingsRow`, `src/types/navigation.ts`, `App.tsx`, and `src/components/Icon.tsx` aligned.
 - If you change saved-food flows, keep `LibraryScreen`, `FoodsLibraryScreen`, `FoodDetailScreen`, `FoodFormScreen`, `src/types/navigation.ts`, and the `updatedItem` / `returnKey` handoff aligned so edits return to the correct screen with refreshed values.
 - If you change meal-template flows, keep `LibraryScreen`, `MealsLibraryScreen`, `MealDetailScreen`, `MealAddScreen`, `FoodSearchScreen`, `FoodEntryAddScreen`, meal picker modes, and the meal-builder selection handoff aligned.
 - If you change custom exercise or workout preset flows, keep `LibraryScreen`, `ExercisesLibraryScreen`, `WorkoutPresetsLibraryScreen`, detail/form screens, `ExerciseSearch`, route params, mutation invalidations, and selected-exercise / preset handoffs aligned.
@@ -322,7 +341,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Health sync bug:
   inspect `src/services/healthConnectService.ts` or `src/services/healthConnectService.ios.ts`, then `src/services/backgroundSyncService.ts`, `src/services/autoSyncCoordinator.ts`, `src/screens/SyncScreen.tsx`, and the matching platform folder under `src/services/healthconnect/` or `src/services/healthkit/`
 - Onboarding, auth, or server-config bug:
-  inspect `src/screens/OnboardingScreen.tsx`, `src/components/ServerConfigModal.tsx`, `src/components/ReauthModal.tsx`, `src/hooks/useAuth.ts`, `src/services/api/authService.ts`, `src/services/api/apiClient.ts`, `src/services/api/healthDataApi.ts`, and `src/services/storage.ts`
+  inspect `src/screens/OnboardingScreen.tsx`, `src/screens/ServerSettingsScreen.tsx`, `src/components/ServerConfigModal.tsx`, `src/components/ReauthModal.tsx`, `src/hooks/useAuth.ts`, `src/hooks/useServerConfigs.ts`, `src/hooks/useServerConnection.ts`, `src/services/api/authService.ts`, `src/services/api/apiClient.ts`, `src/services/api/healthDataApi.ts`, and `src/services/storage.ts`
 - Food library, custom food, or saved-food detail bug:
   inspect `src/screens/LibraryScreen.tsx`, `src/screens/FoodsLibraryScreen.tsx`, `src/screens/FoodDetailScreen.tsx`, `src/screens/FoodFormScreen.tsx`, `src/components/FoodLibraryRow.tsx`, `src/hooks/useFoodsLibrary.ts`, `src/hooks/useDeleteFood.ts`, `src/services/api/foodsApi.ts`, `src/types/foodInfo.ts`, and `src/utils/foodDetails.ts`
 - Meal template, meal-library, or meal-builder bug:
@@ -339,12 +358,14 @@ const androidService = require('../../src/services/healthConnectService.ts');
   inspect `src/screens/DiaryScreen.tsx`, `src/screens/DashboardScreen.tsx`, `src/screens/MeasurementsAddScreen.tsx`, `src/components/MeasurementsSummary.tsx`, `src/hooks/useMeasurements.ts`, `src/hooks/useMeasurementsRange.ts`, `src/hooks/useUpsertCheckIn.ts`, `src/services/api/measurementsApi.ts`, `src/utils/unitConversions.ts`, and `src/utils/dateUtils.ts`
 - Diary quick-adjust or swipe-delete bug:
   inspect `src/screens/DiaryScreen.tsx`, `src/screens/MealTypeDetailScreen.tsx`, `src/components/FoodSummary.tsx`, `src/components/ExerciseSummary.tsx`, `src/components/SwipeableFoodRow.tsx`, `src/components/SwipeableExerciseRow.tsx`, `src/components/ServingAdjustSheet.tsx`, `src/hooks/useDeleteFoodEntry.ts`, `src/hooks/useUpdateFoodEntry.ts`, and `src/hooks/useExerciseMutations.ts`
+- Barcode scan or nutrition-label scan bug:
+  inspect `src/screens/FoodScanScreen.tsx`, `src/services/api/externalFoodSearchApi.ts`, `src/services/haptics.ts`, `src/components/Icon.tsx`, and the `FoodScan` route params in `src/types/navigation.ts`
 - Widget or deep-link bug:
   inspect `src/hooks/useWidgetSync.ts`, `src/native/CalorieWidgetBridge.ts`, `targets/widget/`, `targets/android-widget/`, `plugins/withCalorieWidget.ts`, `plugins/withGlanceAndroidSupport.ts`, `app.config.ts`, `app.identifiers.js`, `App.tsx`, and `src/screens/DashboardScreen.tsx`
 - Settings or diagnostics bug:
-  inspect `src/screens/SettingsScreen.tsx`, `src/services/diagnosticReportService.ts`, `src/services/healthDiagnosticService.ts`, `src/components/DevTools.tsx`, and `src/components/ScreenErrorBoundary.tsx`
+  inspect `src/screens/SettingsScreen.tsx`, `src/screens/ServerSettingsScreen.tsx`, `src/screens/AppSettingsScreen.tsx`, `src/screens/AboutScreen.tsx`, `src/components/SettingsRow.tsx`, `src/services/haptics.ts`, `src/services/themeService.ts`, `src/services/diagnosticReportService.ts`, `src/services/healthDiagnosticService.ts`, `src/components/DevTools.tsx`, and `src/components/ScreenErrorBoundary.tsx`
 - Theme or styling issue:
-  inspect `global.css`, `src/services/themeService.ts`, `src/components/Icon.tsx`, `src/components/CustomTabBar.tsx`, and the affected component
+  inspect `global.css`, `src/services/themeService.ts`, `src/components/Icon.tsx`, `src/components/CustomTabBar.tsx`, `src/components/SettingsRow.tsx`, and the affected component
 
 ## Priority Rule
 

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-*Last updated: 2026-05-06*
+*Last updated: 2026-05-08*
 
 SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
@@ -30,14 +30,14 @@ tsc --noEmit                                   # Type check only
 
 ### Source Structure (`src/`)
 
-- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI, auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding, dashboard, diary, settings, sync, logs; library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
+- **screens/** — Top-level screens for onboarding, dashboard, diary, sync, logs; settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
   - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
   - `healthkit/` — iOS equivalents plus `backgroundDelivery`
   - `shared/` — `preferences.ts` factory + `healthPermissionMigration.ts`
-  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `autoSyncCoordinator` (in-memory lock + cooldown shared by background sync and sync-on-open), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection` (cross-screen pending-ingredient handoff), `diagnosticReportService`, `healthDiagnosticService` (Android-only), `notifications` (rest-timer scheduling), `haptics`.
+  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `autoSyncCoordinator` (in-memory lock + cooldown shared by background sync and sync-on-open), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection` (cross-screen pending-ingredient handoff), `diagnosticReportService`, `healthDiagnosticService` (Android-only), `notifications` (rest-timer scheduling), `haptics` (global enable toggle persisted under `@HealthConnect:hapticsEnabled`; expose via `useHapticsEnabled` + `setHapticsEnabled`, gate calls behind `fireSuccessHaptic`).
 - **stores/** — Zustand stores (persisted via `zustand/middleware`). See **Workout timer** below for `activeWorkoutStore`.
 - **hooks/** — React Query hooks organized by domain (food, meals, exercise/workout, workout presets, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
 - **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
@@ -77,7 +77,7 @@ TailwindCSS v4 with Uniwind for React Native. Theme variables in `global.css`:
 - `className="bg-surface text-text-primary rounded-md p-4"`
 - `useCSSVariable('--color-accent-primary')` for JS access (used extensively in Skia charts)
 - Themes: **Light**, **Dark**, **AMOLED** (true black), **System** — managed by `themeService.ts`, stored in AsyncStorage. On Android, `App.tsx` keeps the system navigation bar in sync via `expo-navigation-bar` (`NavigationBar.setStyle('dark' | 'light')`)
-- CSS variable categories: backgrounds, borders, text, accents, tabs, forms, data colors (`calories`, `macro-*`, `hydration`, `exercise`), progress, status
+- CSS variable categories: backgrounds, borders, text, accents, tabs, forms, data colors (`calories`, `macro-*`, `hydration`, `exercise`), category colors (`cat-slate`/`cat-pink`/`cat-violet`/`cat-orange` — used for settings row icon tints), progress, status
 
 ### Charts
 

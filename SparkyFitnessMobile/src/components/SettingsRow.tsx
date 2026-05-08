@@ -23,7 +23,7 @@ export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
         {items.map((child, i) => (
           <React.Fragment key={i}>
             {child}
-            {i < items.length - 1 && <View className="h-px bg-border-subtle ml-16" />}
+            {i < items.length - 1 && <View className="h-px bg-border-subtle" />}
           </React.Fragment>
         ))}
       </View>
