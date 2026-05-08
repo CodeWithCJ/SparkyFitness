@@ -18,20 +18,16 @@ spec:
   hostnames:
     - {{ .Values.httpRoute.hostname | quote }}
   rules:
+    {{- $serverPaths := .Values.httpRoute.serverPaths | default (list "/api" "/uploads") }}
+    {{- range $serverPaths }}
     - matches:
         - path:
             type: PathPrefix
-            value: /api
+            value: {{ . | quote }}
       backendRefs:
-        - name: {{ include "sparkyfitness.fullname" . }}-server
-          port: {{ .Values.server.port }}
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /uploads
-      backendRefs:
-        - name: {{ include "sparkyfitness.fullname" . }}-server
-          port: {{ .Values.server.port }}
+        - name: {{ include "sparkyfitness.fullname" $ }}-server
+          port: {{ $.Values.server.port }}
+    {{- end }}
     - matches:
         - path:
             type: PathPrefix
