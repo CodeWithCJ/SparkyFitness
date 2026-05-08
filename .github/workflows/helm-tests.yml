@@ -280,7 +280,7 @@ jobs:
             --set server.replicas=1 \
             --set frontend.replicas=1 \
             --set 'frontend.podSecurityContext.sysctls[0].name=net.ipv4.ip_unprivileged_port_start' \
-            --set 'frontend.podSecurityContext.sysctls[0].value=0'
+            --set-string 'frontend.podSecurityContext.sysctls[0].value=0'
 
       - name: Show release status
         if: always()
