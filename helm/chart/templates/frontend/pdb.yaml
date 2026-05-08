@@ -1,0 +1,26 @@
+{{- if .Values.frontend.podDisruptionBudget.enabled }}
+{{- if and .Values.frontend.podDisruptionBudget.minAvailable .Values.frontend.podDisruptionBudget.maxUnavailable }}
+{{- fail "frontend.podDisruptionBudget: set exactly one of minAvailable or maxUnavailable, not both" }}
+{{- end }}
+{{- if and (not .Values.frontend.podDisruptionBudget.minAvailable) (not .Values.frontend.podDisruptionBudget.maxUnavailable) }}
+{{- fail "frontend.podDisruptionBudget: set one of minAvailable or maxUnavailable" }}
+{{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-frontend
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  {{- with .Values.frontend.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  {{- with .Values.frontend.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+{{- end }}
