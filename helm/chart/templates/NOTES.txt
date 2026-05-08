@@ -20,6 +20,15 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
   Secrets were {{ if .Values.server.secrets.generate }}auto-generated{{ else }}provided via values{{ end }} and stored
   as plain Kubernetes Secrets. This is suitable for development/testing
   but NOT recommended for production.
+{{- if .Values.server.secrets.generate }}
+
+  GitOps caveat: chart-managed auto-generation persists across upgrades
+  via a Kubernetes API `lookup`. In pure `helm template` mode (no cluster
+  access — some ArgoCD/Flux setups, offline rendering), `lookup` returns
+  empty and EACH render produces NEW random values. Applying that output
+  rotates the keys and renders existing api_encryption_key-encrypted data
+  unrecoverable.
+{{- end }}
 
   For production, use one of:
     - External Secrets Operator: set externalSecrets.enabled=true
@@ -29,6 +38,27 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
         config.oidc.secrets.existingSecret      (keys: client_id, client_secret)
         config.email.secrets.existingSecret     (keys: username, password)
         postgresql.auth.existingSecret          (keys: username, password)
+{{- end }}
+{{- if and .Values.networkPolicy.enabled (not .Values.postgresql.enabled) }}
+{{- $extNp := .Values.externalDatabase.networkPolicy | default dict }}
+{{- $cidrs := $extNp.cidrs | default list }}
+{{- $nsSel := $extNp.namespaceSelector | default dict }}
+{{- $podSel := $extNp.podSelector | default dict }}
+{{- if not (or (gt (len $cidrs) 0) (gt (len $nsSel) 0) (gt (len $podSel) 0)) }}
+
+  WARNING: NETWORKPOLICY EGRESS NOT RESTRICTED FOR EXTERNAL DATABASE
+
+  networkPolicy.enabled=true and postgresql.enabled=false, but
+  externalDatabase.networkPolicy has no cidrs, namespaceSelector, or
+  podSelector configured. The server NetworkPolicy currently allows egress
+  on port {{ .Values.externalDatabase.port | default 5432 }} to ANY destination
+  (cluster-wide pods + 0.0.0.0/0).
+
+  Restrict by setting one or more of:
+    externalDatabase.networkPolicy.cidrs: ["10.0.0.5/32"]
+    externalDatabase.networkPolicy.namespaceSelector: {...}
+    externalDatabase.networkPolicy.podSelector: {...}
+{{- end }}
 {{- end }}
 {{- if not .Values.postgresql.enabled }}
 
