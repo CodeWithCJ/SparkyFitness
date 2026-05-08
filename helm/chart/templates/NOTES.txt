@@ -8,7 +8,7 @@ Components:
   - Garmin:   {{ include "sparkyfitness.fullname" . }}-garmin
 {{- end }}
 {{- if .Values.postgresql.enabled }}
-  - PostgreSQL: {{ include "sparkyfitness.fullname" . }}-postgresql
+  - PostgreSQL: Bundled with the PostgreSQL sub-chart.
 {{- end }}
 
 Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}

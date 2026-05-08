@@ -23,8 +23,12 @@ async function applyMigrations() {
     );
     if (roleExistsResult.rowCount === 0) {
       log('info', `Creating role: ${appUserQuoted}`);
+      // Escape single quotes by doubling them (standard PostgreSQL string literal
+      // escaping). DDL statements do not support parameterized placeholders, so
+      // this is the correct way to safely interpolate the password.
+      const escapedPassword = (appPassword ?? '').replace(/'/g, "''");
       await client.query(
-        `CREATE ROLE ${appUserQuoted} WITH LOGIN PASSWORD '${appPassword}'`
+        `CREATE ROLE ${appUserQuoted} WITH LOGIN PASSWORD '${escapedPassword}'`
       );
       log('info', `Successfully created role: ${appUserQuoted}`);
     } else {

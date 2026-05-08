@@ -18,6 +18,20 @@ spec:
     - matches:
         - path:
             type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: {{ include "sparkyfitness.fullname" . }}-server
+          port: {{ .Values.server.port }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /uploads
+      backendRefs:
+        - name: {{ include "sparkyfitness.fullname" . }}-server
+          port: {{ .Values.server.port }}
+    - matches:
+        - path:
+            type: PathPrefix
             value: /
       backendRefs:
         - name: {{ include "sparkyfitness.fullname" . }}-frontend
