@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-05-08
+
 ### Security
 
 - **NetworkPolicy egress for external database is now restrictable** — added `externalDatabase.networkPolicy.cidrs` / `namespaceSelector` / `podSelector` to lock down the server's egress to an external PostgreSQL when `networkPolicy.enabled=true`. Default is unchanged (permissive egress to the DB port) for backward compatibility; a NOTES.txt warning is emitted when the permissive path is active.

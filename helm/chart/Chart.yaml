@@ -2,8 +2,8 @@ apiVersion: v2
 name: sparkyfitness
 description: Sparkyfitness fitness tracking application
 type: application
-version: 0.2.0
-appVersion: "v0.16.4.7"
+version: 0.3.0
+appVersion: "v0.16.6.1"
 kubeVersion: ">= 1.28.0-0"
 home: https://github.com/CodeWithCJ/SparkyFitness
 sources:
