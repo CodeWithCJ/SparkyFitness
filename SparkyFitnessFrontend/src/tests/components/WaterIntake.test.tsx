@@ -5,9 +5,6 @@ import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import {
   useWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
-  useWaterIntakeLogQuery,
-  useDeleteWaterIntakeLogMutation,
-  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
 
