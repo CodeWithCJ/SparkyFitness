@@ -15,8 +15,18 @@ spec:
       app.kubernetes.io/component: frontend
   policyTypes: [Ingress, Egress]
   ingress:
+    {{- $frontendFrom := (.Values.frontend.networkPolicy | default dict).from | default list }}
+    {{- if gt (len $frontendFrom) 0 }}
+    - from:
+        {{- toYaml $frontendFrom | nindent 8 }}
+      ports:
+        - port: {{ .Values.frontend.port }}
+    {{- else }}
+    # Legacy permissive ingress — allows any source on frontend.port.
+    # Set frontend.networkPolicy.from to restrict.
     - ports:
         - port: {{ .Values.frontend.port }}
+    {{- end }}
   egress:
     # → server
     - to:
@@ -61,14 +71,40 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: postgresql
+              {{- include "sparkyfitness.bundledPostgresqlSelectorLabels" . | nindent 14 }}
       ports:
         - port: 5432
     {{- else }}
-    # → external PostgreSQL (allow all on DB port)
+    # → external PostgreSQL
+    {{- $extNp := .Values.externalDatabase.networkPolicy | default dict }}
+    {{- $cidrs := $extNp.cidrs | default list }}
+    {{- $nsSel := $extNp.namespaceSelector | default dict }}
+    {{- $podSel := $extNp.podSelector | default dict }}
+    {{- if or (gt (len $cidrs) 0) (gt (len $nsSel) 0) (gt (len $podSel) 0) }}
+    - to:
+        {{- range $cidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+        {{- if or (gt (len $nsSel) 0) (gt (len $podSel) 0) }}
+        - {{- if gt (len $nsSel) 0 }}
+          namespaceSelector:
+            {{- toYaml $nsSel | nindent 12 }}
+          {{- end }}
+          {{- if gt (len $podSel) 0 }}
+          podSelector:
+            {{- toYaml $podSel | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.externalDatabase.port | default 5432 }}
+    {{- else }}
+    # Legacy permissive egress — no destination restriction.
+    # Set externalDatabase.networkPolicy.cidrs / namespaceSelector / podSelector
+    # to restrict. See NOTES.txt for guidance.
     - ports:
         - port: {{ .Values.externalDatabase.port | default 5432 }}
+    {{- end }}
     {{- end }}
     {{- if .Values.config.garmin.enabled }}
     # → Garmin microservice
@@ -82,13 +118,31 @@ spec:
     {{- end }}
     {{- if .Values.config.oidc.enabled }}
     # → OIDC provider (HTTPS)
+    {{- $oidcTo := (.Values.config.oidc.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $oidcTo) 0 }}
+    - to:
+        {{- toYaml $oidcTo | nindent 8 }}
+      ports:
+        - port: 443
+    {{- else }}
+    # Legacy permissive egress — set config.oidc.networkPolicy.to to restrict.
     - ports:
         - port: 443
     {{- end }}
+    {{- end }}
     {{- if .Values.config.email.enabled }}
     # → SMTP
+    {{- $smtpTo := (.Values.config.email.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $smtpTo) 0 }}
+    - to:
+        {{- toYaml $smtpTo | nindent 8 }}
+      ports:
+        - port: {{ .Values.config.email.port | default 587 }}
+    {{- else }}
+    # Legacy permissive egress — set config.email.networkPolicy.to to restrict.
     - ports:
         - port: {{ .Values.config.email.port | default 587 }}
+    {{- end }}
     {{- end }}
     # → DNS
     - ports:
@@ -96,31 +150,6 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
-{{- if .Values.postgresql.enabled }}
----
-# PostgreSQL: accept from server only
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "sparkyfitness.fullname" . }}-postgresql
-  labels:
-    {{- include "sparkyfitness.labels" . | nindent 4 }}
-    app.kubernetes.io/component: postgresql
-spec:
-  podSelector:
-    matchLabels:
-      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: postgresql
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: server
-      ports:
-        - port: 5432
-{{- end }}
 {{- if .Values.config.garmin.enabled }}
 ---
 # Garmin: accept from server, egress to Garmin API + DNS
@@ -147,8 +176,17 @@ spec:
         - port: {{ .Values.garmin.port }}
   egress:
     # → Garmin Connect API (HTTPS)
+    {{- $garminTo := (.Values.config.garmin.networkPolicy | default dict).to | default list }}
+    {{- if gt (len $garminTo) 0 }}
+    - to:
+        {{- toYaml $garminTo | nindent 8 }}
+      ports:
+        - port: 443
+    {{- else }}
+    # Legacy permissive egress — set config.garmin.networkPolicy.to to restrict.
     - ports:
         - port: 443
+    {{- end }}
     # → DNS
     - ports:
         - port: 53

@@ -103,6 +103,9 @@ export type RootStackParamList = {
   MeasurementsAdd: { date?: string } | undefined;
   CalorieSettings: undefined;
   FoodSettings: undefined;
+  ServerSettings: undefined;
+  AppSettings: undefined;
+  About: undefined;
 };
 
 declare global {

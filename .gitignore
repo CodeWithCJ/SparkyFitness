@@ -9,8 +9,8 @@ lerna-debug.log*
 
 # Generic
 postgresql
-!helm/chart/templates/postgresql/
-!helm/chart/templates/postgresql/*.yaml
+!helm/chart/charts/postgresql/
+!helm/chart/charts/postgresql/**
 node_modules
 dist
 dist-ssr
@@ -65,3 +65,4 @@ docker/docker_volume/
 
 # TypeScript
 *.tsbuildinfo
+dossier sans titre/

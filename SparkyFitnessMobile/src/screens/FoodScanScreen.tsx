@@ -478,7 +478,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               />
               <View className="flex-row gap-3">
                 <UIButton
-                  variant="outline"
+                  variant="ghost"
                   onPress={handleDismissManualEntry}
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"

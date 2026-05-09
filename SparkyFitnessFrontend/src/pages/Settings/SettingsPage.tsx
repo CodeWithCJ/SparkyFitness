@@ -31,6 +31,8 @@ import { ApiSettings } from './ApiSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
+import { DataManagementSettings } from './DataManagementSettings';
+import { Database } from 'lucide-react';
 
 export interface PasswordFormState {
   current_password: string;
@@ -88,10 +90,13 @@ const Settings = () => {
         >
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
-            description="Manage your custom nutrient definitions"
+            description={t(
+              'settings.customNutrients.subtitle',
+              'Manage your custom nutrient definitions'
+            )}
           >
             <ListChecks className="h-5 w-5" />
-            Custom Nutrients
+            {t('settings.customNutrients.title', 'Custom Nutrients')}
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <CustomNutrientsSettings />
@@ -175,8 +180,8 @@ const Settings = () => {
           <AccordionTrigger
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
-              'settings.customMeals.description',
-              'Create and manage custom meals types'
+              'settings.customMeals.subtitle',
+              'Create and manage custom meal types'
             )}
           >
             <UtensilsCrossed className="h-5 w-5" />
@@ -235,6 +240,25 @@ const Settings = () => {
               )}
             />
             <AIServiceSettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="data-management"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description={t(
+              'settings.dataManagement.subtitle',
+              'Export or manage your data'
+            )}
+          >
+            <Database className="h-5 w-5" />
+            {t('settings.dataManagement.sectionTitle', 'Data Management')}
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <DataManagementSettings />
           </AccordionContent>
         </AccordionItem>
 

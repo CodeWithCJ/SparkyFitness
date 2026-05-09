@@ -40,16 +40,25 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/*
 Build a container image string with optional global.imageRegistry prefix.
+If image.digest is set, it takes precedence over image.tag and produces
+`<repo>@<digest>` (or `<registry>/<repo>@<digest>`).
 Usage: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
 */}}
 {{- define "sparkyfitness.image" -}}
 {{- $registry := .global.imageRegistry | default "" -}}
 {{- $repo := .image.repository -}}
+{{- $digest := .image.digest | default "" -}}
 {{- $tag := .image.tag | default .appVersion -}}
-{{- if $registry -}}
-{{- printf "%s/%s:%s" $registry $repo $tag -}}
+{{- $ref := "" -}}
+{{- if $digest -}}
+{{- $ref = printf "%s@%s" $repo $digest -}}
 {{- else -}}
-{{- printf "%s:%s" $repo $tag -}}
+{{- $ref = printf "%s:%s" $repo $tag -}}
+{{- end -}}
+{{- if $registry -}}
+{{- printf "%s/%s" $registry $ref -}}
+{{- else -}}
+{{- $ref -}}
 {{- end -}}
 {{- end }}
 
@@ -69,9 +78,27 @@ imagePullSecrets:
 {{/* Database helpers                                                    */}}
 {{/* ================================================================== */}}
 
+{{- define "sparkyfitness.bundledPostgresqlName" -}}
+{{- printf "%s-postgresql" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{- define "sparkyfitness.bundledPostgresqlSecretName" -}}
+{{- if .Values.postgresql.auth.existingSecret -}}
+{{- .Values.postgresql.auth.existingSecret -}}
+{{- else -}}
+{{- printf "%s-auth" (include "sparkyfitness.bundledPostgresqlName" .) -}}
+{{- end -}}
+{{- end }}
+
+{{- define "sparkyfitness.bundledPostgresqlSelectorLabels" -}}
+app.kubernetes.io/name: postgresql
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: postgresql
+{{- end }}
+
 {{- define "sparkyfitness.databaseHost" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- include "sparkyfitness.fullname" . }}-postgresql
+{{- include "sparkyfitness.bundledPostgresqlName" . -}}
 {{- else -}}
 {{- required "externalDatabase.host is required when postgresql.enabled=false" .Values.externalDatabase.host -}}
 {{- end -}}
@@ -90,6 +117,37 @@ imagePullSecrets:
 {{- .Values.postgresql.auth.database -}}
 {{- else -}}
 {{- required "externalDatabase.database is required when postgresql.enabled=false" .Values.externalDatabase.database -}}
+{{- end -}}
+{{- end }}
+
+{{- define "sparkyfitness.databaseBackupComponentLabels" -}}
+{{ include "sparkyfitness.selectorLabels" . }}
+app.kubernetes.io/component: database-backup
+{{- end }}
+
+{{- define "sparkyfitness.databaseBackupPvcName" -}}
+{{- if .Values.databaseBackup.persistence.existingClaim -}}
+{{- .Values.databaseBackup.persistence.existingClaim -}}
+{{- else -}}
+{{- printf "%s-database-backup" (include "sparkyfitness.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end }}
+
+{{- define "sparkyfitness.databaseBackupEnabled" -}}
+{{- if .Values.databaseBackup.enabled -}}
+  {{- if not .Values.postgresql.enabled -}}
+    {{- fail "databaseBackup requires the bundled postgresql subchart (postgresql.enabled=true). PVC backups are not supported with an external database." -}}
+  {{- end -}}
+  {{- if and .Values.postgresql.enabled .Values.postgresql.backup.enabled -}}
+    {{- fail "databaseBackup.enabled and postgresql.backup.enabled cannot both be true; choose either built-in S3 backups or PVC backups" -}}
+  {{- end -}}
+  {{- $days := int (default 0 .Values.databaseBackup.retention.days) -}}
+  {{- $weeks := int (default 0 .Values.databaseBackup.retention.weeks) -}}
+  {{- $months := int (default 0 .Values.databaseBackup.retention.months) -}}
+  {{- if and (le $days 0) (le $weeks 0) (le $months 0) -}}
+    {{- fail "databaseBackup.enabled requires at least one positive retention value in databaseBackup.retention" -}}
+  {{- end -}}
+true
 {{- end -}}
 {{- end }}
 
@@ -146,14 +204,15 @@ Database credentials secret name.
 Resolves: postgresql.auth or externalDatabase.auth → existingSecret > chart-managed.
 */}}
 {{- define "sparkyfitness.databaseSecretName" -}}
-{{- $dbAuth := .Values.externalDatabase.auth -}}
 {{- if .Values.postgresql.enabled -}}
-  {{- $dbAuth = .Values.postgresql.auth -}}
-{{- end -}}
-{{- if $dbAuth.existingSecret -}}
-  {{- $dbAuth.existingSecret -}}
+  {{- include "sparkyfitness.bundledPostgresqlSecretName" . -}}
 {{- else -}}
-  {{- include "sparkyfitness.fullname" . }}-postgres
+  {{- $dbAuth := .Values.externalDatabase.auth -}}
+  {{- if $dbAuth.existingSecret -}}
+    {{- $dbAuth.existingSecret -}}
+  {{- else -}}
+    {{- include "sparkyfitness.fullname" . }}-postgres
+  {{- end -}}
 {{- end -}}
 {{- end }}
 
@@ -211,6 +270,21 @@ Whether the chart should create the database credentials secret.
 {{- end -}}
 {{- if and (not $dbAuth.existingSecret) (not (and .Values.externalSecrets.enabled .Values.externalSecrets.postgres.enabled)) -}}
 true
+{{- end -}}
+{{- end }}
+
+{{/* ================================================================== */}}
+{{/* Routing validation                                                  */}}
+{{/* ================================================================== */}}
+
+{{/*
+Fail when both Ingress and HTTPRoute are enabled — the chart routes
+identical paths to identical backends in both, which causes duplicate
+routing and is almost always a misconfiguration.
+*/}}
+{{- define "sparkyfitness.validateRouting" -}}
+{{- if and .Values.ingress.enabled .Values.httpRoute.enabled -}}
+{{- fail "ingress.enabled and httpRoute.enabled cannot both be true; choose one routing approach" -}}
 {{- end -}}
 {{- end }}
 

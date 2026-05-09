@@ -1,26 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
-import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getActiveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
-import type { ServerConfig } from '../services/storage';
-import { addLog } from '../services/LogService';
-import { notifyNoConfigs } from '../services/api/authService';
-import { useServerConnection, usePreferences, queryClient } from '../hooks';
-import ServerConfigComponent from '../components/ServerConfig';
-import AppearanceSettings from '../components/AppearanceSettings';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCSSVariable } from 'uniwind';
+import { useServerConnection, useServerConfigs, usePreferences, queryClient } from '../hooks';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
-import ServerConfigModal from '../components/ServerConfigModal';
-import * as Application from 'expo-application';
-import Icon from '../components/Icon';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { loadLastSyncedTime } from '../services/storage';
+import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
-import * as WebBrowser from 'expo-web-browser';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -35,128 +29,58 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
 
-  const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
-  const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
-  // Unified server config modal state
-  const [unifiedModalVisible, setUnifiedModalVisible] = useState(false);
-  const [unifiedModalConfig, setUnifiedModalConfig] = useState<ServerConfig | null>(null);
-  const [unifiedModalTab, setUnifiedModalTab] = useState<'signIn' | 'apiKey'>('signIn');
-
-  const { isConnected, refetch: refetchConnection } = useServerConnection();
+  const { isConnected } = useServerConnection();
+  const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
   const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
-  const loadConfig = async (): Promise<void> => {
-    const allConfigs = await getAllServerConfigs();
-    setServerConfigs(allConfigs);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      loadLastSyncedTime().then((time) => {
+        if (!cancelled) setLastSyncedTime(time);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
-    const activeConfig = await getActiveServerConfig();
-    if (activeConfig) {
-      setActiveConfigId(activeConfig.id);
-    } else if (allConfigs.length > 0 && !activeConfig) {
-      await setActiveServerConfig(allConfigs[0].id);
-      setActiveConfigId(allConfigs[0].id);
-    } else if (allConfigs.length === 0) {
-      setActiveConfigId(null);
-    }
-  };
+  const syncSubtitle = lastSyncedTime
+    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
+    : 'Never synced';
 
-  useEffect(() => {
-    loadConfig();
-  }, [activeConfigId, isConnected]);
+  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration] = useCSSVariable([
+    '--color-text-success',
+    '--color-bg-danger',
+    '--color-cat-slate',
+    '--color-cat-pink',
+    '--color-cat-violet',
+    '--color-cat-orange',
+    '--color-calories',
+    '--color-hydration',
+  ]) as [string, string, string, string, string, string, string, string];
 
-  const openWebDashboard = async (): Promise<void> => {
-    try {
-      const activeConfig = await getActiveServerConfig();
-
-      if (!activeConfig || !activeConfig.url) {
-        Alert.alert(
-          'No Server Configured',
-          'Please configure your server URL in Settings first.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Go to Settings', onPress: () => navigation.navigate('Settings') }
-          ]
-        );
-        return;
-      }
-
-      const serverUrl = activeConfig.url.endsWith('/') ? activeConfig.url.slice(0, -1) : activeConfig.url;
-
-      try {
-        await WebBrowser.openBrowserAsync(serverUrl);
-      } catch (inAppError) {
-        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'ERROR');
-        await Linking.openURL(serverUrl);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Error', text2: `Could not open web dashboard: ${errorMessage}` });
-    }
-  };
-
-  const handleSetActiveConfig = async (configId: string): Promise<void> => {
-    if (!__DEV__) {
-      const config = serverConfigs.find((c) => c.id === configId);
-      if (config?.url.toLowerCase().startsWith('http://')) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.' });
-        return;
-      }
-    }
-    try {
-      await setActiveServerConfig(configId);
-      queryClient.clear();
-      await loadConfig();
-      refetchConnection();
-      Toast.show({ type: 'success', text1: 'Active server changed' });
-      addLog('Active server configuration changed.', 'INFO');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Failed to set active server configuration:', error);
-      addLog(`Failed to set active server configuration: ${errorMessage}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to set active server configuration: ${errorMessage}` });
-    }
-  };
-
-  const handleDeleteConfig = async (configId: string): Promise<void> => {
-    try {
-      await deleteServerConfig(configId);
-      const remainingConfigs = await getAllServerConfigs();
-      if (activeConfigId === configId) {
-        setActiveConfigId(null);
-      }
-      await loadConfig();
-      refetchConnection();
-      addLog('Server configuration deleted.', 'INFO');
-      if (remainingConfigs.length === 0) {
-        Alert.alert('Success', 'Server configuration deleted.', [
-          { text: 'OK', onPress: () => notifyNoConfigs() },
-        ]);
-      } else {
-        Toast.show({ type: 'success', text1: 'Server configuration deleted' });
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Failed to delete server configuration:', error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to delete server configuration: ${errorMessage}` });
-      addLog(`Failed to delete server configuration: ${errorMessage}`, 'ERROR');
-    }
-  };
-
-  const handleConfigureServer = (config: ServerConfig): void => {
-    setUnifiedModalConfig(config);
-    setUnifiedModalTab(config.authType === 'apiKey' ? 'apiKey' : 'signIn');
-    setUnifiedModalVisible(true);
-  };
-
-  const handleAddNewConfig = (): void => {
-    setUnifiedModalConfig(null);
-    setUnifiedModalTab('signIn');
-    setUnifiedModalVisible(true);
-  };
+  const serverSubtitle = activeConfig ? (
+    <View className="flex-row items-center">
+      <View
+        className="w-2 h-2 rounded-full mr-2"
+        style={{ backgroundColor: isConnected ? success : danger }}
+      />
+      <Text
+        className="text-sm text-text-secondary flex-1"
+        numberOfLines={1}
+        ellipsizeMode="middle"
+      >
+        {activeConfig.url}
+      </Text>
+    </View>
+  ) : (
+    'Tap to add a server'
+  );
 
   const handleShareDiagnosticReport = async (): Promise<void> => {
     setIsSharing(true);
@@ -191,76 +115,82 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 130 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
-        <View className="flex-1 p-4 pb-20">
-          <ServerConfigComponent
-            serverConfigs={serverConfigs}
-            activeConfigId={activeConfigId}
-            handleSetActiveConfig={handleSetActiveConfig}
-            handleDeleteConfig={handleDeleteConfig}
-            handleConfigureServer={handleConfigureServer}
-            handleAddNewConfig={handleAddNewConfig}
-            onOpenWebDashboard={openWebDashboard}
-            isConnected={isConnected}
-            checkServerConnection={() => refetchConnection().then((result) => !!result.data)}
+      <ScrollView contentContainerStyle={{ paddingBottom: 80 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
+        <View className="flex-1 p-4">
+          <View className="mb-6">
+            <Text className="text-2xl font-bold text-text-primary">Settings</Text>
+          </View>
+
+          <SettingsRow
+            icon="server"
+            title="Server"
+            subtitle={serverSubtitle}
+            onPress={() => navigation.navigate('ServerSettings')}
+            iconColor={catSlate}
+            accessibilityLabel={
+              activeConfig
+                ? `Server settings. ${isConnected ? 'Connected' : 'Connection failed'}.`
+                : 'Server settings. No server configured.'
+            }
           />
 
           <SectionErrorBoundary sectionName="Settings">
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            <SettingsRow
+              icon="health-data-sync"
+              title="Health Data Sync"
+              subtitle={syncSubtitle}
               onPress={() => navigation.navigate('Sync')}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-text-primary">Health Data Sync</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
+              iconColor={catPink}
+            />
 
             {isConnected && (
-              <View className="bg-surface rounded-xl mb-4 shadow-sm">
-                <TouchableOpacity
-                  className="p-4 flex-row items-center justify-between border-b border-border-subtle"
+              <SettingsRowGroup>
+                <SettingsRow
+                  icon="calorie-settings"
+                  title="Calorie Settings"
                   onPress={() => navigation.navigate('CalorieSettings')}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
-                  <Icon name="chevron-forward" size={20} color="#999" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="p-4 flex-row items-center justify-between"
+                  iconColor={catCalories}
+                />
+                <SettingsRow
+                  icon="food-search-settings"
+                  title="Food Search Settings"
                   onPress={() => navigation.navigate('FoodSettings')}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
-                  <Icon name="chevron-forward" size={20} color="#999" />
-                </TouchableOpacity>
-              </View>
+                  iconColor={catOrange}
+                />
+              </SettingsRowGroup>
             )}
 
-            <AppearanceSettings />
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-              onPress={() => navigation.navigate('Logs')}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-semibold text-text-primary">View Logs</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            <SettingsRowGroup>
+              <SettingsRow
+                icon="app-settings"
+                title="App Settings"
+                onPress={() => navigation.navigate('AppSettings')}
+                iconColor={catViolet}
+              />
+              <SettingsRow
+                icon="document-text"
+                title="View Logs"
+                onPress={() => navigation.navigate('Logs')}
+                iconColor={catSlate}
+              />
+              <SettingsRow
+                icon="info-circle"
+                title="About"
+                onPress={() => navigation.navigate('About')}
+                iconColor={hydration}
+              />
+            </SettingsRowGroup>
+
+            <SettingsRow
+              icon="share"
+              title="Share Diagnostic Report"
               onPress={handleShareDiagnosticReport}
-              activeOpacity={0.7}
               disabled={isSharing}
-            >
-              <Text className="text-base font-semibold text-text-primary">Share Diagnostic Report</Text>
-              {isSharing ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <Icon name="share" size={20} color="#999" />
-              )}
-            </TouchableOpacity>
+              iconColor={catSlate}
+              rightAccessory={isSharing ? <ActivityIndicator size="small" /> : undefined}
+            />
             <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
-              Exports a local diagnostic report (app version, sync status, logs).{'\n'}
+              Exports a local diagnostic report (app version, sync status, logs).
               No personal health or food data is included. Nothing is sent automatically.
             </Text>
 
@@ -271,12 +201,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
 
 
-            <View className="items-center z-100">
-              <Button variant="ghost" onPress={() => setShowPrivacyModal(true)} className="p-0 mb-2">
-                Privacy Policy
-              </Button>
-              <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
-            </View>
           </SectionErrorBoundary>
         </View>
       </ScrollView>
@@ -284,18 +208,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       <PrivacyPolicyModal
         visible={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
-      />
-
-      <ServerConfigModal
-        visible={unifiedModalVisible}
-        editingConfig={unifiedModalConfig}
-        defaultAuthTab={unifiedModalTab}
-        onSuccess={() => {
-          setUnifiedModalVisible(false);
-          loadConfig();
-          refetchConnection();
-        }}
-        onDismiss={() => setUnifiedModalVisible(false)}
       />
     </View>
   );

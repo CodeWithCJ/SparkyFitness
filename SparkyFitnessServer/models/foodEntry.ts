@@ -832,6 +832,60 @@ async function deleteFoodEntryComponentsByFoodEntryMealId(
     client.release();
   }
 }
+
+async function getFoodEntriesBatch(
+  userId: string,
+  limit: number,
+  offset: number
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        fe.id, 
+        mt.name as meal_type,
+        fe.food_entry_meal_id,
+        fem.name as meal_name,
+        fe.quantity, 
+        fe.unit, 
+        fe.entry_date, 
+        fe.food_name, 
+        fe.brand_name, 
+        fe.serving_size, 
+        fe.serving_unit, 
+        fe.calories, 
+        fe.protein, 
+        fe.carbs, 
+        fe.fat,
+        fe.saturated_fat, 
+        fe.polyunsaturated_fat, 
+        fe.monounsaturated_fat, 
+        fe.trans_fat, 
+        fe.cholesterol, 
+        fe.sodium,
+        fe.potassium, 
+        fe.dietary_fiber, 
+        fe.sugars, 
+        fe.vitamin_a, 
+        fe.vitamin_c, 
+        fe.calcium, 
+        fe.iron, 
+        fe.glycemic_index,
+        fe.custom_nutrients
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
+       LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
+       WHERE fe.user_id = $1
+       ORDER BY fe.entry_date ASC, fe.created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export { createFoodEntry };
 export { getFoodEntryOwnerId };
 export { updateFoodEntry };
@@ -844,6 +898,7 @@ export { bulkCreateFoodEntries };
 export { getFoodEntryById };
 export { getFoodEntryComponentsByFoodEntryMealId };
 export { deleteFoodEntryComponentsByFoodEntryMealId };
+export { getFoodEntriesBatch };
 export default {
   createFoodEntry,
   getFoodEntryOwnerId,
@@ -857,4 +912,5 @@ export default {
   getFoodEntryById,
   getFoodEntryComponentsByFoodEntryMealId,
   deleteFoodEntryComponentsByFoodEntryMealId,
+  getFoodEntriesBatch,
 };

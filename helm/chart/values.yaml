@@ -11,8 +11,14 @@ fullnameOverride: ""
 # ========================== 1. GLOBAL ========================================
 
 global:
-  # -- Container image registry prefix (e.g. "registry.example.com")
-  imageRegistry: ""
+  # -- Container image registry prefix (e.g. "registry.example.com").
+  # Applied by the sparkyfitness.image helper to the server and frontend images.
+  # NOTE: This does NOT apply to the bundled HelmForge postgresql subchart
+  # (postgresql.*) or the wait-for-db init container, which use
+  # postgresql.image.repository/tag directly — matching how HelmForge itself
+  # constructs the image reference. Configure postgresql.image.repository
+  # with the full registry path if you mirror the image to a private registry.
+  imageRegistry: "ghcr.io"
   # -- Global image pull secrets, e.g. [{name: "regcred"}]
   imagePullSecrets: []
   # -- Default StorageClass for all PVCs (overridable per component)
@@ -40,9 +46,14 @@ config:
   adminEmail: ""
 
   # -- Allow CORS from private network ranges (only for self-hosted/private networks)
-  allowPrivateNetworkCors: true
+  # This shouldn't be necessary for Kubernetes since traffic is going to be exposed
+  # via ingress to the web browser but may be useful if you don't have local DNS
+  # setup.
+  allowPrivateNetworkCors: false
   # -- Extra trusted origins, comma-separated (e.g. "http://192.168.1.5:8080")
-  extraTrustedOrigins: "http://localhost:3004"
+  # For local testin and port forwarding, you can use the below commented value.
+  # extraTrustedOrigins: "http://localhost:3004"
+  extraTrustedOrigins: ""
 
   # -- Force email/password login to be enabled (fail-safe against OIDC lockout)
   forceEmailLogin: true
@@ -52,6 +63,18 @@ config:
   # -- OIDC authentication (OpenID Connect SSO)
   oidc:
     enabled: false
+    # -- NetworkPolicy egress targets for the OIDC provider (TCP/443).
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer (ipBlock, namespaceSelector, podSelector). If empty,
+    # the chart falls back to a permissive egress on port 443 (any destination)
+    # for backward compatibility and emits a NOTES.txt warning.
+    # Example:
+    #   networkPolicy:
+    #     to:
+    #       - ipBlock:
+    #           cidr: 192.0.2.5/32
+    networkPolicy:
+      to: []
     providerSlug: ""
     providerName: ""
     issuerUrl: ""
@@ -76,6 +99,13 @@ config:
   # -- Email / SMTP notifications
   email:
     enabled: false
+    # -- NetworkPolicy egress targets for the SMTP server.
+    # Only relevant when networkPolicy.enabled=true. Each item is a
+    # NetworkPolicyPeer. If empty, the chart falls back to a permissive
+    # egress on the SMTP port (any destination) for backward compatibility
+    # and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
     host: ""
     port: 587
     secure: false
@@ -91,6 +121,13 @@ config:
   garmin:
     enabled: false
     isChinaRegion: false
+    # -- NetworkPolicy egress targets for the Garmin Connect API (TCP/443),
+    # applied to the garmin pod itself (not the server).
+    # Only relevant when networkPolicy.enabled=true and garmin.enabled=true.
+    # Each item is a NetworkPolicyPeer. If empty, the chart falls back to a
+    # permissive egress on 443 and emits a NOTES.txt warning.
+    networkPolicy:
+      to: []
 
   # -- API key rate limiting (leave empty for app defaults: 100 req / 60s)
   rateLimiting:
@@ -107,7 +144,8 @@ config:
     saveMockData: false
 
 # ========================== 3. NETWORKING ====================================
-
+# -- If enabling this network policy, you should also set `postgresql.networkPolicy.enabled=true`
+# to use HelmForge's built-in NetworkPolicy for the database.
 networkPolicy:
   enabled: false
 
@@ -121,6 +159,15 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+  # -- Path prefixes routed directly to the server service. Default empty:
+  # the frontend image's nginx already proxies /api/, /uploads/, /health-data
+  # to the server, so a single rule "/" → frontend is enough. Set this list
+  # only if you want to bypass the frontend nginx hop for specific prefixes.
+  # Example to bypass the frontend for backend traffic:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 httpRoute:
   enabled: false
@@ -129,18 +176,32 @@ httpRoute:
     name: ""
     namespace: ""
     sectionName: ""
+  # -- Path prefixes routed directly to the server service. Same semantics as
+  # ingress.serverPaths.
+  # Example:
+  #   serverPaths:
+  #     - /api
+  #     - /uploads
+  serverPaths: []
 
 # ========================== 4. DEPLOYMENTS / STATEFULSETS ====================
 
 # -- Server (Node.js backend API — node:20-slim, UID 1000)
 server:
   image:
-    repository: codewithcj/sparkyfitness_server
+    repository: codewithcj/sparkyfitness-server
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3010
+  # -- Deployment update strategy. Default `Recreate` is required when the
+  # server PVCs are ReadWriteOnce (default). Switch to `RollingUpdate` only
+  # if the backup/uploads PVCs use a ReadWriteMany StorageClass.
+  strategy:
+    type: Recreate
   livenessProbe:
     httpGet:
       path: /api/health
@@ -156,6 +217,10 @@ server:
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 10
+  # NOTE: CPU limits cause cgroup throttling that often hurts latency more
+  # than it protects neighbors. If your cluster has working ResourceQuotas /
+  # LimitRanges, consider removing `limits.cpu` and keeping only `requests.cpu`.
+  # Memory limit is kept (OOM guard).
   resources:
     requests:
       cpu: 200m
@@ -177,6 +242,13 @@ server:
     capabilities:
       drop: [ALL]
   # -- Application secrets (encryption keys, auth tokens)
+  # GitOps caveat: chart-managed generation persists existing values across
+  # upgrades via a Kubernetes API `lookup`. In pure `helm template` mode
+  # (no cluster access — some ArgoCD/Flux setups, offline rendering),
+  # `lookup` returns empty and EACH render produces NEW random values.
+  # Applying that output rotates the keys and renders existing
+  # api_encryption_key-encrypted data unrecoverable. For GitOps,
+  # use externalSecrets.* or set server.secrets.existingSecret.
   secrets:
     # -- Auto-generate random secrets on first install (set false to require explicit values)
     generate: true
@@ -189,7 +261,7 @@ server:
   # -- Application database credentials (limited-privilege user for runtime queries)
   appDatabase:
     # -- Username for the limited-privilege app DB user
-    username: "sparkyapp"
+    username: "sparky"
     # -- Password (auto-generated if empty)
     password: ""
     # -- Use an existing K8s Secret (keys: username, password)
@@ -216,21 +288,48 @@ server:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the server container
   extraEnvFrom: []
+  # -- Extra volumes to add to the server pod
+  extraVolumes: []
+  # -- Extra volume mounts to add to the server container
+  extraVolumeMounts: []
+  # -- Init containers to run before the server container starts
+  initContainers: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
-# -- Frontend (nginx:alpine, runs as root for port 80)
+# -- Frontend (nginx, runs as non-root)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
+# The container listens on port 80 because the upstream image's nginx template
+# has `listen 80;` hardcoded. To bind 80 as non-root with cap-drop ALL +
+# allowPrivilegeEscalation: false, NET_BIND_SERVICE is added back via the
+# pod spec (see frontend.containerSecurityContext.capabilities.add).
 frontend:
   image:
-    repository: codewithcj/sparkyfitness
+    repository: codewithcj/sparkyfitness-frontend
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 80
+  # -- nginx rate limit zone for /api/auth/ endpoints (passed as NGINX_RATE_LIMIT
+  # to the image entrypoint, which envsubsts it into the rendered nginx config).
+  # Format: "<requests>r/s" or "<requests>r/m".
+  rateLimit: 5r/s
   livenessProbe:
     httpGet:
       path: /
@@ -254,34 +353,79 @@ frontend:
       cpu: 500m
       memory: 256Mi
   podSecurityContext:
-    runAsNonRoot: false
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containerSecurityContext:
+    runAsUser: 101
+    runAsGroup: 101
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-      add: [CHOWN, NET_BIND_SERVICE, SETGID, SETUID]
+      # -- NET_BIND_SERVICE is required because nginx in the upstream image
+      # binds port 80. The file capability on the nginx binary is stripped
+      # at execve under allowPrivilegeEscalation: false (NoNewPrivs=1), so
+      # the cap must be granted via the pod spec instead.
+      add: [NET_BIND_SERVICE]
   service:
     type: ClusterIP
     annotations: {}
+  # -- NetworkPolicy ingress restriction for the frontend pod.
+  # Only relevant when networkPolicy.enabled=true. Each item is a
+  # NetworkPolicyPeer (namespaceSelector, podSelector, ipBlock).
+  # If empty, the chart falls back to a permissive ingress (any source on
+  # frontend.port) for backward compatibility and emits a NOTES.txt warning.
+  # Example for ingress-nginx in its own namespace:
+  #   networkPolicy:
+  #     from:
+  #       - namespaceSelector:
+  #           matchLabels:
+  #             kubernetes.io/metadata.name: ingress-nginx
+  networkPolicy:
+    from: []
   # -- Extra environment variables injected into the frontend container (key: value)
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
   extraEnvFrom: []
+  # -- Extra volumes added to the frontend pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the frontend container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
 # -- Garmin microservice (python, USER daemon UID 1)
-# Only deployed when config.garmin.enabled=true
+# Only deployed when config.garmin.enabled=true.
+# NOTE: The upstream image bakes USER=daemon (UID 1). Some Pod Security
+# admission controllers (Kyverno/OPA Gatekeeper enforcing PSS `restricted`
+# strictly) block UIDs < 1000. If your cluster does, override the image
+# (`garmin.image.repository`) with one that uses a higher UID, or relax
+# the policy for this namespace.
 garmin:
   image:
-    repository: codewithcj/sparkyfitness_garmin
+    repository: codewithcj/sparkyfitness-garmin
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
+    # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8000
@@ -319,59 +463,83 @@ garmin:
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the garmin container
   extraEnvFrom: []
+  # -- Extra volumes added to the garmin pod
+  extraVolumes: []
+  # -- Extra volume mounts added to the garmin container
+  extraVolumeMounts: []
   serviceAccount:
     create: true
     automountServiceAccountToken: false
     annotations: {}
+  # -- PodDisruptionBudget (only useful with replicas > 1).
+  # Set exactly one of minAvailable / maxUnavailable.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: ""
+    maxUnavailable: ""
+  # -- Pod scheduling controls (all default empty / no-op).
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 
-# -- Bundled PostgreSQL (postgres:15-alpine, UID 999)
+# -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
+# See https://github.com/helmforgedev/charts/blob/main/charts/postgresql/values.yaml for details
+# on accepted values.
 postgresql:
   enabled: true
   image:
-    repository: postgres
-    tag: "18-alpine"
-    pullPolicy: IfNotPresent
-  extraEnv:
-    - name: PGDATA
-      value: /var/lib/postgresql/data/pgdata
-  livenessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    failureThreshold: 5
-  readinessProbe:
-    exec:
-      command:
-        - sh
-        - -c
-        - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop: [ALL]
+    tag: 18.3-trixie
+  config:
+    postgresql: |
+      log_statement = none
+      log_min_duration_statement = 1000
   auth:
     database: sparkyfitness
-    username: sparky
-    # -- Password for PostgreSQL owner user (auto-generated if empty)
+    # -- DB owner username. This becomes SPARKY_FITNESS_DB_USER in the server.
+    # The application uses two database roles:
+    #   - sparky_admin (this user): DB owner used for migrations, schema management,
+    #     RLS policy application, and cross-user queries. Must have CREATEROLE so the
+    #     app can create the app user on first startup. Matches the upstream docs at
+    #     https://codewithcj.github.io/SparkyFitness/install/external-database/
+    #   - sparky (server.appDatabase.username): limited-privilege runtime user
+    #     created automatically by the app on first startup. Used for all normal
+    #     application queries with RLS enforced.
+    username: sparky_admin
+    # -- DB owner password (auto-generated if empty).
     password: ""
-    # -- Use an existing K8s Secret (keys: username, password; optional: database)
+    # -- Use an existing K8s Secret (keys: postgres-password, user-password, replication-password)
     existingSecret: ""
+  # -- First-boot initialization: reassign DB ownership to the DB owner, grant
+  # CREATEROLE so the app can create the app user on first startup, and install
+  # required PostgreSQL extensions.
+  # Reference: https://codewithcj.github.io/SparkyFitness/install/external-database/
+  #
+  # WARNING: The DB owner is granted CREATEROLE so the application can automatically
+  # create the limited-privilege app user (sparky) on first startup. The upstream
+  # docs recommend revoking this after first startup, but future app updates that add
+  # new roles will fail without it. See "Security Hardening" in the link above.
+  initdb:
+    scripts:
+      02-sparky-admin-setup.sh: |
+        #!/bin/bash
+        set -euo pipefail
+        export PGPASSWORD="${POSTGRES_PASSWORD}"
+        # The postgres entrypoint pre-creates POSTGRES_DB owned by the postgres
+        # superuser before initdb scripts run. Reassign ownership to the DB owner
+        # so it can create schemas and manage RLS during migrations.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER DATABASE \"${APP_DATABASE}\" OWNER TO \"${APP_USERNAME}\""
+        # Grant CREATEROLE so the app can create the sparky role on first startup.
+        psql --username "${POSTGRES_USER}" --dbname postgres \
+          -c "ALTER USER \"${APP_USERNAME}\" CREATEROLE"
+        # Install required extensions and grant function execution (must run as superuser).
+        psql --username "${POSTGRES_USER}" --dbname "${APP_DATABASE}" \
+          -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto"' \
+          -c 'CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"' \
+          -c "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO \"${APP_USERNAME}\" WITH GRANT OPTION"
   persistence:
     enabled: true
     size: 8Gi
@@ -384,6 +552,67 @@ postgresql:
     limits:
       cpu: 500m
       memory: 512Mi
+  backup:
+    enabled: false
+
+# -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
+# Requires postgresql.enabled=true (the bundled HelmForge subchart). PVC backups
+# are not supported with an external database (externalDatabase.*).
+# Leave disabled to use the bundled chart's built-in S3 backup mode instead.
+#
+# Image: by default the backup job uses the same postgres image as the bundled
+# subchart (postgresql.image.*) so no separate pull is needed and versions always
+# stay in sync. To override, set image.repository to a non-empty value;
+# global.imageRegistry will then be prepended via the sparkyfitness.image helper.
+#
+# Security context: defaults below run as the standard postgres UID 999. Override
+# podSecurityContext or containerSecurityContext here to match your cluster's
+# requirements. readOnlyRootFilesystem is true by default; do not disable it.
+databaseBackup:
+  enabled: false
+  schedule: "0 4 * * *"
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  archivePrefix: sparkyfitness
+  # -- Override the backup container image. Leave repository empty (default) to
+  # automatically use postgresql.image (same version, no extra pull needed).
+  # When set, global.imageRegistry is prepended via sparkyfitness.image helper.
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  persistence:
+    existingClaim: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+    mountPath: /backup
+  retention:
+    days: 7
+    weeks: 5
+    months: 3
+  resources: {}
+  database:
+    pgDumpAllArgs: "--clean --if-exists"
 
 # -- External database (used when postgresql.enabled=false)
 externalDatabase:
@@ -394,6 +623,19 @@ externalDatabase:
     username: ""
     password: ""
     existingSecret: ""
+  # -- NetworkPolicy egress restriction for the external database.
+  # Only relevant when networkPolicy.enabled=true and postgresql.enabled=false.
+  # Set at least one of cidrs / namespaceSelector / podSelector to restrict the
+  # server's egress to the external DB. If all are empty, the chart falls back
+  # to a permissive egress on the DB port (cluster-wide pods + 0.0.0.0/0) for
+  # backward compatibility and emits a warning in NOTES.txt.
+  networkPolicy:
+    # -- Allowed destination CIDRs (e.g. ["10.0.0.5/32"])
+    cidrs: []
+    # -- Allowed destination namespace selector (for in-cluster external DBs)
+    namespaceSelector: {}
+    # -- Allowed destination pod selector (for in-cluster external DBs)
+    podSelector: {}
 
 # ========================== 5. EXTERNAL SECRETS (Advanced) ===================
 # When enabled, secrets are fetched from an external provider (e.g. Vault) via ESO.
@@ -402,6 +644,9 @@ externalSecrets:
   enabled: false
   # -- ESO CRD API version. Use "v1beta1" for ESO < 0.10.0, "v1" for >= 0.10.0
   apiVersion: v1
+  # -- ExternalSecret refreshInterval (Go duration, e.g. "1h", "15m", "0" to disable polling).
+  # Applied to all chart-managed ExternalSecrets (app, appdb, oidc, postgres, smtp).
+  refreshInterval: 1h
   secretStore:
     name: sparkyfitness
     vaultPath: sparkyfitness
@@ -411,8 +656,22 @@ externalSecrets:
       name: ""
       key: ""
     auth:
+      # -- Auth method: one of `kubernetes` (default), `appRole`, `token`.
+      method: kubernetes
+      # --- method=kubernetes ---
       mountPath: kubernetes
       role: external-secrets
+      # --- method=appRole ---
+      appRole:
+        path: approle
+        roleId: ""
+        secretRef:
+          name: ""
+          key: ""
+      # --- method=token ---
+      tokenSecretRef:
+        name: ""
+        key: ""
   app:
     enabled: false
     remoteKey: app_secret

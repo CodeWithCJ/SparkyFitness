@@ -2,5 +2,30 @@ apiVersion: v2
 name: sparkyfitness
 description: Sparkyfitness fitness tracking application
 type: application
-version: 0.2.0
-appVersion: "v0.16.4.7"
+version: 0.3.0
+appVersion: "v0.16.6.1"
+kubeVersion: ">= 1.28.0-0"
+home: https://github.com/CodeWithCJ/SparkyFitness
+sources:
+  - https://github.com/CodeWithCJ/SparkyFitness
+keywords:
+  - sparkyfitness
+  - fitness
+  - tracking
+  - nutrition
+  - self-hosted
+maintainers:
+  - name: CodeWithCJ
+    url: https://github.com/CodeWithCJ
+annotations:
+  artifacthub.io/license: GPL-3.0-or-later
+  artifacthub.io/links: |
+    - name: Source
+      url: https://github.com/CodeWithCJ/SparkyFitness
+    - name: Documentation
+      url: https://codewithcj.github.io/SparkyFitness/
+dependencies:
+  - name: postgresql
+    repository: https://repo.helmforge.dev
+    version: 1.9.5
+    condition: postgresql.enabled

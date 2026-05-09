@@ -1,0 +1,26 @@
+{{- if and .Values.config.garmin.enabled .Values.garmin.podDisruptionBudget.enabled }}
+{{- if and .Values.garmin.podDisruptionBudget.minAvailable .Values.garmin.podDisruptionBudget.maxUnavailable }}
+{{- fail "garmin.podDisruptionBudget: set exactly one of minAvailable or maxUnavailable, not both" }}
+{{- end }}
+{{- if and (not .Values.garmin.podDisruptionBudget.minAvailable) (not .Values.garmin.podDisruptionBudget.maxUnavailable) }}
+{{- fail "garmin.podDisruptionBudget: set one of minAvailable or maxUnavailable" }}
+{{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-garmin
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: garmin
+spec:
+  {{- with .Values.garmin.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  {{- with .Values.garmin.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: garmin
+{{- end }}

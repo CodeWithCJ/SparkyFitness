@@ -8,7 +8,7 @@ Components:
   - Garmin:   {{ include "sparkyfitness.fullname" . }}-garmin
 {{- end }}
 {{- if .Values.postgresql.enabled }}
-  - PostgreSQL: {{ include "sparkyfitness.fullname" . }}-postgresql
+  - PostgreSQL: Bundled with the PostgreSQL sub-chart.
 {{- end }}
 
 Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
@@ -20,6 +20,15 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
   Secrets were {{ if .Values.server.secrets.generate }}auto-generated{{ else }}provided via values{{ end }} and stored
   as plain Kubernetes Secrets. This is suitable for development/testing
   but NOT recommended for production.
+{{- if .Values.server.secrets.generate }}
+
+  GitOps caveat: chart-managed auto-generation persists across upgrades
+  via a Kubernetes API `lookup`. In pure `helm template` mode (no cluster
+  access — some ArgoCD/Flux setups, offline rendering), `lookup` returns
+  empty and EACH render produces NEW random values. Applying that output
+  rotates the keys and renders existing api_encryption_key-encrypted data
+  unrecoverable.
+{{- end }}
 
   For production, use one of:
     - External Secrets Operator: set externalSecrets.enabled=true
@@ -29,6 +38,76 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
         config.oidc.secrets.existingSecret      (keys: client_id, client_secret)
         config.email.secrets.existingSecret     (keys: username, password)
         postgresql.auth.existingSecret          (keys: username, password)
+{{- end }}
+{{- if .Values.networkPolicy.enabled }}
+{{- $frontendFrom := (.Values.frontend.networkPolicy | default dict).from | default list }}
+{{- if not (gt (len $frontendFrom) 0) }}
+
+  WARNING: NETWORKPOLICY INGRESS NOT RESTRICTED FOR FRONTEND
+
+  networkPolicy.enabled=true but frontend.networkPolicy.from is empty. The
+  frontend NetworkPolicy currently allows ingress on port {{ .Values.frontend.port }}
+  from ANY source in the cluster.
+
+  Restrict by setting frontend.networkPolicy.from, e.g.:
+    frontend:
+      networkPolicy:
+        from:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: ingress-nginx
+{{- end }}
+{{- end }}
+{{- if .Values.networkPolicy.enabled }}
+{{- $unrestricted := list }}
+{{- if .Values.config.oidc.enabled }}
+  {{- $oidcTo := (.Values.config.oidc.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $oidcTo) 0) }}{{- $unrestricted = append $unrestricted "config.oidc.networkPolicy.to (port 443)" }}{{- end }}
+{{- end }}
+{{- if .Values.config.email.enabled }}
+  {{- $smtpTo := (.Values.config.email.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $smtpTo) 0) }}{{- $unrestricted = append $unrestricted (printf "config.email.networkPolicy.to (port %v)" (.Values.config.email.port | default 587)) }}{{- end }}
+{{- end }}
+{{- if .Values.config.garmin.enabled }}
+  {{- $garminTo := (.Values.config.garmin.networkPolicy | default dict).to | default list }}
+  {{- if not (gt (len $garminTo) 0) }}{{- $unrestricted = append $unrestricted "config.garmin.networkPolicy.to (port 443)" }}{{- end }}
+{{- end }}
+{{- if gt (len $unrestricted) 0 }}
+
+  WARNING: NETWORKPOLICY EGRESS NOT RESTRICTED FOR EXTERNAL TARGETS
+
+  networkPolicy.enabled=true but the following egress paths are unrestricted
+  (permissive — any destination on the listed port):
+{{- range $unrestricted }}
+    - {{ . }}
+{{- end }}
+
+  Restrict by setting the listed values to a list of NetworkPolicyPeer entries
+  (ipBlock / namespaceSelector / podSelector). Note: plain Kubernetes
+  NetworkPolicy cannot restrict by FQDN — pin to known IP ranges, or use a
+  CNI with FQDN policies (e.g. Cilium).
+{{- end }}
+{{- end }}
+{{- if and .Values.networkPolicy.enabled (not .Values.postgresql.enabled) }}
+{{- $extNp := .Values.externalDatabase.networkPolicy | default dict }}
+{{- $cidrs := $extNp.cidrs | default list }}
+{{- $nsSel := $extNp.namespaceSelector | default dict }}
+{{- $podSel := $extNp.podSelector | default dict }}
+{{- if not (or (gt (len $cidrs) 0) (gt (len $nsSel) 0) (gt (len $podSel) 0)) }}
+
+  WARNING: NETWORKPOLICY EGRESS NOT RESTRICTED FOR EXTERNAL DATABASE
+
+  networkPolicy.enabled=true and postgresql.enabled=false, but
+  externalDatabase.networkPolicy has no cidrs, namespaceSelector, or
+  podSelector configured. The server NetworkPolicy currently allows egress
+  on port {{ .Values.externalDatabase.port | default 5432 }} to ANY destination
+  (cluster-wide pods + 0.0.0.0/0).
+
+  Restrict by setting one or more of:
+    externalDatabase.networkPolicy.cidrs: ["10.0.0.5/32"]
+    externalDatabase.networkPolicy.namespaceSelector: {...}
+    externalDatabase.networkPolicy.podSelector: {...}
+{{- end }}
 {{- end }}
 {{- if not .Values.postgresql.enabled }}
 
@@ -65,7 +144,7 @@ To access the application locally via port-forwarding, run the following command
 in separate terminal windows:
 
   1. Port-forward the Frontend to localhost:3004:
-     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-frontend 3004:80
+     kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-frontend 3004:{{ .Values.frontend.service.port | default .Values.frontend.port }}
 
   2. Port-forward the Server to localhost:3010:
      kubectl port-forward svc/{{ include "sparkyfitness.fullname" . }}-server 3010:3010

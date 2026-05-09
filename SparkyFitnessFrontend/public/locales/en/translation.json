@@ -504,6 +504,30 @@
       "title": "Custom Categories",
       "description": "Create and manage custom measurement categories"
     },
+    "customNutrients": {
+      "title": "Custom Nutrients",
+      "subtitle": "Manage your custom nutrient definitions"
+    },
+    "customMeals": {
+      "title": "Custom Meals",
+      "subtitle": "Create and manage custom meal types"
+    },
+    "dataManagement": {
+      "sectionTitle": "Data Management",
+      "subtitle": "Export or manage your data",
+      "title": "Data Export",
+      "description": "Download your entire food diary in CSV format. The file will contain all your meals with food details, portions and macros (calories, protein, carbs, fat...).",
+      "delimiterLabel": "CSV delimiter format",
+      "delimiterPlaceholder": "Delimiter",
+      "semicolon": "Semicolon (;)",
+      "comma": "Comma (,)",
+      "exportButton": "Export my diary (CSV)",
+      "exporting": "Preparing...",
+      "exportSuccess": "Export successful",
+      "exportSuccessDescription": "Your diary has been exported successfully.",
+      "exportError": "Export error",
+      "exportErrorDescription": "Unable to download your diary. Please try again later."
+    },
     "foodExerciseDataProviders": {
       "title": "Food & Exercise Data Providers",
       "description": "Configure external food and exercise data sources and synchronize data with Garmin Connect",

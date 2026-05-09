@@ -1,3 +1,4 @@
+{{- include "sparkyfitness.validateRouting" . }}
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -18,10 +19,20 @@ spec:
     {{- toYaml .Values.ingress.tls | nindent 4 }}
   {{- end }}
   rules:
+    {{- $serverPaths := .Values.ingress.serverPaths | default list }}
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
+          {{- range $serverPaths }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "sparkyfitness.fullname" $ }}-server
+                port:
+                  name: http
+          {{- end }}
           {{- range .paths }}
           - path: {{ .path }}
             pathType: {{ .pathType }}

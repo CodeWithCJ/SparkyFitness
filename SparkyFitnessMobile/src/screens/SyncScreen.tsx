@@ -42,6 +42,7 @@ import {
 } from '../services/storage';
 import type { TimeRange } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { formatRelativeTime } from '../utils/dateUtils';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
@@ -485,35 +486,4 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   );
 };
 
-const formatRelativeTime = (timestamp: Date | null): string => {
-  if (!timestamp) return 'Never synced';
-
-  const now = new Date();
-  const diffMs = now.getTime() - timestamp.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSeconds < 60) {
-    return 'Just now';
-  } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
-  } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  } else if (diffDays === 1) {
-    return `Yesterday at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    })}`;
-  } else {
-    return `${timestamp.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric'
-    })} at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    })}`;
-  }
-};
 export default SyncScreen;

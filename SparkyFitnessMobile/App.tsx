@@ -17,7 +17,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -51,6 +51,9 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
+import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
+import AppSettingsScreen from './src/screens/AppSettingsScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -79,6 +82,7 @@ import {
   recordAutoSyncTime,
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
+import { initializeHaptics } from './src/services/haptics';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
@@ -147,6 +151,9 @@ const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
+const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
+const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
+const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -412,6 +419,7 @@ function AppContent() {
 
     // Initialize theme from storage on app start
     initializeTheme();
+    initializeHaptics();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
@@ -909,6 +917,27 @@ function AppContent() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="ServerSettings"
+            component={SafeServerSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="AppSettings"
+            component={SafeAppSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="About"
+            component={SafeAbout}
+            options={{
+              headerShown: false,
+            }}
+          />
         </Stack.Navigator>
         <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} />
         <ReauthModal
@@ -932,6 +961,7 @@ function AppContent() {
               handleLoginSuccess();
             }
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
+            queryClient.invalidateQueries({ queryKey: serverConfigsQueryKey });
           }}
           onDismiss={() => {
             if (showApiKeySwitchModal) {
