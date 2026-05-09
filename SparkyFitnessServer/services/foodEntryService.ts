@@ -1445,6 +1445,8 @@ const getCSVLabels = (locale: string) => {
       ? 'Calories Brûlées (Exercices)'
       : 'Burned Calories (Exercises)',
     WATER_CONSUMED: isFr ? 'Eau Consommée' : 'Water Consumed',
+    DRINK_DETAIL: isFr ? 'Boisson' : 'Drink',
+    DRINK_TIME: isFr ? 'Heure' : 'Time',
   };
 };
 
@@ -1584,19 +1586,24 @@ async function exportAllDiaryEntriesToCSVStream(
         uniqueDates[0]
       );
 
-      const [nutritionSummaries, waterEntries, exerciseEntries] =
-        await Promise.all([
-          foodRepository.getDailyNutritionSummariesByDates(userId, uniqueDates),
-          measurementRepository.getWaterIntakesByDates(userId, uniqueDates),
-          reportRepository.getExerciseEntries(
-            userId,
-            minDate,
-            maxDate,
-            null,
-            null,
-            null
-          ),
-        ]);
+      const [
+        nutritionSummaries,
+        waterEntries,
+        exerciseEntries,
+        waterIntakeLogs,
+      ] = await Promise.all([
+        foodRepository.getDailyNutritionSummariesByDates(userId, uniqueDates),
+        measurementRepository.getWaterIntakesByDates(userId, uniqueDates),
+        reportRepository.getExerciseEntries(
+          userId,
+          minDate,
+          maxDate,
+          null,
+          null,
+          null
+        ),
+        measurementRepository.getWaterIntakeLogsByDates(userId, uniqueDates),
+      ]);
 
       const summariesCache = new Map();
 
@@ -1624,11 +1631,17 @@ async function exportAllDiaryEntriesToCSVStream(
           }
         );
 
+        const drinkLogs = waterIntakeLogs.filter(
+          (l: { entry_date: string | Date }) =>
+            getDayString(l.entry_date) === dateStr
+        );
+
         summariesCache.set(dateStr, {
           nutrition,
           goal: getGoalForDate(dateStr),
           waterTotal,
           caloriesBurned,
+          drinkLogs,
         });
       }
 
@@ -1761,6 +1774,49 @@ async function exportAllDiaryEntriesToCSVStream(
               sumRow3[`${cn.name} (${cn.unit})`] = '';
             }
 
+            // Individual drink detail rows
+            const drinkDetailRows: Record<string, string>[] = [];
+            if (sumData.drinkLogs && sumData.drinkLogs.length > 0) {
+              for (const drink of sumData.drinkLogs) {
+                const drinkTime = drink.logged_at
+                  ? new Date(drink.logged_at).toLocaleTimeString('en-GB', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false,
+                    })
+                  : '';
+                const drinkLabel = drink.container_name
+                  ? `${CSV_LABELS.DRINK_DETAIL}: ${drink.container_name}`
+                  : CSV_LABELS.DRINK_DETAIL;
+                const drinkRow: Record<string, string> = {
+                  [baseHeaders[0]]: sumDateFormatted,
+                  [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+                  [baseHeaders[2]]: drinkLabel,
+                  [baseHeaders[3]]: drinkTime,
+                  [baseHeaders[4]]: '',
+                  [baseHeaders[5]]: '',
+                  [baseHeaders[6]]: '',
+                  [baseHeaders[7]]: '',
+                  [baseHeaders[8]]: '',
+                  [baseHeaders[9]]: '',
+                  [baseHeaders[10]]: '',
+                  [baseHeaders[11]]: '',
+                  [baseHeaders[12]]: '',
+                  [baseHeaders[13]]: '',
+                  [baseHeaders[14]]: '',
+                  [baseHeaders[15]]: formatLocalizedNumber(
+                    drink.water_ml,
+                    locale
+                  ),
+                  [baseHeaders[16]]: '',
+                };
+                for (const cn of userCustomNutrients) {
+                  drinkRow[`${cn.name} (${cn.unit})`] = '';
+                }
+                drinkDetailRows.push(drinkRow);
+              }
+            }
+
             const sumRow4: Record<string, string> = {
               [baseHeaders[0]]: sumDateFormatted,
               [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
@@ -1788,7 +1844,13 @@ async function exportAllDiaryEntriesToCSVStream(
               sumRow4[`${cn.name} (${cn.unit})`] = '';
             }
 
-            rowsToExport.push(sumRow1, sumRow2, sumRow3, sumRow4);
+            rowsToExport.push(
+              sumRow1,
+              sumRow2,
+              sumRow3,
+              ...drinkDetailRows,
+              sumRow4
+            );
           }
         }
 
@@ -1901,11 +1963,17 @@ async function exportAllDiaryEntriesToCSVStream(
         }
       );
 
+      const lastDateDrinkLogs =
+        await measurementRepository.getWaterIntakeLogsByDates(userId, [
+          currentDateProcessed,
+        ]);
+
       const sumData = {
         nutrition: lastSummary,
         goal: getGoalForDate(currentDateProcessed),
         waterTotal: parseFloat(String(water?.water_ml)) || 0,
         caloriesBurned: caloriesBurned,
+        drinkLogs: lastDateDrinkLogs,
       };
 
       if (sumData) {
@@ -2048,7 +2116,53 @@ async function exportAllDiaryEntriesToCSVStream(
           finalRow4[`${cn.name} (${cn.unit})`] = '';
         }
 
-        const finalRows = [finalRow1, finalRow2, finalRow3, finalRow4];
+        // Individual drink detail rows for last date
+        const finalDrinkRows: Record<string, string>[] = [];
+        if (sumData.drinkLogs && sumData.drinkLogs.length > 0) {
+          for (const drink of sumData.drinkLogs) {
+            const drinkTime = drink.logged_at
+              ? new Date(drink.logged_at).toLocaleTimeString('en-GB', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })
+              : '';
+            const drinkLabel = drink.container_name
+              ? `${CSV_LABELS.DRINK_DETAIL}: ${drink.container_name}`
+              : CSV_LABELS.DRINK_DETAIL;
+            const drinkRow: Record<string, string> = {
+              [baseHeaders[0]]: sumDateFormatted,
+              [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
+              [baseHeaders[2]]: drinkLabel,
+              [baseHeaders[3]]: drinkTime,
+              [baseHeaders[4]]: '',
+              [baseHeaders[5]]: '',
+              [baseHeaders[6]]: '',
+              [baseHeaders[7]]: '',
+              [baseHeaders[8]]: '',
+              [baseHeaders[9]]: '',
+              [baseHeaders[10]]: '',
+              [baseHeaders[11]]: '',
+              [baseHeaders[12]]: '',
+              [baseHeaders[13]]: '',
+              [baseHeaders[14]]: '',
+              [baseHeaders[15]]: formatLocalizedNumber(drink.water_ml, locale),
+              [baseHeaders[16]]: '',
+            };
+            for (const cn of userCustomNutrients) {
+              drinkRow[`${cn.name} (${cn.unit})`] = '';
+            }
+            finalDrinkRows.push(drinkRow);
+          }
+        }
+
+        const finalRows = [
+          finalRow1,
+          finalRow2,
+          finalRow3,
+          ...finalDrinkRows,
+          finalRow4,
+        ];
 
         const finalChunk = Papa.unparse(finalRows, {
           header: false,

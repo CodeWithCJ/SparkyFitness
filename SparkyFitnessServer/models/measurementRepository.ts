@@ -990,6 +990,22 @@ async function insertWaterIntakeLog(
   }
 }
 
+async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+       FROM water_intake_log
+       WHERE user_id = $1 AND entry_date = ANY($2::date[])
+       ORDER BY entry_date, logged_at ASC`,
+      [userId, dates]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWaterIntakeLogByDate(userId: any, date: any) {
   const client = await getClient(userId);
@@ -1060,6 +1076,7 @@ export default {
   deleteWaterIntake,
   insertWaterIntakeLog,
   getWaterIntakeLogByDate,
+  getWaterIntakeLogsByDates,
   deleteWaterIntakeLog,
   getWaterIntakeLogEntryOwnerId,
   updateWaterIntakeLogTime,
