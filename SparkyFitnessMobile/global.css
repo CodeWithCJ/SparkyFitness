@@ -29,6 +29,7 @@
       --color-text-primary:      hsl(222, 47%, 11%);
       --color-text-secondary:    hsl(215, 19%, 40%);
       --color-text-muted:        hsl(215, 20%, 65%);
+      --color-icon-decorative:   hsl(215, 19%, 40%);
       
       --color-text-link:         hsl(220, 90%, 65%);
       
@@ -84,6 +85,7 @@
       --color-text-primary:      hsl(220, 15%, 92%);
       --color-text-secondary:    hsl(220, 10%, 80%);
       --color-text-muted:        hsl(220, 10%, 50%);
+      --color-icon-decorative:   hsl(220, 10%, 50%);
 
       --color-accent-primary:    hsl(220, 85%, 60%);
       --color-accent-muted:      hsl(220, 65%, 66%);
@@ -136,6 +138,7 @@
       --color-text-primary:      hsl(220, 15%, 92%);
       --color-text-secondary:    hsl(220, 10%, 70%);
       --color-text-muted:        hsl(220, 10%, 50%);
+      --color-icon-decorative:   hsl(220, 10%, 50%);
 
       --color-accent-primary:    hsl(220, 85%, 60%);
       --color-accent-muted:      hsl(220, 65%, 66%);
