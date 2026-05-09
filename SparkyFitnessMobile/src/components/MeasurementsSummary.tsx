@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { MeasurementIcons, type MeasurementKind } from './icons/measurements';
 import {
   weightFromKg,
   lengthFromCm,
@@ -49,67 +50,88 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
   heightMode = 'cm',
   onPress,
 }) => {
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const [accentPrimary, iconColor] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-icon-decorative',
+  ]) as [string, string];
 
   if (!measurements) return null;
 
-  const rows: { label: string; value: string }[] = [];
+  const rows: { kind: MeasurementKind; label: string; value: string }[] = [];
   if (measurements.weight != null) {
-    rows.push({ label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
+    rows.push({ kind: 'weight', label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
   }
   if (measurements.body_fat_percentage != null) {
-    rows.push({ label: 'Body fat', value: `${formatNumber(measurements.body_fat_percentage)}%` });
+    rows.push({
+      kind: 'body_fat_percentage',
+      label: 'Body fat',
+      value: `${formatNumber(measurements.body_fat_percentage)}%`,
+    });
   }
   if (measurements.height != null) {
-    rows.push({ label: 'Height', value: formatHeight(measurements.height, heightMode) });
+    rows.push({ kind: 'height', label: 'Height', value: formatHeight(measurements.height, heightMode) });
   }
   if (measurements.neck != null) {
-    rows.push({ label: 'Neck', value: formatBodyLength(measurements.neck, bodyUnit) });
+    rows.push({ kind: 'neck', label: 'Neck', value: formatBodyLength(measurements.neck, bodyUnit) });
   }
   if (measurements.waist != null) {
-    rows.push({ label: 'Waist', value: formatBodyLength(measurements.waist, bodyUnit) });
+    rows.push({ kind: 'waist', label: 'Waist', value: formatBodyLength(measurements.waist, bodyUnit) });
   }
   if (measurements.hips != null) {
-    rows.push({ label: 'Hips', value: formatBodyLength(measurements.hips, bodyUnit) });
+    rows.push({ kind: 'hips', label: 'Hips', value: formatBodyLength(measurements.hips, bodyUnit) });
   }
   if (measurements.steps != null) {
-    rows.push({ label: 'Steps', value: String(measurements.steps) });
+    rows.push({ kind: 'steps', label: 'Steps', value: String(measurements.steps) });
   }
 
   if (rows.length === 0) return null;
 
   const header = (
-    <View className="flex-row items-center gap-2 mb-2">
-      <Icon name="measurements" size={18} color={accentPrimary} />
+    <View className="flex-row items-center gap-2 mb-2 px-1">
       <Text className="text-base font-bold text-text-secondary flex-1">Measurements</Text>
-      {onPress && <Icon name="chevron-forward" size={14} color={accentPrimary} />}
+      {onPress && <Icon name="add" size={14} color={accentPrimary} />}
     </View>
   );
 
-  const body = rows.map((row, index) => (
-    <View
-      key={row.label}
-      className={`flex-row items-center justify-between py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
-    >
-      <Text className="text-sm text-text-secondary">{row.label}</Text>
-      <Text className="text-sm font-semibold text-text-primary">{row.value}</Text>
-    </View>
-  ));
+  const tiles = rows.map((row) => {
+    const IconComponent = MeasurementIcons[row.kind];
+    return (
+      <View key={row.kind} className="w-[48%] mb-2">
+        <View className="bg-surface rounded-xl py-3 px-3 shadow-sm flex-row items-center">
+          <IconComponent size={56} color={iconColor} accentColor={accentPrimary} />
+          <View className="flex-1 ml-2 items-center">
+            <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
+              {row.value}
+            </Text>
+            <Text className="text-sm text-text-secondary" numberOfLines={1}>
+              {row.label}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  });
+
+  const content = (
+    <>
+      {header}
+      <View className="flex-row flex-wrap justify-between">{tiles}</View>
+    </>
+  );
 
   return (
-    <View className="bg-surface rounded-xl p-4 my-2 shadow-sm overflow-hidden">
+    <View className="my-2">
       {onPress ? (
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
           accessibilityLabel="Edit measurements"
         >
-          {header}
+          {content}
         </Pressable>
       ) : (
-        header
+        content
       )}
-      {body}
     </View>
   );
 };
