@@ -1264,7 +1264,7 @@ async function upsertWaterIntake(
       entryDate,
       'manual'
     );
-    // 5. Log individual drink(s) into water_intake_log (only for additions)
+    // 5. Log individual drink(s) into water_intake_entries (only for additions)
     if (changeDrinks > 0) {
       for (let i = 0; i < changeDrinks; i++) {
         await measurementRepository.insertWaterIntakeLog(

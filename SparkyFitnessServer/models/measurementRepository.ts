@@ -959,7 +959,7 @@ async function insertWaterIntakeLog(
   const client = await getClient(actingUserId);
   try {
     const result = await client.query(
-      `INSERT INTO water_intake_log
+      `INSERT INTO water_intake_entries
         (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, ${loggedAt ? '$8' : 'NOW()'})
        RETURNING *`,
@@ -995,7 +995,7 @@ async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
   try {
     const result = await client.query(
       `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
-       FROM water_intake_log
+       FROM water_intake_entries
        WHERE user_id = $1 AND entry_date = ANY($2::date[])
        ORDER BY entry_date, logged_at ASC`,
       [userId, dates]
@@ -1012,7 +1012,7 @@ async function getWaterIntakeLogByDate(userId: any, date: any) {
   try {
     const result = await client.query(
       `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
-       FROM water_intake_log
+       FROM water_intake_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY logged_at DESC`,
       [userId, date]
@@ -1028,7 +1028,7 @@ async function deleteWaterIntakeLog(id: any, userId: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'DELETE FROM water_intake_log WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
       [id, userId]
     );
     return result.rows[0] || null;
@@ -1042,7 +1042,7 @@ async function getWaterIntakeLogEntryOwnerId(id: any, userId: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'SELECT user_id FROM water_intake_log WHERE id = $1 AND user_id = $2',
+      'SELECT user_id FROM water_intake_entries WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
     return result.rows[0]?.user_id;
@@ -1056,7 +1056,7 @@ async function updateWaterIntakeLogTime(id: any, userId: any, loggedAt: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'UPDATE water_intake_log SET logged_at = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      'UPDATE water_intake_entries SET logged_at = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
       [loggedAt, id, userId]
     );
     return result.rows[0] || null;

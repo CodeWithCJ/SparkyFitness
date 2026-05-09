@@ -2493,10 +2493,10 @@ CREATE TABLE public.water_intake (
 
 
 --
--- Name: water_intake_log; Type: TABLE; Schema: public; Owner: -
+-- Name: water_intake_entries; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.water_intake_log (
+CREATE TABLE public.water_intake_entries (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     entry_date date DEFAULT CURRENT_DATE NOT NULL,
@@ -3381,18 +3381,18 @@ ALTER TABLE ONLY public.water_intake
 
 
 --
--- Name: water_intake_log water_intake_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: water_intake_entries water_intake_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.water_intake_log
-    ADD CONSTRAINT water_intake_log_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_pkey PRIMARY KEY (id);
 
 
 --
--- Name: idx_water_intake_log_user_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_water_intake_entries_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_water_intake_log_user_date ON public.water_intake_log USING btree (user_id, entry_date);
+CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
 
 
 --
@@ -4676,27 +4676,27 @@ ALTER TABLE ONLY public.water_intake
 
 
 --
--- Name: water_intake_log water_intake_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: water_intake_entries water_intake_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.water_intake_log
-    ADD CONSTRAINT water_intake_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
-
-
---
--- Name: water_intake_log water_intake_log_container_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.water_intake_log
-    ADD CONSTRAINT water_intake_log_container_id_fkey FOREIGN KEY (container_id) REFERENCES public.user_water_containers(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
--- Name: water_intake_log water_intake_log_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: water_intake_entries water_intake_entries_container_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.water_intake_log
-    ADD CONSTRAINT water_intake_log_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_container_id_fkey FOREIGN KEY (container_id) REFERENCES public.user_water_containers(id) ON DELETE SET NULL;
+
+
+--
+-- Name: water_intake_entries water_intake_entries_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
 
 
 --
