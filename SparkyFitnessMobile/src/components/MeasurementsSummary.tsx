@@ -95,36 +95,29 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const tiles = rows.map((row) => {
     const IconComponent = MeasurementIcons[row.kind];
-    const tile = (
-      <View className="bg-surface rounded-xl py-3 px-3 shadow-sm flex-row items-center">
-        <IconComponent size={56} color={iconColor} accentColor={accentPrimary} />
-        <View className="flex-1 ml-2 items-center">
-          <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
-            {row.value}
-          </Text>
-          <Text className="text-sm text-text-secondary" numberOfLines={1}>
-            {row.label}
-          </Text>
+    return (
+      <View key={row.kind} className="w-[48%] mb-2">
+        <View className="bg-surface rounded-xl py-3 px-3 shadow-sm flex-row items-center">
+          <IconComponent size={56} color={iconColor} accentColor={accentPrimary} />
+          <View className="flex-1 ml-2 items-center">
+            <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
+              {row.value}
+            </Text>
+            <Text className="text-sm text-text-secondary" numberOfLines={1}>
+              {row.label}
+            </Text>
+          </View>
         </View>
       </View>
     );
-
-    return (
-      <View key={row.kind} className="w-[48%] mb-2">
-        {onPress ? (
-          <Pressable
-            onPress={onPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit ${row.label.toLowerCase()}`}
-          >
-            {tile}
-          </Pressable>
-        ) : (
-          tile
-        )}
-      </View>
-    );
   });
+
+  const content = (
+    <>
+      {header}
+      <View className="flex-row flex-wrap justify-between">{tiles}</View>
+    </>
+  );
 
   return (
     <View className="my-2">
@@ -134,12 +127,11 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Edit measurements"
         >
-          {header}
+          {content}
         </Pressable>
       ) : (
-        header
+        content
       )}
-      <View className="flex-row flex-wrap justify-between">{tiles}</View>
     </View>
   );
 };

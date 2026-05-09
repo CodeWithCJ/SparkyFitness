@@ -4,6 +4,7 @@ import Svg, { Line, Path } from 'react-native-svg';
 interface Props {
   size?: number;
   color?: string;
+  accentColor?: string;
 }
 
 const StepsIcon: React.FC<Props> = ({ size = 24, color = '#000' }) => (
