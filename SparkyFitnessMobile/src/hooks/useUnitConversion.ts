@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import {
   ALL_CONVERSION_UNITS,
@@ -11,34 +11,14 @@ export interface UseUnitConversionOptions {
 }
 
 export interface UseUnitConversionResult {
-  pendingUnit: string;
-  setPendingUnit: (unit: string) => void;
-  pendingUnitIsCustom: boolean;
-  conversionFactor: number | '';
-  setConversionFactor: (factor: number | '') => void;
-  autoConversionFactor: number | null;
-  conversionBaseVariant: FoodUnitVariant | null;
-  conversionError: string;
-  setConversionError: (error: string) => void;
-  isConverting: boolean;
   convertibleUnits: string[];
-  buildConvertedVariant: () => FoodUnitVariant | null;
-  handleExistingUnitSelection: (unit: string) => void;
-  startCustomUnit: () => void;
-  cancelConversion: () => void;
-  resetConversionState: () => void;
+  buildConvertedVariant: (unit: string) => FoodUnitVariant | null;
+  buildManualVariant: (unit: string) => FoodUnitVariant | null;
 }
 
 interface ResolvedAutoConversion {
   baseVariant: FoodUnitVariant;
   factor: number;
-}
-
-function getManualConversionBaseVariant(
-  variants: FoodUnitVariant[],
-  selectedVariant: FoodUnitVariant | null,
-): FoodUnitVariant | null {
-  return selectedVariant || variants[0] || null;
 }
 
 export function resolveAutoConversionSource(
@@ -77,142 +57,112 @@ export function useUnitConversion({
   variants,
   selectedVariant,
 }: UseUnitConversionOptions): UseUnitConversionResult {
-  const [pendingUnit, setPendingUnit] = useState('');
-  const [pendingUnitIsCustom, setPendingUnitIsCustom] = useState(false);
-  const [conversionFactor, setConversionFactor] = useState<number | ''>('');
-  const [autoConversionFactor, setAutoConversionFactor] = useState<
-    number | null
-  >(null);
-  const [conversionBaseVariant, setConversionBaseVariant] =
-    useState<FoodUnitVariant | null>(null);
-  const [conversionError, setConversionError] = useState('');
-
-  const isConverting = !!(pendingUnit || pendingUnitIsCustom);
-
   const convertibleUnits = useMemo(() => {
     const existingUnits = new Set(
-      variants.map((variant) => variant.serving_unit.toLowerCase())
+      variants.map((variant) => variant.serving_unit.toLowerCase()),
     );
 
     return ALL_CONVERSION_UNITS.filter(
-      (unit) => !existingUnits.has(unit.toLowerCase())
+      (unit) => !existingUnits.has(unit.toLowerCase()),
     );
   }, [variants]);
 
-  const buildConvertedVariant = useCallback((): FoodUnitVariant | null => {
-    const base = conversionBaseVariant;
-    const effectiveFactor =
-      autoConversionFactor !== null
-        ? autoConversionFactor
-        : typeof conversionFactor === 'number'
-          ? conversionFactor > 0
-            ? conversionFactor
-            : null
-          : null;
+  const buildConvertedVariant = useCallback(
+    (unit: string): FoodUnitVariant | null => {
+      const trimmedUnit = unit.trim();
+      if (!trimmedUnit) {
+        return null;
+      }
 
-    if (!base || effectiveFactor === null || !pendingUnit.trim()) {
-      return null;
-    }
-
-    const ratio = effectiveFactor / base.serving_size;
-
-    return {
-      serving_size: 1,
-      serving_unit: pendingUnit.trim(),
-      calories: (base.calories || 0) * ratio,
-      protein: (base.protein || 0) * ratio,
-      carbs: (base.carbs || 0) * ratio,
-      fat: (base.fat || 0) * ratio,
-      saturated_fat: (base.saturated_fat || 0) * ratio,
-      polyunsaturated_fat: (base.polyunsaturated_fat || 0) * ratio,
-      monounsaturated_fat: (base.monounsaturated_fat || 0) * ratio,
-      trans_fat: (base.trans_fat || 0) * ratio,
-      cholesterol: (base.cholesterol || 0) * ratio,
-      sodium: (base.sodium || 0) * ratio,
-      potassium: (base.potassium || 0) * ratio,
-      dietary_fiber: (base.dietary_fiber || 0) * ratio,
-      sugars: (base.sugars || 0) * ratio,
-      vitamin_a: (base.vitamin_a || 0) * ratio,
-      vitamin_c: (base.vitamin_c || 0) * ratio,
-      calcium: (base.calcium || 0) * ratio,
-      iron: (base.iron || 0) * ratio,
-      glycemic_index: base.glycemic_index,
-      custom_nutrients: Object.fromEntries(
-        Object.entries(base.custom_nutrients || {}).map(([key, value]) => [
-          key,
-          (Number(value) || 0) * ratio,
-        ]),
-      ),
-    };
-  }, [
-    autoConversionFactor,
-    conversionBaseVariant,
-    conversionFactor,
-    pendingUnit,
-  ]);
-
-  const handleExistingUnitSelection = useCallback(
-    (unit: string) => {
-      const manualBase = getManualConversionBaseVariant(variants, selectedVariant);
       const autoConversion = resolveAutoConversionSource(
         variants,
         selectedVariant,
-        unit,
+        trimmedUnit,
       );
+      if (!autoConversion) {
+        return null;
+      }
 
-      setPendingUnit(unit);
-      setPendingUnitIsCustom(false);
-      setConversionFactor('');
-      setConversionBaseVariant(autoConversion?.baseVariant || manualBase);
-      setAutoConversionFactor(autoConversion?.factor ?? null);
-      setConversionError('');
+      const { baseVariant, factor } = autoConversion;
+      const ratio = factor / baseVariant.serving_size;
+
+      return {
+        serving_size: 1,
+        serving_unit: trimmedUnit,
+        calories: (baseVariant.calories || 0) * ratio,
+        protein: (baseVariant.protein || 0) * ratio,
+        carbs: (baseVariant.carbs || 0) * ratio,
+        fat: (baseVariant.fat || 0) * ratio,
+        saturated_fat: (baseVariant.saturated_fat || 0) * ratio,
+        polyunsaturated_fat: (baseVariant.polyunsaturated_fat || 0) * ratio,
+        monounsaturated_fat: (baseVariant.monounsaturated_fat || 0) * ratio,
+        trans_fat: (baseVariant.trans_fat || 0) * ratio,
+        cholesterol: (baseVariant.cholesterol || 0) * ratio,
+        sodium: (baseVariant.sodium || 0) * ratio,
+        potassium: (baseVariant.potassium || 0) * ratio,
+        dietary_fiber: (baseVariant.dietary_fiber || 0) * ratio,
+        sugars: (baseVariant.sugars || 0) * ratio,
+        vitamin_a: (baseVariant.vitamin_a || 0) * ratio,
+        vitamin_c: (baseVariant.vitamin_c || 0) * ratio,
+        calcium: (baseVariant.calcium || 0) * ratio,
+        iron: (baseVariant.iron || 0) * ratio,
+        glycemic_index: baseVariant.glycemic_index,
+        custom_nutrients: Object.fromEntries(
+          Object.entries(baseVariant.custom_nutrients || {}).map(
+            ([key, value]) => [key, (Number(value) || 0) * ratio],
+          ),
+        ),
+      };
     },
     [selectedVariant, variants],
   );
 
-  const startCustomUnit = useCallback(() => {
-    setConversionBaseVariant(selectedVariant || variants[0] || null);
-    setPendingUnitIsCustom(true);
-    setPendingUnit('');
-    setAutoConversionFactor(null);
-    setConversionFactor('');
-    setConversionError('');
-  }, [selectedVariant, variants]);
+  const buildManualVariant = useCallback(
+    (unit: string): FoodUnitVariant | null => {
+      const trimmedUnit = unit.trim();
+      if (!trimmedUnit) {
+        return null;
+      }
 
-  const cancelConversion = useCallback(() => {
-    setPendingUnit('');
-    setPendingUnitIsCustom(false);
-    setConversionFactor('');
-    setAutoConversionFactor(null);
-    setConversionBaseVariant(null);
-    setConversionError('');
-  }, []);
+      const baseVariant = selectedVariant ?? variants[0] ?? null;
+      if (!baseVariant) {
+        return null;
+      }
 
-  const resetConversionState = useCallback(() => {
-    setPendingUnit('');
-    setPendingUnitIsCustom(false);
-    setConversionFactor('');
-    setAutoConversionFactor(null);
-    setConversionBaseVariant(null);
-    setConversionError('');
-  }, []);
+      return {
+        serving_size: 1,
+        serving_unit: trimmedUnit,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        saturated_fat: 0,
+        polyunsaturated_fat: 0,
+        monounsaturated_fat: 0,
+        trans_fat: 0,
+        cholesterol: 0,
+        sodium: 0,
+        potassium: 0,
+        dietary_fiber: 0,
+        sugars: 0,
+        vitamin_a: 0,
+        vitamin_c: 0,
+        calcium: 0,
+        iron: 0,
+        glycemic_index: baseVariant.glycemic_index,
+        custom_nutrients: baseVariant.custom_nutrients
+          ? Object.fromEntries(
+              Object.keys(baseVariant.custom_nutrients).map((key) => [key, 0]),
+            )
+          : null,
+      };
+    },
+    [selectedVariant, variants],
+  );
 
   return {
-    pendingUnit,
-    setPendingUnit,
-    pendingUnitIsCustom,
-    conversionFactor,
-    setConversionFactor,
-    autoConversionFactor,
-    conversionBaseVariant,
-    conversionError,
-    setConversionError,
-    isConverting,
     convertibleUnits,
     buildConvertedVariant,
-    handleExistingUnitSelection,
-    startCustomUnit,
-    cancelConversion,
-    resetConversionState,
+    buildManualVariant,
   };
 }

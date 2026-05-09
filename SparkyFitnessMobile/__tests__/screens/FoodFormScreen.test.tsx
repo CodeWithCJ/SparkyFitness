@@ -111,6 +111,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
 });
 
 let mockSubmittedFoodFormData: any;
+let mockUnitSelectionResult: any;
 
 jest.mock('../../src/components/FoodForm', () => {
   const React = require('react');
@@ -125,19 +126,7 @@ jest.mock('../../src/components/FoodForm', () => {
           {children}
           {unitSelector ? (
             <Pressable
-              onPress={() =>
-                unitSelector.onUnitSelectionChange?.({
-                  kind: 'draft',
-                  variant: {
-                    serving_size: 1,
-                    serving_unit: 'oz',
-                    calories: 120,
-                    protein: 10,
-                    carbs: 8,
-                    fat: 4,
-                  },
-                })
-              }
+              onPress={() => unitSelector.onUnitSelectionChange?.(mockUnitSelectionResult)}
             >
               <Text>Select Converted Unit</Text>
             </Pressable>
@@ -212,6 +201,17 @@ describe('FoodFormScreen', () => {
       iron: '',
       vitaminA: '',
       vitaminC: '',
+    };
+    mockUnitSelectionResult = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
     };
     mockUseMealTypes.mockReturnValue({
       mealTypes: [{ id: 'meal-1', name: 'breakfast', is_visible: true, sort_order: 1 }] as any,
@@ -340,6 +340,7 @@ describe('FoodFormScreen', () => {
     expect(screen.getByText('Meal')).toBeTruthy();
     expect(screen.getByText('Save to Database')).toBeTruthy();
     expect(screen.getByText('Barcode will be saved.')).toBeTruthy();
+    expect(screen.getByText('1 serving · 100 g per serving')).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
   });
 
@@ -472,6 +473,130 @@ describe('FoodFormScreen', () => {
               variant: expect.objectContaining({
                 id: 'variant-oz',
                 serving_unit: 'oz',
+              }),
+            },
+          },
+        },
+        source: 'FoodEntryAdd-key',
+      }),
+    );
+  });
+
+  it('defers local manual-only unit creation until submit', async () => {
+    mockUnitSelectionResult = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      },
+      requiresNutritionUpdate: true,
+    };
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      servingSize: '1',
+      servingUnit: 'cup',
+      calories: '45',
+      protein: '4',
+      carbs: '6',
+      fat: '1',
+    };
+    mockCreateVariant.mockResolvedValue({
+      id: 'variant-cup',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 45,
+      protein: 4,
+      carbs: 6,
+      fat: 1,
+    });
+
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: null,
+      availableUnitVariants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      selectedUnitSelection: {
+        kind: 'existing',
+        variant: {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
+    });
+
+    fireEvent.press(screen.getByText('Select Converted Unit'));
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('Update Values'));
+
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledWith({
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 45,
+        protein: 4,
+        carbs: 6,
+        fat: 1,
+        dietary_fiber: undefined,
+        saturated_fat: undefined,
+        polyunsaturated_fat: undefined,
+        monounsaturated_fat: undefined,
+        sodium: undefined,
+        sugars: undefined,
+        trans_fat: undefined,
+        potassium: undefined,
+        calcium: undefined,
+        iron: undefined,
+        cholesterol: undefined,
+        vitamin_a: undefined,
+        vitamin_c: undefined,
+        glycemic_index: undefined,
+        custom_nutrients: undefined,
+      });
+    });
+
+    expect(navigation.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: {
+          params: {
+            adjustedValues: mockSubmittedFoodFormData,
+            adjustedUnitSelection: {
+              kind: 'existing',
+              variant: expect.objectContaining({
+                id: 'variant-cup',
+                serving_unit: 'cup',
               }),
             },
           },

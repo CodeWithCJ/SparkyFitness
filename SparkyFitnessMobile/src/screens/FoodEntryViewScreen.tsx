@@ -566,8 +566,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2));
   const servingsDisplay =
     servings === 1
-      ? `1 serving - ${entry.serving_size} ${entry.unit} per serving`
-      : `${servingsCount} servings - ${entry.serving_size} ${entry.unit} per serving`;
+      ? `1 serving \u00b7 ${entry.serving_size} ${entry.unit} per serving`
+      : `${servingsCount} servings \u00b7 ${entry.serving_size} ${entry.unit} per serving`;
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
   const { primary: primaryNutrients, additional: additionalNutrients } =

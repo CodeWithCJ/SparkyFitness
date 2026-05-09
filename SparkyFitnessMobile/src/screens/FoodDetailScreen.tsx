@@ -5,23 +5,17 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import FoodUnitSelectorSheet from '../components/FoodUnitSelectorSheet';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../hooks';
 import {
-  buildCreateFoodVariantPayload,
   buildExternalVariantOptions,
-  buildLocalUnitVariants,
   buildLocalVariantOptions,
-  foodInfoToUnitVariant,
   formatVariantLabel,
-  unitVariantToDisplayValues,
   resolveFoodDisplayValues,
   applyDisplayValuesToFoodInfo,
 } from '../utils/foodDetails';
-import { useCreateFoodVariant } from '../hooks/useFoodVariants';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
@@ -49,33 +43,16 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   const { variants, isLoading: isVariantsLoading, isError: isVariantsError } = useFoodVariants(food.id, {
     enabled: isLocalFood && isConnected,
   });
-  const { createVariant, isPending: isCreateVariantPending } = useCreateFoodVariant();
   const canManageFood = !!(isLocalFood && isConnected && food.userId && profile?.id === food.userId);
 
   const localVariantOptions = useMemo(
     () => buildLocalVariantOptions(variants),
     [variants],
   );
-  const localUnitVariants = useMemo(
-    () => buildLocalUnitVariants(variants),
-    [variants],
-  );
   const externalVariantOptions = useMemo(
     () => buildExternalVariantOptions(food.externalVariants),
     [food.externalVariants],
   );
-  const selectorVariants = useMemo(() => {
-    if (!isLocalFood) return [];
-    if (
-      selectedVariantId &&
-      !localUnitVariants.some((variant) => variant.id === selectedVariantId)
-    ) {
-      return [foodInfoToUnitVariant(food), ...localUnitVariants];
-    }
-    return localUnitVariants.length > 0
-      ? localUnitVariants
-      : [foodInfoToUnitVariant(food)];
-  }, [food, isLocalFood, localUnitVariants, selectedVariantId]);
   const variantOptions = localVariantOptions.length > 0
     ? localVariantOptions
     : externalVariantOptions;
@@ -165,30 +142,6 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     });
   };
 
-  const handleUnitSelection = async (
-    selection: Parameters<React.ComponentProps<typeof FoodUnitSelectorSheet>['onSelect']>[0],
-  ) => {
-    if (selection.kind === 'existing') {
-      if (selection.variant.id) {
-        setSelectedVariantId(selection.variant.id);
-      }
-      return;
-    }
-
-    const createdVariant = await createVariant(
-      buildCreateFoodVariantPayload(food.id, selection.variant),
-    );
-    setFood((currentFood) => ({
-      ...applyDisplayValuesToFoodInfo(
-        currentFood,
-        unitVariantToDisplayValues(createdVariant),
-        createdVariant.id,
-      ),
-      customNutrients: createdVariant.custom_nutrients ?? null,
-    }));
-    setSelectedVariantId(createdVariant.id);
-  };
-
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
       return (
@@ -221,33 +174,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
 
         <View className="bg-surface rounded-xl p-4">
           <Text className="text-text-secondary text-sm mb-2">Serving</Text>
-          {isLocalFood ? (
-            <FoodUnitSelectorSheet
-              variants={selectorVariants}
-              selectedVariantId={selectedVariantId}
-              title="Select Serving"
-              onSelect={handleUnitSelection}
-              renderTrigger={({ onPress }) => (
-                <TouchableOpacity
-                  onPress={onPress}
-                  activeOpacity={0.7}
-                  className="flex-row items-center justify-between"
-                  accessibilityRole="button"
-                  accessibilityLabel="Serving options"
-                  disabled={isCreateVariantPending}
-                >
-                  <Text className="text-text-primary text-base font-medium flex-1 mr-3">
-                    {selectedVariantLabel}
-                  </Text>
-                  {isCreateVariantPending ? (
-                    <ActivityIndicator size="small" color={accentColor} />
-                  ) : (
-                    <Icon name="chevron-down" size={16} color={textPrimary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          ) : variantOptions.length > 1 ? (
+          {variantOptions.length > 1 ? (
             <BottomSheetPicker
               value={selectedVariantId ?? variantOptions[0].id}
               options={variantOptions.map((option) => ({ label: option.label, value: option.id }))}
@@ -327,7 +254,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             <Button
               variant="ghost"
               onPress={handleEdit}
-              disabled={!selectedVariantId || isCreateVariantPending}
+              disabled={!selectedVariantId}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               textClassName="font-medium"
             >

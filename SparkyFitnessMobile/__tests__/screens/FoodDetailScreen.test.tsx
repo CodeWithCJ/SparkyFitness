@@ -3,7 +3,6 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodDetailScreen from '../../src/screens/FoodDetailScreen';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../../src/hooks';
-import { useCreateFoodVariant } from '../../src/hooks/useFoodVariants';
 
 jest.mock('../../src/hooks', () => ({
   useDeleteFood: jest.fn(),
@@ -50,54 +49,10 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   };
 });
 
-jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
-  const React = require('react');
-  const { View, Text, Pressable } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({ variants, onSelect, renderTrigger }: any) => (
-      <View>
-        {renderTrigger?.({ onPress: () => {} })}
-        {variants.map((variant: any, index: number) => (
-          <Pressable
-            key={variant.id ?? `variant-${index}`}
-            onPress={() => onSelect({ kind: 'existing', variant })}
-          >
-            <Text>{`${variant.serving_size} ${variant.serving_unit} (${Math.round(variant.calories)} cal)`}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          onPress={() =>
-            onSelect({
-              kind: 'draft',
-              variant: {
-                serving_size: 1,
-                serving_unit: 'oz',
-                calories: 120,
-                protein: 10,
-                carbs: 8,
-                fat: 4,
-              },
-            })
-          }
-        >
-          <Text>Create Draft Unit</Text>
-        </Pressable>
-      </View>
-    ),
-  };
-});
-
-jest.mock('../../src/hooks/useFoodVariants', () => ({
-  useCreateFoodVariant: jest.fn(),
-}));
-
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockUseDeleteFood = useDeleteFood as jest.MockedFunction<typeof useDeleteFood>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseCreateFoodVariant =
-  useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
 const mockConfirmAndDelete = jest.fn();
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -109,7 +64,6 @@ describe('FoodDetailScreen', () => {
     navigate: jest.fn(),
     setParams: jest.fn(),
   } as any;
-  const mockCreateVariant = jest.fn();
 
   const baseItem = {
     id: 'food-1',
@@ -169,10 +123,6 @@ describe('FoodDetailScreen', () => {
     mockUseDeleteFood.mockReturnValue({
       confirmAndDelete: mockConfirmAndDelete,
       invalidateCaches: jest.fn(),
-      isPending: false,
-    });
-    mockUseCreateFoodVariant.mockReturnValue({
-      createVariant: mockCreateVariant,
       isPending: false,
     });
     mockUseFoodVariants.mockReturnValue({
@@ -272,62 +222,14 @@ describe('FoodDetailScreen', () => {
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a converted local unit and carries it into log food navigation', async () => {
-    mockCreateVariant.mockResolvedValue({
-      id: 'variant-oz',
-      food_id: 'food-1',
-      serving_size: 1,
-      serving_unit: 'oz',
-      calories: 120,
-      protein: 10,
-      carbs: 8,
-      fat: 4,
-    });
-
+  it('keeps the detail view on the simple serving picker', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Create Draft Unit'));
+    expect(screen.queryByText('Create Draft Unit')).toBeNull();
+    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
 
     await waitFor(() => {
-      expect(mockCreateVariant).toHaveBeenCalledWith({
-        food_id: 'food-1',
-        serving_size: 1,
-        serving_unit: 'oz',
-        calories: 120,
-        protein: 10,
-        carbs: 8,
-        fat: 4,
-        dietary_fiber: undefined,
-        saturated_fat: undefined,
-        polyunsaturated_fat: undefined,
-        monounsaturated_fat: undefined,
-        sodium: undefined,
-        sugars: undefined,
-        trans_fat: undefined,
-        potassium: undefined,
-        calcium: undefined,
-        iron: undefined,
-        cholesterol: undefined,
-        vitamin_a: undefined,
-        vitamin_c: undefined,
-        glycemic_index: undefined,
-        custom_nutrients: undefined,
-      });
+      expect(screen.getByText('200')).toBeTruthy();
     });
-
-    fireEvent.press(screen.getByText('Log Food'));
-
-    expect(navigation.navigate).toHaveBeenCalledWith(
-      'FoodEntryAdd',
-      expect.objectContaining({
-        item: expect.objectContaining({
-          id: 'food-1',
-          variantId: 'variant-oz',
-          calories: 120,
-          servingSize: 1,
-          servingUnit: 'oz',
-        }),
-      }),
-    );
   });
 });

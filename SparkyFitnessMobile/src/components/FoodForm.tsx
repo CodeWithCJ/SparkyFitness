@@ -364,7 +364,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 <FoodUnitSelectorSheet
                   variants={unitSelectorVariants}
                   selectedVariantId={selectedUnitSelection?.variant.id}
-                  title="Select Serving Unit"
+                  title="Select Unit"
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity

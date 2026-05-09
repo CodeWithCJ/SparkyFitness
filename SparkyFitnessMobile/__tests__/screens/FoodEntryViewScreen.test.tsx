@@ -291,6 +291,8 @@ describe('FoodEntryViewScreen', () => {
       });
     });
 
+    expect(screen.getByText('1 serving · 1 cup per serving')).toBeTruthy();
+
     fireEvent.press(screen.getByText('Edit'));
     fireEvent.press(screen.getByText('Done'));
 

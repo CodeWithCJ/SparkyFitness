@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 import {
   resolveAutoConversionSource,
   useUnitConversion,
@@ -21,7 +21,7 @@ const createVariant = (
 });
 
 describe('useUnitConversion', () => {
-  it('falls back to a compatible saved variant when the selected unit is incompatible', () => {
+  it('builds a converted variant from a compatible fallback saved unit', () => {
     const gramsVariant = createVariant({
       id: 'grams',
       serving_size: 10,
@@ -40,16 +40,16 @@ describe('useUnitConversion', () => {
       }),
     );
 
-    act(() => {
-      result.current.handleExistingUnitSelection('tsp');
+    expect(result.current.buildConvertedVariant('tsp')).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'tsp',
     });
-
-    expect(result.current.conversionBaseVariant).toBe(tbspVariant);
-    expect(result.current.autoConversionFactor).toBeCloseTo(
-      getConversionFactor('tbsp', 'tsp') ?? 0,
-      5,
-    );
-    expect(result.current.pendingUnit).toBe('tsp');
+    expect(
+      resolveAutoConversionSource([gramsVariant, tbspVariant], gramsVariant, 'tsp'),
+    ).toEqual({
+      baseVariant: tbspVariant,
+      factor: getConversionFactor('tbsp', 'tsp'),
+    });
   });
 
   it('uses the selected compatible variant ahead of fallback variants', () => {
@@ -67,6 +67,7 @@ describe('useUnitConversion', () => {
       id: 'tbsp',
       serving_size: 1,
       serving_unit: 'tbsp',
+      calories: 24,
     });
 
     const { result } = renderHook(() =>
@@ -76,18 +77,15 @@ describe('useUnitConversion', () => {
       }),
     );
 
-    act(() => {
-      result.current.handleExistingUnitSelection('tsp');
+    const convertedVariant = result.current.buildConvertedVariant('tsp');
+    expect(convertedVariant).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'tsp',
     });
-
-    expect(result.current.conversionBaseVariant).toBe(tbspVariant);
-    expect(result.current.autoConversionFactor).toBeCloseTo(
-      getConversionFactor('tbsp', 'tsp') ?? 0,
-      5,
-    );
+    expect(convertedVariant?.calories).toBeCloseTo(8, 4);
   });
 
-  it('keeps the manual conversion flow when no compatible saved variant exists', () => {
+  it('returns null when no compatible saved variant exists', () => {
     const gramsVariant = createVariant({
       id: 'grams',
       serving_size: 10,
@@ -106,23 +104,15 @@ describe('useUnitConversion', () => {
       }),
     );
 
-    act(() => {
-      result.current.handleExistingUnitSelection('tsp');
-    });
-
-    expect(result.current.conversionBaseVariant).toBe(gramsVariant);
-    expect(result.current.autoConversionFactor).toBeNull();
-    expect(result.current.conversionFactor).toBe('');
-    expect(result.current.buildConvertedVariant()).toBeNull();
-    expect(result.current.pendingUnit).toBe('tsp');
+    expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
 
-  it('clears manual conversion state when switching pending units', () => {
+  it('builds a manual-update variant when no compatible saved variant exists', () => {
     const gramsVariant = createVariant({
       id: 'grams',
       serving_size: 10,
       serving_unit: 'g',
-      calories: 50,
+      custom_nutrients: { omega3: 5 },
     });
 
     const { result } = renderHook(() =>
@@ -132,79 +122,52 @@ describe('useUnitConversion', () => {
       }),
     );
 
-    act(() => {
-      result.current.handleExistingUnitSelection('piece');
-    });
-
-    expect(result.current.buildConvertedVariant()).toBeNull();
-
-    act(() => {
-      result.current.setConversionFactor(4.2);
-    });
-
-    expect(result.current.buildConvertedVariant()).toMatchObject({
-      serving_unit: 'piece',
+    expect(result.current.buildManualVariant('cup')).toEqual({
       serving_size: 1,
-    });
-
-    act(() => {
-      result.current.handleExistingUnitSelection('tsp');
-    });
-
-    expect(result.current.pendingUnit).toBe('tsp');
-    expect(result.current.conversionFactor).toBe('');
-    expect(result.current.autoConversionFactor).toBeNull();
-    expect(result.current.buildConvertedVariant()).toBeNull();
-  });
-
-  it('requires a positive factor before building a custom unit variant', () => {
-    const gramsVariant = createVariant({
-      id: 'grams',
-      serving_size: 10,
-      serving_unit: 'g',
-    });
-
-    const { result } = renderHook(() =>
-      useUnitConversion({
-        variants: [gramsVariant],
-        selectedVariant: gramsVariant,
-      }),
-    );
-
-    act(() => {
-      result.current.startCustomUnit();
-      result.current.setPendingUnit('scoop');
-    });
-
-    expect(result.current.buildConvertedVariant()).toBeNull();
-
-    act(() => {
-      result.current.setConversionFactor(15);
-    });
-
-    expect(result.current.buildConvertedVariant()).toMatchObject({
-      serving_unit: 'scoop',
-      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      saturated_fat: 0,
+      polyunsaturated_fat: 0,
+      monounsaturated_fat: 0,
+      trans_fat: 0,
+      cholesterol: 0,
+      sodium: 0,
+      potassium: 0,
+      dietary_fiber: 0,
+      sugars: 0,
+      vitamin_a: 0,
+      vitamin_c: 0,
+      calcium: 0,
+      iron: 0,
+      glycemic_index: gramsVariant.glycemic_index,
+      custom_nutrients: { omega3: 0 },
     });
   });
 
-  it('resolves auto-convert sources directly when a compatible saved variant exists', () => {
+  it('excludes existing units from the selectable conversion list', () => {
     const gramsVariant = createVariant({
       id: 'grams',
       serving_size: 100,
       serving_unit: 'g',
     });
-    const cupVariant = createVariant({
-      id: 'cup',
+    const ouncesVariant = createVariant({
+      id: 'ounces',
       serving_size: 1,
-      serving_unit: 'cup',
+      serving_unit: 'oz',
     });
 
-    expect(
-      resolveAutoConversionSource([gramsVariant, cupVariant], gramsVariant, 'tbsp'),
-    ).toEqual({
-      baseVariant: cupVariant,
-      factor: getConversionFactor('cup', 'tbsp'),
-    });
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [gramsVariant, ouncesVariant],
+        selectedVariant: gramsVariant,
+      }),
+    );
+
+    expect(result.current.convertibleUnits).not.toContain('g');
+    expect(result.current.convertibleUnits).not.toContain('oz');
+    expect(result.current.convertibleUnits).toContain('kg');
   });
 });

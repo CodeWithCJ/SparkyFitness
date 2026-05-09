@@ -573,6 +573,7 @@ describe('FoodEntryAddScreen', () => {
 
     expect(screen.getByText('Date')).toBeTruthy();
     expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByText(/· 1 cup per serving/)).toBeTruthy();
 
     fireEvent.press(screen.getByText('Add Food'));
 

@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -14,8 +9,6 @@ import {
 } from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useCSSVariable, useUniwind } from 'uniwind';
-import FormInput from './FormInput';
-import Button from './ui/Button';
 import Icon from './Icon';
 import type {
   FoodUnitSelectionResult,
@@ -23,7 +16,6 @@ import type {
 } from '../types/foodUnitVariants';
 import { canAutoConvertToUnit, useUnitConversion } from '../hooks/useUnitConversion';
 import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
-import { DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 
 const sheetContainer =
   Platform.OS === 'ios'
@@ -46,24 +38,30 @@ function formatVariantLabel(variant: FoodUnitVariant): string {
   )} cal)`;
 }
 
-function roundMacro(value: number): string {
-  return value % 1 === 0 ? String(value) : value.toFixed(1);
-}
-
 const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
-  title = 'Select Serving',
+  title = 'Select Unit',
   renderTrigger,
   onSelect,
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
+  const [
+    surfaceBg,
+    raisedBg,
+    borderSubtle,
+    textMuted,
+    accentPrimary,
+    successText,
+  ] = useCSSVariable([
     '--color-surface',
+    '--color-raised',
+    '--color-border-subtle',
     '--color-text-muted',
     '--color-accent-primary',
-  ]) as [string, string, string];
+    '--color-text-success',
+  ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,32 +73,16 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     [selectedVariantId, variants],
   );
 
-  const {
-    pendingUnit,
-    setPendingUnit,
-    pendingUnitIsCustom,
-    conversionFactor,
-    setConversionFactor,
-    autoConversionFactor,
-    conversionBaseVariant,
-    conversionError,
-    setConversionError,
-    isConverting,
-    convertibleUnits,
-    buildConvertedVariant,
-    handleExistingUnitSelection,
-    startCustomUnit,
-    cancelConversion,
-    resetConversionState,
-  } = useUnitConversion({
+  const { convertibleUnits, buildConvertedVariant, buildManualVariant } =
+    useUnitConversion({
     variants,
     selectedVariant,
   });
 
-  const previewVariant = buildConvertedVariant();
-
   const groupedUnits = useMemo(() => {
-    const availableUnits = new Set(convertibleUnits.map((unit) => unit.toLowerCase()));
+    const availableUnits = new Set(
+      convertibleUnits.map((unit) => unit.toLowerCase()),
+    );
 
     return FOOD_FORM_UNIT_GROUPS
       .map((group) => ({
@@ -123,9 +105,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   );
 
   const handleOpen = useCallback(() => {
-    resetConversionState();
     bottomSheetRef.current?.present();
-  }, [resetConversionState]);
+  }, []);
 
   useEffect(() => {
     const sheetRef = bottomSheetRef.current;
@@ -139,33 +120,64 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       setIsSubmitting(true);
       try {
         await onSelect({ kind: 'existing', variant });
-        resetConversionState();
         bottomSheetRef.current?.dismiss();
+      } catch {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not update that unit',
+          text2: 'Please try again.',
+        });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [onSelect, resetConversionState],
+    [onSelect],
   );
 
-  const handleSubmitDraft = useCallback(async () => {
-    const convertedVariant = buildConvertedVariant();
-    if (!convertedVariant) {
-      setConversionError('Please enter a valid unit name and conversion factor.');
-      return;
-    }
+  const handleUnitPress = useCallback(
+    async (unit: string) => {
+      const convertedVariant = buildConvertedVariant(unit);
+      const manualVariant = convertedVariant ? null : buildManualVariant(unit);
+      if (!convertedVariant && !manualVariant) {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not update that unit',
+          text2: 'Please try again.',
+        });
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
-      await onSelect({ kind: 'draft', variant: convertedVariant });
-      resetConversionState();
-      bottomSheetRef.current?.dismiss();
-    } catch {
-      setConversionError('Could not save that unit. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [buildConvertedVariant, onSelect, resetConversionState, setConversionError]);
+      const selection: FoodUnitSelectionResult = convertedVariant
+        ? { kind: 'draft', variant: convertedVariant }
+        : {
+            kind: 'draft',
+            variant: manualVariant!,
+            requiresNutritionUpdate: true,
+          };
+
+      if (!convertedVariant) {
+        Toast.show({
+          type: 'info',
+          text1: 'Please update the nutrition values manually.',
+        });
+      }
+
+      setIsSubmitting(true);
+      try {
+        await onSelect(selection);
+        bottomSheetRef.current?.dismiss();
+      } catch {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not update that unit',
+          text2: 'Please try again.',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [buildConvertedVariant, buildManualVariant, onSelect],
+  );
 
   const renderVariantRow = (variant: FoodUnitVariant, index: number) => {
     const isSelected = variant.id != null && variant.id === selectedVariantId;
@@ -173,8 +185,15 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     return (
       <TouchableOpacity
         key={`variant-${variant.id ?? index}`}
-        className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
-        style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
+        testID={`food-unit-variant-row-${variant.id ?? index}`}
+        className="flex-row items-center justify-between px-4 py-3.5"
+        style={{
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderColor: borderSubtle,
+          backgroundColor: isSelected ? raisedBg : 'transparent',
+          borderLeftWidth: isSelected ? 3 : 0,
+          borderLeftColor: isSelected ? accentPrimary : 'transparent',
+        }}
         onPress={() => {
           void handleExistingVariantPress(variant);
         }}
@@ -186,11 +205,9 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         >
           {formatVariantLabel(variant)}
         </Text>
-        {isSelected ? (
-          <Icon name="checkmark" size={20} color={accentPrimary} />
-        ) : (
+        {!isSelected ? (
           <Icon name="chevron-forward" size={16} color={textMuted} />
-        )}
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -201,15 +218,18 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     return (
       <TouchableOpacity
         key={unit}
+        testID={`food-unit-option-${unit}`}
         className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
         style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
-        onPress={() => handleExistingUnitSelection(unit)}
+        onPress={() => {
+          void handleUnitPress(unit);
+        }}
         activeOpacity={0.7}
         disabled={isSubmitting}
       >
         <Text className="text-base text-text-primary">{unit}</Text>
         {compatible ? (
-          <Icon name="checkmark" size={18} color={accentPrimary} />
+          <Icon name="checkmark" size={18} color={successText} />
         ) : (
           <Icon name="chevron-forward" size={16} color={textMuted} />
         )}
@@ -237,16 +257,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
             </Text>
           </View>
 
-          {variants.length > 0 && (
-            <>
-              <View className="px-4 py-2 bg-surface">
-                <Text className="text-xs font-semibold uppercase text-text-muted">
-                  Available Units
-                </Text>
-              </View>
-              {variants.map(renderVariantRow)}
-            </>
-          )}
+          {variants.map(renderVariantRow)}
 
           {groupedUnits.map((group) => (
             <React.Fragment key={group.label}>
@@ -258,160 +269,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               {group.units.map(renderUnitRow)}
             </React.Fragment>
           ))}
-
-          <View className="px-4 py-2 bg-surface">
-            <Text className="text-xs font-semibold uppercase text-text-muted">
-              Custom
-            </Text>
-          </View>
-          <TouchableOpacity
-            className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
-            style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
-            onPress={startCustomUnit}
-            activeOpacity={0.7}
-            disabled={isSubmitting}
-          >
-            <Text className="text-base text-text-primary">Custom unit...</Text>
-            <Icon name="chevron-forward" size={16} color={textMuted} />
-          </TouchableOpacity>
-
-          {isConverting && (
-            <View className="mx-4 mt-4 rounded-xl bg-raised border border-border-subtle p-4 gap-3">
-              {pendingUnitIsCustom ? (
-                <>
-                  <View className="gap-1.5">
-                    <Text className="text-text-secondary text-sm font-medium">
-                      Unit name
-                    </Text>
-                    <FormInput
-                      placeholder="e.g. slice, bar, scoop"
-                      value={pendingUnit}
-                      onChangeText={(value) => {
-                        setPendingUnit(value);
-                        setConversionError('');
-                      }}
-                    />
-                  </View>
-
-                  {pendingUnit.trim() ? (
-                    <View className="gap-1.5">
-                      <Text className="text-text-secondary text-sm font-medium">
-                        1 {pendingUnit.trim()} = ? {conversionBaseVariant?.serving_unit}
-                      </Text>
-                      <FormInput
-                        placeholder="e.g. 1"
-                        keyboardType="decimal-pad"
-                        value={conversionFactor === '' ? '' : String(conversionFactor)}
-                        onChangeText={(value) => {
-                          if (DECIMAL_INPUT_REGEX.test(value)) {
-                            setConversionFactor(value === '' ? '' : Number(value));
-                            setConversionError('');
-                          }
-                        }}
-                      />
-                    </View>
-                  ) : null}
-                </>
-              ) : autoConversionFactor === null ? (
-                <>
-                  <Text className="text-sm text-text-secondary">
-                    These units can&apos;t be converted automatically. Enter how many{' '}
-                    <Text className="font-semibold text-text-primary">
-                      {conversionBaseVariant?.serving_unit}
-                    </Text>{' '}
-                    are in 1{' '}
-                    <Text className="font-semibold text-text-primary">
-                      {pendingUnit}
-                    </Text>.
-                  </Text>
-                  <View className="gap-1.5">
-                    <Text className="text-text-secondary text-sm font-medium">
-                      1 {pendingUnit} = ? {conversionBaseVariant?.serving_unit}
-                    </Text>
-                    <FormInput
-                      placeholder="e.g. 1"
-                      keyboardType="decimal-pad"
-                      value={conversionFactor === '' ? '' : String(conversionFactor)}
-                      onChangeText={(value) => {
-                        if (DECIMAL_INPUT_REGEX.test(value)) {
-                          setConversionFactor(value === '' ? '' : Number(value));
-                          setConversionError('');
-                        }
-                      }}
-                    />
-                  </View>
-                </>
-              ) : (
-                <Text className="text-sm text-text-secondary">
-                  1{' '}
-                  <Text className="font-semibold text-text-primary">
-                    {pendingUnit}
-                  </Text>{' '}
-                  ={' '}
-                  <Text className="font-semibold text-text-primary">
-                    {roundMacro(autoConversionFactor)} {conversionBaseVariant?.serving_unit}
-                  </Text>
-                  . This unit will be converted automatically.
-                </Text>
-              )}
-
-              {previewVariant ? (
-                <View className="rounded-lg bg-surface px-3 py-3">
-                  <Text className="text-text-primary text-sm font-semibold mb-2">
-                    Nutrition for 1 {previewVariant.serving_unit}
-                  </Text>
-                  <View className="flex-row gap-3">
-                    <Text className="text-text-secondary text-sm">
-                      {Math.round(previewVariant.calories)} cal
-                    </Text>
-                    <Text className="text-text-secondary text-sm">
-                      {roundMacro(previewVariant.protein)}g protein
-                    </Text>
-                  </View>
-                  <View className="flex-row gap-3 mt-1">
-                    <Text className="text-text-secondary text-sm">
-                      {roundMacro(previewVariant.carbs)}g carbs
-                    </Text>
-                    <Text className="text-text-secondary text-sm">
-                      {roundMacro(previewVariant.fat)}g fat
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-
-              {conversionError ? (
-                <Text className="text-sm text-bg-danger">{conversionError}</Text>
-              ) : null}
-
-              <View className="flex-row gap-3">
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onPress={cancelConversion}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  className="flex-1"
-                  onPress={() => {
-                    void handleSubmitDraft();
-                  }}
-                  disabled={
-                    isSubmitting ||
-                    !pendingUnit.trim() ||
-                    (autoConversionFactor === null &&
-                      (!conversionFactor || conversionFactor <= 0))
-                  }
-                >
-                  <Text className="text-white text-base font-semibold">
-                    {isSubmitting ? 'Saving...' : 'Use Unit'}
-                  </Text>
-                </Button>
-              </View>
-            </View>
-          )}
         </BottomSheetScrollView>
       </BottomSheetModal>
     </>

@@ -123,6 +123,32 @@ function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId:
   };
 }
 
+function buildVariantFromFormData(
+  data: FoodFormData,
+  selection?: FoodUnitSelectionResult | null,
+) {
+  return {
+    ...selection?.variant,
+    serving_size: parseDecimalInput(data.servingSize) || 0,
+    serving_unit: data.servingUnit || 'serving',
+    calories: parseDecimalInput(data.calories) || 0,
+    protein: parseDecimalInput(data.protein) || 0,
+    carbs: parseDecimalInput(data.carbs) || 0,
+    fat: parseDecimalInput(data.fat) || 0,
+    dietary_fiber: parseOptional(data.fiber),
+    saturated_fat: parseOptional(data.saturatedFat),
+    sodium: parseOptional(data.sodium),
+    sugars: parseOptional(data.sugars),
+    trans_fat: parseOptional(data.transFat),
+    potassium: parseOptional(data.potassium),
+    calcium: parseOptional(data.calcium),
+    iron: parseOptional(data.iron),
+    cholesterol: parseOptional(data.cholesterol),
+    vitamin_a: parseOptional(data.vitaminA),
+    vitamin_c: parseOptional(data.vitaminC),
+  };
+}
+
 async function persistFoodEdits({
   queryClient,
   foodId,
@@ -184,6 +210,32 @@ async function persistFoodEdits({
   }
 
   await Promise.all(updates);
+  invalidateFoodCaches(queryClient, foodId);
+  return true;
+}
+
+async function persistFoodMetadataEdits({
+  queryClient,
+  foodId,
+  data,
+  initialValues,
+}: {
+  queryClient: QueryClient;
+  foodId: string;
+  data: FoodFormData;
+  initialValues: Partial<FoodFormData>;
+}): Promise<boolean> {
+  const shouldUpdateFood = hasFoodFormChanges(initialValues, data, FOOD_METADATA_FIELDS);
+
+  if (!shouldUpdateFood) {
+    return false;
+  }
+
+  const foodPayload: { name?: string; brand?: string } = {};
+  if (data.name !== initialValues.name) foodPayload.name = data.name;
+  if (data.brand !== initialValues.brand) foodPayload.brand = data.brand || '';
+
+  await updateFood(foodId, foodPayload);
   invalidateFoodCaches(queryClient, foodId);
   return true;
 }
@@ -431,7 +483,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
             </View>
             <Text className="text-text-secondary text-sm mt-2">
               {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' · '}{formServingSize} {formServingUnit} per serving
+              {' \u00b7 '}{formServingSize} {formServingUnit} per serving
             </Text>
           </View>
           {/* Save to Database */}
@@ -493,6 +545,11 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         return selection;
       }
 
+      if (selection.requiresNutritionUpdate) {
+        setPendingUnitSelection(selection);
+        return selection;
+      }
+
       if (!foodId) {
         setPendingUnitSelection(selection);
         return selection;
@@ -512,30 +569,68 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     [createVariant, foodId, variantId],
   );
 
-  const handleSubmit = (data: FoodFormData) => {
+  const handleSubmit = async (data: FoodFormData) => {
     if (!validateFoodForm(data)) {
       return;
     }
 
-    if (updateFoodToggle && canUpdateVariant) {
-      const onError = () => {
-        Toast.show({ type: 'error', text1: 'Could not update food' });
-      };
+    let nextUnitSelection = pendingUnitSelection ?? undefined;
+    let nextVariantId = currentVariantId;
+    const manualDraftSelection =
+      pendingUnitSelection?.kind === 'draft' &&
+      pendingUnitSelection.requiresNutritionUpdate
+        ? pendingUnitSelection
+        : null;
 
-      void persistFoodEdits({
-        queryClient,
-        foodId,
-        variantId: currentVariantId,
-        customNutrients,
-        data,
-        initialValues,
-      }).catch(onError);
+    if (manualDraftSelection && foodId) {
+      try {
+        const createdVariant = await createVariant(
+          buildCreateFoodVariantPayload(
+            foodId,
+            buildVariantFromFormData(data, manualDraftSelection),
+          ),
+        );
+        nextUnitSelection = {
+          kind: 'existing',
+          variant: createdVariant,
+        };
+        nextVariantId = createdVariant.id;
+        setPendingUnitSelection(nextUnitSelection);
+        setCurrentVariantId(createdVariant.id);
+      } catch {
+        Toast.show({ type: 'error', text1: 'Could not update that unit' });
+        return;
+      }
+    }
+
+    if (updateFoodToggle && canUpdateVariant) {
+      try {
+        if (manualDraftSelection && foodId) {
+          await persistFoodMetadataEdits({
+            queryClient,
+            foodId,
+            data,
+            initialValues,
+          });
+        } else if (nextVariantId) {
+          await persistFoodEdits({
+            queryClient,
+            foodId,
+            variantId: nextVariantId,
+            customNutrients,
+            data,
+            initialValues,
+          });
+        }
+      } catch {
+        Toast.show({ type: 'error', text1: 'Could not update food' });
+      }
     }
 
     navigation.dispatch({
       ...CommonActions.setParams({
         adjustedValues: data,
-        adjustedUnitSelection: pendingUnitSelection ?? undefined,
+        adjustedUnitSelection: nextUnitSelection,
       }),
       source: returnKey,
     });

@@ -869,7 +869,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     disabled={isCreateVariantPending}
                   >
                     <Text className="text-text-secondary text-sm">
-                      {' - '}
+                      {' \u00b7 '}
                       {displayValues.servingSize} {displayValues.servingUnit} per
                       serving
                     </Text>
@@ -893,7 +893,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               />
             ) : (
               <Text className="text-text-secondary text-sm">
-                {' - '}
+                {' \u00b7 '}
                 {displayValues.servingSize} {displayValues.servingUnit} per
                 serving
               </Text>

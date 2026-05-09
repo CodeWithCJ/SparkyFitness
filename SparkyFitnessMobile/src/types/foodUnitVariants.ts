@@ -26,4 +26,8 @@ export interface FoodUnitVariant {
 
 export type FoodUnitSelectionResult =
   | { kind: 'existing'; variant: FoodUnitVariant }
-  | { kind: 'draft'; variant: FoodUnitVariant };
+  | {
+      kind: 'draft';
+      variant: FoodUnitVariant;
+      requiresNutritionUpdate?: boolean;
+    };

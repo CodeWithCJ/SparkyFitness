@@ -247,5 +247,6 @@ describe('FoodForm', () => {
     });
     expect(screen.getByText('oz')).toBeTruthy();
     expect(mockFoodUnitSelectorSheet).toHaveBeenCalled();
+    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe('Select Unit');
   });
 });
