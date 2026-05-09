@@ -161,8 +161,15 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       // Parse the date and time strings into local time
       // entryDate might be '2026-05-09' or '2026-05-09T00:00:00.000Z'
       const datePart = entryDate.substring(0, 10);
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hours, minutes] = newTime.split(':').map(Number);
+      const dateParts = datePart.split('-');
+      const timeParts = newTime.split(':');
+
+      const year = parseInt(dateParts[0] || '0', 10);
+      const month = parseInt(dateParts[1] || '0', 10);
+      const day = parseInt(dateParts[2] || '0', 10);
+
+      const hours = parseInt(timeParts[0] || '0', 10);
+      const minutes = parseInt(timeParts[1] || '0', 10);
 
       // Create Date object using local time. Note: month is 0-indexed in JS.
       const localDate = new Date(year, month - 1, day, hours, minutes);

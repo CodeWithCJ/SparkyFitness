@@ -666,9 +666,9 @@ const updateWaterIntakeLogTimeHandler: RequestHandler = async (
   next
 ) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { loggedAt } = req.body;
-    const authenticatedUserId = (req as any).userId;
+    const authenticatedUserId = req.userId;
 
     if (!loggedAt) {
       res.status(400).json({ error: 'loggedAt is required' });

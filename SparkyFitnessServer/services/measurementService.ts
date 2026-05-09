@@ -2486,7 +2486,6 @@ async function deleteWaterIntakeLogEntry(
 export { getWaterIntakeLog };
 export { deleteWaterIntakeLogEntry };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateWaterIntakeLogTime(
   logId: string,
   loggedAt: string,
