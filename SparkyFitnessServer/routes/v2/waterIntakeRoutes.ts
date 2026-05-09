@@ -4,6 +4,7 @@ import {
   UpdateWaterIntakeBodySchema,
   DateParamSchema,
   UuidParamSchema,
+  UpdateWaterIntakeLogTimeBodySchema,
 } from '../../schemas/measurementSchemas.js';
 
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
@@ -666,14 +667,9 @@ const updateWaterIntakeLogTimeHandler: RequestHandler = async (
   next
 ) => {
   try {
-    const id = req.params.id as string;
-    const { loggedAt } = req.body;
+    const { id } = UuidParamSchema.parse(req.params);
+    const { loggedAt } = UpdateWaterIntakeLogTimeBodySchema.parse(req.body);
     const authenticatedUserId = req.userId;
-
-    if (!loggedAt) {
-      res.status(400).json({ error: 'loggedAt is required' });
-      return;
-    }
 
     const updated = await measurementService.updateWaterIntakeLogTime(
       id,

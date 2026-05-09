@@ -2505,7 +2505,8 @@ CREATE TABLE public.water_intake_entries (
     container_name character varying(255),
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    created_by_user_id uuid
+    created_by_user_id uuid,
+    logged_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 

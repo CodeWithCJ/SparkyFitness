@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import {
+  instantHourMinute,
+  instantToDay,
+  dayToUtcRange,
+} from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -131,13 +136,12 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     });
   };
 
+  const { timezone } = usePreferences();
+
   const formatLogTime = (timestamp: string) => {
     try {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const { hour, minute } = instantHourMinute(timestamp, timezone);
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
     } catch {
       return '--:--';
     }
@@ -145,8 +149,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   const getTimeInputValue = (timestamp: string) => {
     try {
-      const date = new Date(timestamp);
-      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+      const { hour, minute } = instantHourMinute(timestamp, timezone);
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
     } catch {
       return '12:00';
     }
@@ -158,34 +162,18 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     newTime: string
   ) => {
     try {
-      // Parse the date and time strings into local time
-      // entryDate might be '2026-05-09' or '2026-05-09T00:00:00.000Z'
-      const datePart = entryDate.substring(0, 10);
-      const dateParts = datePart.split('-');
+      // Get the YYYY-MM-DD calendar day in the user's timezone
+      const datePart = instantToDay(entryDate, timezone);
       const timeParts = newTime.split(':');
-
-      const year = parseInt(dateParts[0] || '0', 10);
-      const month = parseInt(dateParts[1] || '0', 10);
-      const day = parseInt(dateParts[2] || '0', 10);
-
       const hours = parseInt(timeParts[0] || '0', 10);
       const minutes = parseInt(timeParts[1] || '0', 10);
 
-      // Create Date object using local time. Note: month is 0-indexed in JS.
-      const localDate = new Date(year, month - 1, day, hours, minutes);
-
-      if (isNaN(localDate.getTime())) {
-        console.error('Invalid date constructed', {
-          entryDate,
-          datePart,
-          newTime,
-        });
-        setEditingTimeId(null);
-        return;
-      }
-
-      // Send as ISO string to correctly convey the UTC equivalent to the backend
-      const loggedAt = localDate.toISOString();
+      // Build a UTC instant from the user's local day + time using dayToUtcRange
+      // dayToUtcRange gives midnight UTC for this day in the user's timezone
+      const { start } = dayToUtcRange(datePart, timezone);
+      const loggedAt = new Date(
+        start.getTime() + hours * 3600000 + minutes * 60000
+      ).toISOString();
 
       updateLogTime({ logId: entryId, loggedAt });
       setEditingTimeId(null);
