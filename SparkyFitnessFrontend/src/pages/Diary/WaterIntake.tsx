@@ -24,6 +24,7 @@ import {
   useUpdateWaterIntakeMutation,
   useWaterIntakeLogQuery,
   useDeleteWaterIntakeLogMutation,
+  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 
 interface WaterIntakeProps {
@@ -47,6 +48,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   );
   const { mutate: deleteLogEntry, isPending: deleting } =
     useDeleteWaterIntakeLogMutation();
+  const { mutate: updateLogTime } = useUpdateWaterIntakeLogTimeMutation();
 
   // Local state for the selected container in the diary
   const [selectedContainerId, setSelectedContainerId] = useState<number | null>(
@@ -55,6 +57,9 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   // Local state for log panel visibility
   const [showLog, setShowLog] = useState(false);
+
+  // State for editing time on a log entry
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
 
   // Derived selected container
   const currentContainer =
@@ -126,15 +131,60 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     });
   };
 
-  const formatLogTime = (createdAt: string) => {
+  const formatLogTime = (timestamp: string) => {
     try {
-      const date = new Date(createdAt);
+      const date = new Date(timestamp);
       return date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       });
     } catch {
       return '--:--';
+    }
+  };
+
+  const getTimeInputValue = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    } catch {
+      return '12:00';
+    }
+  };
+
+  const handleTimeChange = (
+    entryId: string,
+    entryDate: string,
+    newTime: string
+  ) => {
+    try {
+      // Parse the date and time strings into local time
+      // entryDate might be '2026-05-09' or '2026-05-09T00:00:00.000Z'
+      const datePart = entryDate.substring(0, 10);
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hours, minutes] = newTime.split(':').map(Number);
+
+      // Create Date object using local time. Note: month is 0-indexed in JS.
+      const localDate = new Date(year, month - 1, day, hours, minutes);
+
+      if (isNaN(localDate.getTime())) {
+        console.error('Invalid date constructed', {
+          entryDate,
+          datePart,
+          newTime,
+        });
+        setEditingTimeId(null);
+        return;
+      }
+
+      // Send as ISO string to correctly convey the UTC equivalent to the backend
+      const loggedAt = localDate.toISOString();
+
+      updateLogTime({ logId: entryId, loggedAt });
+      setEditingTimeId(null);
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      setEditingTimeId(null);
     }
   };
 
@@ -302,9 +352,45 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                     className="flex items-center justify-between py-1 px-1.5 rounded text-xs bg-gray-50 dark:bg-slate-800/50 group"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-gray-400 dark:text-gray-500 tabular-nums shrink-0">
-                        {formatLogTime(entry.created_at)}
-                      </span>
+                      {editingTimeId === entry.id ? (
+                        <input
+                          type="time"
+                          className="text-xs tabular-nums bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[72px]"
+                          defaultValue={getTimeInputValue(
+                            entry.logged_at || entry.created_at
+                          )}
+                          onBlur={(e) =>
+                            handleTimeChange(
+                              entry.id,
+                              entry.entry_date,
+                              e.target.value
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleTimeChange(
+                                entry.id,
+                                entry.entry_date,
+                                (e.target as HTMLInputElement).value
+                              );
+                            } else if (e.key === 'Escape') {
+                              setEditingTimeId(null);
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setEditingTimeId(entry.id)}
+                          className="text-gray-400 dark:text-gray-500 tabular-nums shrink-0 hover:text-blue-500 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors"
+                          title={t(
+                            'foodDiary.waterIntake.editTime',
+                            'Click to change time'
+                          )}
+                        >
+                          {formatLogTime(entry.logged_at || entry.created_at)}
+                        </button>
+                      )}
                       <span className="text-gray-600 dark:text-gray-300 truncate">
                         {entry.container_name ||
                           t(

@@ -16,6 +16,7 @@ export interface WaterIntakeLogEntry {
   container_name: string | null;
   source: string;
   created_at: string;
+  logged_at: string;
 }
 
 export const getWaterGoalForDate = async (date: string, userId: string) => {
@@ -37,11 +38,21 @@ export const getWaterIntakeLog = async (
   date: string,
   userId: string
 ): Promise<WaterIntakeLogEntry[]> => {
-  return apiCall(`/measurements/water-intake/${date}/log?userId=${userId}`);
+  return apiCall(`/v2/measurements/water-intake/${date}/log?userId=${userId}`);
 };
 
 export const deleteWaterIntakeLogEntry = async (logId: string) => {
-  return apiCall(`/measurements/water-intake/log/${logId}`, {
+  return apiCall(`/v2/measurements/water-intake/log/${logId}`, {
     method: 'DELETE',
+  });
+};
+
+export const updateWaterIntakeLogTime = async (
+  logId: string,
+  loggedAt: string
+) => {
+  return apiCall(`/v2/measurements/water-intake/log/${logId}`, {
+    method: 'PATCH',
+    body: { loggedAt },
   });
 };

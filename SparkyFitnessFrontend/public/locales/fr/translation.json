@@ -841,7 +841,14 @@
       "updated": "Consommation d'eau mise à jour",
       "updateError": "Échec de la sauvegarde de la consommation d'eau",
       "perDrink": "{{volume}} {{unit}} par boisson",
-      "defaultPerDrink": "{{volume}} {{unit}} par boisson (par défaut)"
+      "defaultPerDrink": "{{volume}} {{unit}} par boisson (par défaut)",
+      "logTitle": "Boissons du jour",
+      "logEmpty": "Aucune boisson enregistrée",
+      "deleteEntry": "Supprimer cette boisson",
+      "deleteConfirm": "Supprimer cette entrée de {{volume}} {{unit}} ?",
+      "deletedSuccess": "Boisson supprimée",
+      "deletedError": "Échec de la suppression de la boisson",
+      "editTime": "Cliquez pour modifier l'heure"
     },
     "copyFoodEntryDialog": {
       "title": "Copier les entrées alimentaires",

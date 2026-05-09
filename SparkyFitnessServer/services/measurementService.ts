@@ -2486,6 +2486,29 @@ async function deleteWaterIntakeLogEntry(
 export { getWaterIntakeLog };
 export { deleteWaterIntakeLogEntry };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateWaterIntakeLogTime(
+  logId: string,
+  loggedAt: string,
+  authenticatedUserId: string
+) {
+  const ownerId = await measurementRepository.getWaterIntakeLogEntryOwnerId(
+    logId,
+    authenticatedUserId
+  );
+  if (!ownerId) {
+    throw new Error('Water intake log entry not found or access denied');
+  }
+  const updated = await measurementRepository.updateWaterIntakeLogTime(
+    logId,
+    authenticatedUserId,
+    loggedAt
+  );
+  return updated;
+}
+
+export { updateWaterIntakeLogTime };
+
 export default {
   processHealthData,
   processMobileHealthData,
@@ -2496,6 +2519,7 @@ export default {
   deleteWaterIntake,
   getWaterIntakeLog,
   deleteWaterIntakeLogEntry,
+  updateWaterIntakeLogTime,
   upsertCheckInMeasurements,
   getCheckInMeasurements,
   getLatestCheckInMeasurementsOnOrBeforeDate,

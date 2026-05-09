@@ -659,6 +659,45 @@ const deleteWaterIntakeLogHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
+// ── PATCH /water-intake/log/:id  ─ Update logged_at time ────────────
+const updateWaterIntakeLogTimeHandler: RequestHandler = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
+    const { loggedAt } = req.body;
+    const authenticatedUserId = (req as any).userId;
+
+    if (!loggedAt) {
+      res.status(400).json({ error: 'loggedAt is required' });
+      return;
+    }
+
+    const updated = await measurementService.updateWaterIntakeLogTime(
+      id,
+      loggedAt,
+      authenticatedUserId
+    );
+
+    if (!updated) {
+      res.status(404).json({ error: 'Log entry not found' });
+      return;
+    }
+
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('not found or access denied')) {
+        res.status(403).json({ error: error.message });
+        return;
+      }
+    }
+    next(error);
+  }
+};
+
 // Note: /entry/:id and /log routes must be registered before /:date to avoid
 // Express matching "entry" or "log" as a date parameter.
 router.get('/water-intake/entry/:id', getWaterIntakeEntryHandler);
@@ -666,6 +705,7 @@ router.get('/water-intake/:date/log', getWaterIntakeLogHandler);
 router.get('/water-intake/:date', getWaterIntakeHandler);
 router.post('/water-intake', upsertWaterIntakeHandler);
 router.put('/water-intake/:id', updateWaterIntakeHandler);
+router.patch('/water-intake/log/:id', updateWaterIntakeLogTimeHandler);
 router.delete('/water-intake/log/:id', deleteWaterIntakeLogHandler);
 router.delete('/water-intake/:id', deleteWaterIntakeHandler);
 

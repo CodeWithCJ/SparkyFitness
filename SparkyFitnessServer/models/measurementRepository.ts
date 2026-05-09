@@ -938,24 +938,37 @@ async function insertWaterIntakeLog(
   containerId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   containerName: any,
-  source = 'manual'
+  source = 'manual',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  loggedAt: any = null
 ) {
   const client = await getClient(actingUserId);
   try {
     const result = await client.query(
       `INSERT INTO water_intake_log
-        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, ${loggedAt ? '$8' : 'NOW()'})
        RETURNING *`,
-      [
-        userId,
-        entryDate,
-        waterMl,
-        containerId,
-        containerName,
-        source,
-        actingUserId,
-      ]
+      loggedAt
+        ? [
+            userId,
+            entryDate,
+            waterMl,
+            containerId,
+            containerName,
+            source,
+            actingUserId,
+            loggedAt,
+          ]
+        : [
+            userId,
+            entryDate,
+            waterMl,
+            containerId,
+            containerName,
+            source,
+            actingUserId,
+          ]
     );
     return result.rows[0];
   } finally {
@@ -968,10 +981,10 @@ async function getWaterIntakeLogByDate(userId: any, date: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at
+      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
        FROM water_intake_log
        WHERE user_id = $1 AND entry_date = $2
-       ORDER BY created_at DESC`,
+       ORDER BY logged_at DESC`,
       [userId, date]
     );
     return result.rows;
@@ -1008,6 +1021,20 @@ async function getWaterIntakeLogEntryOwnerId(id: any, userId: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateWaterIntakeLogTime(id: any, userId: any, loggedAt: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'UPDATE water_intake_log SET logged_at = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [loggedAt, id, userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -1020,6 +1047,7 @@ export default {
   getWaterIntakeLogByDate,
   deleteWaterIntakeLog,
   getWaterIntakeLogEntryOwnerId,
+  updateWaterIntakeLogTime,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
   updateCheckInMeasurements,

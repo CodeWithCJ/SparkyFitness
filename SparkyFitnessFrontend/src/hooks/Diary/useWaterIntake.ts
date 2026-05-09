@@ -3,6 +3,7 @@ import {
   getWaterIntakeForDate,
   getWaterIntakeLog,
   deleteWaterIntakeLogEntry,
+  updateWaterIntakeLogTime,
   UpdateWaterPayload,
   updateWaterIntake,
   WaterIntakeLogEntry,
@@ -114,6 +115,20 @@ export const useDeleteWaterIntakeLogMutation = () => {
         'foodDiary.waterIntake.deletedError',
         'Failed to remove drink'
       ),
+    },
+  });
+};
+
+export const useUpdateWaterIntakeLogTimeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ logId, loggedAt }: { logId: string; loggedAt: string }) =>
+      updateWaterIntakeLogTime(logId, loggedAt),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: waterIntakeKeys.all,
+      });
     },
   });
 };

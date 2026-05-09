@@ -1,14 +1,14 @@
 -- Create the water_intake_log table for granular drink-by-drink tracking
 CREATE TABLE IF NOT EXISTS public.water_intake_log (
     id UUID DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
     water_ml NUMERIC(10,3) NOT NULL,
     container_id INTEGER REFERENCES public.user_water_containers(id) ON DELETE SET NULL,
     container_name VARCHAR(255),
     source VARCHAR(50) NOT NULL DEFAULT 'manual',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by_user_id UUID REFERENCES public.users(id)
+    created_by_user_id UUID REFERENCES public."user"(id)
 );
 
 -- Index for efficient date-based lookups
