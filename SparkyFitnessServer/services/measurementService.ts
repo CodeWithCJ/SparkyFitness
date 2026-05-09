@@ -1180,12 +1180,9 @@ async function getOrCreateCustomCategory(
   }
 }
 async function getWaterIntake(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
 ) {
   try {
     const waterData = await measurementRepository.getWaterIntakeByDate(
@@ -1204,16 +1201,11 @@ async function getWaterIntake(
   }
 }
 async function upsertWaterIntake(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  changeDrinks: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  containerId: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryDate: string,
+  changeDrinks: number,
+  containerId: number | null
 ) {
   try {
     // 1. Get current MANUAL water intake for the day to avoid mixing with syncs
@@ -1265,8 +1257,6 @@ async function upsertWaterIntake(
       'manual'
     );
     // 5. Log individual drink(s) into water_intake_entries.
-    // Decrements are handled by the DELETE /water-intake/log/:id endpoint,
-    // which removes the specific drink entry and adjusts the total accordingly.
     if (changeDrinks > 0) {
       for (let i = 0; i < changeDrinks; i++) {
         await measurementRepository.insertWaterIntakeLog(
@@ -1278,6 +1268,25 @@ async function upsertWaterIntake(
           containerName,
           'manual'
         );
+      }
+    } else if (changeDrinks < 0) {
+      // Remove the most recent log entries when decrementing
+      const logEntries = await measurementRepository.getWaterIntakeLogByDate(
+        authenticatedUserId,
+        entryDate
+      );
+      const entriesToRemove = Math.min(
+        Math.abs(changeDrinks),
+        logEntries.length
+      );
+      for (let i = 0; i < entriesToRemove; i++) {
+        const entry = logEntries[i];
+        if (entry) {
+          await measurementRepository.deleteWaterIntakeLog(
+            entry.id,
+            authenticatedUserId
+          );
+        }
       }
     }
     return result;
@@ -2398,15 +2407,12 @@ export { updateSleepEntry };
 export { getOrCreateCustomCategory };
 export { resolveHealthEntryDate };
 
-// ── Water Intake Log service functions ───────────────────────────────
+// ── Water Intake Entries service functions ───────────────────────────────
 
 async function getWaterIntakeLog(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
 ) {
   try {
     const logEntries = await measurementRepository.getWaterIntakeLogByDate(
@@ -2425,12 +2431,9 @@ async function getWaterIntakeLog(
 }
 
 async function deleteWaterIntakeLogEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logId: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  logId: string
 ) {
   try {
     // 1. Verify ownership

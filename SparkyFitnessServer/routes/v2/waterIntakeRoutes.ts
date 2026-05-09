@@ -307,7 +307,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       req.originalUserId || req.userId,
       entry_date,
       change_drinks,
-      container_id
+      container_id ?? null
     );
     res.status(200).json(result);
   } catch (error: unknown) {
@@ -667,8 +667,24 @@ const updateWaterIntakeLogTimeHandler: RequestHandler = async (
   next
 ) => {
   try {
-    const { id } = UuidParamSchema.parse(req.params);
-    const { loggedAt } = UpdateWaterIntakeLogTimeBodySchema.parse(req.body);
+    const paramsResult = UuidParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      res.status(400).json({
+        error: 'Invalid request params',
+        details: paramsResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const bodyResult = UpdateWaterIntakeLogTimeBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const { id } = paramsResult.data;
+    const { loggedAt } = bodyResult.data;
     const authenticatedUserId = req.userId;
 
     const updated = await measurementService.updateWaterIntakeLogTime(

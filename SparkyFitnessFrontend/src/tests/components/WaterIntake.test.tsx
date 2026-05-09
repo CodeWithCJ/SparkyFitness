@@ -11,12 +11,12 @@ import { renderWithClient } from '../test-utils';
 // Mock hooks and contexts
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       if (
         key === 'foodDiary.waterIntake.perDrink' ||
         key === 'foodDiary.waterIntake.defaultPerDrink'
       ) {
-        return `${options.volume} ${options.unit}`;
+        return `${options?.['volume']} ${options?.['unit']}`;
       }
       if (key === 'foodDiary.waterIntake.title') {
         return 'Water Intake';
@@ -39,7 +39,16 @@ jest.mock('@/hooks/useAuth', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ water_display_unit: 'ml' }),
+  usePreferences: () => ({ water_display_unit: 'ml', timezone: 'UTC' }),
+}));
+
+jest.mock('@workspace/shared', () => ({
+  instantHourMinute: () => ({ hour: 12, minute: 0 }),
+  instantToDay: () => '2023-10-27',
+  dayToUtcRange: () => ({
+    start: new Date('2023-10-27T00:00:00Z'),
+    end: new Date('2023-10-28T00:00:00Z'),
+  }),
 }));
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
