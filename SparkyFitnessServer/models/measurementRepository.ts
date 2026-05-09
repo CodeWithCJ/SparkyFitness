@@ -922,6 +922,92 @@ export { getLatestMeasurement };
 export { getLatestCheckInMeasurementsOnOrBeforeDate };
 export { getMostRecentMeasurement };
 export { getStepCaloriesForDate };
+
+// ── Water Intake Log (granular drink-by-drink tracking) ──────────────
+
+async function insertWaterIntakeLog(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryDate: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  waterMl: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  containerId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  containerName: any,
+  source = 'manual'
+) {
+  const client = await getClient(actingUserId);
+  try {
+    const result = await client.query(
+      `INSERT INTO water_intake_log
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+       RETURNING *`,
+      [
+        userId,
+        entryDate,
+        waterMl,
+        containerId,
+        containerName,
+        source,
+        actingUserId,
+      ]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getWaterIntakeLogByDate(userId: any, date: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at
+       FROM water_intake_log
+       WHERE user_id = $1 AND entry_date = $2
+       ORDER BY created_at DESC`,
+      [userId, date]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function deleteWaterIntakeLog(id: any, userId: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'DELETE FROM water_intake_log WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+      [id, userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getWaterIntakeLogEntryOwnerId(id: any, userId: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT user_id FROM water_intake_log WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return result.rows[0]?.user_id;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -930,6 +1016,10 @@ export default {
   getWaterIntakeEntryOwnerId,
   updateWaterIntake,
   deleteWaterIntake,
+  insertWaterIntakeLog,
+  getWaterIntakeLogByDate,
+  deleteWaterIntakeLog,
+  getWaterIntakeLogEntryOwnerId,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
   updateCheckInMeasurements,

@@ -1229,6 +1229,7 @@ async function upsertWaterIntake(
       : 0;
     // 2. Determine amount per drink based on container
     let amountPerDrink;
+    let containerName: string | null = null;
     if (containerId) {
       const container = await waterContainerRepository.getWaterContainerById(
         containerId,
@@ -1237,6 +1238,7 @@ async function upsertWaterIntake(
       if (container) {
         amountPerDrink =
           Number(container.volume) / Number(container.servings_per_container);
+        containerName = container.name || null;
       } else {
         // Fallback to default if container not found
         log(
@@ -1262,6 +1264,20 @@ async function upsertWaterIntake(
       entryDate,
       'manual'
     );
+    // 5. Log individual drink(s) into water_intake_log (only for additions)
+    if (changeDrinks > 0) {
+      for (let i = 0; i < changeDrinks; i++) {
+        await measurementRepository.insertWaterIntakeLog(
+          authenticatedUserId,
+          actingUserId,
+          entryDate,
+          amountPerDrink,
+          containerId || null,
+          containerName,
+          'manual'
+        );
+      }
+    }
     return result;
   } catch (error) {
     log(
@@ -2379,6 +2395,97 @@ export { processSleepEntry };
 export { updateSleepEntry };
 export { getOrCreateCustomCategory };
 export { resolveHealthEntryDate };
+
+// ── Water Intake Log service functions ───────────────────────────────
+
+async function getWaterIntakeLog(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  targetUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  date: any
+) {
+  try {
+    const logEntries = await measurementRepository.getWaterIntakeLogByDate(
+      targetUserId,
+      date
+    );
+    return logEntries || [];
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching water intake log for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+async function deleteWaterIntakeLogEntry(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logId: any
+) {
+  try {
+    // 1. Verify ownership
+    const ownerId = await measurementRepository.getWaterIntakeLogEntryOwnerId(
+      logId,
+      authenticatedUserId
+    );
+    if (!ownerId) {
+      throw new Error('Water intake log entry not found.');
+    }
+    if (ownerId !== authenticatedUserId) {
+      throw new Error(
+        'Forbidden: You do not have permission to delete this water intake log entry.'
+      );
+    }
+
+    // 2. Delete the log entry and get the ml amount + date + source
+    const deleted = await measurementRepository.deleteWaterIntakeLog(
+      logId,
+      authenticatedUserId
+    );
+    if (!deleted) {
+      throw new Error('Water intake log entry not found.');
+    }
+
+    // 3. Subtract the deleted amount from the daily total
+    const currentRecord = await measurementRepository.getWaterIntakeByDate(
+      authenticatedUserId,
+      deleted.entry_date,
+      deleted.source || 'manual'
+    );
+    if (currentRecord) {
+      const currentMl = Number(currentRecord.water_ml);
+      const newTotalMl = Math.max(0, currentMl - Number(deleted.water_ml));
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newTotalMl,
+        deleted.entry_date,
+        deleted.source || 'manual'
+      );
+    }
+
+    return { message: 'Water intake log entry deleted successfully.' };
+  } catch (error) {
+    log(
+      'error',
+      `Error deleting water intake log entry ${logId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+export { getWaterIntakeLog };
+export { deleteWaterIntakeLogEntry };
+
 export default {
   processHealthData,
   processMobileHealthData,
@@ -2387,6 +2494,8 @@ export default {
   getWaterIntakeEntryById,
   updateWaterIntake,
   deleteWaterIntake,
+  getWaterIntakeLog,
+  deleteWaterIntakeLogEntry,
   upsertCheckInMeasurements,
   getCheckInMeasurements,
   getLatestCheckInMeasurementsOnOrBeforeDate,
