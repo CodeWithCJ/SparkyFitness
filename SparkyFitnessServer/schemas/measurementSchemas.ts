@@ -191,11 +191,9 @@ export type CustomMeasurementsRangeParam = z.infer<
 
 export const UpdateWaterIntakeLogTimeBodySchema = z
   .object({
-    loggedAt: z
-      .string()
-      .datetime({
-        message: 'loggedAt must be a valid ISO 8601 datetime string',
-      }),
+    loggedAt: z.string().datetime({
+      message: 'loggedAt must be a valid ISO 8601 datetime string',
+    }),
   })
   .strict();
 
