@@ -5,6 +5,9 @@ import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import {
   useWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
+  useWaterIntakeLogQuery,
+  useDeleteWaterIntakeLogMutation,
+  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
 
@@ -23,10 +26,14 @@ jest.mock('react-i18next', () => ({
       }
       return key;
     },
+    i18n: {
+      language: 'en',
+      changeLanguage: jest.fn(),
+    },
   }),
   initReactI18next: {
     type: '3rdParty',
-    init: () => {},
+    init: jest.fn(),
   },
 }));
 
@@ -50,6 +57,15 @@ jest.mock('@/hooks/Diary/useWaterIntake', () => ({
   useWaterGoalQuery: jest.fn().mockReturnValue({ data: 2000 }),
   useWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
   useUpdateWaterIntakeMutation: jest.fn(),
+  useWaterIntakeLogQuery: jest.fn().mockReturnValue({ data: [] }),
+  useDeleteWaterIntakeLogMutation: jest.fn().mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+  }),
+  useUpdateWaterIntakeLogTimeMutation: jest.fn().mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 // Mock icons
@@ -57,9 +73,12 @@ jest.mock('lucide-react', () => ({
   Droplet: () => <div data-testid="droplet-icon" />,
   ChevronLeft: () => <div data-testid="chevron-left" />,
   ChevronRight: () => <div data-testid="chevron-right" />,
+  ChevronDown: () => <div data-testid="chevron-down" />,
+  ChevronUp: () => <div data-testid="chevron-up" />,
   Star: () => <div data-testid="star-icon" />,
   Plus: () => <div data-testid="plus-icon" />,
   Minus: () => <div data-testid="minus-icon" />,
+  Trash2: () => <div data-testid="trash-icon" />,
 }));
 
 const mockContainers = [
