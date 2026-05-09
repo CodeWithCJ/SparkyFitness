@@ -57,10 +57,13 @@ jest.mock('../../src/components/Icon', () => {
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
   const { View } = require('react-native');
-  const MockBottomSheetModal = React.forwardRef(({ children }: any, ref: any) => {
+  const MockBottomSheetModal = React.forwardRef(({ children, onDismiss }: any, ref: any) => {
     React.useImperativeHandle(ref, () => ({
       present: mockPresent,
-      dismiss: mockDismiss,
+      dismiss: () => {
+        mockDismiss();
+        onDismiss?.();
+      },
     }));
     return <View>{children}</View>;
   });
@@ -109,12 +112,13 @@ describe('FoodUnitSelectorSheet', () => {
 
     expect(screen.getByText('Select Unit')).toBeTruthy();
     expect(screen.queryByText('Available Units')).toBeNull();
+    expect(screen.queryByText('100 g (120 cal)')).toBeNull();
     expect(screen.queryByText('Custom')).toBeNull();
     expect(screen.queryByText('Custom unit...')).toBeNull();
     expect(screen.queryByText('Use Unit')).toBeNull();
   });
 
-  it('highlights the selected row and uses green checkmarks for compatible units', () => {
+  it('highlights the selected grouped row and uses stronger green checkmarks for compatible units', () => {
     const screen = render(
       <FoodUnitSelectorSheet
         variants={variants as any}
@@ -128,21 +132,20 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    const selectedRowStyle = screen.getByTestId('food-unit-variant-row-variant-g').props
-      .style;
+    const selectedRowStyle = screen.getByTestId('food-unit-option-g').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
         backgroundColor: 'raised',
-        borderLeftWidth: 3,
-        borderLeftColor: 'accent',
       }),
     );
+    expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
 
     const checkmarkCalls = mockIcon.mock.calls
       .map(([props]) => props)
       .filter((props) => props.name === 'checkmark');
     expect(checkmarkCalls.length).toBeGreaterThan(0);
-    expect(checkmarkCalls.every((props) => props.color === 'success')).toBe(true);
+    expect(checkmarkCalls.every((props) => props.color === '#22c55e')).toBe(true);
+    expect(screen.queryByText('icon-chevron-forward')).toBeNull();
   });
 
   it('highlights the selected grouped unit row for a draft/manual selection', () => {
@@ -174,10 +177,46 @@ describe('FoodUnitSelectorSheet', () => {
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
         backgroundColor: 'raised',
-        borderLeftWidth: 3,
-        borderLeftColor: 'accent',
       }),
     );
+    expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
+  });
+
+  it('keeps selected saved custom units visible in their own section', () => {
+    const customVariant = {
+      id: 'variant-fillet',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'fillet',
+      calories: 180,
+      protein: 28,
+      carbs: 0,
+      fat: 7,
+    };
+
+    const screen = render(
+      <FoodUnitSelectorSheet
+        variants={[variants[0], customVariant] as any}
+        selectedVariantId="variant-fillet"
+        selectedSelection={{
+          kind: 'existing',
+          variant: customVariant as any,
+        }}
+        onSelect={jest.fn()}
+        renderTrigger={() => <></>}
+      />,
+    );
+
+    expect(screen.getByText('Saved Custom Units')).toBeTruthy();
+
+    const selectedRowStyle =
+      screen.getByTestId('food-unit-custom-variant-variant-fillet').props.style;
+    expect(selectedRowStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: 'raised',
+      }),
+    );
+    expect(screen.queryByText('100 g (120 cal)')).toBeNull();
   });
 
   it('immediately selects compatible units', async () => {

@@ -4,6 +4,7 @@ import FoodForm from '../../src/components/FoodForm';
 
 const mockBottomSheetPicker = jest.fn();
 const mockFoodUnitSelectorSheet = jest.fn();
+let mockUnitSelectionPayload: any;
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const React = require('react');
@@ -35,19 +36,7 @@ jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
         <View>
           {props.renderTrigger?.({ onPress: () => {} })}
           <Pressable
-            onPress={() =>
-              props.onSelect({
-                kind: 'draft',
-                variant: {
-                  serving_size: 1,
-                  serving_unit: 'oz',
-                  calories: 120,
-                  protein: 10,
-                  carbs: 8,
-                  fat: 4,
-                },
-              })
-            }
+            onPress={() => props.onSelect(mockUnitSelectionPayload)}
           >
             <Text>Use Converted Unit</Text>
           </Pressable>
@@ -69,6 +58,17 @@ describe('FoodForm', () => {
   beforeEach(() => {
     mockBottomSheetPicker.mockClear();
     mockFoodUnitSelectorSheet.mockClear();
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+    };
   });
 
   it('scales nutrition values when auto scale is enabled and serving size changes', () => {
@@ -94,7 +94,7 @@ describe('FoodForm', () => {
 
     expect(screen.getByDisplayValue('180')).toBeTruthy();
     expect(screen.getByDisplayValue('15')).toBeTruthy();
-    expect(screen.getByDisplayValue('12.3')).toBeTruthy();
+    expect(screen.getByDisplayValue('12.345')).toBeTruthy();
     expect(screen.getByDisplayValue('6')).toBeTruthy();
   });
 
@@ -288,5 +288,78 @@ describe('FoodForm', () => {
         fat: 4,
       },
     });
+  });
+
+  it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'mg',
+        calories: 0.0012,
+        protein: 0.0005,
+        carbs: 0.0008,
+        fat: 0.0002,
+      },
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('0.0012')).toBeTruthy();
+      expect(screen.getByDisplayValue('0.0005')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByDisplayValue('1'), '2');
+
+    expect(screen.getByDisplayValue('0.0024')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.001')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.0016')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.0004')).toBeTruthy();
   });
 });

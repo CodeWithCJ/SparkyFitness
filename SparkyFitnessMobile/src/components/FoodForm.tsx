@@ -155,8 +155,12 @@ function isPositiveNumber(value: number): boolean {
 }
 
 function formatScaledInput(value: number): string {
-  const rounded = Math.round((value + Number.EPSILON) * 10) / 10;
-  return String(Object.is(rounded, -0) ? 0 : rounded);
+  const rounded = Math.round((value + Number.EPSILON) * 10000) / 10000;
+  if (Object.is(rounded, -0)) {
+    return '0';
+  }
+
+  return rounded.toFixed(4).replace(/\.?0+$/, '');
 }
 
 function scaleNutritionInput(value: string, ratio: number): string {
