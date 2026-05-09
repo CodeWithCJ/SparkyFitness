@@ -1503,6 +1503,7 @@ async function exportAllDiaryEntriesToCSVStream(
         'Cholestérol (mg)',
         'Eau (ml)',
         'Nom du Repas',
+        'Heure',
       ]
     : [
         'Date',
@@ -1522,6 +1523,7 @@ async function exportAllDiaryEntriesToCSVStream(
         'Cholesterol (mg)',
         'Water (ml)',
         'Meal Name',
+        'Time',
       ];
 
   try {
@@ -1694,6 +1696,7 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[14]]: '',
               [baseHeaders[15]]: '',
               [baseHeaders[16]]: '',
+              [baseHeaders[17]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1741,6 +1744,7 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[14]]: '',
               [baseHeaders[15]]: '',
               [baseHeaders[16]]: '',
+              [baseHeaders[17]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1768,6 +1772,7 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[14]]: '',
               [baseHeaders[15]]: '',
               [baseHeaders[16]]: '',
+              [baseHeaders[17]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1792,7 +1797,7 @@ async function exportAllDiaryEntriesToCSVStream(
                   [baseHeaders[0]]: sumDateFormatted,
                   [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
                   [baseHeaders[2]]: drinkLabel,
-                  [baseHeaders[3]]: drinkTime,
+                  [baseHeaders[3]]: '',
                   [baseHeaders[4]]: '',
                   [baseHeaders[5]]: '',
                   [baseHeaders[6]]: '',
@@ -1809,6 +1814,7 @@ async function exportAllDiaryEntriesToCSVStream(
                     locale
                   ),
                   [baseHeaders[16]]: '',
+                  [baseHeaders[17]]: drinkTime,
                 };
                 for (const cn of userCustomNutrients) {
                   drinkRow[`${cn.name} (${cn.unit})`] = '';
@@ -1838,6 +1844,7 @@ async function exportAllDiaryEntriesToCSVStream(
                 locale
               ),
               [baseHeaders[16]]: '',
+              [baseHeaders[17]]: '',
             };
 
             for (const cn of userCustomNutrients) {
@@ -1907,6 +1914,7 @@ async function exportAllDiaryEntriesToCSVStream(
             : '0',
           [baseHeaders[15]]: '',
           [baseHeaders[16]]: entry.meal_name || '',
+          [baseHeaders[17]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -2015,6 +2023,7 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[14]]: '',
           [baseHeaders[15]]: '',
           [baseHeaders[16]]: '',
+          [baseHeaders[17]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -2059,6 +2068,7 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[14]]: '',
           [baseHeaders[15]]: '',
           [baseHeaders[16]]: '',
+          [baseHeaders[17]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -2086,6 +2096,7 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[14]]: '',
           [baseHeaders[15]]: '',
           [baseHeaders[16]]: '',
+          [baseHeaders[17]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -2110,6 +2121,7 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[14]]: '',
           [baseHeaders[15]]: formatLocalizedNumber(sumData.waterTotal, locale),
           [baseHeaders[16]]: '',
+          [baseHeaders[17]]: '',
         };
 
         for (const cn of userCustomNutrients) {
@@ -2134,7 +2146,7 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[0]]: sumDateFormatted,
               [baseHeaders[1]]: CSV_LABELS.SUMMARY_ROW,
               [baseHeaders[2]]: drinkLabel,
-              [baseHeaders[3]]: drinkTime,
+              [baseHeaders[3]]: '',
               [baseHeaders[4]]: '',
               [baseHeaders[5]]: '',
               [baseHeaders[6]]: '',
@@ -2148,6 +2160,7 @@ async function exportAllDiaryEntriesToCSVStream(
               [baseHeaders[14]]: '',
               [baseHeaders[15]]: formatLocalizedNumber(drink.water_ml, locale),
               [baseHeaders[16]]: '',
+              [baseHeaders[17]]: drinkTime,
             };
             for (const cn of userCustomNutrients) {
               drinkRow[`${cn.name} (${cn.unit})`] = '';
