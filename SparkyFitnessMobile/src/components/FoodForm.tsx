@@ -42,6 +42,7 @@ export interface FoodFormProps {
   submitLabel?: string;
   isSubmitting?: boolean;
   showAutoScaleNutrition?: boolean;
+  initialAutoScaleNutritionEnabled?: boolean;
   unitSelector?: {
     variants: FoodUnitVariant[];
     selectedSelection?: FoodUnitSelectionResult | null;
@@ -173,12 +174,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
   submitLabel = 'Add Food',
   isSubmitting = false,
   showAutoScaleNutrition = false,
+  initialAutoScaleNutritionEnabled = false,
   unitSelector,
   children,
 }) => {
   const [form, setForm] = useState<FoodFormData>({ ...EMPTY_FORM, ...initialValues });
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
-  const [autoScaleNutrition, setAutoScaleNutrition] = useState(false);
+  const [autoScaleNutrition, setAutoScaleNutrition] = useState(
+    initialAutoScaleNutritionEnabled,
+  );
   const [selectedUnitSelection, setSelectedUnitSelection] =
     useState<FoodUnitSelectionResult | null>(() =>
       normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
@@ -190,6 +194,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     '--color-form-disabled',
   ]) as [string, string, string, string];
   const lastServingSizeRef = useRef(parseDecimalInput(initialValues?.servingSize ?? ''));
+  const hasTouchedAutoScaleRef = useRef(false);
 
   const fieldRefs = {
     name: useRef<TextInput>(null),
@@ -260,6 +265,18 @@ const FoodForm: React.FC<FoodFormProps> = ({
       normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
     );
   }, [unitSelector?.selectedSelection]);
+
+  useEffect(() => {
+    if (!showAutoScaleNutrition) {
+      hasTouchedAutoScaleRef.current = false;
+      setAutoScaleNutrition(false);
+      return;
+    }
+
+    if (!hasTouchedAutoScaleRef.current) {
+      setAutoScaleNutrition(initialAutoScaleNutritionEnabled);
+    }
+  }, [initialAutoScaleNutritionEnabled, showAutoScaleNutrition]);
 
   const unitSelectorVariants = React.useMemo(() => {
     if (!unitSelector) return [];
@@ -364,6 +381,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 <FoodUnitSelectorSheet
                   variants={unitSelectorVariants}
                   selectedVariantId={selectedUnitSelection?.variant.id}
+                  selectedSelection={selectedUnitSelection}
                   title="Select Unit"
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
@@ -424,7 +442,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
               <Switch
                 accessibilityLabel="Auto Scale Nutrition"
                 value={autoScaleNutrition}
-                onValueChange={setAutoScaleNutrition}
+                onValueChange={(value) => {
+                  hasTouchedAutoScaleRef.current = true;
+                  setAutoScaleNutrition(value);
+                }}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />

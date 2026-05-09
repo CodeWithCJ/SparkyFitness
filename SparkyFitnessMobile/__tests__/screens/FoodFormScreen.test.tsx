@@ -3,7 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodFormScreen from '../../src/screens/FoodFormScreen';
-import { useMealTypes } from '../../src/hooks';
+import { useMealTypes, usePreferences } from '../../src/hooks';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useCreateFoodVariant } from '../../src/hooks/useFoodVariants';
@@ -26,6 +26,7 @@ jest.mock('@react-navigation/native', () => {
 
 jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
+  usePreferences: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useSaveFood', () => ({
@@ -141,6 +142,7 @@ jest.mock('../../src/components/FoodForm', () => {
 });
 
 const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
 const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
 const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
 const mockUseCreateFoodVariant =
@@ -218,6 +220,15 @@ describe('FoodFormScreen', () => {
       defaultMealTypeId: 'meal-1',
       isLoading: false,
       isError: false,
+    });
+    mockUsePreferences.mockReturnValue({
+      preferences: {
+        auto_scale_online_imports: false,
+      } as any,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
     });
     mockUseSaveFood.mockReturnValue({
       saveFood: jest.fn(),
@@ -362,6 +373,7 @@ describe('FoodFormScreen', () => {
     const mealBuilderCall =
       mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(mealBuilderCall?.showAutoScaleNutrition).toBe(true);
+    expect(mealBuilderCall?.initialAutoScaleNutritionEnabled).toBe(false);
 
     renderScreen({
       mode: 'adjust-entry-nutrition',
@@ -378,7 +390,84 @@ describe('FoodFormScreen', () => {
     const adjustModeCall =
       mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
+    expect(adjustModeCall?.initialAutoScaleNutritionEnabled).toBe(false);
     expect(adjustModeCall?.submitLabel).toBe('Update Values');
+  });
+
+  it('passes a true auto-scale default through when the shared preference is enabled', () => {
+    mockUsePreferences.mockReturnValue({
+      preferences: {
+        auto_scale_online_imports: true,
+      } as any,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    renderScreen({
+      mode: 'create-food',
+      pickerMode: 'meal-builder',
+    });
+
+    const mealBuilderCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(mealBuilderCall?.showAutoScaleNutrition).toBe(true);
+    expect(mealBuilderCall?.initialAutoScaleNutritionEnabled).toBe(true);
+
+    renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+    });
+
+    const adjustModeCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
+    expect(adjustModeCall?.initialAutoScaleNutritionEnabled).toBe(true);
+  });
+
+  it('keeps auto scale off until shared preferences finish loading', () => {
+    mockUsePreferences.mockReturnValue({
+      preferences: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    renderScreen({
+      mode: 'create-food',
+      pickerMode: 'meal-builder',
+    });
+
+    const mealBuilderCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(mealBuilderCall?.showAutoScaleNutrition).toBe(true);
+    expect(mealBuilderCall?.initialAutoScaleNutritionEnabled).toBe(false);
+
+    renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+    });
+
+    const adjustModeCall =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
+    expect(adjustModeCall?.initialAutoScaleNutritionEnabled).toBe(false);
   });
 
   it('passes unit selection through the adjust nutrition return flow', async () => {

@@ -75,6 +75,7 @@ describe('FoodForm', () => {
     const screen = render(
       <FoodForm
         showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
         initialValues={{
           name: 'Greek Yogurt',
           servingSize: '100',
@@ -89,7 +90,6 @@ describe('FoodForm', () => {
       />,
     );
 
-    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', true);
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
 
     expect(screen.getByDisplayValue('180')).toBeTruthy();
@@ -140,6 +140,33 @@ describe('FoodForm', () => {
     );
 
     expect(screen.queryByLabelText('Auto Scale Nutrition')).toBeNull();
+  });
+
+  it('initializes auto scale from the provided default and still allows local toggle changes', () => {
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByDisplayValue('100'), '150');
+    expect(screen.getByDisplayValue('180')).toBeTruthy();
+
+    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', false);
+    fireEvent.changeText(screen.getByDisplayValue('150'), '200');
+
+    expect(screen.getByDisplayValue('180')).toBeTruthy();
   });
 
   it('passes grouped serving-unit sections to the picker', () => {
@@ -248,5 +275,18 @@ describe('FoodForm', () => {
     expect(screen.getByText('oz')).toBeTruthy();
     expect(mockFoodUnitSelectorSheet).toHaveBeenCalled();
     expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe('Select Unit');
+    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.selectedSelection).toEqual({
+      kind: 'existing',
+      variant: {
+        id: 'variant-1',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+    });
   });
 });

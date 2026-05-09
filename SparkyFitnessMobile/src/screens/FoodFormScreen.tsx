@@ -11,7 +11,7 @@ import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
-import { useMealTypes } from '../hooks';
+import { useMealTypes, usePreferences } from '../hooks';
 import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useCreateFoodVariant } from '../hooks/useFoodVariants';
@@ -248,6 +248,9 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isLibraryMode = pickerMode === 'library';
   const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
+  const { preferences } = usePreferences({ enabled: isMealBuilderMode });
+  const initialAutoScaleNutritionEnabled =
+    preferences?.auto_scale_online_imports ?? false;
 
   const initialFood = params.initialFood;
   const barcode = params.barcode;
@@ -424,6 +427,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         initialValues={initialFood}
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
         showAutoScaleNutrition={isMealBuilderMode}
+        initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
@@ -524,6 +528,9 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const [accentColor, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string];
   const queryClient = useQueryClient();
   const { createVariant } = useCreateFoodVariant();
+  const { preferences } = usePreferences();
+  const initialAutoScaleNutritionEnabled =
+    preferences?.auto_scale_online_imports ?? false;
 
   const [pendingUnitSelection, setPendingUnitSelection] =
     useState<FoodUnitSelectionResult | null>(selectedUnitSelection ?? null);
@@ -657,6 +664,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         initialValues={initialValues}
         submitLabel="Update Values"
         showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
           availableUnitVariants && availableUnitVariants.length > 0
             ? {

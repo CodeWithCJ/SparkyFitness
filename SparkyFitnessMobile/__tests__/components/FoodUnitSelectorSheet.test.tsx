@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import FoodUnitSelectorSheet from '../../src/components/FoodUnitSelectorSheet';
 
 const mockIcon = jest.fn();
+const mockPresent = jest.fn();
+const mockDismiss = jest.fn();
 
 jest.mock('react-native-toast-message', () => ({
   __esModule: true,
@@ -57,8 +59,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View } = require('react-native');
   const MockBottomSheetModal = React.forwardRef(({ children }: any, ref: any) => {
     React.useImperativeHandle(ref, () => ({
-      present: jest.fn(),
-      dismiss: jest.fn(),
+      present: mockPresent,
+      dismiss: mockDismiss,
     }));
     return <View>{children}</View>;
   });
@@ -117,6 +119,10 @@ describe('FoodUnitSelectorSheet', () => {
       <FoodUnitSelectorSheet
         variants={variants as any}
         selectedVariantId="variant-g"
+        selectedSelection={{
+          kind: 'existing',
+          variant: variants[0] as any,
+        }}
         onSelect={jest.fn()}
         renderTrigger={() => <></>}
       />,
@@ -137,6 +143,41 @@ describe('FoodUnitSelectorSheet', () => {
       .filter((props) => props.name === 'checkmark');
     expect(checkmarkCalls.length).toBeGreaterThan(0);
     expect(checkmarkCalls.every((props) => props.color === 'success')).toBe(true);
+  });
+
+  it('highlights the selected grouped unit row for a draft/manual selection', () => {
+    const draftVariant = {
+      id: '__food-form-draft-unit__',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    };
+    const screen = render(
+      <FoodUnitSelectorSheet
+        variants={[...(variants as any), draftVariant] as any}
+        selectedVariantId="__food-form-draft-unit__"
+        selectedSelection={{
+          kind: 'draft',
+          variant: draftVariant as any,
+          requiresNutritionUpdate: true,
+        }}
+        onSelect={jest.fn()}
+        renderTrigger={() => <></>}
+      />,
+    );
+
+    const selectedRowStyle =
+      screen.getByTestId('food-unit-option-cup').props.style;
+    expect(selectedRowStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: 'raised',
+        borderLeftWidth: 3,
+        borderLeftColor: 'accent',
+      }),
+    );
   });
 
   it('immediately selects compatible units', async () => {
@@ -191,9 +232,12 @@ describe('FoodUnitSelectorSheet', () => {
         requiresNutritionUpdate: true,
       });
     });
-    expect(mockToast.show).toHaveBeenCalledWith({
-      type: 'info',
-      text1: 'Please update the nutrition values manually.',
+    await waitFor(() => {
+      expect(mockDismiss).toHaveBeenCalled();
+      expect(mockToast.show).toHaveBeenCalledWith({
+        type: 'info',
+        text1: 'Please update the nutrition values manually.',
+      });
     });
   });
 

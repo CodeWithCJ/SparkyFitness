@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   BottomSheetBackdrop,
@@ -27,6 +33,7 @@ const sheetContainer =
 interface FoodUnitSelectorSheetProps {
   variants: FoodUnitVariant[];
   selectedVariantId?: string;
+  selectedSelection?: FoodUnitSelectionResult | null;
   title?: string;
   renderTrigger: (props: { onPress: () => void }) => React.ReactNode;
   onSelect: (selection: FoodUnitSelectionResult) => Promise<void> | void;
@@ -38,9 +45,14 @@ function formatVariantLabel(variant: FoodUnitVariant): string {
   )} cal)`;
 }
 
+function normalizeUnitKey(unit?: string | null): string {
+  return unit?.trim().toLowerCase() ?? '';
+}
+
 const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
+  selectedSelection,
   title = 'Select Unit',
   renderTrigger,
   onSelect,
@@ -75,14 +87,29 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   const { convertibleUnits, buildConvertedVariant, buildManualVariant } =
     useUnitConversion({
-    variants,
-    selectedVariant,
-  });
+      variants,
+      selectedVariant,
+    });
+
+  const hasSelectedExistingVariant = useMemo(
+    () => selectedSelection?.kind === 'existing',
+    [selectedSelection],
+  );
+  const selectedDraftUnitKey = useMemo(
+    () =>
+      hasSelectedExistingVariant
+        ? ''
+        : normalizeUnitKey(selectedSelection?.variant.serving_unit),
+    [hasSelectedExistingVariant, selectedSelection],
+  );
 
   const groupedUnits = useMemo(() => {
     const availableUnits = new Set(
       convertibleUnits.map((unit) => unit.toLowerCase()),
     );
+    if (selectedDraftUnitKey) {
+      availableUnits.add(selectedDraftUnitKey);
+    }
 
     return FOOD_FORM_UNIT_GROUPS
       .map((group) => ({
@@ -90,7 +117,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         units: group.units.filter((unit) => availableUnits.has(unit.toLowerCase())),
       }))
       .filter((group) => group.units.length > 0);
-  }, [convertibleUnits]);
+  }, [convertibleUnits, selectedDraftUnitKey]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -134,6 +161,15 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     [onSelect],
   );
 
+  const showManualUpdateToast = useCallback(() => {
+    setTimeout(() => {
+      Toast.show({
+        type: 'info',
+        text1: 'Please update the nutrition values manually.',
+      });
+    }, 250);
+  }, []);
+
   const handleUnitPress = useCallback(
     async (unit: string) => {
       const convertedVariant = buildConvertedVariant(unit);
@@ -155,17 +191,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
             requiresNutritionUpdate: true,
           };
 
-      if (!convertedVariant) {
-        Toast.show({
-          type: 'info',
-          text1: 'Please update the nutrition values manually.',
-        });
-      }
-
       setIsSubmitting(true);
       try {
         await onSelect(selection);
         bottomSheetRef.current?.dismiss();
+        if (!convertedVariant) {
+          showManualUpdateToast();
+        }
       } catch {
         Toast.show({
           type: 'error',
@@ -176,7 +208,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [buildConvertedVariant, buildManualVariant, onSelect],
+    [buildConvertedVariant, buildManualVariant, onSelect, showManualUpdateToast],
   );
 
   const renderVariantRow = (variant: FoodUnitVariant, index: number) => {
@@ -214,20 +246,31 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   const renderUnitRow = (unit: string) => {
     const compatible = canAutoConvertToUnit(variants, selectedVariant, unit);
+    const isSelected = selectedDraftUnitKey === normalizeUnitKey(unit);
 
     return (
       <TouchableOpacity
         key={unit}
         testID={`food-unit-option-${unit}`}
         className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
-        style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
+        style={{
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderColor: borderSubtle,
+          backgroundColor: isSelected ? raisedBg : 'transparent',
+          borderLeftWidth: isSelected ? 3 : 0,
+          borderLeftColor: isSelected ? accentPrimary : 'transparent',
+        }}
         onPress={() => {
           void handleUnitPress(unit);
         }}
         activeOpacity={0.7}
         disabled={isSubmitting}
       >
-        <Text className="text-base text-text-primary">{unit}</Text>
+        <Text
+          className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
+        >
+          {unit}
+        </Text>
         {compatible ? (
           <Icon name="checkmark" size={18} color={successText} />
         ) : (
