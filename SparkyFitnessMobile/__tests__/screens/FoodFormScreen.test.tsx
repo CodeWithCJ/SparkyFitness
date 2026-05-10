@@ -846,7 +846,7 @@ describe('FoodFormScreen', () => {
     ]);
   });
 
-  it('passes the manual-update banner flag through in adjust mode for incompatible drafts', () => {
+  it('passes an incompatible draft selection through the unit selector in adjust mode', () => {
     renderScreen({
       mode: 'adjust-entry-nutrition',
       initialValues: {
@@ -884,7 +884,12 @@ describe('FoodFormScreen', () => {
     });
 
     const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
-    expect(call?.showManualNutritionUpdateBanner).toBe(true);
+    expect(call?.unitSelector?.selectedSelection).toEqual(
+      expect.objectContaining({
+        kind: 'draft',
+        requiresNutritionUpdate: true,
+      }),
+    );
   });
 
   it('returns the newly selected saved variant to the detail screen without mutating it', async () => {

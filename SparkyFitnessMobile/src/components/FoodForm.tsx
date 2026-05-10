@@ -44,7 +44,6 @@ export interface FoodFormProps {
   isSubmitting?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
-  showManualNutritionUpdateBanner?: boolean;
   unitSelector?: {
     variants: FoodUnitVariant[];
     selectedSelection?: FoodUnitSelectionResult | null;
@@ -280,7 +279,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
   isSubmitting = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
-  showManualNutritionUpdateBanner = false,
   unitSelector,
   children,
 }) => {
@@ -295,9 +293,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     useState<FoodUnitSelectionResult | null>(() =>
       normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
     );
-  const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(
-    showManualNutritionUpdateBanner,
-  );
+  const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(() => {
+    const initial = normalizeSelectedUnitSelection(unitSelector?.selectedSelection);
+    return Boolean(
+      initial?.kind === 'draft' && initial.requiresNutritionUpdate,
+    );
+  });
   const [selectedSavedVariantId, setSelectedSavedVariantId] = useState<
     string | undefined
   >(
@@ -418,7 +419,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
       unitSelector?.selectedSelection,
     );
     setSelectedUnitSelection(normalizedSelection);
-    setShowManualUpdateBanner(showManualNutritionUpdateBanner);
+    setShowManualUpdateBanner(
+      Boolean(
+        normalizedSelection?.kind === 'draft' &&
+          normalizedSelection.requiresNutritionUpdate,
+      ),
+    );
     setSelectedSavedVariantId((previous) => {
       if (normalizedSelection?.kind === 'existing') {
         return normalizedSelection.variant.id;
@@ -430,19 +436,21 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
       return unitSelector?.variants[0]?.id;
     });
-  }, [
-    showManualNutritionUpdateBanner,
-    unitSelector?.selectedSelection,
-    unitSelector?.variants,
-  ]);
+  }, [unitSelector?.selectedSelection, unitSelector?.variants]);
 
   useEffect(() => {
-    const nextUnit = unitSelector?.selectedSelection?.variant?.serving_unit;
-    if (!nextUnit) return;
-    setForm((prev) =>
-      prev.servingUnit === nextUnit ? prev : { ...prev, servingUnit: nextUnit },
-    );
-  }, [unitSelector?.selectedSelection?.variant?.serving_unit]);
+    const selection = unitSelector?.selectedSelection;
+    if (!selection) return;
+    if (selection.kind === 'draft' && selection.requiresNutritionUpdate) {
+      setForm((prev) =>
+        prev.servingUnit === selection.variant.serving_unit
+          ? prev
+          : { ...prev, servingUnit: selection.variant.serving_unit },
+      );
+      return;
+    }
+    setForm((prev) => applyVariantToFormState(prev, selection.variant));
+  }, [unitSelector?.selectedSelection]);
 
   useEffect(() => {
     if (!unitSelector?.variants?.length) {
@@ -480,11 +488,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
     setSelectedUnitSelection(nextSelection);
     setShowManualUpdateBanner(
-      showManualNutritionUpdateBanner &&
-        Boolean(
-          nextSelection.kind === 'draft' &&
-            nextSelection.requiresNutritionUpdate,
-        ),
+      Boolean(
+        nextSelection.kind === 'draft' &&
+          nextSelection.requiresNutritionUpdate,
+      ),
     );
     if (nextSelection.kind === 'existing') {
       setSelectedSavedVariantId(nextSelection.variant.id);
@@ -602,31 +609,19 @@ const FoodForm: React.FC<FoodFormProps> = ({
                       className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
                       style={{ height: 44 }}
                     >
-                      <View className="flex-row items-center gap-2 flex-1 pr-2">
-                        <Text
-                          className="text-text-primary"
-                          style={{ fontSize: 16 }}
-                          numberOfLines={1}
-                        >
-                          {form.servingUnit || 'unit'}
-                        </Text>
-                        {showManualUpdateBanner ? (
-                          <View
-                            className="rounded-full px-2 py-0.5 border"
-                            style={{
-                              backgroundColor: infoBg,
-                              borderColor: infoText,
-                            }}
-                          >
-                            <Text
-                              className="text-[11px] font-semibold uppercase tracking-[0.4px]"
-                              style={{ color: infoText }}
-                            >
-                              Manual
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
+                      <Text
+                        className="text-text-primary flex-1 pr-2"
+                        style={{ fontSize: 16 }}
+                        numberOfLines={1}
+                      >
+                        {form.servingUnit || 'unit'}
+                      </Text>
+                      <Icon
+                        name="chevron-down"
+                        size={12}
+                        color={textMuted}
+                        weight="medium"
+                      />
                     </TouchableOpacity>
                   )}
                 />

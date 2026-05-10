@@ -564,10 +564,6 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
         showAutoScaleNutrition={isMealBuilderMode}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
-        showManualNutritionUpdateBanner={Boolean(
-          pendingUnitSelection?.kind === 'draft' &&
-            pendingUnitSelection.requiresNutritionUpdate,
-        )}
         unitSelector={
           importedSourceVariant
             ? {
@@ -815,10 +811,6 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         submitLabel="Update Values"
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
-        showManualNutritionUpdateBanner={Boolean(
-          pendingUnitSelection?.kind === 'draft' &&
-            pendingUnitSelection.requiresNutritionUpdate,
-        )}
         unitSelector={
           availableUnitVariants && availableUnitVariants.length > 0
             ? {
@@ -1011,10 +1003,6 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         initialValues={initialValues}
         submitLabel="Save Changes"
         isSubmitting={isSubmitting}
-        showManualNutritionUpdateBanner={Boolean(
-          pendingUnitSelection?.kind === 'draft' &&
-            pendingUnitSelection.requiresNutritionUpdate,
-        )}
         unitSelector={
           availableUnitVariants.length > 0
             ? {
