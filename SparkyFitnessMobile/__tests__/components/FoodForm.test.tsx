@@ -465,9 +465,6 @@ describe('FoodForm', () => {
     expect(
       screen.getByText('Please update the nutrition values manually.'),
     ).toBeTruthy();
-    expect(
-      screen.getByText('Manual nutrition update required'),
-    ).toBeTruthy();
     expect(screen.getByText('Manual')).toBeTruthy();
   });
 

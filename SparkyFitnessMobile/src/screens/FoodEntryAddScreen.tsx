@@ -58,10 +58,7 @@ import {
   resolveFoodDisplayValues,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
-import {
-  buildMealIngredientDraft,
-  buildMealIngredientDraftFromSavedFood,
-} from '../utils/mealBuilderDraft';
+import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
@@ -687,12 +684,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             return;
           }
 
+          if (!savedFood.default_variant?.id) {
+            throw new Error('Server did not return a variant ID for the saved food');
+          }
           finishMealBuilderSelection(
-            buildMealIngredientDraftFromSavedFood(
-              savedFood,
+            buildMealIngredientDraft({
+              foodId: savedFood.id,
+              variantId: savedFood.default_variant.id,
               quantity,
-              displayValues.servingUnit,
-            ),
+              unit: displayValues.servingUnit,
+              foodName: adjustedValues?.name || activeItem.name,
+              brand: adjustedValues?.brand ?? activeItem.brand,
+              values: displayValues,
+            }),
           );
         } catch {
           Toast.show({

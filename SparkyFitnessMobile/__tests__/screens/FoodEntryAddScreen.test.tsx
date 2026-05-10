@@ -12,7 +12,7 @@ import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
-import { buildMealIngredientDraftFromSavedFood } from '../../src/utils/mealBuilderDraft';
+import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
@@ -198,10 +198,8 @@ const mockUseAddFoodEntryMeal =
   useAddFoodEntryMeal as jest.MockedFunction<typeof useAddFoodEntryMeal>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
-const mockBuildMealIngredientDraftFromSavedFood =
-  buildMealIngredientDraftFromSavedFood as jest.MockedFunction<
-    typeof buildMealIngredientDraftFromSavedFood
-  >;
+const mockBuildMealIngredientDraft =
+  buildMealIngredientDraft as jest.MockedFunction<typeof buildMealIngredientDraft>;
 const mockToast = Toast as unknown as { show: jest.Mock };
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -472,7 +470,7 @@ describe('FoodEntryAddScreen', () => {
         fat: 7,
       },
     });
-    mockBuildMealIngredientDraftFromSavedFood.mockImplementationOnce(() => {
+    mockBuildMealIngredientDraft.mockImplementationOnce(() => {
       throw new Error('bad draft');
     });
 

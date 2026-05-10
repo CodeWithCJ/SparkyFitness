@@ -437,6 +437,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
   ]);
 
   useEffect(() => {
+    const nextUnit = unitSelector?.selectedSelection?.variant?.serving_unit;
+    if (!nextUnit) return;
+    setForm((prev) =>
+      prev.servingUnit === nextUnit ? prev : { ...prev, servingUnit: nextUnit },
+    );
+  }, [unitSelector?.selectedSelection?.variant?.serving_unit]);
+
+  useEffect(() => {
     if (!unitSelector?.variants?.length) {
       setSelectedSavedVariantId(undefined);
       return;
@@ -619,12 +627,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
                           </View>
                         ) : null}
                       </View>
-                      <Icon
-                        name="chevron-down"
-                        size={12}
-                        color={textMuted}
-                        weight="medium"
-                      />
                     </TouchableOpacity>
                   )}
                 />
@@ -680,24 +682,16 @@ const FoodForm: React.FC<FoodFormProps> = ({
           {showManualUpdateBanner ? (
             <View className="mt-1.5">
               <View
-                className="rounded-lg border-l-4 px-3 py-3 flex-row items-start gap-2.5"
-                style={{ backgroundColor: infoBg, borderLeftColor: infoText }}
+                className="rounded-lg px-3 py-3 flex-row items-center gap-2.5"
+                style={{ backgroundColor: infoBg }}
               >
                 <Icon name="info-circle" size={18} color={infoText} />
-                <View className="flex-1">
-                  <Text
-                    className="text-sm font-semibold"
-                    style={{ color: infoText }}
-                  >
-                    Manual nutrition update required
-                  </Text>
-                  <Text
-                    className="text-sm mt-0.5"
-                    style={{ color: infoText }}
-                  >
-                    Please update the nutrition values manually.
-                  </Text>
-                </View>
+                <Text
+                  className="text-sm font-medium flex-1"
+                  style={{ color: infoText }}
+                >
+                  Please update the nutrition values manually.
+                </Text>
               </View>
             </View>
           ) : null}
