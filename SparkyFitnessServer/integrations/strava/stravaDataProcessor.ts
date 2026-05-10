@@ -147,8 +147,11 @@ async function processStravaActivities(
         duration_minutes: durationMinutes,
         calories_burned: caloriesAuto,
         distance: distanceKm,
+        // Strava returns average_heartrate as a float (e.g. 126.9), but
+        // exercise_entries.avg_heart_rate is INTEGER → Postgres rejects the insert.
+        // Round before passing through. See issue #1256.
         // @ts-expect-error TS(2339): Property 'average_heartrate' does not exist on typ... Remove this comment to see the full error message
-        avg_heart_rate: activity.average_heartrate || null,
+        avg_heart_rate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
         // @ts-expect-error TS(2339): Property 'moving_time' does not exist on type 'nev... Remove this comment to see the full error message
         notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ''}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ''}`,
         entry_source: 'Strava',
