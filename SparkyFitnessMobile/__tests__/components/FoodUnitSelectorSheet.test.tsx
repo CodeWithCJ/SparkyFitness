@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
+import { InteractionManager } from 'react-native';
 import Toast from 'react-native-toast-message';
 import FoodUnitSelectorSheet from '../../src/components/FoodUnitSelectorSheet';
 
@@ -98,6 +99,14 @@ describe('FoodUnitSelectorSheet', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .spyOn(InteractionManager, 'runAfterInteractions')
+      .mockImplementation((callback: () => void) => {
+        callback();
+        return {
+          cancel: jest.fn(),
+        } as any;
+      });
   });
 
   it('shows the new title and removes the old inline conversion UI', () => {
@@ -149,22 +158,20 @@ describe('FoodUnitSelectorSheet', () => {
   });
 
   it('highlights the selected grouped unit row for a draft/manual selection', () => {
-    const draftVariant = {
-      id: '__food-form-draft-unit__',
-      serving_size: 1,
-      serving_unit: 'cup',
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-    };
     const screen = render(
       <FoodUnitSelectorSheet
-        variants={[...(variants as any), draftVariant] as any}
+        variants={variants as any}
         selectedVariantId="__food-form-draft-unit__"
         selectedSelection={{
           kind: 'draft',
-          variant: draftVariant as any,
+          variant: {
+            serving_size: 1,
+            serving_unit: 'cup',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          } as any,
           requiresNutritionUpdate: true,
         }}
         onSelect={jest.fn()}
@@ -180,6 +187,9 @@ describe('FoodUnitSelectorSheet', () => {
       }),
     );
     expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
+    expect(screen.getByTestId('food-unit-option-g')).toBeTruthy();
+    expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
+    expect(within(screen.getByTestId('food-unit-option-g')).queryByText('icon-checkmark')).toBeTruthy();
   });
 
   it('keeps selected saved custom units visible in their own section', () => {
@@ -263,15 +273,16 @@ describe('FoodUnitSelectorSheet', () => {
         variant: expect.objectContaining({
           serving_size: 1,
           serving_unit: 'cup',
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
         }),
         requiresNutritionUpdate: true,
       });
     });
     await waitFor(() => {
+      expect(InteractionManager.runAfterInteractions).toHaveBeenCalled();
       expect(mockDismiss).toHaveBeenCalled();
       expect(mockToast.show).toHaveBeenCalledWith({
         type: 'info',

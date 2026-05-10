@@ -150,6 +150,17 @@ function applyVariantToFormState(
   };
 }
 
+function applyVariantUnitToFormState(
+  previous: FoodFormData,
+  variant: FoodUnitVariant,
+): FoodFormData {
+  return {
+    ...previous,
+    servingSize: formatFormValue(variant.serving_size),
+    servingUnit: variant.serving_unit,
+  };
+}
+
 function isPositiveNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
@@ -282,24 +293,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
   }, [initialAutoScaleNutritionEnabled, showAutoScaleNutrition]);
 
-  const unitSelectorVariants = React.useMemo(() => {
-    if (!unitSelector) return [];
-
-    const normalizedSelection = normalizeSelectedUnitSelection(
-      selectedUnitSelection,
-    );
-    if (
-      normalizedSelection?.variant.id &&
-      !unitSelector.variants.some(
-        (variant) => variant.id === normalizedSelection.variant.id,
-      )
-    ) {
-      return [normalizedSelection.variant, ...unitSelector.variants];
-    }
-
-    return unitSelector.variants;
-  }, [selectedUnitSelection, unitSelector]);
-
   const handleUnitSelectorSelection = async (
     selection: FoodUnitSelectionResult,
   ) => {
@@ -311,7 +304,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
     setSelectedUnitSelection(nextSelection);
     setForm((previous) =>
-      applyVariantToFormState(previous, nextSelection.variant),
+      nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate
+        ? applyVariantUnitToFormState(previous, nextSelection.variant)
+        : applyVariantToFormState(previous, nextSelection.variant),
     );
   };
 
@@ -383,7 +378,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
               <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
               {unitSelector ? (
                 <FoodUnitSelectorSheet
-                  variants={unitSelectorVariants}
+                  variants={unitSelector.variants}
                   selectedVariantId={selectedUnitSelection?.variant.id}
                   selectedSelection={selectedUnitSelection}
                   title="Select Unit"

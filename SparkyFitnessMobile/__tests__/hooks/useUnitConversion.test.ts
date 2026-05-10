@@ -107,11 +107,15 @@ describe('useUnitConversion', () => {
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
 
-  it('builds a manual-update variant when no compatible saved variant exists', () => {
+  it('builds a manual-update variant that preserves the base nutrition values', () => {
     const gramsVariant = createVariant({
       id: 'grams',
       serving_size: 10,
       serving_unit: 'g',
+      calories: 25,
+      protein: 3,
+      carbs: 4,
+      fat: 2,
       custom_nutrients: { omega3: 5 },
     });
 
@@ -125,10 +129,10 @@ describe('useUnitConversion', () => {
     expect(result.current.buildManualVariant('cup')).toEqual({
       serving_size: 1,
       serving_unit: 'cup',
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
+      calories: 25,
+      protein: 3,
+      carbs: 4,
+      fat: 2,
       saturated_fat: 0,
       polyunsaturated_fat: 0,
       monounsaturated_fat: 0,
@@ -143,7 +147,7 @@ describe('useUnitConversion', () => {
       calcium: 0,
       iron: 0,
       glycemic_index: gramsVariant.glycemic_index,
-      custom_nutrients: { omega3: 0 },
+      custom_nutrients: { omega3: 5 },
     });
   });
 

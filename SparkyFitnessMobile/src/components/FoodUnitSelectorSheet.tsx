@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  InteractionManager,
   Platform,
   StyleSheet,
   Text,
@@ -97,10 +98,21 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     [selectedSelection, selectedVariant],
   );
 
+  const savedStandardUnits = useMemo(
+    () =>
+      variants
+        .map((variant) => normalizeUnitKey(variant.serving_unit))
+        .filter((unit) => STANDARD_UNIT_KEYS.has(unit)),
+    [variants],
+  );
+
   const groupedUnits = useMemo(() => {
     const availableUnits = new Set(
       convertibleUnits.map((unit) => unit.toLowerCase()),
     );
+    savedStandardUnits.forEach((unit) => {
+      availableUnits.add(unit);
+    });
     if (selectedUnitKey) {
       availableUnits.add(selectedUnitKey);
     }
@@ -111,7 +123,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         units: group.units.filter((unit) => availableUnits.has(unit.toLowerCase())),
       }))
       .filter((group) => group.units.length > 0);
-  }, [convertibleUnits, selectedUnitKey]);
+  }, [convertibleUnits, savedStandardUnits, selectedUnitKey]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -136,15 +148,29 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     };
   }, []);
 
-  const handleDismiss = useCallback(() => {
-    if (pendingManualToastRef.current) {
-      pendingManualToastRef.current = false;
+  const showManualUpdateToast = useCallback(() => {
+    const showToast = () => {
       Toast.show({
         type: 'info',
         text1: 'Please update the nutrition values manually.',
       });
-    }
+    };
+
+    InteractionManager.runAfterInteractions(() => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(showToast);
+        return;
+      }
+      setTimeout(showToast, 0);
+    });
   }, []);
+
+  const handleDismiss = useCallback(() => {
+    if (pendingManualToastRef.current) {
+      pendingManualToastRef.current = false;
+      showManualUpdateToast();
+    }
+  }, [showManualUpdateToast]);
 
   const handleExistingVariantPress = useCallback(
     async (variant: FoodUnitVariant) => {

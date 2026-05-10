@@ -290,6 +290,94 @@ describe('FoodForm', () => {
     });
   });
 
+  it('keeps current nutrition values and passes only saved variants when selecting an incompatible unit', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('cup')).toBeTruthy();
+    });
+
+    expect(screen.getByDisplayValue('120')).toBeTruthy();
+    expect(screen.getByDisplayValue('10')).toBeTruthy();
+    expect(screen.getByDisplayValue('8')).toBeTruthy();
+    expect(screen.getByDisplayValue('4')).toBeTruthy();
+
+    const latestSelectorProps =
+      mockFoodUnitSelectorSheet.mock.calls[mockFoodUnitSelectorSheet.mock.calls.length - 1]?.[0];
+    expect(latestSelectorProps?.variants).toEqual([
+      expect.objectContaining({
+        id: 'variant-1',
+        serving_unit: 'g',
+      }),
+    ]);
+    expect(latestSelectorProps?.selectedSelection).toEqual(
+      expect.objectContaining({
+        kind: 'draft',
+        variant: expect.objectContaining({
+          id: '__food-form-draft-unit__',
+          serving_unit: 'cup',
+        }),
+        requiresNutritionUpdate: true,
+      }),
+    );
+  });
+
   it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
