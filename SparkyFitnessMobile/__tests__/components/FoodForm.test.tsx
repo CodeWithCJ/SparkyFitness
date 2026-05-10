@@ -156,6 +156,33 @@ describe('FoodForm', () => {
     expect(screen.getByDisplayValue('4')).toBeTruthy();
   });
 
+  it('uses the latest serving size when auto scale is re-enabled after manual edits', () => {
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByDisplayValue('100'), '150');
+    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', true);
+    fireEvent.changeText(screen.getByDisplayValue('150'), '200');
+
+    expect(screen.getByDisplayValue('160')).toBeTruthy();
+    expect(screen.getByDisplayValue('13.3')).toBeTruthy();
+    expect(screen.getByDisplayValue('10.7')).toBeTruthy();
+    expect(screen.getByDisplayValue('5.3')).toBeTruthy();
+  });
+
   it('hides auto scale by default', () => {
     const screen = render(
       <FoodForm
@@ -537,5 +564,88 @@ describe('FoodForm', () => {
     expect(screen.getByDisplayValue('0.001')).toBeTruthy();
     expect(screen.getByDisplayValue('0.0016')).toBeTruthy();
     expect(screen.getByDisplayValue('0.0004')).toBeTruthy();
+  });
+
+  it('keeps precise values in sync when unit selection is updated from props', () => {
+    const onSubmit = jest.fn();
+    const existingVariant = {
+      id: 'variant-1',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+    };
+    const selectedVariant = {
+      id: 'variant-oz',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'oz',
+      calories: 120,
+      protein: 10,
+      carbs: 8.23,
+      fat: 4,
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [existingVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: existingVariant,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    screen.rerender(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [existingVariant, selectedVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: selectedVariant,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8.23',
+        fat: '4',
+      }),
+    );
   });
 });

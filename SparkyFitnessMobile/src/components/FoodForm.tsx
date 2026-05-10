@@ -263,6 +263,29 @@ function applyVariantUnitToFormState(
   };
 }
 
+function buildPreciseNumericValuesFromVariant(
+  variant: FoodUnitVariant,
+): Partial<Record<NumericFoodFormField, number>> {
+  return buildPreciseNumericValues({
+    servingSize: toPreciseFormString(variant.serving_size),
+    calories: toPreciseFormString(variant.calories),
+    protein: toPreciseFormString(variant.protein),
+    carbs: toPreciseFormString(variant.carbs),
+    fat: toPreciseFormString(variant.fat),
+    fiber: toPreciseFormString(variant.dietary_fiber),
+    saturatedFat: toPreciseFormString(variant.saturated_fat),
+    transFat: toPreciseFormString(variant.trans_fat),
+    sodium: toPreciseFormString(variant.sodium),
+    sugars: toPreciseFormString(variant.sugars),
+    potassium: toPreciseFormString(variant.potassium),
+    cholesterol: toPreciseFormString(variant.cholesterol),
+    calcium: toPreciseFormString(variant.calcium),
+    iron: toPreciseFormString(variant.iron),
+    vitaminA: toPreciseFormString(variant.vitamin_a),
+    vitaminC: toPreciseFormString(variant.vitamin_c),
+  });
+}
+
 function isPositiveNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
@@ -349,7 +372,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     setForm((prev) => {
       if (
         NUMERIC_FOOD_FORM_FIELD_SET.has(field) &&
-        field !== 'servingSize'
+        (field !== 'servingSize' || !autoScaleNutrition)
       ) {
         const parsedValue = parseDecimalInput(value);
         if (Number.isFinite(parsedValue)) {
@@ -452,6 +475,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
       );
       return;
     }
+    preciseNumericValuesRef.current = {
+      ...preciseNumericValuesRef.current,
+      ...buildPreciseNumericValuesFromVariant(selection.variant),
+    };
+    lastServingSizeRef.current = selection.variant.serving_size;
     setForm((prev) => applyVariantToFormState(prev, selection.variant));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -511,25 +539,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
     ) {
       preciseNumericValuesRef.current = {
         ...preciseNumericValuesRef.current,
-        ...buildPreciseNumericValues({
-          servingSize: toPreciseFormString(nextSelection.variant.serving_size),
-          calories: toPreciseFormString(nextSelection.variant.calories),
-          protein: toPreciseFormString(nextSelection.variant.protein),
-          carbs: toPreciseFormString(nextSelection.variant.carbs),
-          fat: toPreciseFormString(nextSelection.variant.fat),
-          fiber: toPreciseFormString(nextSelection.variant.dietary_fiber),
-          saturatedFat: toPreciseFormString(nextSelection.variant.saturated_fat),
-          transFat: toPreciseFormString(nextSelection.variant.trans_fat),
-          sodium: toPreciseFormString(nextSelection.variant.sodium),
-          sugars: toPreciseFormString(nextSelection.variant.sugars),
-          potassium: toPreciseFormString(nextSelection.variant.potassium),
-          cholesterol: toPreciseFormString(nextSelection.variant.cholesterol),
-          calcium: toPreciseFormString(nextSelection.variant.calcium),
-          iron: toPreciseFormString(nextSelection.variant.iron),
-          vitaminA: toPreciseFormString(nextSelection.variant.vitamin_a),
-          vitaminC: toPreciseFormString(nextSelection.variant.vitamin_c),
-        }),
+        ...buildPreciseNumericValuesFromVariant(nextSelection.variant),
       };
+      lastServingSizeRef.current = nextSelection.variant.serving_size;
     }
     setForm((previous) =>
       nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate
