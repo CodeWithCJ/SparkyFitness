@@ -41,6 +41,7 @@ interface FoodUnitSelectorSheetProps {
   variants: FoodUnitVariant[];
   selectedVariantId?: string;
   selectedSelection?: FoodUnitSelectionResult | null;
+  showManualUpdateBanner?: boolean;
   title?: string;
   renderTrigger: (props: { onPress: () => void }) => React.ReactNode;
   onSelect: (selection: FoodUnitSelectionResult) => Promise<void> | void;
@@ -54,6 +55,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
   selectedSelection,
+  showManualUpdateBanner = false,
   title = 'Select Unit',
   renderTrigger,
   onSelect,
@@ -72,12 +74,11 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
-    '--color-bg-success',
-    '--color-text-success',
+    '--color-bg-info',
+    '--color-text-info',
   ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(false);
 
   const selectedVariant = useMemo(
     () =>
@@ -141,7 +142,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   );
 
   const handleOpen = useCallback(() => {
-    setShowManualUpdateBanner(false);
     bottomSheetRef.current?.present();
   }, []);
 
@@ -152,15 +152,10 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     };
   }, []);
 
-  const handleDismiss = useCallback(() => {
-    setShowManualUpdateBanner(false);
-  }, []);
-
   const handleExistingVariantPress = useCallback(
     async (variant: FoodUnitVariant) => {
       setIsSubmitting(true);
       try {
-        setShowManualUpdateBanner(false);
         await onSelect({ kind: 'existing', variant });
         bottomSheetRef.current?.dismiss();
       } catch {
@@ -201,13 +196,9 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       try {
         await onSelect(selection);
         if (convertedVariant) {
-          setShowManualUpdateBanner(false);
           bottomSheetRef.current?.dismiss();
-        } else {
-          setShowManualUpdateBanner(true);
         }
       } catch {
-        setShowManualUpdateBanner(false);
         Toast.show({
           type: 'error',
           text1: 'Could not update that unit',
@@ -299,9 +290,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
-        onDismiss={handleDismiss}
       >
-        <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
+        <View className="flex-1">
           <View className="px-4 py-4 border-b border-border-subtle">
             <Text className="text-lg font-semibold text-center text-text-primary">
               {title}
@@ -324,28 +314,30 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
             </View>
           ) : null}
 
-          {customSavedVariants.length > 0 ? (
-            <>
-              <View className="px-4 py-2 bg-surface">
-                <Text className="text-xs font-semibold uppercase text-text-muted">
-                  Saved Custom Units
-                </Text>
-              </View>
-              {customSavedVariants.map(renderCustomVariantRow)}
-            </>
-          ) : null}
+          <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
+            {customSavedVariants.length > 0 ? (
+              <>
+                <View className="px-4 py-2 bg-surface">
+                  <Text className="text-xs font-semibold uppercase text-text-muted">
+                    Saved Custom Units
+                  </Text>
+                </View>
+                {customSavedVariants.map(renderCustomVariantRow)}
+              </>
+            ) : null}
 
-          {groupedUnits.map((group) => (
-            <React.Fragment key={group.label}>
-              <View className="px-4 py-2 bg-surface">
-                <Text className="text-xs font-semibold uppercase text-text-muted">
-                  {group.label}
-                </Text>
-              </View>
-              {group.units.map(renderUnitRow)}
-            </React.Fragment>
-          ))}
-        </BottomSheetScrollView>
+            {groupedUnits.map((group) => (
+              <React.Fragment key={group.label}>
+                <View className="px-4 py-2 bg-surface">
+                  <Text className="text-xs font-semibold uppercase text-text-muted">
+                    {group.label}
+                  </Text>
+                </View>
+                {group.units.map(renderUnitRow)}
+              </React.Fragment>
+            ))}
+          </BottomSheetScrollView>
+        </View>
       </BottomSheetModal>
     </>
   );

@@ -32,10 +32,10 @@ jest.mock('uniwind', () => ({
           return 'muted';
         case '--color-accent-primary':
           return 'accent';
-        case '--color-bg-success':
-          return 'successBg';
-        case '--color-text-success':
-          return 'success';
+        case '--color-bg-info':
+          return 'infoBg';
+        case '--color-text-info':
+          return 'infoText';
         default:
           return 'token';
       }
@@ -75,7 +75,9 @@ jest.mock('@gorhom/bottom-sheet', () => {
     __esModule: true,
     BottomSheetBackdrop: () => <View />,
     BottomSheetModal: MockBottomSheetModal,
-    BottomSheetScrollView: ({ children }: any) => <View>{children}</View>,
+    BottomSheetScrollView: ({ children }: any) => (
+      <View testID="bottom-sheet-scroll">{children}</View>
+    ),
   };
 });
 
@@ -248,38 +250,100 @@ describe('FoodUnitSelectorSheet', () => {
   });
 
   it('keeps the sheet open and shows an inline banner for incompatible units', async () => {
-    const onSelect = jest.fn();
+    const Harness = () => {
+      const [selection, setSelection] = React.useState<any>({
+        kind: 'existing',
+        variant: variants[0],
+      });
+
+      return (
+        <FoodUnitSelectorSheet
+          variants={variants as any}
+          selectedVariantId="variant-g"
+          selectedSelection={selection}
+          showManualUpdateBanner={Boolean(
+            selection?.kind === 'draft' && selection.requiresNutritionUpdate,
+          )}
+          onSelect={async (nextSelection) => {
+            setSelection(nextSelection);
+          }}
+          renderTrigger={() => <></>}
+        />
+      );
+    };
+
     const screen = render(
-      <FoodUnitSelectorSheet
-        variants={variants as any}
-        selectedVariantId="variant-g"
-        onSelect={onSelect}
-        renderTrigger={() => <></>}
-      />,
+      <Harness />,
     );
 
     fireEvent.press(screen.getByText('cup'));
 
     await waitFor(() => {
-      expect(onSelect).toHaveBeenCalledWith({
+      expect(
+        screen.getByText('Please update the nutrition values manually.'),
+      ).toBeTruthy();
+    });
+    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(mockToast.show).not.toHaveBeenCalled();
+    expect(
+      within(screen.getByTestId('bottom-sheet-scroll')).queryByText(
+        'Please update the nutrition values manually.',
+      ),
+    ).toBeNull();
+    const bannerContainer = screen.getByText(
+      'Please update the nutrition values manually.',
+    ).parent?.parent;
+    expect(bannerContainer?.props.style).toEqual(
+      expect.objectContaining({ backgroundColor: 'infoBg' }),
+    );
+    expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
+  });
+
+  it('clears the banner when switching back to a compatible unit', async () => {
+    const Harness = () => {
+      const [selection, setSelection] = React.useState<any>({
         kind: 'draft',
-        variant: expect.objectContaining({
+        variant: {
           serving_size: 1,
           serving_unit: 'cup',
           calories: 120,
           protein: 10,
           carbs: 8,
           fat: 4,
-        }),
+          id: '__food-form-draft-unit__',
+        },
         requiresNutritionUpdate: true,
       });
-    });
-    expect(mockDismiss).not.toHaveBeenCalled();
-    expect(mockToast.show).not.toHaveBeenCalled();
+
+      return (
+        <FoodUnitSelectorSheet
+          variants={variants as any}
+          selectedVariantId="variant-g"
+          selectedSelection={selection}
+          showManualUpdateBanner={Boolean(
+            selection?.kind === 'draft' && selection.requiresNutritionUpdate,
+          )}
+          onSelect={async (nextSelection) => {
+            setSelection(nextSelection);
+          }}
+          renderTrigger={() => <></>}
+        />
+      );
+    };
+
+    const screen = render(<Harness />);
+
     expect(
       screen.getByText('Please update the nutrition values manually.'),
     ).toBeTruthy();
-    expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
+
+    fireEvent.press(screen.getByText('kg'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Please update the nutrition values manually.'),
+      ).toBeNull();
+    });
   });
 
   it('shows an error toast when saving a compatible draft unit fails', async () => {

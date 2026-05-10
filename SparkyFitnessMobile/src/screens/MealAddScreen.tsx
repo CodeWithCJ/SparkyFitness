@@ -24,6 +24,11 @@ import { consumePendingMealIngredientSelection } from '../services/mealBuilderSe
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealFoodPayload, MealIngredientDraft } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatCaloriesDisplay,
+  formatMacroDisplay,
+  formatServingSizeDisplay,
+} from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
@@ -42,7 +47,7 @@ interface MealTotals {
 
 interface MacroStatProps {
   color: string;
-  value: number;
+  value: string;
   label: string;
 }
 
@@ -381,10 +386,18 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 const servingSize = toFiniteNumber(ingredient.serving_size);
                 const quantity = toFiniteNumber(ingredient.quantity);
                 const scale = servingSize > 0 ? quantity / servingSize : 0;
-                const ingredientCalories = Math.round(toFiniteNumber(ingredient.calories) * scale);
-                const ingredientProtein = Math.round(toFiniteNumber(ingredient.protein) * scale);
-                const ingredientCarbs = Math.round(toFiniteNumber(ingredient.carbs) * scale);
-                const ingredientFat = Math.round(toFiniteNumber(ingredient.fat) * scale);
+                const ingredientCalories = formatCaloriesDisplay(
+                  toFiniteNumber(ingredient.calories) * scale,
+                );
+                const ingredientProtein = formatMacroDisplay(
+                  toFiniteNumber(ingredient.protein) * scale,
+                );
+                const ingredientCarbs = formatMacroDisplay(
+                  toFiniteNumber(ingredient.carbs) * scale,
+                );
+                const ingredientFat = formatMacroDisplay(
+                  toFiniteNumber(ingredient.fat) * scale,
+                );
                 const isFirst = index === 0;
                 const ingredientKey = `${ingredient.food_id}-${ingredient.variant_id}-${index}`;
 
@@ -443,7 +456,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                             {ingredientCalories} cal
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
-                            {quantity} {ingredient.unit || ingredient.serving_unit || 'serving'}
+                            {formatServingSizeDisplay(quantity)}{' '}
+                            {ingredient.unit || ingredient.serving_unit || 'serving'}
                           </Text>
                         </View>
                       </View>
@@ -471,14 +485,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-secondary text-base font-medium">Meal total</Text>
-                  <Text className="text-text-primary text-base font-semibold text-right">
-                    {Math.round(totals.calories)} cal
+                    <Text className="text-text-primary text-base font-semibold text-right">
+                    {formatCaloriesDisplay(totals.calories)} cal
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
-                  <MacroStat color={proteinColor} value={Math.round(totals.protein)} label="g protein" />
-                  <MacroStat color={carbsColor} value={Math.round(totals.carbs)} label="g carbs" />
-                  <MacroStat color={fatColor} value={Math.round(totals.fat)} label="g fat" />
+                  <MacroStat color={proteinColor} value={formatMacroDisplay(totals.protein)} label="g protein" />
+                  <MacroStat color={carbsColor} value={formatMacroDisplay(totals.carbs)} label="g carbs" />
+                  <MacroStat color={fatColor} value={formatMacroDisplay(totals.fat)} label="g fat" />
                 </View>
               </View>
               {showPerServing ? (
@@ -486,23 +500,23 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-text-secondary text-base font-medium">Per serving</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {Math.round(totals.calories / servingsCount)} cal
+                      {formatCaloriesDisplay(totals.calories / servingsCount)} cal
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">
                     <MacroStat
                       color={proteinColor}
-                      value={Math.round(totals.protein / servingsCount)}
+                      value={formatMacroDisplay(totals.protein / servingsCount)}
                       label="g protein"
                     />
                     <MacroStat
                       color={carbsColor}
-                      value={Math.round(totals.carbs / servingsCount)}
+                      value={formatMacroDisplay(totals.carbs / servingsCount)}
                       label="g carbs"
                     />
                     <MacroStat
                       color={fatColor}
-                      value={Math.round(totals.fat / servingsCount)}
+                      value={formatMacroDisplay(totals.fat / servingsCount)}
                       label="g fat"
                     />
                   </View>

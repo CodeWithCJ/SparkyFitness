@@ -321,6 +321,7 @@ describe('FoodForm', () => {
         fat: 4,
       },
     });
+    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.showManualUpdateBanner).toBe(false);
   });
 
   it('keeps current nutrition values and passes only saved variants when selecting an incompatible unit', async () => {
@@ -409,6 +410,7 @@ describe('FoodForm', () => {
         requiresNutritionUpdate: true,
       }),
     );
+    expect(latestSelectorProps?.showManualUpdateBanner).toBe(true);
   });
 
   it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {

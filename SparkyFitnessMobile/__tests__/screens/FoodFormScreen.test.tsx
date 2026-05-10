@@ -846,6 +846,47 @@ describe('FoodFormScreen', () => {
     ]);
   });
 
+  it('passes the manual-update banner flag through in adjust mode for incompatible drafts', () => {
+    renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      availableUnitVariants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      selectedUnitSelection: {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'cup',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+        requiresNutritionUpdate: true,
+      },
+    });
+
+    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(call?.unitSelector?.showManualUpdateBanner).toBe(true);
+  });
+
   it('returns the newly selected saved variant to the detail screen without mutating it', async () => {
     mockUnitSelectionResult = {
       kind: 'existing',

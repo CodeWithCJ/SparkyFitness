@@ -465,4 +465,54 @@ describe('MealAddScreen', () => {
     expect(screen.getAllByText('0 cal').length).toBeGreaterThan(0);
     expect(screen.getByText('0 cup')).toBeTruthy();
   });
+
+  it('renders small converted-unit nutrition values without rounding them down to zero', () => {
+    const screen = renderScreen();
+
+    mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
+      ingredient: buildIngredient({
+        unit: 'mg',
+        serving_unit: 'mg',
+        calories: 0.0024,
+        protein: 0.001,
+        carbs: 0.0016,
+        fat: 0.0004,
+      }),
+    } as any);
+
+    act(() => {
+      focusCallback?.();
+    });
+
+    expect(screen.queryByText(/NaN/)).toBeNull();
+    expect(screen.getAllByText('0.0024 cal').length).toBeGreaterThan(0);
+    expect(screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')).toBeTruthy();
+  });
+
+  it('reopens meal ingredients with their active unit instead of the fallback serving unit', () => {
+    const screen = renderScreen();
+
+    mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
+      ingredient: buildIngredient({
+        unit: 'oz',
+        serving_unit: 'cup',
+      }),
+    } as any);
+
+    act(() => {
+      focusCallback?.();
+    });
+
+    fireEvent.press(screen.getByText(/Chicken/));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodEntryAdd', {
+      item: expect.objectContaining({
+        servingUnit: 'oz',
+        variantId: 'variant-1',
+      }),
+      pickerMode: 'meal-builder',
+      ingredientIndex: 0,
+      returnDepth: 1,
+    });
+  });
 });

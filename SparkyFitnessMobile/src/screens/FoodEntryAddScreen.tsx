@@ -119,18 +119,32 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     () => buildExternalUnitVariants(activeItem.externalVariants),
     [activeItem.externalVariants],
   );
+  const activeItemVariant = useMemo(
+    () => foodInfoToUnitVariant(activeItem),
+    [activeItem],
+  );
 
   const selectorVariants = useMemo(() => {
     if (isLocalFood) {
+      const currentVariant =
+        selectedVariantId &&
+        !localUnitVariants.some((variant) => variant.id === selectedVariantId)
+          ? {
+              ...activeItemVariant,
+              id: selectedVariantId,
+            }
+          : null;
       const loadedVariants =
         selectedVariantOverride?.id &&
         !localUnitVariants.some((variant) => variant.id === selectedVariantOverride.id)
           ? [selectedVariantOverride, ...localUnitVariants]
+          : currentVariant
+            ? [currentVariant, ...localUnitVariants]
           : localUnitVariants;
 
       return loadedVariants.length > 0
         ? loadedVariants
-        : [foodInfoToUnitVariant(activeItem)];
+        : [activeItemVariant];
     }
 
     const loadedVariants =
@@ -141,17 +155,37 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
     return loadedVariants.length > 0
       ? loadedVariants
-      : [foodInfoToUnitVariant(activeItem)];
+      : [activeItemVariant];
   }, [
-    activeItem,
+    activeItemVariant,
     externalUnitVariants,
     isLocalFood,
     localUnitVariants,
+    selectedVariantId,
     selectedVariantOverride,
   ]);
 
   const variantPickerOptions = useMemo(() => {
     const baseOptions = isLocalFood ? localVariantOptions : externalVariantOptions;
+    if (
+      selectedVariantId &&
+      !baseOptions.some((variant) => variant.id === selectedVariantId)
+    ) {
+      const fallbackVariant =
+        selectedVariantOverride?.id === selectedVariantId
+          ? unitVariantToDisplayValues(selectedVariantOverride)
+          : activeItemVariant;
+
+      return [
+        {
+          id: selectedVariantId,
+          label: formatVariantLabel(fallbackVariant),
+          ...fallbackVariant,
+        },
+        ...baseOptions,
+      ];
+    }
+
     if (
       !selectedVariantOverride?.id ||
       selectedVariantOverride.id === EXTERNAL_DRAFT_VARIANT_ID
@@ -174,9 +208,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       ...baseOptions,
     ];
   }, [
+    activeItemVariant,
     externalVariantOptions,
     isLocalFood,
     localVariantOptions,
+    selectedVariantId,
     selectedVariantOverride,
   ]);
 

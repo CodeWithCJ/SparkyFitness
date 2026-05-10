@@ -47,6 +47,7 @@ export interface FoodFormProps {
   unitSelector?: {
     variants: FoodUnitVariant[];
     selectedSelection?: FoodUnitSelectionResult | null;
+    showManualUpdateBanner?: boolean;
     onUnitSelectionChange?: (
       selection: FoodUnitSelectionResult,
     ) =>
@@ -293,6 +294,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
     useState<FoodUnitSelectionResult | null>(() =>
       normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
     );
+  const [showUnitSelectionBanner, setShowUnitSelectionBanner] = useState(
+    Boolean(unitSelector?.selectedSelection?.requiresNutritionUpdate),
+  );
   const [selectedSavedVariantId, setSelectedSavedVariantId] = useState<
     string | undefined
   >(
@@ -411,6 +415,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       unitSelector?.selectedSelection,
     );
     setSelectedUnitSelection(normalizedSelection);
+    setShowUnitSelectionBanner(
+      Boolean(unitSelector?.showManualUpdateBanner),
+    );
     setSelectedSavedVariantId((previous) => {
       if (normalizedSelection?.kind === 'existing') {
         return normalizedSelection.variant.id;
@@ -422,7 +429,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
       return unitSelector?.variants[0]?.id;
     });
-  }, [unitSelector?.selectedSelection, unitSelector?.variants]);
+  }, [
+    unitSelector?.selectedSelection,
+    unitSelector?.showManualUpdateBanner,
+    unitSelector?.variants,
+  ]);
 
   useEffect(() => {
     if (!unitSelector?.variants?.length) {
@@ -459,6 +470,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!nextSelection) return;
 
     setSelectedUnitSelection(nextSelection);
+    setShowUnitSelectionBanner(
+      Boolean(
+        nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate,
+      ),
+    );
     if (nextSelection.kind === 'existing') {
       setSelectedSavedVariantId(nextSelection.variant.id);
     }
@@ -566,6 +582,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
+                  showManualUpdateBanner={showUnitSelectionBanner}
                   title="Select Unit"
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
