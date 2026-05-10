@@ -29,6 +29,62 @@ export interface FoodVariantOptionData extends FoodDisplayValues {
   label: string;
 }
 
+function roundTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+function trimTrailingZeros(value: string): string {
+  return value.replace(/\.?0+$/, '');
+}
+
+function formatPreciseNumber(value: number, decimals: number): string {
+  const rounded = roundTo(value, decimals);
+  if (Object.is(rounded, -0)) {
+    return '0';
+  }
+
+  return trimTrailingZeros(rounded.toFixed(decimals));
+}
+
+export function formatServingSizeDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  return formatPreciseNumber(value, 4);
+}
+
+export function formatCaloriesDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 1) {
+    return String(Math.round(value));
+  }
+  return formatPreciseNumber(value, 4);
+}
+
+export function formatMacroDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 1) {
+    return formatPreciseNumber(value, 1);
+  }
+  return formatPreciseNumber(value, 4);
+}
+
+export function formatFoodFormNumber(
+  value: number | undefined,
+  kind: 'servingSize' | 'calories' | 'nutrient' = 'nutrient',
+): string {
+  if (value == null) return '';
+
+  switch (kind) {
+    case 'servingSize':
+      return formatServingSizeDisplay(value);
+    case 'calories':
+      return formatCaloriesDisplay(value);
+    case 'nutrient':
+    default:
+      return formatMacroDisplay(value);
+  }
+}
+
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
   return {
     servingSize: item.servingSize,
@@ -152,7 +208,7 @@ export function externalVariantToUnitVariant(
 }
 
 export function formatVariantLabel(values: Pick<FoodDisplayValues, 'servingSize' | 'servingUnit' | 'calories'>): string {
-  return `${values.servingSize} ${values.servingUnit} (${values.calories} cal)`;
+  return `${formatServingSizeDisplay(values.servingSize)} ${values.servingUnit} (${formatCaloriesDisplay(values.calories)} cal)`;
 }
 
 export function buildLocalVariantOptions(

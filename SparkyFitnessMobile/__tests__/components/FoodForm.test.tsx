@@ -94,8 +94,41 @@ describe('FoodForm', () => {
 
     expect(screen.getByDisplayValue('180')).toBeTruthy();
     expect(screen.getByDisplayValue('15')).toBeTruthy();
-    expect(screen.getByDisplayValue('12.345')).toBeTruthy();
+    expect(screen.getByDisplayValue('12.3')).toBeTruthy();
     expect(screen.getByDisplayValue('6')).toBeTruthy();
+  });
+
+  it('submits precise scaled nutrition values even when the display is rounded', () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8.23',
+          fat: '4',
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByDisplayValue('100'), '150');
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        servingSize: '150',
+        calories: '180',
+        protein: '15',
+        carbs: '12.345',
+        fat: '6',
+      }),
+    );
   });
 
   it('leaves nutrition values unchanged when auto scale is disabled', () => {

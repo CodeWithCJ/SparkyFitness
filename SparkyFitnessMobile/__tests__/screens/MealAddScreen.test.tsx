@@ -442,4 +442,27 @@ describe('MealAddScreen', () => {
     expect(screen.getByDisplayValue('Changed Name')).toBeTruthy();
     expect(screen.getByText(/Rice/)).toBeTruthy();
   });
+
+  it('renders numeric meal macros even when an ingredient draft has incomplete numeric data', () => {
+    const screen = renderScreen();
+
+    mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
+      ingredient: buildIngredient({
+        quantity: undefined as unknown as number,
+        serving_size: undefined as unknown as number,
+        calories: undefined as unknown as number,
+        protein: undefined as unknown as number,
+        carbs: undefined as unknown as number,
+        fat: undefined as unknown as number,
+      }),
+    } as any);
+
+    act(() => {
+      focusCallback?.();
+    });
+
+    expect(screen.queryByText(/NaN/)).toBeNull();
+    expect(screen.getAllByText('0 cal').length).toBeGreaterThan(0);
+    expect(screen.getByText('0 cup')).toBeTruthy();
+  });
 });

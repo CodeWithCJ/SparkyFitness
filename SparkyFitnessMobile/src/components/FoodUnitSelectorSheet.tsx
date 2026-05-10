@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  InteractionManager,
   Platform,
   StyleSheet,
   Text,
@@ -66,15 +65,19 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     raisedBg,
     borderSubtle,
     textMuted,
+    infoBg,
+    infoText,
   ] = useCSSVariable([
     '--color-surface',
     '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
-  ]) as [string, string, string, string];
+    '--color-bg-success',
+    '--color-text-success',
+  ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const pendingManualToastRef = useRef(false);
+  const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(false);
 
   const selectedVariant = useMemo(
     () =>
@@ -138,6 +141,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   );
 
   const handleOpen = useCallback(() => {
+    setShowManualUpdateBanner(false);
     bottomSheetRef.current?.present();
   }, []);
 
@@ -148,34 +152,15 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     };
   }, []);
 
-  const showManualUpdateToast = useCallback(() => {
-    const showToast = () => {
-      Toast.show({
-        type: 'info',
-        text1: 'Please update the nutrition values manually.',
-      });
-    };
-
-    InteractionManager.runAfterInteractions(() => {
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(showToast);
-        return;
-      }
-      setTimeout(showToast, 0);
-    });
-  }, []);
-
   const handleDismiss = useCallback(() => {
-    if (pendingManualToastRef.current) {
-      pendingManualToastRef.current = false;
-      showManualUpdateToast();
-    }
-  }, [showManualUpdateToast]);
+    setShowManualUpdateBanner(false);
+  }, []);
 
   const handleExistingVariantPress = useCallback(
     async (variant: FoodUnitVariant) => {
       setIsSubmitting(true);
       try {
+        setShowManualUpdateBanner(false);
         await onSelect({ kind: 'existing', variant });
         bottomSheetRef.current?.dismiss();
       } catch {
@@ -215,10 +200,14 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       setIsSubmitting(true);
       try {
         await onSelect(selection);
-        pendingManualToastRef.current = !convertedVariant;
-        bottomSheetRef.current?.dismiss();
+        if (convertedVariant) {
+          setShowManualUpdateBanner(false);
+          bottomSheetRef.current?.dismiss();
+        } else {
+          setShowManualUpdateBanner(true);
+        }
       } catch {
-        pendingManualToastRef.current = false;
+        setShowManualUpdateBanner(false);
         Toast.show({
           type: 'error',
           text1: 'Could not update that unit',
@@ -318,6 +307,22 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               {title}
             </Text>
           </View>
+
+          {showManualUpdateBanner ? (
+            <View className="px-4 py-3 border-b border-border-subtle">
+              <View
+                className="rounded-lg px-3 py-2"
+                style={{ backgroundColor: infoBg }}
+              >
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: infoText }}
+                >
+                  Please update the nutrition values manually.
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           {customSavedVariants.length > 0 ? (
             <>

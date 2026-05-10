@@ -36,7 +36,11 @@ export type RootStackParamList = {
     | { mode: 'create-preset'; selectedExercise?: Exercise; selectionNonce?: number }
     | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
   MealDetail: { mealId: string; initialMeal?: Meal };
-  FoodDetail: { item: FoodInfoItem; updatedItem?: FoodInfoItem };
+  FoodDetail: {
+    item: FoodInfoItem;
+    updatedItem?: FoodInfoItem;
+    updatedSelectedVariantId?: string;
+  };
   ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
   FoodSearch:
     | {

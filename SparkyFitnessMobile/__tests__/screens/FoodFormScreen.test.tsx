@@ -6,7 +6,10 @@ import FoodFormScreen from '../../src/screens/FoodFormScreen';
 import { useMealTypes, usePreferences } from '../../src/hooks';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
-import { useCreateFoodVariant } from '../../src/hooks/useFoodVariants';
+import {
+  useCreateFoodVariant,
+  useFoodVariants,
+} from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
@@ -39,6 +42,7 @@ jest.mock('../../src/hooks/useAddFoodEntry', () => ({
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({
   useCreateFoodVariant: jest.fn(),
+  useFoodVariants: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
@@ -147,6 +151,8 @@ const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
 const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
 const mockUseCreateFoodVariant =
   useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
+const mockUseFoodVariants =
+  useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
 const mockToast = Toast as unknown as { show: jest.Mock };
@@ -239,6 +245,11 @@ describe('FoodFormScreen', () => {
     mockUseCreateFoodVariant.mockReturnValue({
       createVariant: mockCreateVariant,
       isPending: false,
+    });
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
     });
     mockUseAddFoodEntry.mockImplementation((options) => ({
       addEntry: (input: any) => {
@@ -351,7 +362,7 @@ describe('FoodFormScreen', () => {
     expect(screen.getByText('Meal')).toBeTruthy();
     expect(screen.getByText('Save to Database')).toBeTruthy();
     expect(screen.getByText('Barcode will be saved.')).toBeTruthy();
-    expect(screen.getByText('1 serving · 100 g per serving')).toBeTruthy();
+    expect(screen.getByText(/100 g per serving/)).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
   });
 
@@ -738,4 +749,209 @@ describe('FoodFormScreen', () => {
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
+
+  it('enables the rich selector for imported create-food flows with a source serving', () => {
+    renderScreen({
+      mode: 'create-food',
+      barcode: '0123456789',
+      providerType: 'openfoodfacts',
+      initialFood: {
+        name: 'Imported Yogurt',
+        brand: 'Brand Co',
+        servingSize: '56',
+        servingUnit: 'g',
+        calories: '60',
+        protein: '5',
+        carbs: '7',
+        fat: '1.5',
+      },
+    });
+
+    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(call?.unitSelector?.variants).toEqual([
+      expect.objectContaining({
+        id: '__create-form-source-variant__',
+        serving_size: 56,
+        serving_unit: 'g',
+        calories: 60,
+      }),
+    ]);
+  });
+
+  it('keeps the plain grouped picker for blank manual create-food flows', () => {
+    renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(call?.unitSelector).toBeUndefined();
+  });
+
+  it('enables the rich selector when editing a saved local food', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    });
+
+    renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {} as any,
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: null,
+    });
+
+    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    expect(call?.unitSelector?.variants).toEqual([
+      expect.objectContaining({
+        id: 'variant-1',
+        serving_unit: 'g',
+      }),
+    ]);
+  });
+
+  it('returns the newly selected saved variant to the detail screen without mutating it', async () => {
+    mockUnitSelectionResult = {
+      kind: 'existing',
+      variant: {
+        id: 'variant-2',
+        food_id: 'food-1',
+        serving_size: 2,
+        serving_unit: 'cup',
+        calories: 200,
+        protein: 30,
+        carbs: 12,
+        fat: 0,
+      },
+    };
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      name: 'Greek Yogurt',
+      brand: 'Brand Co',
+      servingSize: '2',
+      servingUnit: 'cup',
+      calories: '200',
+      protein: '30',
+      carbs: '12',
+      fat: '0',
+    };
+
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+        {
+          id: 'variant-2',
+          food_id: 'food-1',
+          serving_size: 2,
+          serving_unit: 'cup',
+          calories: 200,
+          protein: 30,
+          carbs: 12,
+          fat: 0,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {} as any,
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: { omega3: 1 },
+    });
+
+    fireEvent.press(screen.getByText('Select Converted Unit'));
+    fireEvent.press(screen.getByText('Save Changes'));
+
+    await waitFor(() => {
+      expect(navigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: {
+            params: expect.objectContaining({
+              updatedSelectedVariantId: 'variant-2',
+              updatedItem: expect.objectContaining({
+                variantId: 'variant-2',
+                calories: 200,
+                servingSize: 2,
+                servingUnit: 'cup',
+              }),
+            }),
+          },
+          source: 'FoodDetail-key',
+        }),
+      );
+    });
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+  });
 });
+

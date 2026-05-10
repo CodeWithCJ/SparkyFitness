@@ -1,6 +1,5 @@
 import React from 'react';
 import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
-import { InteractionManager } from 'react-native';
 import Toast from 'react-native-toast-message';
 import FoodUnitSelectorSheet from '../../src/components/FoodUnitSelectorSheet';
 
@@ -33,6 +32,8 @@ jest.mock('uniwind', () => ({
           return 'muted';
         case '--color-accent-primary':
           return 'accent';
+        case '--color-bg-success':
+          return 'successBg';
         case '--color-text-success':
           return 'success';
         default:
@@ -99,14 +100,6 @@ describe('FoodUnitSelectorSheet', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest
-      .spyOn(InteractionManager, 'runAfterInteractions')
-      .mockImplementation((callback: () => void) => {
-        callback();
-        return {
-          cancel: jest.fn(),
-        } as any;
-      });
   });
 
   it('shows the new title and removes the old inline conversion UI', () => {
@@ -254,7 +247,7 @@ describe('FoodUnitSelectorSheet', () => {
     expect(mockToast.show).not.toHaveBeenCalled();
   });
 
-  it('shows a toast and returns a manual-update draft for incompatible units', async () => {
+  it('keeps the sheet open and shows an inline banner for incompatible units', async () => {
     const onSelect = jest.fn();
     const screen = render(
       <FoodUnitSelectorSheet
@@ -281,14 +274,12 @@ describe('FoodUnitSelectorSheet', () => {
         requiresNutritionUpdate: true,
       });
     });
-    await waitFor(() => {
-      expect(InteractionManager.runAfterInteractions).toHaveBeenCalled();
-      expect(mockDismiss).toHaveBeenCalled();
-      expect(mockToast.show).toHaveBeenCalledWith({
-        type: 'info',
-        text1: 'Please update the nutrition values manually.',
-      });
-    });
+    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(mockToast.show).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Please update the nutrition values manually.'),
+    ).toBeTruthy();
+    expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
   });
 
   it('shows an error toast when saving a compatible draft unit fails', async () => {

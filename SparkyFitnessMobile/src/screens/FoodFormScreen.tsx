@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { setPendingMealIngredientSelection } from '../services/mealBuilderSelect
 import { useMealTypes, usePreferences } from '../hooks';
 import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
-import { useCreateFoodVariant } from '../hooks/useFoodVariants';
+import { useCreateFoodVariant, useFoodVariants } from '../hooks/useFoodVariants';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { parseOptional } from '../types/foodInfo';
@@ -23,8 +23,15 @@ import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
-import type { FoodUnitSelectionResult } from '../types/foodUnitVariants';
-import { buildCreateFoodVariantPayload } from '../utils/foodDetails';
+import type {
+  FoodUnitSelectionResult,
+  FoodUnitVariant,
+} from '../types/foodUnitVariants';
+import {
+  buildLocalUnitVariants,
+  buildCreateFoodVariantPayload,
+  formatServingSizeDisplay,
+} from '../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
@@ -33,6 +40,8 @@ type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'create-food' }>;
 type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'adjust-entry-nutrition' }>;
 type EditFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'edit-food' }>;
+
+const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
 
 const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
   'servingSize',
@@ -55,6 +64,24 @@ const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
 ];
 
 const FOOD_METADATA_FIELDS: (keyof FoodFormData)[] = ['name', 'brand'];
+const NUMERIC_FOOD_FIELDS = new Set<keyof FoodFormData>([
+  'servingSize',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'fiber',
+  'saturatedFat',
+  'transFat',
+  'sodium',
+  'sugars',
+  'potassium',
+  'cholesterol',
+  'calcium',
+  'iron',
+  'vitaminA',
+  'vitaminC',
+]);
 
 function validateFoodForm(data: FoodFormData): boolean {
   if (!data.name.trim()) {
@@ -75,7 +102,22 @@ function hasFoodFormChanges(
   data: FoodFormData,
   fields: (keyof FoodFormData)[],
 ): boolean {
-  return fields.some((field) => (initialValues[field] ?? '') !== data[field]);
+  return fields.some((field) => {
+    if (!NUMERIC_FOOD_FIELDS.has(field)) {
+      return (initialValues[field] ?? '') !== data[field];
+    }
+
+    const initialValue = initialValues[field] ?? '';
+    const nextValue = data[field];
+    if (initialValue === '' && nextValue === '') {
+      return false;
+    }
+    if (initialValue === '' || nextValue === '') {
+      return true;
+    }
+
+    return parseDecimalInput(initialValue) !== parseDecimalInput(nextValue);
+  });
 }
 
 function invalidateFoodCaches(queryClient: QueryClient, foodId: string) {
@@ -126,7 +168,7 @@ function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId:
 function buildVariantFromFormData(
   data: FoodFormData,
   selection?: FoodUnitSelectionResult | null,
-) {
+): FoodUnitVariant {
   return {
     ...selection?.variant,
     serving_size: parseDecimalInput(data.servingSize) || 0,
@@ -149,23 +191,96 @@ function buildVariantFromFormData(
   };
 }
 
+function buildVariantFromInitialValues(
+  initialValues?: Partial<FoodFormData>,
+  id?: string,
+): FoodUnitVariant | null {
+  if (!initialValues) {
+    return null;
+  }
+
+  const servingSize = parseDecimalInput(initialValues.servingSize ?? '');
+  const servingUnit = initialValues.servingUnit?.trim();
+
+  if (!servingSize || !servingUnit) {
+    return null;
+  }
+
+  return {
+    id,
+    serving_size: servingSize,
+    serving_unit: servingUnit,
+    calories: parseDecimalInput(initialValues.calories ?? '') || 0,
+    protein: parseDecimalInput(initialValues.protein ?? '') || 0,
+    carbs: parseDecimalInput(initialValues.carbs ?? '') || 0,
+    fat: parseDecimalInput(initialValues.fat ?? '') || 0,
+    dietary_fiber: parseOptional(initialValues.fiber ?? ''),
+    saturated_fat: parseOptional(initialValues.saturatedFat ?? ''),
+    sodium: parseOptional(initialValues.sodium ?? ''),
+    sugars: parseOptional(initialValues.sugars ?? ''),
+    trans_fat: parseOptional(initialValues.transFat ?? ''),
+    potassium: parseOptional(initialValues.potassium ?? ''),
+    calcium: parseOptional(initialValues.calcium ?? ''),
+    iron: parseOptional(initialValues.iron ?? ''),
+    cholesterol: parseOptional(initialValues.cholesterol ?? ''),
+    vitamin_a: parseOptional(initialValues.vitaminA ?? ''),
+    vitamin_c: parseOptional(initialValues.vitaminC ?? ''),
+  };
+}
+
+function buildFormValuesFromVariant(
+  variant: FoodUnitVariant,
+): Partial<FoodFormData> {
+  return {
+    servingSize: String(variant.serving_size),
+    servingUnit: variant.serving_unit,
+    calories: String(variant.calories),
+    protein: String(variant.protein),
+    carbs: String(variant.carbs),
+    fat: String(variant.fat),
+    fiber: variant.dietary_fiber != null ? String(variant.dietary_fiber) : '',
+    saturatedFat:
+      variant.saturated_fat != null ? String(variant.saturated_fat) : '',
+    transFat: variant.trans_fat != null ? String(variant.trans_fat) : '',
+    sodium: variant.sodium != null ? String(variant.sodium) : '',
+    sugars: variant.sugars != null ? String(variant.sugars) : '',
+    potassium: variant.potassium != null ? String(variant.potassium) : '',
+    cholesterol:
+      variant.cholesterol != null ? String(variant.cholesterol) : '',
+    calcium: variant.calcium != null ? String(variant.calcium) : '',
+    iron: variant.iron != null ? String(variant.iron) : '',
+    vitaminA: variant.vitamin_a != null ? String(variant.vitamin_a) : '',
+    vitaminC: variant.vitamin_c != null ? String(variant.vitamin_c) : '',
+  };
+}
+
 async function persistFoodEdits({
   queryClient,
   foodId,
   variantId,
   customNutrients,
   data,
-  initialValues,
+  variantInitialValues,
+  foodInitialValues,
 }: {
   queryClient: QueryClient;
   foodId: string;
   variantId: string;
   customNutrients?: Record<string, string | number> | null;
   data: FoodFormData;
-  initialValues: Partial<FoodFormData>;
+  variantInitialValues: Partial<FoodFormData>;
+  foodInitialValues: Partial<FoodFormData>;
 }): Promise<boolean> {
-  const shouldUpdateVariant = hasFoodFormChanges(initialValues, data, FOOD_VARIANT_FIELDS);
-  const shouldUpdateFood = hasFoodFormChanges(initialValues, data, FOOD_METADATA_FIELDS);
+  const shouldUpdateVariant = hasFoodFormChanges(
+    variantInitialValues,
+    data,
+    FOOD_VARIANT_FIELDS,
+  );
+  const shouldUpdateFood = hasFoodFormChanges(
+    foodInitialValues,
+    data,
+    FOOD_METADATA_FIELDS,
+  );
 
   if (!shouldUpdateVariant && !shouldUpdateFood) {
     return false;
@@ -204,8 +319,8 @@ async function persistFoodEdits({
 
   if (shouldUpdateFood) {
     const foodPayload: { name?: string; brand?: string } = {};
-    if (data.name !== initialValues.name) foodPayload.name = data.name;
-    if (data.brand !== initialValues.brand) foodPayload.brand = data.brand || '';
+    if (data.name !== foodInitialValues.name) foodPayload.name = data.name;
+    if (data.brand !== foodInitialValues.brand) foodPayload.brand = data.brand || '';
     updates.push(updateFood(foodId, foodPayload));
   }
 
@@ -255,6 +370,19 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const initialFood = params.initialFood;
   const barcode = params.barcode;
   const providerType = params.providerType;
+  const importedSourceVariant = useMemo(
+    () => buildVariantFromInitialValues(initialFood, CREATE_FORM_SOURCE_VARIANT_ID),
+    [initialFood],
+  );
+  const [pendingUnitSelection, setPendingUnitSelection] =
+    useState<FoodUnitSelectionResult | null>(() =>
+      importedSourceVariant
+        ? {
+            kind: 'existing',
+            variant: importedSourceVariant,
+          }
+        : null,
+    );
 
   const [selectedDate, setSelectedDate] = useState(params.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -277,6 +405,14 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
     setFormServingUnit(unit);
     if (size > 0) setQuantityText(String(size));
   };
+
+  const handleImportedUnitSelectionChange = useCallback(
+    async (selection: FoodUnitSelectionResult): Promise<FoodUnitSelectionResult> => {
+      setPendingUnitSelection(selection);
+      return selection;
+    },
+    [],
+  );
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) setQuantityText(text);
@@ -428,6 +564,15 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
         showAutoScaleNutrition={isMealBuilderMode}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
+        unitSelector={
+          importedSourceVariant
+            ? {
+                variants: [importedSourceVariant],
+                selectedSelection: pendingUnitSelection,
+                onUnitSelectionChange: handleImportedUnitSelectionChange,
+              }
+            : undefined
+        }
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
@@ -487,7 +632,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
             </View>
             <Text className="text-text-secondary text-sm mt-2">
               {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' \u00b7 '}{formServingSize} {formServingUnit} per serving
+              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formServingUnit} per serving
             </Text>
           </View>
           {/* Save to Database */}
@@ -626,7 +771,8 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
             variantId: nextVariantId,
             customNutrients,
             data,
-            initialValues,
+            variantInitialValues: initialValues,
+            foodInitialValues: initialValues,
           });
         }
       } catch {
@@ -699,6 +845,80 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { createVariant } = useCreateFoodVariant();
+  const { variants } = useFoodVariants(foodId, { enabled: true });
+  const savedUnitVariants = useMemo(
+    () => buildLocalUnitVariants(variants),
+    [variants],
+  );
+  const fallbackVariant = useMemo(
+    () => buildVariantFromInitialValues(initialValues, variantId),
+    [initialValues, variantId],
+  );
+  const availableUnitVariants = useMemo(
+    () =>
+      savedUnitVariants.length > 0
+        ? savedUnitVariants
+        : fallbackVariant
+          ? [fallbackVariant]
+          : [],
+    [fallbackVariant, savedUnitVariants],
+  );
+  const [pendingUnitSelection, setPendingUnitSelection] =
+    useState<FoodUnitSelectionResult | null>(() =>
+      fallbackVariant
+        ? {
+            kind: 'existing',
+            variant: fallbackVariant,
+          }
+        : null,
+    );
+  const [currentVariantId, setCurrentVariantId] = useState(variantId);
+  const [variantBaselineValues, setVariantBaselineValues] = useState<
+    Partial<FoodFormData>
+  >(() => {
+    if (fallbackVariant) {
+      return buildFormValuesFromVariant(fallbackVariant);
+    }
+
+    return initialValues;
+  });
+  const [currentCustomNutrients, setCurrentCustomNutrients] = useState<
+    Record<string, string | number> | null | undefined
+  >(customNutrients);
+
+  const handleUnitSelectionChange = useCallback(
+    async (
+      selection: FoodUnitSelectionResult,
+    ): Promise<FoodUnitSelectionResult> => {
+      if (selection.kind === 'existing') {
+        setPendingUnitSelection(selection);
+        setCurrentVariantId(selection.variant.id ?? variantId);
+        setVariantBaselineValues(buildFormValuesFromVariant(selection.variant));
+        setCurrentCustomNutrients(selection.variant.custom_nutrients ?? null);
+        return selection;
+      }
+
+      if (selection.requiresNutritionUpdate) {
+        setPendingUnitSelection(selection);
+        return selection;
+      }
+
+      const createdVariant = await createVariant(
+        buildCreateFoodVariantPayload(foodId, selection.variant),
+      );
+      const nextSelection: FoodUnitSelectionResult = {
+        kind: 'existing',
+        variant: createdVariant,
+      };
+      setPendingUnitSelection(nextSelection);
+      setCurrentVariantId(createdVariant.id);
+      setVariantBaselineValues(buildFormValuesFromVariant(createdVariant));
+      setCurrentCustomNutrients(createdVariant.custom_nutrients ?? null);
+      return nextSelection;
+    },
+    [createVariant, foodId, variantId],
+  );
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!validateFoodForm(data)) {
@@ -707,23 +927,51 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
 
     setIsSubmitting(true);
     try {
-      const didPersist = await persistFoodEdits({
+      let nextVariantId = currentVariantId;
+      let nextVariantBaselineValues = variantBaselineValues;
+      let nextCustomNutrients = currentCustomNutrients;
+      const manualDraftSelection =
+        pendingUnitSelection?.kind === 'draft' &&
+        pendingUnitSelection.requiresNutritionUpdate
+          ? pendingUnitSelection
+          : null;
+
+      if (manualDraftSelection) {
+        const createdVariant = await createVariant(
+          buildCreateFoodVariantPayload(
+            foodId,
+            buildVariantFromFormData(data, manualDraftSelection),
+          ),
+        );
+        nextVariantId = createdVariant.id;
+        setCurrentVariantId(createdVariant.id);
+        setPendingUnitSelection({
+          kind: 'existing',
+          variant: createdVariant,
+        });
+        nextVariantBaselineValues = buildFormValuesFromVariant(createdVariant);
+        nextCustomNutrients = createdVariant.custom_nutrients ?? null;
+        setVariantBaselineValues(nextVariantBaselineValues);
+        setCurrentCustomNutrients(nextCustomNutrients);
+      }
+
+      await persistFoodEdits({
         queryClient,
         foodId,
-        variantId,
-        customNutrients,
+        variantId: nextVariantId,
+        customNutrients: nextCustomNutrients,
         data,
-        initialValues,
+        variantInitialValues: nextVariantBaselineValues,
+        foodInitialValues: initialValues,
       });
 
-      if (didPersist) {
-        navigation.dispatch({
-          ...CommonActions.setParams({
-            updatedItem: buildUpdatedFoodInfo(item, data, variantId),
-          }),
-          source: returnKey,
-        });
-      }
+      navigation.dispatch({
+        ...CommonActions.setParams({
+          updatedItem: buildUpdatedFoodInfo(item, data, nextVariantId),
+          updatedSelectedVariantId: nextVariantId,
+        }),
+        source: returnKey,
+      });
 
       navigation.goBack();
     } catch {
@@ -755,6 +1003,15 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         initialValues={initialValues}
         submitLabel="Save Changes"
         isSubmitting={isSubmitting}
+        unitSelector={
+          availableUnitVariants.length > 0
+            ? {
+                variants: availableUnitVariants,
+                selectedSelection: pendingUnitSelection,
+                onUnitSelectionChange: handleUnitSelectionChange,
+              }
+            : undefined
+        }
       />
     </View>
   );

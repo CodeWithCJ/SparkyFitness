@@ -46,6 +46,10 @@ interface MacroStatProps {
   label: string;
 }
 
+function toFiniteNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
 const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (
   <View className="flex-1 flex-row items-start gap-1.5">
     <View
@@ -61,13 +65,14 @@ const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (
 function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
   return ingredients.reduce<MealTotals>(
     (totals, ingredient) => {
-      const scale =
-        ingredient.serving_size > 0 ? ingredient.quantity / ingredient.serving_size : 0;
+      const servingSize = toFiniteNumber(ingredient.serving_size);
+      const quantity = toFiniteNumber(ingredient.quantity);
+      const scale = servingSize > 0 ? quantity / servingSize : 0;
 
-      totals.calories += ingredient.calories * scale;
-      totals.protein += ingredient.protein * scale;
-      totals.carbs += ingredient.carbs * scale;
-      totals.fat += ingredient.fat * scale;
+      totals.calories += toFiniteNumber(ingredient.calories) * scale;
+      totals.protein += toFiniteNumber(ingredient.protein) * scale;
+      totals.carbs += toFiniteNumber(ingredient.carbs) * scale;
+      totals.fat += toFiniteNumber(ingredient.fat) * scale;
       return totals;
     },
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
@@ -373,12 +378,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           {ingredients.length > 0 ? (
             <View>
               {ingredients.map((ingredient, index) => {
-                const scale =
-                  ingredient.serving_size > 0 ? ingredient.quantity / ingredient.serving_size : 0;
-                const ingredientCalories = Math.round(ingredient.calories * scale);
-                const ingredientProtein = Math.round(ingredient.protein * scale);
-                const ingredientCarbs = Math.round(ingredient.carbs * scale);
-                const ingredientFat = Math.round(ingredient.fat * scale);
+                const servingSize = toFiniteNumber(ingredient.serving_size);
+                const quantity = toFiniteNumber(ingredient.quantity);
+                const scale = servingSize > 0 ? quantity / servingSize : 0;
+                const ingredientCalories = Math.round(toFiniteNumber(ingredient.calories) * scale);
+                const ingredientProtein = Math.round(toFiniteNumber(ingredient.protein) * scale);
+                const ingredientCarbs = Math.round(toFiniteNumber(ingredient.carbs) * scale);
+                const ingredientFat = Math.round(toFiniteNumber(ingredient.fat) * scale);
                 const isFirst = index === 0;
                 const ingredientKey = `${ingredient.food_id}-${ingredient.variant_id}-${index}`;
 
@@ -437,7 +443,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                             {ingredientCalories} cal
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
-                            {ingredient.quantity} {ingredient.unit}
+                            {quantity} {ingredient.unit || ingredient.serving_unit || 'serving'}
                           </Text>
                         </View>
                       </View>
