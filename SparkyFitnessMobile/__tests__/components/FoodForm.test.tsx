@@ -465,6 +465,10 @@ describe('FoodForm', () => {
     expect(
       screen.getByText('Please update the nutrition values manually.'),
     ).toBeTruthy();
+    expect(
+      screen.getByText('Manual nutrition update required'),
+    ).toBeTruthy();
+    expect(screen.getByText('Manual')).toBeTruthy();
   });
 
   it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {

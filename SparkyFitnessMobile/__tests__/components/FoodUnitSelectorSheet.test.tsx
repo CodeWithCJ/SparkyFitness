@@ -249,7 +249,7 @@ describe('FoodUnitSelectorSheet', () => {
     expect(mockToast.show).not.toHaveBeenCalled();
   });
 
-  it('keeps the sheet open for incompatible units without rendering a selector banner', async () => {
+  it('dismisses the sheet for incompatible units without rendering a selector banner', async () => {
     const onSelect = jest.fn();
     const screen = render(
       <FoodUnitSelectorSheet
@@ -269,7 +269,7 @@ describe('FoodUnitSelectorSheet', () => {
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalled();
     });
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(mockDismiss).toHaveBeenCalled();
     expect(mockToast.show).not.toHaveBeenCalled();
     expect(
       screen.queryByText('Please update the nutrition values manually.'),

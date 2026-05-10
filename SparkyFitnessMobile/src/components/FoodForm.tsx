@@ -594,9 +594,31 @@ const FoodForm: React.FC<FoodFormProps> = ({
                       className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
                       style={{ height: 44 }}
                     >
-                      <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                        {form.servingUnit || 'unit'}
-                      </Text>
+                      <View className="flex-row items-center gap-2 flex-1 pr-2">
+                        <Text
+                          className="text-text-primary"
+                          style={{ fontSize: 16 }}
+                          numberOfLines={1}
+                        >
+                          {form.servingUnit || 'unit'}
+                        </Text>
+                        {showManualUpdateBanner ? (
+                          <View
+                            className="rounded-full px-2 py-0.5 border"
+                            style={{
+                              backgroundColor: infoBg,
+                              borderColor: infoText,
+                            }}
+                          >
+                            <Text
+                              className="text-[11px] font-semibold uppercase tracking-[0.4px]"
+                              style={{ color: infoText }}
+                            >
+                              Manual
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <Icon
                         name="chevron-down"
                         size={12}
@@ -658,15 +680,24 @@ const FoodForm: React.FC<FoodFormProps> = ({
           {showManualUpdateBanner ? (
             <View className="mt-1.5">
               <View
-                className="rounded-lg px-3 py-2"
-                style={{ backgroundColor: infoBg }}
+                className="rounded-lg border-l-4 px-3 py-3 flex-row items-start gap-2.5"
+                style={{ backgroundColor: infoBg, borderLeftColor: infoText }}
               >
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: infoText }}
-                >
-                  Please update the nutrition values manually.
-                </Text>
+                <Icon name="info-circle" size={18} color={infoText} />
+                <View className="flex-1">
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: infoText }}
+                  >
+                    Manual nutrition update required
+                  </Text>
+                  <Text
+                    className="text-sm mt-0.5"
+                    style={{ color: infoText }}
+                  >
+                    Please update the nutrition values manually.
+                  </Text>
+                </View>
               </View>
             </View>
           ) : null}

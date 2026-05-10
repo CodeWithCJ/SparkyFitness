@@ -184,9 +184,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       setIsSubmitting(true);
       try {
         await onSelect(selection);
-        if (convertedVariant) {
-          bottomSheetRef.current?.dismiss();
-        }
+        bottomSheetRef.current?.dismiss();
       } catch {
         Toast.show({
           type: 'error',
