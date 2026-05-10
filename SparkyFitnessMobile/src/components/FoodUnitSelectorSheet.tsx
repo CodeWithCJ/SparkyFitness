@@ -162,6 +162,17 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   const handleUnitPress = useCallback(
     async (unit: string) => {
+      const normalizedTarget = normalizeUnitKey(unit);
+      const matchedVariant = variants.find(
+        (variant) =>
+          Boolean(variant.id) &&
+          normalizeUnitKey(variant.serving_unit) === normalizedTarget,
+      );
+      if (matchedVariant) {
+        await handleExistingVariantPress(matchedVariant);
+        return;
+      }
+
       const convertedVariant = buildConvertedVariant(unit);
       const manualVariant = convertedVariant ? null : buildManualVariant(unit);
       if (!convertedVariant && !manualVariant) {
@@ -195,7 +206,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [buildConvertedVariant, buildManualVariant, onSelect],
+    [
+      buildConvertedVariant,
+      buildManualVariant,
+      handleExistingVariantPress,
+      onSelect,
+      variants,
+    ],
   );
 
   const customSavedVariants = useMemo(

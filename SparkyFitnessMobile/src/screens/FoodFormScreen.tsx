@@ -696,29 +696,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         setCurrentVariantId(selection.variant.id ?? variantId);
         return selection;
       }
-
-      if (selection.requiresNutritionUpdate) {
-        setPendingUnitSelection(selection);
-        return selection;
-      }
-
-      if (!foodId) {
-        setPendingUnitSelection(selection);
-        return selection;
-      }
-
-      const createdVariant = await createVariant(
-        buildCreateFoodVariantPayload(foodId, selection.variant),
-      );
-      const nextSelection: FoodUnitSelectionResult = {
-        kind: 'existing',
-        variant: createdVariant,
-      };
-      setPendingUnitSelection(nextSelection);
-      setCurrentVariantId(createdVariant.id);
-      return nextSelection;
+      setPendingUnitSelection(selection);
+      return selection;
     },
-    [createVariant, foodId, variantId],
+    [variantId],
   );
 
   const handleSubmit = async (data: FoodFormData) => {
@@ -728,18 +709,15 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
     let nextUnitSelection = pendingUnitSelection ?? undefined;
     let nextVariantId = currentVariantId;
-    const manualDraftSelection =
-      pendingUnitSelection?.kind === 'draft' &&
-      pendingUnitSelection.requiresNutritionUpdate
-        ? pendingUnitSelection
-        : null;
+    const draftSelection =
+      pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
 
-    if (manualDraftSelection && foodId) {
+    if (draftSelection && foodId) {
       try {
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
             foodId,
-            buildVariantFromFormData(data, manualDraftSelection),
+            buildVariantFromFormData(data, draftSelection),
           ),
         );
         nextUnitSelection = {
@@ -757,7 +735,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
     if (updateFoodToggle && canUpdateVariant) {
       try {
-        if (manualDraftSelection && foodId) {
+        if (draftSelection && foodId) {
           await persistFoodMetadataEdits({
             queryClient,
             foodId,
@@ -898,26 +876,10 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         setCurrentCustomNutrients(selection.variant.custom_nutrients ?? null);
         return selection;
       }
-
-      if (selection.requiresNutritionUpdate) {
-        setPendingUnitSelection(selection);
-        return selection;
-      }
-
-      const createdVariant = await createVariant(
-        buildCreateFoodVariantPayload(foodId, selection.variant),
-      );
-      const nextSelection: FoodUnitSelectionResult = {
-        kind: 'existing',
-        variant: createdVariant,
-      };
-      setPendingUnitSelection(nextSelection);
-      setCurrentVariantId(createdVariant.id);
-      setVariantBaselineValues(buildFormValuesFromVariant(createdVariant));
-      setCurrentCustomNutrients(createdVariant.custom_nutrients ?? null);
-      return nextSelection;
+      setPendingUnitSelection(selection);
+      return selection;
     },
-    [createVariant, foodId, variantId],
+    [variantId],
   );
 
   const handleSubmit = async (data: FoodFormData) => {
@@ -930,17 +892,14 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       let nextVariantId = currentVariantId;
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
-      const manualDraftSelection =
-        pendingUnitSelection?.kind === 'draft' &&
-        pendingUnitSelection.requiresNutritionUpdate
-          ? pendingUnitSelection
-          : null;
+      const draftSelection =
+        pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
 
-      if (manualDraftSelection) {
+      if (draftSelection) {
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
             foodId,
-            buildVariantFromFormData(data, manualDraftSelection),
+            buildVariantFromFormData(data, draftSelection),
           ),
         );
         nextVariantId = createdVariant.id;

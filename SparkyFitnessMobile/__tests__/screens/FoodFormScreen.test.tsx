@@ -485,13 +485,19 @@ describe('FoodFormScreen', () => {
     mockCreateVariant.mockResolvedValue({
       id: 'variant-oz',
       food_id: 'food-1',
-      serving_size: 1,
+      serving_size: 100,
       serving_unit: 'oz',
-      calories: 120,
+      calories: 200,
       protein: 10,
-      carbs: 8,
-      fat: 4,
+      carbs: 20,
+      fat: 5,
     });
+    // Mimic FoodForm's behavior of updating form.servingUnit after the user
+    // picks a different unit in the selector.
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      servingUnit: 'oz',
+    };
 
     const screen = renderScreen({
       mode: 'adjust-entry-nutrition',
@@ -534,34 +540,24 @@ describe('FoodFormScreen', () => {
     });
 
     fireEvent.press(screen.getByText('Select Converted Unit'));
-    await waitFor(() => {
-      expect(mockCreateVariant).toHaveBeenCalledWith({
-        food_id: 'food-1',
-        serving_size: 1,
-        serving_unit: 'oz',
-        calories: 120,
-        protein: 10,
-        carbs: 8,
-        fat: 4,
-        dietary_fiber: undefined,
-        saturated_fat: undefined,
-        polyunsaturated_fat: undefined,
-        monounsaturated_fat: undefined,
-        sodium: undefined,
-        sugars: undefined,
-        trans_fat: undefined,
-        potassium: undefined,
-        calcium: undefined,
-        iron: undefined,
-        cholesterol: undefined,
-        vitamin_a: undefined,
-        vitamin_c: undefined,
-        glycemic_index: undefined,
-        custom_nutrients: undefined,
-      });
-    });
+    // Variant creation is deferred until submit.
+    expect(mockCreateVariant).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText('Update Values'));
+
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'oz',
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+        }),
+      );
+    });
 
     expect(navigation.dispatch).toHaveBeenCalledWith(
       expect.objectContaining({

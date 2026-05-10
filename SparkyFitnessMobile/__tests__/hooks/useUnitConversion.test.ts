@@ -127,7 +127,7 @@ describe('useUnitConversion', () => {
     );
 
     expect(result.current.buildManualVariant('cup')).toEqual({
-      serving_size: 1,
+      serving_size: 10,
       serving_unit: 'cup',
       calories: 25,
       protein: 3,

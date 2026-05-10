@@ -241,12 +241,41 @@ describe('FoodUnitSelectorSheet', () => {
       expect(onSelect).toHaveBeenCalledWith({
         kind: 'draft',
         variant: expect.objectContaining({
-          serving_size: 1,
+          serving_size: 100,
           serving_unit: 'kg',
         }),
       });
     });
     expect(mockToast.show).not.toHaveBeenCalled();
+  });
+
+  it('returns the saved variant when re-picking its unit', async () => {
+    const onSelect = jest.fn();
+    const screen = render(
+      <FoodUnitSelectorSheet
+        variants={variants as any}
+        selectedVariantId="__food-form-draft-unit__"
+        selectedSelection={{
+          kind: 'draft',
+          variant: {
+            serving_size: 100,
+            serving_unit: 'kg',
+            calories: 120000,
+          } as any,
+        }}
+        onSelect={onSelect}
+        renderTrigger={() => <></>}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('g'));
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith({
+        kind: 'existing',
+        variant: variants[0],
+      });
+    });
   });
 
   it('dismisses the sheet for incompatible units without rendering a selector banner', async () => {
