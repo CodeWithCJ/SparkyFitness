@@ -64,6 +64,89 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
 const EXTERNAL_DRAFT_VARIANT_ID = '__draft-external-unit__';
+const NUTRITION_FIELDS = [
+  'fiber',
+  'saturatedFat',
+  'sodium',
+  'sugars',
+  'transFat',
+  'potassium',
+  'calcium',
+  'iron',
+  'cholesterol',
+  'vitaminA',
+  'vitaminC',
+] as const;
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function toOptionalFiniteNumber(
+  value: unknown,
+  fallback: number | undefined,
+): number | undefined {
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function toNonEmptyString(value: unknown, fallback: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed ? trimmed : fallback;
+}
+
+function mergeVariantDisplayValues(
+  variant: Partial<FoodUnitVariant> | null | undefined,
+  fallback: FoodDisplayValues,
+): FoodDisplayValues {
+  const mergedValues: FoodDisplayValues = {
+    servingSize: toFiniteNumber(variant?.serving_size, fallback.servingSize),
+    servingUnit: toNonEmptyString(variant?.serving_unit, fallback.servingUnit),
+    calories: toFiniteNumber(variant?.calories, fallback.calories),
+    protein: toFiniteNumber(variant?.protein, fallback.protein),
+    carbs: toFiniteNumber(variant?.carbs, fallback.carbs),
+    fat: toFiniteNumber(variant?.fat, fallback.fat),
+  };
+
+  for (const field of NUTRITION_FIELDS) {
+    const variantFieldKey =
+      field === 'fiber'
+        ? 'dietary_fiber'
+        : field === 'saturatedFat'
+          ? 'saturated_fat'
+          : field === 'transFat'
+            ? 'trans_fat'
+            : field === 'vitaminA'
+              ? 'vitamin_a'
+              : field === 'vitaminC'
+                ? 'vitamin_c'
+                : field;
+
+    mergedValues[field] = toOptionalFiniteNumber(
+      variant?.[variantFieldKey as keyof FoodUnitVariant],
+      fallback[field],
+    );
+  }
+
+  return mergedValues;
+}
 
 const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   navigation,
@@ -671,15 +754,25 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(savedFood.id, pendingVariantToPersist),
             );
+            const createdVariantValues = mergeVariantDisplayValues(
+              createdVariant,
+              unitVariantToDisplayValues(pendingVariantToPersist),
+            );
+            const createdVariantId = toNonEmptyString(createdVariant.id, '');
+
+            if (!createdVariantId) {
+              throw new Error('Server did not return a created variant ID');
+            }
+
             finishMealBuilderSelection(
               buildMealIngredientDraft({
                 foodId: savedFood.id,
-                variantId: createdVariant.id,
+                variantId: createdVariantId,
                 quantity,
-                unit: createdVariant.serving_unit,
+                unit: createdVariantValues.servingUnit,
                 foodName: adjustedValues?.name || activeItem.name,
                 brand: adjustedValues?.brand ?? activeItem.brand,
-                values: unitVariantToDisplayValues(createdVariant),
+                values: createdVariantValues,
               }),
             );
             return;

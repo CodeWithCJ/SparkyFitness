@@ -419,6 +419,100 @@ describe('FoodEntryAddScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('preserves converted nutrition when first adding an external converted unit to a meal', async () => {
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Protein Bar',
+      brand: 'Remote Brand',
+      is_custom: false,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 1,
+        serving_unit: 'bar',
+        calories: 200,
+        protein: 20,
+        carbs: 22,
+        fat: 7,
+      },
+    });
+    mockCreateVariant.mockResolvedValue({
+      id: 'saved-variant-oz',
+      food_id: 'saved-food-1',
+      serving_size: '1',
+      serving_unit: 'oz',
+      calories: undefined,
+      protein: undefined,
+      carbs: undefined,
+      fat: undefined,
+    });
+
+    const screen = renderScreen({
+      item: baseExternalItem,
+      pickerMode: 'meal-builder',
+      adjustedValues: {
+        name: 'Protein Bar',
+        brand: 'Remote Brand',
+        servingSize: '1',
+        servingUnit: 'oz',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+        fiber: '',
+        saturatedFat: '',
+        sodium: '',
+        sugars: '',
+        transFat: '',
+        potassium: '',
+        calcium: '',
+        iron: '',
+        cholesterol: '',
+        vitaminA: '',
+        vitaminC: '',
+      },
+      adjustedUnitSelection: {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(navigation.setParams).toHaveBeenCalledWith({
+        adjustedValues: undefined,
+        adjustedUnitSelection: undefined,
+      });
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockCreateVariant).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockSetPendingMealIngredientSelection).toHaveBeenCalledWith({
+      ingredient: expect.objectContaining({
+        food_id: 'saved-food-1',
+        variant_id: 'saved-variant-oz',
+        quantity: 1,
+        unit: 'oz',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      }),
+      ingredientIndex: undefined,
+    });
+  });
+
   it('does not pop when saving an external food fails and relies on the save-food toast', async () => {
     mockSaveFoodAsync.mockImplementation(async () => {
       mockToast.show({
