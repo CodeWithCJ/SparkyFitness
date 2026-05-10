@@ -57,6 +57,7 @@ import {
   formatVariantLabel,
   resolveFoodDisplayValues,
   unitVariantToDisplayValues,
+  type FoodDisplayValues,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -168,10 +169,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       selectedVariantId &&
       !baseOptions.some((variant) => variant.id === selectedVariantId)
     ) {
-      const fallbackVariant =
-        selectedVariantOverride?.id === selectedVariantId
+      const fallbackVariant: FoodDisplayValues =
+        selectedVariantOverride && selectedVariantOverride.id === selectedVariantId
           ? unitVariantToDisplayValues(selectedVariantOverride)
-          : activeItemVariant;
+          : unitVariantToDisplayValues(activeItemVariant);
 
       return [
         {

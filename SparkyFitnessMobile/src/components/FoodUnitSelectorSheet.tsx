@@ -288,7 +288,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
       <BottomSheetModal
         ref={bottomSheetRef}
-        snapPoints={[620]}
+        snapPoints={[500]}
         enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}

@@ -438,8 +438,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
     });
   }, [unitSelector?.selectedSelection, unitSelector?.variants]);
 
+  const selection = unitSelector?.selectedSelection;
+  const selectionRequiresNutritionUpdate =
+    selection?.kind === 'draft' ? selection.requiresNutritionUpdate : false;
+
   useEffect(() => {
-    const selection = unitSelector?.selectedSelection;
     if (!selection) return;
     if (selection.kind === 'draft' && selection.requiresNutritionUpdate) {
       setForm((prev) =>
@@ -450,7 +453,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
       return;
     }
     setForm((prev) => applyVariantToFormState(prev, selection.variant));
-  }, [unitSelector?.selectedSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selection?.kind,
+    selection?.variant?.id,
+    selection?.variant?.serving_unit,
+    selectionRequiresNutritionUpdate,
+  ]);
 
   useEffect(() => {
     if (!unitSelector?.variants?.length) {

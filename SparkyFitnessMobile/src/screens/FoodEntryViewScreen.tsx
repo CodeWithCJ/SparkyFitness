@@ -223,15 +223,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [createdVariantOverride, variants]);
 
   const selectedUnitSelection = useMemo<FoodUnitSelectionResult | undefined>(() => {
-    if (createdVariantOverride?.id === selectedVariantId) {
+    if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
       return {
         kind: 'existing',
         variant: createdVariantOverride,
       };
     }
 
-    const selectedVariant =
-      selectorVariants.find((variant) => variant.id === selectedVariantId) ?? null;
+    const selectedVariant = selectorVariants.find(
+      (variant) => variant.id === selectedVariantId,
+    );
     return selectedVariant
       ? { kind: 'existing', variant: selectedVariant }
       : undefined;
