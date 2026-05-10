@@ -44,10 +44,10 @@ export interface FoodFormProps {
   isSubmitting?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
+  showManualNutritionUpdateBanner?: boolean;
   unitSelector?: {
     variants: FoodUnitVariant[];
     selectedSelection?: FoodUnitSelectionResult | null;
-    showManualUpdateBanner?: boolean;
     onUnitSelectionChange?: (
       selection: FoodUnitSelectionResult,
     ) =>
@@ -280,6 +280,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   isSubmitting = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
+  showManualNutritionUpdateBanner = false,
   unitSelector,
   children,
 }) => {
@@ -294,8 +295,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     useState<FoodUnitSelectionResult | null>(() =>
       normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
     );
-  const [showUnitSelectionBanner, setShowUnitSelectionBanner] = useState(
-    Boolean(unitSelector?.selectedSelection?.requiresNutritionUpdate),
+  const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(
+    showManualNutritionUpdateBanner,
   );
   const [selectedSavedVariantId, setSelectedSavedVariantId] = useState<
     string | undefined
@@ -304,12 +305,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
       ? unitSelector.selectedSelection.variant.id
       : unitSelector?.variants[0]?.id,
   );
-  const [textMuted, accentColor, formEnabled, formDisabled] = useCSSVariable([
+  const [textMuted, accentColor, formEnabled, formDisabled, infoBg, infoText] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string, string];
+    '--color-bg-info',
+    '--color-text-info',
+  ]) as [string, string, string, string, string, string];
   const preciseNumericValuesRef = useRef<
     Partial<Record<NumericFoodFormField, number>>
   >(buildPreciseNumericValues(initialValues));
@@ -415,9 +418,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       unitSelector?.selectedSelection,
     );
     setSelectedUnitSelection(normalizedSelection);
-    setShowUnitSelectionBanner(
-      Boolean(unitSelector?.showManualUpdateBanner),
-    );
+    setShowManualUpdateBanner(showManualNutritionUpdateBanner);
     setSelectedSavedVariantId((previous) => {
       if (normalizedSelection?.kind === 'existing') {
         return normalizedSelection.variant.id;
@@ -430,8 +431,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
       return unitSelector?.variants[0]?.id;
     });
   }, [
+    showManualNutritionUpdateBanner,
     unitSelector?.selectedSelection,
-    unitSelector?.showManualUpdateBanner,
     unitSelector?.variants,
   ]);
 
@@ -470,10 +471,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!nextSelection) return;
 
     setSelectedUnitSelection(nextSelection);
-    setShowUnitSelectionBanner(
-      Boolean(
-        nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate,
-      ),
+    setShowManualUpdateBanner(
+      showManualNutritionUpdateBanner &&
+        Boolean(
+          nextSelection.kind === 'draft' &&
+            nextSelection.requiresNutritionUpdate,
+        ),
     );
     if (nextSelection.kind === 'existing') {
       setSelectedSavedVariantId(nextSelection.variant.id);
@@ -582,7 +585,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
-                  showManualUpdateBanner={showUnitSelectionBanner}
                   title="Select Unit"
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
@@ -650,6 +652,22 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />
+            </View>
+          ) : null}
+
+          {showManualUpdateBanner ? (
+            <View className="mt-1.5">
+              <View
+                className="rounded-lg px-3 py-2"
+                style={{ backgroundColor: infoBg }}
+              >
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: infoText }}
+                >
+                  Please update the nutrition values manually.
+                </Text>
+              </View>
             </View>
           ) : null}
 

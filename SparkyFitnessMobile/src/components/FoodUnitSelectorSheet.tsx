@@ -41,7 +41,6 @@ interface FoodUnitSelectorSheetProps {
   variants: FoodUnitVariant[];
   selectedVariantId?: string;
   selectedSelection?: FoodUnitSelectionResult | null;
-  showManualUpdateBanner?: boolean;
   title?: string;
   renderTrigger: (props: { onPress: () => void }) => React.ReactNode;
   onSelect: (selection: FoodUnitSelectionResult) => Promise<void> | void;
@@ -55,28 +54,18 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
   selectedSelection,
-  showManualUpdateBanner = false,
   title = 'Select Unit',
   renderTrigger,
   onSelect,
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [
-    surfaceBg,
-    raisedBg,
-    borderSubtle,
-    textMuted,
-    infoBg,
-    infoText,
-  ] = useCSSVariable([
+  const [surfaceBg, raisedBg, borderSubtle, textMuted] = useCSSVariable([
     '--color-surface',
     '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
-    '--color-bg-info',
-    '--color-text-info',
-  ]) as [string, string, string, string, string, string];
+  ]) as [string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -297,22 +286,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               {title}
             </Text>
           </View>
-
-          {showManualUpdateBanner ? (
-            <View className="px-4 py-3 border-b border-border-subtle">
-              <View
-                className="rounded-lg px-3 py-2"
-                style={{ backgroundColor: infoBg }}
-              >
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: infoText }}
-                >
-                  Please update the nutrition values manually.
-                </Text>
-              </View>
-            </View>
-          ) : null}
 
           <BottomSheetScrollView contentContainerClassName="pb-safe-or-5">
             {customSavedVariants.length > 0 ? (

@@ -565,6 +565,28 @@ describe('FoodEntryAddScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('preserves numeric-string meal quantities and serving units when reopening an ingredient draft', () => {
+    const screen = renderScreen({
+      item: {
+        ...baseLocalItem,
+        originalItem: {
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: '2.5',
+          unit: '',
+          serving_unit: 'oz',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        },
+      },
+      pickerMode: 'meal-builder',
+    });
+
+    expect(screen.getByDisplayValue('2.5')).toBeTruthy();
+  });
+
   it('keeps the normal log-entry path and diary controls outside meal-builder mode', () => {
     const screen = renderScreen({
       item: baseLocalItem,

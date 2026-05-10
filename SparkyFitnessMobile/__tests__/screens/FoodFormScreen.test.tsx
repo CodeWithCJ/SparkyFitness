@@ -884,7 +884,7 @@ describe('FoodFormScreen', () => {
     });
 
     const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
-    expect(call?.unitSelector?.showManualUpdateBanner).toBe(true);
+    expect(call?.showManualNutritionUpdateBanner).toBe(true);
   });
 
   it('returns the newly selected saved variant to the detail screen without mutating it', async () => {

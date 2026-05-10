@@ -13,12 +13,19 @@ interface BuildMealIngredientDraftInput {
   values: FoodDisplayValues;
 }
 
-function toFiniteNumber(value: number | undefined): number {
-  return Number.isFinite(value) ? value : 0;
+function toFiniteNumber(value: unknown): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
-function toFiniteString(value: string | undefined, fallback: string): string {
-  const trimmed = value?.trim();
+function toFiniteString(value: unknown, fallback: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed ? trimmed : fallback;
 }
 

@@ -321,7 +321,9 @@ describe('FoodForm', () => {
         fat: 4,
       },
     });
-    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.showManualUpdateBanner).toBe(false);
+    expect(
+      mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.showManualUpdateBanner,
+    ).toBeUndefined();
   });
 
   it('keeps current nutrition values and passes only saved variants when selecting an incompatible unit', async () => {
@@ -410,7 +412,59 @@ describe('FoodForm', () => {
         requiresNutritionUpdate: true,
       }),
     );
-    expect(latestSelectorProps?.showManualUpdateBanner).toBe(true);
+    expect(latestSelectorProps?.showManualUpdateBanner).toBeUndefined();
+    expect(
+      screen.queryByText('Please update the nutrition values manually.'),
+    ).toBeNull();
+  });
+
+  it('shows the manual-update banner in the form when requested', () => {
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        showManualNutritionUpdateBanner
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'draft',
+            variant: {
+              serving_size: 1,
+              serving_unit: 'cup',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+            requiresNutritionUpdate: true,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Please update the nutrition values manually.'),
+    ).toBeTruthy();
   });
 
   it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {

@@ -345,9 +345,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     if (
       activeItem.source === 'local' &&
       'quantity' in activeItem.originalItem &&
-      typeof activeItem.originalItem.quantity === 'number'
+      activeItem.originalItem.quantity != null
     ) {
-      return activeItem.originalItem.quantity;
+      const originalQuantity = parseDecimalInput(
+        String(activeItem.originalItem.quantity),
+      );
+      if (originalQuantity && originalQuantity > 0) {
+        return originalQuantity;
+      }
     }
     return activeVariant.servingSize;
   }, [activeItem, activeVariant.servingSize]);

@@ -52,7 +52,14 @@ interface MacroStatProps {
 }
 
 function toFiniteNumber(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (

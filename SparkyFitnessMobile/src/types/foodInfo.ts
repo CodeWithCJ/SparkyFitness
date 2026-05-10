@@ -12,6 +12,30 @@ export const toFormString = (v: number | null | undefined): string =>
 export const parseOptional = (s: string): number | undefined =>
   s === '' ? undefined : (parseDecimalInput(s) || 0);
 
+function toFiniteNumber(value: unknown): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function toOptionalFiniteNumber(value: unknown): number | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+
+  const numericValue = toFiniteNumber(value);
+  return Number.isFinite(numericValue) ? numericValue : undefined;
+}
+
+function toTrimmedString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 /** Ordered list of extra nutrient fields for display and form conversion. */
 export const EXTRA_NUTRIENT_FIELDS = [
   { key: 'fiber', label: 'Fiber', unit: 'g' },
@@ -189,29 +213,36 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
 
 export const mealIngredientDraftToFoodInfo = (
   ingredient: MealIngredientDraft,
-): FoodInfoItem => ({
-  id: ingredient.food_id,
-  name: ingredient.food_name || 'Food',
-  brand: ingredient.brand,
-  servingSize: ingredient.serving_size,
-  servingUnit: ingredient.unit || ingredient.serving_unit,
-  calories: ingredient.calories,
-  protein: ingredient.protein,
-  carbs: ingredient.carbs,
-  fat: ingredient.fat,
-  fiber: ingredient.dietary_fiber,
-  saturatedFat: ingredient.saturated_fat,
-  sodium: ingredient.sodium,
-  sugars: ingredient.sugars,
-  transFat: ingredient.trans_fat,
-  potassium: ingredient.potassium,
-  calcium: ingredient.calcium,
-  iron: ingredient.iron,
-  cholesterol: ingredient.cholesterol,
-  vitaminA: ingredient.vitamin_a,
-  vitaminC: ingredient.vitamin_c,
-  customNutrients: ingredient.custom_nutrients ?? null,
-  variantId: ingredient.variant_id,
-  source: 'local',
-  originalItem: ingredient,
-});
+): FoodInfoItem => {
+  const servingUnit =
+    toTrimmedString(ingredient.unit) ||
+    toTrimmedString(ingredient.serving_unit) ||
+    'serving';
+
+  return {
+    id: ingredient.food_id,
+    name: ingredient.food_name || 'Food',
+    brand: ingredient.brand,
+    servingSize: toFiniteNumber(ingredient.serving_size),
+    servingUnit,
+    calories: toFiniteNumber(ingredient.calories),
+    protein: toFiniteNumber(ingredient.protein),
+    carbs: toFiniteNumber(ingredient.carbs),
+    fat: toFiniteNumber(ingredient.fat),
+    fiber: toOptionalFiniteNumber(ingredient.dietary_fiber),
+    saturatedFat: toOptionalFiniteNumber(ingredient.saturated_fat),
+    sodium: toOptionalFiniteNumber(ingredient.sodium),
+    sugars: toOptionalFiniteNumber(ingredient.sugars),
+    transFat: toOptionalFiniteNumber(ingredient.trans_fat),
+    potassium: toOptionalFiniteNumber(ingredient.potassium),
+    calcium: toOptionalFiniteNumber(ingredient.calcium),
+    iron: toOptionalFiniteNumber(ingredient.iron),
+    cholesterol: toOptionalFiniteNumber(ingredient.cholesterol),
+    vitaminA: toOptionalFiniteNumber(ingredient.vitamin_a),
+    vitaminC: toOptionalFiniteNumber(ingredient.vitamin_c),
+    customNutrients: ingredient.custom_nutrients ?? null,
+    variantId: toTrimmedString(ingredient.variant_id) || undefined,
+    source: 'local',
+    originalItem: ingredient,
+  };
+};

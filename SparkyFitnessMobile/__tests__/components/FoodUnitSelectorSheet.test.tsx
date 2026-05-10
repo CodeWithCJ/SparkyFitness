@@ -249,101 +249,32 @@ describe('FoodUnitSelectorSheet', () => {
     expect(mockToast.show).not.toHaveBeenCalled();
   });
 
-  it('keeps the sheet open and shows an inline banner for incompatible units', async () => {
-    const Harness = () => {
-      const [selection, setSelection] = React.useState<any>({
-        kind: 'existing',
-        variant: variants[0],
-      });
-
-      return (
-        <FoodUnitSelectorSheet
-          variants={variants as any}
-          selectedVariantId="variant-g"
-          selectedSelection={selection}
-          showManualUpdateBanner={Boolean(
-            selection?.kind === 'draft' && selection.requiresNutritionUpdate,
-          )}
-          onSelect={async (nextSelection) => {
-            setSelection(nextSelection);
-          }}
-          renderTrigger={() => <></>}
-        />
-      );
-    };
-
+  it('keeps the sheet open for incompatible units without rendering a selector banner', async () => {
+    const onSelect = jest.fn();
     const screen = render(
-      <Harness />,
+      <FoodUnitSelectorSheet
+        variants={variants as any}
+        selectedVariantId="variant-g"
+        selectedSelection={{
+          kind: 'existing',
+          variant: variants[0] as any,
+        }}
+        onSelect={onSelect}
+        renderTrigger={() => <></>}
+      />,
     );
 
     fireEvent.press(screen.getByText('cup'));
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Please update the nutrition values manually.'),
-      ).toBeTruthy();
+      expect(onSelect).toHaveBeenCalled();
     });
     expect(mockDismiss).not.toHaveBeenCalled();
     expect(mockToast.show).not.toHaveBeenCalled();
     expect(
-      within(screen.getByTestId('bottom-sheet-scroll')).queryByText(
-        'Please update the nutrition values manually.',
-      ),
+      screen.queryByText('Please update the nutrition values manually.'),
     ).toBeNull();
-    const bannerContainer = screen.getByText(
-      'Please update the nutrition values manually.',
-    ).parent?.parent;
-    expect(bannerContainer?.props.style).toEqual(
-      expect.objectContaining({ backgroundColor: 'infoBg' }),
-    );
     expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
-  });
-
-  it('clears the banner when switching back to a compatible unit', async () => {
-    const Harness = () => {
-      const [selection, setSelection] = React.useState<any>({
-        kind: 'draft',
-        variant: {
-          serving_size: 1,
-          serving_unit: 'cup',
-          calories: 120,
-          protein: 10,
-          carbs: 8,
-          fat: 4,
-          id: '__food-form-draft-unit__',
-        },
-        requiresNutritionUpdate: true,
-      });
-
-      return (
-        <FoodUnitSelectorSheet
-          variants={variants as any}
-          selectedVariantId="variant-g"
-          selectedSelection={selection}
-          showManualUpdateBanner={Boolean(
-            selection?.kind === 'draft' && selection.requiresNutritionUpdate,
-          )}
-          onSelect={async (nextSelection) => {
-            setSelection(nextSelection);
-          }}
-          renderTrigger={() => <></>}
-        />
-      );
-    };
-
-    const screen = render(<Harness />);
-
-    expect(
-      screen.getByText('Please update the nutrition values manually.'),
-    ).toBeTruthy();
-
-    fireEvent.press(screen.getByText('kg'));
-
-    await waitFor(() => {
-      expect(
-        screen.queryByText('Please update the nutrition values manually.'),
-      ).toBeNull();
-    });
   });
 
   it('shows an error toast when saving a compatible draft unit fails', async () => {

@@ -569,10 +569,6 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
             ? {
                 variants: [importedSourceVariant],
                 selectedSelection: pendingUnitSelection,
-                showManualUpdateBanner: Boolean(
-                  pendingUnitSelection?.kind === 'draft' &&
-                    pendingUnitSelection.requiresNutritionUpdate,
-                ),
                 onUnitSelectionChange: handleImportedUnitSelectionChange,
               }
             : undefined
@@ -815,15 +811,15 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         submitLabel="Update Values"
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
+        showManualNutritionUpdateBanner={Boolean(
+          pendingUnitSelection?.kind === 'draft' &&
+            pendingUnitSelection.requiresNutritionUpdate,
+        )}
         unitSelector={
           availableUnitVariants && availableUnitVariants.length > 0
             ? {
                 variants: availableUnitVariants,
                 selectedSelection: pendingUnitSelection,
-                showManualUpdateBanner: Boolean(
-                  pendingUnitSelection?.kind === 'draft' &&
-                    pendingUnitSelection.requiresNutritionUpdate,
-                ),
                 onUnitSelectionChange: handleUnitSelectionChange,
               }
             : undefined
@@ -1016,10 +1012,6 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
             ? {
                 variants: availableUnitVariants,
                 selectedSelection: pendingUnitSelection,
-                showManualUpdateBanner: Boolean(
-                  pendingUnitSelection?.kind === 'draft' &&
-                    pendingUnitSelection.requiresNutritionUpdate,
-                ),
                 onUnitSelectionChange: handleUnitSelectionChange,
               }
             : undefined

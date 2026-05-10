@@ -489,6 +489,49 @@ describe('MealAddScreen', () => {
     expect(screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')).toBeTruthy();
   });
 
+  it('coerces numeric-string converted drafts and falls back to serving_unit when unit is blank', () => {
+    const screen = renderScreen();
+
+    mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
+      ingredient: buildIngredient({
+        quantity: '1' as unknown as number,
+        unit: '' as unknown as string,
+        serving_size: '1' as unknown as number,
+        serving_unit: 'oz',
+        calories: '120' as unknown as number,
+        protein: '10' as unknown as number,
+        carbs: '8' as unknown as number,
+        fat: '4' as unknown as number,
+      }),
+    } as any);
+
+    act(() => {
+      focusCallback?.();
+    });
+
+    expect(screen.getAllByText('120 cal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/protein/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/carbs/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/fat/).length).toBeGreaterThan(0);
+    expect(screen.getByText('1 oz')).toBeTruthy();
+
+    fireEvent.press(screen.getByText(/Chicken/));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodEntryAdd', {
+      item: expect.objectContaining({
+        servingUnit: 'oz',
+        servingSize: 1,
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      }),
+      pickerMode: 'meal-builder',
+      ingredientIndex: 0,
+      returnDepth: 1,
+    });
+  });
+
   it('reopens meal ingredients with their active unit instead of the fallback serving unit', () => {
     const screen = renderScreen();
 
