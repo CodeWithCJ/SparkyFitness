@@ -11,7 +11,6 @@ import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import WaterContainerSheet, { type WaterContainerSheetRef } from '../components/WaterContainerSheet';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import HydrationGauge from '../components/HydrationGauge';
@@ -42,7 +41,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
-  const waterContainerSheetRef = useRef<WaterContainerSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
   useFocusEffect(
@@ -78,10 +76,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
-  const handleSwapWaterContainer = () => {
-    if (!waterContainers || waterContainers.length <= 1) return;
-    waterContainerSheetRef.current?.present();
-  };
   const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
     range: stepsRange,
     enabled: isConnected,
@@ -292,12 +286,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           goal={summary.waterGoal}
           unit={waterUnit}
           containerVolume={servingVolume}
-          containerName={activeWaterContainer?.name}
           onIncrement={isContainersLoaded ? incrementWater : undefined}
           onDecrement={isContainersLoaded ? decrementWater : undefined}
           disableDecrement={summary.waterConsumed <= 0}
-          canSwapContainer={(waterContainers?.length ?? 0) > 1}
-          onSwapContainer={handleSwapWaterContainer}
+          containers={waterContainers}
+          activeContainerId={activeWaterContainer?.id}
+          onSelectContainer={selectWaterContainer}
         />
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
@@ -322,12 +316,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       {renderContent()}
 
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
-      <WaterContainerSheet
-        ref={waterContainerSheetRef}
-        containers={waterContainers ?? []}
-        activeContainerId={activeWaterContainer?.id}
-        onSelect={selectWaterContainer}
-      />
     </View>
   );
 };

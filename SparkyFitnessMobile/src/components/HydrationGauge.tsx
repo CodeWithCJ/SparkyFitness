@@ -7,17 +7,22 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { WATER_UNIT_LABELS } from '../utils/unitConversions';
 
+interface ContainerOption {
+  id: number;
+  name: string;
+}
+
 interface HydrationGaugeProps {
   consumed: number; // ml
   goal: number;     // ml
   unit?: string;
   containerVolume?: number; // ml per button press
-  containerName?: string;
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
-  onSwapContainer?: () => void;
-  canSwapContainer?: boolean;
+  containers?: ContainerOption[];
+  activeContainerId?: number;
+  onSelectContainer?: (id: number) => void;
 }
 
 function convertFromMl(ml: number, unit: string): number {
@@ -36,11 +41,14 @@ const FILL_TOP = 28;
 const FILL_BOTTOM = 124;
 const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 
-const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', containerVolume, containerName, onIncrement, onDecrement, disableDecrement, onSwapContainer, canSwapContainer }) => {
+const HydrationGauge: React.FC<HydrationGaugeProps> = ({
+  consumed, goal, unit = 'ml', containerVolume,
+  onIncrement, onDecrement, disableDecrement,
+  containers, activeContainerId, onSelectContainer,
+}) => {
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
-  const textMutedColor = useCSSVariable('--color-text-muted') as string;
 
   const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
 
@@ -107,10 +115,10 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
 
   const showButtons = !!onIncrement || !!onDecrement;
   const noContainer = containerVolume == null;
+  const showChips = (containers?.length ?? 0) > 1;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
-      {/* <Text className="text-md font-bold text-text-primary mb-3">Water</Text> */}
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
@@ -152,21 +160,30 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
           <Text className="text-sm text-text-secondary mt-0.5">
             of {displayGoal.toLocaleString()} {unitLabel}
           </Text>
+          {showChips && (
+            <View className="flex-row flex-wrap justify-center mt-2 gap-1">
+              {containers!.map(c => {
+                const active = c.id === activeContainerId;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => onSelectContainer?.(c.id)}
+                    className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
+                  >
+                    <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
       </View>
-      {showButtons && containerVolume != null && (
-        <Pressable
-          onPress={canSwapContainer ? onSwapContainer : undefined}
-          className="flex-row items-center justify-center mt-2"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text className="text-xs text-text-muted text-center">
-            {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel}{containerName ? ` · ${containerName}` : ' per bottle'}
-          </Text>
-          {canSwapContainer && (
-            <Icon name="sync" size={13} color={textMutedColor} style={{ marginLeft: 4 }} />
-          )}
-        </Pressable>
+      {showButtons && containerVolume != null && !showChips && (
+        <Text className="text-xs text-text-muted text-center mt-2">
+          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+        </Text>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">
