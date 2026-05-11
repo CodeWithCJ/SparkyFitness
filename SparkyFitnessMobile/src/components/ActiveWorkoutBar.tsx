@@ -290,7 +290,8 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
 
   // Left button:
   //  - resting → Pause (pauses the rest timer)
-  //  - ready / paused / complete → X (clear workout)
+  //  - ready / paused → X (clear workout)
+  //  - complete → hidden (checkmark on the right handles dismiss)
   const leftButton =
     restState === 'resting' ? (
       <Pressable
@@ -302,7 +303,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       >
         <Icon name="pause" size={22} color={accentPrimary} weight="bold" />
       </Pressable>
-    ) : (
+    ) : isWorkoutComplete ? null : (
       <Pressable
         onPress={handleClear}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -318,18 +319,18 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   //  - ready  → Play (complete the active set, advance + start rest)
   //  - resting → Check (skip rest / mark next ready)
   //  - paused → Play (resume the rest timer)
-  //  - complete → filled checkmark to finish and dismiss the bar
+  //  - complete → checkmark to finish and dismiss the bar
   const rightButton = (() => {
     if (isWorkoutComplete) {
       return (
         <Pressable
-          onPress={() => useActiveWorkoutStore.getState().clearWorkout()}
+          onPress={handleClear}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Finish workout"
-          className="h-9 w-9 items-center justify-center rounded-full bg-accent-primary"
+          className="p-2"
         >
-          <Icon name="checkmark" size={20} color="#fff" weight="bold" />
+          <Icon name="checkmark" size={22} color={accentPrimary} weight="bold" />
         </Pressable>
       );
     }
