@@ -32,6 +32,7 @@ interface VariantCardProps {
   ) => number;
   customNutrients?: UserCustomNutrient[];
   baseServingUnit: string;
+  showCompatibleUnitIndicators: boolean;
   onUpdate: (
     index: number,
     field: string,
@@ -50,6 +51,7 @@ export function VariantCard({
   convertEnergy,
   customNutrients,
   baseServingUnit,
+  showCompatibleUnitIndicators,
   onUpdate,
   onDuplicate,
   onRemove,
@@ -117,6 +119,7 @@ export function VariantCard({
                       <SelectLabel>{group.label}</SelectLabel>
                       {group.units.map((unit) => {
                         const compatible =
+                          showCompatibleUnitIndicators &&
                           unit !== baseServingUnit &&
                           getConversionFactor(baseServingUnit, unit) !== null;
                         return (

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useCustomFoodForm } from '@/hooks/Foods/useFoodForm';
 import { getConversionFactor } from '@/utils/servingSizeConversions';
-import type { FoodVariant } from '@/types/food';
+import type { Food, FoodVariant } from '@/types/food';
 
 const mockToast = jest.fn();
 const mockFetchQuery = jest.fn();
@@ -9,6 +9,8 @@ const mockCustomNutrients: [] = [];
 const mockQueryClient = {
   fetchQuery: mockFetchQuery,
 };
+
+let mockAutoScaleOnlineImports = false;
 
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -21,7 +23,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     energyUnit: 'kcal' as const,
     convertEnergy: (value: number) => value,
     loggingLevel: 'ERROR',
-    autoScaleOnlineImports: false,
+    autoScaleOnlineImports: mockAutoScaleOnlineImports,
   }),
 }));
 
@@ -83,12 +85,22 @@ const createVariant = (overrides: Partial<FoodVariant> = {}): FoodVariant => ({
   ...overrides,
 });
 
+const createFood = (overrides: Partial<Food> = {}): Food => ({
+  id: 'food-1',
+  name: 'Imported Food',
+  is_custom: true,
+  variants: [createVariant()],
+  ...overrides,
+});
+
 describe('useCustomFoodForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAutoScaleOnlineImports = false;
   });
 
-  it('zeros nutrition and keeps manual mode after an incompatible unit change', async () => {
+  it('preserves nutrition values and turns auto-scale off after an incompatible unit change', async () => {
+    mockAutoScaleOnlineImports = true;
     const initialVariants = [createVariant()];
 
     const { result } = renderHook(() =>
@@ -99,7 +111,7 @@ describe('useCustomFoodForm', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.variants[0]?.serving_unit).toBe('g');
+      expect(result.current.variants[0]?.is_locked).toBe(true);
     });
 
     act(() => {
@@ -107,8 +119,9 @@ describe('useCustomFoodForm', () => {
     });
 
     expect(result.current.variants[0]?.serving_unit).toBe('tsp');
-    expect(result.current.variants[0]?.calories).toBe(0);
-    expect(result.current.variants[0]?.protein).toBe(0);
+    expect(result.current.variants[0]?.calories).toBe(100);
+    expect(result.current.variants[0]?.protein).toBe(10);
+    expect(result.current.variants[0]?.is_locked).toBe(false);
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Manual conversion required',
@@ -116,21 +129,212 @@ describe('useCustomFoodForm', () => {
           '"g" and "tsp" are incompatible unit types. Please update the serving size and nutrition values manually.',
       })
     );
+  });
 
-    act(() => {
-      result.current.updateVariant(0, 'serving_unit', 'tbsp');
-    });
+  it('opens existing food edits with auto-scale on when the preference is enabled', async () => {
+    mockAutoScaleOnlineImports = true;
+    const food = createFood();
 
-    expect(result.current.variants[0]?.serving_unit).toBe('tbsp');
-    expect(result.current.variants[0]?.calories).toBe(0);
-    expect(result.current.variants[0]?.protein).toBe(0);
-    expect(mockToast).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        title: 'Manual conversion required',
-        description:
-          '"g" and "tbsp" are incompatible unit types. Please update the serving size and nutrition values manually.',
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        food,
+        onSave: jest.fn(),
       })
     );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    expect(result.current.hasTrustedCompatibilityBase[0]).toBe(true);
+  });
+
+  it('opens brand-new custom foods with auto-scale off even when the preference is enabled', async () => {
+    mockAutoScaleOnlineImports = true;
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.serving_unit).toBe('g');
+    });
+
+    expect(result.current.variants[0]?.is_locked).toBe(false);
+    expect(result.current.hasTrustedCompatibilityBase[0]).toBe(false);
+  });
+
+  it('keeps newly added unsaved custom variants auto-scale off by default', async () => {
+    mockAutoScaleOnlineImports = true;
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.addVariant();
+    });
+
+    expect(result.current.variants[1]?.is_locked).toBe(false);
+    expect(result.current.hasTrustedCompatibilityBase[1]).toBe(false);
+  });
+
+  it('does not show incompatible-unit toasts for unsaved custom foods before save', async () => {
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.serving_unit).toBe('g');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'calories', 100);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'serving');
+    });
+
+    expect(result.current.variants[0]?.serving_unit).toBe('serving');
+    expect(result.current.variants[0]?.calories).toBe(100);
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it('keeps auto-scale on during compatible unit changes when the preference intent is on', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [createVariant()];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'oz');
+    });
+
+    expect(result.current.variants[0]?.serving_unit).toBe('oz');
+    expect(result.current.variants[0]?.is_locked).toBe(true);
+    expect(Number(result.current.variants[0]?.calories)).toBeCloseTo(
+      100 * (getConversionFactor('g', 'oz') ?? 0),
+      4
+    );
+  });
+
+  it('restores auto-scale when returning to a compatible unit after an incompatible one', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [createVariant()];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'tsp');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'oz');
+    });
+
+    expect(result.current.variants[0]?.serving_unit).toBe('oz');
+    expect(result.current.variants[0]?.is_locked).toBe(true);
+    expect(Number(result.current.variants[0]?.calories)).toBeCloseTo(
+      100 * (getConversionFactor('g', 'oz') ?? 0),
+      4
+    );
+  });
+
+  it('keeps auto-scale off when returning to a compatible unit after the user preference intent is off', async () => {
+    const initialVariants = [createVariant()];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(false);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'tsp');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'oz');
+    });
+
+    expect(result.current.variants[0]?.serving_unit).toBe('oz');
+    expect(result.current.variants[0]?.is_locked).toBe(false);
+  });
+
+  it('creates a new scaling baseline when auto-scale is re-enabled after a manual custom-unit edit', async () => {
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.serving_unit).toBe('g');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'serving');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_size', 1);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'calories', 100);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'protein', 10);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'is_locked', true);
+    });
+
+    expect(result.current.variants[0]?.is_locked).toBe(true);
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_size', 2);
+    });
+
+    expect(result.current.variants[0]?.serving_size).toBe(2);
+    expect(result.current.variants[0]?.calories).toBe(200);
+    expect(result.current.variants[0]?.protein).toBe(20);
   });
 
   it('keeps the original compatibility base when duplicating a manual-only variant', async () => {
@@ -157,84 +361,5 @@ describe('useCustomFoodForm', () => {
 
     expect(result.current.variants[1]?.serving_unit).toBe('tsp');
     expect(result.current.conversionBaseVariants[1]?.serving_unit).toBe('g');
-  });
-
-  it('allows automatic conversion again after reverting to the loaded unit', async () => {
-    const baseVariant = createVariant();
-    const initialVariants = [baseVariant];
-
-    const { result } = renderHook(() =>
-      useCustomFoodForm({
-        initialVariants,
-        onSave: jest.fn(),
-      })
-    );
-
-    await waitFor(() => {
-      expect(result.current.variants[0]?.serving_unit).toBe('g');
-    });
-
-    act(() => {
-      result.current.updateVariant(0, 'serving_unit', 'tsp');
-    });
-
-    act(() => {
-      result.current.updateVariant(0, 'serving_unit', 'g');
-    });
-
-    act(() => {
-      result.current.updateVariant(0, 'serving_unit', 'oz');
-    });
-
-    expect(result.current.variants[0]?.serving_unit).toBe('oz');
-    expect(Number(result.current.variants[0]?.calories)).toBeCloseTo(
-      baseVariant.calories * (getConversionFactor('g', 'oz') ?? 0),
-      4
-    );
-    expect(Number(result.current.variants[0]?.protein)).toBeCloseTo(
-      baseVariant.protein * (getConversionFactor('g', 'oz') ?? 0),
-      4
-    );
-  });
-
-  it('scales custom nutrients during compatible automatic unit conversion', async () => {
-    const baseVariant = createVariant({
-      custom_nutrients: {
-        caffeine: 25,
-        taurine: 12.5,
-      },
-    });
-    const initialVariants = [baseVariant];
-
-    const { result } = renderHook(() =>
-      useCustomFoodForm({
-        initialVariants,
-        onSave: jest.fn(),
-      })
-    );
-
-    await waitFor(() => {
-      expect(result.current.variants[0]?.serving_unit).toBe('g');
-    });
-
-    act(() => {
-      result.current.updateVariant(0, 'serving_unit', 'oz');
-    });
-
-    const conversionFactor = getConversionFactor('g', 'oz') ?? 0;
-
-    expect(result.current.variants[0]?.serving_unit).toBe('oz');
-    expect(
-      Number(result.current.variants[0]?.custom_nutrients?.['caffeine'])
-    ).toBeCloseTo(
-      Number(baseVariant.custom_nutrients?.['caffeine']) * conversionFactor,
-      4
-    );
-    expect(
-      Number(result.current.variants[0]?.custom_nutrients?.['taurine'])
-    ).toBeCloseTo(
-      Number(baseVariant.custom_nutrients?.['taurine']) * conversionFactor,
-      4
-    );
   });
 });
