@@ -38,6 +38,15 @@ interface UseCustomFoodFormProps {
 
 type GroupedFormFoodVariant = FormFoodVariantWithEquivalents;
 
+function toPositiveNumber(value: unknown): number | null {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null;
+  }
+
+  return numericValue;
+}
+
 function buildManualConversionToast(baseUnit: string, targetUnit: string) {
   return {
     title: 'Manual conversion required',
@@ -371,7 +380,10 @@ export function useCustomFoodForm({
       sourceRequiresManualConversion,
     ]);
     setAutoScaleIntents((prev) => [...prev, sourceAutoScaleIntent]);
-    setHasTrustedCompatibilityBase((prev) => [...prev, false]);
+    setHasTrustedCompatibilityBase((prev) => [
+      ...prev,
+      hasTrustedCompatibilityBase[index] ?? false,
+    ]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
@@ -460,8 +472,10 @@ export function useCustomFoodForm({
 
       if (nextLocked) {
         updatedManualUnitConversionPending[index] = false;
-        updatedOriginalVariants[index] = deepClone(newVariant);
-        setOriginalVariants(updatedOriginalVariants);
+        if (toPositiveNumber(newVariant.serving_size) !== null) {
+          updatedOriginalVariants[index] = deepClone(newVariant);
+          setOriginalVariants(updatedOriginalVariants);
+        }
       }
     }
 
@@ -498,10 +512,16 @@ export function useCustomFoodForm({
           trustedBaseFactor !== null &&
           scalingBaseVariant
         ) {
-          const baseServingSize = Number(scalingBaseVariant.serving_size || 1);
-          const newServingSize = Number(currentVariant.serving_size || 1);
-          const ratio = (newServingSize * trustedBaseFactor) / baseServingSize;
-          newVariant = scaleVariantNutrition(scalingBaseVariant, ratio);
+          const baseServingSize = toPositiveNumber(
+            scalingBaseVariant.serving_size
+          );
+          const newServingSize = toPositiveNumber(currentVariant.serving_size);
+
+          if (baseServingSize !== null && newServingSize !== null) {
+            const ratio =
+              (newServingSize * trustedBaseFactor) / baseServingSize;
+            newVariant = scaleVariantNutrition(scalingBaseVariant, ratio);
+          }
           newVariant.serving_size = currentVariant.serving_size;
           newVariant.serving_unit = newUnit;
           updatedManualUnitConversionPending[index] = false;
@@ -539,10 +559,12 @@ export function useCustomFoodForm({
         error(loggingLevel, 'Could not find original variant at index:', index);
         return;
       }
-      const ratio = Number(value) / Number(originalVariant.serving_size);
-      if (!isNaN(ratio) && ratio >= 0) {
-        newVariant = scaleVariantNutrition(originalVariant, ratio, 2);
-        newVariant.serving_size = Number(value);
+      const baseServingSize = toPositiveNumber(originalVariant.serving_size);
+      const nextServingSize = toPositiveNumber(value);
+      if (baseServingSize !== null && nextServingSize !== null) {
+        const ratio = nextServingSize / baseServingSize;
+        newVariant = scaleVariantNutrition(originalVariant, ratio, 4);
+        newVariant.serving_size = nextServingSize;
       }
     } else if (
       field !== 'serving_unit' ||

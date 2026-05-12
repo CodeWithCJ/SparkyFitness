@@ -361,5 +361,53 @@ describe('useCustomFoodForm', () => {
 
     expect(result.current.variants[1]?.serving_unit).toBe('tsp');
     expect(result.current.conversionBaseVariants[1]?.serving_unit).toBe('g');
+    expect(result.current.hasTrustedCompatibilityBase[1]).toBe(true);
+  });
+
+  it('preserves trusted compatibility status when duplicating a trusted variant', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [createVariant()];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasTrustedCompatibilityBase[0]).toBe(true);
+    });
+
+    act(() => {
+      result.current.duplicateVariant(0);
+    });
+
+    expect(result.current.hasTrustedCompatibilityBase[1]).toBe(true);
+    expect(result.current.variants[1]?.is_locked).toBe(true);
+  });
+
+  it('skips scaling math when serving sizes are invalid instead of producing destructive values', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [createVariant({ serving_size: 0 })];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_size', 2);
+    });
+
+    expect(result.current.variants[0]?.serving_size).toBe(2);
+    expect(result.current.variants[0]?.calories).toBe(100);
+    expect(result.current.variants[0]?.protein).toBe(10);
   });
 });
