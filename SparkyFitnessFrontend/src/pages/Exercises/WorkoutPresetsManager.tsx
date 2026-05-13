@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Plus,
   Edit,
@@ -12,6 +19,7 @@ import {
   Layers,
   Dumbbell,
   CheckSquare,
+  Play,
   X,
   MoreHorizontal,
 } from 'lucide-react';
@@ -35,6 +43,8 @@ import {
 } from '@/hooks/Exercises/useWorkoutPresets';
 import { useLogWorkoutPresetMutation } from '@/hooks/Exercises/useExerciseEntries';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { createWorkoutPlaybackRouteState } from '@/utils/workoutPlayback';
+import WorkoutPresetSelector from './WorkoutPresetSelector';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -47,11 +57,15 @@ import { Badge } from '@/components/ui/badge';
 
 const WorkoutPresetsManager = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { weightUnit } = usePreferences();
 
   const [isAddPresetDialogOpen, setIsAddPresetDialogOpen] = useState(false);
+  const [isStartWorkoutDialogOpen, setIsStartWorkoutDialogOpen] =
+    useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<WorkoutPreset | null>(
     null
@@ -155,6 +169,22 @@ const WorkoutPresetsManager = () => {
       }
     },
     [logWorkoutPreset, t]
+  );
+
+  const handleStartWorkoutPlayback = React.useCallback(
+    (preset: WorkoutPreset) => {
+      const today = formatDateToYYYYMMDD(new Date());
+      const routeState = createWorkoutPlaybackRouteState(
+        preset,
+        today,
+        `${location.pathname}${location.search}`
+      );
+
+      navigate(`/workout-playback?date=${today}`, {
+        state: routeState,
+      });
+    },
+    [location.pathname, location.search, navigate]
   );
 
   const columns = React.useMemo<ColumnDef<WorkoutPreset>[]>(
@@ -266,6 +296,12 @@ const WorkoutPresetsManager = () => {
                   {t('common.actions', 'Actions')}
                 </DropdownMenuLabel>
                 <DropdownMenuItem
+                  onClick={() => handleStartWorkoutPlayback(preset)}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  {t('workoutPresetsManager.startWorkout', 'Start Workout')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onClick={() => handleLogPresetToDiary(preset)}
                 >
                   <CalendarPlus className="mr-2 h-4 w-4" />
@@ -296,7 +332,14 @@ const WorkoutPresetsManager = () => {
         },
       },
     ],
-    [t, user?.id, weightUnit, handleLogPresetToDiary, handleDeletePreset]
+    [
+      t,
+      user?.id,
+      weightUnit,
+      handleLogPresetToDiary,
+      handleDeletePreset,
+      handleStartWorkoutPlayback,
+    ]
   );
 
   return (
@@ -335,6 +378,20 @@ const WorkoutPresetsManager = () => {
                 <CheckSquare className="w-5 h-5" />
               ) : (
                 t('common.select', 'Select')
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size={isMobile ? 'icon' : 'default'}
+              onClick={() => setIsStartWorkoutDialogOpen(true)}
+              className="shrink-0"
+              title={t('workoutPresetsManager.startWorkout', 'Start Workout')}
+            >
+              <Play className={isMobile ? 'w-5 h-5' : 'h-4 w-4 mr-2'} />
+              {!isMobile && (
+                <span>
+                  {t('workoutPresetsManager.startWorkout', 'Start Workout')}
+                </span>
               )}
             </Button>
             <Button
@@ -401,6 +458,22 @@ const WorkoutPresetsManager = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isStartWorkoutDialogOpen}
+        onOpenChange={setIsStartWorkoutDialogOpen}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {t('workoutPresetsManager.startWorkout', 'Start Workout')}
+            </DialogTitle>
+          </DialogHeader>
+          <WorkoutPresetSelector
+            onPresetSelected={handleStartWorkoutPlayback}
+          />
+        </DialogContent>
+      </Dialog>
 
       <BulkActionToolbar
         selectedCount={selectedCount}
