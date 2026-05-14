@@ -35,6 +35,7 @@ const CustomFoodForm = ({
     showSyncConfirmation,
     setShowSyncConfirmation,
     conversionBaseVariants,
+    hasTrustedCompatibilityBase,
     updateField,
     addVariant,
     duplicateVariant,
@@ -128,6 +129,9 @@ const CustomFoodForm = ({
                     baseServingUnit={
                       conversionBaseVariants[index]?.serving_unit ??
                       variant.serving_unit
+                    }
+                    showCompatibleUnitIndicators={
+                      hasTrustedCompatibilityBase[index] ?? false
                     }
                     onUpdate={updateVariant}
                     onDuplicate={duplicateVariant}

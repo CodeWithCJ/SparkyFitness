@@ -20,10 +20,7 @@ import {
   sanitizeGlycemicIndexFrontend,
 } from '@/utils/foodForm';
 import { nutrientFields } from '@/constants/foodForm';
-import {
-  getConversionFactor,
-  getUnitCategory,
-} from '@/utils/servingSizeConversions';
+import { getConversionFactor } from '@/utils/servingSizeConversions';
 import type {
   EquivalentUnit,
   Food,
@@ -39,6 +36,17 @@ interface UseCustomFoodFormProps {
   onSave: (foodData: Food) => void;
 }
 
+type GroupedFormFoodVariant = FormFoodVariantWithEquivalents;
+
+function toPositiveNumber(value: unknown): number | null {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null;
+  }
+
+  return numericValue;
+}
+
 function buildManualConversionToast(baseUnit: string, targetUnit: string) {
   return {
     title: 'Manual conversion required',
@@ -46,26 +54,44 @@ function buildManualConversionToast(baseUnit: string, targetUnit: string) {
   } as const;
 }
 
-function zeroOutVariantNutrition(variant: FormFoodVariant): FormFoodVariant {
-  const zeroedVariant = { ...variant };
+function scaleVariantNutrition(
+  variant: FormFoodVariant,
+  ratio: number,
+  precision: number = 4
+): FormFoodVariant {
+  const scaledVariant = {
+    ...variant,
+  };
 
-  for (const nutrient of nutrientFields) {
-    zeroedVariant[nutrient] = 0;
-  }
+  nutrientFields.forEach((nutrient) => {
+    const originalValue = Number(variant[nutrient]);
+    if (!isNaN(originalValue)) {
+      scaledVariant[nutrient] = Number(
+        (originalValue * ratio).toFixed(precision)
+      );
+    }
+  });
 
   if (variant.custom_nutrients) {
-    zeroedVariant.custom_nutrients = Object.fromEntries(
-      Object.keys(variant.custom_nutrients).map((name) => [name, 0])
-    );
+    const scaledCustomNutrients = { ...variant.custom_nutrients };
+    Object.keys(variant.custom_nutrients).forEach((name) => {
+      const originalValue = Number(variant.custom_nutrients?.[name]);
+      if (!isNaN(originalValue)) {
+        scaledCustomNutrients[name] = Number(
+          (originalValue * ratio).toFixed(precision)
+        );
+      }
+    });
+    scaledVariant.custom_nutrients = scaledCustomNutrients;
   }
 
-  return zeroedVariant;
+  return scaledVariant;
 }
 
 function groupEquivalentVariants(
   variants: FormFoodVariant[]
-): (FormFoodVariant & { equivalents: EquivalentUnit[] })[] {
-  const grouped: (FormFoodVariant & { equivalents: EquivalentUnit[] })[] = [];
+): GroupedFormFoodVariant[] {
+  const grouped: GroupedFormFoodVariant[] = [];
 
   for (const variant of variants) {
     const matchIndex = grouped.findIndex((g) => {
@@ -85,7 +111,7 @@ function groupEquivalentVariants(
     });
     const match = grouped[matchIndex];
     if (matchIndex !== -1) {
-      match?.equivalents.push({
+      match?.equivalents?.push({
         id: variant.id,
         serving_size: Number(variant.serving_size),
         serving_unit: variant.serving_unit,
@@ -116,16 +142,17 @@ export function useCustomFoodForm({
   const { mutateAsync: saveFood } = useSaveFoodMutation();
 
   const [loading, setLoading] = useState(false);
-  const [variants, setVariants] = useState<FormFoodVariantWithEquivalents[]>(
-    []
-  );
+  const [variants, setVariants] = useState<GroupedFormFoodVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<
-    FormFoodVariantWithEquivalents[]
+    GroupedFormFoodVariant[]
   >([]);
   const [loadedVariants, setLoadedVariants] = useState<
-    FormFoodVariantWithEquivalents[]
+    GroupedFormFoodVariant[]
   >([]);
   const [manualUnitConversionPending, setManualUnitConversionPending] =
+    useState<boolean[]>([]);
+  const [autoScaleIntents, setAutoScaleIntents] = useState<boolean[]>([]);
+  const [hasTrustedCompatibilityBase, setHasTrustedCompatibilityBase] =
     useState<boolean[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
@@ -136,17 +163,36 @@ export function useCustomFoodForm({
     is_quick_food: false,
   });
 
+  const initializeVariantState = useCallback(
+    (
+      grouped: GroupedFormFoodVariant[],
+      options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
+    ) => {
+      const snapshot = deepClone(grouped);
+      setVariants(grouped);
+      setOriginalVariants(snapshot);
+      setLoadedVariants(snapshot);
+      setManualUnitConversionPending(new Array(grouped.length).fill(false));
+      setAutoScaleIntents(
+        new Array(grouped.length).fill(options.autoScaleIntent)
+      );
+      setHasTrustedCompatibilityBase(
+        new Array(grouped.length).fill(options.hasTrustedBase)
+      );
+      setVariantErrors(new Array(grouped.length).fill(''));
+    },
+    []
+  );
+
   const resetForm = useCallback(() => {
     setFormData({ name: '', brand: '', is_quick_food: false });
     const defaultVariant = createDefaultFormVariant(customNutrients);
     const grouped = groupEquivalentVariants([defaultVariant]);
-    const snapshot = deepClone(grouped);
-    setVariants(grouped);
-    setOriginalVariants(snapshot);
-    setLoadedVariants(snapshot);
-    setManualUnitConversionPending([false]);
-    setVariantErrors(['']);
-  }, [customNutrients]);
+    initializeVariantState(grouped, {
+      autoScaleIntent: false,
+      hasTrustedBase: false,
+    });
+  }, [customNutrients, initializeVariantState]);
 
   const loadExistingVariants = useCallback(async () => {
     if (!food?.id || !isUUID(food.id)) return;
@@ -166,37 +212,59 @@ export function useCustomFoodForm({
         if (defaultVariant) {
           defaultVariant = { ...defaultVariant, is_default: true };
           loaded = [
-            foodVariantToFormVariant({ ...defaultVariant, is_locked: false }),
+            foodVariantToFormVariant({
+              ...defaultVariant,
+              is_locked: autoScaleOnlineImports,
+            }),
             ...data
               .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) => foodVariantToFormVariant({ ...v, is_locked: false })),
+              .map((v) =>
+                foodVariantToFormVariant({
+                  ...v,
+                  is_locked: autoScaleOnlineImports,
+                })
+              ),
           ];
         } else {
           loaded = data.map((v) =>
-            foodVariantToFormVariant({ ...v, is_locked: false })
+            foodVariantToFormVariant({
+              ...v,
+              is_locked: autoScaleOnlineImports,
+            })
           );
         }
       } else {
-        loaded = [createDefaultFormVariant(customNutrients)];
+        loaded = [
+          createDefaultFormVariant(customNutrients, {
+            is_locked: autoScaleOnlineImports,
+          }),
+        ];
       }
 
       const grouped = groupEquivalentVariants(loaded);
-      const snapshot = deepClone(grouped);
-      setVariants(grouped);
-      setOriginalVariants(snapshot);
-      setLoadedVariants(snapshot);
-      setManualUnitConversionPending(new Array(grouped.length).fill(false));
+      initializeVariantState(grouped, {
+        autoScaleIntent: autoScaleOnlineImports,
+        hasTrustedBase: true,
+      });
     } catch (err) {
       console.error('Error loading variants:', err);
-      const fallback = createDefaultFormVariant(customNutrients);
+      const fallback = createDefaultFormVariant(customNutrients, {
+        is_locked: autoScaleOnlineImports,
+      });
       const grouped = groupEquivalentVariants([fallback]);
-      const snapshot = deepClone(grouped);
-      setVariants(grouped);
-      setOriginalVariants(snapshot);
-      setLoadedVariants(snapshot);
-      setManualUnitConversionPending([false]);
+      initializeVariantState(grouped, {
+        autoScaleIntent: autoScaleOnlineImports,
+        hasTrustedBase: true,
+      });
     }
-  }, [food?.default_variant, food?.id, queryClient, customNutrients]);
+  }, [
+    autoScaleOnlineImports,
+    customNutrients,
+    food?.default_variant,
+    food?.id,
+    initializeVariantState,
+    queryClient,
+  ]);
 
   useEffect(() => {
     if (food) {
@@ -210,45 +278,45 @@ export function useCustomFoodForm({
         const mapped = food.variants.map((v) =>
           foodVariantToFormVariant({
             ...v,
-            is_locked: v.is_locked ?? autoScaleOnlineImports,
+            is_locked: autoScaleOnlineImports,
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
         mapped.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
 
         const grouped = groupEquivalentVariants(mapped);
-        const snapshot = deepClone(grouped);
-
-        setVariants(grouped);
-        setOriginalVariants(snapshot);
-        setLoadedVariants(snapshot);
-        setManualUnitConversionPending(new Array(grouped.length).fill(false));
-        setVariantErrors(new Array(grouped.length).fill(''));
+        initializeVariantState(grouped, {
+          autoScaleIntent: autoScaleOnlineImports,
+          hasTrustedBase: true,
+        });
       } else {
         loadExistingVariants();
       }
     } else if (initialVariants && initialVariants.length > 0) {
       setFormData({ name: '', brand: '', is_quick_food: false });
-      const mapped = initialVariants.map(foodVariantToFormVariant);
+      const mapped = initialVariants.map((variant) =>
+        foodVariantToFormVariant({
+          ...variant,
+          is_locked: autoScaleOnlineImports,
+        })
+      );
       mapped.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
 
       const grouped = groupEquivalentVariants(mapped);
-      const snapshot = deepClone(grouped);
-
-      setVariants(grouped);
-      setOriginalVariants(snapshot);
-      setLoadedVariants(snapshot);
-      setManualUnitConversionPending(new Array(grouped.length).fill(false));
-      setVariantErrors(new Array(grouped.length).fill(''));
+      initializeVariantState(grouped, {
+        autoScaleIntent: autoScaleOnlineImports,
+        hasTrustedBase: true,
+      });
     } else {
       resetForm();
     }
   }, [
+    autoScaleOnlineImports,
+    customNutrients,
     food,
     initialVariants,
-    customNutrients,
+    initializeVariantState,
     loadExistingVariants,
-    autoScaleOnlineImports,
     resetForm,
   ]);
 
@@ -256,6 +324,7 @@ export function useCustomFoodForm({
     const newVariant = createDefaultFormVariant(customNutrients, {
       serving_size: 1,
       is_default: false,
+      is_locked: false,
     });
     const groupedVariant = { ...newVariant, equivalents: [] };
     const clone = deepClone(groupedVariant);
@@ -264,6 +333,8 @@ export function useCustomFoodForm({
     setOriginalVariants((prev) => [...prev, clone]);
     setLoadedVariants((prev) => [...prev, clone]);
     setManualUnitConversionPending((prev) => [...prev, false]);
+    setAutoScaleIntents((prev) => [...prev, false]);
+    setHasTrustedCompatibilityBase((prev) => [...prev, false]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
@@ -273,6 +344,7 @@ export function useCustomFoodForm({
     const sourceLoadedVariant = loadedVariants[index];
     const sourceRequiresManualConversion =
       manualUnitConversionPending[index] ?? false;
+    const sourceAutoScaleIntent = autoScaleIntents[index] ?? false;
 
     if (!src) {
       error(
@@ -287,7 +359,7 @@ export function useCustomFoodForm({
       ...src,
       id: undefined,
       is_default: false,
-      is_locked: false,
+      is_locked: sourceAutoScaleIntent && !sourceRequiresManualConversion,
       equivalents: deepClone(src.equivalents || []),
     };
 
@@ -306,6 +378,11 @@ export function useCustomFoodForm({
     setManualUnitConversionPending((prev) => [
       ...prev,
       sourceRequiresManualConversion,
+    ]);
+    setAutoScaleIntents((prev) => [...prev, sourceAutoScaleIntent]);
+    setHasTrustedCompatibilityBase((prev) => [
+      ...prev,
+      hasTrustedCompatibilityBase[index] ?? false,
     ]);
     setVariantErrors((prev) => [...prev, '']);
   };
@@ -326,6 +403,10 @@ export function useCustomFoodForm({
     setManualUnitConversionPending((prev) =>
       prev.filter((_, i) => i !== index)
     );
+    setAutoScaleIntents((prev) => prev.filter((_, i) => i !== index));
+    setHasTrustedCompatibilityBase((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
     setVariantErrors((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -337,6 +418,7 @@ export function useCustomFoodForm({
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants];
     const updatedManualUnitConversionPending = [...manualUnitConversionPending];
+    const updatedAutoScaleIntents = [...autoScaleIntents];
     const currentVariant = updatedVariants[index];
 
     if (!currentVariant) {
@@ -371,7 +453,6 @@ export function useCustomFoodForm({
       (newVariant as Record<string, unknown>)[field] = value;
     }
 
-    // Validate serving_size
     const updatedErrors = [...variantErrors];
     if (field === 'serving_size') {
       const num = Number(value);
@@ -380,70 +461,94 @@ export function useCustomFoodForm({
       setVariantErrors(updatedErrors);
     }
 
-    // Energy conversion: input arrives in display unit, store as kcal
     if (field === 'calories' && value !== '' && typeof value === 'number') {
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
-    // Unit change — restore loaded values on revert, otherwise scale
+    if (field === 'is_locked') {
+      const nextLocked = Boolean(value);
+      updatedAutoScaleIntents[index] = nextLocked;
+      newVariant.is_locked = nextLocked;
+
+      if (nextLocked) {
+        updatedManualUnitConversionPending[index] = false;
+        if (toPositiveNumber(newVariant.serving_size) !== null) {
+          updatedOriginalVariants[index] = deepClone(newVariant);
+          setOriginalVariants(updatedOriginalVariants);
+        }
+      }
+    }
+
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
       const loadedVariant = loadedVariants[index];
-      const trustedBaseUnit =
-        updatedOriginalVariants[index]?.serving_unit ??
-        loadedVariant?.serving_unit ??
-        oldUnit;
+      const variantHasTrustedCompatibilityBase =
+        hasTrustedCompatibilityBase[index] ?? false;
+      const scalingBaseVariant =
+        updatedOriginalVariants[index] ?? loadedVariant ?? currentVariant;
+      const trustedBaseUnit = scalingBaseVariant?.serving_unit ?? oldUnit;
       const manualConversionPendingForVariant =
         updatedManualUnitConversionPending[index] ?? false;
+      const autoScaleIntentForVariant = updatedAutoScaleIntents[index] ?? false;
 
-      if (loadedVariant && newUnit === loadedVariant.serving_unit) {
+      if (!variantHasTrustedCompatibilityBase) {
+        newVariant.serving_unit = newUnit;
+        updatedManualUnitConversionPending[index] = false;
+        newVariant.is_locked = autoScaleIntentForVariant;
+      } else if (loadedVariant && newUnit === loadedVariant.serving_unit) {
         for (const nutrient of nutrientFields) {
           newVariant[nutrient] = loadedVariant[nutrient];
         }
         newVariant.custom_nutrients = deepClone(loadedVariant.custom_nutrients);
         updatedManualUnitConversionPending[index] = false;
+        newVariant.is_locked = autoScaleIntentForVariant;
       } else {
-        const factor = getConversionFactor(oldUnit, newUnit);
-        const bothServing =
-          getUnitCategory(oldUnit) === null &&
-          getUnitCategory(newUnit) === null;
-        if (manualConversionPendingForVariant) {
-          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
-          updatedManualUnitConversionPending[index] = true;
-        } else if (factor !== null && factor !== 1) {
-          for (const nutrient of nutrientFields) {
-            const old = Number(currentVariant[nutrient]);
-            if (!isNaN(old))
-              newVariant[nutrient] = Number((old * factor).toFixed(4));
+        const directFactor = getConversionFactor(oldUnit, newUnit);
+        const trustedBaseFactor = getConversionFactor(trustedBaseUnit, newUnit);
+
+        if (
+          manualConversionPendingForVariant &&
+          trustedBaseFactor !== null &&
+          scalingBaseVariant
+        ) {
+          const baseServingSize = toPositiveNumber(
+            scalingBaseVariant.serving_size
+          );
+          const newServingSize = toPositiveNumber(currentVariant.serving_size);
+
+          if (baseServingSize !== null && newServingSize !== null) {
+            const ratio =
+              (newServingSize * trustedBaseFactor) / baseServingSize;
+            newVariant = scaleVariantNutrition(scalingBaseVariant, ratio);
           }
-          if (currentVariant.custom_nutrients) {
-            const scaled = { ...newVariant.custom_nutrients };
-            Object.keys(currentVariant.custom_nutrients).forEach((name) => {
-              const old = Number(currentVariant.custom_nutrients?.[name]);
-              if (!isNaN(old)) scaled[name] = Number((old * factor).toFixed(4));
-            });
-            newVariant.custom_nutrients = scaled;
-          }
+          newVariant.serving_size = currentVariant.serving_size;
+          newVariant.serving_unit = newUnit;
           updatedManualUnitConversionPending[index] = false;
-        } else if (factor === null && !bothServing) {
-          newVariant = zeroOutVariantNutrition(newVariant);
-          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
-          updatedManualUnitConversionPending[index] = true;
+          newVariant.is_locked = autoScaleIntentForVariant;
+        } else if (
+          !manualConversionPendingForVariant &&
+          directFactor !== null
+        ) {
+          newVariant = scaleVariantNutrition(currentVariant, directFactor);
+          newVariant.serving_size = currentVariant.serving_size;
+          newVariant.serving_unit = newUnit;
+          updatedManualUnitConversionPending[index] = false;
+          newVariant.is_locked = autoScaleIntentForVariant;
         } else {
-          updatedManualUnitConversionPending[index] = false;
+          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
+          updatedManualUnitConversionPending[index] = true;
+          newVariant.is_locked = false;
         }
       }
     }
 
-    // Ensure only one default
     if (field === 'is_default' && value === true) {
       updatedVariants.forEach((v, i) => {
         if (i !== index) v.is_default = false;
       });
     }
 
-    // Proportional scaling for locked variants
     if (
       field === 'serving_size' &&
       newVariant.is_locked &&
@@ -454,36 +559,25 @@ export function useCustomFoodForm({
         error(loggingLevel, 'Could not find original variant at index:', index);
         return;
       }
-      const ratio = Number(value) / Number(originalVariant.serving_size);
-      if (!isNaN(ratio) && ratio >= 0) {
-        nutrientFields.forEach((nf) => {
-          newVariant[nf] = Number(
-            (Number(originalVariant[nf]) * ratio).toFixed(2)
-          );
-        });
-        if (originalVariant.custom_nutrients) {
-          const scaled = { ...newVariant.custom_nutrients };
-          Object.keys(originalVariant.custom_nutrients).forEach((name) => {
-            const orig = Number(originalVariant.custom_nutrients?.[name]);
-            if (!isNaN(orig)) scaled[name] = Number((orig * ratio).toFixed(2));
-          });
-          newVariant.custom_nutrients = scaled;
-        }
+      const baseServingSize = toPositiveNumber(originalVariant.serving_size);
+      const nextServingSize = toPositiveNumber(value);
+      if (baseServingSize !== null && nextServingSize !== null) {
+        const ratio = nextServingSize / baseServingSize;
+        newVariant = scaleVariantNutrition(originalVariant, ratio, 4);
+        newVariant.serving_size = nextServingSize;
       }
-    } else {
-      // Update scaling baseline for any non-scaling change
-      if (
-        field !== 'serving_unit' ||
-        !(updatedManualUnitConversionPending[index] ?? false)
-      ) {
-        updatedOriginalVariants[index] = deepClone(newVariant);
-        setOriginalVariants(updatedOriginalVariants);
-      }
+    } else if (
+      field !== 'serving_unit' ||
+      !(updatedManualUnitConversionPending[index] ?? false)
+    ) {
+      updatedOriginalVariants[index] = deepClone(newVariant);
+      setOriginalVariants(updatedOriginalVariants);
     }
 
     updatedVariants[index] = newVariant;
     setVariants(updatedVariants);
     setManualUnitConversionPending(updatedManualUnitConversionPending);
+    setAutoScaleIntents(updatedAutoScaleIntents);
   };
 
   const updateField = (field: string, value: string | boolean) => {
@@ -501,7 +595,7 @@ export function useCustomFoodForm({
     );
     setVariantErrors(newVariantErrors);
 
-    if (newVariantErrors.some((e) => e !== '')) {
+    if (newVariantErrors.some((entry) => entry !== '')) {
       toast({
         title: 'Validation Error',
         description: 'Please correct the errors in the unit variants.',
@@ -552,7 +646,7 @@ export function useCustomFoodForm({
           equivalents.forEach((eq) => {
             expandedVariants.push({
               ...baseVariant,
-              id: eq.id, // TS now knows this exists
+              id: eq.id,
               is_default: false,
               serving_size: eq.serving_size,
               serving_unit: eq.serving_unit,
@@ -595,7 +689,6 @@ export function useCustomFoodForm({
   };
 
   return {
-    // State
     formData,
     variants,
     variantErrors,
@@ -604,8 +697,8 @@ export function useCustomFoodForm({
     setShowSyncConfirmation,
     loadedVariants,
     conversionBaseVariants: originalVariants,
+    hasTrustedCompatibilityBase,
     platform,
-    // Handlers
     updateField,
     addVariant,
     duplicateVariant,
