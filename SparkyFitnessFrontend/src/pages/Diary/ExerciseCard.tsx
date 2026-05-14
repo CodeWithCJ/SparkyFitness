@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell, Play } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import EditExerciseEntryDialog from './EditExerciseEntryDialog';
@@ -31,10 +32,10 @@ import {
   useDeleteExerciseEntryMutation,
   useDeleteExercisePresetEntryMutation,
   useExerciseEntries,
-  useLogWorkoutPresetMutation,
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exerciseByIdOptions } from '@/hooks/Exercises/useExercises';
+import { createWorkoutPlaybackRouteState } from '@/utils/workoutPlayback';
 import {
   Exercise,
   ExerciseEntry,
@@ -61,6 +62,7 @@ const ExerciseCard = ({
   onExercisesLogged,
 }: ExerciseCardProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { loggingLevel, energyUnit, convertEnergy, getEnergyUnitString } =
@@ -71,6 +73,9 @@ const ExerciseCard = ({
     selectedDate
   );
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addDialogInitialTab, setAddDialogInitialTab] = useState<
+    'my-exercises' | 'workout-preset'
+  >('my-exercises');
   const [editingEntry, setEditingEntry] = useState<ExerciseEntry | null>(null); // Use ExerciseEntry from service
   const [isPlaybackModalOpen, setIsPlaybackModalOpen] = useState(false); // State for playback modal
   const [exerciseToPlay, setExerciseToPlay] = useState<Exercise | null>(null); // State for exercise to play
@@ -94,8 +99,6 @@ const ExerciseCard = ({
   const { mutateAsync: deleteExerciseEntry } = useDeleteExerciseEntryMutation();
   const { mutateAsync: deleteExercisePresetEntry } =
     useDeleteExercisePresetEntryMutation();
-  const { mutateAsync: logWorkoutPreset } = useLogWorkoutPresetMutation();
-
   const { data: exerciseEntries, isLoading: loading } = useExerciseEntries(
     selectedDate,
     currentUserId
@@ -162,6 +165,13 @@ const ExerciseCard = ({
 
   const handleOpenAddDialog = () => {
     debug(loggingLevel, 'Opening add exercise dialog.');
+    setAddDialogInitialTab('my-exercises');
+    setIsAddDialogOpen(true);
+  };
+
+  const handleStartWorkoutPlayback = () => {
+    debug(loggingLevel, 'Opening workout preset selector.');
+    setAddDialogInitialTab('workout-preset');
     setIsAddDialogOpen(true);
   };
 
@@ -204,21 +214,18 @@ const ExerciseCard = ({
     setIsAddDialogOpen(false);
   };
 
-  const handleWorkoutPresetSelected = async (preset: WorkoutPreset) => {
+  const handleWorkoutPresetSelected = (preset: WorkoutPreset) => {
     debug(loggingLevel, 'Workout preset selected in ExerciseCard:', preset);
-    try {
-      await logWorkoutPreset({ presetId: preset.id, date: selectedDate });
-      handleCloseAddDialog(); // Close the add exercise dialog
-      onExercisesLogged(); // Signal to parent that exercises have been logged
-    } catch (err) {
-      error(
-        loggingLevel,
-        `Error logging workout preset "${preset.name}":`,
-        err
-      );
-    } finally {
-      setIsAddDialogOpen(false); // Close the add dialog
-    }
+    const routeState = createWorkoutPlaybackRouteState(
+      preset,
+      selectedDate,
+      `${window.location.pathname}${window.location.search}`
+    );
+
+    handleCloseAddDialog();
+    navigate(`/workout-playback?date=${selectedDate}`, {
+      state: routeState,
+    });
   };
 
   const handleDeleteExerciseEntry = async (entryId: string) => {
@@ -381,25 +388,45 @@ const ExerciseCard = ({
           <CardTitle className="dark:text-slate-300">
             {t('exerciseCard.title', 'Exercise')}
           </CardTitle>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="default" onClick={handleOpenAddDialog}>
-                  <Dumbbell className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('exerciseCard.addExercise', 'Add Exercise')}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="default"
+                    variant="outline"
+                    onClick={handleStartWorkoutPlayback}
+                  >
+                    <Play className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('exerciseCard.startWorkout', 'Start Workout')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="default" onClick={handleOpenAddDialog}>
+                    <Dumbbell className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('exerciseCard.addExercise', 'Add Exercise')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           {/* Render the AddExerciseDialog directly. It manages its own Dialog/Content and headers. */}
           <AddExerciseDialog
+            key={`add-dialog-${addDialogInitialTab}-${isAddDialogOpen ? 'open' : 'closed'}`}
             open={isAddDialogOpen}
             onOpenChange={setIsAddDialogOpen}
             onExerciseAdded={handleExerciseSelect}
             onWorkoutPresetSelected={handleWorkoutPresetSelected}
             mode="diary"
+            initialTab={addDialogInitialTab}
           />
         </div>
       </CardHeader>

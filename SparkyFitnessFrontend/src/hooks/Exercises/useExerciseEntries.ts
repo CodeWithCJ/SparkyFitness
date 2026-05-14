@@ -10,6 +10,7 @@ import {
   createExerciseEntry,
   updateExerciseEntry,
   deleteExerciseEntry,
+  createPresetSession,
   logWorkoutPreset,
   deleteExercisePresetEntry,
   fetchExerciseDetails,
@@ -150,6 +151,29 @@ export const useLogWorkoutPresetMutation = () => {
       errorMessage: t(
         'diary.exerciseEntry.logPresetError',
         'Failed to log workout preset.'
+      ),
+    },
+  });
+};
+
+export const useCreatePresetSessionMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: createPresetSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    },
+    meta: {
+      successMessage: t(
+        'diary.exerciseEntry.createPresetSessionSuccess',
+        'Workout saved successfully.'
+      ),
+      errorMessage: t(
+        'diary.exerciseEntry.createPresetSessionError',
+        'Failed to save workout.'
       ),
     },
   });

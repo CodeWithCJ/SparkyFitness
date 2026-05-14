@@ -54,6 +54,9 @@ const Reports = lazyWithChunkRecovery(() => import('./pages/Reports/Reports'));
 const ExerciseDatabaseManager = lazyWithChunkRecovery(
   () => import('./pages/Exercises/Exercises')
 );
+const WorkoutPlaybackPage = lazyWithChunkRecovery(
+  () => import('./pages/Diary/WorkoutPlaybackPage')
+);
 const GoalsSettings = lazyWithChunkRecovery(
   () => import('./pages/Goals/Goals')
 );
@@ -302,6 +305,11 @@ const router = createBrowserRouter([
           {
             path: 'exercises',
             Component: ExerciseDatabaseManager,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'workout-playback',
+            Component: WorkoutPlaybackPage,
             ErrorBoundary: RouteErrorBoundary,
           },
           {

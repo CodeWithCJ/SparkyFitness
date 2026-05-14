@@ -36,7 +36,16 @@ interface AddExerciseDialogProps {
   ) => void;
   onWorkoutPresetSelected?: (preset: WorkoutPreset) => void; // New prop for selecting a workout preset
   mode: 'preset' | 'workout-plan' | 'diary' | 'database-manager';
+  initialTab?:
+    | 'my-exercises'
+    | 'workout-preset'
+    | 'online'
+    | 'custom'
+    | 'import-csv'
+    | 'import-history-csv';
 }
+
+type AddExerciseDialogTab = NonNullable<AddExerciseDialogProps['initialTab']>;
 
 const AddExerciseDialog = ({
   open,
@@ -44,11 +53,12 @@ const AddExerciseDialog = ({
   onExerciseAdded,
   mode,
   onWorkoutPresetSelected,
+  initialTab,
 }: AddExerciseDialogProps) => {
   const { t } = useTranslation();
   const customForm = useAddCustomExerciseForm(onExerciseAdded, onOpenChange);
   const [activeTab, setActiveTab] = useState(
-    mode === 'database-manager' ? 'online' : 'my-exercises'
+    initialTab ?? (mode === 'database-manager' ? 'online' : 'my-exercises')
   );
   const { mutateAsync: importExerciseFromJson } =
     useImportExercisesJsonMutation();
@@ -119,7 +129,10 @@ const AddExerciseDialog = ({
             )}
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+        <Tabs
+          defaultValue={activeTab}
+          onValueChange={(value) => setActiveTab(value as AddExerciseDialogTab)}
+        >
           <TabsList className="h-10 flex w-full justify-center flex-wrap">
             {mode !== 'database-manager' && (
               <TabsTrigger value="my-exercises">
