@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createQueryWrapper, createTestQueryClient } from '../hooks/queryTestUtils';
 import SwipeableFoodRow from '../../src/components/SwipeableFoodRow';
@@ -55,24 +56,7 @@ describe('SwipeableFoodRow', () => {
     expect(onAdjustServing).toHaveBeenCalledWith(entry);
   });
 
-  it('keeps serving adjustment available for logged meal components', () => {
-    const entry = createEntry({ food_entry_meal_id: 'meal-entry-1' });
-    const onAdjustServing = jest.fn();
-
-    const screen = renderRow(
-      <SwipeableFoodRow
-        entry={entry}
-        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
-        onAdjustServing={onAdjustServing}
-      />,
-    );
-
-    fireEvent.press(screen.getByText(/120 Cal/));
-
-    expect(onAdjustServing).toHaveBeenCalledWith(entry);
-  });
-
-  it('opens the food entry view from the row body', () => {
+  it('opens the food entry view from the row body for standalone entries', () => {
     const entry = createEntry();
 
     const screen = renderRow(
@@ -86,5 +70,61 @@ describe('SwipeableFoodRow', () => {
     fireEvent.press(screen.getByText(/Greek Yogurt/));
 
     expect(mockNavigate).toHaveBeenCalledWith('FoodEntryView', { entry });
+  });
+
+  it('routes meal-component tap to EditLoggedMeal', () => {
+    const entry = createEntry({ food_entry_meal_id: 'fem-1' });
+
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+        onAdjustServing={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText(/Greek Yogurt/));
+
+    expect(mockNavigate).toHaveBeenCalledWith('EditLoggedMeal', { foodEntryMealId: 'fem-1' });
+  });
+
+  it('does not surface the quick-adjust affordance for meal components', () => {
+    const entry = createEntry({ food_entry_meal_id: 'fem-1' });
+    const onAdjustServing = jest.fn();
+
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+        onAdjustServing={onAdjustServing}
+      />,
+    );
+
+    // Just text — no button.
+    fireEvent.press(screen.getByText(/120 Cal/));
+    expect(onAdjustServing).not.toHaveBeenCalled();
+  });
+
+  it('omits "Adjust serving" from the long-press menu for meal components', () => {
+    const entry = createEntry({ food_entry_meal_id: 'fem-1' });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+        onAdjustServing={jest.fn()}
+      />,
+    );
+
+    fireEvent(screen.getByText(/Greek Yogurt/), 'longPress');
+
+    expect(alertSpy).toHaveBeenCalled();
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string }>;
+    const labels = buttons.map((b) => b.text);
+    expect(labels).not.toContain('Adjust serving');
+    expect(labels).toEqual(expect.arrayContaining(['Delete', 'Cancel']));
+
+    alertSpy.mockRestore();
   });
 });

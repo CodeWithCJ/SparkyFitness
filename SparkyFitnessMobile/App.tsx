@@ -29,6 +29,7 @@ import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
+import EditLoggedMealScreen from './src/screens/EditLoggedMealScreen';
 import MealTypeDetailScreen from './src/screens/MealTypeDetailScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
@@ -139,6 +140,7 @@ const SafeWorkoutPresetForm = withErrorBoundary(WorkoutPresetFormScreen, 'Workou
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
 const SafeMealAdd = withErrorBoundary(MealAddScreen, 'MealAdd', { canGoBack: true });
 const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
+const SafeEditLoggedMeal = withErrorBoundary(EditLoggedMealScreen, 'EditLoggedMeal', { canGoBack: true });
 const SafeMealTypeDetail = withErrorBoundary(MealTypeDetailScreen, 'MealTypeDetail', { canGoBack: true });
 const SafeExerciseSearch = withErrorBoundary(ExerciseSearchScreen, 'ExerciseSearch', { canGoBack: true });
 const SafePresetSearch = withErrorBoundary(PresetSearchScreen, 'PresetSearch', { canGoBack: true });
@@ -818,6 +820,14 @@ function AppContent() {
           <Stack.Screen
             name="FoodEntryView"
             component={SafeFoodEntryView}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="EditLoggedMeal"
+            component={SafeEditLoggedMeal}
             options={{
               headerShown: false,
               gestureEnabled: true,

@@ -20,6 +20,8 @@ import { useMealTypes } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
+import { useAddFoodEntryMeal } from '../hooks/useAddFoodEntryMeal';
+import type { FoodEntryMealCreateData } from '../types/foodEntryMeals';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodFormData } from '../components/FoodForm';
 import type { MealIngredientDraft } from '../types/meals';
@@ -278,34 +280,41 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         // food_id and variant_id are set by useAddFoodEntry after saving the food
         return base;
       case 'meal':
-        return {
-          ...base,
-          meal_id: item.id,
-          food_name: item.name,
-          serving_size: item.servingSize,
-          serving_unit: item.servingUnit,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          dietary_fiber: item.fiber,
-          saturated_fat: item.saturatedFat,
-          sodium: item.sodium,
-          sugars: item.sugars,
-          trans_fat: item.transFat,
-          potassium: item.potassium,
-          calcium: item.calcium,
-          iron: item.iron,
-          cholesterol: item.cholesterol,
-          vitamin_a: item.vitaminA,
-          vitamin_c: item.vitaminC,
-        };
+        // Meal entries are dispatched via useAddFoodEntryMeal, not addEntry.
+        throw new Error('Meal entries must use buildFoodEntryMealPayload');
     }
+  };
+
+  const buildFoodEntryMealPayload = (): FoodEntryMealCreateData => {
+    if (item.source !== 'meal') {
+      throw new Error('buildFoodEntryMealPayload called for non-meal item');
+    }
+    const mealTypeName = selectedMealType?.name ?? '';
+    return {
+      meal_template_id: item.id,
+      meal_type: mealTypeName,
+      meal_type_id: effectiveMealId ?? undefined,
+      entry_date: selectedDate,
+      name: item.name,
+      quantity,
+      unit: displayValues.servingUnit,
+    };
   };
 
   const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
     onSuccess: () => {
       invalidateCache(selectedDate);
+      navigation.dispatch(StackActions.popToTop());
+    },
+  });
+
+  const {
+    addMeal,
+    isPending: isAddMealPending,
+    invalidateCache: invalidateMealCache,
+  } = useAddFoodEntryMeal({
+    onSuccess: () => {
+      invalidateMealCache(selectedDate);
       navigation.dispatch(StackActions.popToTop());
     },
   });
@@ -609,7 +618,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         <Button
           variant="primary"
           className="mt-2"
-          disabled={isAddPending || isSavePending || (!isMealBuilderMode && !effectiveMealId) || quantity <= 0}
+          disabled={isAddPending || isAddMealPending || isSavePending || (!isMealBuilderMode && !effectiveMealId) || quantity <= 0}
           onPress={() => {
             if (isMealBuilderMode) {
               void handleMealBuilderAdd();
@@ -617,6 +626,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
             }
 
             if (!effectiveMealId) return;
+
+            if (item.source === 'meal') {
+              addMeal(buildFoodEntryMealPayload());
+              return;
+            }
+
             const saveFoodPayload = item.source === 'external' ? buildSaveFoodPayload() : undefined;
             addEntry({
               saveFoodPayload,
@@ -624,7 +639,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
             });
           }}
         >
-          {isAddPending || isSavePending ? (
+          {isAddPending || isAddMealPending || isSavePending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-white text-base font-semibold">

@@ -7,6 +7,7 @@ import { useMealTypes } from '../../src/hooks';
 import { useFoodVariants } from '../../src/hooks/useFoodVariants';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
+import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import {
   buildMealIngredientDraft,
@@ -45,6 +46,10 @@ jest.mock('../../src/hooks/useSaveFood', () => ({
 
 jest.mock('../../src/hooks/useAddFoodEntry', () => ({
   useAddFoodEntry: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useAddFoodEntryMeal', () => ({
+  useAddFoodEntryMeal: jest.fn(),
 }));
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
@@ -146,6 +151,7 @@ const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
 const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
+const mockUseAddFoodEntryMeal = useAddFoodEntryMeal as jest.MockedFunction<typeof useAddFoodEntryMeal>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
 const mockBuildMealIngredientDraft =
@@ -170,6 +176,8 @@ describe('FoodEntryAddScreen', () => {
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
   const mockInvalidateCache = jest.fn();
+  const mockAddMeal = jest.fn();
+  const mockInvalidateMealCache = jest.fn();
 
   const baseLocalItem = {
     id: 'food-1',
@@ -276,6 +284,11 @@ describe('FoodEntryAddScreen', () => {
       addEntry: mockAddEntry,
       isPending: false,
       invalidateCache: mockInvalidateCache,
+    });
+    mockUseAddFoodEntryMeal.mockReturnValue({
+      addMeal: mockAddMeal,
+      isPending: false,
+      invalidateCache: mockInvalidateMealCache,
     });
   });
 
@@ -462,6 +475,36 @@ describe('FoodEntryAddScreen', () => {
     });
 
     expect(screen.getByDisplayValue('2.5')).toBeTruthy();
+  });
+
+  it('dispatches addMeal when logging a meal item (not addEntry)', () => {
+    // useFoodVariants is enabled only for local foods in production, so simulate empty variants.
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-05-15',
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'meal-1',
+        meal_type: 'breakfast',
+        meal_type_id: 'meal-1',
+        entry_date: '2026-05-15',
+        name: 'Breakfast Meal',
+        quantity: 1,
+        unit: 'serving',
+      }),
+    );
+    expect(mockAddMeal.mock.calls[0][0]).not.toHaveProperty('foods');
+    expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
   it('keeps the normal log-entry path and diary controls outside meal-builder mode', () => {

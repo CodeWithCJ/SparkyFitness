@@ -39,6 +39,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
+  useEffect(() => {
+    if (entry.food_entry_meal_id) {
+      navigation.replace('EditLoggedMeal', { foodEntryMealId: entry.food_entry_meal_id });
+    }
+  }, [entry.food_entry_meal_id, navigation]);
+
   const canEdit = !!(entry.user_id && profile?.id === entry.user_id && !entry.food_entry_meal_id);
 
   interface EditState {

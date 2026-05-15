@@ -22,6 +22,9 @@ export const mealsQueryKey = ['meals'] as const;
 
 export const mealDetailQueryKey = (id: string) => ['mealDetail', id] as const;
 
+export const foodEntryMealDetailQueryKey = (id: string) =>
+  ['foodEntryMealDetail', id] as const;
+
 export const recentMealsQueryKeyRoot = ['recentMeals'] as const;
 
 export const recentMealsQueryKey = (limit: number) => [...recentMealsQueryKeyRoot, limit] as const;

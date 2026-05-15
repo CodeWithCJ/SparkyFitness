@@ -1,4 +1,5 @@
-import type { MealFood, MealIngredientDraft } from '../types/meals';
+import type { MealFood, MealFoodPayload, MealIngredientDraft } from '../types/meals';
+import type { FoodEntryMealFood } from '../types/foodEntryMeals';
 import type { FoodItem } from '../types/foods';
 import type { FoodDisplayValues } from './foodDetails';
 
@@ -81,6 +82,37 @@ export function buildMealIngredientDraftFromSavedFood(
     cholesterol: food.default_variant.cholesterol,
     vitamin_a: food.default_variant.vitamin_a,
     vitamin_c: food.default_variant.vitamin_c,
+  };
+}
+
+export function toMealFoodPayload(food: FoodEntryMealFood): MealFoodPayload {
+  return {
+    food_id: food.food_id,
+    variant_id: food.variant_id,
+    quantity: food.quantity,
+    unit: food.unit,
+    food_name: food.food_name,
+    serving_size: food.serving_size,
+    serving_unit: food.serving_unit,
+    calories: food.calories,
+    protein: food.protein,
+    carbs: food.carbs,
+    fat: food.fat,
+    saturated_fat: food.saturated_fat,
+    polyunsaturated_fat: food.polyunsaturated_fat,
+    monounsaturated_fat: food.monounsaturated_fat,
+    trans_fat: food.trans_fat,
+    cholesterol: food.cholesterol,
+    sodium: food.sodium,
+    potassium: food.potassium,
+    dietary_fiber: food.dietary_fiber,
+    sugars: food.sugars,
+    vitamin_a: food.vitamin_a,
+    vitamin_c: food.vitamin_c,
+    calcium: food.calcium,
+    iron: food.iron,
+    glycemic_index: food.glycemic_index,
+    custom_nutrients: food.custom_nutrients,
   };
 }
 
