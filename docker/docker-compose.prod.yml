@@ -93,9 +93,6 @@ services:
   #     - sparkyfitness-server
 
   # sparkyfitness-mcp:
-  #   build:
-  #     context: ..
-  #     dockerfile: docker/Dockerfile.mcp
   #   image: codewithcj/sparkyfitness_mcp:latest
   #   environment:
   #     SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
@@ -114,6 +111,7 @@ services:
   #   restart: always
   #   depends_on:
   #     - sparkyfitness-db
+
 
 networks:
   sparkyfitness-network:
