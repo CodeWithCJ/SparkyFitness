@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
@@ -403,6 +404,96 @@ describe('useWaterIntakeMutation', () => {
       await waitFor(() => {
         expect(mockChangeWaterIntake).toHaveBeenCalledTimes(3);
       });
+    });
+  });
+
+  describe('container selection (AsyncStorage persistence)', () => {
+    const containerA = { id: 1, name: 'Glass', volume: 250, unit: 'ml', is_primary: true, servings_per_container: 1 };
+    const containerB = { id: 2, name: 'Bottle', volume: 750, unit: 'ml', is_primary: false, servings_per_container: 1 };
+    const containerC = { id: 3, name: 'Mug', volume: 300, unit: 'ml', is_primary: false, servings_per_container: 1 };
+
+    beforeEach(() => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    });
+
+    test('returns all containers via containers field', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.containers).toEqual([containerA, containerB]);
+    });
+
+    test('activeContainer is primary when no saved selection', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(1);
+    });
+
+    test('saved selection overrides primary container', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('2');
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      await waitFor(() => expect(result.current.activeContainer?.id).toBe(2));
+    });
+
+    test('NaN guard: corrupted AsyncStorage value falls back to primary', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-a-number');
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(1);
+    });
+
+    test('single non-primary container is used as fallback when no selection', async () => {
+      const onlyContainer = { ...containerB, is_primary: false };
+      mockFetchWaterContainers.mockResolvedValue([onlyContainer]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(2);
+      expect(result.current.isReady).toBe(true);
+    });
+
+    test('selectContainer saves to AsyncStorage and updates activeContainer', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB, containerC]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      act(() => { result.current.selectContainer(3); });
+
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@SparkyFitness/selected-water-container', '3');
+      await waitFor(() => expect(result.current.activeContainer?.id).toBe(3));
+    });
+
+    test('noContainerAlert shows "No Primary Container" when multiple containers but none selected', async () => {
+      mockFetchWaterContainers.mockResolvedValue([
+        { ...containerA, is_primary: false },
+        { ...containerB, is_primary: false },
+      ]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.isReady).toBe(false);
+
+      act(() => { result.current.increment(); });
+
+      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({
+        text1: 'No Primary Container',
+      }));
     });
   });
 });

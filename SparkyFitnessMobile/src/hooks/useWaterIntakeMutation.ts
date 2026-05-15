@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
+import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
+
+const SELECTED_CONTAINER_KEY = '@SparkyFitness/selected-water-container';
 
 interface UseWaterIntakeMutationOptions {
   date: string;
@@ -11,6 +16,16 @@ interface UseWaterIntakeMutationOptions {
 
 export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
   const queryClient = useQueryClient();
+  const [selectedContainerId, setSelectedContainerId] = useState<number | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_CONTAINER_KEY).then((val) => {
+      if (val != null) {
+        const id = Number(val);
+        if (!isNaN(id)) setSelectedContainerId(id);
+      }
+    });
+  }, []);
 
   const { data: containers, isSuccess: isContainersLoaded } = useQuery({
     queryKey: [...waterContainersQueryKey],
@@ -19,22 +34,30 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     enabled,
   });
 
-  const primaryContainer = containers?.find(c => c.is_primary)
+  // Resolve active container: user selection → primary → single fallback
+  const activeContainer =
+    (selectedContainerId != null ? containers?.find(c => c.id === selectedContainerId) : undefined)
+    ?? containers?.find(c => c.is_primary)
     ?? (containers?.length === 1 ? containers[0] : undefined);
+
+  const selectContainer = (id: number) => {
+    setSelectedContainerId(id);
+    void AsyncStorage.setItem(SELECTED_CONTAINER_KEY, String(id));
+  };
 
   const mutation = useMutation({
     mutationFn: async (changeDrinks: number) => {
-      if (!primaryContainer) {
-        throw new Error('No primary water container configured');
+      if (!activeContainer) {
+        throw new Error('No water container configured');
       }
       return changeWaterIntake({
         entryDate: date,
         changeDrinks,
-        containerId: primaryContainer.id,
+        containerId: activeContainer.id,
       });
     },
     onMutate: async (changeDrinks: number) => {
-      if (!primaryContainer) return;
+      if (!activeContainer) return;
 
       await queryClient.cancelQueries({ queryKey: dailySummaryQueryKey(date) });
 
@@ -43,7 +66,7 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
         return {
           ...old,
           waterIntake: {
-            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * primaryContainer.volume / (primaryContainer.servings_per_container || 1)),
+            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * getServingVolume(activeContainer)),
           },
         };
       });
@@ -78,21 +101,24 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
   };
 
   const increment = () => {
-    if (!primaryContainer) { noContainerAlert(); return; }
+    if (!activeContainer) { noContainerAlert(); return; }
     mutation.mutate(1);
   };
 
   const decrement = () => {
-    if (!primaryContainer) { noContainerAlert(); return; }
+    if (!activeContainer) { noContainerAlert(); return; }
     mutation.mutate(-1);
   };
 
   return {
     increment,
     decrement,
-    isReady: !!primaryContainer,
+    isReady: !!activeContainer,
     isContainersLoaded,
-    unit: primaryContainer?.unit,
-    servingVolume: primaryContainer ? primaryContainer.volume / (primaryContainer.servings_per_container || 1) : undefined,
+    unit: activeContainer?.unit,
+    servingVolume: activeContainer ? getServingVolume(activeContainer) : undefined,
+    containers,
+    activeContainer,
+    selectContainer,
   };
 }

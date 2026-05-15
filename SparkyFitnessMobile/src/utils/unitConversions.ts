@@ -103,3 +103,16 @@ export function cmToFeetInches(cm: number): { feet: number; inches: number } {
 export function feetInchesToCm(feet: number, inches: number): number {
   return inchesToCm(feet * INCHES_PER_FOOT + inches);
 }
+
+// --- Water / volume helpers ---
+
+export const WATER_UNIT_LABELS: Record<string, string> = {
+  ml: 'ml',
+  oz: 'oz',
+  liter: 'L',
+};
+
+/** Volume per serving, accounting for servings_per_container. */
+export function getServingVolume(container: { volume: number; servings_per_container?: number | null }): number {
+  return container.volume / (container.servings_per_container || 1);
+}

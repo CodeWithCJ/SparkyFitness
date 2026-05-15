@@ -1,10 +1,16 @@
 import React, { useMemo, useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 import Button from './ui/Button';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+
+interface ContainerOption {
+  id: number;
+  name: string;
+}
 
 interface HydrationGaugeProps {
   consumed: number; // ml
@@ -14,13 +20,10 @@ interface HydrationGaugeProps {
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
+  containers?: ContainerOption[];
+  activeContainerId?: number;
+  onSelectContainer?: (id: number) => void;
 }
-
-const UNIT_LABELS: Record<string, string> = {
-  ml: 'ml',
-  oz: 'oz',
-  liter: 'L',
-};
 
 function convertFromMl(ml: number, unit: string): number {
   switch (unit) {
@@ -38,7 +41,11 @@ const FILL_TOP = 28;
 const FILL_BOTTOM = 124;
 const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 
-const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', containerVolume, onIncrement, onDecrement, disableDecrement }) => {
+const HydrationGauge: React.FC<HydrationGaugeProps> = ({
+  consumed, goal, unit = 'ml', containerVolume,
+  onIncrement, onDecrement, disableDecrement,
+  containers, activeContainerId, onSelectContainer,
+}) => {
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
@@ -104,14 +111,14 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
   const useDecimals = unit === 'liter' || unit === 'oz';
   const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
   const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
-  const unitLabel = UNIT_LABELS[unit] ?? unit;
+  const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
   const noContainer = containerVolume == null;
+  const showChips = (containers?.length ?? 0) > 1;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
-      {/* <Text className="text-md font-bold text-text-primary mb-3">Water</Text> */}
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
@@ -153,9 +160,27 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
           <Text className="text-sm text-text-secondary mt-0.5">
             of {displayGoal.toLocaleString()} {unitLabel}
           </Text>
+          {showChips && (
+            <View className="flex-row flex-wrap justify-center mt-2 gap-1">
+              {containers!.map(c => {
+                const active = c.id === activeContainerId;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => onSelectContainer?.(c.id)}
+                    className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
+                  >
+                    <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
       </View>
-      {showButtons && containerVolume != null && (
+      {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
           {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
         </Text>

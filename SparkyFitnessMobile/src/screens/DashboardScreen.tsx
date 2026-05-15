@@ -71,10 +71,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
-  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded } = useWaterIntakeMutation({
+  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded, containers: waterContainers, activeContainer: activeWaterContainer, selectContainer: selectWaterContainer } = useWaterIntakeMutation({
     date: selectedDate,
     enabled: isConnected,
   });
+
   const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
     range: stepsRange,
     enabled: isConnected,
@@ -288,6 +289,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onIncrement={isContainersLoaded ? incrementWater : undefined}
           onDecrement={isContainersLoaded ? decrementWater : undefined}
           disableDecrement={summary.waterConsumed <= 0}
+          containers={waterContainers}
+          activeContainerId={activeWaterContainer?.id}
+          onSelectContainer={selectWaterContainer}
         />
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
