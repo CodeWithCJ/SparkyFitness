@@ -7,19 +7,29 @@ import type { FoodItem, FoodEntry, MealTemplate, PaginatedResult } from "../type
  * Creates the meal_type if it doesn't exist for the user.
  */
 async function resolveMealTypeId(client: any, userId: string, mealTypeName: string): Promise<string> {
-  const result = await client.query(
+  let result = await client.query(
     "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1) AND (user_id = $2 OR user_id IS NULL) LIMIT 1",
     [mealTypeName, userId]
   );
   if (result.rows.length > 0) {
     return result.rows[0].id;
   }
-  // Create the meal type for this user
-  const insert = await client.query(
-    "INSERT INTO meal_types (user_id, name) VALUES ($1, $2) RETURNING id",
+  
+  // Try to create the meal type for this user, ignoring if it was just created concurrently
+  result = await client.query(
+    "INSERT INTO meal_types (user_id, name) VALUES ($1, $2) ON CONFLICT (user_id, name) DO NOTHING RETURNING id",
     [userId, mealTypeName.charAt(0).toUpperCase() + mealTypeName.slice(1)]
   );
-  return insert.rows[0].id;
+  if (result.rows.length > 0) {
+    return result.rows[0].id;
+  }
+  
+  // If we hit a conflict, it means another request created it, so fetch it again
+  result = await client.query(
+    "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1) AND user_id = $2 LIMIT 1",
+    [mealTypeName, userId]
+  );
+  return result.rows[0].id;
 }
 
 import { todayInZone, addDays } from "@workspace/shared";
@@ -723,62 +733,43 @@ export async function copyFromYesterday(
         baseParams.push(mealTypeId);
       }
 
-      // Copy food_entries (inline nutritional data)
-      const foodEntries = await client.query(
-        `SELECT food_id, variant_id, quantity, unit, meal_type_id,
-                food_name, brand_name, serving_size, serving_unit,
-                calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat,
-                monounsaturated_fat, trans_fat, cholesterol, sodium, potassium,
-                dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index
+      // Copy food_entries (inline nutritional data) using INSERT INTO SELECT
+      const insertFoodEntries = await client.query(
+        `INSERT INTO food_entries (
+           user_id, food_id, variant_id, entry_date, quantity, unit, meal_type_id,
+           food_name, brand_name, serving_size, serving_unit,
+           calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat,
+           monounsaturated_fat, trans_fat, cholesterol, sodium, potassium,
+           dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index,
+           created_at
+         )
+         SELECT 
+           $1, food_id, variant_id, $2, quantity, unit, meal_type_id,
+           food_name, brand_name, serving_size, serving_unit,
+           calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat,
+           monounsaturated_fat, trans_fat, cholesterol, sodium, potassium,
+           dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index,
+           NOW()
          FROM food_entries
-         WHERE entry_date = $1${mealTypeFilter}`,
-        baseParams
+         WHERE user_id = $1 AND entry_date = $3${mealTypeFilter}`,
+        [userId, targetDate, ...baseParams]
       );
+      copiedCount += insertFoodEntries.rowCount ?? 0;
 
-      for (const row of foodEntries.rows) {
-        await client.query(
-          `INSERT INTO food_entries (
-             user_id, food_id, variant_id, entry_date, quantity, unit, meal_type_id,
-             food_name, brand_name, serving_size, serving_unit,
-             calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat,
-             monounsaturated_fat, trans_fat, cholesterol, sodium, potassium,
-             dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-             created_at
-           ) VALUES (
-             $1, $2, $3, $4, $5, $6, $7,
-             $8, $9, $10, $11,
-             $12, $13, $14, $15, $16, $17,
-             $18, $19, $20, $21, $22,
-             $23, $24, $25, $26, $27, $28, $29,
-             NOW()
-           )`,
-          [
-            userId, row.food_id, row.variant_id, targetDate, row.quantity, row.unit, row.meal_type_id,
-            row.food_name, row.brand_name, row.serving_size, row.serving_unit,
-            row.calories, row.protein, row.carbs, row.fat, row.saturated_fat, row.polyunsaturated_fat,
-            row.monounsaturated_fat, row.trans_fat, row.cholesterol, row.sodium, row.potassium,
-            row.dietary_fiber, row.sugars, row.vitamin_a, row.vitamin_c, row.calcium, row.iron, row.glycemic_index,
-          ]
-        );
-        copiedCount++;
-      }
-
-      // Copy food_entry_meals
-      const mealEntries = await client.query(
-        `SELECT meal_template_id, quantity, unit, meal_type_id, name, description
+      // Copy food_entry_meals using INSERT INTO SELECT
+      const insertMealEntries = await client.query(
+        `INSERT INTO food_entry_meals (
+           user_id, meal_template_id, entry_date, meal_type_id, quantity, unit, name, description, 
+           created_by_user_id, updated_by_user_id, created_at, updated_at
+         )
+         SELECT 
+           $1, meal_template_id, $2, meal_type_id, quantity, unit, name, description,
+           $1, $1, NOW(), NOW()
          FROM food_entry_meals
-         WHERE entry_date = $1${mealTypeFilter}`,
-        baseParams
+         WHERE user_id = $1 AND entry_date = $3${mealTypeFilter}`,
+        [userId, targetDate, ...baseParams]
       );
-
-      for (const row of mealEntries.rows) {
-        await client.query(
-          `INSERT INTO food_entry_meals (user_id, meal_template_id, entry_date, meal_type_id, quantity, unit, name, description, created_by_user_id, updated_by_user_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $1, $1, NOW(), NOW())`,
-          [userId, row.meal_template_id, targetDate, row.meal_type_id, row.quantity, row.unit, row.name, row.description]
-        );
-        copiedCount++;
-      }
+      copiedCount += insertMealEntries.rowCount ?? 0;
 
       await client.query("COMMIT");
       return { copied_count: copiedCount, target_date: targetDate };

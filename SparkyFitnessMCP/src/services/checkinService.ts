@@ -25,58 +25,31 @@ export async function logBiometrics(
   }
 ): Promise<Record<string, unknown>> {
   return withClient(userId, async (client) => {
-    // Check if a record already exists for this date
-    const existing = await client.query(
-      "SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 LIMIT 1",
-      [userId, params.entry_date]
+    const result = await client.query(
+      `INSERT INTO check_in_measurements (user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+       ON CONFLICT (user_id, entry_date) DO UPDATE SET
+         weight = COALESCE(EXCLUDED.weight, check_in_measurements.weight),
+         height = COALESCE(EXCLUDED.height, check_in_measurements.height),
+         body_fat_percentage = COALESCE(EXCLUDED.body_fat_percentage, check_in_measurements.body_fat_percentage),
+         neck = COALESCE(EXCLUDED.neck, check_in_measurements.neck),
+         waist = COALESCE(EXCLUDED.waist, check_in_measurements.waist),
+         hips = COALESCE(EXCLUDED.hips, check_in_measurements.hips),
+         steps = COALESCE(EXCLUDED.steps, check_in_measurements.steps),
+         updated_at = NOW()
+       RETURNING id, user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps`,
+      [
+        userId,
+        params.entry_date,
+        params.weight ?? null,
+        params.height ?? null,
+        params.body_fat_percentage ?? null,
+        params.neck ?? null,
+        params.waist ?? null,
+        params.hips ?? null,
+        params.steps ?? null,
+      ]
     );
-
-    let result;
-    if (existing.rows.length > 0) {
-      // Update existing record
-      result = await client.query(
-        `UPDATE check_in_measurements SET
-           weight = COALESCE($3, weight),
-           height = COALESCE($4, height),
-           body_fat_percentage = COALESCE($5, body_fat_percentage),
-           neck = COALESCE($6, neck),
-           waist = COALESCE($7, waist),
-           hips = COALESCE($8, hips),
-           steps = COALESCE($9, steps),
-           updated_at = NOW()
-         WHERE user_id = $1 AND entry_date = $2
-         RETURNING id, user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps`,
-        [
-          userId,
-          params.entry_date,
-          params.weight ?? null,
-          params.height ?? null,
-          params.body_fat_percentage ?? null,
-          params.neck ?? null,
-          params.waist ?? null,
-          params.hips ?? null,
-          params.steps ?? null,
-        ]
-      );
-    } else {
-      // Insert new record
-      result = await client.query(
-        `INSERT INTO check_in_measurements (user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-         RETURNING id, user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps`,
-        [
-          userId,
-          params.entry_date,
-          params.weight ?? null,
-          params.height ?? null,
-          params.body_fat_percentage ?? null,
-          params.neck ?? null,
-          params.waist ?? null,
-          params.hips ?? null,
-          params.steps ?? null,
-        ]
-      );
-    }
 
     return result.rows[0];
   });
@@ -168,6 +141,10 @@ export async function logMood(
     const result = await client.query(
       `INSERT INTO mood_entries (user_id, mood_value, notes, entry_date, created_at, updated_at)
        VALUES ($1, $2, $3, $4, NOW(), NOW())
+       ON CONFLICT (user_id, entry_date) DO UPDATE SET
+         mood_value = EXCLUDED.mood_value,
+         notes = EXCLUDED.notes,
+         updated_at = NOW()
        RETURNING id, user_id, mood_value, notes, entry_date`,
       [userId, params.mood_value, params.notes || null, params.entry_date]
     );

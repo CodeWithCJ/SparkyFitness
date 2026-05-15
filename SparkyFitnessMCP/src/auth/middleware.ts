@@ -31,7 +31,8 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
         // Otherwise treat as a session token (signed cookie injection)
         const prefix = "sparky"; // Matches server auth.ts prefix
         const cookieName = `${prefix}.session_token`;
-        const signed = await serializeSignedCookie("", token, auth.options.secret!);
+        const secretStr = Buffer.isBuffer(auth.options.secret) ? auth.options.secret.toString() : String(auth.options.secret);
+        const signed = await serializeSignedCookie("", token, secretStr);
         const signedValue = signed.replace("=", "");
         const cookieHeader = `${cookieName}=${signedValue}`;
         req.headers.cookie = req.headers.cookie ? `${req.headers.cookie}; ${cookieHeader}` : cookieHeader;

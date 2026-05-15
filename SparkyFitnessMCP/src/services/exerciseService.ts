@@ -215,40 +215,46 @@ export async function listExerciseDiary(userId: string, entryDate: string): Prom
       [entryDate]
     );
 
-    // Fetch sets for each entry from exercise_entry_sets
-    const entries: ExerciseEntry[] = [];
-    for (const row of result.rows) {
-      const setsResult = await client.query(
-        `SELECT set_number, set_type, reps, weight, duration, rest_time
-         FROM exercise_entry_sets
-         WHERE exercise_entry_id = $1
-         ORDER BY set_number ASC`,
-        [row.id]
-      );
+    if (result.rows.length === 0) return [];
 
-      const sets: ExerciseSet[] = setsResult.rows.map((s: any) => ({
+    const entryIds = result.rows.map((r: any) => r.id);
+
+    // Fetch all sets for all entries in a single query
+    const setsResult = await client.query(
+      `SELECT exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time
+       FROM exercise_entry_sets
+       WHERE exercise_entry_id = ANY($1)
+       ORDER BY exercise_entry_id, set_number ASC`,
+      [entryIds]
+    );
+
+    // Group sets by entry ID
+    const setsByEntryId: Record<string, ExerciseSet[]> = {};
+    for (const s of setsResult.rows) {
+      if (!setsByEntryId[s.exercise_entry_id]) {
+        setsByEntryId[s.exercise_entry_id] = [];
+      }
+      setsByEntryId[s.exercise_entry_id].push({
         set_type: s.set_type || "Working Set",
         reps: s.reps,
         weight: s.weight ? Number(s.weight) : undefined,
         duration: s.duration,
         rest_time: s.rest_time,
-      }));
-
-      entries.push({
-        id: row.id,
-        user_id: row.user_id,
-        exercise_id: row.exercise_id,
-        exercise_name: row.exercise_name,
-        entry_date: row.entry_date,
-        sets,
-        duration_minutes: row.duration_minutes,
-        calories_burned: row.calories_burned,
-        notes: row.notes,
-        created_at: row.created_at,
       });
     }
 
-    return entries;
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      user_id: row.user_id,
+      exercise_id: row.exercise_id,
+      exercise_name: row.exercise_name,
+      entry_date: row.entry_date,
+      sets: setsByEntryId[row.id] || [],
+      duration_minutes: row.duration_minutes,
+      calories_burned: row.calories_burned,
+      notes: row.notes,
+      created_at: row.created_at,
+    }));
   });
 }
 
@@ -261,56 +267,73 @@ export async function getWorkoutPresets(userId: string): Promise<WorkoutPreset[]
       const presetsResult = await client.query(
         `SELECT id, user_id, name, description
          FROM workout_presets
-         ORDER BY name ASC`
+         WHERE user_id = $1 OR user_id IS NULL
+         ORDER BY name ASC`,
+        [userId]
       );
 
-      const presets: WorkoutPreset[] = [];
-      for (const preset of presetsResult.rows) {
-        // Get exercises for this preset
-        const exercisesResult = await client.query(
-          `SELECT wpe.id AS wpe_id, wpe.exercise_id, e.name AS exercise_name
-           FROM workout_preset_exercises wpe
-           JOIN exercises e ON e.id = wpe.exercise_id
-           WHERE wpe.workout_preset_id = $1
-           ORDER BY wpe.sort_order ASC`,
-          [preset.id]
+      if (presetsResult.rows.length === 0) return [];
+
+      const presetIds = presetsResult.rows.map((p: any) => p.id);
+
+      // Fetch all exercises for these presets
+      const exercisesResult = await client.query(
+        `SELECT wpe.id AS wpe_id, wpe.workout_preset_id, wpe.exercise_id, e.name AS exercise_name
+         FROM workout_preset_exercises wpe
+         JOIN exercises e ON e.id = wpe.exercise_id
+         WHERE wpe.workout_preset_id = ANY($1)
+         ORDER BY wpe.workout_preset_id, wpe.sort_order ASC`,
+        [presetIds]
+      );
+
+      const wpeIds = exercisesResult.rows.map((ex: any) => ex.wpe_id);
+
+      // Fetch all sets for these exercises
+      let setsResult = { rows: [] as any[] };
+      if (wpeIds.length > 0) {
+        setsResult = await client.query(
+          `SELECT workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time
+           FROM workout_preset_exercise_sets
+           WHERE workout_preset_exercise_id = ANY($1)
+           ORDER BY workout_preset_exercise_id, set_number ASC`,
+          [wpeIds]
         );
+      }
 
-        const exercises: WorkoutPreset["exercises"] = [];
-        for (const ex of exercisesResult.rows) {
-          // Get sets for this preset exercise
-          const setsResult = await client.query(
-            `SELECT set_number, set_type, reps, weight, duration, rest_time
-             FROM workout_preset_exercise_sets
-             WHERE workout_preset_exercise_id = $1
-             ORDER BY set_number ASC`,
-            [ex.wpe_id]
-          );
-
-          const sets: ExerciseSet[] = setsResult.rows.map((s: any) => ({
-            set_type: s.set_type || "Working Set",
-            reps: s.reps,
-            weight: s.weight ? Number(s.weight) : undefined,
-            duration: s.duration,
-            rest_time: s.rest_time,
-          }));
-
-          exercises.push({
-            exercise_id: ex.exercise_id,
-            exercise_name: ex.exercise_name,
-            sets,
-          });
+      // Group sets by workout_preset_exercise_id
+      const setsByWpeId: Record<string, ExerciseSet[]> = {};
+      for (const s of setsResult.rows) {
+        if (!setsByWpeId[s.workout_preset_exercise_id]) {
+          setsByWpeId[s.workout_preset_exercise_id] = [];
         }
-
-        presets.push({
-          id: String(preset.id),
-          user_id: preset.user_id,
-          name: preset.name,
-          exercises,
+        setsByWpeId[s.workout_preset_exercise_id].push({
+          set_type: s.set_type || "Working Set",
+          reps: s.reps,
+          weight: s.weight ? Number(s.weight) : undefined,
+          duration: s.duration,
+          rest_time: s.rest_time,
         });
       }
 
-      return presets;
+      // Group exercises by workout_preset_id
+      const exercisesByPresetId: Record<string, WorkoutPreset["exercises"]> = {};
+      for (const ex of exercisesResult.rows) {
+        if (!exercisesByPresetId[ex.workout_preset_id]) {
+          exercisesByPresetId[ex.workout_preset_id] = [];
+        }
+        exercisesByPresetId[ex.workout_preset_id].push({
+          exercise_id: ex.exercise_id,
+          exercise_name: ex.exercise_name,
+          sets: setsByWpeId[ex.wpe_id] || [],
+        });
+      }
+
+      return presetsResult.rows.map((preset: any) => ({
+        id: String(preset.id),
+        user_id: preset.user_id,
+        name: preset.name,
+        exercises: exercisesByPresetId[preset.id] || [],
+      }));
     } catch (error: any) {
       // If the table doesn't exist or query fails, return empty array gracefully
       if (error?.code === "42P01") {

@@ -192,7 +192,7 @@ Actions:
                     text += `\n  ID: ${fe.id} | Type: food_entry\n`;
                   } else {
                     const me = entry as any;
-                    text += `- **${me.meal_name}** (meal template) — ${me.servings}x`;
+                    text += `- **${me.meal_name}** (meal template) — ${me.quantity}x`;
                     text += `\n  ID: ${me.id} | Type: food_entry_meal\n`;
                   }
                 }
