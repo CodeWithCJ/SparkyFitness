@@ -103,6 +103,35 @@ services:
   #     - sparkyfitness-db
   #     - sparkyfitness-server
 
+  # sparkyfitness-mcp:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile.mcp.dev
+  #   command: pnpm run dev
+  #   env_file:
+  #     - ../.env
+  #   environment:
+  #     SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
+  #     SPARKY_FITNESS_DB_HOST: ${SPARKY_FITNESS_DB_HOST:-sparkyfitness-db}
+  #     SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
+  #     SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+  #     SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
+  #     SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
+  #     SPARKY_FITNESS_DB_PORT: ${SPARKY_FITNESS_DB_PORT:-5432}
+  #     BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Variable is required and must be set}
+  #     MCP_TRANSPORT: "http" # Default to HTTP for Docker
+  #   volumes:
+  #     - ../SparkyFitnessMCP:/app/SparkyFitnessMCP:z
+  #     - /app/SparkyFitnessMCP/node_modules
+  #     - ../node_modules:/app/node_modules:z
+  #   networks:
+  #     - sparkyfitness-network
+  #   ports:
+  #     - "3001:3001"
+  #   restart: always
+  #   depends_on:
+  #     - sparkyfitness-db
+
 networks:
   sparkyfitness-network:
     driver: bridge
