@@ -236,6 +236,25 @@ describe('EditLoggedMealScreen', () => {
     ]);
   });
 
+  it('scales component food quantities client-side when meal has no template', () => {
+    mockUseFoodEntryMealDetails.mockReturnValue({
+      meal: { ...baseMeal, meal_template_id: null },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
+    fireEvent.press(screen.getByText('Save'));
+
+    const payload = mockUpdateMeal.mock.calls[0][0];
+    expect(payload.meal_template_id).toBeNull();
+    expect(payload.quantity).toBe(2);
+    expect(payload.foods[0].quantity).toBe(200);
+  });
+
   it('confirms deletion when the Delete Meal button is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Delete Meal'));

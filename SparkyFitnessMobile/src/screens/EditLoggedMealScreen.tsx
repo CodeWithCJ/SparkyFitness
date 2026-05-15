@@ -116,7 +116,10 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
-      foods: meal.foods.map(toMealFoodPayload),
+      foods: meal.foods.map((f) => ({
+        ...toMealFoodPayload(f),
+        quantity: meal.meal_template_id ? f.quantity : f.quantity * scaleFactor,
+      })),
     };
 
     updateMeal(payload);
