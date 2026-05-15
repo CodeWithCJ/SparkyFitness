@@ -450,9 +450,20 @@ const SleepAnalyticsCharts = ({
                           tick={{ fill: tickColor }}
                         />
                         <YAxis
+                          yAxisId="left"
+                          orientation="left"
                           tickFormatter={formatBedWakeTime}
-                          stroke={tickColor}
-                          tick={{ fill: tickColor }}
+                          stroke="#8884d8"
+                          tick={{ fill: '#8884d8' }}
+                          domain={['auto', 'auto']}
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          tickFormatter={formatBedWakeTime}
+                          stroke="#82ca9d"
+                          tick={{ fill: '#82ca9d' }}
+                          domain={['auto', 'auto']}
                         />
                         <Tooltip
                           labelFormatter={(label) =>
@@ -482,6 +493,7 @@ const SleepAnalyticsCharts = ({
                         />
                         <Legend wrapperStyle={{ color: tickColor }} />
                         <Line
+                          yAxisId="left"
                           type="monotone"
                           dataKey="bedtime"
                           stroke="#8884d8"
@@ -491,6 +503,7 @@ const SleepAnalyticsCharts = ({
                           isAnimationActive={false}
                         />
                         <Line
+                          yAxisId="right"
                           type="monotone"
                           dataKey="wakeTime"
                           stroke="#82ca9d"
