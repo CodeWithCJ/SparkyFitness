@@ -4,12 +4,25 @@ import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import { todayInZone, instantToDay } from '@workspace/shared';
+
+interface StravaActivity {
+  id: number;
+  name: string;
+  sport_type?: string;
+  type?: string;
+  start_date_local?: string;
+  start_date?: string;
+  distance?: number;
+  moving_time?: number;
+  total_elevation_gain?: number;
+  average_heartrate?: number;
+  calories?: number;
+}
 /**
  * Map Strava sport_type to a general exercise category
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapSportTypeToCategory(sportType: any) {
-  const categoryMap = {
+function mapSportTypeToCategory(sportType: string) {
+  const categoryMap: Record<string, string> = {
     // Cardio / Running
     Run: 'Cardio',
     TrailRun: 'Cardio',
@@ -59,7 +72,6 @@ function mapSportTypeToCategory(sportType: any) {
     Wheelchair: 'Cardio',
     Workout: 'Other',
   };
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
   return categoryMap[sportType] || 'Other';
 }
 /**
@@ -71,37 +83,32 @@ function mapSportTypeToCategory(sportType: any) {
  * @param {string} startDate - Start date of sync range (YYYY-MM-DD) for filtering
  */
 async function processStravaActivities(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  activities = [],
-  detailedActivities = {},
-  startDate = null,
+  userId: number,
+  createdByUserId: number,
+  activities: StravaActivity[] = [],
+  detailedActivities: Record<string | number, unknown> = {},
+  startDate: string | null = null,
   timezone = 'UTC'
 ) {
   if (!activities || activities.length === 0) return;
   for (const activity of activities) {
     try {
       // Extract entry date from start_date_local (e.g., "2024-01-15T07:30:00Z")
-      // @ts-expect-error TS(2339): Property 'start_date_local' does not exist on type... Remove this comment to see the full error message
       const entryDate = activity.start_date_local
-        ? // @ts-expect-error TS(2339): Property 'start_date_local' does not exist on type... Remove this comment to see the full error message
-          activity.start_date_local.substring(0, 10)
-        : // @ts-expect-error TS(2339): Property 'start_date' does not exist on type 'neve... Remove this comment to see the full error message
-          instantToDay(activity.start_date, timezone);
+        ? activity.start_date_local.substring(0, 10)
+        : activity.start_date
+          ? instantToDay(activity.start_date, timezone)
+          : todayInZone(timezone);
+
       // Safety filter
       if (startDate && entryDate < startDate) {
         log(
           'debug',
-          // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
           `[stravaDataProcessor] Skipping activity "${activity.name}" from ${entryDate} (before sync range ${startDate})`
         );
         continue;
       }
-      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
       const exerciseName = activity.name || 'Strava Activity';
-      // @ts-expect-error TS(2339): Property 'sport_type' does not exist on type 'neve... Remove this comment to see the full error message
       const sportType = activity.sport_type || activity.type || 'Workout';
       const category = mapSportTypeToCategory(sportType);
       // Find or create exercise by name
@@ -121,24 +128,22 @@ async function processStravaActivities(
       }
       // Unit conversions
       // Strava: distance in meters -> convert to km
-      // @ts-expect-error TS(2339): Property 'distance' does not exist on type 'never'... Remove this comment to see the full error message
-      const distanceKm = activity.distance
-        ? // @ts-expect-error TS(2339): Property 'distance' does not exist on type 'never'... Remove this comment to see the full error message
-          parseFloat((activity.distance / 1000).toFixed(2))
-        : null;
+      const distanceKm =
+        activity.distance !== null && activity.distance !== undefined
+          ? parseFloat((activity.distance / 1000).toFixed(2))
+          : null;
       // Strava: moving_time in seconds -> convert to minutes
-      // @ts-expect-error TS(2339): Property 'moving_time' does not exist on type 'nev... Remove this comment to see the full error message
-      const durationMinutes = activity.moving_time
-        ? // @ts-expect-error TS(2339): Property 'moving_time' does not exist on type 'nev... Remove this comment to see the full error message
-          Math.round(activity.moving_time / 60)
-        : 0;
+      const durationMinutes =
+        activity.moving_time !== null && activity.moving_time !== undefined
+          ? Math.round(activity.moving_time / 60)
+          : 0;
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
       // Default to 0 to satisfy the NOT NULL constraint in the database.
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      const detailedActivity = detailedActivities[activity.id];
+      const detailedActivity = detailedActivities[activity.id] as
+        | StravaActivity
+        | undefined;
       const caloriesAuto =
         (detailedActivity && detailedActivity.calories) ||
-        // @ts-expect-error TS(2339): Property 'calories' does not exist on type 'never'... Remove this comment to see the full error message
         activity.calories ||
         0;
       const entryData = {
@@ -147,12 +152,16 @@ async function processStravaActivities(
         duration_minutes: durationMinutes,
         calories_burned: caloriesAuto,
         distance: distanceKm,
-        // @ts-expect-error TS(2339): Property 'average_heartrate' does not exist on typ... Remove this comment to see the full error message
-        avg_heart_rate: activity.average_heartrate || null,
-        // @ts-expect-error TS(2339): Property 'moving_time' does not exist on type 'nev... Remove this comment to see the full error message
+        // Strava returns average_heartrate as a float (e.g. 126.9), but
+        // exercise_entries.avg_heart_rate is INTEGER → Postgres rejects the insert.
+        // Round before passing through. See issue #1256.
+        avg_heart_rate:
+          activity.average_heartrate !== null &&
+          activity.average_heartrate !== undefined
+            ? Math.round(activity.average_heartrate)
+            : null,
         notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ''}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ''}`,
         entry_source: 'Strava',
-        // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
         source_id: activity.id ? activity.id.toString() : null,
         sets: [
           {
@@ -171,8 +180,9 @@ async function processStravaActivities(
       );
       // Store detailed activity data (GPS, laps, splits, segments) if available
       if (newEntry && newEntry.id) {
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        const detailedActivity = detailedActivities[activity.id];
+        const detailedActivity = detailedActivities[activity.id] as
+          | StravaActivity
+          | undefined;
         const detailData = detailedActivity || activity;
         await activityDetailsRepository.createActivityDetail(userId, {
           exercise_entry_id: newEntry.id,
@@ -189,8 +199,7 @@ async function processStravaActivities(
     } catch (error) {
       log(
         'error',
-        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error.message}`
+        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error instanceof Error ? error.message : String(error)}`
       );
       // Continue processing remaining activities
     }
@@ -228,8 +237,7 @@ async function processStravaAthleteWeight(
   } catch (error) {
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `[stravaDataProcessor] Error processing athlete weight: ${error.message}`
+      `[stravaDataProcessor] Error processing athlete weight: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

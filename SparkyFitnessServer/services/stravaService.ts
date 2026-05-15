@@ -186,7 +186,6 @@ async function syncStravaData(
         userId,
         activities,
         detailedActivities,
-        // @ts-expect-error
         startDate,
         tz
       );
