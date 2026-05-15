@@ -12,6 +12,7 @@
     "calories": "Calories",
     "protein": "Protein",
     "carbohydrates": "Carbohydrates",
+    "netCarbs": "Net Carbs",
     "carbs": "Carbs",
     "fat": "Fat",
     "saturatedFat": "Saturated Fat",
@@ -28,6 +29,10 @@
     "vitaminC": "Vitamin C",
     "calcium": "Calcium",
     "iron": "Iron"
+  },
+  "calculationSettings": {
+    "showNetCarbs": "Show net carbs (carbs minus fiber)",
+    "showNetCarbsHint": "When enabled, carbohydrate summaries display total carbs minus dietary fiber."
   },
   "aboutDialog": {
     "title": "About SparkyFitness",

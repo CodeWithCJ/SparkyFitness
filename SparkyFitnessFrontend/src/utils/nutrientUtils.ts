@@ -81,3 +81,12 @@ export const getRoundedNutrientValue = (
   const formatted = formatNutrientValue(key, value, customNutrients);
   return formatted === '' ? 0 : parseFloat(formatted);
 };
+
+export const getNetCarbsValue = (
+  carbs: string | number | null | undefined,
+  dietaryFiber: string | number | null | undefined
+): number => {
+  const carbsValue = Number(carbs) || 0;
+  const fiberValue = Number(dietaryFiber) || 0;
+  return Math.max(0, carbsValue - fiberValue);
+};

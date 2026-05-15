@@ -89,6 +89,7 @@ interface PreferencesContextType {
   bmrAlgorithm: BmrAlgorithm;
   bodyFatAlgorithm: BodyFatAlgorithm;
   includeBmrInNetCalories: boolean;
+  showNetCarbs: boolean;
   fatBreakdownAlgorithm: FatBreakdownAlgorithm;
   mineralCalculationAlgorithm: MineralCalculationAlgorithm;
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
@@ -122,6 +123,7 @@ interface PreferencesContextType {
   setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
   setIncludeBmrInNetCalories: (include: boolean) => void;
+  setShowNetCarbs: (show: boolean) => void;
   setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
   setMineralCalculationAlgorithm: (
     algorithm: MineralCalculationAlgorithm
@@ -187,6 +189,7 @@ export interface DefaultPreferences {
   bmr_algorithm: BmrAlgorithm;
   body_fat_algorithm: BodyFatAlgorithm;
   include_bmr_in_net_calories: boolean;
+  show_net_carbs: boolean;
   fat_breakdown_algorithm: FatBreakdownAlgorithm;
   mineral_calculation_algorithm: MineralCalculationAlgorithm;
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
@@ -268,6 +271,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<BodyFatAlgorithm>(BodyFatAlgorithm.US_NAVY);
   const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] =
     useState<boolean>(false);
+  const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
   const [fatBreakdownAlgorithm, setFatBreakdownAlgorithmState] =
     useState<FatBreakdownAlgorithm>(FatBreakdownAlgorithm.AHA_GUIDELINES);
   const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] =
@@ -525,6 +529,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         auto_scale_online_imports: true,
         selected_diet: 'balanced',
         first_day_of_week: 0,
+        show_net_carbs: false,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -614,6 +619,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setIncludeBmrInNetCaloriesState(
           data.include_bmr_in_net_calories ?? false
         );
+        setShowNetCarbsState(data.show_net_carbs ?? false);
         setFatBreakdownAlgorithmState(
           data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
         );
@@ -771,6 +777,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
         include_bmr_in_net_calories:
           newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
+        show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
         fat_breakdown_algorithm:
           newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
         mineral_calculation_algorithm:
@@ -824,6 +831,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      showNetCarbs,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
@@ -1028,6 +1036,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      showNetCarbs,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
@@ -1058,6 +1067,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setBmrAlgorithm: setBmrAlgorithmState,
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
       setIncludeBmrInNetCalories: setIncludeBmrInNetCaloriesState,
+      setShowNetCarbs: setShowNetCarbsState,
       setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
       setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
       setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
@@ -1101,6 +1111,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      showNetCarbs,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,

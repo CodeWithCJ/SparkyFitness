@@ -2297,6 +2297,7 @@ CREATE TABLE public.user_preferences (
     bmr_algorithm text DEFAULT 'Mifflin-St Jeor'::text NOT NULL,
     body_fat_algorithm text DEFAULT 'U.S. Navy'::text NOT NULL,
     include_bmr_in_net_calories boolean DEFAULT false NOT NULL,
+    show_net_carbs boolean DEFAULT false NOT NULL,
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
     language character varying(10) DEFAULT 'en'::character varying,
     calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
