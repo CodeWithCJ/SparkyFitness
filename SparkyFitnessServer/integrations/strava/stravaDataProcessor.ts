@@ -128,13 +128,15 @@ async function processStravaActivities(
       }
       // Unit conversions
       // Strava: distance in meters -> convert to km
-      const distanceKm = activity.distance
-        ? parseFloat((activity.distance / 1000).toFixed(2))
-        : null;
+      const distanceKm =
+        activity.distance !== null && activity.distance !== undefined
+          ? parseFloat((activity.distance / 1000).toFixed(2))
+          : null;
       // Strava: moving_time in seconds -> convert to minutes
-      const durationMinutes = activity.moving_time
-        ? Math.round(activity.moving_time / 60)
-        : 0;
+      const durationMinutes =
+        activity.moving_time !== null && activity.moving_time !== undefined
+          ? Math.round(activity.moving_time / 60)
+          : 0;
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
       // Default to 0 to satisfy the NOT NULL constraint in the database.
       const detailedActivity = detailedActivities[activity.id] as
@@ -153,9 +155,11 @@ async function processStravaActivities(
         // Strava returns average_heartrate as a float (e.g. 126.9), but
         // exercise_entries.avg_heart_rate is INTEGER → Postgres rejects the insert.
         // Round before passing through. See issue #1256.
-        avg_heart_rate: activity.average_heartrate
-          ? Math.round(activity.average_heartrate)
-          : null,
+        avg_heart_rate:
+          activity.average_heartrate !== null &&
+          activity.average_heartrate !== undefined
+            ? Math.round(activity.average_heartrate)
+            : null,
         notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ''}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ''}`,
         entry_source: 'Strava',
         source_id: activity.id ? activity.id.toString() : null,
@@ -195,7 +199,7 @@ async function processStravaActivities(
     } catch (error) {
       log(
         'error',
-        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${(error as Error).message}`
+        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error instanceof Error ? error.message : String(error)}`
       );
       // Continue processing remaining activities
     }
@@ -233,7 +237,7 @@ async function processStravaAthleteWeight(
   } catch (error) {
     log(
       'error',
-      `[stravaDataProcessor] Error processing athlete weight: ${(error as Error).message}`
+      `[stravaDataProcessor] Error processing athlete weight: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
