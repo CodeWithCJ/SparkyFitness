@@ -18,6 +18,7 @@ import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
 import { userKeys } from '@/api/keys/admin';
 import { exerciseEntryKeys } from '@/api/keys/exercises';
 import { loadFoodEntries } from '@/api/Diary/foodEntryService';
+import { loadDailySummary } from '@/api/Diary/dailySummaryService';
 import { fetchExerciseEntries } from '@/api/Exercises/exerciseEntryService';
 
 export const useAdaptiveTdee = (date: string) => {
@@ -25,6 +26,21 @@ export const useAdaptiveTdee = (date: string) => {
     queryKey: dailyProgressKeys.adaptiveTdee(date),
     queryFn: () => adaptiveTdeeService.getAdaptiveTdee(date),
     staleTime: 1000 * 60 * 60, // 1 hour
+  });
+};
+
+export const useDailySummary = (date: string) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: dailyProgressKeys.summary(date),
+    queryFn: () => loadDailySummary(date),
+    enabled: !!date,
+    meta: {
+      errorMessage: t(
+        'dailyProgress.summaryLoadError',
+        'Failed to load daily summary.'
+      ),
+    },
   });
 };
 
