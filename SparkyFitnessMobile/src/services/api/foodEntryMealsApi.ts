@@ -20,6 +20,16 @@ export const createFoodEntryMeal = async (
   });
 };
 
+export const fetchFoodEntryMealsByDate = async (
+  date: string,
+): Promise<FoodEntryMeal[]> => {
+  return apiFetch<FoodEntryMeal[]>({
+    endpoint: `/api/food-entry-meals/by-date/${encodeURIComponent(date)}`,
+    serviceName: 'FoodEntryMeals API',
+    operation: 'fetch food entry meals by date',
+  });
+};
+
 /**
  * Updates a logged meal and its component food entries.
  */

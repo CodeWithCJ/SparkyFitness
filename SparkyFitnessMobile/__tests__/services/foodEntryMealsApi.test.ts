@@ -1,5 +1,6 @@
 import {
   createFoodEntryMeal,
+  fetchFoodEntryMealsByDate,
   updateFoodEntryMeal,
   getFoodEntryMealWithComponents,
   deleteFoodEntryMeal,
@@ -69,6 +70,22 @@ describe('foodEntryMealsApi', () => {
       }),
     );
     expect(result).toEqual({ id: 'fem-1' });
+  });
+
+  test('fetchFoodEntryMealsByDate sends GET to by-date route', async () => {
+    const expected = [{ id: 'fem-1', name: 'My Meal', foods: [] }];
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(expected),
+    });
+
+    const result = await fetchFoodEntryMealsByDate('2026-05-15');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://example.com/api/food-entry-meals/by-date/2026-05-15',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(result).toEqual(expected);
   });
 
   test('updateFoodEntryMeal sends PUT with payload to /:id', async () => {
