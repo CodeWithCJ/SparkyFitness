@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  instantHourMinute,
-  instantToDay,
-  dayToUtcRange,
-} from '@workspace/shared';
+import { instantHourMinute, dayToUtcRange } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,8 +158,11 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     newTime: string
   ) => {
     try {
-      // Get the YYYY-MM-DD calendar day in the user's timezone
-      const datePart = instantToDay(entryDate, timezone);
+      // entryDate is a Postgres DATE column serialized as UTC midnight
+      // (e.g. "2026-05-14T00:00:00.000Z"). Extract the YYYY-MM-DD substring
+      // directly — do NOT use instantToDay, which would roll back to the
+      // previous day for users west of UTC.
+      const datePart = entryDate.substring(0, 10);
       const timeParts = newTime.split(':');
       const hours = parseInt(timeParts[0] || '0', 10);
       const minutes = parseInt(timeParts[1] || '0', 10);

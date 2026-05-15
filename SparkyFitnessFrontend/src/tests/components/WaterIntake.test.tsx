@@ -44,7 +44,6 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 
 jest.mock('@workspace/shared', () => ({
   instantHourMinute: () => ({ hour: 12, minute: 0 }),
-  instantToDay: () => '2023-10-27',
   dayToUtcRange: () => ({
     start: new Date('2023-10-27T00:00:00Z'),
     end: new Date('2023-10-28T00:00:00Z'),

@@ -1243,21 +1243,20 @@ async function upsertWaterIntake(
       // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
-    // 3. Calculate new total water intake for the MANUAL bucket
-    const newManualTotalWaterMl = Math.max(
-      0,
-      currentManualMl + changeDrinks * amountPerDrink
-    );
-    // 4. Upsert the new manual water intake
-    const result = await measurementRepository.upsertWaterData(
-      authenticatedUserId,
-      actingUserId,
-      newManualTotalWaterMl,
-      entryDate,
-      'manual'
-    );
     // 5. Log individual drink(s) into water_intake_entries.
     if (changeDrinks > 0) {
+      // 5a. Additions: insert new log entries and update daily total
+      const newManualTotalWaterMl = Math.max(
+        0,
+        currentManualMl + changeDrinks * amountPerDrink
+      );
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newManualTotalWaterMl,
+        entryDate,
+        'manual'
+      );
       for (let i = 0; i < changeDrinks; i++) {
         await measurementRepository.insertWaterIntakeLog(
           authenticatedUserId,
@@ -1270,7 +1269,9 @@ async function upsertWaterIntake(
         );
       }
     } else if (changeDrinks < 0) {
-      // Remove the most recent log entries when decrementing
+      // 5b. Decrements: delete the most recent log entries and subtract
+      // their *actual* water_ml from the daily total. This avoids drift
+      // when log rows were recorded with different containers.
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
         entryDate
@@ -1279,17 +1280,37 @@ async function upsertWaterIntake(
         Math.abs(changeDrinks),
         logEntries.length
       );
+      let actualMlRemoved = 0;
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
         if (entry) {
+          actualMlRemoved += Number(entry.water_ml);
           await measurementRepository.deleteWaterIntakeLog(
             entry.id,
             authenticatedUserId
           );
         }
       }
+      const newManualTotalWaterMl = Math.max(
+        0,
+        currentManualMl - actualMlRemoved
+      );
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newManualTotalWaterMl,
+        entryDate,
+        'manual'
+      );
     }
-    return result;
+    // Return the latest record after the upsert
+    const finalRecord = await measurementRepository.getWaterIntakeByDate(
+      authenticatedUserId,
+      entryDate,
+      // @ts-expect-error TS(2345): Argument of type '"manual"' is not assignable to p... Remove this comment to see the full error message
+      'manual'
+    );
+    return finalRecord;
   } catch (error) {
     log(
       'error',
