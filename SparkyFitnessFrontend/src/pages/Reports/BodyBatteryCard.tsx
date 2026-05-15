@@ -181,6 +181,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                   data={transformedData}
                   barGap={0}
                   barCategoryGap="20%"
+                  syncId="nutrition-charts"
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -188,10 +189,13 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                     stroke="hsl(var(--border))"
                   />
                   <XAxis
-                    dataKey="displayDate"
+                    dataKey="date"
                     fontSize={11}
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) =>
+                      formatDateInUserTimezone(parseISO(value), 'MMM dd')
+                    }
                   />
                   <YAxis
                     domain={[0, 100]}

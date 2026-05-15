@@ -298,18 +298,21 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                 minHeight={0}
                 debounce={100}
               >
-                <LineChart data={transformedData}>
+                <LineChart data={transformedData} syncId="nutrition-charts">
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
                     stroke="hsl(var(--border))"
                   />
                   <XAxis
-                    dataKey="displayDate"
+                    dataKey="date"
                     fontSize={11}
                     tickLine={false}
                     stroke="hsl(var(--muted-foreground))"
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) =>
+                      formatDateInUserTimezone(parseISO(value), 'MMM dd')
+                    }
                   />
                   <YAxis
                     domain={[8, 24]}

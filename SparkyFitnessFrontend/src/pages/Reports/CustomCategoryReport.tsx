@@ -106,7 +106,7 @@ export const CustomCategoryReport = ({
                         minHeight={0}
                         debounce={100}
                       >
-                        <LineChart data={chartData}>
+                        <LineChart data={chartData} syncId="nutrition-charts">
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis

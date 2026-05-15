@@ -6,6 +6,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import ReportsControls from '@/pages/Reports/ReportsControls';
 import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
+import NutritionChartsGrid from '@/pages/Reports/NutritionChartsGrid';
 import MeasurementChartsGrid from '@/pages/Reports/MeasurementChartsGrid';
 import ReportsTables from '@/pages/Reports/ReportsTables';
 import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
@@ -13,7 +14,6 @@ import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
 
-// Metrics to hide from the custom measurements charts (shown in dedicated cards instead)
 import StressChart from '@/pages/Reports/StressChart';
 import { debug, info } from '@/utils/logging';
 
@@ -169,13 +169,22 @@ const Reports = () => {
     switch (activeTab) {
       case 'charts':
         return (
-          <ChartErrorBoundary>
-            <NutritionPeriodSummary
-              nutritionData={nutritionData}
-              customNutrients={customNutrients}
-              goals={goalData}
-            />
-          </ChartErrorBoundary>
+          <div className="space-y-12">
+            <ChartErrorBoundary>
+              <NutritionPeriodSummary
+                nutritionData={nutritionData}
+                customNutrients={customNutrients}
+                goals={goalData}
+              />
+            </ChartErrorBoundary>
+            <ChartErrorBoundary>
+              <NutritionChartsGrid
+                nutritionData={nutritionData}
+                customNutrients={customNutrients}
+                goals={goalData}
+              />
+            </ChartErrorBoundary>
+          </div>
         );
       case 'measurements':
         return (

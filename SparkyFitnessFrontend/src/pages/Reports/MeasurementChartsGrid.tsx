@@ -46,6 +46,7 @@ const MeasurementChartsGrid = ({
   const chartData = React.useMemo(() => {
     return measurementData.map((d) => ({
       ...d,
+      date: d.entry_date,
       rawWeight: d.weight,
       rawNeck: d.neck,
       rawWaist: d.waist,
@@ -269,13 +270,14 @@ const MeasurementChartsGrid = ({
                       debounce={100}
                     >
                       <LineChart
+                        syncId="nutrition-charts"
                         data={chartData.filter(
                           (d) => d[metric.dataKey as keyof typeof d]
                         )}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
-                          dataKey="entry_date"
+                          dataKey="date"
                           fontSize={10}
                           tickFormatter={formatDateForChart}
                           tickCount={
@@ -358,10 +360,13 @@ const MeasurementChartsGrid = ({
                   minHeight={0}
                   debounce={100}
                 >
-                  <BarChart data={chartData.filter((d) => d.steps)}>
+                  <BarChart
+                    data={chartData.filter((d) => d.steps)}
+                    syncId="nutrition-charts"
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
-                      dataKey="entry_date"
+                      dataKey="date"
                       tickFormatter={formatDateForChart}
                       tickCount={
                         isMaximized ? Math.max(chartData.length, 10) : undefined
