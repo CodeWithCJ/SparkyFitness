@@ -32,7 +32,7 @@ FROM node:24-alpine
 
 WORKDIR /app/SparkyFitnessServer
 
-RUN apk add --no-cache curl postgresql18-client~=18.3 tar gzip
+RUN apk add --no-cache curl postgresql18-client tar gzip
 
 # Copy the deployed server (includes source + standalone node_modules)
 COPY --from=backend_builder /deploy ./
