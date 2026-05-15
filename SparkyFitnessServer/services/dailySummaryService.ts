@@ -171,6 +171,7 @@ function computeCalorieBalance(
 
   // TDEE mode adjustment
   let tdeeAdjustment = 0;
+  let tdeeProjection: CalorieBalance['tdeeProjection'] = null;
   if (adjustmentMode === 'tdee' || adjustmentMode === 'smart') {
     const tz = userPreferences?.timezone || 'UTC';
     const { hour, minute } = userHourMinute(tz);
@@ -188,6 +189,11 @@ function computeCalorieBalance(
       sparkyfitnessBurned,
       allowNegativeAdjustment
     );
+    tdeeProjection = {
+      projectedBurn,
+      baselineBurn: sparkyfitnessBurned,
+      adjustment: tdeeAdjustment,
+    };
   }
 
   // 6. Remaining & progress
@@ -213,6 +219,7 @@ function computeCalorieBalance(
     progress: Math.round(progress),
     bmr: Math.round(bmr),
     exerciseSource: resolved.source,
+    tdeeProjection,
   };
 }
 

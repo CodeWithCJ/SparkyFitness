@@ -4,10 +4,7 @@ import type { FoodEntry } from '@/types/food';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
-import {
-  calculateFoodEntryNutrition,
-  convertStepsToCalories,
-} from '@/utils/nutritionCalculations';
+import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
   getMostRecentMeasurement,
@@ -140,7 +137,6 @@ export const useDailySteps = (date: string) => {
       const steps = data?.steps || 0;
       return {
         steps,
-        calories: convertStepsToCalories(Number(steps)),
       };
     },
   });

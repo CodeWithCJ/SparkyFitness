@@ -108,6 +108,7 @@ const makeSummary = (overrides: Partial<DailySummary> = {}): DailySummary => ({
     progress: 77,
     bmr: 1700,
     exerciseSource: 'active',
+    tdeeProjection: null,
   },
   ...overrides,
 });
@@ -263,6 +264,7 @@ describe('useWidgetSync', () => {
           progress: 80,
           bmr: 1700,
           exerciseSource: 'active',
+          tdeeProjection: null,
         },
       }),
     });
