@@ -5,7 +5,7 @@ RUN corepack enable
 
 WORKDIR /app
 
-RUN apk add --no-cache postgresql18-client~=18.3
+RUN apk add --no-cache postgresql18-client
 
 # Copy workspace root files for pnpm resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
