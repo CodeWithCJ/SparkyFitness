@@ -12,6 +12,8 @@ export const dailyProgressKeys = {
   },
   adaptiveTdee: (date: string) =>
     [...dailyProgressKeys.all, 'adaptiveTdee', date] as const,
+  summary: (date: string) =>
+    [...dailyProgressKeys.all, 'summary', date] as const,
 };
 
 export const foodEntryKeys = {

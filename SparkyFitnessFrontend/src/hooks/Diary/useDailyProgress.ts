@@ -4,10 +4,7 @@ import type { FoodEntry } from '@/types/food';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
-import {
-  calculateFoodEntryNutrition,
-  convertStepsToCalories,
-} from '@/utils/nutritionCalculations';
+import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
   getMostRecentMeasurement,
@@ -18,6 +15,7 @@ import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
 import { userKeys } from '@/api/keys/admin';
 import { exerciseEntryKeys } from '@/api/keys/exercises';
 import { loadFoodEntries } from '@/api/Diary/foodEntryService';
+import { loadDailySummary } from '@/api/Diary/dailySummaryService';
 import { fetchExerciseEntries } from '@/api/Exercises/exerciseEntryService';
 
 export const useAdaptiveTdee = (date: string) => {
@@ -25,6 +23,21 @@ export const useAdaptiveTdee = (date: string) => {
     queryKey: dailyProgressKeys.adaptiveTdee(date),
     queryFn: () => adaptiveTdeeService.getAdaptiveTdee(date),
     staleTime: 1000 * 60 * 60, // 1 hour
+  });
+};
+
+export const useDailySummary = (date: string) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: dailyProgressKeys.summary(date),
+    queryFn: () => loadDailySummary(date),
+    enabled: !!date,
+    meta: {
+      errorMessage: t(
+        'dailyProgress.summaryLoadError',
+        'Failed to load daily summary.'
+      ),
+    },
   });
 };
 
@@ -124,7 +137,6 @@ export const useDailySteps = (date: string) => {
       const steps = data?.steps || 0;
       return {
         steps,
-        calories: convertStepsToCalories(Number(steps)),
       };
     },
   });

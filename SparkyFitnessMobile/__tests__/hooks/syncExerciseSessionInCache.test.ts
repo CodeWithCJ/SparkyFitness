@@ -56,6 +56,7 @@ const makeDefaultCalorieBalance = (): CalorieBalance => ({
   progress: 0,
   bmr: 1700,
   exerciseSource: 'none',
+  tdeeProjection: null,
 });
 
 describe('syncExerciseSessionInCache', () => {

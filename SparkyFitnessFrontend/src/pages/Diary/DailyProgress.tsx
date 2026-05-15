@@ -23,32 +23,18 @@ import {
 
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
-import {
-  resolveExerciseCalories,
-  computeSparkyfitnessBurned,
-  computeProjectedBurn,
-  computeTdeeAdjustment,
-  computeCaloriesRemaining,
-  computeExerciseCredited,
-  computeCalorieProgress,
-} from '@/utils/calorieCalculations';
+import { computeExerciseCredited } from '@/utils/calorieCalculations';
 
 import {
-  useDailyFoodIntake,
   useDailyExerciseStats,
   useDailySteps,
-  useCalculatedBMR,
   useAdaptiveTdee,
+  useDailySummary,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
-import {
-  convertStepsToCalories,
-  getEnergyUnitString,
-} from '@/utils/nutritionCalculations';
+import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
-import { useDailyGoals } from '@/hooks/Goals/useGoals';
-import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
@@ -56,110 +42,86 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const {
     loggingLevel,
     calorieGoalAdjustmentMode,
-    exerciseCaloriePercentage,
-    tdeeAllowNegativeAdjustment,
-    activityLevel,
     energyUnit,
     convertEnergy,
     weightUnit,
   } = usePreferences();
 
-  const { bmr, includeInNet, weight, height } = useCalculatedBMR();
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
 
-  const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
-  const { data: foodData, isLoading: loadingFood } =
-    useDailyFoodIntake(selectedDate);
   const { data: exerciseData, isLoading: loadingExercise } =
     useDailyExerciseStats(selectedDate);
   const { data: stepsData, isLoading: loadingSteps } =
     useDailySteps(selectedDate);
+  const {
+    data: summaryData,
+    isLoading: loadingSummary,
+    isError: summaryError,
+  } = useDailySummary(selectedDate);
 
   const isLoading =
-    loadingGoals ||
-    loadingFood ||
     loadingExercise ||
     loadingSteps ||
+    loadingSummary ||
     (calorieGoalAdjustmentMode === 'adaptive' && loadingAdaptiveTdee);
 
   if (isLoading) {
     return <DailyProgressSkeleton />;
   }
-  const rawGoalCalories = goals?.calories || 2000;
 
-  // Calculate the user's intended deficit/surplus from their manual goal vs predicted maintenance.
-  // We use a FIXED 'not_much' (1.2) multiplier as the baseline for the offset.
-  // This ensures that the user's dietary "intent" (e.g., -500 kcal) is stable
-  // and doesn't invert the goal when they change their activity level setting.
-  const baselineMaintenance = computeSparkyfitnessBurned(bmr || 0, 'not_much');
-  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - baselineMaintenance : 0;
+  if (summaryError || !summaryData?.calorieBalance) {
+    return (
+      <Card className="h-full">
+        <CardContent className="pt-6 pb-4">
+          <Alert variant="destructive" className="bg-red-50 border-red-200">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertTitle className="text-red-800 font-bold mb-1">
+              {t(
+                'exercise.dailyProgress.summaryUnavailableTitle',
+                'Daily summary unavailable'
+              )}
+            </AlertTitle>
+            <AlertDescription className="text-red-700 text-xs leading-relaxed">
+              {t(
+                'exercise.dailyProgress.summaryUnavailableDesc',
+                'Could not load your daily energy summary. Try refreshing the page.'
+              )}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  // Actual TDEE baseline (displayed for reference)
-  const sparkyfitnessBurned = computeSparkyfitnessBurned(
-    bmr || 0,
-    activityLevel
-  );
+  // Server-computed totals are the source of truth for the headline numbers
+  // (goal, remaining, eaten, burned, net, progress, bmr). This keeps web in
+  // sync with the mobile app and the daily-summary API, which scope BMR
+  // inputs to the selected date and use timezone-aware age.
+  const calorieBalance = summaryData.calorieBalance;
+  const bmr = calorieBalance.bmr;
+  const exerciseSource = calorieBalance.exerciseSource;
+  const tdeeProjection = calorieBalance.tdeeProjection;
 
-  // If adaptive mode is on, we use the adaptive TDEE as the baseline and apply the offset.
-  // We apply a 1200 kcal "Safety Floor" to ensure the goal never drops to dangerous levels.
-  const goalCalories =
-    calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0
-      ? Math.max(1200, Math.round(adaptiveTdeeData.tdee + calorieGoalOffset))
-      : rawGoalCalories;
-
-  const eatenCalories = foodData?.totals.calories || 0;
+  const goalCalories = calorieBalance.goal;
+  const eatenCalories = calorieBalance.eaten;
 
   const otherExerciseCalories = exerciseData?.otherCalories || 0;
   const activeCaloriesFromExercise = exerciseData?.activeCalories || 0;
-  const stepsCalories = stepsData?.calories || 0;
   const dailySteps = stepsData?.steps || 0;
   const activitySteps = exerciseData?.activitySteps || 0;
-
-  // Deduct steps already captured by tracked activities
   const backgroundSteps = Math.max(0, dailySteps - activitySteps);
-  const backgroundStepCalories = convertStepsToCalories(
-    backgroundSteps,
-    weight || CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-    height || CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM
-  );
+  const stepCalories = summaryData.stepCalories || 0;
 
-  const resolved = resolveExerciseCalories(
-    otherExerciseCalories,
-    activeCaloriesFromExercise,
-    backgroundStepCalories
-  );
+  const totalCaloriesBurned = calorieBalance.burned;
+  const netCalories = calorieBalance.net;
 
-  const bmrCalories = includeInNet && bmr ? bmr : 0;
+  const projectedBurn = tdeeProjection?.projectedBurn ?? 0;
+  const sparkyfitnessBurned = tdeeProjection?.baselineBurn ?? 0;
+  const tdeeAdjustment = tdeeProjection?.adjustment ?? 0;
 
-  const exerciseCaloriesBurned = resolved.calories;
-  const totalCaloriesBurned = exerciseCaloriesBurned + bmrCalories;
-
-  const netCalories = eatenCalories - totalCaloriesBurned;
-
-  const projectedBurn = computeProjectedBurn(bmr || 0, exerciseCaloriesBurned);
-  const tdeeAdjustment = computeTdeeAdjustment(
-    projectedBurn,
-    sparkyfitnessBurned,
-    tdeeAllowNegativeAdjustment
-  );
-
-  const caloriesRemaining = computeCaloriesRemaining({
-    mode: calorieGoalAdjustmentMode,
-    goalCalories,
-    eatenCalories,
-    netCalories,
-    exerciseCaloriesBurned,
-    bmrCalories,
-    exerciseCaloriePercentage,
-    tdeeAdjustment,
-    adaptiveTdee: adaptiveTdeeData?.tdee,
-  });
-
-  const calorieProgress = computeCalorieProgress(
-    goalCalories,
-    caloriesRemaining
-  );
+  const caloriesRemaining = calorieBalance.remaining;
+  const calorieProgress = calorieBalance.progress;
   const exerciseCredited = computeExerciseCredited(
     caloriesRemaining,
     goalCalories,
@@ -180,7 +142,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     exerciseActive: Math.round(
       convertEnergy(activeCaloriesFromExercise, 'kcal', energyUnit)
     ),
-    steps: Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit)),
+    steps: Math.round(convertEnergy(stepCalories, 'kcal', energyUnit)),
     bmr: bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0,
     net: Math.round(convertEnergy(netCalories, 'kcal', energyUnit)),
     exerciseCredited: Math.round(
@@ -258,7 +220,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     )}
                   </p>
 
-                  {resolved.source === 'logged' && (
+                  {exerciseSource === 'logged' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.otherExerciseCalories',
@@ -271,7 +233,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     </p>
                   )}
 
-                  {resolved.source === 'active' && (
+                  {exerciseSource === 'active' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.activeCalories',
@@ -284,13 +246,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     </p>
                   )}
 
-                  {resolved.source === 'steps' && (
+                  {exerciseSource === 'steps' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.stepsCalories',
                         'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}',
                         {
-                          dailySteps: dailySteps.toLocaleString(),
+                          dailySteps: backgroundSteps.toLocaleString(),
                           stepsCalories: display.steps,
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
@@ -339,7 +301,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           </div>
 
           {/* Detailed Burned Breakdown (Visible if data present) */}
-          {(resolved.source !== 'none' || bmr) && (
+          {(exerciseSource !== 'none' || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
                 {t(
@@ -348,7 +310,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 )}
               </div>
 
-              {resolved.source === 'logged' && (
+              {exerciseSource === 'logged' && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.otherExerciseCalories',
@@ -361,7 +323,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 </div>
               )}
 
-              {resolved.source === 'active' && (
+              {exerciseSource === 'active' && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.activeCalories',
@@ -374,14 +336,14 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 </div>
               )}
 
-              {resolved.source === 'steps' && (
+              {exerciseSource === 'steps' && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
                   {t(
                     'exercise.dailyProgress.stepsCalories',
                     'Steps: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}',
                     {
-                      dailySteps: dailySteps.toLocaleString(),
+                      dailySteps: backgroundSteps.toLocaleString(),
                       stepsCalories: display.steps,
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
@@ -510,7 +472,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </div>
           )}
 
-          {calorieGoalAdjustmentMode === 'tdee' ? (
+          {calorieGoalAdjustmentMode === 'tdee' && tdeeProjection ? (
             /* TDEE mode: MFP-style Expected / Actual / Adjustment */
             <div className="p-3 bg-orange-50 dark:bg-slate-700 rounded-lg space-y-1">
               <div className="flex items-center gap-1 mb-2">

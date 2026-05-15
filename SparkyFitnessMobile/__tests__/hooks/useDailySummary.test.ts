@@ -56,6 +56,7 @@ const makeCalorieBalance = (overrides: Record<string, unknown> = {}) => ({
   progress: 0,
   bmr: 1700,
   exerciseSource: 'none' as const,
+  tdeeProjection: null,
   ...overrides,
 });
 

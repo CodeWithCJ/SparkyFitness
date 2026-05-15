@@ -12,6 +12,13 @@ export const calorieBalanceSchema = z.object({
   progress: z.number(),
   bmr: z.number(),
   exerciseSource: z.enum(["logged", "active", "steps", "none"]),
+  tdeeProjection: z
+    .object({
+      projectedBurn: z.number(),
+      baselineBurn: z.number(),
+      adjustment: z.number(),
+    })
+    .nullable(),
 });
 
 export type CalorieBalance = z.infer<typeof calorieBalanceSchema>;
