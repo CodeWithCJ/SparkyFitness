@@ -173,7 +173,7 @@ router.get(
     try {
       const waterData = await measurementService.getWaterIntake(
         req.userId,
-        targetUserId,
+        String(targetUserId),
         date
       );
       res.status(200).json(waterData);
@@ -259,7 +259,7 @@ router.post(
         req.originalUserId || req.userId,
         entry_date,
         change_drinks,
-        container_id
+        container_id ?? null
       );
       res.status(200).json(result);
     } catch (error) {

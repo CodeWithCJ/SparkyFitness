@@ -1050,7 +1050,14 @@
       "updateError": "Failed to save water intake",
       "perDrink": "{{volume}} {{unit}}",
       "defaultPerDrink": "{{volume}} {{unit}} (default)",
-      "defaultContainer": "Container"
+      "defaultContainer": "Container",
+      "logTitle": "Today's drinks",
+      "logEmpty": "No drinks logged yet",
+      "deleteEntry": "Delete this drink",
+      "deleteConfirm": "Remove this {{volume}} {{unit}} entry?",
+      "deletedSuccess": "Drink removed",
+      "deletedError": "Failed to remove drink",
+      "editTime": "Click to change time"
     },
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",

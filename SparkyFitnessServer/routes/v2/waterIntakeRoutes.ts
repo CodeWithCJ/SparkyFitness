@@ -4,6 +4,7 @@ import {
   UpdateWaterIntakeBodySchema,
   DateParamSchema,
   UuidParamSchema,
+  UpdateWaterIntakeLogTimeBodySchema,
 } from '../../schemas/measurementSchemas.js';
 
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
@@ -306,7 +307,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       req.originalUserId || req.userId,
       entry_date,
       change_drinks,
-      container_id
+      container_id ?? null
     );
     res.status(200).json(result);
   } catch (error: unknown) {
@@ -523,12 +524,201 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
-// Note: /entry/:id must be registered before /:date to avoid Express matching
-// "entry" as a date parameter.
+/**
+ * @swagger
+ * /api/v2/measurements/water-intake/{date}/log:
+ *   get:
+ *     summary: Get water intake log entries for a date
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date in YYYY-MM-DD format.
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
+ *     responses:
+ *       200:
+ *         description: Water intake log entries retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                   water_ml:
+ *                     type: number
+ *                   container_name:
+ *                     type: string
+ *                     nullable: true
+ *                   container_id:
+ *                     type: integer
+ *                     nullable: true
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *       400:
+ *         description: Validation error.
+ *       403:
+ *         description: Forbidden.
+ */
+const getWaterIntakeLogHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const paramResult = DateParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const { date } = paramResult.data;
+    const logEntries = await measurementService.getWaterIntakeLog(
+      req.originalUserId || req.userId,
+      req.userId,
+      date
+    );
+    res.status(200).json(logEntries);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /api/v2/measurements/water-intake/log/{id}:
+ *   delete:
+ *     summary: Delete a water intake log entry
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
+ *     responses:
+ *       200:
+ *         description: Water intake log entry deleted and daily total updated.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Log entry not found.
+ */
+const deleteWaterIntakeLogHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const { id } = paramResult.data;
+    const result = await measurementService.deleteWaterIntakeLogEntry(
+      req.userId,
+      req.originalUserId || req.userId,
+      id
+    );
+    res.status(200).json(result);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.message.startsWith('Forbidden')) {
+        res.status(403).json({ error: error.message });
+        return;
+      }
+      if (error.message === 'Water intake log entry not found.') {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+    }
+    next(error);
+  }
+};
+
+// ── PATCH /water-intake/log/:id  ─ Update logged_at time ────────────
+const updateWaterIntakeLogTimeHandler: RequestHandler = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const paramsResult = UuidParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      res.status(400).json({
+        error: 'Invalid request params',
+        details: paramsResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const bodyResult = UpdateWaterIntakeLogTimeBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const { id } = paramsResult.data;
+    const { loggedAt } = bodyResult.data;
+    const authenticatedUserId = req.userId;
+
+    const updated = await measurementService.updateWaterIntakeLogTime(
+      id,
+      loggedAt,
+      authenticatedUserId
+    );
+
+    if (!updated) {
+      res.status(404).json({ error: 'Log entry not found' });
+      return;
+    }
+
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('not found or access denied')) {
+        res.status(403).json({ error: error.message });
+        return;
+      }
+    }
+    next(error);
+  }
+};
+
+// Note: /entry/:id and /log routes must be registered before /:date to avoid
+// Express matching "entry" or "log" as a date parameter.
 router.get('/water-intake/entry/:id', getWaterIntakeEntryHandler);
+router.get('/water-intake/:date/log', getWaterIntakeLogHandler);
 router.get('/water-intake/:date', getWaterIntakeHandler);
 router.post('/water-intake', upsertWaterIntakeHandler);
 router.put('/water-intake/:id', updateWaterIntakeHandler);
+router.patch('/water-intake/log/:id', updateWaterIntakeLogTimeHandler);
+router.delete('/water-intake/log/:id', deleteWaterIntakeLogHandler);
 router.delete('/water-intake/:id', deleteWaterIntakeHandler);
 
 module.exports = router;

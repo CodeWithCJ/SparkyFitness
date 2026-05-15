@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { instantHourMinute, dayToUtcRange } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,12 @@ import {
   Droplet,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Star,
   Plus,
   Minus,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -19,6 +23,9 @@ import {
   useWaterGoalQuery,
   useWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
+  useWaterIntakeLogQuery,
+  useDeleteWaterIntakeLogMutation,
+  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 
 interface WaterIntakeProps {
@@ -36,11 +43,24 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, userId);
   const { mutate: updateWaterIntake, isPending: loading } =
     useUpdateWaterIntakeMutation();
+  const { data: logEntries = [] } = useWaterIntakeLogQuery(
+    selectedDate,
+    userId
+  );
+  const { mutate: deleteLogEntry, isPending: deleting } =
+    useDeleteWaterIntakeLogMutation();
+  const { mutate: updateLogTime } = useUpdateWaterIntakeLogTimeMutation();
 
   // Local state for the selected container in the diary
   const [selectedContainerId, setSelectedContainerId] = useState<number | null>(
     () => activeContainer?.id ?? null
   );
+
+  // Local state for log panel visibility
+  const [showLog, setShowLog] = useState(false);
+
+  // State for editing time on a log entry
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
 
   // Derived selected container
   const currentContainer =
@@ -112,11 +132,62 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     });
   };
 
+  const { timezone } = usePreferences();
+
+  const formatLogTime = (timestamp: string) => {
+    try {
+      const { hour, minute } = instantHourMinute(timestamp, timezone);
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    } catch {
+      return '--:--';
+    }
+  };
+
+  const getTimeInputValue = (timestamp: string) => {
+    try {
+      const { hour, minute } = instantHourMinute(timestamp, timezone);
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    } catch {
+      return '12:00';
+    }
+  };
+
+  const handleTimeChange = (
+    entryId: string,
+    entryDate: string,
+    newTime: string
+  ) => {
+    try {
+      // entryDate is a Postgres DATE column serialized as UTC midnight
+      // (e.g. "2026-05-14T00:00:00.000Z"). Extract the YYYY-MM-DD substring
+      // directly — do NOT use instantToDay, which would roll back to the
+      // previous day for users west of UTC.
+      const datePart = entryDate.substring(0, 10);
+      const timeParts = newTime.split(':');
+      const hours = parseInt(timeParts[0] || '0', 10);
+      const minutes = parseInt(timeParts[1] || '0', 10);
+
+      // Build a UTC instant from the user's local day + time using dayToUtcRange
+      // dayToUtcRange gives midnight UTC for this day in the user's timezone
+      const { start } = dayToUtcRange(datePart, timezone);
+      const loggedAt = new Date(
+        start.getTime() + hours * 3600000 + minutes * 60000
+      ).toISOString();
+
+      updateLogTime({ logId: entryId, loggedAt });
+      setEditingTimeId(null);
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      setEditingTimeId(null);
+    }
+  };
+
   if (!user) {
     return null;
   }
 
   const fillPercentage = Math.min((waterMl / waterGoalMl) * 100, 100);
+  const displayUnit = currentContainer?.unit || water_display_unit;
 
   return (
     <Card className="h-full flex flex-col">
@@ -248,6 +319,108 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Drink History Log */}
+        {logEntries.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+            <button
+              onClick={() => setShowLog(!showLog)}
+              className="flex items-center justify-between w-full text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            >
+              <span>
+                {t('foodDiary.waterIntake.logTitle', "Today's drinks")} (
+                {logEntries.length})
+              </span>
+              {showLog ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+
+            {showLog && (
+              <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                {logEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between py-1 px-1.5 rounded text-xs bg-gray-50 dark:bg-slate-800/50 group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {editingTimeId === entry.id ? (
+                        <input
+                          type="time"
+                          className="text-xs tabular-nums bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[72px]"
+                          defaultValue={getTimeInputValue(
+                            entry.logged_at || entry.created_at
+                          )}
+                          onBlur={(e) =>
+                            handleTimeChange(
+                              entry.id,
+                              entry.entry_date,
+                              e.target.value
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleTimeChange(
+                                entry.id,
+                                entry.entry_date,
+                                (e.target as HTMLInputElement).value
+                              );
+                            } else if (e.key === 'Escape') {
+                              setEditingTimeId(null);
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setEditingTimeId(entry.id)}
+                          className="text-gray-400 dark:text-gray-500 tabular-nums shrink-0 hover:text-blue-500 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors"
+                          title={t(
+                            'foodDiary.waterIntake.editTime',
+                            'Click to change time'
+                          )}
+                        >
+                          {formatLogTime(entry.logged_at || entry.created_at)}
+                        </button>
+                      )}
+                      <span className="text-gray-600 dark:text-gray-300 truncate">
+                        {entry.container_name ||
+                          t(
+                            'foodDiary.waterIntake.defaultContainer',
+                            'Container'
+                          )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="font-medium text-blue-600 dark:text-blue-400">
+                        {convertMlToSelectedUnit(
+                          Number(entry.water_ml),
+                          displayUnit
+                        ).toFixed(displayUnit === 'ml' ? 0 : 1)}{' '}
+                        {displayUnit}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        onClick={() => deleteLogEntry(entry.id)}
+                        disabled={deleting}
+                        title={t(
+                          'foodDiary.waterIntake.deleteEntry',
+                          'Delete this drink'
+                        )}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

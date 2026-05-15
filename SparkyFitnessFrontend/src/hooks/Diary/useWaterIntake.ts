@@ -1,8 +1,12 @@
 import {
   getWaterGoalForDate,
   getWaterIntakeForDate,
+  getWaterIntakeLog,
+  deleteWaterIntakeLogEntry,
+  updateWaterIntakeLogTime,
   UpdateWaterPayload,
   updateWaterIntake,
+  WaterIntakeLogEntry,
 } from '@/api/Diary/waterIntakteService';
 import { waterIntakeKeys } from '@/api/keys/diary';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -61,6 +65,10 @@ export const useUpdateWaterIntakeMutation = () => {
           variables.user_id
         ),
       });
+      // Also invalidate the log since a new entry was added
+      queryClient.invalidateQueries({
+        queryKey: waterIntakeKeys.log(variables.entry_date, variables.user_id),
+      });
       invalidate();
     },
     meta: {
@@ -72,6 +80,55 @@ export const useUpdateWaterIntakeMutation = () => {
         'foodDiary.waterIntake.updateError',
         'Failed to save water intake'
       ),
+    },
+  });
+};
+
+export const useWaterIntakeLogQuery = (date: string, userId?: string) => {
+  return useQuery<WaterIntakeLogEntry[]>({
+    queryKey: waterIntakeKeys.log(date, userId!),
+    queryFn: () => getWaterIntakeLog(date, userId!),
+    enabled: !!userId && !!date,
+  });
+};
+
+export const useDeleteWaterIntakeLogMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: (logId: string) => deleteWaterIntakeLogEntry(logId),
+    onSuccess: () => {
+      // Invalidate all water intake queries (total + log)
+      queryClient.invalidateQueries({
+        queryKey: waterIntakeKeys.all,
+      });
+      invalidate();
+    },
+    meta: {
+      successMessage: t(
+        'foodDiary.waterIntake.deletedSuccess',
+        'Drink removed'
+      ),
+      errorMessage: t(
+        'foodDiary.waterIntake.deletedError',
+        'Failed to remove drink'
+      ),
+    },
+  });
+};
+
+export const useUpdateWaterIntakeLogTimeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ logId, loggedAt }: { logId: string; loggedAt: string }) =>
+      updateWaterIntakeLogTime(logId, loggedAt),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: waterIntakeKeys.all,
+      });
     },
   });
 };

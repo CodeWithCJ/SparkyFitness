@@ -936,6 +936,118 @@ export { getLatestMeasurement };
 export { getLatestCheckInMeasurementsOnOrBeforeDate };
 export { getMostRecentMeasurement };
 export { getStepCaloriesForDate };
+
+// ── Water Intake Entries (granular drink-by-drink tracking) ──────────────
+
+async function insertWaterIntakeLog(
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  waterMl: number,
+  containerId: number | null,
+  containerName: string | null,
+  source = 'manual',
+  loggedAt: string | null = null
+) {
+  const client = await getClient(actingUserId);
+  try {
+    const result = await client.query(
+      `INSERT INTO water_intake_entries
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+       RETURNING *`,
+      [
+        userId,
+        entryDate,
+        waterMl,
+        containerId,
+        containerName,
+        source,
+        actingUserId,
+        loggedAt,
+      ]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+       FROM water_intake_entries
+       WHERE user_id = $1 AND entry_date = ANY($2::date[])
+       ORDER BY entry_date, logged_at ASC`,
+      [userId, dates]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function getWaterIntakeLogByDate(userId: string, date: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+       FROM water_intake_entries
+       WHERE user_id = $1 AND entry_date = $2
+       ORDER BY logged_at DESC`,
+      [userId, date]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteWaterIntakeLog(id: string, userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+      [id, userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+async function getWaterIntakeLogEntryOwnerId(id: string, userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT user_id FROM water_intake_entries WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return result.rows[0]?.user_id as string | undefined;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateWaterIntakeLogTime(
+  id: string,
+  userId: string,
+  loggedAt: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'UPDATE water_intake_entries SET logged_at = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [loggedAt, id, userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -945,6 +1057,12 @@ export default {
   getWaterIntakeEntryOwnerId,
   updateWaterIntake,
   deleteWaterIntake,
+  insertWaterIntakeLog,
+  getWaterIntakeLogByDate,
+  getWaterIntakeLogsByDates,
+  deleteWaterIntakeLog,
+  getWaterIntakeLogEntryOwnerId,
+  updateWaterIntakeLogTime,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
   updateCheckInMeasurements,

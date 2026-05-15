@@ -188,3 +188,15 @@ export const CustomMeasurementsRangeParamSchema = z
 export type CustomMeasurementsRangeParam = z.infer<
   typeof CustomMeasurementsRangeParamSchema
 >;
+
+export const UpdateWaterIntakeLogTimeBodySchema = z
+  .object({
+    loggedAt: z.string().datetime({
+      message: 'loggedAt must be a valid ISO 8601 datetime string',
+    }),
+  })
+  .strict();
+
+export type UpdateWaterIntakeLogTimeBody = z.infer<
+  typeof UpdateWaterIntakeLogTimeBodySchema
+>;

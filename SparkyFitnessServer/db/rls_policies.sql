@@ -59,6 +59,7 @@ BEGIN
     'user_preferences',
     'user_water_containers',
     'water_intake',
+    'water_intake_entries',
     'weekly_goal_plans',
     'workout_plan_assignment_sets',
     'workout_plan_template_assignments',
@@ -364,6 +365,7 @@ SELECT create_diary_policy('food_entry_meals');
 SELECT create_diary_policy('sleep_entries');
 SELECT create_diary_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');
+SELECT create_diary_policy('water_intake_entries');
 
 -- Library access tables
 SELECT create_library_policy('exercises', 'shared_with_public', ARRAY['can_view_exercise_library', 'can_manage_diary']);

@@ -1180,12 +1180,9 @@ async function getOrCreateCustomCategory(
   }
 }
 async function getWaterIntake(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
 ) {
   try {
     const waterData = await measurementRepository.getWaterIntakeByDate(
@@ -1204,16 +1201,11 @@ async function getWaterIntake(
   }
 }
 async function upsertWaterIntake(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  changeDrinks: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  containerId: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryDate: string,
+  changeDrinks: number,
+  containerId: number | null
 ) {
   try {
     // 1. Get current MANUAL water intake for the day to avoid mixing with syncs
@@ -1229,6 +1221,7 @@ async function upsertWaterIntake(
       : 0;
     // 2. Determine amount per drink based on container
     let amountPerDrink;
+    let containerName: string | null = null;
     if (containerId) {
       const container = await waterContainerRepository.getWaterContainerById(
         containerId,
@@ -1237,6 +1230,7 @@ async function upsertWaterIntake(
       if (container) {
         amountPerDrink =
           Number(container.volume) / Number(container.servings_per_container);
+        containerName = container.name || null;
       } else {
         // Fallback to default if container not found
         log(
@@ -1249,20 +1243,74 @@ async function upsertWaterIntake(
       // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
-    // 3. Calculate new total water intake for the MANUAL bucket
-    const newManualTotalWaterMl = Math.max(
-      0,
-      currentManualMl + changeDrinks * amountPerDrink
-    );
-    // 4. Upsert the new manual water intake
-    const result = await measurementRepository.upsertWaterData(
+    // 5. Log individual drink(s) into water_intake_entries.
+    if (changeDrinks > 0) {
+      // 5a. Additions: insert new log entries and update daily total
+      const newManualTotalWaterMl = Math.max(
+        0,
+        currentManualMl + changeDrinks * amountPerDrink
+      );
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newManualTotalWaterMl,
+        entryDate,
+        'manual'
+      );
+      for (let i = 0; i < changeDrinks; i++) {
+        await measurementRepository.insertWaterIntakeLog(
+          authenticatedUserId,
+          actingUserId,
+          entryDate,
+          amountPerDrink,
+          containerId || null,
+          containerName,
+          'manual'
+        );
+      }
+    } else if (changeDrinks < 0) {
+      // 5b. Decrements: delete the most recent log entries and subtract
+      // their *actual* water_ml from the daily total. This avoids drift
+      // when log rows were recorded with different containers.
+      const logEntries = await measurementRepository.getWaterIntakeLogByDate(
+        authenticatedUserId,
+        entryDate
+      );
+      const entriesToRemove = Math.min(
+        Math.abs(changeDrinks),
+        logEntries.length
+      );
+      let actualMlRemoved = 0;
+      for (let i = 0; i < entriesToRemove; i++) {
+        const entry = logEntries[i];
+        if (entry) {
+          actualMlRemoved += Number(entry.water_ml);
+          await measurementRepository.deleteWaterIntakeLog(
+            entry.id,
+            authenticatedUserId
+          );
+        }
+      }
+      const newManualTotalWaterMl = Math.max(
+        0,
+        currentManualMl - actualMlRemoved
+      );
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newManualTotalWaterMl,
+        entryDate,
+        'manual'
+      );
+    }
+    // Return the latest record after the upsert
+    const finalRecord = await measurementRepository.getWaterIntakeByDate(
       authenticatedUserId,
-      actingUserId,
-      newManualTotalWaterMl,
       entryDate,
+      // @ts-expect-error TS(2345): Argument of type '"manual"' is not assignable to p... Remove this comment to see the full error message
       'manual'
     );
-    return result;
+    return finalRecord;
   } catch (error) {
     log(
       'error',
@@ -2379,6 +2427,113 @@ export { processSleepEntry };
 export { updateSleepEntry };
 export { getOrCreateCustomCategory };
 export { resolveHealthEntryDate };
+
+// ── Water Intake Entries service functions ───────────────────────────────
+
+async function getWaterIntakeLog(
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
+) {
+  try {
+    const logEntries = await measurementRepository.getWaterIntakeLogByDate(
+      targetUserId,
+      date
+    );
+    return logEntries || [];
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching water intake log for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+async function deleteWaterIntakeLogEntry(
+  authenticatedUserId: string,
+  actingUserId: string,
+  logId: string
+) {
+  try {
+    // 1. Verify ownership
+    const ownerId = await measurementRepository.getWaterIntakeLogEntryOwnerId(
+      logId,
+      authenticatedUserId
+    );
+    if (!ownerId) {
+      throw new Error('Water intake log entry not found.');
+    }
+    if (ownerId !== authenticatedUserId) {
+      throw new Error(
+        'Forbidden: You do not have permission to delete this water intake log entry.'
+      );
+    }
+
+    // 2. Delete the log entry and get the ml amount + date + source
+    const deleted = await measurementRepository.deleteWaterIntakeLog(
+      logId,
+      authenticatedUserId
+    );
+    if (!deleted) {
+      throw new Error('Water intake log entry not found.');
+    }
+
+    // 3. Subtract the deleted amount from the daily total
+    const currentRecord = await measurementRepository.getWaterIntakeByDate(
+      authenticatedUserId,
+      deleted.entry_date,
+      deleted.source || 'manual'
+    );
+    if (currentRecord) {
+      const currentMl = Number(currentRecord.water_ml);
+      const newTotalMl = Math.max(0, currentMl - Number(deleted.water_ml));
+      await measurementRepository.upsertWaterData(
+        authenticatedUserId,
+        actingUserId,
+        newTotalMl,
+        deleted.entry_date,
+        deleted.source || 'manual'
+      );
+    }
+
+    return { message: 'Water intake log entry deleted successfully.' };
+  } catch (error) {
+    log(
+      'error',
+      `Error deleting water intake log entry ${logId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+export { getWaterIntakeLog };
+export { deleteWaterIntakeLogEntry };
+
+async function updateWaterIntakeLogTime(
+  logId: string,
+  loggedAt: string,
+  authenticatedUserId: string
+) {
+  const ownerId = await measurementRepository.getWaterIntakeLogEntryOwnerId(
+    logId,
+    authenticatedUserId
+  );
+  if (!ownerId) {
+    throw new Error('Water intake log entry not found or access denied');
+  }
+  const updated = await measurementRepository.updateWaterIntakeLogTime(
+    logId,
+    authenticatedUserId,
+    loggedAt
+  );
+  return updated;
+}
+
+export { updateWaterIntakeLogTime };
+
 export default {
   processHealthData,
   processMobileHealthData,
@@ -2387,6 +2542,9 @@ export default {
   getWaterIntakeEntryById,
   updateWaterIntake,
   deleteWaterIntake,
+  getWaterIntakeLog,
+  deleteWaterIntakeLogEntry,
+  updateWaterIntakeLogTime,
   upsertCheckInMeasurements,
   getCheckInMeasurements,
   getLatestCheckInMeasurementsOnOrBeforeDate,

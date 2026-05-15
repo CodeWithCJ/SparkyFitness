@@ -11,22 +11,26 @@ import { renderWithClient } from '../test-utils';
 // Mock hooks and contexts
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       if (
         key === 'foodDiary.waterIntake.perDrink' ||
         key === 'foodDiary.waterIntake.defaultPerDrink'
       ) {
-        return `${options.volume} ${options.unit}`;
+        return `${options?.['volume']} ${options?.['unit']}`;
       }
       if (key === 'foodDiary.waterIntake.title') {
         return 'Water Intake';
       }
       return key;
     },
+    i18n: {
+      language: 'en',
+      changeLanguage: jest.fn(),
+    },
   }),
   initReactI18next: {
     type: '3rdParty',
-    init: () => {},
+    init: jest.fn(),
   },
 }));
 
@@ -35,7 +39,15 @@ jest.mock('@/hooks/useAuth', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ water_display_unit: 'ml' }),
+  usePreferences: () => ({ water_display_unit: 'ml', timezone: 'UTC' }),
+}));
+
+jest.mock('@workspace/shared', () => ({
+  instantHourMinute: () => ({ hour: 12, minute: 0 }),
+  dayToUtcRange: () => ({
+    start: new Date('2023-10-27T00:00:00Z'),
+    end: new Date('2023-10-28T00:00:00Z'),
+  }),
 }));
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
@@ -50,6 +62,15 @@ jest.mock('@/hooks/Diary/useWaterIntake', () => ({
   useWaterGoalQuery: jest.fn().mockReturnValue({ data: 2000 }),
   useWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
   useUpdateWaterIntakeMutation: jest.fn(),
+  useWaterIntakeLogQuery: jest.fn().mockReturnValue({ data: [] }),
+  useDeleteWaterIntakeLogMutation: jest.fn().mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+  }),
+  useUpdateWaterIntakeLogTimeMutation: jest.fn().mockReturnValue({
+    mutate: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 // Mock icons
@@ -57,9 +78,12 @@ jest.mock('lucide-react', () => ({
   Droplet: () => <div data-testid="droplet-icon" />,
   ChevronLeft: () => <div data-testid="chevron-left" />,
   ChevronRight: () => <div data-testid="chevron-right" />,
+  ChevronDown: () => <div data-testid="chevron-down" />,
+  ChevronUp: () => <div data-testid="chevron-up" />,
   Star: () => <div data-testid="star-icon" />,
   Plus: () => <div data-testid="plus-icon" />,
   Minus: () => <div data-testid="minus-icon" />,
+  Trash2: () => <div data-testid="trash-icon" />,
 }));
 
 const mockContainers = [
