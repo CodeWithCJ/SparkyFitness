@@ -859,6 +859,7 @@ async function updateFoodEntryMeal(
           name: updatedMealData.name,
           description: updatedMealData.description,
           meal_type: updatedMealData.meal_type, // Also allow updating meal type
+          meal_type_id: updatedMealData.meal_type_id, // Update meal type id so component entries inherit it
           entry_date: updatedMealData.entry_date, // And entry date
           meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
           quantity: updatedMealData.quantity, // Update quantity

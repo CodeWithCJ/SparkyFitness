@@ -6,6 +6,7 @@ import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
 import type { Meal, MealIngredientDraft } from './meals';
+import type { FoodEntryMeal } from './foodEntryMeals';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 
@@ -49,6 +50,7 @@ export type RootStackParamList = {
         returnDepth?: number;
       };
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
+  EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:
     | {

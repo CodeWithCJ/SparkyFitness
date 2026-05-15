@@ -10,6 +10,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 
@@ -29,25 +30,37 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   const isRemoving = useSharedValue(false);
   const invalidateCacheRef = useRef<() => void>(() => {});
 
+  const isMealComponent = !!entry.food_entry_meal_id;
+
   const handleAnimationEnd = () => {
     invalidateCacheRef.current();
   };
 
-  const { confirmAndDelete, deleteEntry, invalidateCache } = useDeleteFoodEntry({
+  const onDeleteSuccess = () => {
+    swipeableRef.current?.close();
+    isRemoving.value = true;
+    rowHeight.value = withTiming(0, { duration: ROW_COLLAPSE_DURATION }, (finished) => {
+      if (finished) {
+        runOnJS(handleAnimationEnd)();
+      }
+    });
+  };
+
+  const foodEntryDelete = useDeleteFoodEntry({
     entryId: entry.id,
     entryDate: entry.entry_date,
-    onSuccess: () => {
-      swipeableRef.current?.close();
-      isRemoving.value = true;
-      rowHeight.value = withTiming(0, { duration: ROW_COLLAPSE_DURATION }, (finished) => {
-        if (finished) {
-          runOnJS(handleAnimationEnd)();
-        }
-      });
-    },
+    onSuccess: onDeleteSuccess,
   });
 
-  invalidateCacheRef.current = invalidateCache;
+  const mealDelete = useDeleteFoodEntryMeal({
+    mealId: entry.food_entry_meal_id ?? '',
+    entryDate: entry.entry_date,
+    onSuccess: onDeleteSuccess,
+  });
+
+  const confirmAndDelete = isMealComponent ? mealDelete.confirmAndDelete : foodEntryDelete.confirmAndDelete;
+  const deleteEntry = isMealComponent ? mealDelete.deleteEntry : foodEntryDelete.deleteEntry;
+  invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
 
   const animatedStyle = useAnimatedStyle(() => {
     if (!isRemoving.value || rowHeight.value === null) {
@@ -76,8 +89,16 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     </TouchableOpacity>
   );
 
-  const canQuickAdjust = !!onAdjustServing && Number(entry.serving_size) > 0;
+  const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
   const name = entry.food_name || 'Unknown food';
+
+  const handlePress = () => {
+    if (isMealComponent && entry.food_entry_meal_id) {
+      navigation.navigate('EditLoggedMeal', { foodEntryMealId: entry.food_entry_meal_id });
+      return;
+    }
+    navigation.navigate('FoodEntryView', { entry });
+  };
 
   const handleLongPress = () => {
     const buttons: {
@@ -105,7 +126,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('FoodEntryView', { entry })}
+            onPress={handlePress}
             onLongPress={handleLongPress}
           >
             <View className="flex-row flex-wrap items-baseline">
@@ -125,7 +146,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} Cal \u25BE`}
+              {`${nutrition.calories} Cal ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
