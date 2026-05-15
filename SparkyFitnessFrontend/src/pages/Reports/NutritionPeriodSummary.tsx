@@ -138,9 +138,12 @@ const NutritionPeriodSummary = ({
         (acc, point) => {
           const dayGoals = goals?.[point.date];
 
-          // Calculate variance for ALL selected nutrients
+          // Calculate variance for ALL selected nutrients (except sodium)
           const variances: Record<string, number> = {};
           selectedNutrients.forEach((nutKey) => {
+            // Skip cumulative calculation for sodium
+            if (nutKey === 'sodium') return;
+
             let dayGoal: number | undefined;
             const isCustom = customNutrients.some((cn) => cn.name === nutKey);
             if (dayGoals) {
@@ -169,7 +172,6 @@ const NutritionPeriodSummary = ({
                 acc.vDays += 1;
               }
             }
-            variances[nutKey] = dayEaten;
             variances[`${nutKey}_cumulative`] = acc.running[nutKey] || 0;
           });
 
@@ -224,6 +226,10 @@ const NutritionPeriodSummary = ({
       : selectedOption?.unit || '';
 
   const chartTitle = `${t('reports.cumulativeBalanceTitle', 'Cumulative Balance')} - ${selectedOption?.label}`;
+
+  const showCumulativeChart =
+    primaryNutrient !== 'sodium' ||
+    selectedNutrients.some((n) => n !== 'sodium');
 
   const dailyChartData = useMemo(() => {
     return filteredNutritionData.map((point) => {
@@ -312,7 +318,9 @@ const NutritionPeriodSummary = ({
 
       {/* KPI Dashboard and Daily Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-        <div className="flex flex-col gap-4 h-full">
+        <div
+          className={`flex flex-col gap-4 h-full ${!showCumulativeChart ? 'hidden' : ''}`}
+        >
           <Card className="flex-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -358,7 +366,9 @@ const NutritionPeriodSummary = ({
           </Card>
         </div>
 
-        <div className="lg:col-span-2 h-full min-h-0">
+        <div
+          className={`${showCumulativeChart ? 'lg:col-span-2' : 'lg:col-span-3'} h-full min-h-0`}
+        >
           <ZoomableChart
             title={`${selectedOption?.label} (${unitStr})`}
             className="h-full"
@@ -390,7 +400,10 @@ const NutritionPeriodSummary = ({
                       minHeight={0}
                       debounce={100}
                     >
-                      <LineChart data={dailyChartData}>
+                      <LineChart
+                        data={dailyChartData}
+                        syncId="nutrition-charts"
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
                           dataKey="date"
@@ -510,147 +523,153 @@ const NutritionPeriodSummary = ({
       </div>
 
       {/* Cumulative Surplus/Deficit Trend Chart */}
-      <ZoomableChart title={chartTitle}>
-        {(isMaximized, zoomLevel) => (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{chartTitle}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={
-                  (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-64') + ' min-w-0'
-                }
-              >
-                <ResponsiveContainer
-                  width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                  height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                  minWidth={0}
-                  minHeight={0}
-                  debounce={100}
+      {showCumulativeChart && (
+        <ZoomableChart title={chartTitle}>
+          {(isMaximized, zoomLevel) => (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">{chartTitle}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={
+                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-64') + ' min-w-0'
+                  }
                 >
-                  <AreaChart data={cumulativeData}>
-                    <defs>
-                      <linearGradient
-                        id="colorNutrient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor={selectedOption?.chartColor || '#8884d8'}
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor={selectedOption?.chartColor || '#8884d8'}
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      fontSize={10}
-                      tickFormatter={formatDateForChart}
-                      tickCount={
-                        isMaximized
-                          ? Math.max(cumulativeData.length, 10)
-                          : undefined
-                      }
-                    />
-                    <YAxis
-                      fontSize={10}
-                      tickFormatter={(value: number) => {
-                        return getDisplayValue(value);
-                      }}
-                    />
-                    <Tooltip
-                      labelFormatter={(value) =>
-                        formatDateForChart(value as string)
-                      }
-                      formatter={(
-                        value:
-                          | string
-                          | number
-                          | ReadonlyArray<string | number>
-                          | undefined,
-                        name: string | number | undefined
-                      ) => {
-                        if (value === null || value === undefined) {
-                          return ['N/A', name];
-                        }
-                        const numValue = Number(
-                          Array.isArray(value) ? value[0] : value
-                        );
-
-                        const nutrientKey = name as string;
-                        const isCumulative =
-                          nutrientKey.endsWith('_cumulative');
-                        const baseKey = isCumulative
-                          ? nutrientKey.replace('_cumulative', '')
-                          : nutrientKey;
-                        const opt = allNutritionOptions.find(
-                          (o) => o.key === baseKey
-                        );
-
-                        const formattedValue =
-                          baseKey === 'calories'
-                            ? Math.round(
-                                convertEnergy(numValue, 'kcal', energyUnit)
-                              ).toString()
-                            : formatNutrientValue(
-                                baseKey,
-                                numValue,
-                                customNutrients
-                              );
-
-                        return [
-                          `${numValue > 0 ? '+' : ''}${formattedValue} ${opt?.unit || ''}`,
-                          isCumulative ? `${opt?.label} Balance` : opt?.label,
-                        ];
-                      }}
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--background))',
-                      }}
-                    />
-                    <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
-                    <Area
-                      type="monotone"
-                      dataKey={`${primaryNutrient}_cumulative`}
-                      stroke={selectedOption?.chartColor || '#8884d8'}
-                      fillOpacity={1}
-                      fill="url(#colorNutrient)"
-                      baseValue={0}
-                    />
-                    {selectedNutrients
-                      .filter((k) => k !== primaryNutrient)
-                      .map((nutKey) => {
-                        const opt = allNutritionOptions.find(
-                          (o) => o.key === nutKey
-                        );
-                        return (
-                          <Line
-                            key={nutKey}
-                            type="monotone"
-                            dataKey={`${nutKey}_cumulative`}
-                            stroke={opt?.chartColor || '#8884d8'}
-                            strokeWidth={1.5}
-                            dot={false}
-                            isAnimationActive={false}
-                            name={`${nutKey}_cumulative`}
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
+                    <AreaChart data={cumulativeData} syncId="nutrition-charts">
+                      <defs>
+                        <linearGradient
+                          id="colorNutrient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor={selectedOption?.chartColor || '#8884d8'}
+                            stopOpacity={0.8}
                           />
-                        );
-                      })}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </ZoomableChart>
+                          <stop
+                            offset="95%"
+                            stopColor={selectedOption?.chartColor || '#8884d8'}
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        fontSize={10}
+                        tickFormatter={formatDateForChart}
+                        tickCount={
+                          isMaximized
+                            ? Math.max(cumulativeData.length, 10)
+                            : undefined
+                        }
+                      />
+                      <YAxis
+                        fontSize={10}
+                        tickFormatter={(value: number) => {
+                          return getDisplayValue(value);
+                        }}
+                      />
+                      <Tooltip
+                        labelFormatter={(value) =>
+                          formatDateForChart(value as string)
+                        }
+                        formatter={(
+                          value:
+                            | string
+                            | number
+                            | ReadonlyArray<string | number>
+                            | undefined,
+                          name: string | number | undefined
+                        ) => {
+                          if (value === null || value === undefined) {
+                            return ['N/A', name];
+                          }
+                          const numValue = Number(
+                            Array.isArray(value) ? value[0] : value
+                          );
+
+                          const nutrientKey = name as string;
+                          const isCumulative =
+                            nutrientKey.endsWith('_cumulative');
+                          const baseKey = isCumulative
+                            ? nutrientKey.replace('_cumulative', '')
+                            : nutrientKey;
+                          const opt = allNutritionOptions.find(
+                            (o) => o.key === baseKey
+                          );
+
+                          const formattedValue =
+                            baseKey === 'calories'
+                              ? Math.round(
+                                  convertEnergy(numValue, 'kcal', energyUnit)
+                                ).toString()
+                              : formatNutrientValue(
+                                  baseKey,
+                                  numValue,
+                                  customNutrients
+                                );
+
+                          return [
+                            `${numValue > 0 ? '+' : ''}${formattedValue} ${opt?.unit || ''}`,
+                            isCumulative ? `${opt?.label} Balance` : opt?.label,
+                          ];
+                        }}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                        }}
+                      />
+                      <ReferenceLine
+                        y={0}
+                        stroke="#666"
+                        strokeDasharray="3 3"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey={`${primaryNutrient}_cumulative`}
+                        stroke={selectedOption?.chartColor || '#8884d8'}
+                        fillOpacity={1}
+                        fill="url(#colorNutrient)"
+                        baseValue={0}
+                      />
+                      {selectedNutrients
+                        .filter((k) => k !== primaryNutrient && k !== 'sodium')
+                        .map((nutKey) => {
+                          const opt = allNutritionOptions.find(
+                            (o) => o.key === nutKey
+                          );
+                          return (
+                            <Line
+                              key={nutKey}
+                              type="monotone"
+                              dataKey={`${nutKey}_cumulative`}
+                              stroke={opt?.chartColor || '#8884d8'}
+                              strokeWidth={1.5}
+                              dot={false}
+                              isAnimationActive={false}
+                              name={`${nutKey}_cumulative`}
+                            />
+                          );
+                        })}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </ZoomableChart>
+      )}
     </div>
   );
 };
