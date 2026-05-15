@@ -29,7 +29,7 @@ For `shared/`, `docs/`, `SparkyFitnessMCP/`, and `SparkyFitnessGarmin/`, there i
 - `SparkyFitnessMobile/` - Expo SDK 54 / React Native 0.81 app.
 - `shared/` - source-first TypeScript workspace package for `@workspace/shared` schemas, constants, and timezone/day helpers.
 - `docs/` - Nuxt / Docus docs site.
-- `SparkyFitnessMCP/` - standalone TypeScript MCP server outside the current `pnpm` workspace.
+- `SparkyFitnessMCP/` - TypeScript MCP server integrated into the `pnpm` workspace.
 - `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.
 - `db_schema_backup.sql` - repo-root schema snapshot that should stay aligned with server migrations.

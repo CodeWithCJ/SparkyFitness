@@ -127,3 +127,34 @@ jobs:
           subject-name: ghcr.io/${{ github.repository }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
           push-to-registry: true
+
+      - name: Metadata MCP Server
+        id: meta-mcp
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            codewithcj/sparkyfitness_mcp
+            ghcr.io/${{ github.repository }}-mcp
+          tags: |
+            type=raw,value=${{ github.event.inputs.tag }}
+
+      - name: Build and push MCP Server
+        id: push-mcp
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.mcp
+          push: true
+          tags: ${{ steps.meta-mcp.outputs.tags }}
+          labels: ${{ steps.meta-mcp.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate artifact attestation MCP Server
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-mcp
+          subject-digest: ${{ steps.push-mcp.outputs.digest }}
+          push-to-registry: true
+

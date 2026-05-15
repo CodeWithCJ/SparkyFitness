@@ -1,144 +1,120 @@
-import "./load_env.js"; // MUST BE FIRST
+import path from "path";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { 
-  CallToolRequestSchema, 
-  ListToolsRequestSchema, 
-  ErrorCode, 
-  McpError 
-} from "@modelcontextprotocol/sdk/types.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables immediately before other imports
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
+
 import express from "express";
 import cors from "cors";
-
-import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
-import { exerciseTools, handleExerciseTool } from "./tools/exercise/index.js";
-import { checkinTools, handleCheckinTool } from "./tools/checkin/index.js";
-import { coachTools, handleCoachTool } from "./tools/coach/index.js";
-import { proactiveTools, handleProactiveTool } from "./tools/engagement/index.js";
-import { visionTools, handleVisionTool } from "./tools/vision/index.js";
-import { devTools, handleDevTool } from "./tools/dev/index.js";
-import { MOCK_USER_ID } from "./config.js";
-
-console.error(`[MCP] Active Mock User ID: ${MOCK_USER_ID}`);
-
-const handlers = [
-  handleNutritionTool,
-  handleExerciseTool,
-  handleCheckinTool,
-  handleCoachTool,
-  handleProactiveTool,
-  handleVisionTool,
-  handleDevTool,
-];
-
-const allTools = [
-  ...nutritionTools,
-  ...exerciseTools,
-  ...checkinTools,
-  ...coachTools,
-  ...proactiveTools,
-  ...visionTools,
-  ...devTools,
-];
-
-/**
- * Factory function to create a new MCP Server instance.
- * Using the low-level Server class to support raw JSON schemas (McpServer defaults them to empty).
- * Called once per request in stateless mode (SDK requirement).
- */
-function createMCPServer() {
-  const server = new Server(
-    { name: "sparky-fitness-mcp", version: "1.0.0" },
-    { capabilities: { tools: {} } }
-  );
-
-  // Register the tool listing handler
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: allTools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-      }))
-    };
-  });
-
-  // Register the tool calling handler
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-
-    for (const handler of handlers) {
-      const result = await handler(name, args);
-      if (result) return result;
-    }
-
-    throw new McpError(
-      ErrorCode.MethodNotFound,
-      `Tool not found: ${name}`
-    );
-  });
-
-  return server;
-}
+import helmet from "helmet";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { authenticateToken } from "./auth/middleware.js";
+import { auth } from "./auth.js";
+import { registerAllTools } from "./tools/register.js";
+import pool from "./db/pool.js";
+import { GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./constants.js";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = parseInt(process.env.SPARKY_FITNESS_MCP_PORT || process.env.PORT || "3001", 10);
+const TRANSPORT = process.env.MCP_TRANSPORT || "http";
 
-/**
- * MCP Streamable HTTP handler.
- *
- * IMPORTANT: The SDK's stateless transport CANNOT be reused across requests
- * (it throws "Stateless transport cannot be reused across requests").
- * We must create a fresh Server + transport per request.
- *
- * We also force-inject the correct Accept header so clients like n8n that only
- * send "Accept: application/json" don't get a 406 from the SDK's strict validation
- * (which requires BOTH application/json AND text/event-stream).
- */
-const handleMcpRequest = async (req: express.Request, res: express.Response) => {
-  console.log(`[MCP] Request: ${req.method} ${req.path}`);
+// ─── Security Middleware ─────────────────────────────────────────────────────
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: "*", credentials: false }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-  // Force the Accept header to satisfy SDK validation.
-  req.headers['accept'] = 'application/json, text/event-stream';
-
+// ─── Health Check ────────────────────────────────────────────────────────────
+app.get("/health", async (_req, res) => {
   try {
-    // Create a fresh server + transport per request (stateless mode requirement)
-    const server = createMCPServer();
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // stateless mode
-      enableJsonResponse: true,      // return JSON directly instead of SSE streams
-    });
-
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-
-    // Clean up after the response is sent
-    res.on("finish", () => {
-      transport.close().catch(() => {});
-    });
-  } catch (error) {
-    console.error("[MCP] Transport error:", error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: { code: -32603, message: "Internal Server Error" },
-        id: null,
-      });
-    }
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+    res.json({ status: "healthy", timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: "unhealthy", timestamp: new Date().toISOString() });
   }
-};
-
-app.all("/mcp", handleMcpRequest);
-
-// Simple tools discovery endpoint (no MCP protocol overhead)
-app.get("/mcp/tools", (_req, res) => {
-  res.json({ tools: allTools });
 });
 
-const PORT = process.env.SPARKY_FITNESS_MCP_PORT || process.env.PORT || 5435;
+// ─── MCP HTTP Endpoint (authenticated) ───────────────────────────────────────
+app.post("/mcp", authenticateToken, async (req, res) => {
+  const userId = req.userId!;
+  try {
+    const mcpServer = new McpServer({ name: "sparkyfitness-mcp-server", version: "1.0.0" });
+    registerAllTools(mcpServer, userId);
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    res.on("close", () => transport.close());
+    await mcpServer.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    console.error("[MCP] HTTP error:", error);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
 
-app.listen(PORT, () => {
-  console.log(`Sparky MCP Server running on port ${PORT} (Streamable HTTP mode)`);
+// ─── Start MCP Stdio Mode (for AI clients) ────────────────────────────────────
+async function startStdio() {
+  // In stdio mode, we expect the API Key to be provided via environment variables
+  const apiKey = process.env.SPARKY_FITNESS_API_KEY || process.env.Authorization?.replace("Bearer ", "");
+  
+  if (!apiKey) {
+    console.error("[MCP] Authentication Error: No API Key provided in environment.");
+    process.exit(1);
+  }
+
+  // Resolve user from API Key using Better Auth
+  const session = await auth.api.getSession({
+    headers: new Headers({ "x-api-key": apiKey })
+  });
+
+  if (!session || !session.user) {
+    console.error("[MCP] Authentication Error: Invalid API Key.");
+    process.exit(1);
+  }
+
+  const userId = session.user.id;
+  console.error(`[MCP] Authenticated as ${session.user.email} (Stdio mode)`);
+  
+  const mcpServer = new McpServer({ name: "sparkyfitness-mcp-server", version: "1.0.0" });
+  registerAllTools(mcpServer, userId);
+  const transport = new StdioServerTransport();
+  await mcpServer.connect(transport);
+}
+
+// ─── Start Server ────────────────────────────────────────────────────────────
+async function start() {
+  if (TRANSPORT === "stdio") {
+    await startStdio();
+    return;
+  }
+
+  const server = app.listen(PORT, () => {
+    console.log(`[MCP] SparkyFitness MCP Server running on port ${PORT} (HTTP)`);
+    console.log(`[MCP] Environment: ${process.env.NODE_ENV || "development"}`);
+  });
+
+  function gracefulShutdown(signal: string) {
+    console.log(`[MCP] ${signal} received, shutting down...`);
+    server.close(() => {
+      pool.end().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+}
+
+start().catch(err => {
+  console.error("[MCP] Startup error:", err);
+  process.exit(1);
 });
