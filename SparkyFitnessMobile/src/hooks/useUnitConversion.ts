@@ -84,31 +84,35 @@ export function useUnitConversion({
       }
 
       const { baseVariant, factor } = autoConversion;
+      const ratio =
+        baseVariant.serving_size > 0
+          ? factor / baseVariant.serving_size
+          : 0;
 
       return {
-        serving_size: baseVariant.serving_size,
+        serving_size: 1,
         serving_unit: trimmedUnit,
-        calories: (baseVariant.calories || 0) * factor,
-        protein: (baseVariant.protein || 0) * factor,
-        carbs: (baseVariant.carbs || 0) * factor,
-        fat: (baseVariant.fat || 0) * factor,
-        saturated_fat: (baseVariant.saturated_fat || 0) * factor,
-        polyunsaturated_fat: (baseVariant.polyunsaturated_fat || 0) * factor,
-        monounsaturated_fat: (baseVariant.monounsaturated_fat || 0) * factor,
-        trans_fat: (baseVariant.trans_fat || 0) * factor,
-        cholesterol: (baseVariant.cholesterol || 0) * factor,
-        sodium: (baseVariant.sodium || 0) * factor,
-        potassium: (baseVariant.potassium || 0) * factor,
-        dietary_fiber: (baseVariant.dietary_fiber || 0) * factor,
-        sugars: (baseVariant.sugars || 0) * factor,
-        vitamin_a: (baseVariant.vitamin_a || 0) * factor,
-        vitamin_c: (baseVariant.vitamin_c || 0) * factor,
-        calcium: (baseVariant.calcium || 0) * factor,
-        iron: (baseVariant.iron || 0) * factor,
+        calories: (baseVariant.calories || 0) * ratio,
+        protein: (baseVariant.protein || 0) * ratio,
+        carbs: (baseVariant.carbs || 0) * ratio,
+        fat: (baseVariant.fat || 0) * ratio,
+        saturated_fat: (baseVariant.saturated_fat || 0) * ratio,
+        polyunsaturated_fat: (baseVariant.polyunsaturated_fat || 0) * ratio,
+        monounsaturated_fat: (baseVariant.monounsaturated_fat || 0) * ratio,
+        trans_fat: (baseVariant.trans_fat || 0) * ratio,
+        cholesterol: (baseVariant.cholesterol || 0) * ratio,
+        sodium: (baseVariant.sodium || 0) * ratio,
+        potassium: (baseVariant.potassium || 0) * ratio,
+        dietary_fiber: (baseVariant.dietary_fiber || 0) * ratio,
+        sugars: (baseVariant.sugars || 0) * ratio,
+        vitamin_a: (baseVariant.vitamin_a || 0) * ratio,
+        vitamin_c: (baseVariant.vitamin_c || 0) * ratio,
+        calcium: (baseVariant.calcium || 0) * ratio,
+        iron: (baseVariant.iron || 0) * ratio,
         glycemic_index: baseVariant.glycemic_index,
         custom_nutrients: Object.fromEntries(
           Object.entries(baseVariant.custom_nutrients || {}).map(
-            ([key, value]) => [key, (Number(value) || 0) * factor],
+            ([key, value]) => [key, (Number(value) || 0) * ratio],
           ),
         ),
       };

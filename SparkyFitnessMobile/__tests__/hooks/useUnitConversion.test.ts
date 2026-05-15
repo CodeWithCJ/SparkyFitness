@@ -52,6 +52,74 @@ describe('useUnitConversion', () => {
     });
   });
 
+  it('normalizes weight conversions to a 1-unit serving like web does', () => {
+    const gramsVariant = createVariant({
+      id: 'grams',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 250,
+      protein: 20,
+      carbs: 10,
+      fat: 5,
+    });
+
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [gramsVariant],
+        selectedVariant: gramsVariant,
+      }),
+    );
+
+    const convertedVariant = result.current.buildConvertedVariant('oz');
+
+    expect(convertedVariant).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'oz',
+    });
+    expect(convertedVariant?.calories).toBeCloseTo(
+      250 * ((getConversionFactor('g', 'oz') ?? 0) / 100),
+      5,
+    );
+    expect(convertedVariant?.protein).toBeCloseTo(
+      20 * ((getConversionFactor('g', 'oz') ?? 0) / 100),
+      5,
+    );
+  });
+
+  it('normalizes volume conversions to a 1-unit serving like web does', () => {
+    const millilitersVariant = createVariant({
+      id: 'milliliters',
+      serving_size: 100,
+      serving_unit: 'ml',
+      calories: 60,
+      protein: 3,
+      carbs: 9,
+      fat: 1,
+    });
+
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [millilitersVariant],
+        selectedVariant: millilitersVariant,
+      }),
+    );
+
+    const convertedVariant = result.current.buildConvertedVariant('cup');
+
+    expect(convertedVariant).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'cup',
+    });
+    expect(convertedVariant?.calories).toBeCloseTo(
+      60 * ((getConversionFactor('ml', 'cup') ?? 0) / 100),
+      5,
+    );
+    expect(convertedVariant?.carbs).toBeCloseTo(
+      9 * ((getConversionFactor('ml', 'cup') ?? 0) / 100),
+      5,
+    );
+  });
+
   it('uses the selected compatible variant ahead of fallback variants', () => {
     const gramsVariant = createVariant({
       id: 'grams',
