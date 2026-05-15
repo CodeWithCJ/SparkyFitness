@@ -241,8 +241,9 @@ describe('FoodUnitSelectorSheet', () => {
       expect(onSelect).toHaveBeenCalledWith({
         kind: 'draft',
         variant: expect.objectContaining({
-          serving_size: 100,
+          serving_size: 1,
           serving_unit: 'kg',
+          calories: 1200,
         }),
       });
     });
