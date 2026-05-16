@@ -210,6 +210,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const [formServingSize, setFormServingSize] = useState(initialServingSize);
   const [formServingUnit, setFormServingUnit] = useState(initialFood?.servingUnit ?? 'g');
   const [quantityText, setQuantityText] = useState(String(initialServingSize));
+  const [quantityTouched, setQuantityTouched] = useState(false);
   const quantity = parseDecimalInput(quantityText) || 0;
   const servings = formServingSize > 0 ? quantity / formServingSize : 0;
 
@@ -217,11 +218,14 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
     const size = parseDecimalInput(sizeStr) || 0;
     setFormServingSize(size);
     setFormServingUnit(unit);
-    if (size > 0) setQuantityText(String(size));
+    if (size > 0 && !quantityTouched) setQuantityText(String(size));
   };
 
   const updateQuantityText = (text: string) => {
-    if (DECIMAL_INPUT_REGEX.test(text)) setQuantityText(text);
+    if (DECIMAL_INPUT_REGEX.test(text)) {
+      setQuantityText(text);
+      setQuantityTouched(true);
+    }
   };
 
   const clampQuantity = () => {
@@ -237,7 +241,10 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
     const increment = step * 0.5;
     const minQuantity = increment;
     if (quantity < minQuantity) {
-      if (delta > 0) setQuantityText(String(minQuantity));
+      if (delta > 0) {
+        setQuantityText(String(minQuantity));
+        setQuantityTouched(true);
+      }
       return;
     }
     const boundary =
@@ -246,6 +253,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         : Math.floor(quantity / increment) * increment;
     const next = boundary !== quantity ? boundary : quantity + delta * increment;
     setQuantityText(String(Math.max(minQuantity, next)));
+    setQuantityTouched(true);
   };
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
