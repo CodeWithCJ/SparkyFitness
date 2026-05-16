@@ -94,6 +94,7 @@ services:
 
   # sparkyfitness-mcp:
   #   image: codewithcj/sparkyfitness_mcp:latest
+  #   container_name: sparkyfitness-mcp
   #   environment:
   #     SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
   #     SPARKY_FITNESS_DB_HOST: ${SPARKY_FITNESS_DB_HOST:-sparkyfitness-db}
