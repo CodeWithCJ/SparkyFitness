@@ -50,10 +50,6 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [prevExerciseId, setPrevExerciseId] = useState<string | undefined>(
-    undefined
-  );
-  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(false);
 
   // Ref to keep track of isPlaying state inside callbacks
   const isPlayingRef = useRef(isPlaying);
@@ -61,7 +57,29 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     () => exercise?.instructions || [],
     [exercise?.instructions]
   );
-  const images = exercise?.images || [];
+  const images = useMemo(() => exercise?.images || [], [exercise?.images]);
+
+  // Adjust state when props change (Render-adjust pattern)
+  // This avoids the "Calling setState synchronously within an effect" lint error.
+  const [prevExerciseId, setPrevExerciseId] = useState<string | undefined>(
+    undefined
+  );
+  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(false);
+
+  if (exercise?.id !== prevExerciseId || (isOpen && !prevIsOpen)) {
+    setPrevExerciseId(exercise?.id);
+    setPrevIsOpen(isOpen);
+    setCurrentInstructionIndex(0);
+    setCurrentImageIndex(0);
+    if (isOpen) {
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+    }
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+    setIsPlaying(false);
+  }
 
   const speakInstruction = useCallback(
     (text: string, index: number) => {
@@ -241,17 +259,6 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   ]);
 
   // Use useEffect instead of manual state tracking to reset state when exercise or isOpen changes
-  useEffect(() => {
-    if (isOpen && exercise) {
-      setCurrentInstructionIndex(0);
-      setCurrentImageIndex(0);
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(false);
-      setCurrentInstructionIndex(0);
-      setCurrentImageIndex(0);
-    }
-  }, [exercise?.id, isOpen]);
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -275,7 +282,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       }
       stopImageSlideshow();
     };
-  }, [isOpen, exercise?.id, startImageSlideshow, stopImageSlideshow]);
+  }, [isOpen, exercise, startImageSlideshow, stopImageSlideshow]);
 
   useEffect(() => {
     debug(
