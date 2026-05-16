@@ -39,7 +39,8 @@ const listCategoriesSchema = z.object({
 const createCategorySchema = z.object({
   action: z.literal("create_category"),
   category_name: z.string().min(1).max(200).describe("Name of the custom category"),
-  unit: z.string().max(50).optional().describe("Unit for the new category"),
+  unit: z.string().max(50).optional().describe("Unit for the new category (e.g., 'kg', 'ml')"),
+  data_type: z.enum(["numeric", "boolean"]).optional().describe("Type of data: 'numeric' for measurements, 'boolean' for habits (defaults to 'numeric')"),
 }).strict();
 
 const logMoodSchema = z.object({
@@ -72,6 +73,16 @@ const listCheckinDiarySchema = z.object({
   entry_date: optionalDateSchema,
 }).strict();
 
+const getFastingStatusSchema = z.object({
+  action: z.literal("get_fasting_status"),
+}).strict();
+
+const getBiometricsHistorySchema = z.object({
+  action: z.literal("get_biometrics_history"),
+  start_date: dateSchema.optional().describe("Start date for the history range"),
+  end_date: dateSchema.optional().describe("End date for the history range"),
+}).strict();
+
 export const manageCheckinSchema = z.discriminatedUnion("action", [
   logBiometricsSchema,
   logCustomMetricSchema,
@@ -81,6 +92,8 @@ export const manageCheckinSchema = z.discriminatedUnion("action", [
   logFastingSchema,
   logSleepSchema,
   listCheckinDiarySchema,
+  getFastingStatusSchema,
+  getBiometricsHistorySchema,
 ]);
 
 export type ManageCheckinInput = z.infer<typeof manageCheckinSchema>;

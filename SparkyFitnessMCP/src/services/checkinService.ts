@@ -1,5 +1,7 @@
 import { withClient } from "../db/context.js";
 import { todayInZone } from "@workspace/shared";
+import { getPreferences } from "./profileService.js";
+import { convertWeight, convertMeasurement } from "../utils/unitConversion.js";
 
 /**
  * Gets today's date in YYYY-MM-DD format (UTC for consistency).
@@ -24,6 +26,24 @@ export async function logBiometrics(
     body_fat_percentage?: number;
   }
 ): Promise<Record<string, unknown>> {
+  const prefs = await getPreferences(userId);
+  const defaultWeightUnit = (prefs.default_weight_unit as string) || "kg";
+  const defaultMeasurementUnit = (prefs.default_measurement_unit as string) || "cm";
+
+  // Convert to standard units (kg, cm) for storage
+  const weight = params.weight != null 
+    ? convertWeight(params.weight, params.weight_unit || defaultWeightUnit, "kg")
+    : null;
+  
+  const height = params.height != null
+    ? convertMeasurement(params.height, params.height_unit || defaultMeasurementUnit, "cm")
+    : null;
+
+  const mUnit = params.measurements_unit || defaultMeasurementUnit;
+  const neck = params.neck != null ? convertMeasurement(params.neck, mUnit, "cm") : null;
+  const waist = params.waist != null ? convertMeasurement(params.waist, mUnit, "cm") : null;
+  const hips = params.hips != null ? convertMeasurement(params.hips, mUnit, "cm") : null;
+
   return withClient(userId, async (client) => {
     const result = await client.query(
       `INSERT INTO check_in_measurements (user_id, entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps, created_at, updated_at)
@@ -41,12 +61,12 @@ export async function logBiometrics(
       [
         userId,
         params.entry_date,
-        params.weight ?? null,
-        params.height ?? null,
+        weight,
+        height,
         params.body_fat_percentage ?? null,
-        params.neck ?? null,
-        params.waist ?? null,
-        params.hips ?? null,
+        neck,
+        waist,
+        hips,
         params.steps ?? null,
       ]
     );
@@ -54,6 +74,7 @@ export async function logBiometrics(
     return result.rows[0];
   });
 }
+
 
 export async function logCustomMetric(
   userId: string,
@@ -112,15 +133,15 @@ export async function listCategories(userId: string): Promise<Record<string, unk
 
 export async function createCategory(
   userId: string,
-  params: { category_name: string; measurement_type?: string }
+  params: { category_name: string; unit?: string; data_type?: "numeric" | "boolean" }
 ): Promise<Record<string, unknown>> {
   return withClient(userId, async (client) => {
-    // Actual table is custom_categories with measurement_type and frequency columns
+    // Actual table is custom_categories with name (not category_name), measurement_type, frequency, and data_type columns
     const result = await client.query(
-      `INSERT INTO custom_categories (user_id, name, measurement_type, frequency, created_at, updated_at)
-       VALUES ($1, $2, $3, 'Daily', NOW(), NOW())
-       RETURNING id, name, measurement_type, created_at`,
-      [userId, params.category_name, params.measurement_type || "numeric"]
+      `INSERT INTO custom_categories (user_id, name, measurement_type, data_type, frequency, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'Daily', NOW(), NOW())
+       RETURNING id, name, measurement_type, data_type, created_at`,
+      [userId, params.category_name, params.unit || "unit", params.data_type || "numeric"]
     );
 
     const row = result.rows[0];
@@ -128,6 +149,7 @@ export async function createCategory(
       id: row.id,
       category_name: row.name,
       measurement_type: row.measurement_type,
+      data_type: row.data_type,
       created_at: row.created_at,
     };
   });
@@ -201,6 +223,26 @@ export async function logSleep(
   }
 ): Promise<Record<string, unknown>> {
   return withClient(userId, async (client) => {
+    let bedtime = params.bedtime;
+    let wakeTime = params.wake_time;
+    const duration = params.duration_seconds ?? 28800; // Default 8h
+
+    if (!bedtime && !wakeTime) {
+      // Default: wake time is 7 AM on entry_date, bedtime is 8h before
+      const wake = new Date(`${params.entry_date}T07:00:00Z`);
+      const bed = new Date(wake.getTime() - duration * 1000);
+      wakeTime = wake.toISOString();
+      bedtime = bed.toISOString();
+    } else if (!bedtime && wakeTime) {
+      const wake = new Date(wakeTime);
+      const bed = new Date(wake.getTime() - duration * 1000);
+      bedtime = bed.toISOString();
+    } else if (bedtime && !wakeTime) {
+      const bed = new Date(bedtime);
+      const wake = new Date(bed.getTime() + duration * 1000);
+      wakeTime = wake.toISOString();
+    }
+
     // sleep_entries uses bedtime/wake_time as timestamptz and duration_in_seconds
     const result = await client.query(
       `INSERT INTO sleep_entries (user_id, entry_date, duration_in_seconds, sleep_score, bedtime, wake_time, source, created_at, updated_at)
@@ -209,13 +251,14 @@ export async function logSleep(
       [
         userId,
         params.entry_date,
-        params.duration_seconds ?? null,
+        duration,
         params.sleep_score ?? null,
-        params.bedtime || null,
-        params.wake_time || null,
+        bedtime,
+        wakeTime,
         params.source || "manual",
       ]
     );
+
 
     const row = result.rows[0];
     return {
@@ -285,9 +328,27 @@ export async function listCheckinDiary(
       [date]
     );
 
+    const prefs = await getPreferences(userId);
+    const wUnit = (prefs.default_weight_unit as string) || "kg";
+    const mUnit = (prefs.default_measurement_unit as string) || "cm";
+
+    let biometrics = biometricsResult.rows[0] || null;
+    if (biometrics) {
+      biometrics = {
+        ...biometrics,
+        weight: biometrics.weight != null ? convertWeight(Number(biometrics.weight), "kg", wUnit) : null,
+        height: biometrics.height != null ? convertMeasurement(Number(biometrics.height), "cm", mUnit) : null,
+        neck: biometrics.neck != null ? convertMeasurement(Number(biometrics.neck), "cm", mUnit) : null,
+        waist: biometrics.waist != null ? convertMeasurement(Number(biometrics.waist), "cm", mUnit) : null,
+        hips: biometrics.hips != null ? convertMeasurement(Number(biometrics.hips), "cm", mUnit) : null,
+        weight_unit: wUnit,
+        measurement_unit: mUnit,
+      };
+    }
+
     return {
       date,
-      biometrics: biometricsResult.rows[0] || null,
+      biometrics,
       mood_entries: moodResult.rows,
       sleep_entries: sleepResult.rows.map((row: any) => ({
         ...row,
@@ -313,3 +374,76 @@ export async function listCheckinDiary(
     };
   });
 }
+
+export async function getFastingStatus(userId: string): Promise<Record<string, unknown> | null> {
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT id, user_id, start_time, end_time, status, fasting_type, created_at
+       FROM fasting_logs
+       WHERE user_id = $1 AND status = 'ACTIVE'
+       ORDER BY start_time DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      start_time: row.start_time,
+      end_time: row.end_time,
+      fasting_status: row.status,
+      fasting_type: row.fasting_type,
+      created_at: row.created_at,
+    };
+  });
+}
+
+export async function getBiometricsHistory(
+  userId: string,
+  params: { start_date?: string; end_date?: string }
+): Promise<Record<string, unknown>[]> {
+  const prefs = await getPreferences(userId);
+  const wUnit = (prefs.default_weight_unit as string) || "kg";
+  const mUnit = (prefs.default_measurement_unit as string) || "cm";
+
+  return withClient(userId, async (client) => {
+    let query = `
+      SELECT entry_date, weight, height, body_fat_percentage, neck, waist, hips, steps
+      FROM check_in_measurements
+      WHERE user_id = $1
+    `;
+    const queryParams: any[] = [userId];
+    let paramIdx = 2;
+
+    if (params.start_date) {
+      query += ` AND entry_date >= $${paramIdx}`;
+      queryParams.push(params.start_date);
+      paramIdx++;
+    }
+    if (params.end_date) {
+      query += ` AND entry_date <= $${paramIdx}`;
+      queryParams.push(params.end_date);
+      paramIdx++;
+    }
+
+    query += ` ORDER BY entry_date ASC`;
+
+    const result = await client.query(query, queryParams);
+    return result.rows.map((row: any) => ({
+      ...row,
+      entry_date: new Date(row.entry_date).toISOString().split("T")[0],
+      weight: row.weight != null ? convertWeight(Number(row.weight), "kg", wUnit) : null,
+      height: row.height != null ? convertMeasurement(Number(row.height), "cm", mUnit) : null,
+      neck: row.neck != null ? convertMeasurement(Number(row.neck), "cm", mUnit) : null,
+      waist: row.waist != null ? convertMeasurement(Number(row.waist), "cm", mUnit) : null,
+      hips: row.hips != null ? convertMeasurement(Number(row.hips), "cm", mUnit) : null,
+      weight_unit: wUnit,
+      measurement_unit: mUnit,
+    }));
+  });
+}
+
+

@@ -57,6 +57,26 @@ const deleteExerciseEntrySchema = z.object({
   entry_id: uuidSchema.describe("UUID of the exercise entry to delete"),
 }).strict();
 
+const getExerciseDetailsSchema = z.object({
+  action: z.literal("get_exercise_details"),
+  exercise_id: uuidSchema.optional().describe("UUID of the exercise"),
+  exercise_name: z.string().min(1).max(200).optional().describe("Name of the exercise (alternative to ID)"),
+}).strict();
+
+const createWorkoutPresetSchema = z.object({
+  action: z.literal("create_workout_preset"),
+  name: z.string().min(1).max(200).describe("Name of the workout preset"),
+  exercise_ids: z.array(uuidSchema).describe("List of exercise UUIDs to include in the preset"),
+}).strict();
+
+const getExerciseProgressSchema = z.object({
+  action: z.literal("get_exercise_progress"),
+  exercise_id: uuidSchema.optional().describe("UUID of the exercise"),
+  exercise_name: z.string().min(1).max(200).optional().describe("Name of the exercise (alternative to ID)"),
+  start_date: dateSchema.optional().describe("Start date for progress tracking"),
+  end_date: dateSchema.optional().describe("End date for progress tracking"),
+}).strict();
+
 export const manageExerciseSchema = z.discriminatedUnion("action", [
   searchExercisesSchema,
   createExerciseSchema,
@@ -65,6 +85,9 @@ export const manageExerciseSchema = z.discriminatedUnion("action", [
   getWorkoutPresetsSchema,
   logWorkoutPresetSchema,
   deleteExerciseEntrySchema,
+  getExerciseDetailsSchema,
+  createWorkoutPresetSchema,
+  getExerciseProgressSchema,
 ]);
 
 export type ManageExerciseInput = z.infer<typeof manageExerciseSchema>;

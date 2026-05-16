@@ -7,7 +7,7 @@ import type { ToolResponse } from "../types.js";
 
 const VALID_ACTIONS = [
   "log_biometrics", "log_custom_metric", "list_categories", "create_category",
-  "log_mood", "log_fasting", "log_sleep", "list_checkin_diary",
+  "log_mood", "log_fasting", "log_sleep", "list_checkin_diary", "get_fasting_status", "get_biometrics_history",
 ];
 
 export function registerCheckinTools(server: McpServer, userId: string): void {
@@ -25,7 +25,9 @@ Actions:
 - log_custom_metric(entry_date, category_name, value:string|number, unit?, notes?)
 - create_category(category_name, unit?)
 - list_categories()
-- list_checkin_diary(entry_date?)`,
+- list_checkin_diary(entry_date?)
+- get_fasting_status() — returns the currently active fasting session if any
+- get_biometrics_history(start_date?, end_date?) — returns weight and measurements history`,
       inputSchema: manageCheckinSchema,
       annotations: {
         readOnlyHint: false,
@@ -98,7 +100,8 @@ Actions:
           case "create_category": {
             const category = await checkinService.createCategory(userId, {
               category_name: args.category_name,
-              measurement_type: args.unit,
+              unit: args.unit,
+              data_type: (args as any).data_type,
             });
             return formatConfirmation(
               `Category "${args.category_name}" created${args.unit ? ` with measurement type "${args.unit}"` : ""}.`,
@@ -158,26 +161,32 @@ Actions:
 
           case "list_checkin_diary": {
             const diary = await checkinService.listCheckinDiary(userId, args.entry_date);
-            const date = (diary as any).date;
-            let text = `# Check-in Diary: ${date}\n\n`;
+            const dateLabel = args.entry_date || "today";
+
+            let text = `### Check-in Diary: ${dateLabel}\n\n`;
 
             // Biometrics
             const bio = (diary as any).biometrics;
             if (bio) {
-              text += "## Biometrics\n";
-              if (bio.weight != null) text += `- Weight: ${bio.weight}\n`;
-              if (bio.height != null) text += `- Height: ${bio.height}\n`;
-              if (bio.body_fat != null) text += `- Body Fat: ${bio.body_fat}%\n`;
-              if (bio.steps != null) text += `- Steps: ${bio.steps}\n`;
-              if (bio.neck != null) text += `- Neck: ${bio.neck}\n`;
-              if (bio.waist != null) text += `- Waist: ${bio.waist}\n`;
-              if (bio.hips != null) text += `- Hips: ${bio.hips}\n`;
-              text += "\n";
+              const b = bio;
+              const wUnit = b.weight_unit || "kg";
+              const mUnit = b.measurement_unit || "cm";
+              
+              text += `#### Biometrics\n`;
+              if (b.weight) text += `- **Weight:** ${b.weight} ${wUnit}\n`;
+              if (b.height) text += `- **Height:** ${b.height} ${mUnit}\n`;
+              if (b.steps) text += `- **Steps:** ${b.steps}\n`;
+              if (b.body_fat_percentage) text += `- **Body Fat:** ${b.body_fat_percentage}%\n`;
+              if (b.neck) text += `- **Neck:** ${b.neck} ${mUnit}\n`;
+              if (b.waist) text += `- **Waist:** ${b.waist} ${mUnit}\n`;
+              if (b.hips) text += `- **Hips:** ${b.hips} ${mUnit}\n`;
+              text += `\n`;
             }
 
+
             // Mood
-            const moods = (diary as any).mood_entries;
-            if (moods && moods.length > 0) {
+            const moods = (diary as any).mood_entries || [];
+            if (moods.length > 0) {
               text += "## Mood\n";
               for (const m of moods) {
                 text += `- ${m.mood_value}/10`;
@@ -188,8 +197,8 @@ Actions:
             }
 
             // Sleep
-            const sleeps = (diary as any).sleep_entries;
-            if (sleeps && sleeps.length > 0) {
+            const sleeps = (diary as any).sleep_entries || [];
+            if (sleeps.length > 0) {
               text += "## Sleep\n";
               for (const s of sleeps) {
                 const parts: string[] = [];
@@ -208,8 +217,8 @@ Actions:
             }
 
             // Fasting
-            const fasts = (diary as any).fasting_entries;
-            if (fasts && fasts.length > 0) {
+            const fasts = (diary as any).fasting_entries || [];
+            if (fasts.length > 0) {
               text += "## Fasting\n";
               for (const f of fasts) {
                 let line = `- ${f.fasting_status || "ACTIVE"}`;
@@ -222,8 +231,8 @@ Actions:
             }
 
             // Custom metrics
-            const customs = (diary as any).custom_metrics;
-            if (customs && customs.length > 0) {
+            const customs = (diary as any).custom_metrics || [];
+            if (customs.length > 0) {
               text += "## Custom Metrics\n";
               for (const c of customs) {
                 let line = `- **${c.category_name}**: ${c.value}`;
@@ -243,6 +252,25 @@ Actions:
               content: [{ type: "text", text }],
               structuredContent: diary as Record<string, unknown>,
             };
+          }
+
+          case "get_biometrics_history": {
+            const history = await checkinService.getBiometricsHistory(userId, {
+              start_date: args.start_date,
+              end_date: args.end_date,
+            });
+            return formatList(
+              history,
+              `Biometrics History`,
+              (h: any) => {
+                const wUnit = h.weight_unit || "kg";
+                let text = `**${h.entry_date}**: `;
+                if (h.weight) text += `Weight: ${h.weight}${wUnit} `;
+                if (h.body_fat_percentage) text += `| BF: ${h.body_fat_percentage}% `;
+                if (h.steps) text += `| Steps: ${h.steps}`;
+                return text;
+              }
+            );
           }
 
           default:
