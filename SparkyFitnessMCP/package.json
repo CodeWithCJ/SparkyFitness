@@ -2,11 +2,11 @@
   "name": "sparkyfitness-mcp-server",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --packages=external --alias:@workspace/shared=../shared/src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.cjs --packages=external --alias:@workspace/shared=../shared/src/index.ts",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js",
+    "start": "node dist/index.cjs",
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {

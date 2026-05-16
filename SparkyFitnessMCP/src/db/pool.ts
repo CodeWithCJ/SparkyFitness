@@ -1,15 +1,11 @@
 import pg from "pg";
 import path from "path";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
 import { DB_POOL_MAX, DB_IDLE_TIMEOUT_MS, DB_CONNECTION_TIMEOUT_MS } from "../constants.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Ensure environment variables are loaded BEFORE the pool is initialized
-dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
-dotenv.config({ path: path.join(__dirname, "..", "..", "..", ".env") });
+dotenv.config({ path: path.join(process.cwd(), ".env") });
+dotenv.config({ path: path.join(process.cwd(), "..", ".env") });
 
 const { Pool } = pg;
 
