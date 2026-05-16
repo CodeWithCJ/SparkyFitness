@@ -59,13 +59,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [surfaceBg, borderSubtle, textMuted, successIcon, accentPrimary, infoBg] = useCSSVariable([
+  const [surfaceBg, raisedBg, borderSubtle, textMuted, successIcon, accentPrimary] = useCSSVariable([
     '--color-surface',
+    '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
     '--color-icon-success',
     '--color-accent-primary',
-    '--color-bg-info',
   ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -227,17 +227,18 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   const buildSelectedRowStyle = useCallback(
     (isSelected: boolean) => ({
-      borderColor: isSelected ? accentPrimary : borderSubtle,
-      borderWidth: isSelected ? 1 : 0,
-      borderBottomWidth: isSelected ? 1 : StyleSheet.hairlineWidth,
-      backgroundColor: isSelected ? infoBg : 'transparent',
-      borderRadius: isSelected ? 12 : 0,
-      marginHorizontal: isSelected ? 8 : 0,
-      marginVertical: isSelected ? 4 : 0,
+      borderColor:
+        isSelected && !isDarkMode ? accentPrimary : borderSubtle,
+      borderWidth: isSelected && !isDarkMode ? 1 : 0,
+      borderBottomWidth: isSelected && !isDarkMode ? 1 : StyleSheet.hairlineWidth,
+      backgroundColor: isSelected ? raisedBg : 'transparent',
+      borderRadius: isSelected ? 10 : 0,
+      marginHorizontal: isSelected ? 4 : 0,
+      marginVertical: isSelected ? 2 : 0,
       paddingHorizontal: 16,
       paddingVertical: 14,
     }),
-    [accentPrimary, borderSubtle, infoBg],
+    [accentPrimary, borderSubtle, isDarkMode, raisedBg],
   );
 
   const renderCustomVariantRow = (variant: FoodUnitVariant) => {
@@ -257,7 +258,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
-          style={isSelected ? { color: accentPrimary } : undefined}
         >
           {variant.serving_unit}
         </Text>
@@ -283,7 +283,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
-          style={isSelected ? { color: accentPrimary } : undefined}
         >
           {unit}
         </Text>

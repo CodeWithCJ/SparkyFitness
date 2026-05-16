@@ -12,10 +12,7 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import {
-  FOOD_FORM_UNIT_GROUPS,
-  getConversionFactor,
-} from '../utils/servingSizeConversions';
+import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
 
 export interface FoodFormData {
   name: string;
@@ -269,12 +266,26 @@ function applyVariantUnitToFormState(
 function applyCompatibleDraftToFormState(
   previous: FoodFormData,
   variant: FoodUnitVariant,
-  nextServingSize: number,
+  scaledVariant: FoodUnitVariant,
 ): FoodFormData {
   return {
     ...previous,
-    servingSize: formatFoodFormNumber(nextServingSize, 'servingSize'),
     servingUnit: variant.serving_unit,
+    calories: formatFoodFormNumber(scaledVariant.calories, 'calories'),
+    protein: formatFoodFormNumber(scaledVariant.protein, 'nutrient'),
+    carbs: formatFoodFormNumber(scaledVariant.carbs, 'nutrient'),
+    fat: formatFoodFormNumber(scaledVariant.fat, 'nutrient'),
+    fiber: formatFoodFormNumber(scaledVariant.dietary_fiber, 'nutrient'),
+    saturatedFat: formatFoodFormNumber(scaledVariant.saturated_fat, 'nutrient'),
+    transFat: formatFoodFormNumber(scaledVariant.trans_fat, 'nutrient'),
+    sodium: formatFoodFormNumber(scaledVariant.sodium, 'nutrient'),
+    sugars: formatFoodFormNumber(scaledVariant.sugars, 'nutrient'),
+    potassium: formatFoodFormNumber(scaledVariant.potassium, 'nutrient'),
+    cholesterol: formatFoodFormNumber(scaledVariant.cholesterol, 'nutrient'),
+    calcium: formatFoodFormNumber(scaledVariant.calcium, 'nutrient'),
+    iron: formatFoodFormNumber(scaledVariant.iron, 'nutrient'),
+    vitaminA: formatFoodFormNumber(scaledVariant.vitamin_a, 'nutrient'),
+    vitaminC: formatFoodFormNumber(scaledVariant.vitamin_c, 'nutrient'),
   };
 }
 
@@ -305,7 +316,45 @@ function isPositiveNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
-function getVariantNumericValueForField(
+function scaleCompatibleDraftVariant(
+  variant: FoodUnitVariant,
+  servingSize: number,
+): FoodUnitVariant {
+  const ratio =
+    variant.serving_size > 0 && Number.isFinite(servingSize)
+      ? servingSize / variant.serving_size
+      : 1;
+
+  return {
+    ...variant,
+    calories: (variant.calories ?? 0) * ratio,
+    protein: (variant.protein ?? 0) * ratio,
+    carbs: (variant.carbs ?? 0) * ratio,
+    fat: (variant.fat ?? 0) * ratio,
+    saturated_fat: (variant.saturated_fat ?? 0) * ratio,
+    trans_fat: (variant.trans_fat ?? 0) * ratio,
+    sodium: (variant.sodium ?? 0) * ratio,
+    sugars: (variant.sugars ?? 0) * ratio,
+    potassium: (variant.potassium ?? 0) * ratio,
+    cholesterol: (variant.cholesterol ?? 0) * ratio,
+    calcium: (variant.calcium ?? 0) * ratio,
+    iron: (variant.iron ?? 0) * ratio,
+    vitamin_a: (variant.vitamin_a ?? 0) * ratio,
+    vitamin_c: (variant.vitamin_c ?? 0) * ratio,
+    dietary_fiber: (variant.dietary_fiber ?? 0) * ratio,
+    polyunsaturated_fat: (variant.polyunsaturated_fat ?? 0) * ratio,
+    monounsaturated_fat: (variant.monounsaturated_fat ?? 0) * ratio,
+    glycemic_index: variant.glycemic_index,
+    custom_nutrients: Object.fromEntries(
+      Object.entries(variant.custom_nutrients || {}).map(([key, value]) => [
+        key,
+        (Number(value) || 0) * ratio,
+      ]),
+    ),
+  };
+}
+
+function getScaledVariantNumericValue(
   field: Exclude<NumericFoodFormField, 'servingSize'>,
   variant: FoodUnitVariant,
 ): number {
@@ -341,47 +390,6 @@ function getVariantNumericValueForField(
     case 'vitaminC':
       return variant.vitamin_c ?? 0;
   }
-}
-
-function inferCompatibleDraftServingSize(
-  previous: FoodFormData,
-  preciseNumericValues: Partial<Record<NumericFoodFormField, number>>,
-  variant: FoodUnitVariant,
-): number {
-  for (const field of NUTRITION_FIELDS) {
-    const currentValue =
-      preciseNumericValues[field as NumericFoodFormField] ??
-      parseDecimalInput(previous[field]);
-    const variantValue = getVariantNumericValueForField(
-      field as Exclude<NumericFoodFormField, 'servingSize'>,
-      variant,
-    );
-
-    if (isPositiveNumber(currentValue) && isPositiveNumber(variantValue)) {
-      const inferredServingSize =
-        variant.serving_size * (currentValue / variantValue);
-      if (isPositiveNumber(inferredServingSize)) {
-        return inferredServingSize;
-      }
-    }
-  }
-
-  const currentServingSize =
-    preciseNumericValues.servingSize ?? parseDecimalInput(previous.servingSize);
-  const unitFactor = getConversionFactor(
-    previous.servingUnit,
-    variant.serving_unit,
-  );
-  if (isPositiveNumber(currentServingSize) && isPositiveNumber(unitFactor ?? 0)) {
-    const convertedServingSize = currentServingSize / unitFactor!;
-    if (isPositiveNumber(convertedServingSize)) {
-      return convertedServingSize;
-    }
-  }
-
-  return isPositiveNumber(currentServingSize)
-    ? currentServingSize
-    : variant.serving_size;
 }
 
 function formatScaledInput(value: number): string {
@@ -464,17 +472,31 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
   const applyCompatibleDraftSelection = (variant: FoodUnitVariant) => {
     setForm((previous) => {
-      const nextServingSize = inferCompatibleDraftServingSize(
-        previous,
-        preciseNumericValuesRef.current,
+      const currentServingSize =
+        preciseNumericValuesRef.current.servingSize ??
+        parseDecimalInput(previous.servingSize);
+      const nextServingSize = isPositiveNumber(currentServingSize)
+        ? currentServingSize
+        : variant.serving_size;
+      const scaledVariant = scaleCompatibleDraftVariant(
         variant,
+        nextServingSize,
       );
+      NUTRITION_FIELDS.forEach((field) => {
+        preciseNumericValuesRef.current[field as NumericFoodFormField] =
+          getScaledVariantNumericValue(
+            field as Exclude<NumericFoodFormField, 'servingSize'>,
+            scaledVariant,
+          );
+      });
       preciseNumericValuesRef.current.servingSize = nextServingSize;
-      lastServingSizeRef.current = nextServingSize;
+      if (isPositiveNumber(nextServingSize)) {
+        lastServingSizeRef.current = nextServingSize;
+      }
       return applyCompatibleDraftToFormState(
         previous,
         variant,
-        nextServingSize,
+        scaledVariant,
       );
     });
   };

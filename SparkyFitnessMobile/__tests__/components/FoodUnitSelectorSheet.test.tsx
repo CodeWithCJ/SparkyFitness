@@ -141,9 +141,7 @@ describe('FoodUnitSelectorSheet', () => {
     const selectedRowStyle = screen.getByTestId('food-unit-option-g').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'infoBg',
-        borderColor: 'accent',
-        borderWidth: 1,
+        backgroundColor: 'raised',
       }),
     );
     expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
@@ -182,9 +180,7 @@ describe('FoodUnitSelectorSheet', () => {
       screen.getByTestId('food-unit-option-cup').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'infoBg',
-        borderColor: 'accent',
-        borderWidth: 1,
+        backgroundColor: 'raised',
       }),
     );
     expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
@@ -224,9 +220,7 @@ describe('FoodUnitSelectorSheet', () => {
       screen.getByTestId('food-unit-custom-variant-variant-fillet').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'infoBg',
-        borderColor: 'accent',
-        borderWidth: 1,
+        backgroundColor: 'raised',
       }),
     );
     expect(screen.queryByText('100 g (120 cal)')).toBeNull();

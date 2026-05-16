@@ -359,7 +359,7 @@ describe('FoodForm', () => {
     ).toBeUndefined();
   });
 
-  it('preserves the equivalent serving amount when selecting a compatible converted draft unit', async () => {
+  it('keeps the serving-size number while updating the unit and nutrition for a compatible converted draft unit', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
       variant: {
@@ -418,13 +418,13 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('0.1')).toBeTruthy();
+      expect(screen.getByDisplayValue('100')).toBeTruthy();
     });
     expect(screen.getByText('kg')).toBeTruthy();
-    expect(screen.getByDisplayValue('120')).toBeTruthy();
-    expect(screen.getByDisplayValue('10')).toBeTruthy();
-    expect(screen.getByDisplayValue('8')).toBeTruthy();
-    expect(screen.getByDisplayValue('4')).toBeTruthy();
+    expect(screen.getByDisplayValue('120000')).toBeTruthy();
+    expect(screen.getByDisplayValue('10000')).toBeTruthy();
+    expect(screen.getByDisplayValue('8000')).toBeTruthy();
+    expect(screen.getByDisplayValue('4000')).toBeTruthy();
   });
 
   it('keeps current nutrition values and passes only saved variants when selecting an incompatible unit', async () => {
@@ -634,7 +634,7 @@ describe('FoodForm', () => {
     expect(onSubmit).toHaveBeenCalled();
   });
 
-  it('preserves equivalent values and keeps auto scale working for mg-based compatible units', async () => {
+  it('keeps the serving-size number and auto scales from the converted nutrition values for mg-based compatible units', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
       variant: {
@@ -695,20 +695,20 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('100000')).toBeTruthy();
-      expect(screen.getByDisplayValue('120')).toBeTruthy();
-      expect(screen.getByDisplayValue('10')).toBeTruthy();
+      expect(screen.getByDisplayValue('100')).toBeTruthy();
+      expect(screen.getByDisplayValue('0.12')).toBeTruthy();
+      expect(screen.getByDisplayValue('0.05')).toBeTruthy();
     });
 
-    fireEvent.changeText(screen.getByDisplayValue('100000'), '200000');
+    fireEvent.changeText(screen.getByDisplayValue('100'), '200');
 
-    expect(screen.getByDisplayValue('240')).toBeTruthy();
-    expect(screen.getByDisplayValue('20')).toBeTruthy();
-    expect(screen.getByDisplayValue('16')).toBeTruthy();
-    expect(screen.getByDisplayValue('8')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.24')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.1')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.16')).toBeTruthy();
+    expect(screen.getByDisplayValue('0.04')).toBeTruthy();
   });
 
-  it('falls back to direct unit conversion for compatible zero-calorie foods', async () => {
+  it('keeps the serving-size number for compatible zero-calorie foods', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
       variant: {
@@ -767,10 +767,10 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('0.4227')).toBeTruthy();
+      expect(screen.getByDisplayValue('100')).toBeTruthy();
     });
     expect(screen.getByText('cup')).toBeTruthy();
-    expect(screen.getAllByDisplayValue('0')).toHaveLength(4);
+    expect(screen.getAllByDisplayValue('0').length).toBeGreaterThanOrEqual(4);
   });
 
   it('keeps precise values in sync when unit selection is updated from props', () => {
