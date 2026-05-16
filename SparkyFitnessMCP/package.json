@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outdir=dist --external:pg-native --external:bcrypt --external:fsevents --alias:@workspace/shared=../shared/src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outdir=dist --external:pg-native --external:bcrypt --external:fsevents --alias:@workspace/shared=../shared/src/index.ts --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts"
