@@ -30,6 +30,8 @@ jest.mock('uniwind', () => ({
           return 'border';
         case '--color-text-muted':
           return 'muted';
+        case '--color-text-success':
+          return 'successText';
         case '--color-accent-primary':
           return 'accent';
         case '--color-bg-info':
@@ -148,7 +150,7 @@ describe('FoodUnitSelectorSheet', () => {
       .map(([props]) => props)
       .filter((props) => props.name === 'checkmark');
     expect(checkmarkCalls.length).toBeGreaterThan(0);
-    expect(checkmarkCalls.every((props) => props.color === '#22c55e')).toBe(true);
+    expect(checkmarkCalls.every((props) => props.color === 'successText')).toBe(true);
     expect(screen.queryByText('icon-chevron-forward')).toBeNull();
   });
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import FoodForm from '../../src/components/FoodForm';
 
@@ -58,6 +59,7 @@ describe('FoodForm', () => {
   beforeEach(() => {
     mockBottomSheetPicker.mockClear();
     mockFoodUnitSelectorSheet.mockClear();
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     mockUnitSelectionPayload = {
       kind: 'draft',
       variant: {
@@ -69,6 +71,10 @@ describe('FoodForm', () => {
         fat: 4,
       },
     };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('scales nutrition values when auto scale is enabled and serving size changes', () => {
@@ -441,7 +447,9 @@ describe('FoodForm', () => {
     );
     expect(latestSelectorProps?.showManualUpdateBanner).toBeUndefined();
     expect(
-      screen.getByText('Please update the nutrition values manually.'),
+      screen.getByText(
+        "Can't convert between units. Update nutrition values manually.",
+      ),
     ).toBeTruthy();
   });
 
@@ -489,8 +497,73 @@ describe('FoodForm', () => {
     );
 
     expect(
-      screen.getByText('Please update the nutrition values manually.'),
+      screen.getByText(
+        "Can't convert between units. Update nutrition values manually.",
+      ),
     ).toBeTruthy();
+  });
+
+  it('confirms before submit when the manual-update banner is showing', () => {
+    const onSubmit = jest.fn();
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'draft',
+            variant: {
+              serving_size: 1,
+              serving_unit: 'cup',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+            requiresNutritionUpdate: true,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Manual Nutrition Update',
+      "Can't convert between units. Update nutrition values manually before saving.",
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
+        expect.objectContaining({ text: 'Save Anyway' }),
+      ]),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
+    const saveAnyway = buttons.find((button: { text: string }) => button.text === 'Save Anyway');
+    saveAnyway?.onPress?.();
+
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {

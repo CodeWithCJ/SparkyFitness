@@ -23,7 +23,6 @@ import type {
 import { canAutoConvertToUnit, useUnitConversion } from '../hooks/useUnitConversion';
 import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
 
-const COMPATIBLE_CHECK_COLOR = '#22c55e';
 const STANDARD_UNIT_KEYS = new Set(
   FOOD_FORM_UNIT_GROUPS.flatMap((group) =>
     group.units.map((unit) => unit.trim().toLowerCase()),
@@ -60,12 +59,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [surfaceBg, raisedBg, borderSubtle, textMuted] = useCSSVariable([
+  const [surfaceBg, raisedBg, borderSubtle, textMuted, successText] = useCSSVariable([
     '--color-surface',
     '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
-  ]) as [string, string, string, string];
+    '--color-text-success',
+  ]) as [string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -277,7 +277,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         >
           {unit}
         </Text>
-        {compatible ? <Icon name="checkmark" size={18} color={COMPATIBLE_CHECK_COLOR} /> : null}
+        {compatible ? <Icon name="checkmark" size={18} color={successText} /> : null}
       </TouchableOpacity>
     );
   };

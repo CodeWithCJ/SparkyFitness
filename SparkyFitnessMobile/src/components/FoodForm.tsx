@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { Alert, View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
@@ -599,6 +599,41 @@ const FoodForm: React.FC<FoodFormProps> = ({
     </View>
   );
 
+  const submitForm = () =>
+    onSubmit({
+      ...form,
+      ...Object.fromEntries(
+        NUMERIC_FOOD_FORM_FIELDS.map((field) => [
+          field,
+          preciseNumericValuesRef.current[field] != null
+            ? toPreciseFormString(preciseNumericValuesRef.current[field])
+            : form[field],
+        ]),
+      ),
+    });
+
+  const handleSubmitPress = () => {
+    if (!showManualUpdateBanner) {
+      submitForm();
+      return;
+    }
+
+    Alert.alert(
+      'Manual Nutrition Update',
+      "Can't convert between units. Update nutrition values manually before saving.",
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Save Anyway',
+          onPress: submitForm,
+        },
+      ],
+    );
+  };
+
   return (
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}>
       <ScrollView
@@ -706,7 +741,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  Please update the nutrition values manually.
+                  {"Can't convert between units. Update nutrition values manually."}
                 </Text>
               </View>
             </View>
@@ -781,19 +816,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           variant="primary"
           className="mt-2"
           disabled={isSubmitting}
-          onPress={() =>
-            onSubmit({
-              ...form,
-              ...Object.fromEntries(
-                NUMERIC_FOOD_FORM_FIELDS.map((field) => [
-                  field,
-                  preciseNumericValuesRef.current[field] != null
-                    ? toPreciseFormString(preciseNumericValuesRef.current[field])
-                    : form[field],
-                ]),
-              ),
-            })
-          }
+          onPress={handleSubmitPress}
         >
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#fff" />
