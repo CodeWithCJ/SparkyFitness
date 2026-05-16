@@ -274,7 +274,9 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
             icon={<Play className="w-3.5 h-3.5" />}
             label="Play Instructions"
             onClick={() => {
-              setExerciseToPlay(snapshot);
+              setExerciseToPlay({
+                ...snapshot!,
+              });
               setIsPlaybackModalOpen(true);
             }}
             colorClass="hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50"

@@ -50,10 +50,6 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [prevExerciseId, setPrevExerciseId] = useState<string | undefined>(
-    undefined
-  );
-  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(false);
 
   // Ref to keep track of isPlaying state inside callbacks
   const isPlayingRef = useRef(isPlaying);
@@ -61,7 +57,29 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     () => exercise?.instructions || [],
     [exercise?.instructions]
   );
-  const images = exercise?.images || [];
+  const images = useMemo(() => exercise?.images || [], [exercise?.images]);
+
+  // Adjust state when props change (Render-adjust pattern)
+  // This avoids the "Calling setState synchronously within an effect" lint error.
+  const [prevExerciseId, setPrevExerciseId] = useState<string | undefined>(
+    undefined
+  );
+  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(false);
+
+  if (exercise?.id !== prevExerciseId || (isOpen && !prevIsOpen)) {
+    setPrevExerciseId(exercise?.id);
+    setPrevIsOpen(isOpen);
+    setCurrentInstructionIndex(0);
+    setCurrentImageIndex(0);
+    if (isOpen) {
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+    }
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+    setIsPlaying(false);
+  }
 
   const speakInstruction = useCallback(
     (text: string, index: number) => {
@@ -240,20 +258,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     loggingLevel,
   ]);
 
-  if (exercise?.id !== prevExerciseId || isOpen !== prevIsOpen) {
-    setPrevExerciseId(exercise?.id);
-    setPrevIsOpen(isOpen);
-
-    if (isOpen && exercise) {
-      setCurrentInstructionIndex(0);
-      setCurrentImageIndex(0);
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(false);
-      setCurrentInstructionIndex(0);
-      setCurrentImageIndex(0);
-    }
-  }
+  // Use useEffect instead of manual state tracking to reset state when exercise or isOpen changes
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -347,6 +352,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     synth.onvoiceschanged = loadVoices;
     loadVoices(); // Call initially in case voices are already loaded
 
+    // Clean up
     return () => {
       synth.onvoiceschanged = null;
     };
@@ -403,14 +409,29 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     }
   }, [currentInstructionIndex, images.length, loggingLevel]);
 
-  if (!exercise) return null;
+  const currentImageSrc = useMemo(() => {
+    // We only want the stock images field for instructions, not the custom image_url
+    if (!images || images.length === 0) return null;
+    const img = images[currentImageIndex];
+    if (!img) return null;
 
-  const currentImageSrc =
-    images.length > 0
-      ? exercise.source
-        ? `/uploads/exercises/${images[currentImageIndex]}`
-        : images[currentImageIndex]
-      : null;
+    // If it's already a full URL (starts with http), use it as is
+    if (img.startsWith('http')) return img;
+
+    // Otherwise, it's a local upload, so we MUST prefix it
+    return `/uploads/exercises/${img}`;
+  }, [images, currentImageIndex]);
+
+  useEffect(() => {
+    if (currentImageSrc) {
+      debug(
+        loggingLevel,
+        `[PlaybackModal] Attempting to load image: ${currentImageSrc}`
+      );
+    }
+  }, [currentImageSrc, loggingLevel]);
+
+  if (!exercise) return null;
 
   return (
     <Dialog

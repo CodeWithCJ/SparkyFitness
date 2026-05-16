@@ -141,9 +141,11 @@ const isAdmin = async (req: any, res: any, next: any) => {
     return next();
   }
   // 2. Native Better Auth Role Check
-  // Note: Better Auth stores role in the session/user object if configured
+  // We MUST check the role of the AUTHENTICATED user, not the ACTIVE user
+  // to prevent privilege escalation via context switching.
   const userRole =
-    req.user?.role || (await userRepository.getUserRole(req.userId));
+    req.user?.role ||
+    (await userRepository.getUserRole(req.authenticatedUserId));
   if (userRole === 'admin') {
     return next();
   }

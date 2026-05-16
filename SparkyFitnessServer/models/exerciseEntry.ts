@@ -636,33 +636,33 @@ async function updateExerciseEntry(
     await client.query('BEGIN');
     await client.query(
       `UPDATE exercise_entries SET
-        exercise_id = COALESCE($1, exercise_id),
-        duration_minutes = COALESCE($2, duration_minutes),
-        calories_burned = COALESCE($3, calories_burned),
-        entry_date = COALESCE($4, entry_date),
-        notes = COALESCE($5, notes),
-        workout_plan_assignment_id = COALESCE($6, workout_plan_assignment_id),
+        exercise_id = $1,
+        duration_minutes = $2,
+        calories_burned = $3,
+        entry_date = $4,
+        notes = $5,
+        workout_plan_assignment_id = $6,
         image_url = $7,
-        distance = COALESCE($8, distance),
-        avg_heart_rate = COALESCE($9, avg_heart_rate),
-        sort_order = COALESCE($10, sort_order),
-        exercise_name = COALESCE($11, exercise_name),
+        distance = $8,
+        avg_heart_rate = $9,
+        sort_order = $10,
+        exercise_name = $11,
         updated_by_user_id = $12,
         updated_at = now()
       WHERE id = $13 AND user_id = $14
       RETURNING id`,
       [
-        updateData.exercise_id,
-        updateData.duration_minutes || null,
-        updateData.calories_burned,
-        updateData.entry_date,
-        updateData.notes,
-        updateData.workout_plan_assignment_id || null,
-        updateData.image_url || null,
-        updateData.distance || null,
-        updateData.avg_heart_rate || null,
-        updateData.sort_order !== undefined ? updateData.sort_order : null,
-        updateData.exercise_name || null,
+        updateData.exercise_id ?? null,
+        updateData.duration_minutes ?? null,
+        updateData.calories_burned ?? null,
+        updateData.entry_date ?? null,
+        updateData.notes ?? null,
+        updateData.workout_plan_assignment_id ?? null,
+        updateData.image_url ?? null,
+        updateData.distance ?? null,
+        updateData.avg_heart_rate ?? null,
+        updateData.sort_order ?? null,
+        updateData.exercise_name ?? null,
         actingUserId,
         id,
         userId,
@@ -937,6 +937,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
             row.id,
             null
           );
+
         const {
           exercise_name,
           category,
@@ -953,8 +954,10 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
           images,
           ...entryData
         } = row;
+
         return {
           ...entryData,
+          image_url: row.image_url,
           name: exercise_name,
           exercise_snapshot: {
             // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping

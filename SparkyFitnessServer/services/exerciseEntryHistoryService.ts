@@ -96,7 +96,6 @@ function _buildExerciseEntryWithSnapshot(
     _created_at,
     _updated_at,
     _workout_plan_assignment_id,
-    _image_url,
     ...entryData
   } = row;
 
@@ -111,6 +110,7 @@ function _buildExerciseEntryWithSnapshot(
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,
     steps: (entryData.steps as number) ?? null,
     source: (source as string) ?? null,
+    image_url: (entryData.image_url as string) ?? null,
     sets: ((entryData.sets as unknown[]) ?? []) as ExerciseEntrySetResponse[],
     exercise_snapshot: {
       id: entryData.exercise_id as string,

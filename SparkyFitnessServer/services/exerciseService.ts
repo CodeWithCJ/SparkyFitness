@@ -14,7 +14,9 @@ import { downloadImage } from '../utils/imageDownloader.js';
 import calorieCalculationService from './CalorieCalculationService.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+
 import papa from 'papaparse';
 import {
   getGroupedExerciseSessionById,
@@ -28,6 +30,9 @@ import {
   equipmentNameMap,
 } from '../integrations/wger/wgerNameMapping.js';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 async function getExercisesWithPagination(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -390,7 +395,10 @@ async function updateExerciseEntry(
       (updateData.image_url || updateData.image_url === null) &&
       existingEntry.image_url
     ) {
-      const oldImagePath = path.join(__dirname, '..', existingEntry.image_url);
+      const relativePath = existingEntry.image_url.startsWith('/')
+        ? existingEntry.image_url.substring(1)
+        : existingEntry.image_url;
+      const oldImagePath = path.join(__dirname, '..', relativePath);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
         log('info', `Deleted old exercise entry image: ${oldImagePath}`);
@@ -433,18 +441,25 @@ async function updateExerciseEntry(
       actingUserId,
       {
         ...updateData,
-        duration_minutes: updateData.duration_minutes || 0,
-        sets: updateData.sets || null,
-        reps: updateData.reps || null,
-        weight: updateData.weight || null,
+        exercise_id: updateData.exercise_id ?? existingEntry.exercise_id,
+        duration_minutes:
+          updateData.duration_minutes ?? existingEntry.duration_minutes ?? 0,
+        calories_burned:
+          updateData.calories_burned ?? existingEntry.calories_burned ?? 0,
+        entry_date: updateData.entry_date ?? existingEntry.entry_date,
+        notes: updateData.notes ?? existingEntry.notes,
         workout_plan_assignment_id:
-          updateData.workout_plan_assignment_id || null,
+          updateData.workout_plan_assignment_id ??
+          existingEntry.workout_plan_assignment_id,
         image_url:
-          updateData.image_url === null
-            ? null
-            : updateData.image_url || existingEntry.image_url,
-        distance: updateData.distance || null,
-        avg_heart_rate: updateData.avg_heart_rate || null,
+          updateData.image_url === undefined
+            ? existingEntry.image_url
+            : updateData.image_url,
+        distance: updateData.distance ?? existingEntry.distance,
+        avg_heart_rate:
+          updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
+        sort_order: updateData.sort_order ?? existingEntry.sort_order,
+        exercise_name: updateData.exercise_name ?? existingEntry.exercise_name,
       }
     );
     if (!updatedEntry) {
