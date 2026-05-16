@@ -158,8 +158,17 @@ export async function getContextualNudge(
     const todayExercise = await client.query(
       `SELECT COUNT(*)::int AS count FROM exercise_entries WHERE entry_date = CURRENT_DATE`
     );
+    // Check what was logged today (using UNION to count all checkin types)
     const todayCheckin = await client.query(
-      `SELECT COUNT(*)::int AS count FROM check_in_measurements WHERE entry_date = CURRENT_DATE`
+      `SELECT COUNT(*)::int AS count FROM (
+         SELECT id FROM check_in_measurements WHERE entry_date = CURRENT_DATE
+         UNION ALL
+         SELECT id FROM mood_entries WHERE entry_date = CURRENT_DATE
+         UNION ALL
+         SELECT id FROM sleep_entries WHERE entry_date = CURRENT_DATE
+         UNION ALL
+         SELECT id FROM fasting_logs WHERE start_time::date = CURRENT_DATE
+       ) all_checkins`
     );
 
     const foodCount = todayFood.rows[0]?.count ?? 0;

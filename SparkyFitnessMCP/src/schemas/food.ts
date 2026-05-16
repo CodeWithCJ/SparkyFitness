@@ -53,7 +53,6 @@ const createFoodSchema = z.object({
   action: z.literal("create_food"),
   food_name: z.string().min(1).max(200).describe("Name of the new food item"),
   brand: z.string().max(200).optional().describe("Brand name of the food"),
-  // Macros as top-level fields (MCP can't pass nested objects)
   calories: z.coerce.number().min(0).describe("Calories (kcal)"),
   protein: z.coerce.number().min(0).describe("Protein (g)"),
   carbs: z.coerce.number().min(0).describe("Carbohydrates (g)"),
@@ -133,6 +132,24 @@ const deleteFoodSchema = z.object({
   food_name: z.string().min(1).max(200).optional().describe("Name of the food to delete (alternative to ID)"),
 }).strict();
 
+const logWaterSchema = z.object({
+  action: z.literal("log_water"),
+  amount_ml: z.coerce.number().min(0).describe("Amount of water in milliliters"),
+  entry_date: dateSchema.describe("Date to log the water for"),
+}).strict();
+
+const getNutritionalSummarySchema = z.object({
+  action: z.literal("get_nutritional_summary"),
+  start_date: dateSchema.describe("Start date for the summary range"),
+  end_date: dateSchema.describe("End date for the summary range"),
+}).strict();
+
+const getWaterHistorySchema = z.object({
+  action: z.literal("get_water_history"),
+  start_date: dateSchema.optional().describe("Start date for the history range"),
+  end_date: dateSchema.optional().describe("End date for the history range"),
+}).strict();
+
 export const manageFoodSchema = z.discriminatedUnion("action", [
   searchFoodSchema,
   logFoodSchema,
@@ -145,6 +162,9 @@ export const manageFoodSchema = z.discriminatedUnion("action", [
   updateEntrySchema,
   copyFromYesterdaySchema,
   saveAsMealTemplateSchema,
+  logWaterSchema,
+  getNutritionalSummarySchema,
+  getWaterHistorySchema,
 ]);
 
 export type ManageFoodInput = z.infer<typeof manageFoodSchema>;

@@ -6,6 +6,11 @@ import { registerCoachTools } from "./coach.js";
 import { registerEngagementTools } from "./engagement.js";
 import { registerVisionTools } from "./vision.js";
 import { registerDevTools } from "./dev.js";
+import { registerGoalTools } from "./goals.js";
+import { registerProfileTools } from "./profile.js";
+import { registerHabitTools } from "./habits.js";
+import { registerWizardTools } from "./wizard.js";
+import { registerReportTools } from "./report.js";
 
 /**
  * Registers all MCP tools for the authenticated user.
@@ -20,4 +25,9 @@ export function registerAllTools(server: McpServer, userId: string): void {
   registerEngagementTools(server, userId);
   registerVisionTools(server, userId);
   registerDevTools(server, userId);
+  registerGoalTools(server, userId);
+  registerProfileTools(server, userId);
+  registerHabitTools(server, userId);
+  registerWizardTools(server, userId);
+  registerReportTools(server, userId);
 }

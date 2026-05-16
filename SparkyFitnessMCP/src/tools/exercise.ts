@@ -5,7 +5,7 @@ import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation } from "../utils/formatting.js";
 import type { ToolResponse, Exercise, ExerciseEntry, ExerciseSet } from "../types.js";
 
-const VALID_ACTIONS = ["search_exercises", "create_exercise", "log_exercise", "list_exercise_diary", "get_workout_presets", "log_workout_preset", "delete_exercise_entry"];
+const VALID_ACTIONS = ["search_exercises", "create_exercise", "log_exercise", "list_exercise_diary", "get_workout_presets", "log_workout_preset", "delete_exercise_entry", "get_exercise_details", "create_workout_preset", "get_exercise_progress"];
 
 export function registerExerciseTools(server: McpServer, userId: string): void {
   server.registerTool(
@@ -21,7 +21,10 @@ Actions:
 - list_exercise_diary(entry_date)
 - get_workout_presets()
 - log_workout_preset(entry_date, preset_id?|preset_name?)
-- delete_exercise_entry(entry_id)`,
+- delete_exercise_entry(entry_id)
+- get_exercise_details(exercise_id?|exercise_name?)
+- create_workout_preset(name, exercise_ids)
+- get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?) — returns performance history`,
       inputSchema: manageExerciseSchema,
       annotations: {
         readOnlyHint: false,
@@ -122,10 +125,57 @@ Actions:
 
           case "delete_exercise_entry": {
             const deleted = await exerciseService.deleteExerciseEntry(userId, args.entry_id);
-            if (!deleted) {
-              return ERRORS.NOT_FOUND("Exercise entry", args.entry_id);
-            }
+            if (!deleted) return ERRORS.NOT_FOUND("Exercise Entry", args.entry_id);
             return formatConfirmation(`Exercise entry deleted.`, { entry_id: args.entry_id });
+          }
+
+          case "get_exercise_details": {
+            const exercise = await exerciseService.getExerciseDetails(userId, {
+              exercise_id: args.exercise_id,
+              exercise_name: args.exercise_name,
+            });
+            let text = `### ${exercise.name}\n\n`;
+            if (exercise.description) text += `*${exercise.description}*\n\n`;
+            text += `**Category:** ${exercise.category}\n`;
+            text += `**Equipment:** ${exercise.equipment?.join(", ") || "None"}\n`;
+            text += `**Muscles:** ${exercise.muscle_groups?.join(", ") || "N/A"}\n\n`;
+            
+            if (exercise.instructions && exercise.instructions.length > 0) {
+              text += `#### Instructions\n`;
+              exercise.instructions.forEach((ins, i) => {
+                text += `${i + 1}. ${ins}\n`;
+              });
+            }
+            
+            return {
+              content: [{ type: "text", text }],
+              structuredContent: { exercise },
+            };
+          }
+
+          case "create_workout_preset": {
+            const preset = await exerciseService.createWorkoutPreset(userId, {
+              name: args.name,
+              exercise_ids: args.exercise_ids,
+            });
+            return formatConfirmation(
+              `Workout preset "${preset.name}" created with ${preset.exercises.length} exercises.`,
+              { preset_id: preset.id, name: preset.name, exercises_count: preset.exercises.length }
+            );
+          }
+
+          case "get_exercise_progress": {
+            const progress = await exerciseService.getExerciseProgress(userId, {
+              exercise_id: args.exercise_id,
+              exercise_name: args.exercise_name,
+              start_date: args.start_date,
+              end_date: args.end_date,
+            });
+            return formatList(
+              progress,
+              `Exercise Progress: ${args.exercise_name || args.exercise_id}`,
+              (p: any) => `**${p.entry_date}**: Max Weight: ${p.max_weight}kg | Max Reps: ${p.max_reps} | Volume: ${p.total_volume}kg`
+            );
           }
 
           default:

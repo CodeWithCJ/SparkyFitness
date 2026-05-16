@@ -471,3 +471,135 @@ function safeParseJson(value: unknown): string[] {
   }
   return [];
 }
+
+export async function getExerciseDetails(
+  userId: string,
+  params: { exercise_id?: string; exercise_name?: string }
+): Promise<Exercise & { instructions: string[]; images: string[] }> {
+  return withClient(userId, async (client) => {
+    let result;
+    if (params.exercise_id) {
+      result = await client.query(
+        `SELECT id, name, category, primary_muscles, secondary_muscles, equipment, level, calories_per_hour, description, is_custom, instructions, images
+         FROM exercises WHERE id = $1`,
+        [params.exercise_id]
+      );
+    } else if (params.exercise_name) {
+      result = await client.query(
+        `SELECT id, name, category, primary_muscles, secondary_muscles, equipment, level, calories_per_hour, description, is_custom, instructions, images
+         FROM exercises WHERE name ILIKE $1 LIMIT 1`,
+        [params.exercise_name]
+      );
+    } else {
+      throw new Error("Either exercise_id or exercise_name must be provided");
+    }
+
+    if (!result || result.rows.length === 0) {
+      throw new Error("Exercise not found");
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      muscle_groups: safeParseJson(row.primary_muscles),
+      equipment: safeParseJson(row.equipment),
+      level: row.level,
+      calories_per_hour: row.calories_per_hour,
+      description: row.description,
+      is_custom: row.is_custom,
+      instructions: safeParseJson(row.instructions),
+      images: safeParseJson(row.images),
+    };
+  });
+}
+
+export async function createWorkoutPreset(
+  userId: string,
+  params: { name: string; exercise_ids: string[] }
+): Promise<WorkoutPreset> {
+  return withClient(userId, async (client) => {
+    await client.query("BEGIN");
+    try {
+      const presetResult = await client.query(
+        `INSERT INTO workout_presets (user_id, name, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())
+         RETURNING id, name`,
+        [userId, params.name]
+      );
+      const presetId = presetResult.rows[0].id;
+
+      const exercises = [];
+      for (let i = 0; i < params.exercise_ids.length; i++) {
+        const exId = params.exercise_ids[i];
+        const wpeResult = await client.query(
+          `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, sort_order, created_at, updated_at)
+           VALUES ($1, $2, $3, NOW(), NOW())
+           RETURNING id, exercise_id`,
+          [presetId, exId, i]
+        );
+        
+        const exInfo = await client.query("SELECT name FROM exercises WHERE id = $1", [exId]);
+        exercises.push({
+          exercise_id: exId,
+          exercise_name: exInfo.rows[0]?.name || "Unknown",
+          sets: [],
+        });
+      }
+
+      await client.query("COMMIT");
+      return {
+        id: String(presetId),
+        user_id: userId,
+        name: params.name,
+        exercises,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+export async function getExerciseProgress(
+  userId: string,
+  params: { exercise_id?: string; exercise_name?: string; start_date?: string; end_date?: string }
+): Promise<Record<string, unknown>[]> {
+  return withClient(userId, async (client) => {
+    let exerciseId = params.exercise_id;
+    if (!exerciseId && params.exercise_name) {
+      const result = await client.query("SELECT id FROM exercises WHERE name ILIKE $1 LIMIT 1", [params.exercise_name]);
+      exerciseId = result.rows[0]?.id;
+    }
+
+    if (!exerciseId) throw new Error("Exercise not found");
+
+    let query = `
+      SELECT ee.entry_date, MAX(ees.weight) as max_weight, MAX(ees.reps) as max_reps, SUM(ees.reps * COALESCE(ees.weight, 0)) as total_volume
+      FROM exercise_entries ee
+      JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
+      WHERE ee.user_id = $1 AND ee.exercise_id = $2
+    `;
+    const queryParams: any[] = [userId, exerciseId];
+    let paramIdx = 3;
+
+    if (params.start_date) {
+      query += ` AND ee.entry_date >= $${paramIdx}`;
+      queryParams.push(params.start_date);
+      paramIdx++;
+    }
+    if (params.end_date) {
+      query += ` AND ee.entry_date <= $${paramIdx}`;
+      queryParams.push(params.end_date);
+      paramIdx++;
+    }
+
+    query += ` GROUP BY ee.entry_date ORDER BY ee.entry_date ASC`;
+
+    const result = await client.query(query, queryParams);
+    return result.rows;
+  });
+}
+
+

@@ -8,6 +8,7 @@ import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.j
 const VALID_ACTIONS = [
   "search_food", "log_food", "create_food", "search_meal", "log_meal",
   "list_diary", "delete_entry", "delete_food", "update_entry", "copy_from_yesterday", "save_as_meal_template",
+  "log_water", "get_nutritional_summary", "get_water_history",
 ];
 
 export function registerFoodTools(server: McpServer, userId: string): void {
@@ -28,7 +29,10 @@ Actions:
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
 - update_entry(entry_id, entry_type, quantity, unit)
 - copy_from_yesterday(target_date?, source_date?, meal_type?)
-- save_as_meal_template(entry_date, meal_type, meal_name, description?)`,
+- save_as_meal_template(entry_date, meal_type, meal_name, description?)
+- log_water(amount_ml, entry_date)
+- get_nutritional_summary(start_date, end_date) — returns macro breakdown for a range of dates
+- get_water_history(start_date?, end_date?)`,
       inputSchema: manageFoodSchema,
       annotations: {
         readOnlyHint: false,
@@ -164,6 +168,7 @@ Actions:
               ...diary.meal_entries.map((e: any) => ({ ...e, entry_type: "food_entry_meal" as const })),
             ];
 
+            const eUnit = diary.energy_unit || "kcal";
             const dateLabel = args.entry_date || "Today";
             let text = `# Food Diary: ${dateLabel}\n\n`;
 
@@ -178,7 +183,7 @@ Actions:
                 grouped[mt].push(entry);
               }
 
-              let totalCalories = 0;
+              let totalEnergy = 0;
               for (const [mealType, entries] of Object.entries(grouped)) {
                 text += `## ${mealType.charAt(0).toUpperCase() + mealType.slice(1)}\n`;
                 for (const entry of entries) {
@@ -186,8 +191,8 @@ Actions:
                     const fe = entry as FoodEntry;
                     text += `- **${fe.food_name}** — ${fe.quantity} ${fe.unit}`;
                     if (fe.nutritional_values?.calories) {
-                      text += ` (${fe.nutritional_values.calories} kcal)`;
-                      totalCalories += fe.nutritional_values.calories;
+                      text += ` (${fe.nutritional_values.calories} ${eUnit})`;
+                      totalEnergy += fe.nutritional_values.calories;
                     }
                     text += `\n  ID: ${fe.id} | Type: food_entry\n`;
                   } else {
@@ -199,10 +204,11 @@ Actions:
                 text += "\n";
               }
 
-              if (totalCalories > 0) {
-                text += `---\n**Total Calories:** ${totalCalories} kcal`;
+              if (totalEnergy > 0) {
+                text += `---\n**Total Energy:** ${totalEnergy} ${eUnit}`;
               }
             }
+
 
             return {
               content: [{ type: "text", text }],
@@ -278,9 +284,56 @@ Actions:
             );
           }
 
+          case "log_water": {
+            const entry = await foodService.logWater(userId, {
+              amount_ml: args.amount_ml,
+              entry_date: args.entry_date,
+            });
+            return formatConfirmation(
+              `Logged ${args.amount_ml}ml water for ${args.entry_date}.`,
+              { entry_id: entry.id, amount_ml: args.amount_ml, entry_date: args.entry_date }
+            );
+          }
+
+          case "get_nutritional_summary": {
+            const summary = await foodService.getNutritionalSummary(userId, {
+              start_date: args.start_date,
+              end_date: args.end_date,
+            });
+            const eUnit = summary.length > 0 ? (summary[0] as any).energy_unit : "kcal";
+            return formatList(
+              summary,
+              `Nutritional Summary (${args.start_date} to ${args.end_date})`,
+              (s: any) => {
+                let text = `**${s.entry_date}**:\n`;
+                text += `  Macros: ${s.calories} ${eUnit} | P: ${s.protein}g | C: ${s.carbs}g | F: ${s.fat}g\n`;
+                text += `  Fiber: ${s.fiber}g | Sugar: ${s.sugar}g | Sodium: ${s.sodium}mg\n`;
+                if (s.saturated_fat || s.cholesterol || s.potassium) {
+                  text += `  Other: SatFat: ${s.saturated_fat}g | Chol: ${s.cholesterol}mg | Potas: ${s.potassium}mg`;
+                }
+                return text;
+              }
+            );
+          }
+
+
+
+          case "get_water_history": {
+            const history = await foodService.getWaterHistory(userId, {
+              start_date: args.start_date,
+              end_date: args.end_date,
+            });
+            return formatList(
+              history,
+              `Water Intake History`,
+              (h: any) => `**${h.entry_date}**: ${h.amount} ${h.unit}`
+            );
+          }
+
           default:
             return ERRORS.INVALID_ACTION(String((args as any).action), VALID_ACTIONS);
         }
+
       } catch (error) {
         console.error("[Food Tool] Error:", error);
         if (error instanceof Error && error.message.includes("not found")) {

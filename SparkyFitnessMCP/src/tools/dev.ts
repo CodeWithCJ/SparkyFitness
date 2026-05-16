@@ -57,12 +57,21 @@ export function registerDevTools(server: McpServer, userId: string): void {
 
       try {
         return await withClient(userId, async (client) => {
+          let schema = 'public';
+          let tableName = args.table;
+
+          if (args.table.includes('.')) {
+            const parts = args.table.split('.');
+            schema = parts[0];
+            tableName = parts[1];
+          }
+
           const result = await client.query(
-            `SELECT column_name, data_type, is_nullable, column_default
+            `SELECT column_name, data_type, is_nullable, column_default, table_schema
              FROM information_schema.columns
-             WHERE table_schema = 'public' AND table_name = $1
+             WHERE table_name = $1 AND table_schema = $2
              ORDER BY ordinal_position`,
-            [args.table]
+            [tableName, schema]
           );
 
           if (result.rows.length === 0) {

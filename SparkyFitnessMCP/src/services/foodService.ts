@@ -553,8 +553,10 @@ export async function logMeal(
 export async function listDiary(
   userId: string,
   entryDate?: string
-): Promise<{ food_entries: FoodEntry[]; meal_entries: any[] }> {
+): Promise<{ food_entries: FoodEntry[]; meal_entries: any[]; energy_unit: string }> {
   const date = entryDate || getTodayDate();
+  const prefs = await getPreferences(userId);
+  const energyUnit = (prefs.energy_unit as string) || "kcal";
 
   return withClient(userId, async (client) => {
     // Get food entries — nutritional data is stored inline on food_entries
@@ -573,25 +575,30 @@ export async function listDiary(
       [date]
     );
 
-    const foodEntries: FoodEntry[] = foodResult.rows.map((row: any) => ({
-      id: row.id,
-      user_id: row.user_id,
-      food_id: row.food_id,
-      variant_id: row.variant_id || undefined,
-      food_name: row.food_name,
-      quantity: Number(row.quantity),
-      unit: row.unit || "g",
-      meal_type: row.meal_type ? row.meal_type.toLowerCase() : "snacks",
-      entry_date: row.entry_date,
-      nutritional_values: row.calories != null
-        ? {
-            calories: Math.round(Number(row.calories)),
-            protein: Math.round((Number(row.protein) || 0) * 10) / 10,
-            carbs: Math.round((Number(row.carbs) || 0) * 10) / 10,
-            fat: Math.round((Number(row.fat) || 0) * 10) / 10,
-          }
-        : undefined,
-    }));
+    const foodEntries: FoodEntry[] = foodResult.rows.map((row: any) => {
+      const calories = Number(row.calories || 0);
+      const displayCalories = energyUnit === "kJ" ? convertEnergy(calories, "kcal", "kJ") : calories;
+
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        food_id: row.food_id,
+        variant_id: row.variant_id || undefined,
+        food_name: row.food_name,
+        quantity: Number(row.quantity),
+        unit: row.unit || "g",
+        meal_type: row.meal_type ? row.meal_type.toLowerCase() : "snacks",
+        entry_date: row.entry_date,
+        nutritional_values: row.calories != null
+          ? {
+              calories: Math.round(displayCalories),
+              protein: Math.round((Number(row.protein) || 0) * 10) / 10,
+              carbs: Math.round((Number(row.carbs) || 0) * 10) / 10,
+              fat: Math.round((Number(row.fat) || 0) * 10) / 10,
+            }
+          : undefined,
+      };
+    });
 
     // Get meal entries
     const mealResult = await client.query(
@@ -616,9 +623,119 @@ export async function listDiary(
       entry_type: "food_entry_meal",
     }));
 
-    return { food_entries: foodEntries, meal_entries: mealEntries };
+    return { food_entries: foodEntries, meal_entries: mealEntries, energy_unit: energyUnit };
   });
 }
+
+
+export async function logWater(
+  userId: string,
+  params: { amount_ml: number; entry_date: string }
+): Promise<Record<string, unknown>> {
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `INSERT INTO water_intake_entries (user_id, entry_date, water_ml, source, created_at, created_by_user_id, logged_at)
+       VALUES ($1, $2, $3, 'manual', NOW(), $1, NOW())
+       RETURNING id, entry_date, water_ml, source, created_at`,
+      [userId, params.entry_date, params.amount_ml]
+    );
+    return result.rows[0];
+  });
+}
+
+export async function getWaterHistory(
+  userId: string,
+  params: { start_date?: string; end_date?: string }
+): Promise<Record<string, unknown>[]> {
+  const prefs = await getPreferences(userId);
+  const waterUnit = (prefs.water_display_unit as string) || "ml";
+
+  return withClient(userId, async (client) => {
+    let query = `
+      SELECT entry_date, SUM(water_ml) as total_ml
+      FROM water_intake_entries
+      WHERE user_id = $1
+    `;
+    const queryParams: any[] = [userId];
+    let paramIdx = 2;
+
+    if (params.start_date) {
+      query += ` AND entry_date >= $${paramIdx}`;
+      queryParams.push(params.start_date);
+      paramIdx++;
+    }
+    if (params.end_date) {
+      query += ` AND entry_date <= $${paramIdx}`;
+      queryParams.push(params.end_date);
+      paramIdx++;
+    }
+
+    query += ` GROUP BY entry_date ORDER BY entry_date ASC`;
+
+    const result = await client.query(query, queryParams);
+    return result.rows.map((row: any) => {
+      const ml = Number(row.total_ml || 0);
+      return {
+        entry_date: row.entry_date,
+        amount: waterUnit === "oz" ? Math.round(ml / 29.5735 * 10) / 10 : ml,
+        unit: waterUnit,
+      };
+    });
+  });
+}
+
+
+import { getPreferences } from "./profileService.js";
+import { convertEnergy } from "../utils/unitConversion.js";
+
+export async function getNutritionalSummary(
+  userId: string,
+  params: { start_date: string; end_date: string }
+): Promise<Record<string, unknown>[]> {
+  const prefs = await getPreferences(userId);
+  const energyUnit = (prefs.energy_unit as string) || "kcal";
+
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT entry_date, 
+              SUM(calories) as calories, 
+              SUM(protein) as protein, 
+              SUM(carbs) as carbs, 
+              SUM(fat) as fat,
+              SUM(saturated_fat) as saturated_fat,
+              SUM(polyunsaturated_fat) as polyunsaturated_fat,
+              SUM(monounsaturated_fat) as monounsaturated_fat,
+              SUM(trans_fat) as trans_fat,
+              SUM(cholesterol) as cholesterol,
+              SUM(sodium) as sodium,
+              SUM(potassium) as potassium,
+              SUM(dietary_fiber) as fiber,
+              SUM(sugars) as sugar,
+              SUM(vitamin_a) as vitamin_a,
+              SUM(vitamin_c) as vitamin_c,
+              SUM(calcium) as calcium,
+              SUM(iron) as iron
+       FROM food_entries
+       WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`,
+      [userId, params.start_date, params.end_date]
+    );
+
+    return result.rows.map((row: any) => {
+      const calories = Number(row.calories || 0);
+      return {
+        ...row,
+        calories: energyUnit === "kJ" ? convertEnergy(calories, "kcal", "kJ") : calories,
+        energy_unit: energyUnit,
+      };
+    });
+  });
+}
+
+
+
+
 
 export async function deleteEntry(
   userId: string,
