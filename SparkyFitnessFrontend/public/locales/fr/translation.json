@@ -105,7 +105,7 @@
       "copied": "Copié!",
       "apiKeyCopied": "Clé API copiée dans le presse-papiers.",
       "created": "Créé :",
-      "lastUsed": "Dernière utilisation:",
+      "lastUsed": "Dernière utilisation :",
       "deleteApiKeyConfirm": "Êtes-vous sûr de vouloir supprimer cette clé API ? Cette action est irréversible."
     },
     "accountSecurity": {
