@@ -642,7 +642,7 @@ async function updateExerciseEntry(
         entry_date = COALESCE($4, entry_date),
         notes = COALESCE($5, notes),
         workout_plan_assignment_id = COALESCE($6, workout_plan_assignment_id),
-        image_url = $7,
+        image_url = COALESCE($7, image_url),
         distance = COALESCE($8, distance),
         avg_heart_rate = COALESCE($9, avg_heart_rate),
         sort_order = COALESCE($10, sort_order),
@@ -652,11 +652,11 @@ async function updateExerciseEntry(
       WHERE id = $13 AND user_id = $14
       RETURNING id`,
       [
-        updateData.exercise_id,
+        updateData.exercise_id || null,
         updateData.duration_minutes || null,
-        updateData.calories_burned,
-        updateData.entry_date,
-        updateData.notes,
+        updateData.calories_burned || null,
+        updateData.entry_date || null,
+        updateData.notes || null,
         updateData.workout_plan_assignment_id || null,
         updateData.image_url || null,
         updateData.distance || null,
@@ -937,6 +937,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
             row.id,
             null
           );
+
         const {
           exercise_name,
           category,
@@ -953,8 +954,10 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
           images,
           ...entryData
         } = row;
+
         return {
           ...entryData,
+          image_url: row.image_url,
           name: exercise_name,
           exercise_snapshot: {
             // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping

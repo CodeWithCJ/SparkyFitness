@@ -14,7 +14,9 @@ import { downloadImage } from '../utils/imageDownloader.js';
 import calorieCalculationService from './CalorieCalculationService.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+
 import papa from 'papaparse';
 import {
   getGroupedExerciseSessionById,
@@ -28,6 +30,9 @@ import {
   equipmentNameMap,
 } from '../integrations/wger/wgerNameMapping.js';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 async function getExercisesWithPagination(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -390,7 +395,10 @@ async function updateExerciseEntry(
       (updateData.image_url || updateData.image_url === null) &&
       existingEntry.image_url
     ) {
-      const oldImagePath = path.join(__dirname, '..', existingEntry.image_url);
+      const relativePath = existingEntry.image_url.startsWith('/')
+        ? existingEntry.image_url.substring(1)
+        : existingEntry.image_url;
+      const oldImagePath = path.join(__dirname, '..', relativePath);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
         log('info', `Deleted old exercise entry image: ${oldImagePath}`);

@@ -251,15 +251,50 @@ app.get(
   ],
   async (req, res, _next) => {
     const { exerciseId, imageFileName } = req.params;
-    const localImagePath = path.join(
-      UPLOADS_BASE_DIR,
-      'exercises',
-      // @ts-expect-error TS2345
-      exerciseId,
-      imageFileName
+
+    // Security: Resolve and normalize the path to prevent traversal attacks
+    const exercisesBaseDir = path.resolve(UPLOADS_BASE_DIR, 'exercises');
+
+    // 1. Try the primary (new) path: exercises/:exerciseId/:imageFileName
+    let localImagePath = path.resolve(
+      exercisesBaseDir,
+      exerciseId as string,
+      imageFileName as string
     );
-    // Check if the file already exists locally
-    if (fs.existsSync(localImagePath)) {
+
+    // 2. Fallback to the flat path (old): exercises/:imageFileName
+    const flatImagePath = path.resolve(
+      exercisesBaseDir,
+      imageFileName as string
+    );
+
+    const isWindows = process.platform === 'win32';
+    const normalizedBaseDir = isWindows
+      ? exercisesBaseDir.toLowerCase()
+      : exercisesBaseDir;
+
+    // Check primary path
+    let resolvedStatus = 'NOT_FOUND';
+    if (
+      localImagePath.toLowerCase().startsWith(normalizedBaseDir) &&
+      fs.existsSync(localImagePath)
+    ) {
+      resolvedStatus = 'FOUND_IN_SUBFOLDER';
+    } else if (
+      flatImagePath.toLowerCase().startsWith(normalizedBaseDir) &&
+      fs.existsSync(flatImagePath)
+    ) {
+      // Fallback found
+      localImagePath = flatImagePath;
+      resolvedStatus = 'FOUND_IN_FLAT_FOLDER';
+    }
+
+    log(
+      'debug',
+      `[ImageServe] Resolution for ${exerciseId}/${imageFileName}: ${resolvedStatus}`
+    );
+
+    if (resolvedStatus !== 'NOT_FOUND') {
       return res.sendFile(localImagePath);
     }
     // If not found, attempt to re-download. Resolve image paths from the

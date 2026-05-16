@@ -240,10 +240,8 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     loggingLevel,
   ]);
 
-  if (exercise?.id !== prevExerciseId || isOpen !== prevIsOpen) {
-    setPrevExerciseId(exercise?.id);
-    setPrevIsOpen(isOpen);
-
+  // Use useEffect instead of manual state tracking to reset state when exercise or isOpen changes
+  useEffect(() => {
     if (isOpen && exercise) {
       setCurrentInstructionIndex(0);
       setCurrentImageIndex(0);
@@ -253,7 +251,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       setCurrentInstructionIndex(0);
       setCurrentImageIndex(0);
     }
-  }
+  }, [exercise?.id, isOpen]);
 
   useEffect(() => {
     if (isOpen && exercise) {
@@ -277,7 +275,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       }
       stopImageSlideshow();
     };
-  }, [isOpen, exercise, startImageSlideshow, stopImageSlideshow]);
+  }, [isOpen, exercise?.id, startImageSlideshow, stopImageSlideshow]);
 
   useEffect(() => {
     debug(
@@ -347,6 +345,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     synth.onvoiceschanged = loadVoices;
     loadVoices(); // Call initially in case voices are already loaded
 
+    // Clean up
     return () => {
       synth.onvoiceschanged = null;
     };
@@ -403,14 +402,29 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     }
   }, [currentInstructionIndex, images.length, loggingLevel]);
 
-  if (!exercise) return null;
+  const currentImageSrc = useMemo(() => {
+    // We only want the stock images field for instructions, not the custom image_url
+    if (!images || images.length === 0) return null;
+    const img = images[currentImageIndex];
+    if (!img) return null;
 
-  const currentImageSrc =
-    images.length > 0
-      ? exercise.source
-        ? `/uploads/exercises/${images[currentImageIndex]}`
-        : images[currentImageIndex]
-      : null;
+    // If it's already a full URL (starts with http), use it as is
+    if (img.startsWith('http')) return img;
+
+    // Otherwise, it's a local upload, so we MUST prefix it
+    return `/uploads/exercises/${img}`;
+  }, [images, currentImageIndex]);
+
+  useEffect(() => {
+    if (currentImageSrc) {
+      debug(
+        loggingLevel,
+        `[PlaybackModal] Attempting to load image: ${currentImageSrc}`
+      );
+    }
+  }, [currentImageSrc, loggingLevel]);
+
+  if (!exercise) return null;
 
   return (
     <Dialog
