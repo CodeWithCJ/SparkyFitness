@@ -4,7 +4,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outdir=dist --external:pg-native --external:bcrypt --external:fsevents --alias:@workspace/shared=../shared/src/index.ts",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts"
   },
@@ -32,6 +33,7 @@
     "@types/node": "^22.10.0",
     "@types/pg": "^8.10.2",
     "@types/uuid": "^9.0.0",
+    "esbuild": "^0.28.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.0.0"

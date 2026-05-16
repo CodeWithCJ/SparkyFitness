@@ -4,9 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Docker image tag'
+        description: "Docker image tag"
         required: true
-        default: 'dev'
+        default: "dev"
+      service:
+        description: "Target to build (all or a specific service)"
+        type: choice
+        default: "all"
+        options:
+          - all
+          - frontend
+          - server
+          - garmin
+          - mcp
 
 jobs:
   push_to_registries:
@@ -38,18 +48,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ── Frontend ─────────────────────────────────────────────────────────────
       - name: Metadata frontend
         id: meta-frontend
+        if: ${{ inputs.service == 'all' || inputs.service == 'frontend' }}
         uses: docker/metadata-action@v5
         with:
           images: |
             codewithcj/sparkyfitness
             ghcr.io/${{ github.repository }}-frontend
           tags: |
-            type=raw,value=${{ github.event.inputs.tag }}
+            type=raw,value=${{ inputs.tag }}
 
       - name: Build and push frontend
         id: push-frontend
+        if: ${{ inputs.service == 'all' || inputs.service == 'frontend' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -62,24 +75,28 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation Frontend
+        if: ${{ inputs.service == 'all' || inputs.service == 'frontend' }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-frontend
           subject-digest: ${{ steps.push-frontend.outputs.digest }}
           push-to-registry: true
 
+      # ── Server ────────────────────────────────────────────────────────────────
       - name: Metadata server
         id: meta-server
+        if: ${{ inputs.service == 'all' || inputs.service == 'server' }}
         uses: docker/metadata-action@v5
         with:
           images: |
             codewithcj/sparkyfitness_server
             ghcr.io/${{ github.repository }}-server
           tags: |
-            type=raw,value=${{ github.event.inputs.tag }}
+            type=raw,value=${{ inputs.tag }}
 
       - name: Build and push server
         id: push-server
+        if: ${{ inputs.service == 'all' || inputs.service == 'server' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -92,24 +109,28 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation server
+        if: ${{ inputs.service == 'all' || inputs.service == 'server' }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-server
           subject-digest: ${{ steps.push-server.outputs.digest }}
           push-to-registry: true
 
+      # ── Garmin Microservice ───────────────────────────────────────────────────
       - name: Metadata Garmin Microservice
         id: meta-garmin
+        if: ${{ inputs.service == 'all' || inputs.service == 'garmin' }}
         uses: docker/metadata-action@v5
         with:
           images: |
             codewithcj/sparkyfitness_garmin
             ghcr.io/${{ github.repository }}-garmin
           tags: |
-            type=raw,value=${{ github.event.inputs.tag }}
+            type=raw,value=${{ inputs.tag }}
 
       - name: Build and push Garmin Microservice
         id: push-garmin
+        if: ${{ inputs.service == 'all' || inputs.service == 'garmin' }}
         uses: docker/build-push-action@v6
         with:
           context: SparkyFitnessGarmin
@@ -122,24 +143,28 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation Garmin Microservice
+        if: ${{ inputs.service == 'all' || inputs.service == 'garmin' }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
           push-to-registry: true
 
+      # ── MCP Server ────────────────────────────────────────────────────────────
       - name: Metadata MCP Server
         id: meta-mcp
+        if: ${{ inputs.service == 'all' || inputs.service == 'mcp' }}
         uses: docker/metadata-action@v5
         with:
           images: |
             codewithcj/sparkyfitness_mcp
             ghcr.io/${{ github.repository }}-mcp
           tags: |
-            type=raw,value=${{ github.event.inputs.tag }}
+            type=raw,value=${{ inputs.tag }}
 
       - name: Build and push MCP Server
         id: push-mcp
+        if: ${{ inputs.service == 'all' || inputs.service == 'mcp' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -152,9 +177,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation MCP Server
+        if: ${{ inputs.service == 'all' || inputs.service == 'mcp' }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}-mcp
           subject-digest: ${{ steps.push-mcp.outputs.digest }}
           push-to-registry: true
-
