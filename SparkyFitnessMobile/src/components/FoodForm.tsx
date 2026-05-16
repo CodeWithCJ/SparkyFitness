@@ -12,7 +12,10 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
+import {
+  FOOD_FORM_UNIT_GROUPS,
+  getConversionFactor,
+} from '../utils/servingSizeConversions';
 
 export interface FoodFormData {
   name: string;
@@ -263,6 +266,18 @@ function applyVariantUnitToFormState(
   };
 }
 
+function applyCompatibleDraftToFormState(
+  previous: FoodFormData,
+  variant: FoodUnitVariant,
+  nextServingSize: number,
+): FoodFormData {
+  return {
+    ...previous,
+    servingSize: formatFoodFormNumber(nextServingSize, 'servingSize'),
+    servingUnit: variant.serving_unit,
+  };
+}
+
 function buildPreciseNumericValuesFromVariant(
   variant: FoodUnitVariant,
 ): Partial<Record<NumericFoodFormField, number>> {
@@ -288,6 +303,85 @@ function buildPreciseNumericValuesFromVariant(
 
 function isPositiveNumber(value: number): boolean {
   return Number.isFinite(value) && value > 0;
+}
+
+function getVariantNumericValueForField(
+  field: Exclude<NumericFoodFormField, 'servingSize'>,
+  variant: FoodUnitVariant,
+): number {
+  switch (field) {
+    case 'calories':
+      return variant.calories ?? 0;
+    case 'protein':
+      return variant.protein ?? 0;
+    case 'carbs':
+      return variant.carbs ?? 0;
+    case 'fat':
+      return variant.fat ?? 0;
+    case 'fiber':
+      return variant.dietary_fiber ?? 0;
+    case 'saturatedFat':
+      return variant.saturated_fat ?? 0;
+    case 'transFat':
+      return variant.trans_fat ?? 0;
+    case 'sodium':
+      return variant.sodium ?? 0;
+    case 'sugars':
+      return variant.sugars ?? 0;
+    case 'potassium':
+      return variant.potassium ?? 0;
+    case 'cholesterol':
+      return variant.cholesterol ?? 0;
+    case 'calcium':
+      return variant.calcium ?? 0;
+    case 'iron':
+      return variant.iron ?? 0;
+    case 'vitaminA':
+      return variant.vitamin_a ?? 0;
+    case 'vitaminC':
+      return variant.vitamin_c ?? 0;
+  }
+}
+
+function inferCompatibleDraftServingSize(
+  previous: FoodFormData,
+  preciseNumericValues: Partial<Record<NumericFoodFormField, number>>,
+  variant: FoodUnitVariant,
+): number {
+  for (const field of NUTRITION_FIELDS) {
+    const currentValue =
+      preciseNumericValues[field as NumericFoodFormField] ??
+      parseDecimalInput(previous[field]);
+    const variantValue = getVariantNumericValueForField(
+      field as Exclude<NumericFoodFormField, 'servingSize'>,
+      variant,
+    );
+
+    if (isPositiveNumber(currentValue) && isPositiveNumber(variantValue)) {
+      const inferredServingSize =
+        variant.serving_size * (currentValue / variantValue);
+      if (isPositiveNumber(inferredServingSize)) {
+        return inferredServingSize;
+      }
+    }
+  }
+
+  const currentServingSize =
+    preciseNumericValues.servingSize ?? parseDecimalInput(previous.servingSize);
+  const unitFactor = getConversionFactor(
+    previous.servingUnit,
+    variant.serving_unit,
+  );
+  if (isPositiveNumber(currentServingSize) && isPositiveNumber(unitFactor ?? 0)) {
+    const convertedServingSize = currentServingSize / unitFactor!;
+    if (isPositiveNumber(convertedServingSize)) {
+      return convertedServingSize;
+    }
+  }
+
+  return isPositiveNumber(currentServingSize)
+    ? currentServingSize
+    : variant.serving_size;
 }
 
 function formatScaledInput(value: number): string {
@@ -366,6 +460,23 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
   const focusField = (field: keyof typeof fieldRefs) => {
     fieldRefs[field].current?.focus();
+  };
+
+  const applyCompatibleDraftSelection = (variant: FoodUnitVariant) => {
+    setForm((previous) => {
+      const nextServingSize = inferCompatibleDraftServingSize(
+        previous,
+        preciseNumericValuesRef.current,
+        variant,
+      );
+      preciseNumericValuesRef.current.servingSize = nextServingSize;
+      lastServingSizeRef.current = nextServingSize;
+      return applyCompatibleDraftToFormState(
+        previous,
+        variant,
+        nextServingSize,
+      );
+    });
   };
 
   const update = (field: keyof FoodFormData, value: string) => {
@@ -475,6 +586,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
       );
       return;
     }
+    if (selection.kind === 'draft') {
+      applyCompatibleDraftSelection(selection.variant);
+      return;
+    }
     preciseNumericValuesRef.current = {
       ...preciseNumericValuesRef.current,
       ...buildPreciseNumericValuesFromVariant(selection.variant),
@@ -533,20 +648,27 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (nextSelection.kind === 'existing') {
       setSelectedSavedVariantId(nextSelection.variant.id);
     }
-    if (
-      nextSelection.kind === 'existing' ||
-      !nextSelection.requiresNutritionUpdate
-    ) {
+    if (nextSelection.kind === 'existing') {
       preciseNumericValuesRef.current = {
         ...preciseNumericValuesRef.current,
         ...buildPreciseNumericValuesFromVariant(nextSelection.variant),
       };
       lastServingSizeRef.current = nextSelection.variant.serving_size;
     }
+    if (nextSelection.kind === 'draft') {
+      if (nextSelection.requiresNutritionUpdate) {
+        setForm((previous) =>
+          applyVariantUnitToFormState(previous, nextSelection.variant),
+        );
+        return;
+      }
+
+      applyCompatibleDraftSelection(nextSelection.variant);
+      return;
+    }
+
     setForm((previous) =>
-      nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate
-        ? applyVariantUnitToFormState(previous, nextSelection.variant)
-        : applyVariantToFormState(previous, nextSelection.variant),
+      applyVariantToFormState(previous, nextSelection.variant),
     );
   };
 

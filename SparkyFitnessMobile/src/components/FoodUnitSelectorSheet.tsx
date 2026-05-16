@@ -59,13 +59,14 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [surfaceBg, raisedBg, borderSubtle, textMuted, successText] = useCSSVariable([
+  const [surfaceBg, borderSubtle, textMuted, successIcon, accentPrimary, infoBg] = useCSSVariable([
     '--color-surface',
-    '--color-raised',
     '--color-border-subtle',
     '--color-text-muted',
-    '--color-text-success',
-  ]) as [string, string, string, string, string];
+    '--color-icon-success',
+    '--color-accent-primary',
+    '--color-bg-info',
+  ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -224,6 +225,21 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     [variants],
   );
 
+  const buildSelectedRowStyle = useCallback(
+    (isSelected: boolean) => ({
+      borderColor: isSelected ? accentPrimary : borderSubtle,
+      borderWidth: isSelected ? 1 : 0,
+      borderBottomWidth: isSelected ? 1 : StyleSheet.hairlineWidth,
+      backgroundColor: isSelected ? infoBg : 'transparent',
+      borderRadius: isSelected ? 12 : 0,
+      marginHorizontal: isSelected ? 8 : 0,
+      marginVertical: isSelected ? 4 : 0,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    }),
+    [accentPrimary, borderSubtle, infoBg],
+  );
+
   const renderCustomVariantRow = (variant: FoodUnitVariant) => {
     const isSelected = variant.id != null && variant.id === selectedVariantId;
 
@@ -231,12 +247,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       <TouchableOpacity
         key={variant.id}
         testID={`food-unit-custom-variant-${variant.id}`}
-        className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
-        style={{
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderColor: borderSubtle,
-          backgroundColor: isSelected ? raisedBg : 'transparent',
-        }}
+        className="flex-row items-center justify-between"
+        style={buildSelectedRowStyle(isSelected)}
         onPress={() => {
           void handleExistingVariantPress(variant);
         }}
@@ -245,6 +257,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
+          style={isSelected ? { color: accentPrimary } : undefined}
         >
           {variant.serving_unit}
         </Text>
@@ -260,12 +273,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       <TouchableOpacity
         key={unit}
         testID={`food-unit-option-${unit}`}
-        className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
-        style={{
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderColor: borderSubtle,
-          backgroundColor: isSelected ? raisedBg : 'transparent',
-        }}
+        className="flex-row items-center justify-between"
+        style={buildSelectedRowStyle(isSelected)}
         onPress={() => {
           void handleUnitPress(unit);
         }}
@@ -274,10 +283,11 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
+          style={isSelected ? { color: accentPrimary } : undefined}
         >
           {unit}
         </Text>
-        {compatible ? <Icon name="checkmark" size={18} color={successText} /> : null}
+        {compatible ? <Icon name="checkmark" size={18} color={successIcon} /> : null}
       </TouchableOpacity>
     );
   };

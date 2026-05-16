@@ -30,8 +30,8 @@ jest.mock('uniwind', () => ({
           return 'border';
         case '--color-text-muted':
           return 'muted';
-        case '--color-text-success':
-          return 'successText';
+        case '--color-icon-success':
+          return 'successIcon';
         case '--color-accent-primary':
           return 'accent';
         case '--color-bg-info':
@@ -141,7 +141,9 @@ describe('FoodUnitSelectorSheet', () => {
     const selectedRowStyle = screen.getByTestId('food-unit-option-g').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'raised',
+        backgroundColor: 'infoBg',
+        borderColor: 'accent',
+        borderWidth: 1,
       }),
     );
     expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
@@ -150,7 +152,7 @@ describe('FoodUnitSelectorSheet', () => {
       .map(([props]) => props)
       .filter((props) => props.name === 'checkmark');
     expect(checkmarkCalls.length).toBeGreaterThan(0);
-    expect(checkmarkCalls.every((props) => props.color === 'successText')).toBe(true);
+    expect(checkmarkCalls.every((props) => props.color === 'successIcon')).toBe(true);
     expect(screen.queryByText('icon-chevron-forward')).toBeNull();
   });
 
@@ -180,7 +182,9 @@ describe('FoodUnitSelectorSheet', () => {
       screen.getByTestId('food-unit-option-cup').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'raised',
+        backgroundColor: 'infoBg',
+        borderColor: 'accent',
+        borderWidth: 1,
       }),
     );
     expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
@@ -220,7 +224,9 @@ describe('FoodUnitSelectorSheet', () => {
       screen.getByTestId('food-unit-custom-variant-variant-fillet').props.style;
     expect(selectedRowStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: 'raised',
+        backgroundColor: 'infoBg',
+        borderColor: 'accent',
+        borderWidth: 1,
       }),
     );
     expect(screen.queryByText('100 g (120 cal)')).toBeNull();

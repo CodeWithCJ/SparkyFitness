@@ -359,6 +359,74 @@ describe('FoodForm', () => {
     ).toBeUndefined();
   });
 
+  it('preserves the equivalent serving amount when selecting a compatible converted draft unit', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'kg',
+        calories: 1200,
+        protein: 100,
+        carbs: 80,
+        fat: 40,
+      },
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-1',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('0.1')).toBeTruthy();
+    });
+    expect(screen.getByText('kg')).toBeTruthy();
+    expect(screen.getByDisplayValue('120')).toBeTruthy();
+    expect(screen.getByDisplayValue('10')).toBeTruthy();
+    expect(screen.getByDisplayValue('8')).toBeTruthy();
+    expect(screen.getByDisplayValue('4')).toBeTruthy();
+  });
+
   it('keeps current nutrition values and passes only saved variants when selecting an incompatible unit', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
@@ -566,7 +634,7 @@ describe('FoodForm', () => {
     expect(onSubmit).toHaveBeenCalled();
   });
 
-  it('preserves small nonzero nutrition values when auto scaling an mg-based compatible unit', async () => {
+  it('preserves equivalent values and keeps auto scale working for mg-based compatible units', async () => {
     mockUnitSelectionPayload = {
       kind: 'draft',
       variant: {
@@ -627,16 +695,82 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('0.0012')).toBeTruthy();
-      expect(screen.getByDisplayValue('0.0005')).toBeTruthy();
+      expect(screen.getByDisplayValue('100000')).toBeTruthy();
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+      expect(screen.getByDisplayValue('10')).toBeTruthy();
     });
 
-    fireEvent.changeText(screen.getByDisplayValue('1'), '2');
+    fireEvent.changeText(screen.getByDisplayValue('100000'), '200000');
 
-    expect(screen.getByDisplayValue('0.0024')).toBeTruthy();
-    expect(screen.getByDisplayValue('0.001')).toBeTruthy();
-    expect(screen.getByDisplayValue('0.0016')).toBeTruthy();
-    expect(screen.getByDisplayValue('0.0004')).toBeTruthy();
+    expect(screen.getByDisplayValue('240')).toBeTruthy();
+    expect(screen.getByDisplayValue('20')).toBeTruthy();
+    expect(screen.getByDisplayValue('16')).toBeTruthy();
+    expect(screen.getByDisplayValue('8')).toBeTruthy();
+  });
+
+  it('falls back to direct unit conversion for compatible zero-calorie foods', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      },
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Water',
+          servingSize: '100',
+          servingUnit: 'ml',
+          calories: '0',
+          protein: '0',
+          carbs: '0',
+          fat: '0',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-ml',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'ml',
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-ml',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'ml',
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('0.4227')).toBeTruthy();
+    });
+    expect(screen.getByText('cup')).toBeTruthy();
+    expect(screen.getAllByDisplayValue('0')).toHaveLength(4);
   });
 
   it('keeps precise values in sync when unit selection is updated from props', () => {
