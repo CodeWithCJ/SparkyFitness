@@ -273,15 +273,22 @@ app.get(
       ? exercisesBaseDir.toLowerCase()
       : exercisesBaseDir;
 
+    const normalizedLocalPath = isWindows
+      ? localImagePath.toLowerCase()
+      : localImagePath;
+    const normalizedFlatPath = isWindows
+      ? flatImagePath.toLowerCase()
+      : flatImagePath;
+
     // Check primary path
     let resolvedStatus = 'NOT_FOUND';
     if (
-      localImagePath.toLowerCase().startsWith(normalizedBaseDir) &&
+      normalizedLocalPath.startsWith(normalizedBaseDir) &&
       fs.existsSync(localImagePath)
     ) {
       resolvedStatus = 'FOUND_IN_SUBFOLDER';
     } else if (
-      flatImagePath.toLowerCase().startsWith(normalizedBaseDir) &&
+      normalizedFlatPath.startsWith(normalizedBaseDir) &&
       fs.existsSync(flatImagePath)
     ) {
       // Fallback found
