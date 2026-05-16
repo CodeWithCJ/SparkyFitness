@@ -1238,6 +1238,7 @@ async function upsertWaterIntake(
           `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`
         );
         amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
+        containerId = null; // Reset to null so we don't violate FK constraints
       }
     } else {
       // Use default amount per drink if no container ID is provided
