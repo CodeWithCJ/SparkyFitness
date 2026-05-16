@@ -58,14 +58,18 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   onSelect,
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const isDismissingRef = useRef(false);
+  const isOpenRef = useRef(false);
+  const isPresentingRef = useRef(false);
+  const presentFrameRef = useRef<number | null>(null);
   const { theme } = useUniwind();
-  const [surfaceBg, raisedBg, borderSubtle, textMuted, successIcon, accentPrimary] = useCSSVariable([
+  const [surfaceBg, raisedBg, borderSubtle, borderStrong, textMuted, successIcon] = useCSSVariable([
     '--color-surface',
     '--color-raised',
     '--color-border-subtle',
+    '--color-border-strong',
     '--color-text-muted',
     '--color-icon-success',
-    '--color-accent-primary',
   ]) as [string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,23 +135,53 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     [isDarkMode],
   );
 
+  const clearScheduledPresent = useCallback(() => {
+    if (presentFrameRef.current != null) {
+      cancelAnimationFrame(presentFrameRef.current);
+      presentFrameRef.current = null;
+    }
+  }, []);
+
   const handleOpen = useCallback(() => {
-    bottomSheetRef.current?.present();
+    if (isDismissingRef.current || isOpenRef.current || isPresentingRef.current) {
+      return;
+    }
+
+    clearScheduledPresent();
+    isPresentingRef.current = true;
+    presentFrameRef.current = requestAnimationFrame(() => {
+      presentFrameRef.current = null;
+      bottomSheetRef.current?.present();
+    });
+  }, [clearScheduledPresent]);
+
+  const dismissSheet = useCallback(() => {
+    isPresentingRef.current = false;
+    isDismissingRef.current = true;
+    clearScheduledPresent();
+    bottomSheetRef.current?.dismiss();
+  }, [clearScheduledPresent]);
+
+  const handleDismiss = useCallback(() => {
+    isDismissingRef.current = false;
+    isOpenRef.current = false;
+    isPresentingRef.current = false;
   }, []);
 
   useEffect(() => {
     const sheetRef = bottomSheetRef.current;
     return () => {
+      clearScheduledPresent();
       sheetRef?.dismiss();
     };
-  }, []);
+  }, [clearScheduledPresent]);
 
   const handleExistingVariantPress = useCallback(
     async (variant: FoodUnitVariant) => {
       setIsSubmitting(true);
       try {
         await onSelect({ kind: 'existing', variant });
-        bottomSheetRef.current?.dismiss();
+        dismissSheet();
       } catch {
         Toast.show({
           type: 'error',
@@ -158,7 +192,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [onSelect],
+    [dismissSheet, onSelect],
   );
 
   const handleUnitPress = useCallback(
@@ -196,7 +230,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       setIsSubmitting(true);
       try {
         await onSelect(selection);
-        bottomSheetRef.current?.dismiss();
+        dismissSheet();
       } catch {
         Toast.show({
           type: 'error',
@@ -211,6 +245,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       buildConvertedVariant,
       buildManualVariant,
       handleExistingVariantPress,
+      dismissSheet,
       onSelect,
       variants,
     ],
@@ -227,18 +262,15 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   const buildSelectedRowStyle = useCallback(
     (isSelected: boolean) => ({
-      borderColor:
-        isSelected && !isDarkMode ? accentPrimary : borderSubtle,
-      borderWidth: isSelected && !isDarkMode ? 1 : 0,
-      borderBottomWidth: isSelected && !isDarkMode ? 1 : StyleSheet.hairlineWidth,
+      borderColor: isSelected && !isDarkMode ? borderStrong : borderSubtle,
+      borderTopWidth: isSelected && !isDarkMode ? StyleSheet.hairlineWidth : 0,
+      borderBottomWidth:
+        isSelected && !isDarkMode ? StyleSheet.hairlineWidth : StyleSheet.hairlineWidth,
       backgroundColor: isSelected ? raisedBg : 'transparent',
-      borderRadius: isSelected ? 10 : 0,
-      marginHorizontal: isSelected ? 4 : 0,
-      marginVertical: isSelected ? 2 : 0,
       paddingHorizontal: 16,
       paddingVertical: 14,
     }),
-    [accentPrimary, borderSubtle, isDarkMode, raisedBg],
+    [borderStrong, borderSubtle, isDarkMode, raisedBg],
   );
 
   const renderCustomVariantRow = (variant: FoodUnitVariant) => {
@@ -300,6 +332,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         snapPoints={[500]}
         enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
+        onDismiss={handleDismiss}
+        onChange={(index) => {
+          isOpenRef.current = index >= 0;
+          if (index >= 0) {
+            isPresentingRef.current = false;
+          }
+        }}
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}

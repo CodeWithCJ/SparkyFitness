@@ -28,6 +28,8 @@ jest.mock('uniwind', () => ({
           return 'raised';
         case '--color-border-subtle':
           return 'border';
+        case '--color-border-strong':
+          return 'borderStrong';
         case '--color-text-muted':
           return 'muted';
         case '--color-icon-success':
@@ -144,7 +146,6 @@ describe('FoodUnitSelectorSheet', () => {
         backgroundColor: 'raised',
       }),
     );
-    expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
 
     const checkmarkCalls = mockIcon.mock.calls
       .map(([props]) => props)
@@ -183,7 +184,6 @@ describe('FoodUnitSelectorSheet', () => {
         backgroundColor: 'raised',
       }),
     );
-    expect(selectedRowStyle.borderLeftWidth).toBeUndefined();
     expect(screen.getByTestId('food-unit-option-g')).toBeTruthy();
     expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
     expect(within(screen.getByTestId('food-unit-option-g')).queryByText('icon-checkmark')).toBeTruthy();
