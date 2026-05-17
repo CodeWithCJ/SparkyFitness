@@ -1,28 +1,11 @@
 {
   "fill-specializations" : [
     {
-      "value" : {
-        "linear-gradient" : [
-          "gray:0.95020,1.00000",
-          "gray:0.87493,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
-      }
+      "value" : "system-light"
     },
     {
       "appearance" : "dark",
-      "value" : {
-        "solid" : "srgb:0.16750,0.16750,0.16750,1.00000"
-      }
+      "value" : "system-dark"
     }
   ],
   "groups" : [
