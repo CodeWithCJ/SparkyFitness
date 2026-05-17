@@ -64,7 +64,6 @@ export type RootStackParamList = {
     adjustedValues?: FoodFormData;
     adjustedUnitSelection?: FoodUnitSelectionResult;
   };
-  EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:
     | {

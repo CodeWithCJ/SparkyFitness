@@ -223,8 +223,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
           <CreateTile
             icon="bookmark-filled"
-            title="Preset"
-            subtitle="Workout routine"
+            title="Workout preset"
+            subtitle="Exercise routine"
             onPress={() => navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' })}
             className="w-[48%] mb-3"
           />
@@ -279,7 +279,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         </View>
 
         <View className="mb-3">
-          <Text className="text-lg font-semibold text-text-primary">Recent</Text>
+          <Text className="text-lg font-semibold text-text-primary">Recently Logged</Text>
         </View>
 
         <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
