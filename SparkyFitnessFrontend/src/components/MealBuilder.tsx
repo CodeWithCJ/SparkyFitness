@@ -52,6 +52,8 @@ interface MealBuilderProps {
   onSave?: () => void;
 }
 
+const MEAL_SERVING_PRECISION = 6;
+
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
   onCancel,
@@ -522,7 +524,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           return;
         }
         persistedServingSize = parsedServingSize;
-        persistedTotalServings = parsedTotalAmount / parsedServingSize;
+        persistedTotalServings = Number(
+          (parsedTotalAmount / parsedServingSize).toFixed(
+            MEAL_SERVING_PRECISION
+          )
+        );
       }
       const mealData: MealPayload = {
         name: mealName,

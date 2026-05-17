@@ -29,8 +29,17 @@ vi.mock('../models/mealRepository.js', () => ({
     clearUserIgnoredUpdate: vi.fn(),
   },
 }));
-vi.mock('../models/foodRepository.js', () => ({ default: {} }));
-vi.mock('../models/foodEntry.js', () => ({ default: {} }));
+vi.mock('../models/foodRepository.js', () => ({
+  default: {
+    getFoodById: vi.fn(),
+    getFoodVariants: vi.fn(),
+  },
+}));
+vi.mock('../models/foodEntry.js', () => ({
+  default: {
+    getFoodEntriesByDateAndMealType: vi.fn(),
+  },
+}));
 vi.mock('../models/mealPlanTemplateRepository.js', () => ({
   default: {
     getMealPlanTemplatesByMealId: vi.fn().mockResolvedValue([]),
@@ -44,6 +53,8 @@ vi.mock('../models/mealType.js', () => ({
 
 import mealService from '../services/mealService.js';
 import mealRepository from '../models/mealRepository.js';
+import foodRepository from '../models/foodRepository.js';
+import foodEntryRepository from '../models/foodEntry.js';
 
 describe('mealService validation', () => {
   beforeEach(() => {
@@ -240,6 +251,59 @@ describe('mealService validation', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload = (mealRepository as any).updateMeal.mock.calls[0][2];
       expect(payload.serving_size).toBe(1);
+    });
+  });
+
+  describe('createMealFromDiaryEntries', () => {
+    it('routes diary-created meals through create-time serving normalization', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (
+        foodEntryRepository as any
+      ).getFoodEntriesByDateAndMealType.mockResolvedValue([
+        {
+          food_id: 'food-1',
+          food_name: 'Chicken',
+          variant_id: 'variant-1',
+          quantity: 1,
+          unit: 'cup',
+          custom_nutrients: {},
+        },
+      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (foodRepository as any).getFoodById.mockResolvedValue({
+        id: 'food-1',
+        default_variant: { id: 'variant-1' },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mealRepository as any).createMeal.mockResolvedValue({
+        id: 'new-meal',
+        serving_size: 1,
+        serving_unit: 'serving',
+        total_servings: 1,
+      });
+
+      await mealService.createMealFromDiaryEntries(
+        'user-1',
+        '2026-05-17',
+        'breakfast',
+        'Breakfast meal',
+        null,
+        false
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      expect(payload.serving_size).toBe(1);
+      expect(payload.serving_unit).toBe('serving');
+      expect(payload.total_servings).toBe(1);
+      expect(payload.foods).toEqual([
+        expect.objectContaining({
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: 1,
+          unit: 'cup',
+        }),
+      ]);
     });
   });
 });

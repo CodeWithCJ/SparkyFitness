@@ -34,6 +34,8 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
+const MEAL_SERVING_PRECISION = 6;
+
 const SERVING_UNIT_OPTIONS = [
   'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
 ].map((unit) => ({ label: unit, value: unit }));
@@ -274,7 +276,11 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       const parsedTotalAmount = parseDecimalInput(totalAmountText);
       parsedTotalServings =
         parsedServingSize && parsedTotalAmount && parsedServingSize > 0
-          ? parsedTotalAmount / parsedServingSize
+          ? Number(
+              (parsedTotalAmount / parsedServingSize).toFixed(
+                MEAL_SERVING_PRECISION
+              )
+            )
           : null;
     }
 

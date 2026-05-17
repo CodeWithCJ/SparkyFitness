@@ -667,10 +667,12 @@ async function createMealFromDiaryEntries(
       is_public: isPublic,
       serving_size: 1.0,
       serving_unit: 'serving',
+      total_servings: 1.0,
       foods: mealFoods,
     };
-    // 4. Call mealRepository.createMeal to create the new meal
-    const newMeal = await mealRepository.createMeal(mealData);
+    // Route through the service create path so serving-model normalization and
+    // future create-time defaults stay consistent with the rest of the app.
+    const newMeal = await createMeal(userId, mealData);
     return newMeal;
   } catch (error) {
     log(

@@ -79,6 +79,42 @@ jest.mock('@/components/FoodUnitSelector', () => {
   return function MockFoodUnitSelector() {
     return <div data-testid="food-unit-selector">FoodUnitSelector</div>;
   };
+  it('rounds derived total_servings for non-serving meals before saving', async () => {
+    mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
+
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={333}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+      target: { value: '1000' },
+    });
+    fireEvent.change(screen.getByLabelText('Default Serving Size (ml)'), {
+      target: { value: '333' },
+    });
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    await waitFor(() => {
+      expect(mockCreateMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'ml',
+          serving_size: 333,
+          total_servings: 3.003003,
+        })
+      );
+    });
+  });
 });
 
 jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
