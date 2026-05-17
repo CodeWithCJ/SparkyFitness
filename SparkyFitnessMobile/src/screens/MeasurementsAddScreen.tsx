@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
@@ -418,7 +419,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button

@@ -230,6 +230,10 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
         </View>
 
+        <View className="mb-3">
+          <Text className="text-lg font-semibold text-text-primary">Browse</Text>
+        </View>
+
         <View className="bg-surface rounded-xl mb-6 shadow-sm overflow-hidden">
           <Pressable
             className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"

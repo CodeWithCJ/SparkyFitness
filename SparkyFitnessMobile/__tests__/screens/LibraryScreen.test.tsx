@@ -240,7 +240,7 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Recent')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
     // Interleaved: meal, food, meal, food → 4 items total.
     expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
     expect(screen.getByText('Apple')).toBeTruthy();
@@ -340,7 +340,7 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Recent')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Bench Press'));
