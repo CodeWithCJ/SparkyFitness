@@ -442,10 +442,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-1 gap-1.5">
               {servingUnit === 'serving' ? (
                 <>
-                  <Text
-                    className="text-text-secondary text-sm font-medium"
-                    numberOfLines={1}
-                  >
+                  <Text className="text-text-secondary text-sm font-medium">
                     Total Servings *
                   </Text>
                   <FormInput
@@ -458,11 +455,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 </>
               ) : (
                 <>
-                  <Text
-                    className="text-text-secondary text-sm font-medium"
-                    numberOfLines={1}
-                  >
-                    {`Total Amount (${servingUnit}) *`}
+                  <Text className="text-text-secondary text-sm font-medium">
+                    Total Amount *
                   </Text>
                   <FormInput
                     placeholder="1"
@@ -500,25 +494,27 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* Bottom row: Default Serving Size — only for non-serving units */}
+          {/* Bottom row: Default Serving Size — only for non-serving units.
+              The label spans the full row so the unit suffix never truncates;
+              the input stays half-width via the inner flex-row + empty spacer,
+              matching the visual rhythm of the Total Amount / Unit row above. */}
           {servingUnit !== 'serving' && (
-            <View className="flex-row gap-3">
-              <View className="flex-1 gap-1.5">
-                <Text
-                  className="text-text-secondary text-sm font-medium"
-                  numberOfLines={1}
-                >
-                  {`Default Serving Size (${servingUnit}) *`}
-                </Text>
-                <FormInput
-                  placeholder="1"
-                  value={servingSizeText}
-                  onChangeText={updateServingSize}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                />
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">
+                {`Default Serving Size (${servingUnit}) *`}
+              </Text>
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <FormInput
+                    placeholder="1"
+                    value={servingSizeText}
+                    onChangeText={updateServingSize}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                  />
+                </View>
+                <View className="flex-1" />
               </View>
-              <View className="flex-1" />
             </View>
           )}
         </View>
