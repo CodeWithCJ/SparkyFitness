@@ -60,6 +60,8 @@ describe('goalsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         })
       );

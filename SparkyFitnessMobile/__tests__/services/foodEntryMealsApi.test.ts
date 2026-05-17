@@ -64,6 +64,8 @@ describe('foodEntryMealsApi', () => {
         method: 'POST',
         headers: expect.objectContaining({
           Authorization: 'Bearer test-api-key-12345',
+
+          'X-Meal-Model-Version': '2',
           'Content-Type': 'application/json',
         }),
         body: JSON.stringify(payload),

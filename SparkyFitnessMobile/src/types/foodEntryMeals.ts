@@ -40,6 +40,10 @@ export interface FoodEntryMeal {
   description: string | null;
   quantity: number;
   unit: string;
+  // TRUE for entries logged before the serving-model migration, where unit
+  // === 'serving' had the special-case multiplier semantics. The server uses
+  // this when recomputing/unscaling component nutrition on edit.
+  legacy_serving_unit_math?: boolean;
   foods: FoodEntryMealFood[];
   calories?: number;
   protein?: number;

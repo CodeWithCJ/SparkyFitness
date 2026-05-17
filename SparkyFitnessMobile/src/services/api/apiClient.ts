@@ -36,6 +36,11 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
+        // Identify this client to the server as understanding the new meal
+        // serving model (issue #1023). Older mobile builds omit this header
+        // and the server applies legacy "unit === 'serving' → multiplier =
+        // quantity" math for backwards compatibility on diary-meal creates.
+        'X-Meal-Model-Version': '2',
         ...customHeaders,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),

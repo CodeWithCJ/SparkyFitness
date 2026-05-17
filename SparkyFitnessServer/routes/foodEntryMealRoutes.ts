@@ -54,6 +54,11 @@ router.post('/', async (req, res, next) => {
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
+    // Backwards compatibility (issue #1023): clients on the new serving model
+    // send X-Meal-Model-Version: 2 (or higher). Older clients omit the header
+    // and expect the legacy "unit === 'serving' → multiplier = quantity" math.
+    const clientMealModelVersion =
+      Number(req.header('x-meal-model-version')) || 1;
     const newFoodEntryMeal = await foodEntryService.createFoodEntryMeal(
       targetUserId, // Use targetUserId
       userId, // actingUserId is the authenticated user
@@ -68,6 +73,7 @@ router.post('/', async (req, res, next) => {
         foods,
         quantity,
         unit,
+        _clientMealModelVersion: clientMealModelVersion,
       } // mealData
     );
     log('info', `User ${userId} created FoodEntryMeal ${newFoodEntryMeal.id}`);

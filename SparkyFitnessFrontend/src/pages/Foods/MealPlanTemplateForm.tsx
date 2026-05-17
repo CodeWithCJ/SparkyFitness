@@ -40,6 +40,7 @@ interface ExtendedAssignment extends MealPlanTemplateAssignment {
   fat?: number;
   serving_size?: number;
   serving_unit?: string;
+  total_servings?: number;
 }
 
 interface MealPlanTemplateFormProps {
@@ -121,6 +122,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
               fat: totalFat,
               serving_size: meal.serving_size || 1,
               serving_unit: meal.serving_unit || 'serving',
+              total_servings: meal.total_servings || 1,
             };
           }
         } else if (assignment.item_type === 'food' && assignment.food_id) {
@@ -361,7 +363,12 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     let totalFat = 0;
 
     relevantAssignments.forEach((assignment) => {
-      const scale = (assignment.quantity || 1) / (assignment.serving_size || 1);
+      // Meal assignments use uniform math: quantity / (serving_size × total_servings).
+      // Food assignments leave total_servings undefined, defaulting to 1 — math
+      // reduces to today's quantity/serving_size for those.
+      const denominator =
+        (assignment.serving_size || 1) * (assignment.total_servings || 1);
+      const scale = (assignment.quantity || 1) / denominator;
       totalCalories += (assignment.calories || 0) * scale;
       totalProtein += (assignment.protein || 0) * scale;
       totalCarbs += (assignment.carbs || 0) * scale;
@@ -383,7 +390,9 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     let totalFat = 0;
 
     relevantAssignments.forEach((assignment) => {
-      const scale = (assignment.quantity || 1) / (assignment.serving_size || 1);
+      const denominator =
+        (assignment.serving_size || 1) * (assignment.total_servings || 1);
+      const scale = (assignment.quantity || 1) / denominator;
       totalCalories += (assignment.calories || 0) * scale;
       totalProtein += (assignment.protein || 0) * scale;
       totalCarbs += (assignment.carbs || 0) * scale;
@@ -551,9 +560,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                               {assignmentsForMealType.map((assignment, idx) => {
                                 const actualIndex =
                                   extendedAssignments.indexOf(assignment);
+                                const denominator =
+                                  (assignment.serving_size || 1) *
+                                  (assignment.total_servings || 1);
                                 const scale =
-                                  (assignment.quantity || 1) /
-                                  (assignment.serving_size || 1);
+                                  (assignment.quantity || 1) / denominator;
                                 const calories =
                                   (assignment.calories || 0) * scale;
                                 const protein =

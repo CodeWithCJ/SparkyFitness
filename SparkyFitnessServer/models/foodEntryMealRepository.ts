@@ -28,9 +28,9 @@ async function createFoodEntryMeal(
     const result = await client.query(
       `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type_id, entry_date, name, description,
-                quantity, unit,
+                quantity, unit, legacy_serving_unit_math,
                 created_by_user_id, updated_by_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *`,
       [
         foodEntryMealData.user_id,
@@ -41,6 +41,7 @@ async function createFoodEntryMeal(
         foodEntryMealData.description,
         foodEntryMealData.quantity,
         foodEntryMealData.unit,
+        foodEntryMealData.legacy_serving_unit_math ?? false,
         createdByUserId,
         createdByUserId,
       ]
@@ -129,19 +130,20 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT
-            fem.id, 
-            fem.user_id, 
-            fem.meal_template_id, 
-            mt.name as meal_type, 
+            fem.id,
+            fem.user_id,
+            fem.meal_template_id,
+            mt.name as meal_type,
             fem.meal_type_id,
-            fem.entry_date, 
-            fem.name, 
-            fem.description, 
-            fem.quantity, 
+            fem.entry_date,
+            fem.name,
+            fem.description,
+            fem.quantity,
             fem.unit,
-            fem.created_at, 
-            fem.updated_at, 
-            fem.created_by_user_id, 
+            fem.legacy_serving_unit_math,
+            fem.created_at,
+            fem.updated_at,
+            fem.created_by_user_id,
             fem.updated_by_user_id
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
@@ -170,19 +172,20 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
   try {
     const result = await client.query(
       `SELECT
-            fem.id, 
-            fem.user_id, 
-            fem.meal_template_id,     
-            mt.name as meal_type, 
+            fem.id,
+            fem.user_id,
+            fem.meal_template_id,
+            mt.name as meal_type,
             fem.meal_type_id,
-            fem.entry_date, 
-            fem.name, 
-            fem.description, 
-            fem.quantity, 
+            fem.entry_date,
+            fem.name,
+            fem.description,
+            fem.quantity,
             fem.unit,
-            fem.created_at, 
-            fem.updated_at, 
-            fem.created_by_user_id, 
+            fem.legacy_serving_unit_math,
+            fem.created_at,
+            fem.updated_at,
+            fem.created_by_user_id,
             fem.updated_by_user_id
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id

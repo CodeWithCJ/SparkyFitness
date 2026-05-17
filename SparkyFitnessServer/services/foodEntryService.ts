@@ -683,7 +683,18 @@ async function createFoodEntryMeal(
     `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`
   );
   try {
-    // 1. Create the parent food_entry_meals record with quantity and unit
+    // Backwards compatibility (issue #1023): clients on the new serving model
+    // send X-Meal-Model-Version: 2. Old clients omit the header — for
+    // serving-unit logs they expected the legacy special-case math
+    // (multiplier = quantity), so mark the new row as legacy and compute the
+    // multiplier accordingly. Non-serving units collapse identically either
+    // way, so the flag has no effect there.
+    const clientMealModelVersion =
+      Number(mealData._clientMealModelVersion) || 1;
+    const isLegacyClient = clientMealModelVersion < 2;
+    const useLegacyServingMath =
+      isLegacyClient && (mealData.unit || 'serving') === 'serving';
+    // 1. Create the parent food_entry_meals record with quantity and unit.
     const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
       {
         user_id: mealData.user_id || authenticatedUserId, // Use target user ID
@@ -695,12 +706,14 @@ async function createFoodEntryMeal(
         description: mealData.description,
         quantity: mealData.quantity || 1.0, // Default to 1.0
         unit: mealData.unit || 'serving', // Default to 'serving'
+        legacy_serving_unit_math: useLegacyServingMath,
       },
       actingUserId
     );
     const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
     let foodsToProcess = mealData.foods || [];
-    let mealServingSize = 1.0; // Default serving size
+    let mealServingSize = 1.0; // Default per-serving quantity
+    let mealTotalServings = 1.0; // Default yield count
     // If a meal_template id is provided fetch the template for serving size
     if (mealData.meal_template_id) {
       log(
@@ -712,10 +725,11 @@ async function createFoodEntryMeal(
         mealData.meal_template_id
       );
       if (mealTemplate) {
-        mealServingSize = mealTemplate.serving_size || 1.0; // Always get the meal serving size
+        mealServingSize = mealTemplate.serving_size || 1.0;
+        mealTotalServings = mealTemplate.total_servings || 1.0;
         log(
           'info',
-          `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'}`
+          `Meal template serving: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'} × ${mealTotalServings} servings`
         );
         // If no specific foods provided use template
         if (!mealData.foods || mealData.foods.length === 0) {
@@ -736,20 +750,24 @@ async function createFoodEntryMeal(
         // Continue without template data
       }
     }
-    // Calculate portion multiplier: consumed_quantity / meal_serving_size
+    // Calculate portion multiplier.
+    //   - Uniform model (new clients): consumed_quantity / (serving_size × total_servings).
+    //   - Legacy model (old clients, unit='serving'): multiplier = consumed_quantity.
+    // Full recipe nutrition is stored in component foods scaled by mf.quantity / mf.serving_size,
+    // so this multiplier scales the WHOLE recipe down to the consumed portion.
     const consumedQuantity = mealData.quantity || 1.0;
     let multiplier = 1.0;
-    //Scale if there is a template ID
     if (mealData.meal_template_id) {
-      if (mealData.unit === 'serving') {
+      if (useLegacyServingMath) {
         multiplier = consumedQuantity;
       } else {
-        multiplier = consumedQuantity / mealServingSize;
+        const denominator = mealServingSize * mealTotalServings;
+        multiplier = denominator > 0 ? consumedQuantity / denominator : 1.0;
       }
     }
     log(
       'info',
-      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, has_template: ${!!mealData.meal_template_id})`
+      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, total_servings: ${mealTotalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
     );
     // 2. Create component food_entries records with scaled quantities
     const entriesToCreate = [];
@@ -881,27 +899,32 @@ async function updateFoodEntryMeal(
       `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
     );
     log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
-    // Calculate portion multiplier
-    // Foods from getFoodEntryMealWithComponents now have BASE (unscaled) quantities,
-    // so we just apply the new quantity as the multiplier
+    // Calculate portion multiplier.
+    // Foods from getFoodEntryMealWithComponents have BASE (unscaled) quantities.
+    // Use the uniform model for new entries; honor the legacy_serving_unit_math
+    // flag for pre-deploy entries so editing them does not silently shift their
+    // nutrition (those entries were stored under the old
+    // "unit === 'serving' → multiplier = quantity" special case).
     let multiplier = 1.0;
     const newQuantity = updatedMealData.quantity || 1.0;
+    const legacyMath = updatedFoodEntryMeal.legacy_serving_unit_math === true;
     if (updatedMealData.meal_template_id) {
-      // Fetch meal template to get reference serving size
       const mealTemplate = await mealService.getMealById(
         authenticatedUserId,
         updatedMealData.meal_template_id
       );
       if (mealTemplate && mealTemplate.serving_size) {
         const referenceServingSize = mealTemplate.serving_size || 1.0;
-        if (updatedMealData.unit === 'serving') {
+        const referenceTotalServings = mealTemplate.total_servings || 1.0;
+        if (legacyMath && updatedMealData.unit === 'serving') {
           multiplier = newQuantity;
         } else {
-          multiplier = newQuantity / referenceServingSize;
+          const denominator = referenceServingSize * referenceTotalServings;
+          multiplier = denominator > 0 ? newQuantity / denominator : 1.0;
         }
         log(
           'info',
-          `Update portion scaling (with template): multiplier ${multiplier} (consumed: ${newQuantity}, reference: ${referenceServingSize})`
+          `Update portion scaling (with template): multiplier ${multiplier} (consumed: ${newQuantity}, serving_size: ${referenceServingSize}, total_servings: ${referenceTotalServings}, legacy: ${legacyMath})`
         );
       }
     } else {
@@ -1019,7 +1042,12 @@ async function getFoodEntryMealWithComponents(
         foodEntryMealId,
         authenticatedUserId
       );
-    // Calculate the multiplier that was used when storing for editing purposes
+    // Calculate the multiplier that was used when storing, so we can unscale
+    // component values for editing. New entries (legacy_serving_unit_math = false)
+    // were stored with the uniform formula
+    //   multiplier = quantity / (serving_size × total_servings).
+    // Pre-deploy entries (legacy_serving_unit_math = true) were stored with the
+    // old "unit === 'serving' → multiplier = quantity" special case.
     let storedMultiplier = 1.0;
     if (foodEntryMeal.meal_template_id) {
       try {
@@ -1030,14 +1058,18 @@ async function getFoodEntryMealWithComponents(
         if (mealTemplate) {
           const consumedQuantity = foodEntryMeal.quantity || 1.0;
           const templateServingSize = mealTemplate.serving_size || 1.0;
-          if (foodEntryMeal.unit === 'serving') {
+          const templateTotalServings = mealTemplate.total_servings || 1.0;
+          const legacyMath = foodEntryMeal.legacy_serving_unit_math === true;
+          if (legacyMath && foodEntryMeal.unit === 'serving') {
             storedMultiplier = consumedQuantity;
           } else {
-            storedMultiplier = consumedQuantity / templateServingSize;
+            const denominator = templateServingSize * templateTotalServings;
+            storedMultiplier =
+              denominator > 0 ? consumedQuantity / denominator : 1.0;
           }
           log(
             'info',
-            `Calculated stored multiplier for unscaling: ${storedMultiplier} (consumed: ${consumedQuantity}, template serving: ${templateServingSize})`
+            `Calculated stored multiplier for unscaling: ${storedMultiplier} (consumed: ${consumedQuantity}, serving_size: ${templateServingSize}, total_servings: ${templateTotalServings}, legacy: ${legacyMath})`
           );
         }
       } catch (err) {

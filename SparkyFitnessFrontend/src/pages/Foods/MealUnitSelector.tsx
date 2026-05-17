@@ -37,7 +37,11 @@ const MealUnitSelector = ({
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
 
-  const [quantity, setQuantity] = useState(initialQuantity ?? 1.0);
+  // Default the prefilled quantity to one serving's worth (meal.serving_size),
+  // matching MealBuilder. For an 8-serving meal this prefills 1.
+  const [quantity, setQuantity] = useState(
+    initialQuantity ?? meal?.serving_size ?? 1.0
+  );
   const unit = initialUnit || meal?.serving_unit || 'serving';
 
   const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
@@ -76,17 +80,13 @@ const MealUnitSelector = ({
       totalFat += (foodItem.fat || 0) * scale;
     });
 
-    // Calculate meal serving size (default to 1.0 if not set)
+    // Uniform multiplier: quantity / (serving_size × total_servings).
+    // For pre-migration data where total_servings defaults to 1, this collapses
+    // to quantity/serving_size — matches today's non-serving behavior.
     const mealServingSize = meal.serving_size || 1.0;
-
-    // Calculate multiplier based on quantity and unit
-    let multiplier: number;
-    //Check if unit is the same as meal serving unit, if so use quantity directly, otherwise calculate based on meal serving size
-    if (unit === 'serving' && meal.serving_unit === 'serving') {
-      multiplier = quantity;
-    } else {
-      multiplier = quantity / mealServingSize;
-    }
+    const mealTotalServings = meal.total_servings || 1;
+    const denominator = mealServingSize * mealTotalServings;
+    const multiplier = denominator > 0 ? quantity / denominator : 1;
 
     const result = {
       calories: totalCalories * multiplier,

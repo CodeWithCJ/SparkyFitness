@@ -1450,7 +1450,8 @@ CREATE TABLE public.food_entry_meals (
     updated_by_user_id uuid NOT NULL,
     quantity numeric DEFAULT 1.0 NOT NULL,
     unit text DEFAULT 'serving'::text,
-    meal_type_id uuid NOT NULL
+    meal_type_id uuid NOT NULL,
+    legacy_serving_unit_math boolean DEFAULT false NOT NULL
 );
 
 
@@ -1466,6 +1467,13 @@ COMMENT ON COLUMN public.food_entry_meals.quantity IS 'Amount of the meal consum
 --
 
 COMMENT ON COLUMN public.food_entry_meals.unit IS 'Unit of measurement for the consumed quantity (should match meals.serving_unit)';
+
+
+--
+-- Name: COLUMN food_entry_meals.legacy_serving_unit_math; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for diary entries logged before the serving-model migration where unit=''serving'' had special-case multiplier semantics. Read by foodEntryService recompute/unscale paths.';
 
 
 --
@@ -1684,7 +1692,8 @@ CREATE TABLE public.meals (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     shared_with_public boolean DEFAULT false,
     serving_size numeric DEFAULT 1.0 NOT NULL,
-    serving_unit text DEFAULT 'serving'::text NOT NULL
+    serving_unit text DEFAULT 'serving'::text NOT NULL,
+    total_servings numeric DEFAULT 1.0 NOT NULL
 );
 
 
@@ -1692,7 +1701,14 @@ CREATE TABLE public.meals (
 -- Name: COLUMN meals.serving_size; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.meals.serving_size IS 'Defines the reference serving size for this meal (e.g., 200 for 200g or 1000 for 1000ml)';
+COMMENT ON COLUMN public.meals.serving_size IS 'Quantity of one serving in serving_unit (e.g. 250 for a 250 ml serving, or 1 when serving_unit = ''serving''). Same semantic as food_variants.serving_size.';
+
+
+--
+-- Name: COLUMN meals.total_servings; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
 
 
 --

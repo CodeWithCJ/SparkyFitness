@@ -64,6 +64,7 @@ export interface CreateMealPayload {
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
+  total_servings?: number;
   foods: MealFoodPayload[];
 }
 
@@ -73,6 +74,7 @@ export interface UpdateMealPayload {
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
+  total_servings?: number;
   foods?: MealFoodPayload[];
 }
 
@@ -99,6 +101,7 @@ export interface Meal {
   is_public: boolean;
   serving_size: number;
   serving_unit: string;
+  total_servings: number;
   created_at: string;
   updated_at: string;
   foods: MealFood[];

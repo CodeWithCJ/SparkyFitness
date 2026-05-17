@@ -79,6 +79,42 @@ jest.mock('@/components/FoodUnitSelector', () => {
   return function MockFoodUnitSelector() {
     return <div data-testid="food-unit-selector">FoodUnitSelector</div>;
   };
+  it('rounds derived total_servings for non-serving meals before saving', async () => {
+    mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
+
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={333}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+      target: { value: '1000' },
+    });
+    fireEvent.change(screen.getByLabelText('Default Serving Size (ml)'), {
+      target: { value: '333' },
+    });
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    await waitFor(() => {
+      expect(mockCreateMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'ml',
+          serving_size: 333,
+          total_servings: 3.003003,
+        })
+      );
+    });
+  });
 });
 
 jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
@@ -244,6 +280,131 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith();
+    });
+  });
+
+  // Regression: review fix #1.
+  // Without this validation, the save handler used `parseFloat(x) || 1` which
+  // silently coerced 0 / NaN to 1 and sent valid-looking data to the server.
+  it('shows a validation toast (not a silent save) when Total Servings is 0', async () => {
+    renderWithClient(<MealBuilder initialFoods={sampleFoods} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    // Default unit is 'serving', so the Total Servings input is visible.
+    fireEvent.change(screen.getByLabelText('Total Servings'), {
+      target: { value: '0' },
+    });
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Error',
+      description: 'Total servings must be greater than zero.',
+      variant: 'destructive',
+    });
+    expect(mockCreateMeal).not.toHaveBeenCalled();
+  });
+
+  // Regression: review fix #1 (non-serving branch).
+  it('shows a validation toast when Total Amount is empty for a non-serving meal', async () => {
+    // Start in ml mode directly via prop — avoids interacting with the shadcn Select.
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={250}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Amount (ml)')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Error',
+      description: 'Total amount must be greater than zero.',
+      variant: 'destructive',
+    });
+    expect(mockCreateMeal).not.toHaveBeenCalled();
+  });
+
+  // Regression: P1 Codex finding.
+  // After editing in a quantity-based unit and toggling back to 'serving',
+  // total_servings must be DERIVED from totalAmount / servingSize, not left as
+  // the stale value the field had before the user entered ml mode.
+  it('derives total_servings from totalAmount/servingSize when toggling ml → serving', async () => {
+    mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
+
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={250}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Amount (ml)')).toBeInTheDocument();
+    });
+
+    // 2000 ml batch with 250 ml servings = 8 servings.
+    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+      target: { value: '2000' },
+    });
+    fireEvent.change(screen.getByLabelText('Default Serving Size (ml)'), {
+      target: { value: '250' },
+    });
+
+    // Toggle BACK to 'serving' via the shadcn Select. SelectTrigger renders
+    // a button with role="combobox" (Radix). The label htmlFor isn't wired to
+    // an id on the trigger, so query by role instead.
+    const unitTrigger = screen.getByRole('combobox');
+    fireEvent.click(unitTrigger);
+    const servingOption = await screen.findByRole('option', {
+      name: /serving/i,
+    });
+    fireEvent.click(servingOption);
+
+    // After toggle: serving_size resets to 1 (tautological) AND
+    // total_servings is derived from the pre-toggle totalAmount/servingSize.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Servings')).toHaveValue(8);
+    });
+
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    await waitFor(() => {
+      expect(mockCreateMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'serving',
+          serving_size: 1,
+          total_servings: 8,
+        })
+      );
     });
   });
 });

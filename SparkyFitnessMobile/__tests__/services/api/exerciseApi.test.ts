@@ -72,6 +72,8 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
           method: 'POST',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(testPayload),
@@ -130,6 +132,8 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
           method: 'PUT',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(testPayload),

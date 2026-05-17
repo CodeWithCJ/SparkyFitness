@@ -102,6 +102,10 @@ export interface FoodInfoItem {
   customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
+  // Yield count for meal-source items — surfaces "meal makes N servings"
+  // context in the diary-add screen for serving-unit meals where the
+  // per-serving size suffix is suppressed.
+  mealTotalServings?: number;
   source: 'local' | 'external' | 'meal';
   originalItem:
     | FoodItem
@@ -171,16 +175,24 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
   const scale = (food: Meal['foods'][number]) =>
     food.serving_size === 0 ? 0 : food.quantity / food.serving_size;
 
+  // Expose ONE serving's nutrition (full recipe ÷ total_servings) so the
+  // diary-add screen's quantity/serving_size math produces correct values.
+  // Default quantity = serving_size (one serving) ⇒ scale = 1 ⇒ exactly one
+  // serving's nutrition logged. Bumping quantity scales linearly.
+  const totalServings = meal.total_servings || 1;
+  const perServing = (value: number) =>
+    totalServings > 0 ? value / totalServings : value;
+
   const sumField = (field: keyof Meal['foods'][number]) =>
     meal.foods.reduce((sum, f) => {
       const v = f[field];
       return typeof v === 'number' ? sum + v * scale(f) : sum;
     }, 0);
 
-  const calories = sumField('calories');
-  const protein = sumField('protein');
-  const carbs = sumField('carbs');
-  const fat = sumField('fat');
+  const calories = perServing(sumField('calories'));
+  const protein = perServing(sumField('protein'));
+  const carbs = perServing(sumField('carbs'));
+  const fat = perServing(sumField('fat'));
 
   const hasField = (field: keyof Meal['foods'][number]) =>
     meal.foods.some((f) => f[field] != null);
@@ -195,17 +207,18 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
-    fiber: hasField('dietary_fiber') ? Math.round(sumField('dietary_fiber')) : undefined,
-    saturatedFat: hasField('saturated_fat') ? Math.round(sumField('saturated_fat')) : undefined,
-    sodium: hasField('sodium') ? Math.round(sumField('sodium')) : undefined,
-    sugars: hasField('sugars') ? Math.round(sumField('sugars')) : undefined,
-    transFat: hasField('trans_fat') ? Math.round(sumField('trans_fat')) : undefined,
-    potassium: hasField('potassium') ? Math.round(sumField('potassium')) : undefined,
-    calcium: hasField('calcium') ? Math.round(sumField('calcium')) : undefined,
-    iron: hasField('iron') ? Math.round(sumField('iron')) : undefined,
-    cholesterol: hasField('cholesterol') ? Math.round(sumField('cholesterol')) : undefined,
-    vitaminA: hasField('vitamin_a') ? Math.round(sumField('vitamin_a')) : undefined,
-    vitaminC: hasField('vitamin_c') ? Math.round(sumField('vitamin_c')) : undefined,
+    fiber: hasField('dietary_fiber') ? Math.round(perServing(sumField('dietary_fiber'))) : undefined,
+    saturatedFat: hasField('saturated_fat') ? Math.round(perServing(sumField('saturated_fat'))) : undefined,
+    sodium: hasField('sodium') ? Math.round(perServing(sumField('sodium'))) : undefined,
+    sugars: hasField('sugars') ? Math.round(perServing(sumField('sugars'))) : undefined,
+    transFat: hasField('trans_fat') ? Math.round(perServing(sumField('trans_fat'))) : undefined,
+    potassium: hasField('potassium') ? Math.round(perServing(sumField('potassium'))) : undefined,
+    calcium: hasField('calcium') ? Math.round(perServing(sumField('calcium'))) : undefined,
+    iron: hasField('iron') ? Math.round(perServing(sumField('iron'))) : undefined,
+    cholesterol: hasField('cholesterol') ? Math.round(perServing(sumField('cholesterol'))) : undefined,
+    vitaminA: hasField('vitamin_a') ? Math.round(perServing(sumField('vitamin_a'))) : undefined,
+    vitaminC: hasField('vitamin_c') ? Math.round(perServing(sumField('vitamin_c'))) : undefined,
+    mealTotalServings: totalServings,
     source: 'meal',
     originalItem: meal,
   };

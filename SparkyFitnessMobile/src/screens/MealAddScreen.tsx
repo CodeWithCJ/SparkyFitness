@@ -34,6 +34,8 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
+const MEAL_SERVING_PRECISION = 6;
+
 const SERVING_UNIT_OPTIONS = [
   'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
 ].map((unit) => ({ label: unit, value: unit }));
@@ -110,8 +112,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
+  // serving_size = quantity of ONE serving in serving_unit (e.g. 250 for 250 ml,
+  // or 1 when unit is 'serving'). total_servings = yield count.
   const [servingSizeText, setServingSizeText] = useState('1');
   const [servingUnit, setServingUnit] = useState('serving');
+  const [totalServingsText, setTotalServingsText] = useState('1');
+  // For non-serving units we ask the user for the BATCH amount and derive
+  // total_servings = totalAmount / servingSize on save.
+  const [totalAmountText, setTotalAmountText] = useState('1');
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
   const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
 
@@ -128,8 +136,18 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
     setMealName(editMeal.name);
     setDescription(editMeal.description ?? '');
-    setServingSizeText(String(editMeal.serving_size));
+    const loadedServingSize = editMeal.serving_size ?? 1;
+    const loadedTotalServings = editMeal.total_servings ?? 1;
+    setServingSizeText(String(loadedServingSize));
     setServingUnit(editMeal.serving_unit);
+    setTotalServingsText(String(loadedTotalServings));
+    // toPrecision(15) strips IEEE 754 artifacts (e.g. 1000 * 4.015 →
+    // 4014.99999…) without losing real precision.
+    setTotalAmountText(
+      String(
+        Number((loadedServingSize * loadedTotalServings).toPrecision(15))
+      )
+    );
     setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
     setInitializedMealId(editMeal.id);
   }, [editMeal, initializedMealId, isEditMode]);
@@ -157,12 +175,52 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   );
 
   const totals = useMemo(() => toMealTotals(ingredients), [ingredients]);
-  const servingsCount = parseDecimalInput(servingSizeText) ?? 0;
-  const showPerServing = servingsCount > 1;
+  const totalServingsCount = parseDecimalInput(totalServingsText) ?? 0;
+  const showPerServing = totalServingsCount > 1;
 
   const updateServingSize = (value: string) => {
     if (DECIMAL_INPUT_REGEX.test(value)) {
       setServingSizeText(value);
+    }
+  };
+
+  const updateTotalServings = (value: string) => {
+    if (DECIMAL_INPUT_REGEX.test(value)) {
+      setTotalServingsText(value);
+    }
+  };
+
+  const updateTotalAmount = (value: string) => {
+    if (DECIMAL_INPUT_REGEX.test(value)) {
+      setTotalAmountText(value);
+    }
+  };
+
+  const handleServingUnitChange = (value: string) => {
+    const previousUnit = servingUnit;
+    setServingUnit(value);
+    if (value === 'serving') {
+      // Switching INTO serving-unit.
+      // If coming from a quantity-based unit, derive total_servings from the
+      // current Total Amount / Default Serving Size so the user's recipe
+      // definition isn't silently lost when serving_size collapses to 1.
+      if (previousUnit !== 'serving') {
+        const parsedAmount = parseDecimalInput(totalAmountText);
+        const parsedSize = parseDecimalInput(servingSizeText);
+        if (
+          parsedAmount &&
+          parsedSize &&
+          parsedAmount > 0 &&
+          parsedSize > 0
+        ) {
+          setTotalServingsText(String(parsedAmount / parsedSize));
+        }
+      }
+      setServingSizeText('1');
+    } else if (previousUnit === 'serving') {
+      // Switching OUT of serving-unit: seed Total Amount from total_servings × 1.
+      setServingSizeText('1');
+      setTotalAmountText(totalServingsText || '1');
     }
   };
 
@@ -203,7 +261,28 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const handleSaveMeal = async () => {
     const trimmedMealName = mealName.trim();
-    const parsedServingSize = parseDecimalInput(servingSizeText);
+
+    // Derive the persisted fields based on the unit:
+    //   - 'serving': user typed Total Servings directly; serving_size = 1.
+    //   - other:    user typed Total Amount + Default Serving Size; derive
+    //               total_servings = totalAmount / servingSize.
+    let parsedServingSize: number | null;
+    let parsedTotalServings: number | null;
+    if (servingUnit === 'serving') {
+      parsedServingSize = 1;
+      parsedTotalServings = parseDecimalInput(totalServingsText);
+    } else {
+      parsedServingSize = parseDecimalInput(servingSizeText);
+      const parsedTotalAmount = parseDecimalInput(totalAmountText);
+      parsedTotalServings =
+        parsedServingSize && parsedTotalAmount && parsedServingSize > 0
+          ? Number(
+              (parsedTotalAmount / parsedServingSize).toFixed(
+                MEAL_SERVING_PRECISION
+              )
+            )
+          : null;
+    }
 
     if (!trimmedMealName) {
       Toast.show({
@@ -218,7 +297,22 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       Toast.show({
         type: 'error',
         text1: 'Invalid serving size',
-        text2: 'Serving size must be greater than zero.',
+        text2: 'Default serving size must be greater than zero.',
+      });
+      return;
+    }
+
+    if (!parsedTotalServings || parsedTotalServings <= 0) {
+      Toast.show({
+        type: 'error',
+        text1:
+          servingUnit === 'serving'
+            ? 'Invalid total servings'
+            : 'Invalid total amount',
+        text2:
+          servingUnit === 'serving'
+            ? 'Total servings must be greater than zero.'
+            : 'Total amount must be greater than zero.',
       });
       return;
     }
@@ -247,6 +341,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         description: description.trim() || null,
         serving_size: parsedServingSize,
         serving_unit: servingUnit,
+        total_servings: parsedTotalServings,
         foods: ingredients.map(mealIngredientToPayload),
       };
 
@@ -347,40 +442,83 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             />
           </View>
 
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Makes *</Text>
-            <View className="flex-row gap-3">
-              <FormInput
-                placeholder="1"
-                value={servingSizeText}
-                onChangeText={updateServingSize}
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-                style={{ width: 96 }}
+          {/* Top row: count-or-amount + unit selector */}
+          <View className="flex-row gap-3">
+            <View className="flex-1 gap-1.5">
+              {servingUnit === 'serving' ? (
+                <>
+                  <Text className="text-text-secondary text-sm font-medium">
+                    Total Servings *
+                  </Text>
+                  <FormInput
+                    placeholder="1"
+                    value={totalServingsText}
+                    onChangeText={updateTotalServings}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text className="text-text-secondary text-sm font-medium">
+                    {`Total Amount (${servingUnit}) *`}
+                  </Text>
+                  <FormInput
+                    placeholder="1"
+                    value={totalAmountText}
+                    onChangeText={updateTotalAmount}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                  />
+                </>
+              )}
+            </View>
+            <View className="flex-1 gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">
+                Unit
+              </Text>
+              <BottomSheetPicker
+                value={servingUnit}
+                options={SERVING_UNIT_OPTIONS}
+                onSelect={handleServingUnitChange}
+                title="Select Unit"
+                renderTrigger={({ onPress, selectedOption }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    activeOpacity={0.7}
+                    className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
+                    style={{ minHeight: 44 }}
+                  >
+                    <Text className="text-text-primary" style={{ fontSize: 16 }}>
+                      {selectedOption?.label ?? servingUnit}
+                    </Text>
+                    <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
+                  </TouchableOpacity>
+                )}
               />
-              <View className="flex-1">
-                <BottomSheetPicker
-                  value={servingUnit}
-                  options={SERVING_UNIT_OPTIONS}
-                  onSelect={setServingUnit}
-                  title="Select Unit"
-                  renderTrigger={({ onPress, selectedOption }) => (
-                    <TouchableOpacity
-                      onPress={onPress}
-                      activeOpacity={0.7}
-                      className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
-                      style={{ minHeight: 44 }}
-                    >
-                      <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                        {selectedOption?.label ?? servingUnit}
-                      </Text>
-                      <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
-                    </TouchableOpacity>
-                  )}
-                />
-              </View>
             </View>
           </View>
+
+          {/* Bottom row: Serving Size — only for non-serving units. Short
+              label "Serving Size (unit) *" fits the half-width column, so we
+              use the same layout as Total Amount / Unit above. */}
+          {servingUnit !== 'serving' && (
+            <View className="flex-row gap-3">
+              <View className="flex-1 gap-1.5">
+                <Text className="text-text-secondary text-sm font-medium">
+                  {`Serving Size (${servingUnit}) *`}
+                </Text>
+                <FormInput
+                  placeholder="1"
+                  value={servingSizeText}
+                  onChangeText={updateServingSize}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                />
+              </View>
+              <View className="flex-1" />
+            </View>
+          )}
         </View>
 
         <View className="bg-surface rounded-xl p-4 gap-3 shadow-sm">
@@ -506,23 +644,23 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-text-secondary text-base font-medium">Per serving</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatCaloriesDisplay(totals.calories / servingsCount)} cal
+                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} cal
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">
                     <MacroStat
                       color={proteinColor}
-                      value={formatMacroDisplay(totals.protein / servingsCount)}
+                      value={formatMacroDisplay(totals.protein / totalServingsCount)}
                       label="g protein"
                     />
                     <MacroStat
                       color={carbsColor}
-                      value={formatMacroDisplay(totals.carbs / servingsCount)}
+                      value={formatMacroDisplay(totals.carbs / totalServingsCount)}
                       label="g carbs"
                     />
                     <MacroStat
                       color={fatColor}
-                      value={formatMacroDisplay(totals.fat / servingsCount)}
+                      value={formatMacroDisplay(totals.fat / totalServingsCount)}
                       label="g fat"
                     />
                   </View>

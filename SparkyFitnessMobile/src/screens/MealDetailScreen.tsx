@@ -57,13 +57,25 @@ const hasMealField = (meal: Meal, field: MealFoodNumericField) =>
 const divide = (value: number | undefined, divisor: number) =>
   value == null ? undefined : value / divisor;
 
-function buildMealDisplayValues(meal: Meal, divisor = 1): FoodDisplayValues {
+// mode='total' shows the full recipe; mode='perServing' divides totals by
+// meal.total_servings and labels the values as one serving's quantity in
+// serving_unit.
+function buildMealDisplayValues(
+  meal: Meal,
+  mode: 'total' | 'perServing' = 'total',
+): FoodDisplayValues {
+  const totalServings = meal.total_servings || 1;
+  const divisor = mode === 'perServing' ? totalServings : 1;
   const safeDivisor = divisor > 0 ? divisor : 1;
   const optionalField = (field: MealFoodNumericField) =>
     hasMealField(meal, field) ? divide(sumMealField(meal, field), safeDivisor) : undefined;
 
+  const servingSize = meal.serving_size || 1;
+
   return {
-    servingSize: divisor > 1 ? 1 : meal.serving_size,
+    // Per-serving mode shows one serving's quantity; total mode shows the
+    // whole recipe quantity (serving_size × total_servings).
+    servingSize: mode === 'perServing' ? servingSize : servingSize * totalServings,
     servingUnit: meal.serving_unit,
     calories: sumMealField(meal, 'calories') / safeDivisor,
     protein: sumMealField(meal, 'protein') / safeDivisor,
@@ -102,9 +114,12 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   });
 
   const canManageMeal = !!(isConnected && meal && profile?.id === meal.user_id);
-  const totalValues = useMemo(() => (meal ? buildMealDisplayValues(meal) : null), [meal]);
+  const totalValues = useMemo(
+    () => (meal ? buildMealDisplayValues(meal, 'total') : null),
+    [meal],
+  );
   const perServingValues = useMemo(
-    () => (meal ? buildMealDisplayValues(meal, meal.serving_size) : null),
+    () => (meal ? buildMealDisplayValues(meal, 'perServing') : null),
     [meal],
   );
   const displayValues = viewMode === 'perServing' ? perServingValues : totalValues;
@@ -159,8 +174,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             onSelect={setViewMode}
           />
           <Text className="text-text-muted text-xs text-center">
-            Makes {meal.serving_size} {meal.serving_unit} · {foodCount}{' '}
-            {foodCount === 1 ? 'ingredient' : 'ingredients'}
+            Makes {meal.total_servings || 1}{' '}
+            {(meal.total_servings || 1) === 1 ? 'serving' : 'servings'} ·{' '}
+            {foodCount} {foodCount === 1 ? 'ingredient' : 'ingredients'}
           </Text>
         </View>
 

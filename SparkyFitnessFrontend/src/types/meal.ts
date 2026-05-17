@@ -8,6 +8,7 @@ export interface Meal {
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
+  total_servings?: number;
   foods?: MealFood[];
 }
 
@@ -48,6 +49,7 @@ export interface MealPayload {
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
+  total_servings?: number;
   foods: MealFoodPayload[];
 }
 
@@ -120,6 +122,7 @@ export interface FoodEntryMeal {
   description?: string;
   quantity?: number;
   unit?: string;
+  legacy_serving_unit_math?: boolean;
   foods: MealFood[]; // The component foods of this logged meal
   calories?: number; // Aggregated calories
   protein?: number; // Aggregated protein

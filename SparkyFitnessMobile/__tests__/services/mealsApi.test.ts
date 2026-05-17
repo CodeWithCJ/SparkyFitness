@@ -55,6 +55,8 @@ describe('mealsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         }),
       );
@@ -90,6 +92,8 @@ describe('mealsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         }),
       );
@@ -122,6 +126,8 @@ describe('mealsApi', () => {
           method: 'PUT',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -155,6 +161,8 @@ describe('mealsApi', () => {
           method: 'DELETE',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         }),
       );
