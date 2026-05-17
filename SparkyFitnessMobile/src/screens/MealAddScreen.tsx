@@ -139,7 +139,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     setServingSizeText(String(loadedServingSize));
     setServingUnit(editMeal.serving_unit);
     setTotalServingsText(String(loadedTotalServings));
-    setTotalAmountText(String(loadedServingSize * loadedTotalServings));
+    // toPrecision(15) strips IEEE 754 artifacts (e.g. 1000 * 4.015 →
+    // 4014.99999…) without losing real precision.
+    setTotalAmountText(
+      String(
+        Number((loadedServingSize * loadedTotalServings).toPrecision(15))
+      )
+    );
     setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
     setInitializedMealId(editMeal.id);
   }, [editMeal, initializedMealId, isEditMode]);
@@ -450,7 +456,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    Total Amount ({servingUnit}) *
+                    {`Total Amount (${servingUnit}) *`}
                   </Text>
                   <FormInput
                     placeholder="1"
@@ -493,7 +499,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
                 <Text className="text-text-secondary text-sm font-medium">
-                  Default Serving Size ({servingUnit}) *
+                  {`Default Serving Size (${servingUnit}) *`}
                 </Text>
                 <FormInput
                   placeholder="1"

@@ -37,6 +37,7 @@ import {
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
@@ -107,6 +108,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   // mental model: "I made 2000 ml") and derive total_servings on save as
   // totalAmount / servingSize.
   const [totalAmountText, setTotalAmountText] = useState<string>('1');
+  // Nutrition view toggle (meal-management mode only). Default to per-serving
+  // to match mobile MealDetailScreen and surface the most useful framing.
+  const [nutritionView, setNutritionView] = useState<'perServing' | 'total'>(
+    'perServing'
+  );
   const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
@@ -146,9 +152,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setServingUnit(meal.serving_unit || 'serving');
             setTotalServings(loadedTotalServings.toString());
             // Batch amount = serving_size × total_servings (the natural
-            // "I made 2000 ml" value for non-serving meals).
+            // "I made 2000 ml" value for non-serving meals). toPrecision(15)
+            // strips IEEE 754 artifacts (e.g. 1000 * 4.015 → 4014.99999…)
+            // without losing real precision — doubles hold ~15-17 sig digits.
             setTotalAmountText(
-              (loadedServingSize * loadedTotalServings).toString()
+              Number(
+                (loadedServingSize * loadedTotalServings).toPrecision(15)
+              ).toString()
             );
             setMealFoods(meal.foods || []);
           }
@@ -954,18 +964,43 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           </div>
         )}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">
-            {source === 'food-diary'
-              ? t('mealBuilder.loggedNutritionLabel', 'Logged Nutrition:')
-              : t(
-                  'mealBuilder.fullRecipeNutritionLabel',
-                  'Full Recipe Nutrition:'
-                )}
-          </h4>
+          {source === 'food-diary' ? (
+            <h4 className="text-sm font-medium">
+              {t('mealBuilder.loggedNutritionLabel', 'Logged Nutrition:')}
+            </h4>
+          ) : (
+            // Meal-management mode shows a Per serving / Total toggle (matches
+            // mobile MealDetailScreen). The toggle replaces the static header —
+            // selecting "Per serving" divides the recipe totals by
+            // total_servings; "Total" shows the raw full-recipe sum.
+            <Tabs
+              value={nutritionView}
+              onValueChange={(value) =>
+                setNutritionView(value as 'perServing' | 'total')
+              }
+            >
+              <TabsList>
+                <TabsTrigger value="perServing">
+                  {t('mealBuilder.perServingTab', 'Per serving')}
+                </TabsTrigger>
+                <TabsTrigger value="total">
+                  {t('mealBuilder.totalTab', 'Total')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
             {visibleNutrients.map((key) => {
               const meta = getNutrientMetadata(key);
-              const val = mealTotals[key] || 0;
+              const rawVal = mealTotals[key] || 0;
+              // Only meal-management mode divides by total_servings; food-diary
+              // mode's calculateMealNutrition already applies the per-log
+              // multiplier, so we display its values as-is.
+              const divisor =
+                source !== 'food-diary' && nutritionView === 'perServing'
+                  ? parseFloat(totalServings) || 1
+                  : 1;
+              const val = divisor > 0 ? rawVal / divisor : rawVal;
               const displayVal =
                 key === 'calories'
                   ? formatNutrientValue(
