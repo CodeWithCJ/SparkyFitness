@@ -111,9 +111,9 @@
       --color-exercise:          hsl(158, 49%, 48%);
 
       --color-cat-slate:         hsl(220, 10%, 48%);
-      --color-cat-pink:          hsl(340, 35%, 60%);
-      --color-cat-violet:        hsl(265, 35%, 60%);
-      --color-cat-orange:        hsl(22, 45%, 60%);
+      --color-cat-pink:          hsl(340, 50%, 60%);
+      --color-cat-violet:        hsl(265, 50%, 60%);
+      --color-cat-orange:        hsl(22, 55%, 60%);
 
       --color-progress-track:    hsl(218, 41%, 23%);
       --color-progress-overfill: hsl(357, 66%, 65%);
@@ -123,7 +123,7 @@
       --color-bg-warning:        hsl(36, 72%, 65%);
       --color-bg-danger:         hsl(358, 46%, 39%);
    
-      --color-text-success:      hsl(159, 81%, 92%);
+      --color-text-success:      hsl(160, 81%, 88%);
       --color-icon-success:      hsl(145, 79%, 57%);
       --color-text-info:         hsl(214, 100%, 91%);
       --color-text-warning:      hsl(35, 59%, 78%);
@@ -167,9 +167,9 @@
       --color-exercise:          hsl(158, 49%, 48%);
 
       --color-cat-slate:         hsl(220, 10%, 48%);
-      --color-cat-pink:          hsl(340, 35%, 60%);
-      --color-cat-violet:        hsl(265, 35%, 60%);
-      --color-cat-orange:        hsl(22, 45%, 60%);
+      --color-cat-pink:          hsl(340, 50%, 60%);
+      --color-cat-violet:        hsl(265, 50%, 60%);
+      --color-cat-orange:        hsl(22, 55%, 60%);
 
       --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);
@@ -179,7 +179,7 @@
       --color-bg-warning:        hsl(36, 72%, 65%);
       --color-bg-danger:         hsl(358, 46%, 39%);
 
-      --color-text-success:      hsl(159, 15%, 95%);
+      --color-text-success:      hsl(160, 81%, 88%);
       --color-icon-success:      hsl(145, 79%, 57%);
       --color-text-info:         hsl(214, 100%, 92%);
       --color-text-warning:      hsl(35, 59%, 78%);

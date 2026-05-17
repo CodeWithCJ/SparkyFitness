@@ -267,11 +267,11 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isSaving = isPending || isUpdatePending;
 
   const renderHeader = () => (
-    <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+    <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="z-10 min-h-11 min-w-11 items-start justify-center"
+        className="z-10"
         accessibilityLabel="Back"
         accessibilityRole="button"
       >
@@ -280,7 +280,6 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
         {isEditMode ? 'Edit Meal' : 'Create Meal'}
       </Text>
-      <View className="min-h-11 min-w-11" />
     </View>
   );
 
