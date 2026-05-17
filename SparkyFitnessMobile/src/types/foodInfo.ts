@@ -102,6 +102,10 @@ export interface FoodInfoItem {
   customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
+  // Yield count for meal-source items — surfaces "meal makes N servings"
+  // context in the diary-add screen for serving-unit meals where the
+  // per-serving size suffix is suppressed.
+  mealTotalServings?: number;
   source: 'local' | 'external' | 'meal';
   originalItem:
     | FoodItem
@@ -214,6 +218,7 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     cholesterol: hasField('cholesterol') ? Math.round(perServing(sumField('cholesterol'))) : undefined,
     vitaminA: hasField('vitamin_a') ? Math.round(perServing(sumField('vitamin_a'))) : undefined,
     vitaminC: hasField('vitamin_c') ? Math.round(perServing(sumField('vitamin_c'))) : undefined,
+    mealTotalServings: totalServings,
     source: 'meal',
     originalItem: meal,
   };

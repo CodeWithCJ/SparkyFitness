@@ -1042,6 +1042,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 serving
               </Text>
               ))}
+            {/* Serving-unit meals: surface the meal's yield count as a
+                substitute for the suppressed "per serving" suffix above.
+                Singular meals (total_servings <= 1) don't need this \u2014 there's
+                no yield context to convey. */}
+            {displayValues.servingUnit === 'serving' &&
+              item.source === 'meal' &&
+              (item.mealTotalServings ?? 1) > 1 && (
+                <Text className="text-text-secondary text-sm">
+                  {' \u00b7 '}meal makes {item.mealTotalServings}
+                </Text>
+              )}
           </View>
         </View>
 
