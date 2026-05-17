@@ -119,8 +119,9 @@ function buildMeal(overrides: Partial<Meal> = {}): Meal {
     name: 'Lunch Bowl',
     description: 'Tasty',
     is_public: true,
-    serving_size: 2,
+    serving_size: 1,
     serving_unit: 'serving',
+    total_servings: 2,
     created_at: '2026-04-01T00:00:00.000Z',
     updated_at: '2026-04-01T00:00:00.000Z',
     foods: [
@@ -208,17 +209,20 @@ describe('MealAddScreen', () => {
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
 
-  it('shows an error when the serving size is invalid and does not submit', () => {
+  it('shows an error when the total servings is invalid and does not submit', () => {
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
+    // Default unit is 'serving', which hides the Serving Size input, so the
+    // single placeholder="1" field on screen is Total Servings. Typing 0 here
+    // trips total_servings validation.
     fireEvent.changeText(screen.getByPlaceholderText('1'), '0');
     fireEvent.press(screen.getByText('Save Meal'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Invalid serving size',
-      text2: 'Serving size must be greater than zero.',
+      text1: 'Invalid total servings',
+      text2: 'Total servings must be greater than zero.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -282,8 +286,12 @@ describe('MealAddScreen', () => {
       name: 'My Meal',
       description: 'Tasty',
       is_public: false,
-      serving_size: 2,
+      // serving_unit defaults to 'serving' so serving_size is forced to 1.
+      // The '2' the user typed goes into total_servings (the only input
+      // visible in that mode).
+      serving_size: 1,
       serving_unit: 'serving',
+      total_servings: 2,
       foods: [
         {
           food_id: 'food-1',
@@ -390,8 +398,10 @@ describe('MealAddScreen', () => {
     expect(payload).toEqual({
       name: 'Edited Meal',
       description: 'Tasty',
-      serving_size: 2,
+      // Meal fixture is serving_size=1, total_servings=2 under the new model.
+      serving_size: 1,
       serving_unit: 'serving',
+      total_servings: 2,
       foods: [
         {
           food_id: 'food-1',

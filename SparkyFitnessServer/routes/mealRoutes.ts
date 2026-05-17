@@ -260,6 +260,15 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
  *               is_public:
  *                 type: boolean
  *                 description: Whether the meal is publicly visible.
+ *               serving_size:
+ *                 type: number
+ *                 description: Quantity of one serving in serving_unit (e.g. 250 for 250 ml). Forced to 1 when serving_unit is 'serving'.
+ *               serving_unit:
+ *                 type: string
+ *                 description: Unit of measurement for one serving (e.g. ml, g, cup, serving).
+ *               total_servings:
+ *                 type: number
+ *                 description: How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.
  *               foods:
  *                 type: array
  *                 items:
@@ -282,6 +291,8 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
  *     responses:
  *       201:
  *         description: The meal was created successfully.
+ *       400:
+ *         description: Validation error (e.g. serving_size or total_servings not positive).
  *       403:
  *         description: User does not have permission to create a meal.
  */
@@ -468,6 +479,15 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *               is_public:
  *                 type: boolean
  *                 description: Whether the meal is publicly visible.
+ *               serving_size:
+ *                 type: number
+ *                 description: Quantity of one serving in serving_unit. Forced to 1 when serving_unit is 'serving'.
+ *               serving_unit:
+ *                 type: string
+ *                 description: Unit of measurement for one serving (e.g. ml, g, cup, serving).
+ *               total_servings:
+ *                 type: number
+ *                 description: How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.
  *               foods:
  *                 type: array
  *                 items:
@@ -490,6 +510,8 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: The meal template was updated successfully.
+ *       400:
+ *         description: Validation error (e.g. serving_size or total_servings not positive).
  *       403:
  *         description: User does not have permission to update this meal.
  *       404:

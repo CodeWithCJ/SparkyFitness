@@ -991,7 +991,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               {servings % 1 === 0 ? servings : servings.toFixed(1)}{' '}
               {servings === 1 ? 'serving' : 'servings'}
             </Text>
-            {variantPickerOptions.length > 1 ? (
+            {/* Suppress the redundant "X serving per serving" suffix when the
+                unit is already 'serving' \u2014 that would just say e.g.
+                "1 serving \u00b7 1 serving per serving". Keep it for ml/g/etc.
+                where "X ml per serving" is meaningful info. */}
+            {displayValues.servingUnit !== 'serving' &&
+              (variantPickerOptions.length > 1 ? (
               <BottomSheetPicker
                 value={selectedVariantId ?? variantPickerOptions[0]?.id}
                 options={variantPickerOptions.map((variant) => ({
@@ -1036,7 +1041,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 {displayValues.servingSize} {displayValues.servingUnit} per
                 serving
               </Text>
-            )}
+              ))}
           </View>
         </View>
 

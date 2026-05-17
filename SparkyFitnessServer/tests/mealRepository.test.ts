@@ -78,6 +78,7 @@ describe('mealRepository', () => {
           mealData.is_public,
           undefined,
           undefined,
+          undefined,
         ]
       );
       // pg-format creates a single formatted string, not array parameters
@@ -382,6 +383,7 @@ describe('mealRepository', () => {
           updateData.is_public,
           undefined,
           undefined,
+          undefined,
           mealId,
         ]
       );
@@ -438,6 +440,7 @@ describe('mealRepository', () => {
         [
           updateData.name,
           updateData.description,
+          undefined,
           undefined,
           undefined,
           undefined,

@@ -5,6 +5,48 @@ import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js'
 import mealPlanTemplateService from './mealPlanTemplateService.js';
 import mealTypeRepository from '../models/mealType.js';
 import { log } from '../config/logging.js';
+import { ValidationError } from '../utils/errors.js';
+
+function normalizeServingFields(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any,
+  options: { mode: 'create' | 'update' }
+) {
+  if (data.serving_size !== undefined) {
+    const value = Number(data.serving_size);
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new ValidationError('Meal serving_size must be a positive number.');
+    }
+    data.serving_size = value;
+  } else if (options.mode === 'create') {
+    data.serving_size = 1.0;
+  }
+
+  if (data.total_servings !== undefined) {
+    const value = Number(data.total_servings);
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new ValidationError(
+        'Meal total_servings must be a positive number.'
+      );
+    }
+    data.total_servings = value;
+  } else if (options.mode === 'create') {
+    data.total_servings = 1.0;
+  }
+
+  if (data.serving_unit !== undefined) {
+    data.serving_unit = data.serving_unit || 'serving';
+  } else if (options.mode === 'create') {
+    data.serving_unit = 'serving';
+  }
+
+  // Consistency rule: serving_unit='serving' implies serving_size=1, since one
+  // serving is tautologically one serving. The UI hides the serving_size input
+  // in this case, but normalize defensively for any caller that doesn't.
+  if (data.serving_unit === 'serving' && data.serving_size !== undefined) {
+    data.serving_size = 1;
+  }
+}
 // --- Meal Template Service Functions ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveMealTypeId(userId: any, mealTypeName: any) {
@@ -20,13 +62,11 @@ async function resolveMealTypeId(userId: any, mealTypeName: any) {
 async function createMeal(userId: any, mealData: any) {
   try {
     mealData.user_id = userId;
-    // Add serving defaults if not provided
-    mealData.serving_size = mealData.serving_size || 1.0;
-    mealData.serving_unit = mealData.serving_unit || 'serving';
+    normalizeServingFields(mealData, { mode: 'create' });
     const newMeal = await mealRepository.createMeal(mealData);
     log(
       'info',
-      `Meal ${newMeal.id} created with serving: ${newMeal.serving_size} ${newMeal.serving_unit}`
+      `Meal ${newMeal.id} created with serving: ${newMeal.serving_size} ${newMeal.serving_unit}, total_servings: ${newMeal.total_servings}`
     );
     return newMeal;
   } catch (error) {
@@ -123,6 +163,16 @@ async function updateMeal(userId: any, mealId: any, updateData: any) {
     if (!meal) {
       throw new Error('Meal not found.');
     }
+    // If serving_unit is being updated to 'serving' but serving_size isn't supplied,
+    // normalize it to 1 based on the new unit. Otherwise normalizeServingFields only
+    // sees the partial payload and can't enforce the consistency rule.
+    if (
+      updateData.serving_unit === 'serving' &&
+      updateData.serving_size === undefined
+    ) {
+      updateData.serving_size = 1;
+    }
+    normalizeServingFields(updateData, { mode: 'update' });
     // Authorization check: User can only update their own meals
     const updatedMeal = await mealRepository.updateMeal(
       mealId,

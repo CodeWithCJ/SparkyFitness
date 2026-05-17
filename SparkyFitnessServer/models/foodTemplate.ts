@@ -261,7 +261,8 @@ async function createFoodEntriesFromTemplate(
             'info',
             `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`
           );
-          // Create food_entry_meals record
+          // Create food_entry_meals record. Plan-to-diary creates new entries
+          // under the uniform math model, so legacy_serving_unit_math = false.
           const foodEntryMealData = {
             user_id: userId,
             meal_template_id: assignment.meal_id,
@@ -271,6 +272,7 @@ async function createFoodEntriesFromTemplate(
             description: meal.description || '',
             quantity: mealQuantity,
             unit: mealUnit,
+            legacy_serving_unit_math: false,
             created_by_user_id: userId,
             updated_by_user_id: userId,
           };
@@ -283,17 +285,16 @@ async function createFoodEntriesFromTemplate(
             'info',
             `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`
           );
-          // Calculate multiplier for scaling component foods
+          // Uniform multiplier: quantity / (serving_size × total_servings).
+          // For freshly-migrated non-serving meals total_servings = 1, so this
+          // collapses to quantity/serving_size — matches today's behavior.
           const mealServingSize = meal.serving_size || 1.0;
-          let multiplier = 1.0;
-          if (mealUnit === 'serving' || mealUnit === meal.serving_unit) {
-            multiplier = mealQuantity;
-          } else {
-            multiplier = mealQuantity / mealServingSize;
-          }
+          const mealTotalServings = meal.total_servings || 1.0;
+          const denominator = mealServingSize * mealTotalServings;
+          const multiplier = denominator > 0 ? mealQuantity / denominator : 1.0;
           log(
             'info',
-            `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize})`
+            `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize}, total_servings: ${mealTotalServings})`
           );
           for (const foodItem of mealFoods) {
             const variant = variantsMap.get(foodItem.variant_id);

@@ -20,6 +20,7 @@ export const mealsSchema = z.object({
   shared_with_public: z.boolean().nullable(),
   serving_size: z.number(),
   serving_unit: z.string(),
+  total_servings: z.number(),
 });
 
 export const mealsInitializerSchema = z.object({
@@ -33,6 +34,7 @@ export const mealsInitializerSchema = z.object({
   shared_with_public: z.boolean().optional().nullable(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
+  total_servings: z.number().optional(),
 });
 
 export const mealsMutatorSchema = z.object({
@@ -46,6 +48,7 @@ export const mealsMutatorSchema = z.object({
   shared_with_public: z.boolean().optional().nullable(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
+  total_servings: z.number().optional(),
 });
 
 export type Meals = z.infer<typeof mealsSchema>;
