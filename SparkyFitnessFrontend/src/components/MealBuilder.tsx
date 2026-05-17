@@ -670,7 +670,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     });
 
     return totals;
-  }, [mealFoods, servingSize, source, visibleNutrients, templateInfo]); // Recalculate on changes
+  }, [
+    mealFoods,
+    servingSize,
+    servingUnit,
+    source,
+    visibleNutrients,
+    templateInfo,
+  ]); // Recalculate on changes
 
   const mealTotals = calculateMealNutrition();
 
