@@ -97,10 +97,38 @@ describe('FoodDetailScreen', () => {
     },
   });
 
+  const buildRouteWithParams = (
+    paramsOverrides: Record<string, unknown> = {},
+    itemOverrides: Record<string, unknown> = {},
+  ) => ({
+    key: 'FoodDetail-key',
+    name: 'FoodDetail' as const,
+    params: {
+      item: {
+        ...baseItem,
+        ...itemOverrides,
+      },
+      ...paramsOverrides,
+    },
+  });
+
   const renderScreen = (itemOverrides: Record<string, unknown> = {}) =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodDetailScreen navigation={navigation} route={buildRoute(itemOverrides) as any} />
+      </SafeAreaProvider>,
+    );
+
+  const renderScreenWithParams = (
+    paramsOverrides: Record<string, unknown> = {},
+    itemOverrides: Record<string, unknown> = {},
+  ) =>
+    render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodDetailScreen
+          navigation={navigation}
+          route={buildRouteWithParams(paramsOverrides, itemOverrides) as any}
+        />
       </SafeAreaProvider>,
     );
 
@@ -220,5 +248,42 @@ describe('FoodDetailScreen', () => {
     fireEvent.press(screen.getByText('Delete Food'));
 
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the detail view on the simple serving picker', async () => {
+    const screen = renderScreen();
+
+    expect(screen.queryByText('Create Draft Unit')).toBeNull();
+    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('200')).toBeTruthy();
+    });
+  });
+
+  it('adopts the returned selected variant after editing', async () => {
+    const screen = renderScreenWithParams({
+      updatedItem: {
+        ...baseItem,
+        servingSize: 2,
+        servingUnit: 'cup',
+        calories: 200,
+        protein: 30,
+        carbs: 12,
+        fat: 0,
+        variantId: 'variant-2',
+      },
+      updatedSelectedVariantId: 'variant-2',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('200')).toBeTruthy();
+    });
+
+    expect(screen.getAllByText('2 cup (200 cal)')[0]).toBeTruthy();
+    expect(navigation.setParams).toHaveBeenCalledWith({
+      updatedItem: undefined,
+      updatedSelectedVariantId: undefined,
+    });
   });
 });

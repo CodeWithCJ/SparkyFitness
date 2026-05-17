@@ -24,7 +24,7 @@ const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string
   hasExternalVariants ? (variantId ?? 'ext-0') : variantId;
 
 const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
-  const { item, updatedItem } = route.params;
+  const { item, updatedItem, updatedSelectedVariantId } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
@@ -88,9 +88,13 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   useEffect(() => {
     if (updatedItem) {
       setFood(updatedItem);
-      navigation.setParams({ updatedItem: undefined });
+      setSelectedVariantId(updatedSelectedVariantId ?? updatedItem.variantId);
+      navigation.setParams({
+        updatedItem: undefined,
+        updatedSelectedVariantId: undefined,
+      });
     }
-  }, [updatedItem, navigation]);
+  }, [updatedItem, updatedSelectedVariantId, navigation]);
 
   useEffect(() => {
     if (!selectedVariantId && localVariantOptions.length > 0) {

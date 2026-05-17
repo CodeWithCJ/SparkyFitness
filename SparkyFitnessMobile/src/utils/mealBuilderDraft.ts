@@ -13,6 +13,56 @@ interface BuildMealIngredientDraftInput {
   values: FoodDisplayValues;
 }
 
+function toFiniteNumber(value: unknown): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function toFiniteString(value: unknown, fallback: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed ? trimmed : fallback;
+}
+
+function normalizeMealIngredientDraft(
+  draft: MealIngredientDraft,
+): MealIngredientDraft {
+  return {
+    ...draft,
+    quantity: toFiniteNumber(draft.quantity),
+    unit: toFiniteString(draft.unit, draft.serving_unit || 'serving'),
+    serving_size: toFiniteNumber(draft.serving_size),
+    serving_unit: toFiniteString(draft.serving_unit, 'serving'),
+    calories: toFiniteNumber(draft.calories),
+    protein: toFiniteNumber(draft.protein),
+    carbs: toFiniteNumber(draft.carbs),
+    fat: toFiniteNumber(draft.fat),
+    dietary_fiber:
+      draft.dietary_fiber == null ? undefined : toFiniteNumber(draft.dietary_fiber),
+    saturated_fat:
+      draft.saturated_fat == null ? undefined : toFiniteNumber(draft.saturated_fat),
+    sodium: draft.sodium == null ? undefined : toFiniteNumber(draft.sodium),
+    sugars: draft.sugars == null ? undefined : toFiniteNumber(draft.sugars),
+    trans_fat:
+      draft.trans_fat == null ? undefined : toFiniteNumber(draft.trans_fat),
+    potassium:
+      draft.potassium == null ? undefined : toFiniteNumber(draft.potassium),
+    calcium: draft.calcium == null ? undefined : toFiniteNumber(draft.calcium),
+    iron: draft.iron == null ? undefined : toFiniteNumber(draft.iron),
+    cholesterol:
+      draft.cholesterol == null ? undefined : toFiniteNumber(draft.cholesterol),
+    vitamin_a:
+      draft.vitamin_a == null ? undefined : toFiniteNumber(draft.vitamin_a),
+    vitamin_c:
+      draft.vitamin_c == null ? undefined : toFiniteNumber(draft.vitamin_c),
+  };
+}
+
 export function buildMealIngredientDraft({
   foodId,
   variantId,
@@ -22,7 +72,7 @@ export function buildMealIngredientDraft({
   brand,
   values,
 }: BuildMealIngredientDraftInput): MealIngredientDraft {
-  return {
+  return normalizeMealIngredientDraft({
     food_id: foodId,
     variant_id: variantId,
     quantity,
@@ -46,7 +96,7 @@ export function buildMealIngredientDraft({
     cholesterol: values.cholesterol,
     vitamin_a: values.vitaminA,
     vitamin_c: values.vitaminC,
-  };
+  });
 }
 
 export function buildMealIngredientDraftFromSavedFood(
@@ -58,7 +108,7 @@ export function buildMealIngredientDraftFromSavedFood(
     throw new Error('Server did not return a variant ID for the saved food');
   }
 
-  return {
+  return normalizeMealIngredientDraft({
     food_id: food.id,
     variant_id: food.default_variant.id,
     quantity,
@@ -82,7 +132,7 @@ export function buildMealIngredientDraftFromSavedFood(
     cholesterol: food.default_variant.cholesterol,
     vitamin_a: food.default_variant.vitamin_a,
     vitamin_c: food.default_variant.vitamin_c,
-  };
+  });
 }
 
 export function toMealFoodPayload(food: FoodEntryMealFood): MealFoodPayload {
@@ -117,7 +167,7 @@ export function toMealFoodPayload(food: FoodEntryMealFood): MealFoodPayload {
 }
 
 export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngredientDraft {
-  return {
+  return normalizeMealIngredientDraft({
     food_id: food.food_id,
     variant_id: food.variant_id,
     quantity: food.quantity,
@@ -142,5 +192,5 @@ export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngred
     vitamin_a: food.vitamin_a,
     vitamin_c: food.vitamin_c,
     custom_nutrients: food.custom_nutrients,
-  };
+  });
 }
