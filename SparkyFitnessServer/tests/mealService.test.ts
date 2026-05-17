@@ -256,12 +256,12 @@ describe('mealService validation', () => {
 
   describe('createMealFromDiaryEntries', () => {
     it('routes diary-created meals through create-time serving normalization', async () => {
-      const mockedFoodEntryRepository = foodEntryRepository as {
+      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
         getFoodEntriesByDateAndMealType: {
           mockResolvedValue: (value: unknown) => void;
         };
       };
-      const mockedFoodRepository = foodRepository as {
+      const mockedFoodRepository = foodRepository as unknown as {
         getFoodById: { mockResolvedValue: (value: unknown) => void };
       };
 
