@@ -128,7 +128,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     size: number;
     unit: string;
     total_servings: number;
-  }>({ id: null, size: 1, unit: 'serving', total_servings: 1 });
+    legacy_serving_unit_math: boolean;
+  }>({
+    id: null,
+    size: 1,
+    unit: 'serving',
+    total_servings: 1,
+    legacy_serving_unit_math: false,
+  });
   const queryClient = useQueryClient();
 
   const { mutateAsync: updateMeal } = useUpdateMealMutation();
@@ -193,6 +200,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     size: templateMeal.serving_size || 1,
                     unit: templateMeal.serving_unit || 'serving',
                     total_servings: templateMeal.total_servings || 1,
+                    legacy_serving_unit_math:
+                      loggedMeal.legacy_serving_unit_math === true,
                   });
                 } else {
                   // If template not found, still perserve ID for scaling
@@ -205,6 +214,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     size: loggedMeal.unit === 'serving' ? 1 : 100, // Default guess
                     unit: loggedMeal.unit || 'serving',
                     total_servings: 1,
+                    legacy_serving_unit_math:
+                      loggedMeal.legacy_serving_unit_math === true,
                   });
                 }
               } catch (err) {
@@ -219,6 +230,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                   size: loggedMeal.unit === 'serving' ? 1 : 100,
                   unit: loggedMeal.unit || 'serving',
                   total_servings: 1,
+                  legacy_serving_unit_math:
+                    loggedMeal.legacy_serving_unit_math === true,
                 });
               }
             } else {
@@ -228,6 +241,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 size: 1,
                 unit: 'serving',
                 total_servings: 1,
+                legacy_serving_unit_math: false,
               });
             }
           }
@@ -259,6 +273,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               size: meal.serving_size || 1,
               unit: meal.serving_unit || 'serving',
               total_servings: meal.total_servings || 1,
+              legacy_serving_unit_math: false,
             });
           }
         } catch (err) {
@@ -281,6 +296,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           size: initialSize,
           unit: initialUnit,
           total_servings: 1,
+          legacy_serving_unit_math: false,
         });
         // Also ensure state logic respects props if re-mounted or updated, but initial state handles first render.
         // If we want to support prop updates:
@@ -616,9 +632,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     let multiplier = 1;
     if (source === 'food-diary' && templateInfo.id) {
       const qty = parseFloat(servingSize) || 1;
-      const denominator =
-        (templateInfo.size || 1) * (templateInfo.total_servings || 1);
-      multiplier = denominator > 0 ? qty / denominator : 1;
+      if (templateInfo.legacy_serving_unit_math && servingUnit === 'serving') {
+        multiplier = qty;
+      } else {
+        const denominator =
+          (templateInfo.size || 1) * (templateInfo.total_servings || 1);
+        multiplier = denominator > 0 ? qty / denominator : 1;
+      }
     }
 
     mealFoods.forEach((mf) => {
