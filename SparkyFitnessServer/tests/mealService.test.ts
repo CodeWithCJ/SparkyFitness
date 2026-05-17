@@ -256,21 +256,28 @@ describe('mealService validation', () => {
 
   describe('createMealFromDiaryEntries', () => {
     it('routes diary-created meals through create-time serving normalization', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (
-        foodEntryRepository as any
-      ).getFoodEntriesByDateAndMealType.mockResolvedValue([
-        {
-          food_id: 'food-1',
-          food_name: 'Chicken',
-          variant_id: 'variant-1',
-          quantity: 1,
-          unit: 'cup',
-          custom_nutrients: {},
-        },
-      ]);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (foodRepository as any).getFoodById.mockResolvedValue({
+      const mockedFoodEntryRepository = foodEntryRepository as {
+        getFoodEntriesByDateAndMealType: {
+          mockResolvedValue: (value: unknown) => void;
+        };
+      };
+      const mockedFoodRepository = foodRepository as {
+        getFoodById: { mockResolvedValue: (value: unknown) => void };
+      };
+
+      mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
+        [
+          {
+            food_id: 'food-1',
+            food_name: 'Chicken',
+            variant_id: 'variant-1',
+            quantity: 1,
+            unit: 'cup',
+            custom_nutrients: {},
+          },
+        ]
+      );
+      mockedFoodRepository.getFoodById.mockResolvedValue({
         id: 'food-1',
         default_variant: { id: 'variant-1' },
       });
