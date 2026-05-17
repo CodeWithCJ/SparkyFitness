@@ -442,7 +442,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-1 gap-1.5">
               {servingUnit === 'serving' ? (
                 <>
-                  <Text className="text-text-secondary text-sm font-medium">
+                  <Text
+                    className="text-text-secondary text-sm font-medium"
+                    numberOfLines={1}
+                  >
                     Total Servings *
                   </Text>
                   <FormInput
@@ -455,7 +458,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 </>
               ) : (
                 <>
-                  <Text className="text-text-secondary text-sm font-medium">
+                  <Text
+                    className="text-text-secondary text-sm font-medium"
+                    numberOfLines={1}
+                  >
                     {`Total Amount (${servingUnit}) *`}
                   </Text>
                   <FormInput
@@ -498,7 +504,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           {servingUnit !== 'serving' && (
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
-                <Text className="text-text-secondary text-sm font-medium">
+                <Text
+                  className="text-text-secondary text-sm font-medium"
+                  numberOfLines={1}
+                >
                   {`Default Serving Size (${servingUnit}) *`}
                 </Text>
                 <FormInput
