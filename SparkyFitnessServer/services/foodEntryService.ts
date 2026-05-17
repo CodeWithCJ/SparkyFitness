@@ -683,8 +683,18 @@ async function createFoodEntryMeal(
     `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`
   );
   try {
+    // Backwards compatibility (issue #1023): clients on the new serving model
+    // send X-Meal-Model-Version: 2. Old clients omit the header — for
+    // serving-unit logs they expected the legacy special-case math
+    // (multiplier = quantity), so mark the new row as legacy and compute the
+    // multiplier accordingly. Non-serving units collapse identically either
+    // way, so the flag has no effect there.
+    const clientMealModelVersion =
+      Number(mealData._clientMealModelVersion) || 1;
+    const isLegacyClient = clientMealModelVersion < 2;
+    const useLegacyServingMath =
+      isLegacyClient && (mealData.unit || 'serving') === 'serving';
     // 1. Create the parent food_entry_meals record with quantity and unit.
-    // New entries always use the uniform multiplier math, so legacy_serving_unit_math = false.
     const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
       {
         user_id: mealData.user_id || authenticatedUserId, // Use target user ID
@@ -696,7 +706,7 @@ async function createFoodEntryMeal(
         description: mealData.description,
         quantity: mealData.quantity || 1.0, // Default to 1.0
         unit: mealData.unit || 'serving', // Default to 'serving'
-        legacy_serving_unit_math: false,
+        legacy_serving_unit_math: useLegacyServingMath,
       },
       actingUserId
     );
@@ -740,19 +750,24 @@ async function createFoodEntryMeal(
         // Continue without template data
       }
     }
-    // Calculate portion multiplier under the uniform model:
-    //   multiplier = consumed_quantity / (serving_size × total_servings)
+    // Calculate portion multiplier.
+    //   - Uniform model (new clients): consumed_quantity / (serving_size × total_servings).
+    //   - Legacy model (old clients, unit='serving'): multiplier = consumed_quantity.
     // Full recipe nutrition is stored in component foods scaled by mf.quantity / mf.serving_size,
     // so this multiplier scales the WHOLE recipe down to the consumed portion.
     const consumedQuantity = mealData.quantity || 1.0;
     let multiplier = 1.0;
     if (mealData.meal_template_id) {
-      const denominator = mealServingSize * mealTotalServings;
-      multiplier = denominator > 0 ? consumedQuantity / denominator : 1.0;
+      if (useLegacyServingMath) {
+        multiplier = consumedQuantity;
+      } else {
+        const denominator = mealServingSize * mealTotalServings;
+        multiplier = denominator > 0 ? consumedQuantity / denominator : 1.0;
+      }
     }
     log(
       'info',
-      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, total_servings: ${mealTotalServings}, has_template: ${!!mealData.meal_template_id})`
+      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, total_servings: ${mealTotalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
     );
     // 2. Create component food_entries records with scaled quantities
     const entriesToCreate = [];

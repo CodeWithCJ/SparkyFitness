@@ -141,6 +141,76 @@ describe('mealService validation', () => {
       expect(payload.serving_size).toBe(1);
       expect(payload.total_servings).toBe(8);
     });
+
+    // Backwards compatibility: old mobile clients send
+    // { serving_unit: 'serving', serving_size: 4 } intending yield = 4,
+    // and don't include total_servings. The shim detects this shape and
+    // rewrites to the new model (total_servings = 4, serving_size = 1).
+    it('rewrites legacy-client payload (serving_unit=serving + serving_size>1 + no total_servings)', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mealRepository as any).createMeal.mockResolvedValue({
+        id: 'new-id',
+        serving_size: 1,
+        serving_unit: 'serving',
+        total_servings: 4,
+      });
+      await mealService.createMeal('user-1', {
+        name: 'Old-client casserole',
+        serving_unit: 'serving',
+        serving_size: 4,
+        // total_servings intentionally omitted
+        foods: [],
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      expect(payload.serving_size).toBe(1);
+      expect(payload.total_servings).toBe(4);
+    });
+
+    it('does not trigger legacy shim when total_servings is explicit (new client)', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mealRepository as any).createMeal.mockResolvedValue({
+        id: 'new-id',
+        serving_size: 1,
+        serving_unit: 'serving',
+        total_servings: 4,
+      });
+      // New client sends serving_size=1 + total_servings=4 explicitly. The
+      // shim's serving_size > 1 guard means it won't fire here.
+      await mealService.createMeal('user-1', {
+        name: 'New-client casserole',
+        serving_unit: 'serving',
+        serving_size: 1,
+        total_servings: 4,
+        foods: [],
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      expect(payload.serving_size).toBe(1);
+      expect(payload.total_servings).toBe(4);
+    });
+
+    it('does not trigger legacy shim for non-serving units', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mealRepository as any).createMeal.mockResolvedValue({
+        id: 'new-id',
+        serving_size: 1000,
+        serving_unit: 'ml',
+        total_servings: 1,
+      });
+      // Old non-serving meal: serving_size=1000 ml interpreted as the whole
+      // recipe quantity. Shim should NOT rewrite (unit ≠ 'serving').
+      await mealService.createMeal('user-1', {
+        name: 'Old-client smoothie',
+        serving_unit: 'ml',
+        serving_size: 1000,
+        foods: [],
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      expect(payload.serving_size).toBe(1000);
+      expect(payload.total_servings).toBe(1);
+    });
   });
 
   describe('updateMeal', () => {

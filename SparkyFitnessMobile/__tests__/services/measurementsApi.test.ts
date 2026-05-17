@@ -66,6 +66,8 @@ describe('measurementsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         })
       );
@@ -164,6 +166,8 @@ describe('measurementsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         })
       );
@@ -226,6 +230,8 @@ describe('measurementsApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         })
       );
@@ -278,6 +284,8 @@ describe('measurementsApi', () => {
           method: 'POST',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -350,6 +358,8 @@ describe('measurementsApi', () => {
       expect(init.method).toBe('POST');
       expect(init.headers).toEqual({
         Authorization: 'Bearer test-api-key-12345',
+
+        'X-Meal-Model-Version': '2',
         'Content-Type': 'application/json',
       });
 

@@ -72,6 +72,8 @@ describe('foodEntriesApi', () => {
           method: 'GET',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
           },
         })
       );
@@ -153,6 +155,8 @@ describe('foodEntriesApi', () => {
           method: 'POST',
           headers: {
             Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(linkedPayload),

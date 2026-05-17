@@ -40,6 +40,14 @@ export async function apiCall(
     ...((options?.headers as Record<string, string>) || {}), // Merge existing headers first
   };
 
+  // Identify this client to the server as understanding the new meal serving
+  // model (issue #1023). Older clients omit this header and the server applies
+  // legacy "unit === 'serving' → multiplier = quantity" math for backwards
+  // compatibility on diary-meal creates.
+  if (!isExternal && !headers['X-Meal-Model-Version']) {
+    headers['X-Meal-Model-Version'] = '2';
+  }
+
   // Set Content-Type for JSON bodies unless it's FormData or already set
   if (!options?.isFormData && options?.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';

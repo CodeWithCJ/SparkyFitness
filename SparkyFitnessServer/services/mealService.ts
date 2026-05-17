@@ -12,6 +12,25 @@ function normalizeServingFields(
   data: any,
   options: { mode: 'create' | 'update' }
 ) {
+  // Backwards compatibility (issue #1023): old clients didn't know about
+  // total_servings and used serving_size as the yield count for serving-unit
+  // meals. Detect that payload shape and rewrite to the new model BEFORE
+  // validation runs.
+  //
+  // A new client would always send serving_size = 1 for serving-unit meals
+  // (the UI hides the input and the client normalizes), so serving_size > 1
+  // with serving_unit='serving' and no total_servings is an unambiguous
+  // legacy signal.
+  if (
+    data.serving_unit === 'serving' &&
+    data.total_servings === undefined &&
+    typeof data.serving_size === 'number' &&
+    data.serving_size > 1
+  ) {
+    data.total_servings = data.serving_size;
+    data.serving_size = 1;
+  }
+
   if (data.serving_size !== undefined) {
     const value = Number(data.serving_size);
     if (!Number.isFinite(value) || value <= 0) {
