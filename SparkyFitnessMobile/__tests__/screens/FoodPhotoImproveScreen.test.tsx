@@ -30,15 +30,20 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodPhotoImproveScreen', () => {
+  const parentNavigation = {
+    replace: jest.fn(),
+    popToTop: jest.fn(),
+  };
   const navigation = {
     replace: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
     popToTop: jest.fn(),
+    getParent: jest.fn(() => parentNavigation),
   } as any;
   const baseRoute = {
     key: 'k',
-    name: 'FoodPhotoImprove' as const,
+    name: 'Improve' as const,
     params: {
       date: '2026-05-18',
       photo: { uri: 'file:///photo.jpg' },
@@ -53,6 +58,7 @@ describe('FoodPhotoImproveScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockBase64.mockResolvedValue('AAAA-base64');
+    navigation.getParent.mockReturnValue(parentNavigation);
     mockUseEstimate.mockReturnValue({
       mutate: mockMutate,
       isPending: false,
@@ -86,10 +92,10 @@ describe('FoodPhotoImproveScreen', () => {
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
-  it('Skip path sends only image+mimeType, base64 is read once', async () => {
+  it('Generate with empty fields sends only image+mimeType, base64 is read once', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText(/Skip — estimate from photo only/));
+    fireEvent.press(screen.getByText('Generate estimate'));
 
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledTimes(1);

@@ -1,12 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  Image,
-  Platform,
-} from 'react-native';
+import { View, Text, ActivityIndicator, Image, Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,14 +10,15 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
-import type { RootStackScreenProps } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
 import { useEstimateFoodPhoto } from '../hooks/useEstimateFoodPhoto';
 import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
 
-type Props = RootStackScreenProps<'FoodPhotoImprove'>;
+type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
 const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
   { key: 'g', label: 'grams' },
@@ -69,35 +63,33 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     return value;
   }, [totalWeight]);
 
-  const submit = async ({ includeForm }: { includeForm: boolean }) => {
+  const submit = async () => {
     if (mutation.isPending) return;
 
     let payloadWeight: number | undefined;
     let payloadDescription: string | undefined;
 
-    if (includeForm) {
-      if (parsedWeight !== null) {
-        if (Number.isNaN(parsedWeight)) {
-          Toast.show({
-            type: 'error',
-            text1: 'Invalid weight',
-            text2: 'Total weight must be a positive number.',
-          });
-          return;
-        }
-        payloadWeight = parsedWeight;
+    if (parsedWeight !== null) {
+      if (Number.isNaN(parsedWeight)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid weight',
+          text2: 'Total weight must be a positive number.',
+        });
+        return;
       }
-      if (trimmedDescription) {
-        if (descriptionTooLong) {
-          Toast.show({
-            type: 'error',
-            text1: 'Description too long',
-            text2: `Keep it under ${DESCRIPTION_MAX} characters.`,
-          });
-          return;
-        }
-        payloadDescription = trimmedDescription;
+      payloadWeight = parsedWeight;
+    }
+    if (trimmedDescription) {
+      if (descriptionTooLong) {
+        Toast.show({
+          type: 'error',
+          text1: 'Description too long',
+          text2: `Keep it under ${DESCRIPTION_MAX} characters.`,
+        });
+        return;
       }
+      payloadDescription = trimmedDescription;
     }
 
     let base64: string;
@@ -124,7 +116,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       },
       {
         onSuccess: (estimate) => {
-          navigation.replace('FoodPhotoReview', {
+          navigation.navigate('EstimateReview', {
             date,
             estimate,
             request: {
@@ -147,10 +139,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             });
           }
           if (!copy.stayOnForm) {
+            const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
             if (error.code === 'IMAGE_TOO_LARGE' || error.code === 'UNSUPPORTED_MIME_TYPE') {
-              navigation.replace('FoodScan', { date, initialMode: 'photo' });
+              parent?.replace('FoodScan', { date, initialMode: 'photo' });
             } else {
-              navigation.popToTop();
+              parent?.popToTop();
             }
           }
         },
@@ -166,12 +159,12 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
-          accessibilityLabel="Back"
+          accessibilityLabel="Cancel"
         >
-          <Icon name="chevron-back" size={22} color={accentPrimary} />
+          <Icon name="close" size={22} color={accentPrimary} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Improve estimate
@@ -250,7 +243,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           variant="primary"
           disabled={mutation.isPending}
           onPress={() => {
-            void submit({ includeForm: true });
+            void submit();
           }}
         >
           {mutation.isPending ? (
@@ -262,17 +255,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             'Generate estimate'
           )}
         </Button>
-        <TouchableOpacity
-          disabled={mutation.isPending}
-          onPress={() => {
-            void submit({ includeForm: false });
-          }}
-          className="items-center py-2"
-        >
-          <Text className="text-accent-primary text-base font-semibold">
-            Skip — estimate from photo only
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );

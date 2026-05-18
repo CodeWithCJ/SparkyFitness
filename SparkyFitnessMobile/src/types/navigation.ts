@@ -17,6 +17,7 @@ import type {
 } from './foodUnitVariants';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
+import type { SaveFoodPayload } from '../services/api/foodsApi';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
@@ -103,22 +104,7 @@ export type RootStackParamList = {
       }
     | undefined;
   FoodPhotoIntro: { date?: string } | undefined;
-  FoodPhotoImprove: {
-    date?: string;
-    photo: { uri: string };
-    initialDescription?: string;
-    initialTotalWeight?: string;
-    initialWeightUnit?: 'g' | 'oz';
-  };
-  FoodPhotoReview: {
-    date?: string;
-    estimate: FoodPhotoEstimateResponse;
-    request: {
-      description?: string;
-      totalWeight?: number;
-      weightUnit?: 'g' | 'oz';
-    };
-  };
+  FoodPhotoFlow: NavigatorScreenParams<FoodPhotoFlowParamList>;
   MealAdd:
     | {
         mode: 'edit';
@@ -164,3 +150,29 @@ declare global {
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
+
+export type FoodPhotoFlowParamList = {
+  Improve: {
+    date?: string;
+    photo: { uri: string };
+    initialDescription?: string;
+    initialTotalWeight?: string;
+    initialWeightUnit?: 'g' | 'oz';
+  };
+  EstimateReview: {
+    date?: string;
+    estimate: FoodPhotoEstimateResponse;
+    request: {
+      description?: string;
+      totalWeight?: number;
+      weightUnit?: 'g' | 'oz';
+    };
+  };
+  LogEntry: {
+    date?: string;
+    saveFoodPayload: SaveFoodPayload;
+  };
+};
+
+export type FoodPhotoFlowScreenProps<T extends keyof FoodPhotoFlowParamList> =
+  NativeStackScreenProps<FoodPhotoFlowParamList, T>;

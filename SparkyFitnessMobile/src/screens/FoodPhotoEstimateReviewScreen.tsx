@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -14,26 +13,22 @@ import type { FoodPhotoEstimateItem } from '@workspace/shared';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
-import BottomSheetPicker from '../components/BottomSheetPicker';
-import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
-import { useMealTypes } from '../hooks/useMealTypes';
-import { fireSuccessHaptic } from '../services/haptics';
-import { getMealTypeLabel } from '../constants/meals';
-import { getTodayDate } from '../utils/dateUtils';
+import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
+import { getConversionFactor } from '../utils/servingSizeConversions';
 import {
   confidenceTone,
   mapItemConfidence,
   mapOverallConfidence,
   type ConfidenceTone,
 } from '../utils/foodPhotoEstimate';
-import type { RootStackScreenProps } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
 
-type Props = RootStackScreenProps<'FoodPhotoReview'>;
+type Props = FoodPhotoFlowScreenProps<'EstimateReview'>;
 
 const toFieldString = (n: number | undefined | null): string => {
   if (n === undefined || n === null || !Number.isFinite(n)) return '';
-  // Avoid trailing zeros on integers.
   const rounded = Math.round(n * 100) / 100;
   return String(rounded);
 };
@@ -50,21 +45,20 @@ const TONE_TEXT_CLASS: Record<ConfidenceTone, string> = {
   error: 'text-text-danger-subtle',
 };
 
-const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
+const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
+  { key: 'g', label: 'grams' },
+  { key: 'oz', label: 'ounces' },
+];
+
+const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
 
+  const dismissFlow = () =>
+    navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
+
   const { date, estimate } = route.params;
-
-  const { mealTypes, defaultMealTypeId } = useMealTypes();
-  const [selectedMealTypeId, setSelectedMealTypeId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedMealTypeId && defaultMealTypeId) {
-      setSelectedMealTypeId(defaultMealTypeId);
-    }
-  }, [defaultMealTypeId, selectedMealTypeId]);
 
   const [name, setName] = useState<string>(estimate.meal_summary || 'Photo estimate');
   const [calories, setCalories] = useState<string>(toFieldString(estimate.totals.calories_kcal));
@@ -73,18 +67,30 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   const [fat, setFat] = useState<string>(toFieldString(estimate.totals.fat_g));
   const [fiber, setFiber] = useState<string>(toFieldString(estimate.totals.fiber_g));
   const [sugar, setSugar] = useState<string>(toFieldString(estimate.totals.sugar_g));
+  const [servingSize, setServingSize] = useState<string>(
+    String(Math.round(estimate.totals.total_grams)),
+  );
+  const [servingUnit, setServingUnit] = useState<'g' | 'oz'>('g');
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);
-
-  const { addEntryAsync, isPending, invalidateCache } = useAddFoodEntry({
-    onSuccess: () => {
-      fireSuccessHaptic();
-      Toast.show({ type: 'success', text1: 'Estimate saved' });
-      navigation.popToTop();
-    },
-  });
 
   const handleDecimalChange = (setter: (v: string) => void) => (text: string) => {
     if (text === '' || DECIMAL_INPUT_REGEX.test(text)) setter(text);
+  };
+
+  const handleUnitChange = (nextUnit: 'g' | 'oz') => {
+    if (nextUnit === servingUnit) return;
+    const current = parseDecimalInput(servingSize);
+    if (Number.isFinite(current) && current > 0) {
+      // getConversionFactor(base, target) returns "1 target = X base units",
+      // so to convert from `servingUnit` to `nextUnit` we divide.
+      const factor = getConversionFactor(servingUnit, nextUnit);
+      if (factor !== null && factor !== 0) {
+        const converted = current / factor;
+        const rounded = Math.round(converted * 10) / 10;
+        setServingSize(String(rounded));
+      }
+    }
+    setServingUnit(nextUnit);
   };
 
   const parsedRequiredMacro = (raw: string): number | null => {
@@ -101,15 +107,9 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
     return v;
   };
 
-  const handleSave = async () => {
-    if (isPending) return;
-
+  const handleNext = () => {
     if (!name.trim()) {
       Toast.show({ type: 'error', text1: 'Name required', text2: 'Give this food a name.' });
-      return;
-    }
-    if (!selectedMealTypeId) {
-      Toast.show({ type: 'error', text1: 'Select a meal type' });
       return;
     }
 
@@ -142,51 +142,41 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    const entryDate = date ?? getTodayDate();
-
-    try {
-      await addEntryAsync({
-        saveFoodPayload: {
-          name: name.trim(),
-          brand: null,
-          serving_size: 1,
-          serving_unit: 'serving',
-          calories: caloriesValue,
-          protein: proteinValue,
-          carbs: carbsValue,
-          fat: fatValue,
-          dietary_fiber: fiberValue !== undefined && fiberValue > 0 ? fiberValue : undefined,
-          sugars: sugarValue !== undefined && sugarValue > 0 ? sugarValue : undefined,
-          provider_type: 'food_photo_estimate',
-        },
-        createEntryPayload: {
-          quantity: 1,
-          unit: 'serving',
-          meal_type_id: selectedMealTypeId,
-          entry_date: entryDate,
-        },
+    const servingSizeValue = parseDecimalInput(servingSize);
+    if (!Number.isFinite(servingSizeValue) || servingSizeValue <= 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid serving size',
+        text2: 'Serving size must be a positive number.',
       });
-      invalidateCache(entryDate);
-    } catch {
-      // useAddFoodEntry shows its own toast on error.
+      return;
     }
+
+    navigation.navigate('LogEntry', {
+      date,
+      saveFoodPayload: {
+        name: name.trim(),
+        brand: null,
+        serving_size: servingSizeValue,
+        serving_unit: servingUnit,
+        calories: caloriesValue,
+        protein: proteinValue,
+        carbs: carbsValue,
+        fat: fatValue,
+        dietary_fiber: fiberValue !== undefined && fiberValue > 0 ? fiberValue : undefined,
+        sugars: sugarValue !== undefined && sugarValue > 0 ? sugarValue : undefined,
+        provider_type: 'food_photo_estimate',
+      },
+    });
   };
 
   const overallTone = confidenceTone(estimate.overall_confidence);
   const overallLabel = mapOverallConfidence(estimate.overall_confidence);
 
-  const mealPickerOptions = useMemo(
-    () =>
-      mealTypes.map((mt) => ({
-        label: getMealTypeLabel(mt.name),
-        value: mt.id,
-      })),
-    [mealTypes],
+  const totalWeightLabel = useMemo(
+    () => `${Math.round(estimate.totals.total_grams)} g`,
+    [estimate.totals.total_grams],
   );
-  const selectedMealLabel = useMemo(() => {
-    const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
-    return found ? getMealTypeLabel(found.name) : 'Select meal';
-  }, [mealTypes, selectedMealTypeId]);
 
   const renderItem = (item: FoodPhotoEstimateItem, idx: number) => {
     const itemLabel = mapItemConfidence(item.item_confidence);
@@ -236,7 +226,7 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
-          onPress={() => navigation.popToTop()}
+          onPress={() => dismissFlow()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
           accessibilityLabel="Cancel"
@@ -283,42 +273,33 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         ) : null}
 
-        {/* Meal type */}
-        <View className="flex-row items-center mb-4">
-          <Text className="text-text-secondary text-base">Meal</Text>
-          <BottomSheetPicker
-            value={selectedMealTypeId ?? ''}
-            options={mealPickerOptions}
-            onSelect={(value) => setSelectedMealTypeId(value)}
-            title="Select Meal"
-            renderTrigger={({ onPress }) => (
-              <TouchableOpacity
-                onPress={onPress}
-                activeOpacity={0.7}
-                className="flex-row items-center"
-              >
-                <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {selectedMealLabel}
-                </Text>
-                <Icon
-                  name="chevron-down"
-                  size={12}
-                  color={textPrimary}
-                  weight="medium"
-                />
-              </TouchableOpacity>
-            )}
+        {/* Serving size */}
+        <Text className="text-text-primary text-base font-semibold mb-2 mt-2">
+          Serving size
+        </Text>
+        <View className="flex-row items-center gap-2 mb-2">
+          <FormInput
+            className="flex-1"
+            keyboardType="decimal-pad"
+            value={servingSize}
+            onChangeText={handleDecimalChange(setServingSize)}
+            returnKeyType="done"
           />
         </View>
+        <View className="mb-2">
+          <SegmentedControl
+            segments={WEIGHT_UNITS}
+            activeKey={servingUnit}
+            onSelect={handleUnitChange}
+          />
+        </View>
+        <Text className="text-text-secondary text-xs mb-4">
+          Total estimated weight: {totalWeightLabel}
+        </Text>
 
         {/* Nutrition */}
         <Text className="text-text-primary text-base font-semibold mb-2">
           Nutrition (per serving)
-        </Text>
-        <Text className="text-text-secondary text-xs mb-3">
-          Saved as a single serving of this food. Total estimated weight:
-          {' '}
-          {Math.round(estimate.totals.total_grams)} g.
         </Text>
 
         <View className="flex-row gap-3 mb-3">
@@ -408,25 +389,11 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
         className="px-4 gap-3 border-t border-border-subtle pt-3"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
-        <Button
-          variant="primary"
-          disabled={isPending}
-          onPress={() => {
-            void handleSave();
-          }}
-        >
-          {isPending ? (
-            <View className="flex-row items-center gap-2">
-              <ActivityIndicator size="small" color="#fff" />
-              <Text className="text-white font-semibold">Saving…</Text>
-            </View>
-          ) : (
-            'Save estimate'
-          )}
+        <Button variant="primary" onPress={handleNext}>
+          Next
         </Button>
         <TouchableOpacity
-          disabled={isPending}
-          onPress={() => navigation.popToTop()}
+          onPress={() => dismissFlow()}
           className="items-center py-2"
         >
           <Text className="text-accent-primary text-base font-semibold">Cancel</Text>
@@ -436,4 +403,4 @@ const FoodPhotoReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-export default FoodPhotoReviewScreen;
+export default FoodPhotoEstimateReviewScreen;

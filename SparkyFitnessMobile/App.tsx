@@ -36,8 +36,7 @@ import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
 import WorkoutPresetFormScreen from './src/screens/WorkoutPresetFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodPhotoIntroScreen from './src/screens/FoodPhotoIntroScreen';
-import FoodPhotoImproveScreen from './src/screens/FoodPhotoImproveScreen';
-import FoodPhotoReviewScreen from './src/screens/FoodPhotoReviewScreen';
+import FoodPhotoFlow from './src/navigation/FoodPhotoFlow';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import ExercisesLibraryScreen from './src/screens/ExercisesLibraryScreen';
@@ -142,8 +141,6 @@ const SafeExerciseForm = withErrorBoundary(ExerciseFormScreen, 'ExerciseForm', {
 const SafeWorkoutPresetForm = withErrorBoundary(WorkoutPresetFormScreen, 'WorkoutPresetForm', { canGoBack: true });
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
 const SafeFoodPhotoIntro = withErrorBoundary(FoodPhotoIntroScreen, 'FoodPhotoIntro', { canGoBack: true });
-const SafeFoodPhotoImprove = withErrorBoundary(FoodPhotoImproveScreen, 'FoodPhotoImprove', { canGoBack: true });
-const SafeFoodPhotoReview = withErrorBoundary(FoodPhotoReviewScreen, 'FoodPhotoReview', { canGoBack: true });
 const SafeMealAdd = withErrorBoundary(MealAddScreen, 'MealAdd', { canGoBack: true });
 const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
 const SafeEditLoggedMeal = withErrorBoundary(EditLoggedMealScreen, 'EditLoggedMeal', { canGoBack: true });
@@ -824,18 +821,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="FoodPhotoImprove"
-            component={SafeFoodPhotoImprove}
-            options={{
-              presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
-          />
-          <Stack.Screen
-            name="FoodPhotoReview"
-            component={SafeFoodPhotoReview}
+            name="FoodPhotoFlow"
+            component={FoodPhotoFlow}
             options={{
               presentation: 'modal',
               headerShown: false,

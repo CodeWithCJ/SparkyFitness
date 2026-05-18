@@ -309,7 +309,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       }
       // Mark seen even if user retakes — the intro shouldn't reappear later.
       await markFoodPhotoIntroSeen();
-      navigation.replace('FoodPhotoImprove', { date, photo: { uri: photo.uri } });
+      navigation.replace('FoodPhotoFlow', {
+        screen: 'Improve',
+        params: { date, photo: { uri: photo.uri } },
+      });
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
     }
