@@ -363,11 +363,13 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isLibraryMode = pickerMode === 'library';
   const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
-  const { preferences } = usePreferences({ enabled: isMealBuilderMode });
+  const initialFood = params.initialFood;
+  const hasImportedInitialFood = !!initialFood;
+  const showAutoScaleNutrition = isMealBuilderMode || hasImportedInitialFood;
+  const { preferences } = usePreferences({ enabled: showAutoScaleNutrition });
   const initialAutoScaleNutritionEnabled =
     preferences?.auto_scale_online_imports ?? false;
 
-  const initialFood = params.initialFood;
   const barcode = params.barcode;
   const providerType = params.providerType;
   const importedSourceVariant = useMemo(
@@ -570,7 +572,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         isSubmitting={isSubmitting}
         initialValues={initialFood}
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
-        showAutoScaleNutrition={isMealBuilderMode}
+        showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
           importedSourceVariant
