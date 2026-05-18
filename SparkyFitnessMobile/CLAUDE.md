@@ -207,6 +207,8 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
+| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (Google/Gemini) | `externalFoodSearchApi` |
+| `GET /api/chat/ai-service-settings/active` | Active AI service config (gates the Photo segment) | `aiSettingsApi` |
 | `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/barcode/{barcode}` | External barcode lookup across providers | `externalFoodSearchApi` |

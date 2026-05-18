@@ -18,6 +18,8 @@ import {
   searchExternalFoods,
   fetchExternalFoodDetails,
   lookupBarcodeV2,
+  estimateFoodPhoto,
+  FoodPhotoEstimateError,
 } from '../../src/services/api/externalFoodSearchApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
@@ -1951,6 +1953,147 @@ describe('externalFoodSearchApi', () => {
       });
 
       await expect(scanNutritionLabel('bad_image', 'image/jpeg')).rejects.toThrow('Server error: 422');
+    });
+  });
+
+  describe('estimateFoodPhoto', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key',
+    };
+
+    const happyResponse = {
+      meal_summary: 'Bowl of yogurt and berries',
+      overall_confidence: 'high',
+      confidence_reason: 'Clear angle and good lighting.',
+      items: [],
+      totals: {
+        calories_kcal: 320,
+        protein_g: 12,
+        carbs_g: 40,
+        fat_g: 8,
+        fiber_g: 5,
+        sugar_g: 14,
+        total_grams: 250,
+      },
+      user_weight_reconciliation: '',
+      clarifying_questions: [],
+    };
+
+    test('POSTs snake_case body to /api/foods/estimate-food-photo and returns parsed estimate', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(happyResponse),
+      });
+
+      const result = await estimateFoodPhoto({
+        base64Image: 'AAAA',
+        mimeType: 'image/jpeg',
+        description: 'yogurt and berries',
+        totalWeight: 250,
+        weightUnit: 'g',
+      });
+
+      expect(result).toEqual(happyResponse);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/foods/estimate-food-photo'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            image: 'AAAA',
+            mime_type: 'image/jpeg',
+            description: 'yogurt and berries',
+            total_weight: 250,
+            weight_unit: 'g',
+          }),
+        }),
+      );
+    });
+
+    test('omits optional snake_case fields when absent', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(happyResponse),
+      });
+
+      await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ image: 'AAAA', mime_type: 'image/jpeg' }),
+        }),
+      );
+    });
+
+    test.each([
+      ['NO_AI_CONFIGURED', 422],
+      ['PROVIDER_NOT_GOOGLE', 422],
+      ['API_KEY_MISSING', 422],
+      ['IMAGE_TOO_LARGE', 400],
+      ['UNSUPPORTED_MIME_TYPE', 400],
+      ['CONTENT_BLOCKED', 422],
+      ['PARSE_ERROR', 422],
+      ['UPSTREAM_ERROR', 502],
+      ['INVALID_REQUEST', 400],
+    ] as const)('maps server %s to FoodPhotoEstimateError', async (code, status) => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status,
+        text: () => Promise.resolve(JSON.stringify({ error: 'msg', code })),
+      });
+
+      let caught: unknown;
+      try {
+        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
+      expect((caught as FoodPhotoEstimateError).code).toBe(code);
+      expect((caught as FoodPhotoEstimateError).message).toBe('msg');
+    });
+
+    test('non-JSON 500 body falls back to UPSTREAM_ERROR with raw text', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve('<!doctype html>upstream barf'),
+      });
+
+      let caught: unknown;
+      try {
+        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
+      expect((caught as FoodPhotoEstimateError).code).toBe('UPSTREAM_ERROR');
+      expect((caught as FoodPhotoEstimateError).message).toContain('upstream barf');
+    });
+
+    test('network error throws FoodPhotoEstimateError UPSTREAM_ERROR', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockRejectedValue(new Error('boom'));
+
+      let caught: unknown;
+      try {
+        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
+      expect((caught as FoodPhotoEstimateError).code).toBe('UPSTREAM_ERROR');
     });
   });
 });

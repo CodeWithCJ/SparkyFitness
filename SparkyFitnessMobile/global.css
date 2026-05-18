@@ -63,18 +63,19 @@
 
       --color-bg-success:        hsl(162, 64%, 88%);
       --color-bg-info:           hsl(217, 90%, 92%);
-      --color-bg-warning:        hsl(35, 59%, 78%);
+      --color-bg-warning:        hsl(48, 96%, 89%);
       --color-bg-danger:         hsl(358, 61%, 44%);
+      --color-bg-danger-subtle:  hsl(358, 92%, 94%);
 
       --color-text-success:      hsl(165, 49%, 33%);
       --color-icon-success:      hsl(146, 72%, 35%);
       --color-text-info:         hsl(217, 68%, 38%);
-      --color-text-warning:      hsl(36, 71%, 42%);
+      --color-text-warning:      hsl(28, 80%, 28%);
       --color-text-danger:       hsl(358, 98%, 97%);
+      --color-text-danger-subtle: hsl(358, 72%, 38%);
     }
       
     @variant dark {
-      /* TODO: Finish dark mode - accent color, calories color, macros, success, warning, danger */
       --color-background:        hsl(220, 20%, 6%);
       --color-surface:           hsl(220, 18%, 9%);
       --color-raised:            hsl(220, 16%, 13%);
@@ -120,14 +121,16 @@
 
       --color-bg-success:        hsl(159, 40%, 14%);
       --color-bg-info:           hsl(220, 42%, 18%);
-      --color-bg-warning:        hsl(36, 72%, 65%);
+      --color-bg-warning:        hsl(36, 42%, 24%);
       --color-bg-danger:         hsl(358, 46%, 39%);
-   
+      --color-bg-danger-subtle:  hsl(358, 48%, 18%);
+
       --color-text-success:      hsl(160, 81%, 88%);
       --color-icon-success:      hsl(145, 79%, 57%);
       --color-text-info:         hsl(214, 100%, 91%);
-      --color-text-warning:      hsl(35, 59%, 78%);
+      --color-text-warning:      hsl(43, 86%, 86%);
       --color-text-danger:       hsl(357, 68%, 94%);
+      --color-text-danger-subtle: hsl(357, 88%, 88%);
     }
 
     @variant amoled {
@@ -174,16 +177,18 @@
       --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);
 
-      --color-bg-success:        hsl(159, 56%, 16%);
-      --color-bg-info:           hsl(220, 46%, 16%);
-      --color-bg-warning:        hsl(36, 72%, 65%);
+      --color-bg-success:        hsl(159, 40%, 14%);
+      --color-bg-info:           hsl(220, 42%, 18%);
+      --color-bg-warning:        hsl(36, 42%, 24%);
       --color-bg-danger:         hsl(358, 46%, 39%);
+      --color-bg-danger-subtle:  hsl(358, 48%, 18%);
 
       --color-text-success:      hsl(160, 81%, 88%);
       --color-icon-success:      hsl(145, 79%, 57%);
-      --color-text-info:         hsl(214, 100%, 92%);
-      --color-text-warning:      hsl(35, 59%, 78%);
+      --color-text-info:         hsl(214, 100%, 91%);
+      --color-text-warning:      hsl(43, 86%, 86%);
       --color-text-danger:       hsl(357, 68%, 94%);
+      --color-text-danger-subtle: hsl(357, 88%, 88%);
     }
   }
 }

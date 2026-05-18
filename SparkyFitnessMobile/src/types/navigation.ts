@@ -1,6 +1,10 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { IndividualSessionResponse, PresetSessionResponse } from '@workspace/shared';
+import type {
+  FoodPhotoEstimateResponse,
+  IndividualSessionResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
@@ -95,8 +99,26 @@ export type RootStackParamList = {
         date?: string;
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
+        initialMode?: 'barcode' | 'label' | 'photo';
       }
     | undefined;
+  FoodPhotoIntro: { date?: string } | undefined;
+  FoodPhotoImprove: {
+    date?: string;
+    photo: { uri: string };
+    initialDescription?: string;
+    initialTotalWeight?: string;
+    initialWeightUnit?: 'g' | 'oz';
+  };
+  FoodPhotoReview: {
+    date?: string;
+    estimate: FoodPhotoEstimateResponse;
+    request: {
+      description?: string;
+      totalWeight?: number;
+      weightUnit?: 'g' | 'oz';
+    };
+  };
   MealAdd:
     | {
         mode: 'edit';

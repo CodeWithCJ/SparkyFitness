@@ -45,6 +45,7 @@ const ICON_MAP = {
   'alert-circle': { sf: 'exclamationmark.circle', ion: 'alert-circle-outline' },
   'warning': { sf: 'exclamationmark.triangle.fill', ion: 'warning' },
   'info-circle': { sf: 'info.circle', ion: 'information-circle-outline' },
+  'help-circle': { sf: 'questionmark.circle', ion: 'help-circle-outline' },
   'wrench': { sf: 'wrench', ion: 'build-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
   'wifi': { sf: 'wifi', ion: 'wifi-outline' },

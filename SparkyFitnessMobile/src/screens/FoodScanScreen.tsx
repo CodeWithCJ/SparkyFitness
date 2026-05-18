@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,21 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
 import { fireSuccessHaptic } from '../services/haptics';
 import { toFormString } from '../types/foodInfo';
+import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
+import { isFoodPhotoAvailable } from '../services/api/aiSettingsApi';
+import {
+  hasSeenFoodPhotoIntro,
+  markFoodPhotoIntroSeen,
+} from '../services/foodPhotoIntro';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
-const SCAN_SEGMENTS: Segment<'barcode' | 'label'>[] = [
+type ScanMode = 'barcode' | 'label' | 'photo';
+
+const SCAN_SEGMENTS: Segment<ScanMode>[] = [
   { key: 'barcode', label: 'Barcode' },
-  { key: 'label', label: 'Nutrition Label' },
+  { key: 'label', label: 'Label' },
+  { key: 'photo', label: 'Photo' },
 ];
 
 const GUIDE_WIDTH = 280;
@@ -53,17 +62,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
-  const [scanMode, setScanMode] = useState<'barcode' | 'label'>('barcode');
+  const [scanMode, setScanMode] = useState<ScanMode>(
+    route.params?.initialMode ?? 'barcode',
+  );
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [labelProcessing, setLabelProcessing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<{ base64: string; uri: string } | null>(null);
   const [manualEntryVisible, setManualEntryVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [photoGateVisible, setPhotoGateVisible] = useState(false);
+  const introCheckedRef = useRef(false);
   const cameraRef = useRef<CameraView>(null);
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const returnDepth = route.params?.returnDepth;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+
+  const aiSettingQuery = useActiveAiServiceSetting({
+    enabled: scanMode === 'photo',
+  });
+  const aiSetting = aiSettingQuery.data ?? null;
+  const photoModeAvailable = isFoodPhotoAvailable(aiSetting);
+  const photoModeLoading = scanMode === 'photo' && aiSettingQuery.isLoading;
 
   const buildFoodFormParams = (
     extra: Partial<Extract<RootStackScreenProps<'FoodForm'>['route']['params'], { mode: 'create-food' }>>,
@@ -242,7 +262,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setCapturedPhoto(null);
   };
 
-  const handleSegmentChange = (key: 'barcode' | 'label') => {
+  const handleSegmentChange = (key: ScanMode) => {
     setScanMode(key);
     setNotFoundBarcode(null);
     setCapturedPhoto(null);
@@ -250,6 +270,59 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     scanLock.current = false;
     setManualEntryVisible(false);
     setManualBarcode('');
+    if (key !== 'photo') {
+      setPhotoGateVisible(false);
+      introCheckedRef.current = false;
+    }
+  };
+
+  // Photo-mode gate: drives the gate overlay and the one-time intro push.
+  // Triggered via effect (not just segment change) so deep-link entries
+  // with `initialMode: 'photo'` still hit the gate.
+  useEffect(() => {
+    if (scanMode !== 'photo') return;
+    if (aiSettingQuery.isLoading) return;
+
+    if (!photoModeAvailable) {
+      setPhotoGateVisible(true);
+      return;
+    }
+
+    setPhotoGateVisible(false);
+    if (introCheckedRef.current) return;
+    introCheckedRef.current = true;
+    void (async () => {
+      const seen = await hasSeenFoodPhotoIntro();
+      if (!seen) {
+        navigation.navigate('FoodPhotoIntro', { date });
+      }
+    })();
+  }, [scanMode, aiSettingQuery.isLoading, photoModeAvailable, navigation, date]);
+
+  const handlePhotoCapture = async () => {
+    if (!cameraRef.current) return;
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: false, quality: 0.7 });
+      if (!photo?.uri) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        return;
+      }
+      // Mark seen even if user retakes — the intro shouldn't reappear later.
+      await markFoodPhotoIntroSeen();
+      navigation.replace('FoodPhotoImprove', { date, photo: { uri: photo.uri } });
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+    }
+  };
+
+  const handleDismissPhotoGate = () => {
+    setPhotoGateVisible(false);
+    setScanMode('barcode');
+  };
+
+  const handlePhotoGateLogManually = () => {
+    setPhotoGateVisible(false);
+    navigation.replace('FoodSearch', { date });
   };
 
   const handleShowManualEntry = () => {
@@ -406,6 +479,62 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       ) : null}
 
+      {scanMode === 'photo' && !capturedPhoto && !loading && !manualEntryVisible && !photoGateVisible && photoModeAvailable ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
+          <View
+            style={{
+              width: GUIDE_WIDTH,
+              height: GUIDE_WIDTH,
+              marginBottom: 120,
+              borderWidth: 2,
+              borderColor: 'rgba(255,255,255,0.85)',
+              borderRadius: 12,
+            }}
+          />
+          <Text
+            className="text-white text-sm mt-3"
+            style={{ position: 'absolute', bottom: 220 }}
+          >
+            Frame the whole meal
+          </Text>
+        </View>
+      ) : null}
+
+      {photoGateVisible ? (
+        <View
+          className="absolute left-0 right-0 items-center px-6"
+          style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
+        >
+          <View className="self-stretch bg-surface rounded-xl p-5 gap-3">
+            <Text className="text-text-primary text-base font-semibold">
+              AI photo estimates aren&apos;t set up
+            </Text>
+            <Text className="text-text-secondary text-sm">
+              Open SparkyFitness in a browser and visit Settings → AI to add a
+              provider (Google Gemini), then return here.
+            </Text>
+            <View className="gap-2 mt-2">
+              <UIButton
+                variant="primary"
+                onPress={handlePhotoGateLogManually}
+                className="rounded-lg"
+                textClassName="text-sm"
+              >
+                Log manually
+              </UIButton>
+              <UIButton
+                variant="ghost"
+                onPress={handleDismissPhotoGate}
+                className="rounded-lg"
+                textClassName="text-sm"
+              >
+                Not now
+              </UIButton>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible ? (
         <View
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
@@ -419,8 +548,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          {!(scanMode === 'barcode' && notFoundBarcode) ? (
-            <View className="h-20 items-center justify-center">
+          {!(scanMode === 'barcode' && notFoundBarcode) &&
+          !(scanMode === 'photo' && photoGateVisible) ? (
+            <View className="h-20 items-center justify-center self-stretch">
               {scanMode === 'barcode' ? (
                 <TouchableOpacity
                   onPress={handleShowManualEntry}
@@ -440,6 +570,45 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 >
                   <View className="w-16 h-16 rounded-full bg-white" />
                 </TouchableOpacity>
+              ) : null}
+
+              {scanMode === 'photo' ? (
+                <>
+                  {photoModeLoading ? (
+                    <ActivityIndicator size="large" color="#fff" />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        void handlePhotoCapture();
+                      }}
+                      disabled={!photoModeAvailable}
+                      className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center ${photoModeAvailable ? '' : 'opacity-40'}`}
+                      activeOpacity={0.7}
+                    >
+                      <View className="w-16 h-16 rounded-full bg-white" />
+                    </TouchableOpacity>
+                  )}
+                  {/* Centered between capture-button right edge and segmented-control right edge.
+                      right: 25% lands the button's right edge at W/4 from screen-right;
+                      translateX(26) shifts it so its center sits at W/4 - 4 from the right. */}
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('FoodPhotoIntro', { date })}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityLabel="How photo estimation works"
+                    accessibilityRole="button"
+                    className="bg-black/50 rounded-full items-center justify-center"
+                    style={{
+                      position: 'absolute',
+                      right: '25%',
+                      top: 18,
+                      width: 44,
+                      height: 44,
+                      transform: [{ translateX: 26 }],
+                    }}
+                  >
+                    <Icon name="help-circle" size={28} color="#fff" />
+                  </TouchableOpacity>
+                </>
               ) : null}
             </View>
           ) : null}

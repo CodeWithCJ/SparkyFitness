@@ -322,9 +322,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (searchResults.length === 0) {
       return (
         <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
+          <Text className="text-text-secondary text-base text-center mb-4">
             No matching foods found
           </Text>
+          {!isMealBuilderMode ? (
+            <Button
+              variant="primary"
+              onPress={() =>
+                navigation.navigate('FoodScan', { date, initialMode: 'photo' })
+              }
+              className="self-stretch rounded-lg"
+            >
+              Estimate from photo
+            </Button>
+          ) : null}
         </View>
       );
     }

@@ -28,6 +28,7 @@ export {
   workoutPresetsQueryKey,
   workoutPresetSearchQueryKey,
   workoutPresetsLibraryQueryKey,
+  activeAiServiceSettingQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -85,3 +86,4 @@ export {
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
 export { useProfile } from './useProfile';
+export { useActiveAiServiceSetting } from './useActiveAiServiceSetting';
