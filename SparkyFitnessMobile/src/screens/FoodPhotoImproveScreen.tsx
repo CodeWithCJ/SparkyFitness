@@ -179,15 +179,13 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="rounded-xl overflow-hidden bg-raised mb-4">
           <Image
             source={{ uri: photo.uri }}
-            style={{ width: '100%', aspectRatio: 4 / 3 }}
+            style={{ width: '100%', aspectRatio: 4 / (3 * 0.85) }}
             resizeMode="cover"
           />
         </View>
 
         <Text className="text-text-secondary text-sm mb-4 leading-5">
-          The more context you give, the more accurate the estimate. Both
-          fields are optional — skip to get a rough estimate from the photo
-          alone.
+          Add anything the photo might not make obvious.
         </Text>
 
         <Text className="text-text-primary text-base font-semibold mb-2">
@@ -214,15 +212,19 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         <Text className="text-text-primary text-base font-semibold mb-2">
           Description (optional)
         </Text>
+        <Text className="text-text-secondary text-sm mb-2 leading-5">
+          Include oils, butter, cream, sauces, toppings, sides, or restaurant
+          names.
+        </Text>
         <FormInput
           className="mb-1"
-          placeholder='e.g. "grilled chicken thigh, brown rice, broccoli"'
+          placeholder='e.g. salmon with lemon dill cream sauce'
           value={description}
           onChangeText={setDescription}
           multiline
-          numberOfLines={4}
+          numberOfLines={3}
           maxLength={DESCRIPTION_MAX + 50}
-          style={{ minHeight: 96, textAlignVertical: 'top' }}
+          style={{ minHeight: 72, textAlignVertical: 'top' }}
         />
         <Text
           className="text-xs mb-6"

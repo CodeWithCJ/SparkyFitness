@@ -17,6 +17,9 @@ interface NutritionMacroCardProps {
   fat: number;
   heading?: string;
   goalPercentages?: NutritionGoalPercentages;
+  // When true, render the goal-bars layout even if percentages aren't computed
+  // yet — avoids a ring→bars flash while the goals query is in flight.
+  goalsLoading?: boolean;
 }
 
 const RING_SIZE = 130;
@@ -29,6 +32,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   fat,
   heading,
   goalPercentages,
+  goalsLoading,
 }) => {
   const [proteinColor, carbsColor, fatColor, trackColor] = useCSSVariable([
     '--color-macro-protein',
@@ -76,11 +80,12 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   ] as const;
 
   const showGoalProgress =
-    goalPercentages != null &&
-    (goalPercentages.calories != null ||
-      goalPercentages.protein != null ||
-      goalPercentages.carbs != null ||
-      goalPercentages.fat != null);
+    goalsLoading === true ||
+    (goalPercentages != null &&
+      (goalPercentages.calories != null ||
+        goalPercentages.protein != null ||
+        goalPercentages.carbs != null ||
+        goalPercentages.fat != null));
 
   return (
     <View className="bg-surface rounded-xl p-4 gap-4">

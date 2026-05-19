@@ -38,6 +38,7 @@ const ICON_MAP = {
   'play': { sf: 'play.fill', ion: 'play' },
   'forward': { sf: 'forward.fill', ion: 'play-skip-forward' },
   'measurements': { sf: 'ruler', ion: 'analytics-outline' },
+  'scale': { sf: 'scalemass', ion: 'scale-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },

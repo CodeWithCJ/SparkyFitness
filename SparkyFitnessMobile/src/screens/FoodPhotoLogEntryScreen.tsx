@@ -9,20 +9,48 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { useQuery } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
+import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useMealTypes } from '../hooks/useMealTypes';
+import { goalsQueryKey } from '../hooks/queryKeys';
+import { fetchDailyGoals } from '../services/api/goalsApi';
 import { fireSuccessHaptic } from '../services/haptics';
 import { getMealTypeLabel } from '../constants/meals';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
+import type { FoodDisplayValues } from '../utils/foodDetails';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
+import type { SaveFoodPayload } from '../services/api/foodsApi';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
+
+function saveFoodPayloadToDisplayValues(p: SaveFoodPayload): FoodDisplayValues {
+  return {
+    servingSize: p.serving_size,
+    servingUnit: p.serving_unit,
+    calories: p.calories,
+    protein: p.protein,
+    carbs: p.carbs,
+    fat: p.fat,
+    fiber: p.dietary_fiber,
+    saturatedFat: p.saturated_fat,
+    sodium: p.sodium,
+    sugars: p.sugars,
+    transFat: p.trans_fat,
+    potassium: p.potassium,
+    calcium: p.calcium,
+    iron: p.iron,
+    cholesterol: p.cholesterol,
+    vitaminA: p.vitamin_a,
+    vitaminC: p.vitamin_c,
+  };
+}
 
 type Props = FoodPhotoFlowScreenProps<'LogEntry'>;
 
@@ -39,6 +67,33 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [quantity, setQuantity] = useState<string>('1');
 
   const calendarRef = useRef<CalendarSheetRef>(null);
+
+  const { data: goals, isLoading: isGoalsLoading } = useQuery({
+    queryKey: goalsQueryKey(entryDate),
+    queryFn: () => fetchDailyGoals(entryDate),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const displayValues = useMemo(
+    () => saveFoodPayloadToDisplayValues(saveFoodPayload),
+    [saveFoodPayload],
+  );
+
+  const servingsNumber = useMemo(() => {
+    const parsed = parseDecimalInput(quantity);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [quantity]);
+
+  const goalPercent = (value: number, goalValue: number | undefined) => {
+    if (!goalValue || goalValue === 0) return null;
+    return Math.round((value / goalValue) * 100);
+  };
+  const goalPercentages = {
+    calories: goalPercent(displayValues.calories * servingsNumber, goals?.calories),
+    protein: goalPercent(displayValues.protein * servingsNumber, goals?.protein),
+    carbs: goalPercent(displayValues.carbs * servingsNumber, goals?.carbs),
+    fat: goalPercent(displayValues.fat * servingsNumber, goals?.fat),
+  };
 
   useEffect(() => {
     if (!selectedMealTypeId && defaultMealTypeId) {
@@ -140,18 +195,15 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
         bottomOffset={80}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Recap card */}
-        <View className="rounded-lg bg-raised p-3 mb-4">
-          <Text
-            className="text-text-primary text-base font-semibold mb-1"
-            numberOfLines={2}
-          >
-            {saveFoodPayload.name}
-          </Text>
-          <Text className="text-text-secondary text-sm">
-            {Math.round(saveFoodPayload.calories)} kcal · {saveFoodPayload.serving_size}{' '}
-            {saveFoodPayload.serving_unit} per serving
-          </Text>
+        <View className="mb-4">
+          <FoodNutritionSummary
+            name={saveFoodPayload.name}
+            brand={saveFoodPayload.brand}
+            values={displayValues}
+            servings={servingsNumber}
+            goalPercentages={goalPercentages}
+            goalsLoading={isGoalsLoading}
+          />
         </View>
 
         {/* Meal row */}

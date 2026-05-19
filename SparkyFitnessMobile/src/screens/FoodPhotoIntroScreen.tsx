@@ -3,22 +3,43 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
+import Icon, { IconName } from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import { markFoodPhotoIntroSeen } from '../services/foodPhotoIntro';
 
 type Props = RootStackScreenProps<'FoodPhotoIntro'>;
 
-const Bullet: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <View className="flex-row items-start gap-3 mb-3">
-    <View className="w-1.5 h-1.5 rounded-full bg-accent-primary mt-2.5" />
-    <Text className="flex-1 text-text-primary text-base leading-6">{children}</Text>
+const Bullet: React.FC<{
+  icon: IconName;
+  iconColor: string;
+  iconBackground: string;
+  title: string;
+  children: React.ReactNode;
+}> = ({ icon, iconColor, iconBackground, title, children }) => (
+  <View className="flex-row items-start gap-3 mb-4">
+    <View
+      className="w-10 h-10 rounded-lg items-center justify-center"
+      style={{ backgroundColor: iconBackground }}
+    >
+      <Icon name={icon} size={22} color={iconColor} weight="semibold" />
+    </View>
+    <View className="flex-1 pt-0.5">
+      <Text className="text-text-primary text-base font-semibold leading-6">
+        {title}
+      </Text>
+      <Text className="text-text-secondary text-base leading-6 mt-1">
+        {children}
+      </Text>
+    </View>
   </View>
 );
 
 const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
+  const catViolet = String(useCSSVariable('--color-cat-violet'));
+  const catOrange = String(useCSSVariable('--color-cat-orange'));
   const date = route.params?.date;
 
   const handleContinue = async () => {
@@ -44,26 +65,39 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       <View className="flex-1 px-6">
-        <Text className="text-text-primary text-2xl font-semibold mt-4">
+        <Text className="text-text-primary text-2xl font-semibold">
           Estimate nutrition from a photo
         </Text>
         <Text className="text-text-secondary text-base mt-2 mb-6">
-          Snap a quick photo of what you&apos;re about to eat and we&apos;ll suggest the
-          nutrition. You stay in control — review and edit before saving.
+          Turn a meal photo into an editable nutrition estimate.
         </Text>
 
-        <Bullet>
-          For best results, include the whole dish and a reference object
-          (utensil, hand) for scale.
+        <Bullet
+          icon="scale"
+          iconColor={accentPrimary}
+          iconBackground={`${accentPrimary}1F`}
+          title="Add weight when you know it"
+        >
+          A total meal weight helps with portions, calories, and macros.
         </Bullet>
-        <Bullet>
-          Add the total weight on the next step if you know it — estimates get
-          much more accurate.
+        <Bullet
+          icon="document-text"
+          iconColor={catViolet}
+          iconBackground={`${catViolet}1F`}
+          title="Add a short description"
+        >
+          Mention sauces, oils, toppings, restaurant names, or anything hidden.
         </Bullet>
-        <Bullet>
-          You&apos;ll always see the breakdown and confidence level before anything
-          is saved to your diary.
+        <Bullet
+          icon="pencil"
+          iconColor={catOrange}
+          iconBackground={`${catOrange}1F`}
+          title="Review before saving"
+        >
+          Photo estimates are a starting point. You&apos;ll be able to edit
+          everything before it&apos;s logged.
         </Bullet>
+
       </View>
 
       <View

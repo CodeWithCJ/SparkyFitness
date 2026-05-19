@@ -1,16 +1,22 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClientProvider } from '@tanstack/react-query';
 import FoodPhotoLogEntryScreen from '../../src/screens/FoodPhotoLogEntryScreen';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useMealTypes } from '../../src/hooks/useMealTypes';
+import { fetchDailyGoals } from '../../src/services/api/goalsApi';
 import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
+import { createTestQueryClient } from '../hooks/queryTestUtils';
 
 jest.mock('../../src/hooks/useAddFoodEntry', () => ({
   useAddFoodEntry: jest.fn(),
 }));
 jest.mock('../../src/hooks/useMealTypes', () => ({
   useMealTypes: jest.fn(),
+}));
+jest.mock('../../src/services/api/goalsApi', () => ({
+  fetchDailyGoals: jest.fn(),
 }));
 jest.mock('../../src/services/haptics', () => ({
   fireSuccessHaptic: jest.fn(),
@@ -87,23 +93,31 @@ describe('FoodPhotoLogEntryScreen', () => {
       isPending: false,
       invalidateCache,
     });
+    (fetchDailyGoals as jest.Mock).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 200,
+      fat: 60,
+    });
   });
 
   const renderScreen = (saveFoodPayload = buildSaveFoodPayload()) =>
     render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <FoodPhotoLogEntryScreen
-          navigation={navigation}
-          route={{
-            key: 'k',
-            name: 'LogEntry' as const,
-            params: {
-              date: '2026-05-18',
-              saveFoodPayload,
-            },
-          }}
-        />
-      </SafeAreaProvider>,
+      <QueryClientProvider client={createTestQueryClient()}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodPhotoLogEntryScreen
+            navigation={navigation}
+            route={{
+              key: 'k',
+              name: 'LogEntry' as const,
+              params: {
+                date: '2026-05-18',
+                saveFoodPayload,
+              },
+            }}
+          />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
     );
 
   it('builds entry quantity from servings × serving_size at the default 1 serving', async () => {
@@ -135,7 +149,7 @@ describe('FoodPhotoLogEntryScreen', () => {
       buildSaveFoodPayload({ name: 'Edited name', calories: 400 }),
     );
     expect(screen.getByText('Edited name')).toBeTruthy();
-    expect(screen.getByText(/400 kcal/)).toBeTruthy();
+    expect(screen.getByText('400')).toBeTruthy();
   });
 
   it('invalidates the daily summary cache for the entry date on success', async () => {

@@ -10,12 +10,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import type { FoodPhotoEstimateItem } from '@workspace/shared';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
-import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
-import { getConversionFactor } from '../utils/servingSizeConversions';
+import {
+  FOOD_FORM_UNIT_GROUPS,
+  getConversionFactor,
+} from '../utils/servingSizeConversions';
 import {
   confidenceTone,
   mapItemConfidence,
@@ -45,20 +48,21 @@ const TONE_TEXT_CLASS: Record<ConfidenceTone, string> = {
   error: 'text-text-danger-subtle',
 };
 
-const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
-  { key: 'g', label: 'grams' },
-  { key: 'oz', label: 'ounces' },
-];
+const SERVING_UNIT_SECTIONS = FOOD_FORM_UNIT_GROUPS.map((group) => ({
+  title: group.label,
+  options: group.units.map((unit) => ({ label: unit, value: unit })),
+}));
 
 const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const textMuted = String(useCSSVariable('--color-text-muted'));
 
   const dismissFlow = () =>
     navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
 
-  const { date, estimate } = route.params;
+  const { date, estimate, request } = route.params;
 
   const [name, setName] = useState<string>(estimate.meal_summary || 'Photo estimate');
   const [calories, setCalories] = useState<string>(toFieldString(estimate.totals.calories_kcal));
@@ -67,22 +71,39 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const [fat, setFat] = useState<string>(toFieldString(estimate.totals.fat_g));
   const [fiber, setFiber] = useState<string>(toFieldString(estimate.totals.fiber_g));
   const [sugar, setSugar] = useState<string>(toFieldString(estimate.totals.sugar_g));
-  const [servingSize, setServingSize] = useState<string>(
-    String(Math.round(estimate.totals.total_grams)),
+  const [saturatedFat, setSaturatedFat] = useState<string>('');
+  const [transFat, setTransFat] = useState<string>('');
+  const [cholesterol, setCholesterol] = useState<string>('');
+  const [sodium, setSodium] = useState<string>('');
+  const [potassium, setPotassium] = useState<string>('');
+  const [calcium, setCalcium] = useState<string>('');
+  const [iron, setIron] = useState<string>('');
+  const [vitaminA, setVitaminA] = useState<string>('');
+  const [vitaminC, setVitaminC] = useState<string>('');
+  const [servingSize, setServingSize] = useState<string>(() =>
+    request?.totalWeight !== undefined
+      ? toFieldString(request.totalWeight)
+      : String(Math.round(estimate.totals.total_grams)),
   );
-  const [servingUnit, setServingUnit] = useState<'g' | 'oz'>('g');
+  const [servingUnit, setServingUnit] = useState<string>(
+    request?.totalWeight !== undefined ? request.weightUnit ?? 'g' : 'g',
+  );
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);
+  const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+  const [showIngredients, setShowIngredients] = useState(false);
 
   const handleDecimalChange = (setter: (v: string) => void) => (text: string) => {
     if (text === '' || DECIMAL_INPUT_REGEX.test(text)) setter(text);
   };
 
-  const handleUnitChange = (nextUnit: 'g' | 'oz') => {
+  const handleUnitChange = (nextUnit: string) => {
     if (nextUnit === servingUnit) return;
     const current = parseDecimalInput(servingSize);
     if (Number.isFinite(current) && current > 0) {
       // getConversionFactor(base, target) returns "1 target = X base units",
-      // so to convert from `servingUnit` to `nextUnit` we divide.
+      // so to convert from `servingUnit` to `nextUnit` we divide. Returns null
+      // for incompatible units (e.g. g -> cup) — leave the size value alone in
+      // that case; the user is relabeling the portion rather than converting.
       const factor = getConversionFactor(servingUnit, nextUnit);
       if (factor !== null && factor !== 0) {
         const converted = current / factor;
@@ -131,13 +152,24 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       return;
     }
 
-    const fiberValue = parsedOptional(fiber);
-    const sugarValue = parsedOptional(sugar);
-    if (fiberValue === null || sugarValue === null) {
+    const optionalNutrients = {
+      dietary_fiber: parsedOptional(fiber),
+      sugars: parsedOptional(sugar),
+      saturated_fat: parsedOptional(saturatedFat),
+      trans_fat: parsedOptional(transFat),
+      cholesterol: parsedOptional(cholesterol),
+      sodium: parsedOptional(sodium),
+      potassium: parsedOptional(potassium),
+      calcium: parsedOptional(calcium),
+      iron: parsedOptional(iron),
+      vitamin_a: parsedOptional(vitaminA),
+      vitamin_c: parsedOptional(vitaminC),
+    };
+    if (Object.values(optionalNutrients).some((v) => v === null)) {
       Toast.show({
         type: 'error',
         text1: 'Invalid nutrition',
-        text2: 'Fiber and sugar must be non-negative numbers.',
+        text2: 'All nutrition values must be non-negative numbers.',
       });
       return;
     }
@@ -152,6 +184,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       return;
     }
 
+    const positiveOrUndefined = (v: number | undefined | null) =>
+      v !== undefined && v !== null && v > 0 ? v : undefined;
+
     navigation.navigate('LogEntry', {
       date,
       saveFoodPayload: {
@@ -163,8 +198,17 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         protein: proteinValue,
         carbs: carbsValue,
         fat: fatValue,
-        dietary_fiber: fiberValue !== undefined && fiberValue > 0 ? fiberValue : undefined,
-        sugars: sugarValue !== undefined && sugarValue > 0 ? sugarValue : undefined,
+        dietary_fiber: positiveOrUndefined(optionalNutrients.dietary_fiber),
+        sugars: positiveOrUndefined(optionalNutrients.sugars),
+        saturated_fat: positiveOrUndefined(optionalNutrients.saturated_fat),
+        trans_fat: positiveOrUndefined(optionalNutrients.trans_fat),
+        cholesterol: positiveOrUndefined(optionalNutrients.cholesterol),
+        sodium: positiveOrUndefined(optionalNutrients.sodium),
+        potassium: positiveOrUndefined(optionalNutrients.potassium),
+        calcium: positiveOrUndefined(optionalNutrients.calcium),
+        iron: positiveOrUndefined(optionalNutrients.iron),
+        vitamin_a: positiveOrUndefined(optionalNutrients.vitamin_a),
+        vitamin_c: positiveOrUndefined(optionalNutrients.vitamin_c),
         provider_type: 'food_photo_estimate',
       },
     });
@@ -176,6 +220,21 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const totalWeightLabel = useMemo(
     () => `${Math.round(estimate.totals.total_grams)} g`,
     [estimate.totals.total_grams],
+  );
+
+  const renderNutrientField = (
+    label: string,
+    value: string,
+    setter: (v: string) => void,
+  ) => (
+    <View className="flex-1">
+      <Text className="text-text-secondary text-xs mb-1">{label}</Text>
+      <FormInput
+        keyboardType="decimal-pad"
+        value={value}
+        onChangeText={handleDecimalChange(setter)}
+      />
+    </View>
   );
 
   const renderItem = (item: FoodPhotoEstimateItem, idx: number) => {
@@ -209,11 +268,6 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           {portion ? `${portion} · ` : ''}
           {grams} g
         </Text>
-        {item.assumptions && item.assumptions.length > 0 ? (
-          <Text className="text-text-muted text-xs mt-1 italic">
-            Assumed: {item.assumptions.join('; ')}
-          </Text>
-        ) : null}
       </View>
     );
   };
@@ -274,24 +328,51 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         ) : null}
 
         {/* Serving size */}
-        <Text className="text-text-primary text-base font-semibold mb-2 mt-2">
-          Serving size
-        </Text>
-        <View className="flex-row items-center gap-2 mb-2">
-          <FormInput
-            className="flex-1"
-            keyboardType="decimal-pad"
-            value={servingSize}
-            onChangeText={handleDecimalChange(setServingSize)}
-            returnKeyType="done"
-          />
-        </View>
-        <View className="mb-2">
-          <SegmentedControl
-            segments={WEIGHT_UNITS}
-            activeKey={servingUnit}
-            onSelect={handleUnitChange}
-          />
+        <View className="flex-row gap-3 mt-2 mb-2">
+          <View className="gap-1.5 flex-1">
+            <Text className="text-text-secondary text-sm font-medium">
+              Serving Size
+            </Text>
+            <FormInput
+              keyboardType="decimal-pad"
+              value={servingSize}
+              onChangeText={handleDecimalChange(setServingSize)}
+              returnKeyType="done"
+            />
+          </View>
+          <View className="gap-1.5 flex-1">
+            <Text className="text-text-secondary text-sm font-medium">
+              Serving Unit
+            </Text>
+            <BottomSheetPicker
+              value={servingUnit}
+              sections={SERVING_UNIT_SECTIONS}
+              onSelect={handleUnitChange}
+              title="Select Unit"
+              placeholder="unit"
+              renderTrigger={({ onPress, selectedOption }) => (
+                <TouchableOpacity
+                  onPress={onPress}
+                  activeOpacity={0.7}
+                  className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
+                  style={{ height: 44 }}
+                >
+                  <Text
+                    className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
+                    style={{ fontSize: 16 }}
+                  >
+                    {selectedOption?.label ?? 'unit'}
+                  </Text>
+                  <Icon
+                    name="chevron-down"
+                    size={12}
+                    color={textMuted}
+                    weight="medium"
+                  />
+                </TouchableOpacity>
+              )}
+            />
+          </View>
         </View>
         <Text className="text-text-secondary text-xs mb-4">
           Total estimated weight: {totalWeightLabel}
@@ -303,85 +384,75 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         </Text>
 
         <View className="flex-row gap-3 mb-3">
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Calories (kcal)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={calories}
-              onChangeText={handleDecimalChange(setCalories)}
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Protein (g)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={protein}
-              onChangeText={handleDecimalChange(setProtein)}
-            />
-          </View>
+          {renderNutrientField('Calories (kcal)', calories, setCalories)}
+          {renderNutrientField('Protein (g)', protein, setProtein)}
         </View>
         <View className="flex-row gap-3 mb-3">
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Carbs (g)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={carbs}
-              onChangeText={handleDecimalChange(setCarbs)}
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Fat (g)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={fat}
-              onChangeText={handleDecimalChange(setFat)}
-            />
-          </View>
+          {renderNutrientField('Carbs (g)', carbs, setCarbs)}
+          {renderNutrientField('Fat (g)', fat, setFat)}
         </View>
-        <View className="flex-row gap-3 mb-6">
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Fiber (g)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={fiber}
-              onChangeText={handleDecimalChange(setFiber)}
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-text-secondary text-xs mb-1">Sugar (g)</Text>
-            <FormInput
-              keyboardType="decimal-pad"
-              value={sugar}
-              onChangeText={handleDecimalChange(setSugar)}
-            />
-          </View>
+        <View className="flex-row gap-3 mb-3">
+          {renderNutrientField('Fiber (g)', fiber, setFiber)}
+          {renderNutrientField('Sugar (g)', sugar, setSugar)}
         </View>
+
+        <Button
+          variant="ghost"
+          onPress={() => setShowMoreNutrients((prev) => !prev)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="self-start py-0 px-0 mb-3"
+          textClassName="text-sm"
+        >
+          <Text style={{ color: accentPrimary }} className="text-sm font-medium">
+            {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+          </Text>
+        </Button>
+
+        {showMoreNutrients ? (
+          <>
+            <View className="flex-row gap-3 mb-3">
+              {renderNutrientField('Saturated Fat (g)', saturatedFat, setSaturatedFat)}
+              {renderNutrientField('Trans Fat (g)', transFat, setTransFat)}
+            </View>
+            <View className="flex-row gap-3 mb-3">
+              {renderNutrientField('Cholesterol (mg)', cholesterol, setCholesterol)}
+              {renderNutrientField('Sodium (mg)', sodium, setSodium)}
+            </View>
+            <View className="flex-row gap-3 mb-3">
+              {renderNutrientField('Potassium (mg)', potassium, setPotassium)}
+              {renderNutrientField('Calcium (mg)', calcium, setCalcium)}
+            </View>
+            <View className="flex-row gap-3 mb-3">
+              {renderNutrientField('Iron (mg)', iron, setIron)}
+              {renderNutrientField('Vitamin A (mcg)', vitaminA, setVitaminA)}
+            </View>
+            <View className="flex-row gap-3 mb-3">
+              {renderNutrientField('Vitamin C (mg)', vitaminC, setVitaminC)}
+              <View className="flex-1" />
+            </View>
+          </>
+        ) : null}
+
+        <View className="mb-3" />
 
         {/* Ingredients */}
         {estimate.items.length > 0 ? (
           <>
-            <Text className="text-text-primary text-base font-semibold mb-2">
-              Detected ingredients
-            </Text>
-            <Text className="text-text-secondary text-xs mb-3">
-              Reference only — adjust totals above if anything looks off.
-            </Text>
-            {estimate.items.map(renderItem)}
-          </>
-        ) : null}
-
-        {/* Clarifying questions */}
-        {estimate.clarifying_questions && estimate.clarifying_questions.length > 0 ? (
-          <View className="rounded-lg bg-raised p-3 mt-3">
-            <Text className="text-text-primary text-sm font-semibold mb-1">
-              For a sharper estimate
-            </Text>
-            {estimate.clarifying_questions.map((q, i) => (
-              <Text key={i} className="text-text-secondary text-sm">
-                · {q}
+            <Button
+              variant="ghost"
+              onPress={() => setShowIngredients((prev) => !prev)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="self-start py-0 px-0 mb-3"
+              textClassName="text-sm"
+            >
+              <Text style={{ color: accentPrimary }} className="text-sm font-medium">
+                {showIngredients
+                  ? 'Hide detected ingredients ▴'
+                  : 'Show detected ingredients ▾'}
               </Text>
-            ))}
-          </View>
+            </Button>
+            {showIngredients ? estimate.items.map(renderItem) : null}
+          </>
         ) : null}
       </KeyboardAwareScrollView>
 

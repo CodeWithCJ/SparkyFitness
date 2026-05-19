@@ -9,6 +9,40 @@ jest.mock('react-native-toast-message', () => ({
   default: { show: jest.fn() },
 }));
 
+// Surface every option (flattening sections) as a Pressable so tests can select
+// units by tapping their displayed label (e.g. "g", "oz").
+jest.mock('../../src/components/BottomSheetPicker', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      options,
+      sections,
+      value,
+      onSelect,
+      renderTrigger,
+    }: any) => {
+      const flat: { label: string; value: any }[] = sections
+        ? sections.flatMap((s: any) => s.options)
+        : options ?? [];
+      return (
+        <View>
+          {renderTrigger?.({
+            onPress: () => {},
+            selectedOption: flat.find((o) => o.value === value),
+          })}
+          {flat.map((option) => (
+            <Pressable key={option.value} onPress={() => onSelect(option.value)}>
+              <Text>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      );
+    },
+  };
+});
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -123,7 +157,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     const screen = renderScreen();
 
     // Default: 250 g — switch to oz.
-    fireEvent.press(screen.getByText('ounces'));
+    fireEvent.press(screen.getByText('oz'));
     fireEvent.press(screen.getByText('Next'));
 
     const firstCall = navigation.navigate.mock.calls[0][1];
@@ -132,7 +166,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     expect(firstCall.saveFoodPayload.serving_size).toBeCloseTo(8.8, 1);
 
     // Toggle back to grams — should convert back.
-    fireEvent.press(screen.getByText('grams'));
+    fireEvent.press(screen.getByText('g'));
     fireEvent.press(screen.getByText('Next'));
 
     const secondCall = navigation.navigate.mock.calls[1][1];

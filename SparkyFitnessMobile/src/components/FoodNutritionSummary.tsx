@@ -13,6 +13,7 @@ interface FoodNutritionSummaryProps {
   values: FoodDisplayValues;
   servings?: number;
   goalPercentages?: NutritionGoalPercentages;
+  goalsLoading?: boolean;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -21,6 +22,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   values,
   servings = 1,
   goalPercentages,
+  goalsLoading,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
@@ -64,6 +66,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
         carbs={scale(values.carbs)}
         fat={scale(values.fat)}
         goalPercentages={goalPercentages}
+        goalsLoading={goalsLoading}
       />
 
       {primaryNutrients.length > 0 ? (

@@ -116,7 +116,7 @@ describe('FoodPhotoImproveScreen', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. 350'), '250');
     fireEvent.changeText(
-      screen.getByPlaceholderText(/grilled chicken thigh/),
+      screen.getByPlaceholderText(/salmon with lemon/),
       'yogurt and berries',
     );
     fireEvent.press(screen.getByText('Generate estimate'));
