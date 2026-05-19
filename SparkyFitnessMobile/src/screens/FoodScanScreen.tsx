@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -62,9 +62,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
-  const [scanMode, setScanMode] = useState<ScanMode>(
-    route.params?.initialMode ?? 'barcode',
-  );
+  const [scanMode, setScanMode] = useState<ScanMode>(() => {
+    const requested = route.params?.initialMode ?? 'barcode';
+    // Meal-builder scans never use the photo flow (it always logs to the
+    // diary). Coerce to barcode if a caller deep-links 'photo' here.
+    if (requested === 'photo' && route.params?.pickerMode === 'meal-builder') {
+      return 'barcode';
+    }
+    return requested;
+  });
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [labelProcessing, setLabelProcessing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<{ base64: string; uri: string } | null>(null);
@@ -78,8 +84,21 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const returnDepth = route.params?.returnDepth;
   const isMealBuilderMode = pickerMode === 'meal-builder';
 
+  // Photo estimation always logs to the diary; hide it for meal-builder
+  // scans so we don't drop the user into a flow that ignores pickerMode.
+  const scanSegments = useMemo(
+    () =>
+      isMealBuilderMode
+        ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
+        : SCAN_SEGMENTS,
+    [isMealBuilderMode],
+  );
+
   const aiSettingQuery = useActiveAiServiceSetting({
     enabled: scanMode === 'photo',
+    // Refresh on every photo-mode entry so a user who left to set up AI in
+    // the web app sees the gate clear when they come back.
+    staleTime: 0,
   });
   const aiSetting = aiSettingQuery.data ?? null;
   const photoModeAvailable = isFoodPhotoAvailable(aiSetting);
@@ -263,6 +282,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   };
 
   const handleSegmentChange = (key: ScanMode) => {
+    // Re-tapping Photo while already on Photo is the user's "I configured
+    // AI in the web app, try again" gesture — force a refetch so the gate
+    // can clear without leaving the segment.
+    if (key === 'photo' && scanMode === 'photo') {
+      void aiSettingQuery.refetch();
+      return;
+    }
     setScanMode(key);
     setNotFoundBarcode(null);
     setCapturedPhoto(null);
@@ -545,7 +571,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         >
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
-              segments={SCAN_SEGMENTS}
+              segments={scanSegments}
               activeKey={scanMode}
               onSelect={handleSegmentChange}
             />

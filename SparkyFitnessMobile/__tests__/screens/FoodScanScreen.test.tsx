@@ -273,5 +273,50 @@ describe('FoodScanScreen', () => {
         expect.anything(),
       );
     });
+
+    it('hides the Photo segment when pickerMode is meal-builder', () => {
+      const screen = renderScreenWithRoute({ pickerMode: 'meal-builder' });
+      // Barcode + Label remain available; Photo is removed so meal-builder
+      // scans can't accidentally drop into the diary-logging flow.
+      expect(screen.getByText('Barcode')).toBeTruthy();
+      expect(screen.getByText('Label')).toBeTruthy();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
+    it('coerces initialMode=photo to barcode in meal-builder mode', () => {
+      const screen = renderScreenWithRoute({
+        pickerMode: 'meal-builder',
+        initialMode: 'photo',
+      });
+      // No Photo segment, no AI gate — the scan opens on barcode instead.
+      expect(screen.queryByText('Photo')).toBeNull();
+      expect(
+        screen.queryByText(/AI photo estimates aren.t set up/),
+      ).toBeNull();
+    });
+  });
+
+  describe('Active-AI refresh', () => {
+    it('refetches the active-AI setting when re-tapping the Photo segment', async () => {
+      const refetch = jest.fn();
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: null,
+        isLoading: false,
+        refetch,
+      } as any);
+      const screen = renderScreen();
+
+      // Switch to Photo — gate appears.
+      fireEvent.press(screen.getByText('Photo'));
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+
+      // Re-tap Photo while still on Photo — should refetch.
+      fireEvent.press(screen.getByText('Photo'));
+      expect(refetch).toHaveBeenCalled();
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
-import { getAuthHeaders } from './authService';
+import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 
 export interface ActiveAiServiceSetting {
@@ -41,6 +41,9 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
       },
     });
     if (!response.ok) {
+      if (response.status === 401 && config.authType === 'session') {
+        notifySessionExpired(config.id);
+      }
       addLog(
         `[AI Settings] Active setting fetch failed: ${response.status}`,
         'WARNING',

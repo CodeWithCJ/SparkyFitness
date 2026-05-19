@@ -2,6 +2,7 @@ import {
   fetchActiveAiServiceSetting,
   isFoodPhotoAvailable,
 } from '../../src/services/api/aiSettingsApi';
+import { notifySessionExpired } from '../../src/services/api/authService';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
@@ -14,13 +15,30 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/authService', () => {
+  const actual = jest.requireActual('../../src/services/api/authService');
+  return {
+    ...actual,
+    notifySessionExpired: jest.fn(),
+  };
+});
+
 const mockGetActiveServerConfig =
   getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
+const mockNotifySessionExpired =
+  notifySessionExpired as jest.MockedFunction<typeof notifySessionExpired>;
 
 const testConfig: ServerConfig = {
   id: 'cfg-1',
   url: 'https://example.com',
   apiKey: 'k',
+};
+
+const sessionConfig: ServerConfig = {
+  id: 'cfg-session',
+  url: 'https://example.com',
+  apiKey: '',
+  authType: 'session',
 };
 
 describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
@@ -114,6 +132,28 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
       text: () => Promise.resolve('not found'),
     });
     await expect(fetchActiveAiServiceSetting()).resolves.toBeNull();
+  });
+
+  test('401 with session auth triggers notifySessionExpired and returns null', async () => {
+    mockGetActiveServerConfig.mockResolvedValue(sessionConfig);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => null },
+    });
+    await expect(fetchActiveAiServiceSetting()).resolves.toBeNull();
+    expect(mockNotifySessionExpired).toHaveBeenCalledWith(sessionConfig.id);
+  });
+
+  test('401 with api-key auth does not trigger reauth', async () => {
+    mockGetActiveServerConfig.mockResolvedValue(testConfig);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => null },
+    });
+    await expect(fetchActiveAiServiceSetting()).resolves.toBeNull();
+    expect(mockNotifySessionExpired).not.toHaveBeenCalled();
   });
 
   test('network error returns null defensively', async () => {
