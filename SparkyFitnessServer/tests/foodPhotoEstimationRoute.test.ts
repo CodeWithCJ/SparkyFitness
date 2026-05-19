@@ -185,7 +185,7 @@ describe('POST /food-crud/estimate-food-photo', () => {
 
   it.each([
     ['NO_AI_CONFIGURED', 422],
-    ['PROVIDER_NOT_GOOGLE', 422],
+    ['UNSUPPORTED_PROVIDER', 422],
     ['API_KEY_MISSING', 422],
     ['CONTENT_BLOCKED', 422],
     ['PARSE_ERROR', 422],

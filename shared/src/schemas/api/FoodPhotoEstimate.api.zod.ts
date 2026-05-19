@@ -52,7 +52,7 @@ export const foodPhotoEstimateErrorCodeSchema = z.enum([
   "IMAGE_TOO_LARGE",
   "UNSUPPORTED_MIME_TYPE",
   "NO_AI_CONFIGURED",
-  "PROVIDER_NOT_GOOGLE",
+  "UNSUPPORTED_PROVIDER",
   "API_KEY_MISSING",
   "CONTENT_BLOCKED",
   "PARSE_ERROR",

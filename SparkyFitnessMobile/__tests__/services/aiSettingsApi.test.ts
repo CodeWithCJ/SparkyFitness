@@ -56,7 +56,7 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
     expect(isFoodPhotoAvailable(result)).toBe(true);
   });
 
-  test('200 with non-google setting still parses; isFoodPhotoAvailable=false', async () => {
+  test('200 with OpenAI setting parses; isFoodPhotoAvailable=true', async () => {
     mockGetActiveServerConfig.mockResolvedValue(testConfig);
     mockFetch.mockResolvedValue({
       ok: true,
@@ -72,6 +72,25 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
     });
     const result = await fetchActiveAiServiceSetting();
     expect(result?.service_type).toBe('openai');
+    expect(isFoodPhotoAvailable(result)).toBe(true);
+  });
+
+  test('200 with unsupported provider parses; isFoodPhotoAvailable=false', async () => {
+    mockGetActiveServerConfig.mockResolvedValue(testConfig);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: () =>
+        Promise.resolve({
+          id: 's1',
+          service_name: 'mistral-large',
+          service_type: 'mistral',
+          is_active: true,
+        }),
+    });
+    const result = await fetchActiveAiServiceSetting();
+    expect(result?.service_type).toBe('mistral');
     expect(isFoodPhotoAvailable(result)).toBe(false);
   });
 
@@ -109,22 +128,35 @@ describe('isFoodPhotoAvailable', () => {
     expect(isFoodPhotoAvailable(null)).toBe(false);
     expect(isFoodPhotoAvailable(undefined)).toBe(false);
   });
-  test('google → true; everything else → false', () => {
-    expect(
-      isFoodPhotoAvailable({
-        id: 'x',
-        service_name: 'g',
-        service_type: 'google',
-        is_active: true,
-      }),
-    ).toBe(true);
-    expect(
-      isFoodPhotoAvailable({
-        id: 'x',
-        service_name: 'o',
-        service_type: 'openai',
-        is_active: true,
-      }),
-    ).toBe(false);
+  test('google / openai / anthropic → true', () => {
+    for (const provider of ['google', 'openai', 'anthropic']) {
+      expect(
+        isFoodPhotoAvailable({
+          id: 'x',
+          service_name: 'svc',
+          service_type: provider,
+          is_active: true,
+        }),
+      ).toBe(true);
+    }
+  });
+  test('unsupported providers → false', () => {
+    for (const provider of [
+      'mistral',
+      'ollama',
+      'openrouter',
+      'custom',
+      'openai_compatible',
+      'groq',
+    ]) {
+      expect(
+        isFoodPhotoAvailable({
+          id: 'x',
+          service_name: 'svc',
+          service_type: provider,
+          is_active: true,
+        }),
+      ).toBe(false);
+    }
   });
 });

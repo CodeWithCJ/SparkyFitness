@@ -23,9 +23,9 @@ function getDefaultVisionModel(serviceType: any) {
   switch (serviceType) {
     case 'openai':
     case 'openai_compatible':
-      return 'gpt-4o-mini';
+      return 'gpt-4.1-mini';
     case 'anthropic':
-      return 'claude-3-5-sonnet-20241022';
+      return 'claude-haiku-4-5';
     case 'google':
       return 'gemini-2.5-flash';
     case 'mistral':

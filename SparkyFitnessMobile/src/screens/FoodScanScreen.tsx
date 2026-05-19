@@ -514,7 +514,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             </Text>
             <Text className="text-text-secondary text-sm">
               Open SparkyFitness in a browser and visit Settings → AI to add a
-              provider (Google Gemini), then return here.
+              supported AI provider, then return here.
             </Text>
             <View className="gap-2 mt-2">
               <UIButton

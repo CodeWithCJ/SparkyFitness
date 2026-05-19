@@ -4,9 +4,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodPhotoImproveScreen from '../../src/screens/FoodPhotoImproveScreen';
 import { useEstimateFoodPhoto } from '../../src/hooks/useEstimateFoodPhoto';
+import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
 
 jest.mock('../../src/hooks/useEstimateFoodPhoto', () => ({
   useEstimateFoodPhoto: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
+  useActiveAiServiceSetting: jest.fn(() => ({ data: null, isLoading: false })),
 }));
 
 const mockBase64 = jest.fn().mockResolvedValue('AAAA-base64');
@@ -109,6 +114,29 @@ describe('FoodPhotoImproveScreen', () => {
       totalWeight: undefined,
       weightUnit: undefined,
     });
+  });
+
+  it('shows the active provider line when a supported provider is configured', () => {
+    (useActiveAiServiceSetting as jest.Mock).mockReturnValue({
+      data: {
+        id: 's1',
+        service_name: 'My OpenAI',
+        service_type: 'openai',
+        is_active: true,
+      },
+      isLoading: false,
+    });
+    const screen = renderScreen();
+    expect(screen.getByText('Powered by OpenAI')).toBeTruthy();
+  });
+
+  it('hides the provider line when no setting is available', () => {
+    (useActiveAiServiceSetting as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
+    });
+    const screen = renderScreen();
+    expect(screen.queryByText(/Powered by/)).toBeNull();
   });
 
   it('Generate path forwards weight+unit+description to the mutation', async () => {

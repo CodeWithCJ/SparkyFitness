@@ -13,10 +13,14 @@ import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
 import { useEstimateFoodPhoto } from '../hooks/useEstimateFoodPhoto';
+import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
-import { mapEstimateError } from '../utils/foodPhotoEstimate';
+import {
+  foodPhotoProviderLabel,
+  mapEstimateError,
+} from '../utils/foodPhotoEstimate';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
@@ -46,6 +50,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const mutation = useEstimateFoodPhoto();
+  const { data: aiSetting } = useActiveAiServiceSetting();
+  const providerLabel = foodPhotoProviderLabel(aiSetting?.service_type);
 
   const handleWeightChange = (text: string) => {
     if (text === '' || DECIMAL_INPUT_REGEX.test(text)) {
@@ -235,6 +241,12 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           {description.length}/{DESCRIPTION_MAX}
         </Text>
+
+        {providerLabel ? (
+          <Text className="text-text-secondary text-xs text-center opacity-70 mt-2">
+            Powered by {providerLabel}
+          </Text>
+        ) : null}
       </KeyboardAwareScrollView>
 
       <View

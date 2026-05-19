@@ -3,6 +3,7 @@ import {
   mapItemConfidence,
   confidenceTone,
   mapEstimateError,
+  foodPhotoProviderLabel,
 } from '../../src/utils/foodPhotoEstimate';
 
 describe('foodPhotoEstimate', () => {
@@ -28,7 +29,7 @@ describe('foodPhotoEstimate', () => {
 
   describe('mapEstimateError', () => {
     test('AI not configured family invalidates settings and bounces out', () => {
-      for (const code of ['NO_AI_CONFIGURED', 'PROVIDER_NOT_GOOGLE', 'API_KEY_MISSING'] as const) {
+      for (const code of ['NO_AI_CONFIGURED', 'UNSUPPORTED_PROVIDER', 'API_KEY_MISSING'] as const) {
         const copy = mapEstimateError(code);
         expect(copy.invalidateAiSettings).toBe(true);
         expect(copy.stayOnForm).toBe(false);
@@ -54,6 +55,22 @@ describe('foodPhotoEstimate', () => {
         const copy = mapEstimateError(code);
         expect(copy.stayOnForm).toBe(true);
       }
+    });
+  });
+
+  describe('foodPhotoProviderLabel', () => {
+    test('returns the display label for supported providers', () => {
+      expect(foodPhotoProviderLabel('google')).toBe('Google Gemini');
+      expect(foodPhotoProviderLabel('openai')).toBe('OpenAI');
+      expect(foodPhotoProviderLabel('anthropic')).toBe('Anthropic');
+    });
+
+    test('returns null for unsupported providers and null/undefined input', () => {
+      expect(foodPhotoProviderLabel('mistral')).toBeNull();
+      expect(foodPhotoProviderLabel('ollama')).toBeNull();
+      expect(foodPhotoProviderLabel(null)).toBeNull();
+      expect(foodPhotoProviderLabel(undefined)).toBeNull();
+      expect(foodPhotoProviderLabel('')).toBeNull();
     });
   });
 });

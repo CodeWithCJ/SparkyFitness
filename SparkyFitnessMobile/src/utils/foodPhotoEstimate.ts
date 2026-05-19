@@ -46,12 +46,33 @@ export interface EstimateErrorCopy {
   invalidateAiSettings: boolean;
 }
 
+const FOOD_PHOTO_PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google Gemini',
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+};
+
+/**
+ * Display name for the AI provider that will run the photo estimate. The
+ * server pins the model per provider, so we surface the provider only —
+ * keeping the user's expectations aligned with the supported allow-list in
+ * `isFoodPhotoAvailable` and `foodPhotoEstimationService.SUPPORTED_PROVIDERS`.
+ * Returns `null` for providers outside the allow-list (the gate UI fires
+ * upstream, but defensively returning null keeps the row hidden if reached).
+ */
+export function foodPhotoProviderLabel(
+  serviceType: string | null | undefined,
+): string | null {
+  if (!serviceType) return null;
+  return FOOD_PHOTO_PROVIDER_LABELS[serviceType] ?? null;
+}
+
 export function mapEstimateError(
   code: FoodPhotoEstimateErrorCode,
 ): EstimateErrorCopy {
   switch (code) {
     case 'NO_AI_CONFIGURED':
-    case 'PROVIDER_NOT_GOOGLE':
+    case 'UNSUPPORTED_PROVIDER':
     case 'API_KEY_MISSING':
       return {
         title: 'AI not configured',

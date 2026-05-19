@@ -2033,7 +2033,7 @@ describe('externalFoodSearchApi', () => {
 
     test.each([
       ['NO_AI_CONFIGURED', 422],
-      ['PROVIDER_NOT_GOOGLE', 422],
+      ['UNSUPPORTED_PROVIDER', 422],
       ['API_KEY_MISSING', 422],
       ['IMAGE_TOO_LARGE', 400],
       ['UNSUPPORTED_MIME_TYPE', 400],

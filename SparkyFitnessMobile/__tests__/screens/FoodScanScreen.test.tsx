@@ -226,12 +226,12 @@ describe('FoodScanScreen', () => {
       });
     });
 
-    it('shows the gate when AI is configured for a non-google provider', async () => {
+    it('shows the gate when AI is configured for an unsupported provider', async () => {
       mockUseActiveAiServiceSetting.mockReturnValue({
         data: {
           id: 's',
-          service_name: 'gpt-4o',
-          service_type: 'openai',
+          service_name: 'mistral-large',
+          service_type: 'mistral',
           is_active: true,
         },
         isLoading: false,

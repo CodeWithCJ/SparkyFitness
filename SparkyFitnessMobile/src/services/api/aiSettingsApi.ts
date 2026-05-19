@@ -63,12 +63,14 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   }
 }
 
+const FOOD_PHOTO_SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic']);
+
 /**
- * Food photo estimation is Google-only on the server. Any other provider
- * (or missing config) should gate the UI.
+ * Food photo estimation supports Google, OpenAI, and Anthropic on the
+ * server. Any other provider (or missing config) should gate the UI.
  */
 export function isFoodPhotoAvailable(
   setting: ActiveAiServiceSetting | null | undefined,
 ): boolean {
-  return setting?.service_type === 'google';
+  return FOOD_PHOTO_SUPPORTED_PROVIDERS.has(setting?.service_type ?? '');
 }
