@@ -13,6 +13,7 @@ const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_TOOL_NAME = 'submit_food_estimate';
 const ANTHROPIC_MAX_TOKENS = 2048;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 const SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic']);
 
@@ -608,8 +609,21 @@ async function estimateFoodPhotoNutrition(
       method: 'POST',
       headers: request.headers,
       body: JSON.stringify(request.body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      log(
+        'warn',
+        `Food-photo estimation: ${providerType} timed out after ${REQUEST_TIMEOUT_MS}ms for user ${userId}`
+      );
+      return {
+        success: false,
+        code: 'TIMEOUT',
+        error: `AI service did not respond within ${REQUEST_TIMEOUT_MS / 1000}s.`,
+      };
+    }
     log(
       'error',
       `Food-photo estimation: ${providerType} fetch failed for user ${userId}`,

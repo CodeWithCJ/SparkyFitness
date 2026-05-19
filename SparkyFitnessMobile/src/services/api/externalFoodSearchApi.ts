@@ -633,6 +633,7 @@ export interface EstimateFoodPhotoInput {
   description?: string;
   totalWeight?: number;
   weightUnit?: 'g' | 'oz';
+  signal?: AbortSignal;
 }
 
 export class FoodPhotoEstimateError extends Error {
@@ -681,6 +682,7 @@ export async function estimateFoodPhoto(
         ...getAuthHeaders(config),
       },
       body: JSON.stringify(body),
+      signal: input.signal,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

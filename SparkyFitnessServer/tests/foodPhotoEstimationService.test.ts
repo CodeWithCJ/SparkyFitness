@@ -318,6 +318,47 @@ describe('estimateFoodPhotoNutrition', () => {
     }
   });
 
+  it('returns TIMEOUT when fetch aborts via AbortSignal.timeout', async () => {
+    // @ts-expect-error mocked
+    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
+    // @ts-expect-error mocked
+    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      makeServiceDetail()
+    );
+    const timeoutErr = new Error('The operation was aborted due to timeout');
+    timeoutErr.name = 'TimeoutError';
+    global.fetch = vi.fn().mockRejectedValue(timeoutErr);
+    const result = await estimateFoodPhotoNutrition({
+      base64Image: TEST_BASE64,
+      mimeType: TEST_MIME,
+      userId: TEST_USER_ID,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe('TIMEOUT');
+    }
+  });
+
+  it('passes an AbortSignal to fetch with the configured timeout', async () => {
+    // @ts-expect-error mocked
+    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
+    // @ts-expect-error mocked
+    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      makeServiceDetail()
+    );
+    mockGoogleSuccess(sampleEstimate);
+    await estimateFoodPhotoNutrition({
+      base64Image: TEST_BASE64,
+      mimeType: TEST_MIME,
+      userId: TEST_USER_ID,
+    });
+    const fetchCall = (
+      global.fetch as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls[0];
+    const init = fetchCall[1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it('returns UPSTREAM_ERROR when response.json throws', async () => {
     // @ts-expect-error mocked
     chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());

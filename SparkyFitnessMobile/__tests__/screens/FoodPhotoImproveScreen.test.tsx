@@ -107,13 +107,16 @@ describe('FoodPhotoImproveScreen', () => {
     });
     expect(mockBase64).toHaveBeenCalledTimes(1);
     const [input] = mockMutate.mock.calls[0];
-    expect(input).toEqual({
-      base64Image: 'AAAA-base64',
-      mimeType: 'image/jpeg',
-      description: undefined,
-      totalWeight: undefined,
-      weightUnit: undefined,
-    });
+    expect(input).toEqual(
+      expect.objectContaining({
+        base64Image: 'AAAA-base64',
+        mimeType: 'image/jpeg',
+        description: undefined,
+        totalWeight: undefined,
+        weightUnit: undefined,
+      }),
+    );
+    expect(input.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('shows the active provider line when a supported provider is configured', () => {
@@ -153,12 +156,71 @@ describe('FoodPhotoImproveScreen', () => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
     });
     const [input] = mockMutate.mock.calls[0];
-    expect(input).toEqual({
-      base64Image: 'AAAA-base64',
-      mimeType: 'image/jpeg',
-      description: 'yogurt and berries',
-      totalWeight: 250,
-      weightUnit: 'g',
+    expect(input).toEqual(
+      expect.objectContaining({
+        base64Image: 'AAAA-base64',
+        mimeType: 'image/jpeg',
+        description: 'yogurt and berries',
+        totalWeight: 250,
+        weightUnit: 'g',
+      }),
+    );
+    expect(input.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('shows the pending state (spinner, status message, cancel) while estimating', () => {
+    mockUseEstimate.mockReturnValue({
+      mutate: mockMutate,
+      isPending: true,
+      reset: jest.fn(),
+    } as any);
+    const screen = renderScreen();
+
+    expect(screen.queryByText('Generate estimate')).toBeNull();
+    expect(screen.queryByPlaceholderText('e.g. 350')).toBeNull();
+    expect(screen.queryByPlaceholderText(/salmon with lemon/)).toBeNull();
+
+    expect(screen.getByText('Reading your photo…')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
+  });
+
+  it('Cancel aborts the in-flight request and suppresses the error toast', async () => {
+    const resetFn = jest.fn();
+    let pending = false;
+    mockUseEstimate.mockImplementation(() => ({
+      mutate: mockMutate,
+      isPending: pending,
+      reset: resetFn,
+    }) as any);
+
+    pending = false;
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Generate estimate'));
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalledTimes(1);
     });
+    const [input, callbacks] = mockMutate.mock.calls[0];
+    const signal: AbortSignal = input.signal;
+    expect(signal.aborted).toBe(false);
+
+    pending = true;
+    screen.rerender(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodPhotoImproveScreen
+          navigation={navigation}
+          route={baseRoute as any}
+        />
+      </SafeAreaProvider>,
+    );
+
+    fireEvent.press(screen.getByText('Cancel'));
+
+    expect(signal.aborted).toBe(true);
+    expect(resetFn).toHaveBeenCalledTimes(1);
+
+    callbacks.onError({ code: 'UPSTREAM_ERROR', message: 'aborted' });
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(navigation.navigate).not.toHaveBeenCalled();
   });
 });

@@ -101,6 +101,13 @@ export function mapEstimateError(
         stayOnForm: true,
         invalidateAiSettings: false,
       };
+    case 'TIMEOUT':
+      return {
+        title: 'AI provider timed out',
+        message: 'The estimate took too long. Try again, or log this food manually.',
+        stayOnForm: true,
+        invalidateAiSettings: false,
+      };
     case 'PARSE_ERROR':
     case 'UPSTREAM_ERROR':
     case 'INVALID_REQUEST':

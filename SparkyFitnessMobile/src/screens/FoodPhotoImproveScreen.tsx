@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, Image, Platform } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { File } from 'expo-file-system';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,25 @@ const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
 
 const DESCRIPTION_MAX = 500;
 
+const FADE_IN_MS = 200;
+const FADE_OUT_MS = 150;
+
+const PENDING_MESSAGES: { startsAt: number; text: string }[] = [
+  { startsAt: 0, text: 'Reading your photo…' },
+  { startsAt: 6, text: 'Identifying ingredients…' },
+  { startsAt: 15, text: 'Estimating portions…' },
+  { startsAt: 28, text: 'Calculating nutrition…' },
+  { startsAt: 45, text: 'Almost there…' },
+];
+
+function pendingMessageFor(elapsedSec: number): string {
+  let current = PENDING_MESSAGES[0].text;
+  for (const m of PENDING_MESSAGES) {
+    if (elapsedSec >= m.startsAt) current = m.text;
+  }
+  return current;
+}
+
 const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -53,6 +73,26 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { data: aiSetting } = useActiveAiServiceSetting();
   const providerLabel = foodPhotoProviderLabel(aiSetting?.service_type);
 
+  const cancelledRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  useEffect(() => {
+    if (!mutation.isPending) return;
+    setElapsedSec(0);
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [mutation.isPending]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleWeightChange = (text: string) => {
     if (text === '' || DECIMAL_INPUT_REGEX.test(text)) {
       setTotalWeight(text);
@@ -68,6 +108,13 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!Number.isFinite(value) || value <= 0) return NaN;
     return value;
   }, [totalWeight]);
+
+  const handleCancel = () => {
+    cancelledRef.current = true;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    mutation.reset();
+  };
 
   const submit = async () => {
     if (mutation.isPending) return;
@@ -112,6 +159,10 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    cancelledRef.current = false;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     mutation.mutate(
       {
         base64Image: base64,
@@ -119,9 +170,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         description: payloadDescription,
         totalWeight: payloadWeight,
         weightUnit: payloadWeight !== undefined ? weightUnit : undefined,
+        signal: controller.signal,
       },
       {
         onSuccess: (estimate) => {
+          abortControllerRef.current = null;
           navigation.navigate('EstimateReview', {
             date,
             estimate,
@@ -133,6 +186,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           });
         },
         onError: (error) => {
+          abortControllerRef.current = null;
+          if (cancelledRef.current) return;
           const copy = mapEstimateError(error.code);
           Toast.show({
             type: 'error',
@@ -157,6 +212,9 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const isPending = mutation.isPending;
+  const pendingMessage = pendingMessageFor(elapsedSec);
+
   return (
     <View
       className="flex-1 bg-background"
@@ -169,6 +227,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
           accessibilityLabel="Cancel"
+          disabled={isPending}
         >
           <Icon name="close" size={22} color={accentPrimary} />
         </Button>
@@ -179,6 +238,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4 py-4"
+        contentContainerStyle={{ flexGrow: 1 }}
         bottomOffset={80}
         keyboardShouldPersistTaps="handled"
       >
@@ -190,85 +250,123 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
 
-        <Text className="text-text-secondary text-sm mb-4 leading-5">
-          Add anything the photo might not make obvious.
-        </Text>
+        {isPending ? (
+          <Animated.View
+            key="pending"
+            entering={FadeIn.duration(FADE_IN_MS)}
+            exiting={FadeOut.duration(FADE_OUT_MS)}
+            className="flex-1 items-center justify-center"
+            accessibilityLiveRegion="polite"
+            accessibilityRole="progressbar"
+            accessibilityLabel={pendingMessage}
+          >
+            <ActivityIndicator size="large" color={accentPrimary} />
+            <Text className="text-text-primary text-base font-semibold mt-4 text-center">
+              {pendingMessage}
+            </Text>
+            {providerLabel ? (
+              <Text className="text-text-secondary text-xs text-center opacity-70 mt-4">
+                Powered by {providerLabel}
+              </Text>
+            ) : null}
+          </Animated.View>
+        ) : (
+          <Animated.View
+            key="form"
+            entering={FadeIn.duration(FADE_IN_MS)}
+            exiting={FadeOut.duration(FADE_OUT_MS)}
+          >
+            <Text className="text-text-secondary text-sm mb-4 leading-5">
+              Add anything the photo might not make obvious.
+            </Text>
 
-        <Text className="text-text-primary text-base font-semibold mb-2">
-          Total weight (optional)
-        </Text>
-        <View className="flex-row items-center gap-2 mb-2">
-          <FormInput
-            className="flex-1"
-            placeholder="e.g. 350"
-            keyboardType="decimal-pad"
-            value={totalWeight}
-            onChangeText={handleWeightChange}
-            returnKeyType="done"
-          />
-        </View>
-        <View className="mb-4">
-          <SegmentedControl
-            segments={WEIGHT_UNITS}
-            activeKey={weightUnit}
-            onSelect={setWeightUnit}
-          />
-        </View>
+            <Text className="text-text-primary text-base font-semibold mb-2">
+              Total weight (optional)
+            </Text>
+            <View className="flex-row items-center gap-2 mb-2">
+              <FormInput
+                className="flex-1"
+                placeholder="e.g. 350"
+                keyboardType="decimal-pad"
+                value={totalWeight}
+                onChangeText={handleWeightChange}
+                returnKeyType="done"
+              />
+            </View>
+            <View className="mb-4">
+              <SegmentedControl
+                segments={WEIGHT_UNITS}
+                activeKey={weightUnit}
+                onSelect={setWeightUnit}
+              />
+            </View>
 
-        <Text className="text-text-primary text-base font-semibold mb-2">
-          Description (optional)
-        </Text>
-        <Text className="text-text-secondary text-sm mb-2 leading-5">
-          Include oils, butter, cream, sauces, toppings, sides, or restaurant
-          names.
-        </Text>
-        <FormInput
-          className="mb-1"
-          placeholder='e.g. salmon with lemon dill cream sauce'
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          maxLength={DESCRIPTION_MAX + 50}
-          style={{ minHeight: 72, textAlignVertical: 'top' }}
-        />
-        <Text
-          className="text-xs mb-6"
-          style={{
-            color: descriptionTooLong ? '#dc2626' : textPrimary,
-            opacity: descriptionTooLong ? 1 : 0.6,
-          }}
-        >
-          {description.length}/{DESCRIPTION_MAX}
-        </Text>
+            <Text className="text-text-primary text-base font-semibold mb-2">
+              Description (optional)
+            </Text>
+            <Text className="text-text-secondary text-sm mb-2 leading-5">
+              Include oils, butter, cream, sauces, toppings, sides, or restaurant
+              names.
+            </Text>
+            <FormInput
+              className="mb-1"
+              placeholder='e.g. salmon with lemon dill cream sauce'
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
+              maxLength={DESCRIPTION_MAX + 50}
+              style={{ minHeight: 72, textAlignVertical: 'top' }}
+            />
+            <Text
+              className="text-xs mb-6"
+              style={{
+                color: descriptionTooLong ? '#dc2626' : textPrimary,
+                opacity: descriptionTooLong ? 1 : 0.6,
+              }}
+            >
+              {description.length}/{DESCRIPTION_MAX}
+            </Text>
 
-        {providerLabel ? (
-          <Text className="text-text-secondary text-xs text-center opacity-70 mt-2">
-            Powered by {providerLabel}
-          </Text>
-        ) : null}
+            {providerLabel ? (
+              <Text className="text-text-secondary text-xs text-center opacity-70 mt-2">
+                Powered by {providerLabel}
+              </Text>
+            ) : null}
+          </Animated.View>
+        )}
       </KeyboardAwareScrollView>
 
       <View
         className="px-4 gap-3 border-t border-border-subtle pt-3"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
-        <Button
-          variant="primary"
-          disabled={mutation.isPending}
-          onPress={() => {
-            void submit();
-          }}
-        >
-          {mutation.isPending ? (
-            <View className="flex-row items-center gap-2">
-              <ActivityIndicator size="small" color="#fff" />
-              <Text className="text-white font-semibold">Estimating…</Text>
-            </View>
-          ) : (
-            'Generate estimate'
-          )}
-        </Button>
+        {isPending ? (
+          <Animated.View
+            key="cancel-btn"
+            entering={FadeIn.duration(FADE_IN_MS)}
+            exiting={FadeOut.duration(FADE_OUT_MS)}
+          >
+            <Button variant="outline" onPress={handleCancel}>
+              Cancel
+            </Button>
+          </Animated.View>
+        ) : (
+          <Animated.View
+            key="submit-btn"
+            entering={FadeIn.duration(FADE_IN_MS)}
+            exiting={FadeOut.duration(FADE_OUT_MS)}
+          >
+            <Button
+              variant="primary"
+              onPress={() => {
+                void submit();
+              }}
+            >
+              Generate estimate
+            </Button>
+          </Animated.View>
+        )}
       </View>
     </View>
   );
