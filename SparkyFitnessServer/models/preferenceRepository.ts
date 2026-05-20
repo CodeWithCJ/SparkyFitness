@@ -19,7 +19,6 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         bmr_algorithm = COALESCE($12, bmr_algorithm),
         body_fat_algorithm = COALESCE($13, body_fat_algorithm),
         include_bmr_in_net_calories = COALESCE($14, include_bmr_in_net_calories),
-        show_net_carbs = COALESCE($32, show_net_carbs),
         language = COALESCE($15, language),
         calorie_goal_adjustment_mode = COALESCE($16, calorie_goal_adjustment_mode),
         energy_unit = COALESCE($17, energy_unit),
@@ -34,6 +33,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         auto_scale_online_imports = COALESCE($26, auto_scale_online_imports),
         first_day_of_week = COALESCE($30, first_day_of_week),
         barcode_fallback_open_food_facts = COALESCE($31, barcode_fallback_open_food_facts),
+        show_net_carbs = COALESCE($32, show_net_carbs),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
@@ -141,19 +141,18 @@ async function upsertUserPreferences(preferenceData: any) {
        system_prompt, auto_clear_history, logging_level, timezone,
        default_food_data_provider_id, item_display_limit, water_display_unit,
        bmr_algorithm, body_fat_algorithm, include_bmr_in_net_calories,
-       show_net_carbs,
        language, calorie_goal_adjustment_mode, energy_unit,
        fat_breakdown_algorithm, mineral_calculation_algorithm, vitamin_calculation_algorithm, sugar_calculation_algorithm,
        auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
        tdee_allow_negative_adjustment, auto_scale_online_imports, default_barcode_provider_id,
        first_day_of_week, barcode_fallback_open_food_facts,
+       show_net_carbs,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
        COALESCE($6, ''), COALESCE($7, 'never'), COALESCE($8, 'INFO'), $9,
        $10, COALESCE($11, 10), COALESCE($12, 'ml'),
        COALESCE($13, 'Mifflin-St Jeor'), COALESCE($14, 'U.S. Navy'), COALESCE($15, false),
-       COALESCE($32, false),
        COALESCE($16, 'en'), COALESCE($17, 'dynamic'), COALESCE($18, 'kcal'),
        COALESCE($19, 'AHA Guidelines'), COALESCE($20, 'RDA Standard'), COALESCE($21, 'RDA Standard'), COALESCE($22, 'WHO Guidelines'),
        COALESCE($23, false), COALESCE($24, 100), COALESCE($25, 'not_much'),
@@ -162,6 +161,7 @@ async function upsertUserPreferences(preferenceData: any) {
        $28,
        COALESCE($30, 0),
        COALESCE($31, true),
+       COALESCE($32, false),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -179,7 +179,6 @@ async function upsertUserPreferences(preferenceData: any) {
        bmr_algorithm = COALESCE(EXCLUDED.bmr_algorithm, user_preferences.bmr_algorithm),
        body_fat_algorithm = COALESCE(EXCLUDED.body_fat_algorithm, user_preferences.body_fat_algorithm),
        include_bmr_in_net_calories = COALESCE(EXCLUDED.include_bmr_in_net_calories, user_preferences.include_bmr_in_net_calories),
-       show_net_carbs = COALESCE(EXCLUDED.show_net_carbs, user_preferences.show_net_carbs),
        language = COALESCE(EXCLUDED.language, user_preferences.language),
        calorie_goal_adjustment_mode = COALESCE(EXCLUDED.calorie_goal_adjustment_mode, user_preferences.calorie_goal_adjustment_mode),
        energy_unit = COALESCE(EXCLUDED.energy_unit, user_preferences.energy_unit),
@@ -194,6 +193,7 @@ async function upsertUserPreferences(preferenceData: any) {
        auto_scale_online_imports = COALESCE(EXCLUDED.auto_scale_online_imports, user_preferences.auto_scale_online_imports),
        first_day_of_week = COALESCE(EXCLUDED.first_day_of_week, user_preferences.first_day_of_week),
        barcode_fallback_open_food_facts = COALESCE(EXCLUDED.barcode_fallback_open_food_facts, user_preferences.barcode_fallback_open_food_facts),
+       show_net_carbs = COALESCE(EXCLUDED.show_net_carbs, user_preferences.show_net_carbs),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
