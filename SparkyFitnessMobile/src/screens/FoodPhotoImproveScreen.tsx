@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, Image, Platform } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { File } from 'expo-file-system';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
@@ -237,8 +237,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       <KeyboardAwareScrollView
-        contentContainerClassName="px-4 py-4"
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerClassName="px-4 pt-4"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: Math.max(insets.bottom, 16) + 80,
+        }}
         bottomOffset={80}
         keyboardShouldPersistTaps="handled"
       >
@@ -337,37 +340,42 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
       </KeyboardAwareScrollView>
 
-      <View
-        className="px-4 gap-3 border-t border-border-subtle pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      <KeyboardStickyView
+        offset={{ closed: 0, opened: Math.max(insets.bottom, 16) }}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
       >
-        {isPending ? (
-          <Animated.View
-            key="cancel-btn"
-            entering={FadeIn.duration(FADE_IN_MS)}
-            exiting={FadeOut.duration(FADE_OUT_MS)}
-          >
-            <Button variant="outline" onPress={handleCancel}>
-              Cancel
-            </Button>
-          </Animated.View>
-        ) : (
-          <Animated.View
-            key="submit-btn"
-            entering={FadeIn.duration(FADE_IN_MS)}
-            exiting={FadeOut.duration(FADE_OUT_MS)}
-          >
-            <Button
-              variant="primary"
-              onPress={() => {
-                void submit();
-              }}
+        <View
+          className="px-4 gap-3 border-t border-border-subtle pt-3 bg-background"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        >
+          {isPending ? (
+            <Animated.View
+              key="cancel-btn"
+              entering={FadeIn.duration(FADE_IN_MS)}
+              exiting={FadeOut.duration(FADE_OUT_MS)}
             >
-              Generate estimate
-            </Button>
-          </Animated.View>
-        )}
-      </View>
+              <Button variant="outline" onPress={handleCancel}>
+                Cancel
+              </Button>
+            </Animated.View>
+          ) : (
+            <Animated.View
+              key="submit-btn"
+              entering={FadeIn.duration(FADE_IN_MS)}
+              exiting={FadeOut.duration(FADE_OUT_MS)}
+            >
+              <Button
+                variant="primary"
+                onPress={() => {
+                  void submit();
+                }}
+              >
+                Generate estimate
+              </Button>
+            </Animated.View>
+          )}
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 };

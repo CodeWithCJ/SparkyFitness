@@ -179,7 +179,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
   it('cancels back to the root via getParent().popToTop()', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Cancel'));
+    fireEvent.press(screen.getByLabelText('Cancel'));
 
     expect(parentNavigation.popToTop).toHaveBeenCalledTimes(1);
   });

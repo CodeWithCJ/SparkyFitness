@@ -12,7 +12,10 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import { FOOD_FORM_UNIT_GROUPS } from '../utils/servingSizeConversions';
+import {
+  FOOD_FORM_UNIT_GROUPS,
+  getConversionFactor,
+} from '../utils/servingSizeConversions';
 
 export interface FoodFormData {
   name: string;
@@ -54,6 +57,15 @@ export interface FoodFormProps {
       | FoodUnitSelectionResult
       | void;
   };
+  /**
+   * When the user picks a new serving unit compatible with the current one
+   * (e.g. g ↔ oz), convert the serving size value to keep the same quantity
+   * expressed in the new unit. Incompatible swaps (g → cup) leave the value
+   * alone — the user is relabeling, not converting.
+   */
+  convertServingSizeOnUnitChange?: boolean;
+  /** Content rendered above the form fields, inside the scroll view. */
+  headerChildren?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -405,6 +417,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
   unitSelector,
+  convertServingSizeOnUnitChange = false,
+  headerChildren,
   children,
 }) => {
   const [form, setForm] = useState<FoodFormData>(() =>
@@ -513,6 +527,30 @@ const FoodForm: React.FC<FoodFormProps> = ({
             parsedValue;
         } else {
           delete preciseNumericValuesRef.current[field as NumericFoodFormField];
+        }
+      }
+
+      if (
+        field === 'servingUnit' &&
+        convertServingSizeOnUnitChange &&
+        value !== prev.servingUnit
+      ) {
+        const current = parseDecimalInput(prev.servingSize);
+        // getConversionFactor returns null for incompatible units (e.g. g→cup),
+        // in which case we leave the size value alone — the user is relabeling.
+        const factor =
+          Number.isFinite(current) && current > 0
+            ? getConversionFactor(prev.servingUnit, value)
+            : null;
+        if (factor !== null && factor !== 0) {
+          const converted = current / factor;
+          const rounded = Math.round(converted * 10) / 10;
+          preciseNumericValuesRef.current.servingSize = converted;
+          return {
+            ...prev,
+            servingUnit: value,
+            servingSize: String(rounded),
+          };
         }
       }
 
@@ -785,6 +823,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         contentContainerClassName="px-4 pt-4 pb-20 gap-4"
         keyboardShouldPersistTaps="handled"
       >
+        {headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
           {renderTextField('Food Name', 'name', 'e.g. Chicken Breast', true, 'brand')}

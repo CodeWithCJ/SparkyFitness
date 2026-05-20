@@ -249,12 +249,15 @@ jest.mock('react-native-reanimated', () => {
 // Mock react-native-keyboard-controller
 jest.mock('react-native-keyboard-controller', () => {
   const React = require('react');
-  const { ScrollView } = require('react-native');
+  const { ScrollView, View } = require('react-native');
 
   return {
     KeyboardProvider: ({ children }) => React.createElement(React.Fragment, null, children),
     KeyboardAwareScrollView: React.forwardRef(({ children, ...props }, ref) =>
       React.createElement(ScrollView, { ...props, ref }, children),
+    ),
+    KeyboardStickyView: React.forwardRef(({ children, offset: _offset, enabled: _enabled, ...props }, ref) =>
+      React.createElement(View, { ...props, ref }, children),
     ),
   };
 });

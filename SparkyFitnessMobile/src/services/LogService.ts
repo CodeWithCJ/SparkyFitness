@@ -263,8 +263,6 @@ export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
     if (removedCount !== 0 || didNormalize) {
       await AsyncStorage.setItem(LOG_KEY, JSON.stringify(filteredLogs));
       console.log(`[LogService] Pruned logs: removed ${removedCount} old entries${didNormalize ? ' and normalized legacy entries' : ''}.`);
-    } else {
-      console.log('[LogService] No old logs to prune.');
     }
   } catch (error) {
     console.error('[LogService] Failed to prune logs', error);
