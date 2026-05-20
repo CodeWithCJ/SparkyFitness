@@ -298,10 +298,67 @@ export const getAggregatedActiveCaloriesByDate = async (
   }
 };
 
+// Distance plausibility floor: drop tiny distance aggregates on long sessions —
+// Health Sync writes a few dozen meters of passive step-distance over the
+// session window for stationary or indoor workouts (issue #1296).
+const MIN_DURATION_FOR_DISTANCE_CHECK_MS = 10 * 60 * 1000;
+const MIN_DISTANCE_FOR_LONG_SESSION_M = 100;
+
+// Calorie selection thresholds — see selectSessionCalories.
+// Citing #593 (Garmin Total includes BMR → prefer Active) and #1296
+// (Health Sync Active is passive contamination → prefer Total).
+// Known data points: 0.8% (HealthSync bike), 16% (HealthSync walk),
+// 87% (Garmin ride), and a HealthSync bike where Active was absent.
+const CALORIE_ACTIVE_RATIO_MIN = 0.5;
+const CALORIE_BMR_KCAL_PER_MIN_CAP = 2;
+
+/**
+ * Picks the session calorie value from the Active/Total pair.
+ * Treats 0 and undefined as "missing" (Android bridge returns 0.0 for empty ranges).
+ *
+ * - Both missing → undefined
+ * - One present → that one
+ * - Both present and (ratio ≥ 0.5 OR delta ≤ duration_min × 2) → Active
+ *   (Active is session-aligned; the Total - Active delta is plausibly just BMR)
+ * - Otherwise → Total (Active is passive contamination from a separate stream)
+ */
+export const selectSessionCalories = (
+  active: number | undefined,
+  total: number | undefined,
+  durationMs: number,
+): number | undefined => {
+  const activeValid = active != null && active > 0 ? active : undefined;
+  const totalValid = total != null && total > 0 ? total : undefined;
+
+  if (activeValid == null && totalValid == null) return undefined;
+  if (activeValid == null) return totalValid;
+  if (totalValid == null) return activeValid;
+
+  const ratio = activeValid / totalValid;
+  const durationMinutes = durationMs / 60_000;
+  const delta = totalValid - activeValid;
+  const bmrCap = durationMinutes * CALORIE_BMR_KCAL_PER_MIN_CAP;
+
+  if (ratio >= CALORIE_ACTIVE_RATIO_MIN || delta <= bmrCap) {
+    return activeValid;
+  }
+  return totalValid;
+};
+
+/**
+ * Distance is plausible unless the session is long enough that a real workout
+ * would have covered more than a token amount.
+ */
+export const isPlausibleSessionDistance = (meters: number, durationMs: number): boolean => {
+  if (durationMs <= MIN_DURATION_FOR_DISTANCE_CHECK_MS) return true;
+  return meters >= MIN_DISTANCE_FOR_LONG_SESSION_M;
+};
+
 /**
  * Enriches raw exercise session records with calories and distance data.
  * Health Connect stores these as separate record types, so we query
- * ActiveCaloriesBurned and Distance aggregated over each session's time range.
+ * ActiveCaloriesBurned, TotalCaloriesBurned, and Distance aggregated over
+ * each session's time range and apply plausibility checks (see #593, #1296).
  */
 export const enrichExerciseSessions = async (records: unknown[]): Promise<unknown[]> => {
   if (records.length === 0) return records;
@@ -323,9 +380,16 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
       endTime,
     };
 
-    const [activeCaloriesResult, distanceResult] = await Promise.allSettled([
+    const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+
+    const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
         recordType: 'ActiveCaloriesBurned',
+        timeRangeFilter,
+        dataOriginFilter,
+      }),
+      aggregateRecord({
+        recordType: 'TotalCaloriesBurned',
         timeRangeFilter,
         dataOriginFilter,
       }),
@@ -336,42 +400,19 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
       }),
     ]);
 
-    // Only attach enriched values when the aggregate call succeeded.
-    // If permissions for ActiveCaloriesBurned or Distance aren't granted,
-    // the call rejects — leave the record untouched so we don't overwrite
-    // potentially valid data with a synthetic zero.
+    // Only attach enriched values when an aggregate call succeeded and returned
+    // a plausible value. Leave the record untouched otherwise so we don't
+    // overwrite potentially valid data with a synthetic zero.
     const enrichedFields: Record<string, unknown> = {};
 
-    // Try ActiveCaloriesBurned first, fall back to TotalCaloriesBurned.
-    // Many apps (Fitbit, OHealth, etc.) only write TotalCaloriesBurned to
-    // Health Connect, so ActiveCaloriesBurned alone misses those sessions.
-    // Treat 0 as missing — the Android Health Connect bridge defaults
-    // ACTIVE_CALORIES_TOTAL to 0.0 when no records exist for the range.
-    let kcal: number | undefined;
-    if (activeCaloriesResult.status === 'fulfilled') {
-      const result = activeCaloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } };
-      const active = result.ACTIVE_CALORIES_TOTAL?.inKilocalories;
-      if (active != null && active > 0) {
-        kcal = active;
-      }
-    }
+    const active = activeCaloriesResult.status === 'fulfilled'
+      ? (activeCaloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories
+      : undefined;
+    const total = totalCaloriesResult.status === 'fulfilled'
+      ? (totalCaloriesResult.value as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories
+      : undefined;
 
-    if (kcal == null) {
-      try {
-        const totalResult = await aggregateRecord({
-          recordType: 'TotalCaloriesBurned',
-          timeRangeFilter,
-          dataOriginFilter,
-        }) as { ENERGY_TOTAL?: { inKilocalories?: number } };
-        const total = totalResult.ENERGY_TOTAL?.inKilocalories;
-        if (total != null && total > 0) {
-          kcal = total;
-        }
-      } catch {
-        // Permission not granted or no data — leave untouched
-      }
-    }
-
+    const kcal = selectSessionCalories(active, total, durationMs);
     if (kcal != null) {
       enrichedFields.energy = { inKilocalories: kcal };
     }
@@ -379,7 +420,7 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
     if (distanceResult.status === 'fulfilled') {
       const result = distanceResult.value as { DISTANCE?: { inMeters?: number } };
       const meters = result.DISTANCE?.inMeters;
-      if (meters != null) {
+      if (meters != null && isPlausibleSessionDistance(meters, durationMs)) {
         enrichedFields.distance = { inMeters: meters };
       }
     }

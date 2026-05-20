@@ -754,32 +754,157 @@ describe('enrichExerciseSessions', () => {
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
 
-  test('does not query TotalCaloriesBurned when ActiveCaloriesBurned has data', async () => {
-    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
-      if (recordType === 'ActiveCaloriesBurned') {
-        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 300 } });
-      }
-      if (recordType === 'Distance') {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
-    });
-
-    await enrichExerciseSessions([makeSession()]);
-
-    const recordTypes = mockAggregateRecord.mock.calls.map((c: unknown[]) => (c[0] as { recordType: string }).recordType);
-    expect(recordTypes).not.toContain('TotalCaloriesBurned');
-  });
-
-  test('passes dataOriginFilter from session metadata', async () => {
+  test('issues all three aggregates in parallel with the same dataOriginFilter', async () => {
     mockAggregateRecord.mockResolvedValue({});
 
     await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })]);
 
-    // All aggregate calls should include the data origin filter
+    const recordTypes = mockAggregateRecord.mock.calls.map((c: unknown[]) => (c[0] as { recordType: string }).recordType);
+    expect(recordTypes).toHaveLength(3);
+    expect(recordTypes).toEqual(expect.arrayContaining(['ActiveCaloriesBurned', 'TotalCaloriesBurned', 'Distance']));
     for (const call of mockAggregateRecord.mock.calls) {
       expect(call[0].dataOriginFilter).toEqual(['com.ohealth']);
     }
+  });
+
+  test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 43.5 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 265 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 41-minute walk
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:41:00Z' }),
+    ]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 265 });
+  });
+
+  test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is near-zero passive noise (issue #1296: indoor bike)', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 2.4 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 314 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 35-minute indoor bike
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
+    ]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 314 });
+  });
+
+  test('keeps ActiveCaloriesBurned when its ratio to TotalCaloriesBurned is high (issue #593: Garmin BMR exclusion)', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 337 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 385 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 337 });
+  });
+
+  test('keeps ActiveCaloriesBurned at the exact ratio=0.5 boundary', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 400 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 200 });
+  });
+
+  test('keeps ActiveCaloriesBurned when delta is plausible BMR for the duration even if ratio is below 0.5', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 100 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 180 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 60-minute session: cap = 120, delta = 80 → passes OR-clause
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z' }),
+    ]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 100 });
+  });
+
+  test('falls back to TotalCaloriesBurned when delta exceeds plausible BMR for the duration', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 20 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 35-minute session: cap = 70, delta = 280 → fails OR-clause; ratio = 0.067 → fails
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
+    ]);
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 300 });
+  });
+
+  test('drops fabricated distance for long sessions with implausibly small aggregate (issue #1296)', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'Distance') {
+        return Promise.resolve({ DISTANCE: { inMeters: 51 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 35-minute session, 51 m aggregate distance (HealthSync indoor bike contamination)
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
+    ]);
+
+    expect('distance' in (result[0] as Record<string, unknown>)).toBe(false);
+  });
+
+  test('keeps short-session distances near the floor', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'Distance') {
+        return Promise.resolve({ DISTANCE: { inMeters: 90 } });
+      }
+      return Promise.resolve({});
+    });
+
+    // 5-minute session, 90 m: short enough that the plausibility floor doesn't apply
+    const result = await enrichExerciseSessions([
+      makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:05:00Z' }),
+    ]);
+
+    expect((result[0] as { distance: { inMeters: number } }).distance).toEqual({ inMeters: 90 });
   });
 });
 
