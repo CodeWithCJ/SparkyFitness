@@ -3,6 +3,8 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodService from '../services/foodService.js';
 import labelScanService from '../services/labelScanService.js';
+import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
+import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 const router = express.Router();
 router.use(express.json());
 // Apply diary permission check to all food routes
@@ -647,6 +649,132 @@ router.post('/scan-label', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024;
+const MAX_DESCRIPTION_LENGTH = 500;
+const OZ_TO_GRAMS = 28.3495;
+
+const PHOTO_ESTIMATION_ERROR_HTTP_STATUS: Record<
+  FoodPhotoEstimateErrorCode,
+  number
+> = {
+  INVALID_REQUEST: 400,
+  IMAGE_TOO_LARGE: 400,
+  UNSUPPORTED_MIME_TYPE: 400,
+  NO_AI_CONFIGURED: 422,
+  UNSUPPORTED_PROVIDER: 422,
+  API_KEY_MISSING: 422,
+  CONTENT_BLOCKED: 422,
+  PARSE_ERROR: 422,
+  UPSTREAM_ERROR: 502,
+  TIMEOUT: 504,
+};
+
+router.post(
+  '/estimate-food-photo',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const { image, mime_type, description, total_weight, weight_unit } =
+      req.body ?? {};
+
+    if (typeof image !== 'string' || image.length === 0) {
+      return res
+        .status(400)
+        .json({ error: 'image is required.', code: 'INVALID_REQUEST' });
+    }
+    if (typeof mime_type !== 'string' || mime_type.length === 0) {
+      return res
+        .status(400)
+        .json({ error: 'mime_type is required.', code: 'INVALID_REQUEST' });
+    }
+    if (image.length > MAX_BASE64_IMAGE_LENGTH) {
+      return res.status(400).json({
+        error: 'image exceeds the maximum allowed size of 8MB (base64).',
+        code: 'IMAGE_TOO_LARGE',
+      });
+    }
+    if (!ALLOWED_PHOTO_MIME_TYPES.has(mime_type)) {
+      return res.status(400).json({
+        error: `Unsupported mime_type '${mime_type}'. Allowed: ${[...ALLOWED_PHOTO_MIME_TYPES].join(', ')}.`,
+        code: 'UNSUPPORTED_MIME_TYPE',
+      });
+    }
+    if (description !== undefined) {
+      if (
+        typeof description !== 'string' ||
+        description.length > MAX_DESCRIPTION_LENGTH
+      ) {
+        return res.status(400).json({
+          error: `description must be a string of at most ${MAX_DESCRIPTION_LENGTH} characters.`,
+          code: 'INVALID_REQUEST',
+        });
+      }
+    }
+
+    const hasWeight = total_weight !== undefined;
+    const hasUnit = weight_unit !== undefined;
+    if (hasWeight !== hasUnit) {
+      return res.status(400).json({
+        error: 'total_weight and weight_unit must be provided together.',
+        code: 'INVALID_REQUEST',
+      });
+    }
+
+    let weightSlot = '';
+    if (hasWeight && hasUnit) {
+      if (
+        typeof total_weight !== 'number' ||
+        !Number.isFinite(total_weight) ||
+        total_weight <= 0
+      ) {
+        return res.status(400).json({
+          error: 'total_weight must be a positive finite number.',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      if (weight_unit !== 'g' && weight_unit !== 'oz') {
+        return res.status(400).json({
+          error: "weight_unit must be 'g' or 'oz'.",
+          code: 'INVALID_REQUEST',
+        });
+      }
+      if (weight_unit === 'oz') {
+        const weightGrams = Math.round(total_weight * OZ_TO_GRAMS);
+        weightSlot = `${total_weight} oz (approximately ${weightGrams} g)`;
+      } else {
+        weightSlot = `${total_weight} g`;
+      }
+    }
+
+    try {
+      const result =
+        await foodPhotoEstimationService.estimateFoodPhotoNutrition({
+          base64Image: image,
+          mimeType: mime_type,
+          userId: req.userId,
+          description: typeof description === 'string' ? description : '',
+          weightSlot,
+        });
+      if (result.success) {
+        return res.status(200).json(result.estimate);
+      }
+      const status = PHOTO_ESTIMATION_ERROR_HTTP_STATUS[result.code] ?? 500;
+      return res
+        .status(status)
+        .json({ error: result.error, code: result.code });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 /**
  * @swagger
  * /food-crud/{foodId}:

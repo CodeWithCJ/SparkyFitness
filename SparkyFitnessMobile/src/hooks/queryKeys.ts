@@ -66,3 +66,5 @@ export const workoutPresetSearchQueryKey = (searchTerm: string) => ['workoutPres
 
 export const workoutPresetsLibraryQueryKey = (searchTerm: string) =>
   ['workoutPresetsLibrary', searchTerm] as const;
+
+export const activeAiServiceSettingQueryKey = ['ai-service-settings', 'active'] as const;

@@ -167,7 +167,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       { label: 'Food', icon: 'food', onPress: onAddFood },
       { label: 'Exercise', icon: 'exercise-weights' },
       { label: 'Measurements', icon: 'measurements', onPress: onAddMeasurements },
-      { label: 'Barcode Scan', icon: 'scan', onPress: onBarcodeScan },
+      { label: 'Scan Food', icon: 'scan', onPress: onBarcodeScan },
     ];
 
     const renderCard = (card: ActionCard) => (

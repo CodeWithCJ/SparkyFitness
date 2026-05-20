@@ -166,4 +166,49 @@ describe('FoodSearchScreen', () => {
       }),
     );
   });
+
+  describe('empty-results CTA', () => {
+    beforeEach(() => {
+      mockUseFoodSearch.mockReturnValue({
+        searchResults: [],
+        isSearching: false,
+        isSearchActive: true,
+        isSearchError: false,
+      } as any);
+    });
+
+    it('shows "Estimate from photo" in log-entry mode and deep-links into FoodScan photo segment', () => {
+      const dateRoute = {
+        key: 'FoodSearch-key',
+        name: 'FoodSearch' as const,
+        params: { date: '2026-05-18' },
+      };
+      const screen = render(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodSearchScreen navigation={navigation} route={dateRoute} />
+        </SafeAreaProvider>,
+      );
+
+      const cta = screen.getByText('Estimate from photo');
+      fireEvent.press(cta);
+      expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
+        date: '2026-05-18',
+        initialMode: 'photo',
+      });
+    });
+
+    it('hides the CTA in meal-builder mode', () => {
+      const builderRoute = {
+        key: 'FoodSearch-key',
+        name: 'FoodSearch' as const,
+        params: { date: '2026-05-18', pickerMode: 'meal-builder' as const },
+      };
+      const screen = render(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodSearchScreen navigation={navigation} route={builderRoute} />
+        </SafeAreaProvider>,
+      );
+      expect(screen.queryByText('Estimate from photo')).toBeNull();
+    });
+  });
 });

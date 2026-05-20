@@ -961,16 +961,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           brand={adjustedValues?.brand ?? activeItem.brand}
           values={displayValues}
           servings={servings}
-          goalPercentages={
-            isGoalsLoading
-              ? undefined
-              : {
-                  calories: calorieGoalPct,
-                  protein: proteinGoalPct,
-                  carbs: carbsGoalPct,
-                  fat: fatGoalPct,
-                }
-          }
+          goalPercentages={{
+            calories: calorieGoalPct,
+            protein: proteinGoalPct,
+            carbs: carbsGoalPct,
+            fat: fatGoalPct,
+          }}
+          goalsLoading={isGoalsLoading}
         />
 
         <View className="mt-2">

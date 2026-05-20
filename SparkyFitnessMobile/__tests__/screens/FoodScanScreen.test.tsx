@@ -4,6 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
 import { fireSuccessHaptic } from '../../src/services/haptics';
+import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
+import { hasSeenFoodPhotoIntro } from '../../src/services/foodPhotoIntro';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
@@ -14,16 +16,30 @@ jest.mock('../../src/services/haptics', () => ({
   fireSuccessHaptic: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
+  useActiveAiServiceSetting: jest.fn(),
+}));
+
+jest.mock('../../src/services/foodPhotoIntro', () => ({
+  hasSeenFoodPhotoIntro: jest.fn().mockResolvedValue(true),
+  markFoodPhotoIntroSeen: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('FoodScanScreen', () => {
   const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<typeof lookupBarcodeV2>;
   const mockScanNutritionLabel = scanNutritionLabel as jest.MockedFunction<typeof scanNutritionLabel>;
   const mockFireSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
     typeof fireSuccessHaptic
   >;
+  const mockUseActiveAiServiceSetting =
+    useActiveAiServiceSetting as jest.MockedFunction<typeof useActiveAiServiceSetting>;
+  const mockHasSeenFoodPhotoIntro =
+    hasSeenFoodPhotoIntro as jest.MockedFunction<typeof hasSeenFoodPhotoIntro>;
 
   const mockNavigation = {
     replace: jest.fn(),
     goBack: jest.fn(),
+    navigate: jest.fn(),
   } as any;
 
   const mockRoute = {
@@ -74,7 +90,28 @@ describe('FoodScanScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockScanNutritionLabel.mockReset();
+    // Default: AI configured with google so Photo segment is unlocked.
+    mockUseActiveAiServiceSetting.mockReturnValue({
+      data: {
+        id: 's',
+        service_name: 'gemini',
+        service_type: 'google',
+        is_active: true,
+      },
+      isLoading: false,
+    } as any);
+    mockHasSeenFoodPhotoIntro.mockResolvedValue(true);
   });
+
+  const renderScreenWithRoute = (params: any = undefined) =>
+    render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodScanScreen
+          navigation={mockNavigation}
+          route={{ ...mockRoute, params }}
+        />
+      </SafeAreaProvider>,
+    );
 
   it('fires a success haptic when barcode lookup finds an existing food', async () => {
     mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
@@ -156,5 +193,130 @@ describe('FoodScanScreen', () => {
       );
     });
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
+  });
+
+  describe('Photo segment gating', () => {
+    it('shows the setup gate when AI is unconfigured (after switching to Photo)', async () => {
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: null,
+        isLoading: false,
+      } as any);
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByText('Photo'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+    });
+
+    it('shows the gate via effect when initialMode=photo and AI is unconfigured', async () => {
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: null,
+        isLoading: false,
+      } as any);
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+    });
+
+    it('shows the gate when AI is configured for an unsupported provider', async () => {
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: {
+          id: 's',
+          service_name: 'mistral-large',
+          service_type: 'mistral',
+          is_active: true,
+        },
+        isLoading: false,
+      } as any);
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+    });
+
+    it('pushes the intro screen on first Photo use when the user has not seen it', async () => {
+      mockHasSeenFoodPhotoIntro.mockResolvedValue(false);
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByText('Photo'));
+
+      await waitFor(() => {
+        expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodPhotoIntro', {
+          date: undefined,
+        });
+      });
+    });
+
+    it('does NOT push the intro when the user has seen it', async () => {
+      mockHasSeenFoodPhotoIntro.mockResolvedValue(true);
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByText('Photo'));
+
+      // Give the effect a tick to resolve.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockNavigation.navigate).not.toHaveBeenCalledWith(
+        'FoodPhotoIntro',
+        expect.anything(),
+      );
+    });
+
+    it('hides the Photo segment when pickerMode is meal-builder', () => {
+      const screen = renderScreenWithRoute({ pickerMode: 'meal-builder' });
+      // Barcode + Label remain available; Photo is removed so meal-builder
+      // scans can't accidentally drop into the diary-logging flow.
+      expect(screen.getByText('Barcode')).toBeTruthy();
+      expect(screen.getByText('Label')).toBeTruthy();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
+    it('coerces initialMode=photo to barcode in meal-builder mode', () => {
+      const screen = renderScreenWithRoute({
+        pickerMode: 'meal-builder',
+        initialMode: 'photo',
+      });
+      // No Photo segment, no AI gate — the scan opens on barcode instead.
+      expect(screen.queryByText('Photo')).toBeNull();
+      expect(
+        screen.queryByText(/AI photo estimates aren.t set up/),
+      ).toBeNull();
+    });
+  });
+
+  describe('Active-AI refresh', () => {
+    it('refetches the active-AI setting when re-tapping the Photo segment', async () => {
+      const refetch = jest.fn();
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: null,
+        isLoading: false,
+        refetch,
+      } as any);
+      const screen = renderScreen();
+
+      // Switch to Photo — gate appears.
+      fireEvent.press(screen.getByText('Photo'));
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+
+      // Re-tap Photo while still on Photo — should refetch.
+      fireEvent.press(screen.getByText('Photo'));
+      expect(refetch).toHaveBeenCalled();
+    });
   });
 });

@@ -1,4 +1,11 @@
-import { apiFetch } from './apiClient';
+import { apiFetch, normalizeUrl } from './apiClient';
+import type {
+  FoodPhotoEstimateErrorCode,
+  FoodPhotoEstimateResponse,
+} from '@workspace/shared';
+import { addLog } from '../LogService';
+import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import { getAuthHeaders, notifySessionExpired } from './authService';
 import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
 
 interface OpenFoodFactsProduct {
@@ -618,4 +625,95 @@ export async function scanNutritionLabel(base64Image: string, mimeType: string):
     method: 'POST',
     body: { image: base64Image, mime_type: mimeType },
   });
+}
+
+export interface EstimateFoodPhotoInput {
+  base64Image: string;
+  mimeType: string;
+  description?: string;
+  totalWeight?: number;
+  weightUnit?: 'g' | 'oz';
+  signal?: AbortSignal;
+}
+
+export class FoodPhotoEstimateError extends Error {
+  code: FoodPhotoEstimateErrorCode;
+
+  constructor(code: FoodPhotoEstimateErrorCode, message: string) {
+    super(message);
+    this.name = 'FoodPhotoEstimateError';
+    this.code = code;
+  }
+}
+
+const FOOD_PHOTO_ESTIMATE_ENDPOINT = '/api/foods/estimate-food-photo';
+
+export async function estimateFoodPhoto(
+  input: EstimateFoodPhotoInput,
+): Promise<FoodPhotoEstimateResponse> {
+  const config = await getActiveServerConfig();
+  if (!config) {
+    throw new FoodPhotoEstimateError('UPSTREAM_ERROR', 'Server configuration not found.');
+  }
+
+  const baseUrl = normalizeUrl(config.url);
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+    throw new FoodPhotoEstimateError(
+      'UPSTREAM_ERROR',
+      'HTTPS is required for server connections. Please update your server URL in Settings.',
+    );
+  }
+
+  const body: Record<string, unknown> = {
+    image: input.base64Image,
+    mime_type: input.mimeType,
+  };
+  if (input.description !== undefined) body.description = input.description;
+  if (input.totalWeight !== undefined) body.total_weight = input.totalWeight;
+  if (input.weightUnit !== undefined) body.weight_unit = input.weightUnit;
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${FOOD_PHOTO_ESTIMATE_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...proxyHeadersToRecord(config.proxyHeaders),
+        ...getAuthHeaders(config),
+      },
+      body: JSON.stringify(body),
+      signal: input.signal,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Food Photo Estimate] Network error: ${message}`, 'ERROR');
+    throw new FoodPhotoEstimateError('UPSTREAM_ERROR', message);
+  }
+
+  if (response.ok) {
+    return (await response.json()) as FoodPhotoEstimateResponse;
+  }
+
+  if (response.status === 401 && config.authType === 'session') {
+    notifySessionExpired(config.id);
+  }
+
+  const text = await response.text();
+  let code: FoodPhotoEstimateErrorCode = 'UPSTREAM_ERROR';
+  let message = text;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.code === 'string') {
+        code = parsed.code as FoodPhotoEstimateErrorCode;
+      }
+      if (typeof parsed.error === 'string') {
+        message = parsed.error;
+      }
+    }
+  } catch {
+    // Non-JSON error body — fall through with UPSTREAM_ERROR + raw text.
+  }
+  addLog(`[Food Photo Estimate] Failed (${response.status} / ${code}): ${message}`, 'ERROR');
+  throw new FoodPhotoEstimateError(code, message);
 }

@@ -114,7 +114,8 @@
       "!**/.prettierrc.js",
       "!**/eslint.config.js",
       "!**/expo-env.d.ts",
-      "!**/.expo/**"
+      "!**/.expo/**",
+      "!**/devdocs/**"
     ]
   }
 }

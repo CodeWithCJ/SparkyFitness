@@ -1,6 +1,10 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { IndividualSessionResponse, PresetSessionResponse } from '@workspace/shared';
+import type {
+  FoodPhotoEstimateResponse,
+  IndividualSessionResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
@@ -13,6 +17,7 @@ import type {
 } from './foodUnitVariants';
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
+import type { SaveFoodPayload } from '../services/api/foodsApi';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
@@ -95,8 +100,11 @@ export type RootStackParamList = {
         date?: string;
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
+        initialMode?: 'barcode' | 'label' | 'photo';
       }
     | undefined;
+  FoodPhotoIntro: { date?: string } | undefined;
+  FoodPhotoFlow: NavigatorScreenParams<FoodPhotoFlowParamList>;
   MealAdd:
     | {
         mode: 'edit';
@@ -142,3 +150,29 @@ declare global {
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
+
+export type FoodPhotoFlowParamList = {
+  Improve: {
+    date?: string;
+    photo: { uri: string };
+    initialDescription?: string;
+    initialTotalWeight?: string;
+    initialWeightUnit?: 'g' | 'oz';
+  };
+  EstimateReview: {
+    date?: string;
+    estimate: FoodPhotoEstimateResponse;
+    request: {
+      description?: string;
+      totalWeight?: number;
+      weightUnit?: 'g' | 'oz';
+    };
+  };
+  LogEntry: {
+    date?: string;
+    saveFoodPayload: SaveFoodPayload;
+  };
+};
+
+export type FoodPhotoFlowScreenProps<T extends keyof FoodPhotoFlowParamList> =
+  NativeStackScreenProps<FoodPhotoFlowParamList, T>;
