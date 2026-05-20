@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-20*
 
 SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
@@ -31,7 +31,7 @@ tsc --noEmit                                   # Type check only
 ### Source Structure (`src/`)
 
 - **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding, dashboard, diary, sync, logs; settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **screens/** — Top-level screens for onboarding, dashboard, diary, sync, logs; settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, food photo AI estimation (`FoodPhotoIntroScreen` + `FoodPhotoFlow` sub-stack: `FoodPhotoImproveScreen` → `FoodPhotoEstimateReviewScreen` → `FoodPhotoLogEntryScreen`), measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
   - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
@@ -42,7 +42,7 @@ tsc --noEmit                                   # Type check only
 - **hooks/** — React Query hooks organized by domain (food, meals, exercise/workout, workout presets, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
 - **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
 - **types/** — TypeScript interfaces. Core exercise session types (`ExerciseSessionResponse`, `IndividualSessionResponse`, `PresetSessionResponse`, `ExerciseHistoryResponse`) come from `@workspace/shared`.
-- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `rateLimiter`.
+- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `foodPhotoEstimate` (`FOOD_PHOTO_PROVIDER_LABELS` allow-list + `mapEstimateError` copy mapping for the photo flow), `rateLimiter`.
 - **constants/** — `meals.ts` (meal types, icons, time-based defaults).
 - **HealthMetrics.ts** — Health metric definitions filtered by platform and enabled status at runtime.
 - **plugins/** — Expo config plugins applied at prebuild: `withCalorieWidget` (copies `targets/android-widget/` Kotlin + res into the generated Android project and wires up Glance widget receivers), `withGlanceAndroidSupport`, `withNetworkSecurityConfig`. Edit `targets/`, never the generated `android/` or `ios/` folders.
@@ -81,24 +81,7 @@ TailwindCSS v4 with Uniwind for React Native. Theme variables in `global.css`:
 
 ### Charts
 
-Charts use `@shopify/react-native-skia` for custom rendering (calorie ring, gauges) and `victory-native` for data charts (bar charts). For animations, use **Reanimated hooks** (not Skia's deprecated animation API):
-
-```tsx
-import { Canvas, Path, Skia } from '@shopify/react-native-skia';
-import { useSharedValue, useDerivedValue, withTiming } from 'react-native-reanimated';
-
-const progress = useSharedValue(0);
-
-useEffect(() => {
-  progress.value = withTiming(targetValue, { duration: 500 });
-}, [targetValue]);
-
-const path = useDerivedValue(() => {
-  const p = Skia.Path.Make();
-  p.addArc(oval, -90, progress.value * 360);
-  return p;
-});
-```
+Custom rendering (calorie ring, gauges) uses `@shopify/react-native-skia`; data charts (bar charts) use `victory-native`. For animations, drive Skia paths from Reanimated `useSharedValue` + `useDerivedValue` — not Skia's deprecated animation API.
 
 ### iOS HealthKit Accuracy
 
@@ -157,7 +140,7 @@ Pattern for adding a third widget is documented at the top of `plugins/withCalor
 
 The **Library** tab (`LibraryScreen`) is the entry point for all user-saved content — foods, meals, exercises, and workout presets. It surfaces "Create" tiles plus a recent-items preview per section, with "View all" pushing the section-specific paginated list:
 
-- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, and `FoodFormScreen`. `FoodForm` includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes.
+- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and the food-photo review screen. `FoodForm` includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes, a `convertServingSizeOnUnitChange` opt-in that converts the value when switching between compatible units (g↔oz) and leaves it alone for incompatible swaps (g→cup), and a `headerChildren` slot for callers (e.g. estimate review) to render an above-form summary.
 - **Meals** — `MealsLibraryScreen` → `MealDetailScreen` and `MealAddScreen` (meal builder). Cross-screen ingredient handoff uses `services/mealBuilderSelection.ts` (set/consume pending selection). `MealTypeDetailScreen` shows a single meal type's day view from the diary.
 - **Exercises** — `ExercisesLibraryScreen` → `ExerciseDetailScreen` → `ExerciseFormScreen` for user-created exercises (advanced fields supported).
 - **Workout Presets** — `WorkoutPresetsLibraryScreen` → `WorkoutPresetDetailScreen` → `WorkoutPresetFormScreen` for managing reusable presets that feed `WorkoutAddScreen`.
@@ -167,6 +150,22 @@ Edit/Delete actions are gated on `profile.id === <entity>.userId` (owner-only). 
 `useFoodsLibrary` (infinite query) uses `queryClient.resetQueries` instead of `query.refetch()` on focus/pull-to-refresh — `refetch()` re-downloads every cached page, so a user deep in the list pays for pages 1..N on every focus. Same pattern as `useExerciseHistory`. `loadMore` gates on `isFetching` (not just `isFetchingNextPage`) so pagination cannot overlap with a reset and leave gaps. Apply this pattern to other paginated library hooks (meals, exercises, presets) when revisiting them.
 
 `BottomSheetPicker` and `CalendarSheet` pass `containerComponent={FullWindowOverlay}` (iOS only) so the sheets render in a UIWindow above any native modal presentation. Earlier versions wrapped modal-presented screens in a local `BottomSheetModalProvider`, but that polluted the root provider's bottom-inset state and left the AddSheet with stale padding after dismissal — using `FullWindowOverlay` per-sheet avoids the nested provider entirely.
+
+### Food Photo Estimation
+
+AI-powered nutrition estimate from a photo. The flow is gated on a configured AI provider (Google Gemini, OpenAI, or Anthropic) — the canonical allow-list is `FOOD_PHOTO_PROVIDER_LABELS` in `utils/foodPhotoEstimate.ts`, which mirrors the server's `SUPPORTED_PROVIDERS`. Provider availability is fetched via `useActiveAiServiceSetting` (React Query, 5-min staleTime, query key `activeAiServiceSettingQueryKey`) and gated through `isFoodPhotoAvailable(setting)` from `services/api/aiSettingsApi.ts`.
+
+Entry points:
+- **AddSheet "Scan Food"** tile → `FoodScanScreen` with a 3-segment switcher: `Barcode | Label | Photo`. The `photo` segment is hidden when `pickerMode === 'meal-builder'` (photo estimates always log to the diary). Re-tapping the active Photo segment refetches the AI setting — the user's "I configured AI in the web app, try again" gesture.
+- **FoodSearchScreen empty state** → "Estimate from photo" button deep-links to `FoodScan` with `initialMode: 'photo'`.
+- **First-run intro** (`FoodPhotoIntroScreen`, modal) shown once, persisted via `services/foodPhotoIntro.ts` (`@FoodPhoto:hasSeenIntro` AsyncStorage flag).
+
+Sub-stack `FoodPhotoFlow` (`src/navigation/FoodPhotoFlow.tsx`, presented modally from the root stack — wraps itself in its own `KeyboardProvider` because native-stack modals don't always inherit the root provider's keyboard events):
+1. `FoodPhotoImproveScreen` — capture/improve photo + description + total weight (g/oz).
+2. `FoodPhotoEstimateReviewScreen` — review the AI estimate, edit fields via the shared `FoodForm`, then continue.
+3. `FoodPhotoLogEntryScreen` — finalize meal type / servings and log.
+
+API: `POST /api/foods/estimate-food-photo` via `estimateFoodPhoto()` in `externalFoodSearchApi.ts` (raw `fetch` with proxy headers; throws typed `FoodPhotoEstimateError` carrying a `FoodPhotoEstimateErrorCode` from `@workspace/shared`). The mutation hook is `useEstimateFoodPhoto`. Error → user copy mapping (gate vs. retry-in-place vs. dismiss) lives in `mapEstimateError()`.
 
 ### Workout & Exercise Architecture
 
@@ -207,7 +206,7 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
-| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (Google/Gemini) | `externalFoodSearchApi` |
+| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (Google/Gemini, OpenAI, Anthropic) | `externalFoodSearchApi` |
 | `GET /api/chat/ai-service-settings/active` | Active AI service config (gates the Photo segment) | `aiSettingsApi` |
 | `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |
@@ -263,15 +262,9 @@ pnpm run test:coverage                      # Coverage report
 
 Tests in `__tests__/` mirror source structure. Mocks in `jest.setup.js`. Preset: `jest-expo` with `jsdom` environment.
 
-When writing or modifying tests, run the FULL test suite (not just new tests) to catch mock pollution and regressions. Never introduce global mocks without checking for side effects on other test files. When fixing a bug that could have been caught by a test, write a regression test that reproduces the bug and verifies the fix.
+When writing or modifying tests, run the FULL test suite (not just new tests) to catch mock pollution and regressions. Never introduce global mocks without checking for side effects on other test files. When fixing a bug that could have been caught by a test, write a regression test that reproduces the bug and verifies the fix. After file moves or import refactors, run the full test suite immediately and verify asset/require paths.
 
-### Testing Android Code on macOS
-
-Jest loads `.ios.ts` by default. Use explicit require for Android:
-
-```ts
-const androidService = require('../../src/services/healthConnectService.ts');
-```
+**Testing Android code on macOS**: Jest loads `.ios.ts` by default — use `require('../../src/services/healthConnectService.ts')` to force the Android implementation.
 
 ## UI Components
 
@@ -282,19 +275,8 @@ Always use the project's shared UI primitives instead of raw React Native compon
 
 Before using SF Symbol names or icon identifiers, verify they exist in the project's icon set via substring/grep search rather than guessing.
 
-## After Refactors
+## Reference
 
-After file moves or import refactors, always run the full test suite immediately and verify asset/require paths are correct before reporting completion.
-
-## API Documentation
-
-Detailed API docs live in `docs/`: `food_api.md`, `external_providers.md`, `measurements_api.md`, `sync_api.md`, `healthkit.md`, `development.md`, `user_flows.md`, `technical-design-document.md`.
-
-## Build & Release
-
-- **Android**: GitHub Actions with release signing
-- **iOS**: EAS Build (`eas build --platform ios`)
-
-## Workflow
-
-- When asked to plan something, always ask clarifying questions before producing the plan. Do not start exploring code or writing plans without confirming scope with the user first.
+- **API docs** live in `docs/`: `food_api.md`, `external_providers.md`, `measurements_api.md`, `sync_api.md`, `healthkit.md`, `development.md`, `user_flows.md`, `technical-design-document.md`.
+- **Build**: Android via GitHub Actions with release signing; iOS via EAS Build (`eas build --platform ios`).
+- **Workflow**: when asked to plan something, ask clarifying questions before producing the plan — don't start exploring code or writing plans without confirming scope first.
