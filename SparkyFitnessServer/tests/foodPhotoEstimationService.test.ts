@@ -318,45 +318,66 @@ describe('estimateFoodPhotoNutrition', () => {
     }
   });
 
-  it('returns TIMEOUT when fetch aborts via AbortSignal.timeout', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    const timeoutErr = new Error('The operation was aborted due to timeout');
-    timeoutErr.name = 'TimeoutError';
-    global.fetch = vi.fn().mockRejectedValue(timeoutErr);
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('TIMEOUT');
+  it.each([
+    ['TimeoutError', 'The operation was aborted due to timeout'],
+    ['AbortError', 'The operation was aborted'],
+  ])(
+    'returns TIMEOUT when fetch rejects with %s (server treats user-cancel and timeout the same)',
+    async (errorName, errorMessage) => {
+      // @ts-expect-error mocked
+      chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
+      // @ts-expect-error mocked
+      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+        makeServiceDetail()
+      );
+      const err = new Error(errorMessage);
+      err.name = errorName;
+      global.fetch = vi.fn().mockRejectedValue(err);
+      const result = await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('TIMEOUT');
+      }
     }
-  });
+  );
 
-  it('passes an AbortSignal to fetch with the configured timeout', async () => {
+  it('calls AbortSignal.timeout(90_000) and passes the returned signal to fetch', async () => {
+    // Locks in the actual contract: the 90s constant is supplied, and the signal
+    // produced by AbortSignal.timeout reaches the fetch init. A regression that
+    // replaces it with `new AbortController().signal` (never fires) would not
+    // call the spy and would fail this test.
     // @ts-expect-error mocked
     chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
     // @ts-expect-error mocked
     chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
       makeServiceDetail()
     );
-    mockGoogleSuccess(sampleEstimate);
-    await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    const fetchCall = (
-      global.fetch as unknown as { mock: { calls: unknown[][] } }
-    ).mock.calls[0];
-    const init = fetchCall[1] as RequestInit;
-    expect(init.signal).toBeInstanceOf(AbortSignal);
+
+    const sentinelSignal = new AbortController().signal;
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(sentinelSignal);
+
+    try {
+      mockGoogleSuccess(sampleEstimate);
+      await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+
+      expect(timeoutSpy).toHaveBeenCalledTimes(1);
+      expect(timeoutSpy).toHaveBeenCalledWith(90_000);
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      expect((options as RequestInit).signal).toBe(sentinelSignal);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
   });
 
   it('returns UPSTREAM_ERROR when response.json throws', async () => {
@@ -413,6 +434,23 @@ describe('estimateFoodPhotoNutrition', () => {
       expect(promptPart.text).toContain('16 oz (approximately 454 g)');
       expect(body.generationConfig.responseSchema).toBeDefined();
       expect(body.generationConfig.responseMimeType).toBe('application/json');
+    });
+
+    it('sends the base64 image and mime type in the inline_data part', async () => {
+      await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const imagePart = body.contents[0].parts.find(
+        (p: { inline_data?: unknown }) => p.inline_data !== undefined
+      );
+      expect(imagePart).toBeDefined();
+      expect(imagePart.inline_data.data).toBe(TEST_BASE64);
+      expect(imagePart.inline_data.mime_type).toBe(TEST_MIME);
     });
 
     it("renders weight slot as '<n> g' for gram input", async () => {
@@ -527,6 +565,25 @@ describe('estimateFoodPhotoNutrition', () => {
       expect(schema.additionalProperties).toBe(false);
       expect(schema.properties.items.items.additionalProperties).toBe(false);
       expect(schema.properties.totals.additionalProperties).toBe(false);
+    });
+
+    it('sends the base64 image as a data URL in the image_url content part', async () => {
+      mockOpenAiSuccess(sampleEstimate);
+      await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const imagePart = body.messages[0].content.find(
+        (p: { type?: string }) => p.type === 'image_url'
+      );
+      expect(imagePart).toBeDefined();
+      expect(imagePart.image_url.url).toBe(
+        `data:${TEST_MIME};base64,${TEST_BASE64}`
+      );
     });
 
     it('uses the user-configured model_name', async () => {
@@ -690,6 +747,25 @@ describe('estimateFoodPhotoNutrition', () => {
       expect(
         body.tools[0].input_schema.properties.totals.additionalProperties
       ).toBe(false);
+    });
+
+    it('sends the base64 image and media_type in the image source block', async () => {
+      mockAnthropicSuccess(sampleEstimate);
+      await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const imagePart = body.messages[0].content.find(
+        (p: { type?: string }) => p.type === 'image'
+      );
+      expect(imagePart).toBeDefined();
+      expect(imagePart.source.type).toBe('base64');
+      expect(imagePart.source.data).toBe(TEST_BASE64);
+      expect(imagePart.source.media_type).toBe(TEST_MIME);
     });
 
     it('uses the user-configured model_name', async () => {

@@ -190,6 +190,7 @@ describe('POST /food-crud/estimate-food-photo', () => {
     ['CONTENT_BLOCKED', 422],
     ['PARSE_ERROR', 422],
     ['UPSTREAM_ERROR', 502],
+    ['TIMEOUT', 504],
   ])('maps service code %s to HTTP %i', async (code, status) => {
     // @ts-expect-error mocked
     foodPhotoEstimationService.estimateFoodPhotoNutrition.mockResolvedValue({

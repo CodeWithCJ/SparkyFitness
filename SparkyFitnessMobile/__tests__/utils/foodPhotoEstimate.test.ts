@@ -56,6 +56,14 @@ describe('foodPhotoEstimate', () => {
         expect(copy.stayOnForm).toBe(true);
       }
     });
+
+    test('TIMEOUT has its own copy and stays on form for retry', () => {
+      const copy = mapEstimateError('TIMEOUT');
+      expect(copy.stayOnForm).toBe(true);
+      expect(copy.invalidateAiSettings).toBe(false);
+      expect(copy.title.toLowerCase()).toContain('timed out');
+      expect(copy.message.toLowerCase()).toContain('too long');
+    });
   });
 
   describe('foodPhotoProviderLabel', () => {
