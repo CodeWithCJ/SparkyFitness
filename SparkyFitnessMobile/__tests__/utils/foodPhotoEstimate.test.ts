@@ -1,7 +1,7 @@
 import {
-  mapOverallConfidence,
-  mapItemConfidence,
-  confidenceTone,
+  overallConfidenceLabels,
+  itemConfidenceLabels,
+  confidenceTones,
   mapEstimateError,
   foodPhotoProviderLabel,
 } from '../../src/utils/foodPhotoEstimate';
@@ -9,21 +9,21 @@ import {
 describe('foodPhotoEstimate', () => {
   describe('confidence mapping', () => {
     test('overall labels: Good / Fair / Rough', () => {
-      expect(mapOverallConfidence('high')).toBe('Good');
-      expect(mapOverallConfidence('medium')).toBe('Fair');
-      expect(mapOverallConfidence('low')).toBe('Rough');
+      expect(overallConfidenceLabels.high).toBe('Good');
+      expect(overallConfidenceLabels.medium).toBe('Fair');
+      expect(overallConfidenceLabels.low).toBe('Rough');
     });
 
     test('item labels: Likely / Possible / Uncertain', () => {
-      expect(mapItemConfidence('high')).toBe('Likely');
-      expect(mapItemConfidence('medium')).toBe('Possible');
-      expect(mapItemConfidence('low')).toBe('Uncertain');
+      expect(itemConfidenceLabels.high).toBe('Likely');
+      expect(itemConfidenceLabels.medium).toBe('Possible');
+      expect(itemConfidenceLabels.low).toBe('Uncertain');
     });
 
     test('tone maps to success / warning / error', () => {
-      expect(confidenceTone('high')).toBe('success');
-      expect(confidenceTone('medium')).toBe('warning');
-      expect(confidenceTone('low')).toBe('error');
+      expect(confidenceTones.high).toBe('success');
+      expect(confidenceTones.medium).toBe('warning');
+      expect(confidenceTones.low).toBe('error');
     });
   });
 

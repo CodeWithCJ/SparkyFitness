@@ -617,9 +617,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                       <View className="w-16 h-16 rounded-full bg-white" />
                     </TouchableOpacity>
                   )}
-                  {/* Centered between capture-button right edge and segmented-control right edge.
-                      right: 25% lands the button's right edge at W/4 from screen-right;
-                      translateX(26) shifts it so its center sits at W/4 - 4 from the right. */}
+                  {/* Centered between the capture button and the segmented control's right edge. */}
                   <TouchableOpacity
                     onPress={() => navigation.navigate('FoodPhotoIntro', { date })}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

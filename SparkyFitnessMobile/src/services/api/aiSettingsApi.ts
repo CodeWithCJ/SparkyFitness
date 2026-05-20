@@ -2,6 +2,7 @@ import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import { FOOD_PHOTO_PROVIDER_LABELS } from '../../utils/foodPhotoEstimate';
 
 export interface ActiveAiServiceSetting {
   id: string;
@@ -12,17 +13,8 @@ export interface ActiveAiServiceSetting {
   source?: 'user' | 'global' | string;
 }
 
-/**
- * Fetches the active AI service setting (user-scoped, with global fallback
- * inside the server). Returns `null` when nothing is configured or any
- * failure occurs — this never throws, so callers can gate UI without
- * a try/catch.
- *
- * Server contract (chatRoutes.ts:227-254 + chatService.ts:66-90):
- *   - 200 + setting object when active config exists
- *   - 200 + `null` body when none is configured (or service errored)
- *   - 404 only for a specific message the service no longer throws
- */
+// Returns `null` when nothing is configured or any failure occurs — never
+// throws, so callers can gate UI without a try/catch.
 export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSetting | null> {
   const config = await getActiveServerConfig();
   if (!config) return null;
@@ -66,12 +58,8 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   }
 }
 
-const FOOD_PHOTO_SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic']);
+const FOOD_PHOTO_SUPPORTED_PROVIDERS = new Set(Object.keys(FOOD_PHOTO_PROVIDER_LABELS));
 
-/**
- * Food photo estimation supports Google, OpenAI, and Anthropic on the
- * server. Any other provider (or missing config) should gate the UI.
- */
 export function isFoodPhotoAvailable(
   setting: ActiveAiServiceSetting | null | undefined,
 ): boolean {

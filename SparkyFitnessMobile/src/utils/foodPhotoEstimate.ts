@@ -23,43 +23,22 @@ export const confidenceTones: Record<FoodPhotoEstimateConfidence, ConfidenceTone
   low: 'error',
 };
 
-export function mapOverallConfidence(value: FoodPhotoEstimateConfidence): string {
-  return overallConfidenceLabels[value];
-}
-
-export function mapItemConfidence(value: FoodPhotoEstimateConfidence): string {
-  return itemConfidenceLabels[value];
-}
-
-export function confidenceTone(value: FoodPhotoEstimateConfidence): ConfidenceTone {
-  return confidenceTones[value];
-}
-
 export interface EstimateErrorCopy {
-  /** Toast title */
   title: string;
-  /** Toast body */
   message: string;
-  /** Whether the screen should keep the user on the improve form */
   stayOnForm: boolean;
-  /** Whether the active AI setting cache should be invalidated */
   invalidateAiSettings: boolean;
 }
 
-const FOOD_PHOTO_PROVIDER_LABELS: Record<string, string> = {
+// Canonical allow-list for food-photo estimation providers. Mirrors the
+// server's SUPPORTED_PROVIDERS in foodPhotoEstimationService.ts; the keys
+// drive both the gate (via isFoodPhotoAvailable) and the display label.
+export const FOOD_PHOTO_PROVIDER_LABELS: Record<string, string> = {
   google: 'Google Gemini',
   openai: 'OpenAI',
   anthropic: 'Anthropic',
 };
 
-/**
- * Display name for the AI provider that will run the photo estimate. The
- * server pins the model per provider, so we surface the provider only —
- * keeping the user's expectations aligned with the supported allow-list in
- * `isFoodPhotoAvailable` and `foodPhotoEstimationService.SUPPORTED_PROVIDERS`.
- * Returns `null` for providers outside the allow-list (the gate UI fires
- * upstream, but defensively returning null keeps the row hidden if reached).
- */
 export function foodPhotoProviderLabel(
   serviceType: string | null | undefined,
 ): string | null {

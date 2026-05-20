@@ -56,8 +56,10 @@ type Props = FoodPhotoFlowScreenProps<'LogEntry'>;
 
 const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const [accentPrimary, textPrimary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string];
 
   const { saveFoodPayload } = route.params;
 

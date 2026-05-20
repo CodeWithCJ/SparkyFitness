@@ -14,9 +14,9 @@ import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import Icon from '../components/Icon';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
-  confidenceTone,
-  mapItemConfidence,
-  mapOverallConfidence,
+  confidenceTones,
+  itemConfidenceLabels,
+  overallConfidenceLabels,
   type ConfidenceTone,
 } from '../utils/foodPhotoEstimate';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -61,8 +61,10 @@ const positiveOrUndefined = (v: number | undefined | null) =>
 
 const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const [accentPrimary, textPrimary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string];
 
   const dismissFlow = () =>
     navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
@@ -92,8 +94,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);
   const [showIngredients, setShowIngredients] = useState(false);
 
-  const overallTone = confidenceTone(estimate.overall_confidence);
-  const overallLabel = mapOverallConfidence(estimate.overall_confidence);
+  const overallTone = confidenceTones[estimate.overall_confidence];
+  const overallLabel = overallConfidenceLabels[estimate.overall_confidence];
 
   const totalWeightLabel = useMemo(
     () => `${Math.round(estimate.totals.total_grams)} g`,
@@ -184,8 +186,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   };
 
   const renderItem = (item: FoodPhotoEstimateItem, idx: number) => {
-    const itemLabel = mapItemConfidence(item.item_confidence);
-    const itemTone = confidenceTone(item.item_confidence);
+    const itemLabel = itemConfidenceLabels[item.item_confidence];
+    const itemTone = confidenceTones[item.item_confidence];
     const grams = Math.round(item.estimated_grams);
     const prepLabel = item.preparation?.trim() ?? '';
     const portion = item.portion_description?.trim() ?? '';

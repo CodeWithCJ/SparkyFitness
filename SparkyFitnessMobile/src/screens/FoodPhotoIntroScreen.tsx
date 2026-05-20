@@ -36,10 +36,12 @@ const Bullet: React.FC<{
 
 const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
-  const catViolet = String(useCSSVariable('--color-cat-violet'));
-  const catOrange = String(useCSSVariable('--color-cat-orange'));
+  const [textPrimary, accentPrimary, catViolet, catOrange] = useCSSVariable([
+    '--color-text-primary',
+    '--color-accent-primary',
+    '--color-cat-violet',
+    '--color-cat-orange',
+  ]) as [string, string, string, string];
   const date = route.params?.date;
 
   const handleContinue = async () => {

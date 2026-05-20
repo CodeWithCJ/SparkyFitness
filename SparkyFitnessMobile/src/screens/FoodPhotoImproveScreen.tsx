@@ -54,8 +54,11 @@ function pendingMessageFor(elapsedSec: number): string {
 const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const [accentPrimary, textPrimary, dangerColor] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+    '--color-text-danger-subtle',
+  ]) as [string, string, string];
 
   const { date, photo } = route.params;
 
@@ -324,7 +327,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text
               className="text-xs mb-6"
               style={{
-                color: descriptionTooLong ? '#dc2626' : textPrimary,
+                color: descriptionTooLong ? dangerColor : textPrimary,
                 opacity: descriptionTooLong ? 1 : 0.6,
               }}
             >

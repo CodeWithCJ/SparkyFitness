@@ -64,7 +64,6 @@ export interface FoodFormProps {
    * alone — the user is relabeling, not converting.
    */
   convertServingSizeOnUnitChange?: boolean;
-  /** Content rendered above the form fields, inside the scroll view. */
   headerChildren?: React.ReactNode;
   children?: React.ReactNode;
 }
