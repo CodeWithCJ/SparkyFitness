@@ -22,7 +22,10 @@ import {
 } from '@/utils/chartUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
-import { formatNutrientValue } from '@/utils/nutrientUtils';
+import {
+  formatNutrientValue,
+  withNetCarbsSubstitution,
+} from '@/utils/nutrientUtils';
 import { NutritionData } from '@/types/reports';
 import { calculateAverage } from '@/utils/reportUtil';
 import { ExpandedGoals } from '@/types/goals';
@@ -45,7 +48,12 @@ const NutritionChartsGrid = ({
     nutrientDisplayPreferences,
     energyUnit,
     convertEnergy,
+    showNetCarbs,
   } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
+  const effectiveNutritionData = useMemo(
+    () => withNetCarbsSubstitution(nutritionData, showNetCarbs),
+    [nutritionData, showNetCarbs]
+  );
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const reportChartPreferences = nutrientDisplayPreferences.find(
@@ -94,7 +102,10 @@ const NutritionChartsGrid = ({
     // Standard nutrients - use centralized chartColor
     const charts = Object.values(CENTRAL_NUTRIENT_CONFIG).map((n) => ({
       key: n.id,
-      label: t(n.label, n.defaultLabel),
+      label:
+        n.id === 'carbs' && showNetCarbs
+          ? t('nutrition.netCarbs', 'Net Carbs')
+          : t(n.label, n.defaultLabel),
       color: n.chartColor, // Use centralized chartColor
       unit: n.id === 'calories' ? energyUnit : n.unit,
     }));
@@ -136,7 +147,7 @@ const NutritionChartsGrid = ({
     });
 
     return charts;
-  }, [t, energyUnit, customNutrients]);
+  }, [t, energyUnit, customNutrients, showNetCarbs]);
 
   const visibleCharts = useMemo(() => {
     if (reportChartPreferences && reportChartPreferences.visible_nutrients) {
@@ -152,8 +163,8 @@ const NutritionChartsGrid = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
       {visibleCharts.map((chart) => {
-        const chartData = prepareChartData(nutritionData, chart.key);
-        const yAxisDomain = getYAxisDomain(nutritionData, chart.key);
+        const chartData = prepareChartData(effectiveNutritionData, chart.key);
+        const yAxisDomain = getYAxisDomain(effectiveNutritionData, chart.key);
         const average = calculateAverage(chartData, chart.key);
 
         let formattedAverage = '';

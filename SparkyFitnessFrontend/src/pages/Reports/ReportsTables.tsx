@@ -19,6 +19,7 @@ import { parseISO } from 'date-fns';
 import {
   getNutrientMetadata,
   formatNutrientValue,
+  getNetCarbsValue,
 } from '@/utils/nutrientUtils';
 import {
   formatWeight,
@@ -76,6 +77,7 @@ const ReportsTables = ({
     energyUnit,
     convertEnergy,
     getEnergyUnitString,
+    showNetCarbs,
   } = usePreferences();
 
   debug(
@@ -362,7 +364,10 @@ const ReportsTables = ({
                       nutrient,
                       customNutrients
                     );
-                    const label = t(metadata.label, metadata.defaultLabel);
+                    const isNetCarbs = nutrient === 'carbs' && showNetCarbs;
+                    const label = isNetCarbs
+                      ? t('nutrition.netCarbs', 'Net Carbs')
+                      : t(metadata.label, metadata.defaultLabel);
                     const unit =
                       nutrient === 'calories'
                         ? getEnergyUnitString(energyUnit)
@@ -434,10 +439,15 @@ const ReportsTables = ({
                           );
                         }
 
-                        // Directly use the pre-calculated nutrient value from the entry
-                        const value =
+                        // Directly use the pre-calculated nutrient value from the entry,
+                        // substituting net carbs when the user preference is enabled.
+                        const rawValue =
                           (entry[nutrient as keyof DailyFoodEntry] as number) ||
                           0;
+                        const value =
+                          nutrient === 'carbs' && showNetCarbs
+                            ? getNetCarbsValue(rawValue, entry.dietary_fiber)
+                            : rawValue;
 
                         const displayValue =
                           nutrient === 'calories'

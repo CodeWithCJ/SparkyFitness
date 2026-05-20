@@ -1462,6 +1462,7 @@
       "calories": "Calories",
       "protein": "Protein (g)",
       "carbs": "Carbs (g)",
+      "netCarbs": "Net Carbs (g)",
       "fat": "Fat (g)",
       "glycemicIndex": "Glycemic Index",
       "saturatedFat": "Saturated Fat (g)",
