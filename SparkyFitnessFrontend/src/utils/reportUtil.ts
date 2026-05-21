@@ -14,6 +14,7 @@ import {
   calculateFoodEntryNutrition,
   getEnergyUnitString,
 } from './nutritionCalculations';
+import { getNetCarbsValue } from './nutrientUtils';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import {
   DailyExerciseEntry,
@@ -291,6 +292,7 @@ export const exportFoodDiary = async ({
   endDate,
   formatDateInUserTimezone,
   convertEnergy,
+  showNetCarbs = false,
 }: {
   loggingLevel: LoggingLevel;
   tabularData: DailyFoodEntry[];
@@ -304,6 +306,7 @@ export const exportFoodDiary = async ({
     fromUnit: EnergyUnit,
     toUnit: EnergyUnit
   ) => number;
+  showNetCarbs?: boolean;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export food diary.');
   try {
@@ -331,7 +334,9 @@ export const exportFoodDiary = async ({
         unit: getEnergyUnitString(energyUnit),
       }),
       i18n.t('reports.foodDiaryExportHeaders.protein', 'Protein (g)'),
-      i18n.t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'),
+      showNetCarbs
+        ? i18n.t('reports.foodDiaryExportHeaders.netCarbs', 'Net Carbs (g)')
+        : i18n.t('reports.foodDiaryExportHeaders.carbs', 'Carbs (g)'),
       i18n.t('reports.foodDiaryExportHeaders.fat', 'Fat (g)'),
       i18n.t(
         'reports.foodDiaryExportHeaders.saturatedFat',
@@ -486,7 +491,13 @@ export const exportFoodDiary = async ({
               convertEnergy(calculatedNutrition.calories, 'kcal', energyUnit)
             ).toString(),
             calculatedNutrition.protein.toFixed(1), // g
-            calculatedNutrition.carbs.toFixed(1), // g
+            (showNetCarbs
+              ? getNetCarbsValue(
+                  calculatedNutrition.carbs,
+                  calculatedNutrition.dietary_fiber
+                )
+              : calculatedNutrition.carbs
+            ).toFixed(1), // g
             calculatedNutrition.fat.toFixed(1), // g
             (calculatedNutrition.saturated_fat || 0).toFixed(1), // g
             (calculatedNutrition.polyunsaturated_fat || 0).toFixed(1), // g
@@ -521,7 +532,10 @@ export const exportFoodDiary = async ({
             convertEnergy(totals.calories ?? 0, 'kcal', energyUnit)
           ).toString(),
           (totals.protein ?? 0).toFixed(1),
-          (totals.carbs ?? 0).toFixed(1),
+          (showNetCarbs
+            ? getNetCarbsValue(totals.carbs, totals.dietary_fiber)
+            : (totals.carbs ?? 0)
+          ).toFixed(1),
           (totals.fat ?? 0).toFixed(1),
           (totals.saturated_fat ?? 0).toFixed(1),
           (totals.polyunsaturated_fat ?? 0).toFixed(1),

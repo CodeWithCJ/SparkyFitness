@@ -17,6 +17,7 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import {
   getNutrientMetadata,
   formatNutrientValue,
+  getNetCarbsValue,
 } from '@/utils/nutrientUtils';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useMiniNutritionTrendData } from '@/hooks/Foods/useFoods';
@@ -48,6 +49,7 @@ interface CustomTooltipProps extends TooltipProps<number, string> {
   ) => number;
   customNutrients: UserCustomNutrient[];
   formatDate: (date: Date, formatStr: string) => string;
+  getDisplayLabel: (nutrient: string) => string;
   payload?: PayloadItem[];
   label?: string;
 }
@@ -60,6 +62,7 @@ const CustomTooltip = ({
   convertEnergy,
   customNutrients,
   formatDate,
+  getDisplayLabel,
 }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const firstPaylod = payload[0];
@@ -87,8 +90,7 @@ const CustomTooltip = ({
           {label ? formatDate(parseISO(label), 'MMM dd') : ''}
         </p>
         <p className="text-xs text-gray-600 dark:text-gray-400">
-          {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}
-          {displayValue} {unitString}
+          {getDisplayLabel(nutrientName)}: {displayValue} {unitString}
         </p>
       </div>
     );
@@ -108,6 +110,7 @@ interface MiniTrendChartProps {
   ) => number;
   customNutrients: UserCustomNutrient[];
   formatDate: (date: Date, formatStr: string) => string;
+  getDisplayLabel: (nutrient: string) => string;
 }
 
 const MiniTrendChart = memo(
@@ -119,6 +122,7 @@ const MiniTrendChart = memo(
     convertEnergy,
     customNutrients,
     formatDate,
+    getDisplayLabel,
   }: MiniTrendChartProps) => {
     const lastValue =
       (data[data.length - 1]?.[nutrient as keyof DayData] as number) || 0;
@@ -157,6 +161,7 @@ const MiniTrendChart = memo(
                     convertEnergy={convertEnergy}
                     customNutrients={customNutrients}
                     formatDate={formatDate}
+                    getDisplayLabel={getDisplayLabel}
                   />
                 }
               />
@@ -191,6 +196,7 @@ const MiniNutritionTrends = ({
     nutrientDisplayPreferences,
     energyUnit,
     convertEnergy,
+    showNetCarbs,
   } = usePreferences();
 
   const dateRange = useMemo(() => {
@@ -232,6 +238,21 @@ const MiniNutritionTrends = ({
     ? summaryPreferences.visible_nutrients
     : ['calories', 'protein', 'carbs', 'fat', 'dietary_fiber'];
 
+  const displayChartData = showNetCarbs
+    ? chartData.map((day) => ({
+        ...day,
+        carbs: getNetCarbsValue(day.carbs, day.dietary_fiber),
+      }))
+    : chartData;
+
+  const getDisplayLabel = (nutrient: string) => {
+    if (nutrient === 'carbs' && showNetCarbs) {
+      return t('nutrition.netCarbs', 'Net Carbs');
+    }
+    const metadata = getNutrientMetadata(nutrient, customNutrients);
+    return t(metadata.label, metadata.defaultLabel);
+  };
+
   return (
     <div className="mt-4 space-y-3">
       <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -242,7 +263,7 @@ const MiniNutritionTrends = ({
         const metadata = getNutrientMetadata(nutrient, customNutrients);
         const details: ChartDetails = {
           color: metadata.chartColor || '#808080',
-          label: t(metadata.label, metadata.defaultLabel),
+          label: getDisplayLabel(nutrient),
           unit: metadata.unit,
         };
 
@@ -251,11 +272,12 @@ const MiniNutritionTrends = ({
             key={nutrient}
             nutrient={nutrient}
             details={details}
-            data={chartData}
+            data={displayChartData}
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
             formatDate={formatDateInUserTimezone}
+            getDisplayLabel={getDisplayLabel}
           />
         );
       })}

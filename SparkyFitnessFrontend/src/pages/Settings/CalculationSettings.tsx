@@ -56,6 +56,7 @@ const CalculationSettings = () => {
     bmrAlgorithm: contextBmrAlgorithm,
     bodyFatAlgorithm: contextBodyFatAlgorithm,
     includeBmrInNetCalories: contextIncludeBmrInNetCalories,
+    showNetCarbs: contextShowNetCarbs,
     fatBreakdownAlgorithm: contextFatBreakdownAlgorithm,
     mineralCalculationAlgorithm: contextMineralCalculationAlgorithm,
     vitaminCalculationAlgorithm: contextVitaminCalculationAlgorithm,
@@ -90,6 +91,9 @@ const CalculationSettings = () => {
   const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(
     contextIncludeBmrInNetCalories || false
   );
+  const [showNetCarbs, setShowNetCarbs] = useState(
+    contextShowNetCarbs || false
+  );
   const [fatBreakdownAlgorithm, setFatBreakdownAlgorithm] =
     useState<FatBreakdownAlgorithm>(
       contextFatBreakdownAlgorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
@@ -123,6 +127,9 @@ const CalculationSettings = () => {
     if (contextIncludeBmrInNetCalories !== undefined) {
       setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
     }
+    if (contextShowNetCarbs !== undefined) {
+      setShowNetCarbs(contextShowNetCarbs);
+    }
     if (contextFatBreakdownAlgorithm) {
       setFatBreakdownAlgorithm(contextFatBreakdownAlgorithm);
     }
@@ -155,6 +162,7 @@ const CalculationSettings = () => {
     contextBmrAlgorithm,
     contextBodyFatAlgorithm,
     contextIncludeBmrInNetCalories,
+    contextShowNetCarbs,
     contextFatBreakdownAlgorithm,
     contextMineralCalculationAlgorithm,
     contextVitaminCalculationAlgorithm,
@@ -172,6 +180,7 @@ const CalculationSettings = () => {
         bmrAlgorithm,
         bodyFatAlgorithm,
         includeBmrInNetCalories,
+        showNetCarbs,
         energyUnit, // Ensure energyUnit is included in saving
         fatBreakdownAlgorithm: fatBreakdownAlgorithm,
         mineralCalculationAlgorithm: mineralCalculationAlgorithm,
@@ -337,6 +346,31 @@ const CalculationSettings = () => {
               {t(
                 'calculationSettings.includeBmrInNetCaloriesHint',
                 'When enabled, your BMR will be subtracted from your daily net calorie total.'
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="show-net-carbs"
+            checked={showNetCarbs}
+            onCheckedChange={(checked) => setShowNetCarbs(Boolean(checked))}
+          />
+          <div className="grid gap-1.5 leading-none">
+            <Label
+              htmlFor="show-net-carbs"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              {t(
+                'calculationSettings.showNetCarbs',
+                'Show net carbs (carbs minus fiber)'
+              )}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'calculationSettings.showNetCarbsHint',
+                'When enabled, carbohydrate summaries display total carbs minus dietary fiber.'
               )}
             </p>
           </div>

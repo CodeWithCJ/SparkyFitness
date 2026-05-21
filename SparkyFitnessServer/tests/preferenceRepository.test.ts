@@ -54,4 +54,24 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     ).rejects.toThrow('DB error');
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
+
+  it('round-trips the show_net_carbs preference through save and load', async () => {
+    const row = { user_id: 'user-1', show_net_carbs: true };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.show_net_carbs).toBe(true);
+    expect(mockClient.query.mock.calls[0][0]).toContain('show_net_carbs');
+    expect(mockClient.query.mock.calls[0][1]).toContain(true);
+    expect(mockClient.query.mock.calls[1]).toEqual([
+      'SELECT * FROM user_preferences WHERE user_id = $1',
+      ['user-1'],
+    ]);
+  });
 });

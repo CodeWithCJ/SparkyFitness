@@ -16,6 +16,7 @@ async function validateTimezone(preferenceData: any) {
 function getDefaultPreferences() {
   return {
     calorie_goal_adjustment_mode: 'dynamic',
+    show_net_carbs: false,
     timezone: null,
   };
 }

@@ -48,6 +48,7 @@ const Reports = () => {
     convertEnergy,
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
+    showNetCarbs,
   } = usePreferences();
 
   // Suppress specific Recharts warning in hidden tabs
@@ -287,6 +288,7 @@ const Reports = () => {
                   endDate,
                   formatDateInUserTimezone,
                   convertEnergy,
+                  showNetCarbs,
                 })
               }
               onExportBodyMeasurements={() =>

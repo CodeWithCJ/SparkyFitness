@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import {
   getNutrientMetadata,
   formatNutrientValue,
+  getNetCarbsValue,
 } from '@/utils/nutrientUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
@@ -54,7 +55,8 @@ const DiaryTopControls = ({
   convertEnergy,
   customNutrients = [], // Default to empty array
 }: DiaryTopControlsProps) => {
-  const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
+  const { loggingLevel, nutrientDisplayPreferences, showNetCarbs } =
+    usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -145,6 +147,12 @@ const DiaryTopControls = ({
                   (dayTotals[nutrient as keyof DayTotals] as number) ??
                   dayTotals.custom_nutrients?.[nutrient] ??
                   0;
+                const displayNutrient =
+                  nutrient === 'carbs' && showNetCarbs ? 'net_carbs' : nutrient;
+                const comparisonTotal =
+                  nutrient === 'carbs' && showNetCarbs
+                    ? getNetCarbsValue(dayTotals.carbs, dayTotals.dietary_fiber)
+                    : total;
                 const rawGoal = goals[nutrient as keyof ExpandedGoals];
                 const goal =
                   typeof rawGoal === 'number'
@@ -154,9 +162,13 @@ const DiaryTopControls = ({
                 const displayTotal =
                   nutrient === 'calories'
                     ? Math.round(
-                        convertEnergy(total, 'kcal', energyUnit)
+                        convertEnergy(comparisonTotal, 'kcal', energyUnit)
                       ).toString()
-                    : formatNutrientValue(nutrient, total, customNutrients);
+                    : formatNutrientValue(
+                        nutrient,
+                        comparisonTotal,
+                        customNutrients
+                      );
 
                 const displayGoal =
                   nutrient === 'calories'
@@ -170,11 +182,14 @@ const DiaryTopControls = ({
                     ? getEnergyUnitString(energyUnit)
                     : metadata.unit;
 
-                const label = t(metadata.label, metadata.defaultLabel);
+                const label =
+                  displayNutrient === 'net_carbs'
+                    ? t('nutrition.netCarbs', 'Net Carbs')
+                    : t(metadata.label, metadata.defaultLabel);
                 const colorClass = metadata.color;
 
                 const percentage =
-                  goal > 0 ? Math.min((total / goal) * 100, 100) : 0;
+                  goal > 0 ? Math.min((comparisonTotal / goal) * 100, 100) : 0;
 
                 return (
                   <div key={nutrient} className="text-center">

@@ -28,6 +28,7 @@ export interface UserPreferences {
   vitamin_calculation_algorithm: 'RDA_STANDARD' | string;
   sugar_calculation_algorithm: 'WHO_GUIDELINES' | string;
   include_bmr_in_net_calories: boolean;
+  show_net_carbs: boolean;
   calorie_goal_adjustment_mode:
     | 'dynamic'
     | 'fixed'

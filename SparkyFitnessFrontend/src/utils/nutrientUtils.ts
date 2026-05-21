@@ -81,3 +81,33 @@ export const getRoundedNutrientValue = (
   const formatted = formatNutrientValue(key, value, customNutrients);
   return formatted === '' ? 0 : parseFloat(formatted);
 };
+
+export const getNetCarbsValue = (
+  carbs: string | number | null | undefined,
+  dietaryFiber: string | number | null | undefined
+): number => {
+  const carbsValue = Number(carbs) || 0;
+  const fiberValue = Number(dietaryFiber) || 0;
+  return Math.max(0, carbsValue - fiberValue);
+};
+
+/**
+ * Returns a shallow-cloned array where each row's `carbs` field is
+ * substituted with `max(0, carbs - dietary_fiber)` when `showNetCarbs`
+ * is true. When false, returns the original array unchanged.
+ *
+ * Use this to make existing per-nutrient iterations transparently
+ * honor the Show Net Carbs preference without per-call-site branching.
+ */
+export const withNetCarbsSubstitution = <
+  T extends { carbs?: number | null; dietary_fiber?: number | null },
+>(
+  rows: T[],
+  showNetCarbs: boolean
+): T[] => {
+  if (!showNetCarbs) return rows;
+  return rows.map((row) => ({
+    ...row,
+    carbs: getNetCarbsValue(row.carbs, row.dietary_fiber),
+  }));
+};

@@ -6,7 +6,10 @@ import { NutritionData } from '@/types/reports';
 import { ExpandedGoals } from '@/types/goals';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
-import { formatNutrientValue } from '@/utils/nutrientUtils';
+import {
+  formatNutrientValue,
+  withNetCarbsSubstitution,
+} from '@/utils/nutrientUtils';
 import {
   AreaChart,
   Area,
@@ -49,8 +52,12 @@ const NutritionPeriodSummary = ({
   goals,
 }: NutritionPeriodSummaryProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, energyUnit, convertEnergy } =
+  const { formatDateInUserTimezone, energyUnit, convertEnergy, showNetCarbs } =
     usePreferences();
+  const effectiveNutritionData = useMemo(
+    () => withNetCarbsSubstitution(nutritionData, showNetCarbs),
+    [nutritionData, showNetCarbs]
+  );
 
   const [selectedNutrients, setSelectedNutrients] = useState<string[]>([
     'calories',
@@ -90,7 +97,10 @@ const NutritionPeriodSummary = ({
 
     const options = Object.values(CENTRAL_NUTRIENT_CONFIG).map((n) => ({
       key: n.id,
-      label: t(n.label, n.defaultLabel),
+      label:
+        n.id === 'carbs' && showNetCarbs
+          ? t('nutrition.netCarbs', 'Net Carbs')
+          : t(n.label, n.defaultLabel),
       unit: n.id === 'calories' ? energyUnit : n.unit,
       chartColor: n.chartColor,
     }));
@@ -105,7 +115,7 @@ const NutritionPeriodSummary = ({
     });
 
     return options;
-  }, [t, energyUnit, customNutrients]);
+  }, [t, energyUnit, customNutrients, showNetCarbs]);
 
   const selectedOption = useMemo(
     () =>
@@ -127,9 +137,12 @@ const NutritionPeriodSummary = ({
   const config = getChartConfig(primaryNutrient);
   const filteredNutritionData = useMemo(() => {
     return config.excludeIncompleteDay
-      ? excludeIncompleteDay(nutritionData, format(new Date(), 'yyyy-MM-dd'))
-      : nutritionData;
-  }, [nutritionData, config.excludeIncompleteDay]);
+      ? excludeIncompleteDay(
+          effectiveNutritionData,
+          format(new Date(), 'yyyy-MM-dd')
+        )
+      : effectiveNutritionData;
+  }, [effectiveNutritionData, config.excludeIncompleteDay]);
 
   // Calculate KPIs and prepare cumulative chart data using the same filtered dataset
   const { totalEaten, totalGoal, validDaysCount, cumulativeData, netBalance } =
