@@ -1,6 +1,7 @@
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
+import { ApiError } from './errors';
 
 export const normalizeUrl = (url: string): string => {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -52,7 +53,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
       }
       const errorText = await response.text();
       addLog(`[${serviceName}] Failed to ${operation}: ${response.status}`, 'ERROR', [errorText]);
-      throw new Error(`Server error: ${response.status} - ${errorText}`);
+      throw new ApiError(`Server error: ${response.status} - ${errorText}`, response.status, errorText);
     }
 
     if (response.status === 204 || response.headers?.get('content-length') === '0') {
