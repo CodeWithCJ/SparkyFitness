@@ -61,9 +61,15 @@ const queryClient = new QueryClient({
         err,
         variables
       );
+      // Surface backend-provided error detail alongside the meta-defined
+      // friendly message. Previously the meta string would always win,
+      // hiding 401/429/500 detail from the user (e.g. Garmin auth, MFA,
+      // rate-limit reasons all collapsed to "Failed to connect to Garmin.").
+      const errDetail = err instanceof Error && err.message ? err.message : '';
       const description =
-        resolvedErrorMessage ||
-        (err instanceof Error ? err.message : 'An error occurred');
+        resolvedErrorMessage && errDetail && errDetail !== resolvedErrorMessage
+          ? `${resolvedErrorMessage} — ${errDetail}`
+          : resolvedErrorMessage || errDetail || 'An error occurred';
       toast({
         title:
           (mutation.meta?.errorTitle as string) ||
