@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -6,7 +6,10 @@ import Button from './ui/Button';
 import SafeImage from './SafeImage';
 import EditableSetList from './EditableSetList';
 import RestPeriodChip from './RestPeriodChip';
+import ExerciseStatsChip from './ExerciseStatsChip';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import { useExerciseStats } from '../hooks/useExerciseStats';
+import { weightFromKg } from '../utils/unitConversions';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
@@ -18,6 +21,7 @@ interface EditableExerciseCardProps {
   activeSetKey: string | null;
   activeSetField: 'weight' | 'reps';
   weightUnit: string;
+  eligibleForPrefill?: boolean;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
   onDeactivateSet: () => void;
   onUpdateSetField: (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => void;
@@ -35,6 +39,7 @@ function EditableExerciseCard({
   activeSetKey,
   activeSetField,
   weightUnit,
+  eligibleForPrefill = false,
   onActivateSet,
   onDeactivateSet,
   onUpdateSetField,
@@ -52,7 +57,38 @@ function EditableExerciseCard({
     [getImageSource, imagePath],
   );
   const exerciseIcon = (exercise.exerciseCategory && CATEGORY_ICON_MAP[exercise.exerciseCategory]) || 'exercise-weights';
-  const firstSetRest = exercise.sets[0]?.restTime;
+  const firstSet = exercise.sets[0];
+  const firstSetRest = firstSet?.restTime;
+
+  const { data: stats } = useExerciseStats(exercise.exerciseId);
+  const didPrefillRef = useRef(false);
+
+  useEffect(() => {
+    if (didPrefillRef.current) return;
+    if (!eligibleForPrefill || !stats?.lastSet || !firstSet) return;
+
+    didPrefillRef.current = true;
+    if (firstSet.weight === '' && stats.lastSet.weight != null) {
+      const w = weightFromKg(stats.lastSet.weight, weightUnit as 'kg' | 'lbs');
+      onUpdateSetField(
+        exercise.clientId,
+        firstSet.clientId,
+        'weight',
+        String(parseFloat(w.toFixed(1))),
+      );
+    }
+    if (firstSet.reps === '' && stats.lastSet.reps != null) {
+      onUpdateSetField(
+        exercise.clientId,
+        firstSet.clientId,
+        'reps',
+        String(stats.lastSet.reps),
+      );
+    }
+    // Deps reference the stable identifiers + `stats?.lastSet` so typing into
+    // the row (which mutates firstSet.weight/reps) doesn't re-trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats?.lastSet, eligibleForPrefill, exercise.clientId, firstSet?.clientId, weightUnit, onUpdateSetField]);
 
   return (
     <View className="py-4">
@@ -73,23 +109,33 @@ function EditableExerciseCard({
               variant="ghost"
               onPress={() => onRemove(exercise)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              className="py-0 px-0"
+              className="py-0 px-0 shrink-0"
             >
               <Icon name="close" size={20} color={textMuted} />
             </Button>
           </View>
 
-          {subtitle ? (
-            <Text className="text-xs text-text-muted mt-0.5">
-              {subtitle}
-            </Text>
-          ) : null}
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-2">
+              {subtitle ? (
+                <Text className="text-xs text-text-muted mt-0.5">
+                  {subtitle}
+                </Text>
+              ) : null}
 
-          <View className="flex-row self-start mt-1.5">
-            <RestPeriodChip
-              value={firstSetRest}
-              onPress={() => onOpenRestSheet(exercise.clientId, firstSetRest)}
-            />
+              <View className="flex-row self-start mt-1.5">
+                <RestPeriodChip
+                  value={firstSetRest}
+                  onPress={() => onOpenRestSheet(exercise.clientId, firstSetRest)}
+                />
+              </View>
+            </View>
+            {stats?.bestSet ? (
+              <ExerciseStatsChip
+                bestSet={stats.bestSet}
+                weightUnit={weightUnit as 'kg' | 'lbs'}
+              />
+            ) : null}
           </View>
         </View>
       </View>

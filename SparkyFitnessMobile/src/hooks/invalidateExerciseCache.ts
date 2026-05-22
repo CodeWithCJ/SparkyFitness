@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   exerciseHistoryQueryKey,
   exerciseHistoryResetQueryKey,
+  exerciseStatsQueryKeyRoot,
   suggestedExercisesQueryKey,
   dailySummaryQueryKey,
 } from './queryKeys';
@@ -11,5 +12,6 @@ export function invalidateExerciseCache(queryClient: QueryClient, entryDate: str
   queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey], type: 'inactive' });
   queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
   void queryClient.invalidateQueries({ queryKey: [...suggestedExercisesQueryKey] });
+  void queryClient.invalidateQueries({ queryKey: [...exerciseStatsQueryKeyRoot] });
   void queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entryDate) });
 }

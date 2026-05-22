@@ -1,9 +1,12 @@
 import express, { RequestHandler } from 'express';
+import { z } from 'zod';
 import {
   exerciseSearchQuerySchema,
+  exerciseStatsResponseSchema,
   paginatedExercisesResponseSchema,
 } from '@workspace/shared';
 import { authenticate } from '../../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
 import exerciseService from '../../services/exerciseService.js';
 import { log } from '../../config/logging.js';
 
@@ -117,5 +120,75 @@ const searchHandler: RequestHandler = async (req, res, next) => {
 };
 
 router.get('/search', searchHandler);
+
+/**
+ * @swagger
+ * /v2/exercises/{exerciseId}/stats:
+ *   get:
+ *     summary: Per-exercise best set + last set stats
+ *     tags: [Exercise & Workouts]
+ *     description: |
+ *       Returns the caller's all-time best set (heaviest weight; tie-broken by reps DESC, entry_date DESC, created_at DESC)
+ *       and most recent set (entry_date + created_at DESC, then highest set_number) for a single exercise.
+ *       Both fields are null when the user has no qualifying history. Scoped to req.userId.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: exerciseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Exercise UUID.
+ *     responses:
+ *       200:
+ *         description: Best set + last set stats.
+ *       400:
+ *         description: Invalid exerciseId (not a UUID).
+ *       401:
+ *         description: Unauthenticated.
+ *       403:
+ *         description: Forbidden (no diary permission when acting on behalf of another user).
+ *       500:
+ *         description: Internal server error.
+ */
+const statsHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const parsed = z
+      .object({ exerciseId: z.string().uuid() })
+      .safeParse(req.params);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid exerciseId',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const stats = await exerciseService.getExerciseStats(
+      req.userId,
+      parsed.data.exerciseId
+    );
+    const response = exerciseStatsResponseSchema.parse(stats);
+    res.status(200).json(response);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 exercises stats response validation failed:', error);
+      next(
+        Object.assign(new Error('Internal response validation failed'), {
+          status: 500,
+        })
+      );
+      return;
+    }
+    next(error);
+  }
+};
+
+router.get(
+  '/:exerciseId/stats',
+  checkPermissionMiddleware('diary'),
+  statsHandler
+);
 
 module.exports = router;

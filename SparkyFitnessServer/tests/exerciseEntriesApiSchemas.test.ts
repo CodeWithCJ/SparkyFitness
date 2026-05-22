@@ -129,4 +129,84 @@ describe('Exercise entry API schemas', () => {
     const result = runSchema('updatePresetSessionRequestSchema', {});
     expect(result.success).toBe(false);
   });
+
+  it('accepts a stats payload with both bestSet and lastSet populated', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5,
+        setNumber: 3,
+      },
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: 80,
+        reps: 8,
+        setNumber: 1,
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.bestSet.weight).toBe(100);
+    expect(result.data.lastSet.setNumber).toBe(1);
+  });
+
+  it('accepts a stats payload with both nulls (no history)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+    });
+    expect(result).toEqual({
+      success: true,
+      data: { bestSet: null, lastSet: null },
+    });
+  });
+
+  it('accepts lastSet with null weight (bodyweight exercise)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: null,
+        reps: 10,
+        setNumber: 2,
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.lastSet.weight).toBeNull();
+  });
+
+  it('rejects stats payloads with non-YYYY-MM-DD entryDate', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '05/20/2026',
+        weight: 100,
+        reps: 5,
+        setNumber: 1,
+      },
+      lastSet: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects stats payloads with unknown keys (strict)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      extra: 'nope',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects non-integer reps in a set stats row', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5.5,
+        setNumber: 1,
+      },
+      lastSet: null,
+    });
+    expect(result.success).toBe(false);
+  });
 });

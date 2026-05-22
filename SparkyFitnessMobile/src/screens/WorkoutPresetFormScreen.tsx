@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
@@ -46,6 +46,7 @@ interface PresetFormBodyProps {
   ) => void;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
 }
 
@@ -58,6 +59,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   updateSetField,
   removeSet,
   setExerciseRest,
+  isEligibleForPrefill,
   onAddExercisePress,
 }) => {
   const { getImageSource } = useExerciseImageSource();
@@ -107,6 +109,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
           onAddExercisePress={onAddExercisePress}
           onChangeRest={setExerciseRest}
+          isEligibleForPrefill={isEligibleForPrefill}
         />
       </View>
     </View>
@@ -141,7 +144,29 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     setExerciseRest,
   } = useWorkoutPresetForm();
 
-  const exerciseSetEditing = useExerciseSetEditing({ addExercise, removeExercise, addSet });
+  const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
+  const wrappedAddExercise = useCallback(
+    (exercise: Parameters<typeof addExercise>[0]) => {
+      const result = addExercise(exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(result.exerciseClientId);
+        return next;
+      });
+      return result;
+    },
+    [addExercise],
+  );
+  const isEligibleForPrefill = useCallback(
+    (clientId: string) => eligibleIds.has(clientId),
+    [eligibleIds],
+  );
+
+  const exerciseSetEditing = useExerciseSetEditing({
+    addExercise: wrappedAddExercise,
+    removeExercise,
+    addSet,
+  });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
@@ -218,6 +243,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         updateSetField={updateSetField}
         removeSet={removeSet}
         setExerciseRest={setExerciseRest}
+        isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />
     </FormScreenChrome>
@@ -280,7 +306,29 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     initialDescriptionRef,
   } = useWorkoutPresetForm();
 
-  const exerciseSetEditing = useExerciseSetEditing({ addExercise, removeExercise, addSet });
+  const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
+  const wrappedAddExercise = useCallback(
+    (exercise: Parameters<typeof addExercise>[0]) => {
+      const result = addExercise(exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(result.exerciseClientId);
+        return next;
+      });
+      return result;
+    },
+    [addExercise],
+  );
+  const isEligibleForPrefill = useCallback(
+    (clientId: string) => eligibleIds.has(clientId),
+    [eligibleIds],
+  );
+
+  const exerciseSetEditing = useExerciseSetEditing({
+    addExercise: wrappedAddExercise,
+    removeExercise,
+    addSet,
+  });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
   const hasPopulatedRef = useRef(false);
@@ -357,6 +405,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         updateSetField={updateSetField}
         removeSet={removeSet}
         setExerciseRest={setExerciseRest}
+        isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />
     </FormScreenChrome>

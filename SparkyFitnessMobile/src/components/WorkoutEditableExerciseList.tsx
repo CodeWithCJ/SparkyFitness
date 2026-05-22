@@ -27,6 +27,7 @@ interface WorkoutEditableExerciseListProps {
   onRemoveExercise: (exercise: WorkoutDraftExercise) => void;
   onAddExercisePress: () => void;
   onChangeRest: (exerciseClientId: string, seconds: number) => void;
+  isEligibleForPrefill?: (clientId: string) => boolean;
   mode?: 'add' | 'detail';
 }
 
@@ -44,6 +45,7 @@ function WorkoutEditableExerciseList({
   onRemoveExercise,
   onAddExercisePress,
   onChangeRest,
+  isEligibleForPrefill,
   mode = 'add',
 }: WorkoutEditableExerciseListProps) {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
@@ -92,6 +94,7 @@ function WorkoutEditableExerciseList({
             activeSetKey={exerciseActiveSetKey}
             activeSetField={exerciseActiveSetKey ? activeSetField : 'weight'}
             weightUnit={weightUnit}
+            eligibleForPrefill={isEligibleForPrefill?.(exercise.clientId) ?? false}
             onActivateSet={onActivateSet}
             onDeactivateSet={onDeactivateSet}
             onUpdateSetField={onUpdateSetField}

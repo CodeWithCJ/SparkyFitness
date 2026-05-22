@@ -51,6 +51,11 @@ export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
 export const exerciseHistoryResetQueryKey = ['exerciseHistoryReset'] as const;
 
+export const exerciseStatsQueryKeyRoot = ['exerciseStats'] as const;
+
+export const exerciseStatsQueryKey = (exerciseId: string) =>
+  [...exerciseStatsQueryKeyRoot, exerciseId] as const;
+
 export const suggestedExercisesQueryKey = ['suggestedExercises'] as const;
 
 export const exerciseSearchQueryKey = (searchTerm: string) => ['exerciseSearch', searchTerm] as const;

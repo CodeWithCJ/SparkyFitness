@@ -9,7 +9,25 @@ import exerciseRoutesV2 from '../routes/v2/exerciseRoutes.js';
 vi.mock('../services/exerciseService.js', () => ({
   default: {
     searchExercisesPaginated: vi.fn(),
+    getExerciseStats: vi.fn(),
   },
+}));
+
+// The route registers `checkPermissionMiddleware('diary')` once at module load,
+// so we mock the factory to return a stable middleware that delegates to a
+// swappable handler — tests then mutate `permissionHandler` per-case.
+const { permissionHandlerRef } = vi.hoisted(() => ({
+  permissionHandlerRef: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    current: (_req: any, _res: any, next: any) => next(),
+  },
+}));
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default:
+    () =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (req: any, res: any, next: any) =>
+      permissionHandlerRef.current(req, res, next),
 }));
 
 vi.mock('../config/logging.js', () => ({
@@ -73,6 +91,14 @@ describe('GET /v2/exercises/search', () => {
         next();
       }
     );
+    permissionHandlerRef.current = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _req: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _res: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      next: any
+    ) => next();
   });
 
   it('returns 200 with default pagination shape', async () => {
@@ -252,5 +278,122 @@ describe('GET /v2/exercises/search', () => {
 
     expect(res.statusCode).toBe(401);
     expect(exerciseService.searchExercisesPaginated).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /v2/exercises/:exerciseId/stats', () => {
+  const EXERCISE_UUID = '11111111-1111-4111-8111-111111111111';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authenticateMock.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (req: any, _res: any, next: any) => {
+        req.userId = 'user-123';
+        req.authenticatedUserId = 'user-123';
+        next();
+      }
+    );
+    permissionHandlerRef.current = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _req: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _res: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      next: any
+    ) => next();
+  });
+
+  it('returns 200 with a full payload when both sets are present', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseService.getExerciseStats.mockResolvedValue({
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5,
+        setNumber: 3,
+      },
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: 80,
+        reps: 8,
+        setNumber: 1,
+      },
+    });
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5,
+        setNumber: 3,
+      },
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: 80,
+        reps: 8,
+        setNumber: 1,
+      },
+    });
+    expect(exerciseService.getExerciseStats).toHaveBeenCalledWith(
+      'user-123',
+      EXERCISE_UUID
+    );
+  });
+
+  it('returns 200 with both nulls when the user has no history', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseService.getExerciseStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+    });
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ bestSet: null, lastSet: null });
+  });
+
+  it('returns 400 when exerciseId is not a UUID', async () => {
+    const res = await request(app).get('/v2/exercises/not-a-uuid/stats');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('Invalid exerciseId');
+    expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when authenticate rejects', async () => {
+    authenticateMock.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (_req: any, res: any, _next: any) => {
+        res.status(401).json({ error: 'Unauthenticated' });
+      }
+    );
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(401);
+    expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when diary permission is denied', async () => {
+    permissionHandlerRef.current = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _req: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      res: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _next: any
+    ) => {
+      res.status(403).json({ error: 'Forbidden' });
+    };
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(403);
+    expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
   });
 });

@@ -23,6 +23,8 @@ function createEmptyDraft(): PresetDraft {
   };
 }
 
+export type PresetClientIds = { exerciseClientId: string; setClientIds: string[] }[];
+
 type PresetFormAction =
   | { type: 'SET_NAME'; name: string }
   | { type: 'SET_DESCRIPTION'; description: string }
@@ -38,7 +40,12 @@ type PresetFormAction =
       value: string;
     }
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
-  | { type: 'POPULATE_FROM_PRESET'; preset: WorkoutPreset; weightUnit: 'kg' | 'lbs' };
+  | {
+      type: 'POPULATE_FROM_PRESET';
+      preset: WorkoutPreset;
+      weightUnit: 'kg' | 'lbs';
+      clientIds: PresetClientIds;
+    };
 
 export function presetFormReducer(state: PresetDraft, action: PresetFormAction): PresetDraft {
   switch (action.type) {
@@ -137,14 +144,14 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
       return {
         name: action.preset.name,
         description: action.preset.description ?? '',
-        exercises: action.preset.exercises.map(exercise => ({
-          clientId: generateClientId(),
+        exercises: action.preset.exercises.map((exercise, exerciseIdx) => ({
+          clientId: action.clientIds[exerciseIdx].exerciseClientId,
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_name,
           exerciseCategory: exercise.category ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
-          sets: exercise.sets.map(set => ({
-            clientId: generateClientId(),
+          sets: exercise.sets.map((set, setIdx) => ({
+            clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,
             weight:
               set.weight != null
@@ -223,10 +230,15 @@ export function useWorkoutPresetForm() {
   }, []);
 
   const populateFromPreset = useCallback(
-    (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs') => {
+    (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs'): string[] => {
+      const clientIds: PresetClientIds = preset.exercises.map(e => ({
+        exerciseClientId: generateClientId(),
+        setClientIds: e.sets.map(() => generateClientId()),
+      }));
       exercisesModifiedRef.current = false;
       initialDescriptionRef.current = preset.description ?? '';
-      dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit });
+      dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, clientIds });
+      return clientIds.map(c => c.exerciseClientId);
     },
     [],
   );

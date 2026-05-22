@@ -33,6 +33,12 @@ const makeEmptyDraft = (): WorkoutDraft => ({
   exercises: [],
 });
 
+const presetClientIds = (preset: WorkoutPreset) =>
+  preset.exercises.map((e, i) => ({
+    exerciseClientId: `gen-ex-${i}`,
+    setClientIds: e.sets.map((_, j) => `gen-set-${i}-${j}`),
+  }));
+
 describe('workoutFormReducer', () => {
   describe('RESTORE_DRAFT', () => {
     it('replaces entire state with the provided draft', () => {
@@ -723,6 +729,7 @@ describe('workoutFormReducer', () => {
         preset,
         weightUnit: 'kg',
         date: '2026-03-20',
+        clientIds: presetClientIds(preset),
       });
 
       expect(result.name).toBe('Full Body');
@@ -743,6 +750,7 @@ describe('workoutFormReducer', () => {
         type: 'POPULATE_FROM_PRESET',
         preset,
         weightUnit: 'lbs',
+        clientIds: presetClientIds(preset),
       });
 
       // 100 kg in lbs ≈ 220.5
@@ -757,6 +765,7 @@ describe('workoutFormReducer', () => {
         type: 'POPULATE_FROM_PRESET',
         preset,
         weightUnit: 'kg',
+        clientIds: presetClientIds(preset),
       });
 
       expect(result.entryDate).toBe('2026-03-12');
@@ -781,6 +790,7 @@ describe('workoutFormReducer', () => {
         type: 'POPULATE_FROM_PRESET',
         preset,
         weightUnit: 'kg',
+        clientIds: presetClientIds(preset),
       });
 
       expect(result.exercises[0].sets[0].weight).toBe('');
@@ -807,6 +817,7 @@ describe('workoutFormReducer', () => {
         type: 'POPULATE_FROM_PRESET',
         preset,
         weightUnit: 'kg',
+        clientIds: presetClientIds(preset),
       });
 
       expect(result.exercises[0].sets[0].restTime).toBe(120);
@@ -838,6 +849,7 @@ describe('workoutFormReducer', () => {
         preset,
         weightUnit: 'kg',
         date: '2026-03-20',
+        clientIds: presetClientIds(preset),
       });
 
       expect(result.exercises).toHaveLength(2);

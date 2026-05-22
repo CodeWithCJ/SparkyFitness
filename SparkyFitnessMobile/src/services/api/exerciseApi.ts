@@ -6,6 +6,7 @@ import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise'
 import type {
   ExerciseHistoryResponse,
   ExerciseSessionResponse,
+  ExerciseStatsResponse,
   CreatePresetSessionRequest,
   UpdatePresetSessionRequest,
   PresetSessionResponse,
@@ -29,6 +30,16 @@ export const fetchExerciseHistory = async (
     endpoint: `/api/v2/exercise-entries/history?page=${page}&pageSize=${pageSize}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise history',
+  });
+};
+
+export const fetchExerciseStats = async (
+  exerciseId: string,
+): Promise<ExerciseStatsResponse> => {
+  return apiFetch<ExerciseStatsResponse>({
+    endpoint: `/api/v2/exercises/${encodeURIComponent(exerciseId)}/stats`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercise stats',
   });
 };
 

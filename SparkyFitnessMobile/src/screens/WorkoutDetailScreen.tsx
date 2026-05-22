@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity, Pressable, Alert } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
@@ -353,6 +353,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const submission = getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs');
   const hasEditedExercisesWithSets = submission.canSave;
 
+  const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
+
+  const wrappedAddExercise = useCallback(
+    (exercise: Parameters<typeof addExercise>[0]) => {
+      const result = addExercise(exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(result.exerciseClientId);
+        return next;
+      });
+      return result;
+    },
+    [addExercise],
+  );
+
   const {
     activeSetKey,
     activeSetField,
@@ -361,11 +376,17 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     handleAddSet,
     activateSet,
     deactivateSet,
-  } = useExerciseSetEditing({ addExercise, removeExercise, addSet });
+  } = useExerciseSetEditing({ addExercise: wrappedAddExercise, removeExercise, addSet });
+
+  const isEligibleForPrefill = useCallback(
+    (clientId: string) => eligibleIds.has(clientId),
+    [eligibleIds],
+  );
 
   const startEditing = () => {
     populate(session, weightUnit as 'kg' | 'lbs');
     setEditNotes(session.notes ?? '');
+    setEligibleIds(new Set());
     setIsEditing(true);
   };
 
@@ -737,6 +758,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onRemoveExercise={handleRemoveExercise}
             onAddExercisePress={openExerciseSearch}
             onChangeRest={setExerciseRest}
+            isEligibleForPrefill={isEligibleForPrefill}
             mode="detail"
           />
         ) : renderViewExercises()}
