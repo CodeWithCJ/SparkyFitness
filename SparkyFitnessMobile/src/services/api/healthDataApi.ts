@@ -1,6 +1,7 @@
 import { getActiveServerConfig, proxyHeadersToRecord, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
+import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
 import type { SleepStageEvent } from '../../types/mobileHealthData';
@@ -114,7 +115,7 @@ export const fetchWithRetry = async (
           notifySessionExpired(serverConfig.id);
         }
         const errorText = await response.text();
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
+        throw new ApiError(`Server error: ${response.status} - ${errorText}`, response.status, errorText);
       }
 
       // 5xx — retryable
