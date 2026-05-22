@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 
 const DEFAULT_TTL_MS = 5_000;
+// Defensive ceiling. Realistic steady state is O(active API keys), which for
+// a self-hosted instance is small — but cap so a pathological mix of unique
+// authenticated callers can't grow the map without bound. FIFO eviction is
+// fine here because the short TTL means the oldest insertion is almost
+// always already expired by the time we hit the cap.
+export const MAX_API_KEY_SESSION_CACHE_SIZE = 1000;
 
 interface CacheEntry {
   session: unknown;
@@ -33,7 +39,12 @@ export function setCachedSession(
   ttlMs: number = DEFAULT_TTL_MS,
   now: number = Date.now()
 ): void {
-  cache.set(hashKey(token), {
+  const key = hashKey(token);
+  if (cache.size >= MAX_API_KEY_SESSION_CACHE_SIZE && !cache.has(key)) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
+  cache.set(key, {
     session,
     expiresAt: now + ttlMs,
   });
