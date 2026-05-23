@@ -32,6 +32,7 @@ import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import EditLoggedMealScreen from './src/screens/EditLoggedMealScreen';
 import MealTypeDetailScreen from './src/screens/MealTypeDetailScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
+import EditBarcodeScreen from './src/screens/EditBarcodeScreen';
 import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
 import WorkoutPresetFormScreen from './src/screens/WorkoutPresetFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
@@ -137,6 +138,7 @@ const SafeWorkoutPresetDetail = withErrorBoundary(WorkoutPresetDetailScreen, 'Wo
 const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
 const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
 const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
+const SafeEditBarcode = withErrorBoundary(EditBarcodeScreen, 'EditBarcode', { canGoBack: true });
 const SafeExerciseForm = withErrorBoundary(ExerciseFormScreen, 'ExerciseForm', { canGoBack: true });
 const SafeWorkoutPresetForm = withErrorBoundary(WorkoutPresetFormScreen, 'WorkoutPresetForm', { canGoBack: true });
 const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
@@ -778,6 +780,14 @@ function AppContent() {
               headerShown: false,
               gestureEnabled: true,
               ...androidModalAnimation,
+            }}
+          />
+          <Stack.Screen
+            name="EditBarcode"
+            component={SafeEditBarcode}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
             }}
           />
           <Stack.Screen

@@ -191,9 +191,15 @@ export const updateFoodVariant = async (variantId: string, payload: UpdateFoodVa
   });
 };
 
+// Callers MUST build this payload literally (e.g. `{ barcode: value }` or
+// `{ barcode: null }`) — never spread a wider form object, because including
+// `barcode` with a stale/undefined value would unintentionally clear or
+// overwrite the stored barcode column. The server treats key presence (not
+// value truthiness) as the signal to update barcode.
 export interface UpdateFoodPayload {
   name?: string;
   brand?: string;
+  barcode?: string | null;
 }
 
 export interface DeleteFoodResponse {

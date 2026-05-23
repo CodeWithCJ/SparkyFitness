@@ -45,6 +45,15 @@ export type RootStackParamList = {
     item: FoodInfoItem;
     updatedItem?: FoodInfoItem;
     updatedSelectedVariantId?: string;
+    updatedBarcode?: string | null;
+  };
+  EditBarcode: {
+    foodId: string;
+    foodName: string;
+    currentBarcode: string | null;
+    returnKey: string;
+    pendingScannedBarcode?: string;
+    scannedBarcodeNonce?: number;
   };
   ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
   FoodSearch:
@@ -97,10 +106,15 @@ export type RootStackParamList = {
     | { mode: 'edit-exercise'; exercise: Exercise; returnKey: string };
   FoodScan:
     | {
+        mode?: 'lookup';
         date?: string;
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
         initialMode?: 'barcode' | 'label' | 'photo';
+      }
+    | {
+        mode: 'capture-barcode';
+        returnKey: string;
       }
     | undefined;
   FoodPhotoIntro: { date?: string } | undefined;

@@ -28,6 +28,7 @@ export interface FoodItem {
   id: string;
   name: string;
   brand: string | null;
+  barcode?: string | null;
   is_custom: boolean;
   user_id?: string;
   shared_with_public?: boolean;

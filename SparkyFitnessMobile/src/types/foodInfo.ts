@@ -80,6 +80,7 @@ export interface FoodInfoItem {
   id: string;
   name: string;
   brand: string | null;
+  barcode?: string | null;
   userId?: string;
   sharedWithPublic?: boolean;
   servingSize: number;
@@ -120,6 +121,7 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   id: item.id,
   name: item.name,
   brand: item.brand,
+  barcode: item.barcode ?? null,
   userId: item.user_id,
   sharedWithPublic: item.shared_with_public,
   servingSize: item.default_variant.serving_size,

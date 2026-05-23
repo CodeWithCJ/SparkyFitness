@@ -7,6 +7,7 @@ import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../hooks';
 import {
@@ -24,7 +25,7 @@ const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string
   hasExternalVariants ? (variantId ?? 'ext-0') : variantId;
 
 const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
-  const { item, updatedItem, updatedSelectedVariantId } = route.params;
+  const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
@@ -95,6 +96,13 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       });
     }
   }, [updatedItem, updatedSelectedVariantId, navigation]);
+
+  useEffect(() => {
+    if (updatedBarcode !== undefined) {
+      setFood((prev) => ({ ...prev, barcode: updatedBarcode }));
+      navigation.setParams({ updatedBarcode: undefined });
+    }
+  }, [updatedBarcode, navigation]);
 
   useEffect(() => {
     if (!selectedVariantId && localVariantOptions.length > 0) {
@@ -220,6 +228,30 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             </Text>
           ) : null}
         </View>
+
+        {canManageFood && (
+          <SettingsRowGroup>
+            <SettingsRow
+              icon="scan"
+              title="Barcode"
+              subtitle={
+                food.barcode ? (
+                  food.barcode
+                ) : (
+                  <Text className="text-sm text-text-secondary mt-0.5">Not set</Text>
+                )
+              }
+              onPress={() =>
+                navigation.navigate('EditBarcode', {
+                  foodId: food.id,
+                  foodName: food.name,
+                  currentBarcode: food.barcode ?? null,
+                  returnKey: route.key,
+                })
+              }
+            />
+          </SettingsRowGroup>
+        )}
 
         <Button
           variant="primary"
