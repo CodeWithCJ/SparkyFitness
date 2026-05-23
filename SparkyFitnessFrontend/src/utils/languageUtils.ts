@@ -12,6 +12,7 @@ export const getSupportedLanguages = (): string[] => {
     'nl',
     'pt-BR',
     'ro',
+    'ru',
     'sl',
     'sv',
     'ta',
@@ -38,6 +39,8 @@ export const getLanguageDisplayName = (langCode: string): string => {
       return 'Português (Brasil)';
     case 'ro':
       return 'Română';
+    case 'ru':
+      return 'Русский';
     case 'sl':
       return 'Slovenščina';
     case 'sv':
