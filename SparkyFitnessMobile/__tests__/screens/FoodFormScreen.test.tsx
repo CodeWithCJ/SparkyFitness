@@ -338,7 +338,7 @@ describe('FoodFormScreen', () => {
     expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
   });
 
-  it('hides the logging block in meal-builder mode', () => {
+  it('hides the logging block and the barcode field in meal-builder mode', () => {
     const screen = renderScreen({
       mode: 'create-food',
       pickerMode: 'meal-builder',
@@ -348,11 +348,12 @@ describe('FoodFormScreen', () => {
     expect(screen.queryByText('Date')).toBeNull();
     expect(screen.queryByText('Meal')).toBeNull();
     expect(screen.queryByText('Save to Database')).toBeNull();
-    expect(screen.queryByText('Barcode will be saved.')).toBeNull();
+    expect(screen.queryByText('Barcode')).toBeNull();
+    expect(screen.queryByText('Scan with camera')).toBeNull();
     expect(screen.queryByTestId('calendar-sheet')).toBeNull();
   });
 
-  it('renders the logging controls in normal mode', () => {
+  it('renders the logging controls and the barcode field with a pre-filled value in normal mode', () => {
     const screen = renderScreen({
       mode: 'create-food',
       barcode: '0123456789',
@@ -361,9 +362,73 @@ describe('FoodFormScreen', () => {
     expect(screen.getByText('Date')).toBeTruthy();
     expect(screen.getByText('Meal')).toBeTruthy();
     expect(screen.getByText('Save to Database')).toBeTruthy();
-    expect(screen.getByText('Barcode will be saved.')).toBeTruthy();
+    expect(screen.getByText('Barcode')).toBeTruthy();
+    expect(screen.getByText('Scan with camera')).toBeTruthy();
+    expect(screen.getByDisplayValue('0123456789')).toBeTruthy();
     expect(screen.getByText(/100 g per serving/)).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
+  });
+
+  it('renders the barcode field in library mode without the logging controls', () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    expect(screen.queryByText('Date')).toBeNull();
+    expect(screen.queryByText('Save to Database')).toBeNull();
+    expect(screen.getByText('Barcode')).toBeTruthy();
+    expect(screen.getByText('Scan with camera')).toBeTruthy();
+  });
+
+  it('saves a typed barcode with the new food in library mode', async () => {
+    mockSaveFoodAsync.mockResolvedValue({ id: 'lib-food-1' });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('012345678905'),
+      '0123456789012',
+    );
+    fireEvent.press(screen.getByText('Save Food'));
+
+    await waitFor(() => {
+      expect(mockSaveFoodAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ barcode: '0123456789012' }),
+      );
+    });
+  });
+
+  it('blocks save and toasts when the barcode is not 8-14 digits', () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '12345');
+    fireEvent.press(screen.getByText('Save Food'));
+
+    expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+    expect(mockToast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: 'Invalid barcode' }),
+    );
+  });
+
+  it('navigates to FoodScan in capture-barcode mode when Scan with camera is pressed', () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    fireEvent.press(screen.getByText('Scan with camera'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
+      mode: 'capture-barcode',
+      returnKey: 'FoodForm-key',
+    });
   });
 
   it('enables auto scale for meal-builder and adjust-nutrition flows only', () => {

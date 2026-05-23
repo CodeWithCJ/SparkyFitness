@@ -88,6 +88,8 @@ export type RootStackParamList = {
         providerType?: string;
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
+        pendingScannedBarcode?: string;
+        scannedBarcodeNonce?: number;
       }
     | {
         mode: 'adjust-entry-nutrition';
