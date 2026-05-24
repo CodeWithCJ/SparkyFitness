@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,9 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
   const [usdaKey, setUsdaKey] = useState('');
   const [fatsecretAppId, setFatsecretAppId] = useState('');
   const [fatsecretAppKey, setFatsecretAppKey] = useState('');
+  // Track providers already persisted this session so a partial failure
+  // (e.g. USDA saved, FatSecret rejected) doesn't re-POST the saved one on retry.
+  const savedProviderTypesRef = useRef(new Set<string>());
 
   const handleContinue = async () => {
     const trimmedUsda = usdaKey.trim();
@@ -51,7 +54,7 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
     }
 
     try {
-      if (trimmedUsda) {
+      if (trimmedUsda && !savedProviderTypesRef.current.has('usda')) {
         await createExternalProvider({
           user_id: user.id,
           provider_name: 'USDA',
@@ -60,9 +63,14 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
           app_key: trimmedUsda,
           is_active: true,
         });
+        savedProviderTypesRef.current.add('usda');
       }
 
-      if (trimmedFsId && trimmedFsKey) {
+      if (
+        trimmedFsId &&
+        trimmedFsKey &&
+        !savedProviderTypesRef.current.has('fatsecret')
+      ) {
         await createExternalProvider({
           user_id: user.id,
           provider_name: 'FatSecret',
@@ -71,6 +79,7 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
           app_key: trimmedFsKey,
           is_active: true,
         });
+        savedProviderTypesRef.current.add('fatsecret');
       }
 
       onContinue();

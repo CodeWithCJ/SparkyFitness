@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -86,22 +86,29 @@ export const OnBoardingForm = ({
   const weightUnit = localWeightUnit;
   const heightUnit = localHeightUnit;
 
+  // Lock the decision once `existingProviders` first resolves. The query
+  // gets invalidated when FoodSourcesStep saves a provider, which would
+  // otherwise flip this back to false mid-flow and cause the back button
+  // from the plan screen to skip over the step the user just filled in.
   const { data: existingProviders } = useExternalProvidersQuery();
-  const showFoodSourcesStep = useMemo(() => {
-    if (!existingProviders) return false;
-    return !existingProviders.some((p) =>
-      FOOD_PROVIDER_TYPES_BEYOND_OFF.has(p.provider_type)
+  const [showFoodSourcesStep, setShowFoodSourcesStep] = useState<
+    boolean | null
+  >(null);
+  if (showFoodSourcesStep === null && existingProviders) {
+    setShowFoodSourcesStep(
+      !existingProviders.some((p) =>
+        FOOD_PROVIDER_TYPES_BEYOND_OFF.has(p.provider_type)
+      )
     );
-  }, [existingProviders]);
+  }
 
-  const lastInputStep = showFoodSourcesStep
-    ? FOOD_SOURCES_STEP
-    : CORE_INPUT_STEPS;
+  const lastInputStep =
+    showFoodSourcesStep === true ? FOOD_SOURCES_STEP : CORE_INPUT_STEPS;
 
   const nextStep = () =>
     setStep((prev) => {
       // Skip the food-sources step when the user already has a non-OFF food provider.
-      if (prev === CORE_INPUT_STEPS && !showFoodSourcesStep) {
+      if (prev === CORE_INPUT_STEPS && showFoodSourcesStep !== true) {
         return LOADING_STEP;
       }
       return prev + 1;
