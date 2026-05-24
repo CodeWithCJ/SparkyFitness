@@ -75,7 +75,12 @@ export const OnBoardingForm = ({
   const heightUnit = localHeightUnit;
 
   const nextStep = () => setStep((prev) => prev + 1);
-  const prevStep = () => setStep((prev) => Math.max(1, prev - 1));
+  const prevStep = () =>
+    setStep((prev) => {
+      // Step 11 is the auto-advancing loading screen; skip it when going back from the plan.
+      if (prev === 12) return 10;
+      return Math.max(1, prev - 1);
+    });
 
   useEffect(() => {
     if (step === 11) {
@@ -123,7 +128,7 @@ export const OnBoardingForm = ({
       }
     >
       <div className="px-4 pt-6 pb-2 flex items-center sticky top-0 bg-background z-10">
-        {step > 1 && step <= TOTAL_INPUT_STEPS ? (
+        {(step > 1 && step <= TOTAL_INPUT_STEPS) || step === 12 ? (
           <Button
             variant="ghost"
             size="icon"
@@ -145,7 +150,7 @@ export const OnBoardingForm = ({
           </div>
         )}
 
-        {step <= TOTAL_INPUT_STEPS ? (
+        {step <= TOTAL_INPUT_STEPS && (
           <Button
             onClick={onOnboardingComplete}
             variant="ghost"
@@ -153,11 +158,9 @@ export const OnBoardingForm = ({
           >
             Skip
           </Button>
-        ) : (
-          <div className="w-16 ml-2"></div>
         )}
 
-        <div className="ml-2 -mr-2">
+        <div className="ml-auto -mr-2">
           <ThemeToggle />
         </div>
       </div>
