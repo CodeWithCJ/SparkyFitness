@@ -54,7 +54,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     : 'Never synced';
 
   const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration] = useCSSVariable([
-    '--color-text-success',
+    '--color-icon-success',
     '--color-bg-danger',
     '--color-cat-slate',
     '--color-cat-pink',
@@ -143,28 +143,30 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               iconColor={catPink}
             />
 
-            {isConnected && (
-              <SettingsRowGroup>
+            <SettingsRowGroup>
+              {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
                   title="Calorie Settings"
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
                 />
+              )}
+              {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
                   title="Food Search Settings"
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
-                <SettingsRow
-                  icon="app-settings"
-                  title="App Settings"
-                  onPress={() => navigation.navigate('AppSettings')}
-                  iconColor={catViolet}
-                />
-              </SettingsRowGroup>
-            )}
+              )}
+              <SettingsRow
+                icon="app-settings"
+                title="App Settings"
+                onPress={() => navigation.navigate('AppSettings')}
+                iconColor={catViolet}
+              />
+            </SettingsRowGroup>
 
             <SettingsRowGroup>
               <SettingsRow

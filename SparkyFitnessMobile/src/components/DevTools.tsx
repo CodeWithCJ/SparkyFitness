@@ -196,7 +196,7 @@ const DevTools: React.FC = () => {
       </View>
 
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">What's New Banner</Text>
+        <Text className="text-sm text-text-primary">What&apos;s New Banner</Text>
         <Text className="text-text-muted mb-3 text-[13px]">
           Clear the last-seen version so the banner re-appears above the tab bar.
         </Text>

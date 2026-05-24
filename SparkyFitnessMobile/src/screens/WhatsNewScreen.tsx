@@ -42,13 +42,13 @@ const WidgetMockup: React.FC = () => {
     '--color-cat-orange',
   ]) as [string, string, string, string, string, string, string, string, string];
 
-  const iconPositions: Array<{
+  const iconPositions: {
     top?: number;
     bottom?: number;
     left?: number;
     right?: number;
     color: string;
-  }> = [
+  }[] = [
     { top: 14, left: 24, color: macroProtein },
     { top: 14, left: 68, color: macroCarbs },
     { top: 14, right: 68, color: macroFat },
@@ -243,7 +243,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
+          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
         contentInsetAdjustmentBehavior="never"
       >
@@ -256,7 +256,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
           >
             <Icon name="chevron-back" size={22} color={accentPrimary} />
           </Button>
-          <Text className="text-2xl font-bold text-text-primary">What's New</Text>
+          <Text className="text-2xl font-bold text-text-primary">What&apos;s New</Text>
         </View>
 
         {features.map((feature) => (

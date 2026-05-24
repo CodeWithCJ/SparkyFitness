@@ -102,10 +102,10 @@ const WhatsNewBanner: React.FC = () => {
         </View>
         <View className="flex-1 px-3">
           <Text className="text-sm font-semibold text-text-primary">
-            What's new
+            What&apos;s new
           </Text>
           <Text numberOfLines={1} className="text-xs text-text-secondary">
-            See what's improved in this update
+            See what&apos;s improved in this update
           </Text>
         </View>
         <Pressable
