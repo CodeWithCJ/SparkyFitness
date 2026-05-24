@@ -99,6 +99,7 @@ import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
+import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
@@ -665,6 +666,7 @@ function AppContent() {
                   // paints on top of the embedded bar — matching the mockup
                   // where the + button visually bridges both bars.
                   <View collapsable={false}>
+                    <WhatsNewBanner />
                     <ActiveWorkoutBar variant="embedded" />
                     <CustomTabBar {...props} />
                   </View>
