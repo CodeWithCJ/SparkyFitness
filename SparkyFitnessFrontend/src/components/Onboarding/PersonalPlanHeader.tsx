@@ -31,8 +31,8 @@ export const PersonalPlanHeader = ({
   const { t } = useTranslation();
   return (
     <>
-      <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 text-center border border-gray-800">
-        <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
+      <div className="bg-card rounded-2xl p-6 mb-6 text-center border border-border">
+        <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
           <button
             onClick={() => {
               if (localEnergyUnit !== 'kcal' && editedPlan?.calories) {
@@ -49,7 +49,7 @@ export const PersonalPlanHeader = ({
               }
               setLocalEnergyUnit('kcal');
             }}
-            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kcal' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kcal' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {t('settings.preferences.calories', 'Calories (kcal)')}
           </button>
@@ -69,13 +69,13 @@ export const PersonalPlanHeader = ({
               }
               setLocalEnergyUnit('kJ');
             }}
-            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kJ' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kJ' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {t('settings.preferences.joules', 'Joules (kJ)')}
           </button>
         </div>
 
-        <p className="text-gray-400 uppercase text-sm font-bold tracking-wider mb-2">
+        <p className="text-muted-foreground uppercase text-sm font-bold tracking-wider mb-2">
           Daily Calorie Budget
         </p>
         <div className="text-6xl font-extrabold text-green-500 flex justify-center">
@@ -91,11 +91,11 @@ export const PersonalPlanHeader = ({
             className="w-48 text-center bg-transparent border-none text-6xl text-green-500 font-extrabold focus-visible:ring-0 p-0 h-auto"
           />
         </div>
-        <p className="text-xl text-white font-medium mt-1">
+        <p className="text-xl text-foreground font-medium mt-1">
           {getEnergyUnitString(localEnergyUnit)} / day
         </p>
 
-        <div className="mt-6 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-400">
+        <div className="mt-6 pt-6 border-t border-border flex justify-between text-sm text-muted-foreground">
           <span>
             Base BMR:{' '}
             {plan?.bmr &&
@@ -107,7 +107,9 @@ export const PersonalPlanHeader = ({
             Calorie Buyback:{' '}
             <span
               className={
-                formData.addBurnedCalories ? 'text-green-400' : 'text-gray-500'
+                formData.addBurnedCalories
+                  ? 'text-green-500'
+                  : 'text-muted-foreground'
               }
             >
               {formData.addBurnedCalories ? 'ON' : 'OFF'}

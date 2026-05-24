@@ -79,12 +79,16 @@ export const OnboardingDialog = ({
 
   return (
     <Dialog open={isSavePresetOpen} onOpenChange={setIsSavePresetOpen}>
-      <DialogContent className="bg-[#1c1c1e] text-white border-gray-800">
+      <DialogContent
+        style={
+          { '--color-ring': 'hsl(142.1 70.6% 45.3%)' } as React.CSSProperties
+        }
+      >
         <DialogHeader>
           <DialogTitle>
             {t('goals.saveAsPreset', 'Save as Goal Preset')}
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogDescription>
             {t(
               'goals.savePresetDescription',
               'Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.'
@@ -93,14 +97,11 @@ export const OnboardingDialog = ({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-gray-300">
-              {t('goals.presetName', 'Preset Name')}
-            </Label>
+            <Label htmlFor="name">{t('goals.presetName', 'Preset Name')}</Label>
             <Input
               id="name"
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
-              className="bg-[#2c2c2e] border-gray-700 text-white"
               placeholder={t(
                 'goals.presetNamePlaceholder',
                 'e.g., Cutting Phase 1'
@@ -109,18 +110,10 @@ export const OnboardingDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => setIsSavePresetOpen(false)}
-            className="text-gray-400 hover:text-white hover:bg-white/10"
-          >
+          <Button variant="ghost" onClick={() => setIsSavePresetOpen(false)}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button
-            onClick={handleSavePreset}
-            disabled={isSavingPreset}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={handleSavePreset} disabled={isSavingPreset}>
             {isSavingPreset
               ? t('common.saving', 'Saving...')
               : t('goals.saveAndStart', 'Save & Start Plan')}
