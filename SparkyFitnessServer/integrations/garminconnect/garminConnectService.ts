@@ -6,6 +6,44 @@ import { GarminJwtPayload, GarminTokenPayload } from 'types/garmin.ts';
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
 
+/**
+ * Extract a human-meaningful detail string from any error thrown by an
+ * axios call to the Garmin microservice. Handles three failure shapes:
+ *
+ *   1. The microservice returned an HTTPException with `detail` (most cases).
+ *   2. axios threw a connection-level error before any response (e.g. the
+ *      microservice container isn't running) — surface `error.code`
+ *      (ECONNREFUSED / ETIMEDOUT / ENOTFOUND) so the operator can diagnose.
+ *   3. Any other Error — fall back to `.message`, then `String(error)`,
+ *      then a literal placeholder.
+ *
+ * Previously the four catch blocks in this file deduplicated this logic
+ * inline, and when axios produced an error with empty `.message` (which
+ * happens for some connection failures), the resulting toast read
+ * "Failed to login to Garmin: " with nothing after.
+ */
+function formatGarminMicroserviceError(error: unknown): {
+  detail: string;
+  errorData: unknown;
+} {
+  const isAxiosError = axios.isAxiosError(error);
+  const errorData = isAxiosError ? (error.response?.data ?? null) : null;
+  const responseDetail =
+    errorData && typeof errorData === 'object' && 'detail' in errorData
+      ? String((errorData as { detail: unknown }).detail)
+      : null;
+  const messageDetail =
+    error instanceof Error && error.message ? error.message : null;
+  const codeDetail = isAxiosError && error.code ? error.code : null;
+  const detail =
+    responseDetail ||
+    messageDetail ||
+    codeDetail ||
+    String(error) ||
+    'Unknown error';
+  return { detail, errorData: errorData ?? codeDetail ?? detail };
+}
+
 async function garminLogin(userId: string, email: string, password: string) {
   try {
     const response = await axios.post(
@@ -18,17 +56,8 @@ async function garminLogin(userId: string, email: string, password: string) {
     );
     return response.data; // Should contain tokens or MFA status
   } catch (error: unknown) {
-    const isAxiosError = axios.isAxiosError(error);
-    const errorData = isAxiosError ? error.response?.data : null;
-    const detail =
-      errorData?.detail ||
-      (error instanceof Error ? error.message : String(error));
-
-    log(
-      'error',
-      `Error during Garmin login for user ${userId}:`,
-      errorData || detail
-    );
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log('error', `Error during Garmin login for user ${userId}:`, errorData);
     throw new Error(`Failed to login to Garmin: ${detail}`, { cause: error });
   }
 }
@@ -49,17 +78,8 @@ async function garminResumeLogin(
     );
     return response.data; // Should contain tokens
   } catch (error: unknown) {
-    const isAxiosError = axios.isAxiosError(error);
-    const errorData = isAxiosError ? error.response?.data : null;
-    const detail =
-      errorData?.detail ||
-      (error instanceof Error ? error.message : String(error));
-
-    log(
-      'error',
-      `Error during Garmin MFA for user ${userId}:`,
-      errorData || detail
-    );
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log('error', `Error during Garmin MFA for user ${userId}:`, errorData);
     throw new Error(`Failed to complete Garmin MFA: ${detail}`, {
       cause: error,
     });
@@ -198,16 +218,11 @@ async function syncGarminHealthAndWellness(
 
     return result;
   } catch (error: unknown) {
-    const isAxiosError = axios.isAxiosError(error);
-    const errorData = isAxiosError ? error.response?.data : null;
-    const detail =
-      errorData?.detail ||
-      (error instanceof Error ? error.message : String(error));
-
+    const { detail, errorData } = formatGarminMicroserviceError(error);
     log(
       'error',
       `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`,
-      errorData || detail
+      errorData
     );
     throw new Error(
       `Failed to fetch Garmin health and wellness data: ${detail}`,
@@ -255,16 +270,11 @@ async function fetchGarminActivitiesAndWorkouts(
     );
     return response.data;
   } catch (error: unknown) {
-    const isAxiosError = axios.isAxiosError(error);
-    const errorData = isAxiosError ? error.response?.data : null;
-    const detail =
-      errorData?.detail ||
-      (error instanceof Error ? error.message : String(error));
-
+    const { detail, errorData } = formatGarminMicroserviceError(error);
     log(
       'error',
       `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`,
-      errorData || detail
+      errorData
     );
     throw new Error(
       `Failed to fetch Garmin activities and workouts: ${detail}`,
@@ -277,6 +287,7 @@ export { garminResumeLogin };
 export { handleGarminTokens };
 export { syncGarminHealthAndWellness };
 export { fetchGarminActivitiesAndWorkouts };
+export { formatGarminMicroserviceError };
 export default {
   garminLogin,
   garminResumeLogin,
