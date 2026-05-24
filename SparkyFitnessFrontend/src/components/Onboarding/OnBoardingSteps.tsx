@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OptionButton } from './OptionButton';
+import { FoodSourcesStep } from './FoodSourcesStep';
 import { useTranslation } from 'react-i18next';
 import { OnboardingData } from '@/types/onboarding';
 import { UnitInput } from '@/components/ui/UnitInput';
@@ -453,6 +454,8 @@ export const OnboardingSteps = ({
         </>
       );
     case 11:
+      return <FoodSourcesStep onContinue={nextStep} />;
+    case 12:
       return (
         <div className="flex flex-col items-center justify-center h-full animate-in fade-in duration-700">
           <div className="relative flex h-32 w-32 mb-8">

@@ -3,6 +3,7 @@ import {
   useMostRecentHeightQuery,
 } from '@/hooks/Diary/useDailyProgress';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
+import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings';
 import { OnBoardingForm } from './OnBoardingForm';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -19,8 +20,14 @@ const OnBoarding = ({ onOnboardingComplete }: OnBoardingProps) => {
     useMostRecentWeightQuery();
   const { data: heightData, isPending: isHeightPending } =
     useMostRecentHeightQuery();
+  const { isPending: isProvidersPending } = useExternalProvidersQuery();
 
-  if (isProfilePending || isWeightPending || isHeightPending) {
+  if (
+    isProfilePending ||
+    isWeightPending ||
+    isHeightPending ||
+    isProvidersPending
+  ) {
     return null;
   }
 

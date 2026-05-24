@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -8,6 +8,7 @@ import { OnboardingSteps } from './OnBoardingSteps';
 import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
 import { RecentCheckInMeasurementsResponse } from '@workspace/shared';
+import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -18,7 +19,18 @@ interface OnBoardingFormProps extends OnBoardingProps {
   heightData?: RecentCheckInMeasurementsResponse;
 }
 
-const TOTAL_INPUT_STEPS = 10;
+const CORE_INPUT_STEPS = 10;
+const FOOD_SOURCES_STEP = 11;
+const LOADING_STEP = 12;
+const PLAN_STEP = 13;
+
+const FOOD_PROVIDER_TYPES_BEYOND_OFF = new Set([
+  'nutritionix',
+  'fatsecret',
+  'usda',
+  'mealie',
+  'tandoor',
+]);
 
 export const OnBoardingForm = ({
   onOnboardingComplete,
@@ -74,25 +86,44 @@ export const OnBoardingForm = ({
   const weightUnit = localWeightUnit;
   const heightUnit = localHeightUnit;
 
-  const nextStep = () => setStep((prev) => prev + 1);
+  const { data: existingProviders } = useExternalProvidersQuery();
+  const showFoodSourcesStep = useMemo(() => {
+    if (!existingProviders) return false;
+    return !existingProviders.some((p) =>
+      FOOD_PROVIDER_TYPES_BEYOND_OFF.has(p.provider_type)
+    );
+  }, [existingProviders]);
+
+  const lastInputStep = showFoodSourcesStep
+    ? FOOD_SOURCES_STEP
+    : CORE_INPUT_STEPS;
+
+  const nextStep = () =>
+    setStep((prev) => {
+      // Skip the food-sources step when the user already has a non-OFF food provider.
+      if (prev === CORE_INPUT_STEPS && !showFoodSourcesStep) {
+        return LOADING_STEP;
+      }
+      return prev + 1;
+    });
   const prevStep = () =>
     setStep((prev) => {
-      // Step 11 is the auto-advancing loading screen; skip it when going back from the plan.
-      if (prev === 12) return 10;
+      // Skip the auto-advancing loading screen when going back from the plan.
+      if (prev === PLAN_STEP) return lastInputStep;
       return Math.max(1, prev - 1);
     });
 
   useEffect(() => {
-    if (step === 11) {
+    if (step === LOADING_STEP) {
       const timer = setTimeout(() => {
-        setStep(12);
+        setStep(PLAN_STEP);
       }, 1000);
       return () => clearTimeout(timer);
     }
   }, [step]);
 
   const renderStepContent = () => {
-    if (step === 12) {
+    if (step === PLAN_STEP) {
       return (
         <PersonalPlan
           formData={formData}
@@ -128,7 +159,7 @@ export const OnBoardingForm = ({
       }
     >
       <div className="px-4 pt-6 pb-2 flex items-center sticky top-0 bg-background z-10">
-        {(step > 1 && step <= TOTAL_INPUT_STEPS) || step === 12 ? (
+        {(step > 1 && step <= lastInputStep) || step === PLAN_STEP ? (
           <Button
             variant="ghost"
             size="icon"
@@ -141,16 +172,16 @@ export const OnBoardingForm = ({
           <div className="w-10"></div>
         )}
 
-        {step <= TOTAL_INPUT_STEPS && (
+        {step <= lastInputStep && (
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${(step / TOTAL_INPUT_STEPS) * 100}%` }}
+              style={{ width: `${(step / lastInputStep) * 100}%` }}
             />
           </div>
         )}
 
-        {step <= TOTAL_INPUT_STEPS && (
+        {step <= lastInputStep && (
           <Button
             onClick={onOnboardingComplete}
             variant="ghost"
@@ -166,7 +197,7 @@ export const OnBoardingForm = ({
       </div>
 
       <div
-        className={`flex-1 flex flex-col px-6 w-full py-4 ${step === 12 ? 'max-w-7xl' : 'max-w-md'} mx-auto`}
+        className={`flex-1 flex flex-col px-6 w-full py-4 ${step === PLAN_STEP ? 'max-w-7xl' : 'max-w-md'} mx-auto`}
       >
         {renderStepContent()}
       </div>
