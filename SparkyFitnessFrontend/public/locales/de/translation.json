@@ -1855,5 +1855,9 @@
     "liveAiContextTitle": "Live-KI-Kontext",
     "liveAiContextDescription": "Dies ist der aktuelle Kontext, der dem KI-Assistenten zur Verfügung gestellt würde",
     "loadingAiContext": "Lade KI-Kontext..."
+  },
+  "nutrition": {
+    "calories": "Kalorien",
+    "protein": "Protein"
   }
 }

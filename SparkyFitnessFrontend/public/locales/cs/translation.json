@@ -216,5 +216,22 @@
       "importExerciseData": "Importuj data cvičení",
       "standardValuesForDropdowns": "Standardní hodnoty pro rozevírací seznamy"
     }
+  },
+  "nutrition": {
+    "protein": "Proteiny",
+    "calories": "Kalorie",
+    "carbohydrates": "Sacharidy",
+    "carbs": "Sacharidy",
+    "fat": "Tuky",
+    "saturatedFat": "Nasycené tuky",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sodík",
+    "potassium": "Draslík",
+    "fiber": "Vláknina",
+    "sugars": "Cukry",
+    "vitaminA": "Vitamin A",
+    "vitaminC": "Vitamin C",
+    "calcium": "Vápník",
+    "iron": "Železo"
   }
 }
