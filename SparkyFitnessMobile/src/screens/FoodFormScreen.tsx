@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { CommonActions, StackActions } from '@react-navigation/native';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import FormInput from '../components/FormInput';
+import Button from '../components/ui/Button';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -42,6 +44,8 @@ type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { m
 type EditFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'edit-food' }>;
 
 const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
+
+const BARCODE_REGEX = /^\d{8,14}$/;
 
 const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
   'servingSize',
@@ -355,14 +359,56 @@ async function persistFoodMetadataEdits({
   return true;
 }
 
-function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
+function BarcodeField({
+  value,
+  onChange,
+  onScan,
+  textSecondary,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onScan: () => void;
+  textSecondary: string;
+}) {
+  const trimmed = value.trim();
+  const isInvalid = trimmed !== '' && !BARCODE_REGEX.test(trimmed);
+  return (
+    <View className="bg-surface rounded-xl p-4 gap-2 shadow-sm">
+      <Text className="text-text-secondary text-sm font-medium">Barcode</Text>
+      <FormInput
+        placeholder="012345678905"
+        keyboardType="number-pad"
+        value={value}
+        onChangeText={onChange}
+        maxLength={14}
+        autoCorrect={false}
+        returnKeyType="done"
+      />
+      {isInvalid ? (
+        <Text className="text-sm" style={{ color: '#dc2626' }}>
+          Barcode must be 8-14 digits.
+        </Text>
+      ) : (
+        <Text className="text-xs" style={{ color: textSecondary }}>
+          Optional. Standard barcodes are 8 to 14 digits.
+        </Text>
+      )}
+      <Button variant="ghost" onPress={onScan} className="self-start py-0 px-0">
+        Scan with camera
+      </Button>
+    </View>
+  );
+}
+
+function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
+  const [accentColor, textPrimary, textSecondary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-text-secondary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string, string];
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isLibraryMode = pickerMode === 'library';
   const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
+  const showBarcodeField = !isMealBuilderMode;
   const initialFood = params.initialFood;
   const hasImportedInitialFood = !!initialFood;
   const showAutoScaleNutrition = isMealBuilderMode || hasImportedInitialFood;
@@ -370,8 +416,18 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const initialAutoScaleNutritionEnabled =
     preferences?.auto_scale_online_imports ?? false;
 
-  const barcode = params.barcode;
   const providerType = params.providerType;
+  const [barcodeInput, setBarcodeInput] = useState(params.barcode ?? '');
+  const { pendingScannedBarcode, scannedBarcodeNonce } = params;
+
+  useEffect(() => {
+    if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
+    setBarcodeInput(pendingScannedBarcode);
+    navigation.setParams({
+      pendingScannedBarcode: undefined,
+      scannedBarcodeNonce: undefined,
+    });
+  }, [scannedBarcodeNonce, pendingScannedBarcode, navigation]);
   const importedSourceVariant = useMemo(
     () => buildVariantFromInitialValues(initialFood, CREATE_FORM_SOURCE_VARIANT_ID),
     [initialFood],
@@ -473,6 +529,14 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
+    const trimmedBarcode = barcodeInput.trim();
+    if (showBarcodeField && trimmedBarcode !== '' && !BARCODE_REGEX.test(trimmedBarcode)) {
+      Toast.show({ type: 'error', text1: 'Invalid barcode', text2: 'Barcode must be 8-14 digits.' });
+      return;
+    }
+    const resolvedBarcode = showBarcodeField
+      ? trimmedBarcode || null
+      : params.barcode ?? null;
     const saveFoodPayload = {
       name: data.name,
       brand: data.brand || null,
@@ -496,7 +560,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       is_custom: true,
       is_quick_food: isLogEntryMode ? !saveToDatabase : false,
       is_default: true,
-      barcode: barcode ?? null,
+      barcode: resolvedBarcode,
       provider_type: providerType ?? null,
     };
 
@@ -655,10 +719,20 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
               thumbColor="#FFFFFF"
             />
           </View>
-          {barcode ? (
-            <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
-          ) : null}
         </View>
+        ) : null}
+        {showBarcodeField ? (
+          <BarcodeField
+            value={barcodeInput}
+            onChange={setBarcodeInput}
+            onScan={() =>
+              navigation.navigate('FoodScan', {
+                mode: 'capture-barcode',
+                returnKey: routeKey,
+              })
+            }
+            textSecondary={textSecondary}
+          />
         ) : null}
       </FoodForm>
 
@@ -993,7 +1067,7 @@ const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) =>
   if (route.params.mode === 'edit-food') {
     return <EditFoodMode params={route.params} navigation={navigation} />;
   }
-  return <CreateFoodMode params={route.params} navigation={navigation} />;
+  return <CreateFoodMode params={route.params} navigation={navigation} routeKey={route.key} />;
 };
 
 export default FoodFormScreen;

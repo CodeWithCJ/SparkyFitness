@@ -233,7 +233,7 @@ async function findFoodByBarcode(barcode: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -276,7 +276,7 @@ async function getFoodById(foodId: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,
@@ -331,26 +331,36 @@ async function getFoodOwnerId(foodId: any, userId: any) {
 async function updateFood(id: any, userId: any, foodData: any) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Distinguish "barcode key omitted" (leave unchanged) from "barcode set
+    // to null" (clear). COALESCE collapses the two and can't express clears.
+    const barcodeKeyPresent = Object.prototype.hasOwnProperty.call(
+      foodData,
+      'barcode'
+    );
+    const barcodeValue = barcodeKeyPresent
+      ? foodData.barcode
+        ? normalizeBarcode(foodData.barcode)
+        : null
+      : null;
     const result = await client.query(
       `UPDATE foods SET
         name = COALESCE($1, name),
         is_custom = COALESCE($2, is_custom),
         brand = COALESCE($3, brand),
-        barcode = COALESCE($4, barcode),
-        provider_external_id = COALESCE($5, provider_external_id),
-        shared_with_public = COALESCE($6, shared_with_public),
-        provider_type = COALESCE($7, provider_type),
-        is_quick_food = COALESCE($8, is_quick_food),
+        barcode = CASE WHEN $4::boolean THEN $5 ELSE barcode END,
+        provider_external_id = COALESCE($6, provider_external_id),
+        shared_with_public = COALESCE($7, shared_with_public),
+        provider_type = COALESCE($8, provider_type),
+        is_quick_food = COALESCE($9, is_quick_food),
         updated_at = now()
-      WHERE id = $9
+      WHERE id = $10
       RETURNING *`,
       [
         foodData.name,
         foodData.is_custom,
         foodData.brand,
-        foodData.barcode
-          ? normalizeBarcode(foodData.barcode)
-          : foodData.barcode,
+        barcodeKeyPresent,
+        barcodeValue,
         foodData.provider_external_id,
         foodData.shared_with_public,
         foodData.provider_type,
@@ -403,7 +413,7 @@ async function getFoodsWithPagination(
     // RLS will handle ownership filtering
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
         json_build_object(
           'id', fv.id,
           'serving_size', fv.serving_size,

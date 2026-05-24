@@ -261,6 +261,69 @@ describe('FoodDetailScreen', () => {
     });
   });
 
+  it('shows the Barcode row with the current value for owned foods', () => {
+    const screen = renderScreen({ barcode: '3017620422003' });
+
+    expect(screen.getByText('Barcode')).toBeTruthy();
+    expect(screen.getByText('3017620422003')).toBeTruthy();
+  });
+
+  it('shows "Not set" on the Barcode row when no barcode is stored', () => {
+    const screen = renderScreen({ barcode: null });
+
+    expect(screen.getByText('Barcode')).toBeTruthy();
+    expect(screen.getByText('Not set')).toBeTruthy();
+  });
+
+  it('hides the Barcode row for foods the user does not own', () => {
+    const screen = renderScreen({
+      userId: 'user-2',
+      sharedWithPublic: true,
+      barcode: '3017620422003',
+    });
+
+    expect(screen.queryByText('Barcode')).toBeNull();
+  });
+
+  it('navigates to EditBarcode with the current barcode and returnKey on tap', () => {
+    const screen = renderScreen({ barcode: '3017620422003' });
+
+    fireEvent.press(screen.getByText('Barcode'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('EditBarcode', {
+      foodId: 'food-1',
+      foodName: 'Greek Yogurt',
+      currentBarcode: '3017620422003',
+      returnKey: 'FoodDetail-key',
+    });
+  });
+
+  it('merges updatedBarcode and clears the param', async () => {
+    const screen = renderScreenWithParams(
+      { updatedBarcode: '0012345678905' },
+      { barcode: null },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('0012345678905')).toBeTruthy();
+    });
+    expect(navigation.setParams).toHaveBeenCalledWith({
+      updatedBarcode: undefined,
+    });
+  });
+
+  it('clears the stored barcode when updatedBarcode is null', async () => {
+    const screen = renderScreenWithParams(
+      { updatedBarcode: null },
+      { barcode: '3017620422003' },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Not set')).toBeTruthy();
+    });
+    expect(screen.queryByText('3017620422003')).toBeNull();
+  });
+
   it('adopts the returned selected variant after editing', async () => {
     const screen = renderScreenWithParams({
       updatedItem: {

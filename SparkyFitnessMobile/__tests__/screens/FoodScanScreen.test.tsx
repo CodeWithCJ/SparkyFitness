@@ -296,6 +296,74 @@ describe('FoodScanScreen', () => {
     });
   });
 
+  describe('capture-barcode mode', () => {
+    const captureRoute = {
+      key: 'FoodScan-key',
+      name: 'FoodScan' as const,
+      params: { mode: 'capture-barcode' as const, returnKey: 'EditBarcode-key' },
+    };
+
+    const mockDispatch = jest.fn();
+    const captureNavigation = {
+      ...mockNavigation,
+      dispatch: mockDispatch,
+    } as any;
+
+    const renderCapture = () =>
+      render(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodScanScreen navigation={captureNavigation} route={captureRoute} />
+        </SafeAreaProvider>,
+      );
+
+    beforeEach(() => {
+      mockDispatch.mockClear();
+    });
+
+    it('dispatches setParams to the returnKey on scan without calling lookup', async () => {
+      const screen = renderCapture();
+
+      fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+        data: '012345678905',
+      });
+
+      await waitFor(() => {
+        expect(mockDispatch).toHaveBeenCalledTimes(1);
+      });
+      const dispatched = mockDispatch.mock.calls[0][0];
+      expect(dispatched.source).toBe('EditBarcode-key');
+      expect(dispatched.payload).toEqual(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            pendingScannedBarcode: '012345678905',
+          }),
+        }),
+      );
+      expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
+      expect(captureNavigation.goBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides the Label and Photo segments', () => {
+      const screen = renderCapture();
+      expect(screen.getByText('Barcode')).toBeTruthy();
+      expect(screen.queryByText('Label')).toBeNull();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
+    it('manual submit dispatches to returnKey without lookup', async () => {
+      const screen = renderCapture();
+
+      fireEvent.press(screen.getByText('Type Barcode Instead'));
+      fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
+      fireEvent.press(screen.getByText('Use Barcode'));
+
+      await waitFor(() => {
+        expect(mockDispatch).toHaveBeenCalledTimes(1);
+      });
+      expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Active-AI refresh', () => {
     it('refetches the active-AI setting when re-tapping the Photo segment', async () => {
       const refetch = jest.fn();

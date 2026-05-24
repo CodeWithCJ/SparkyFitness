@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { CommonActions } from '@react-navigation/native';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
@@ -62,11 +63,20 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
+  const params = route.params;
+  const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
+  const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
+  const isCaptureBarcodeMode = !!captureParams;
+  const captureReturnKey = captureParams?.returnKey;
   const [scanMode, setScanMode] = useState<ScanMode>(() => {
-    const requested = route.params?.initialMode ?? 'barcode';
+    if (isCaptureBarcodeMode) {
+      // Capture-only mode: lock to barcode regardless of any other params.
+      return 'barcode';
+    }
+    const requested = lookupParams?.initialMode ?? 'barcode';
     // Meal-builder scans never use the photo flow (it always logs to the
     // diary). Coerce to barcode if a caller deep-links 'photo' here.
-    if (requested === 'photo' && route.params?.pickerMode === 'meal-builder') {
+    if (requested === 'photo' && lookupParams?.pickerMode === 'meal-builder') {
       return 'barcode';
     }
     return requested;
@@ -79,23 +89,27 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [photoGateVisible, setPhotoGateVisible] = useState(false);
   const introCheckedRef = useRef(false);
   const cameraRef = useRef<CameraView>(null);
-  const date = route.params?.date;
-  const pickerMode = route.params?.pickerMode ?? 'log-entry';
-  const returnDepth = route.params?.returnDepth;
+  const date = lookupParams?.date;
+  const pickerMode = lookupParams?.pickerMode ?? 'log-entry';
+  const returnDepth = lookupParams?.returnDepth;
   const isMealBuilderMode = pickerMode === 'meal-builder';
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
-  const scanSegments = useMemo(
-    () =>
-      isMealBuilderMode
-        ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
-        : SCAN_SEGMENTS,
-    [isMealBuilderMode],
-  );
+  // capture-barcode mode is barcode-only.
+  const scanSegments = useMemo(() => {
+    if (isCaptureBarcodeMode) {
+      return SCAN_SEGMENTS.filter((segment) => segment.key === 'barcode');
+    }
+    return isMealBuilderMode
+      ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
+      : SCAN_SEGMENTS;
+  }, [isCaptureBarcodeMode, isMealBuilderMode]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
-    enabled: scanMode === 'photo',
+    // Skip the AI gating fetch in capture-barcode mode — Photo segment is
+    // unreachable there.
+    enabled: !isCaptureBarcodeMode && scanMode === 'photo',
     // Refresh on every photo-mode entry so a user who left to set up AI in
     // the web app sees the gate clear when they come back.
     staleTime: 0,
@@ -200,10 +214,27 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     }
   };
 
+  const dispatchCapturedBarcode = (barcode: string) => {
+    if (!captureReturnKey) return;
+    navigation.dispatch({
+      ...CommonActions.setParams({
+        pendingScannedBarcode: barcode,
+        scannedBarcodeNonce: Date.now(),
+      }),
+      source: captureReturnKey,
+    });
+    navigation.goBack();
+  };
+
   const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
     if (scanLock.current) return;
     scanLock.current = true;
     setScanned(true);
+    if (isCaptureBarcodeMode) {
+      fireSuccessHaptic();
+      dispatchCapturedBarcode(data);
+      return;
+    }
     setLoading(true);
     await performBarcodeLookup(data, { shouldFireSuccessHaptic: true });
   };
@@ -215,6 +246,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setManualBarcode('');
     scanLock.current = true;
     setScanned(true);
+    if (isCaptureBarcodeMode) {
+      dispatchCapturedBarcode(barcode);
+      return;
+    }
     setLoading(true);
     await performBarcodeLookup(barcode);
   };
@@ -306,6 +341,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   // Triggered via effect (not just segment change) so deep-link entries
   // with `initialMode: 'photo'` still hit the gate.
   useEffect(() => {
+    if (isCaptureBarcodeMode) return;
     if (scanMode !== 'photo') return;
     if (aiSettingQuery.isLoading) return;
 
@@ -323,7 +359,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         navigation.navigate('FoodPhotoIntro', { date });
       }
     })();
-  }, [scanMode, aiSettingQuery.isLoading, photoModeAvailable, navigation, date]);
+  }, [isCaptureBarcodeMode, scanMode, aiSettingQuery.isLoading, photoModeAvailable, navigation, date]);
 
   const handlePhotoCapture = async () => {
     if (!cameraRef.current) return;
@@ -470,7 +506,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       ) : null}
 
-      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode ? (
+      {!isCaptureBarcodeMode && !capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode ? (
         <View
           className="absolute left-0 right-0 items-center px-8"
           style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
@@ -690,7 +726,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >
-                  Look Up
+                  {isCaptureBarcodeMode ? 'Use Barcode' : 'Look Up'}
                 </UIButton>
               </View>
             </View>
