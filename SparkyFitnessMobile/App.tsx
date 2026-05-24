@@ -57,6 +57,7 @@ import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
 import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import WhatsNewScreen from './src/screens/WhatsNewScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -159,6 +160,7 @@ const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', {
 const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
 const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
+const SafeWhatsNew = withErrorBoundary(WhatsNewScreen, 'WhatsNew', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -967,6 +969,13 @@ function AppContent() {
           <Stack.Screen
             name="About"
             component={SafeAbout}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="WhatsNew"
+            component={SafeWhatsNew}
             options={{
               headerShown: false,
             }}

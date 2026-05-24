@@ -157,15 +157,21 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
+                <SettingsRow
+                  icon="app-settings"
+                  title="App Settings"
+                  onPress={() => navigation.navigate('AppSettings')}
+                  iconColor={catViolet}
+                />
               </SettingsRowGroup>
             )}
 
             <SettingsRowGroup>
               <SettingsRow
-                icon="app-settings"
-                title="App Settings"
-                onPress={() => navigation.navigate('AppSettings')}
-                iconColor={catViolet}
+                icon="sparkle"
+                title="What's New"
+                onPress={() => navigation.navigate('WhatsNew')}
+                iconColor={catPink}
               />
               <SettingsRow
                 icon="document-text"

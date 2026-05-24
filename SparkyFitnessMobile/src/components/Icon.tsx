@@ -105,6 +105,7 @@ const ICON_MAP = {
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
   'about': { sf: 'info.circle', ion: 'information-circle-outline' },
+  'sparkle': { sf: 'sparkles', ion: 'sparkles-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

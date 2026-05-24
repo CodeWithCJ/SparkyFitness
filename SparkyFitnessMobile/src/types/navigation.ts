@@ -139,6 +139,7 @@ export type RootStackParamList = {
   ServerSettings: undefined;
   AppSettings: undefined;
   About: undefined;
+  WhatsNew: undefined;
 };
 
 declare global {
