@@ -3,10 +3,18 @@ import userRepository from '../models/userRepository.js';
 import { serializeSignedCookie } from 'better-call';
 import { auth } from '../auth.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import {
+  getCachedSession,
+  setCachedSession,
+} from '../utils/apiKeySessionCache.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const authenticate = async (req: any, res: any, next: any) => {
   //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
   // 1. Better Auth Session & API Key Check (Unified Identity)
+  // Tracks the raw API key when this request is API-key-authed, so we can
+  // short-circuit Better Auth's per-request verify (which ticks the per-key
+  // rate-limit bucket — see issue #1302).
+  let apiKeyToken: string | null = null;
   try {
     // Route Bearer tokens to the correct auth mechanism:
     // - API keys (64+ alphanumeric chars, no dots) → x-api-key header
@@ -19,6 +27,7 @@ const authenticate = async (req: any, res: any, next: any) => {
       if (token && token.length >= 64 && !token.includes('.')) {
         req.headers['x-api-key'] = token;
         delete req.headers.authorization;
+        apiKeyToken = token;
         log(
           'debug',
           'Authentication: Mapped Bearer token to x-api-key (API key detected).'
@@ -50,10 +59,30 @@ const authenticate = async (req: any, res: any, next: any) => {
         );
       }
     }
-    // getSession resolves from session cookies or x-api-key header
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
+    // Pre-existing x-api-key header (i.e. not from the Bearer mapping above)
+    // is also subject to the same per-key rate-limit ticking. Treat it the
+    // same as a mapped Bearer for cache purposes.
+    if (!apiKeyToken && typeof req.headers['x-api-key'] === 'string') {
+      apiKeyToken = req.headers['x-api-key'];
+    }
+    // Short-circuit Better Auth's per-request verify when we have a cached
+    // session for this API key. Better Auth's api-key plugin treats every
+    // getSession() call as a verification tick and increments
+    // api_key.request_count, which trivially exhausts the default
+    // 100-req/60s bucket under normal mobile/SPA traffic (issue #1302).
+    // Session cookie auth is unaffected and never cached here.
+    let session: Awaited<ReturnType<typeof auth.api.getSession>> | null = null;
+    if (apiKeyToken) {
+      session = getCachedSession(apiKeyToken) as typeof session;
+    }
+    if (!session) {
+      session = await auth.api.getSession({
+        headers: req.headers,
+      });
+      if (session && session.user && apiKeyToken) {
+        setCachedSession(apiKeyToken, session);
+      }
+    }
     if (session && session.user) {
       log(
         'debug',

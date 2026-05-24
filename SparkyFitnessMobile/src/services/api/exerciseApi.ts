@@ -1,4 +1,5 @@
 import { apiFetch, normalizeUrl } from './apiClient';
+import { ApiError } from './errors';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { addLog } from '../LogService';
@@ -245,7 +246,7 @@ export async function createExercise(payload: CreateExercisePayload): Promise<Ex
     }
     const text = await response.text();
     addLog('[Exercise API] Failed to create exercise', 'ERROR', [text]);
-    throw new Error(`Server error: ${response.status} - ${text}`);
+    throw new ApiError(`Server error: ${response.status} - ${text}`, response.status, text);
   }
 
   const raw = await response.json();
@@ -378,7 +379,7 @@ export async function updateExercise(
     }
     const text = await response.text();
     addLog('[Exercise API] Failed to update exercise', 'ERROR', [text]);
-    throw new Error(`Server error: ${response.status} - ${text}`);
+    throw new ApiError(`Server error: ${response.status} - ${text}`, response.status, text);
   }
 
   const raw = await response.json();
