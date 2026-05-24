@@ -30,6 +30,7 @@ import {
 } from '../services/api/authService';
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -117,10 +118,12 @@ export default function OnboardingScreen({ navigation }: Props) {
   // --- Navigation helpers ---
 
   const finishOnboarding = () => {
+    void markCurrentVersionSeen();
     navigation.replace('Tabs', { screen: 'Settings' });
   };
 
   const finishWithConnection = () => {
+    void markCurrentVersionSeen();
     queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
     navigation.replace('Tabs', { screen: 'Dashboard' });
   };

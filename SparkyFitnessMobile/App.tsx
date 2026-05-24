@@ -58,6 +58,7 @@ import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
 import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import WhatsNewScreen from './src/screens/WhatsNewScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -99,6 +100,7 @@ import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
+import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
@@ -161,6 +163,7 @@ const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', {
 const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
 const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
+const SafeWhatsNew = withErrorBoundary(WhatsNewScreen, 'WhatsNew', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -665,6 +668,7 @@ function AppContent() {
                   // paints on top of the embedded bar — matching the mockup
                   // where the + button visually bridges both bars.
                   <View collapsable={false}>
+                    <WhatsNewBanner />
                     <ActiveWorkoutBar variant="embedded" />
                     <CustomTabBar {...props} />
                   </View>
@@ -977,6 +981,13 @@ function AppContent() {
           <Stack.Screen
             name="About"
             component={SafeAbout}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="WhatsNew"
+            component={SafeWhatsNew}
             options={{
               headerShown: false,
             }}

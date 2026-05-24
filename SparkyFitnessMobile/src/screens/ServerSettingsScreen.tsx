@@ -41,7 +41,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     '--color-accent-primary',
     '--color-text-secondary',
     '--color-text-link',
-    '--color-text-success',
+    '--color-icon-success',
     '--color-bg-danger',
   ]) as [string, string, string, string, string];
 
