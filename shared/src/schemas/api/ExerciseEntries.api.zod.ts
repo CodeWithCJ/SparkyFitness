@@ -262,6 +262,24 @@ export const exerciseHistoryResponseSchema = z
   })
   .strict();
 
+// --- Per-exercise stats endpoint ---
+
+export const exerciseSetStatsSchema = z
+  .object({
+    entryDate: dateStringSchema,
+    weight: z.number().nullable(),
+    reps: z.number().int().nullable(),
+    setNumber: z.number().int(),
+  })
+  .strict();
+
+export const exerciseStatsResponseSchema = z
+  .object({
+    bestSet: exerciseSetStatsSchema.nullable(),
+    lastSet: exerciseSetStatsSchema.nullable(),
+  })
+  .strict();
+
 // --- Types ---
 
 export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
@@ -306,3 +324,5 @@ export type ExerciseHistoryResponse = z.infer<
 export type ExerciseProgressResponse = z.infer<
   typeof exerciseProgressResponseSchema
 >;
+export type ExerciseSetStats = z.infer<typeof exerciseSetStatsSchema>;
+export type ExerciseStatsResponse = z.infer<typeof exerciseStatsResponseSchema>;

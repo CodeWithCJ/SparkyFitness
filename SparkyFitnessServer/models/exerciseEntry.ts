@@ -1115,6 +1115,54 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
     client.release();
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getBestSetForExercise(userId: any, exerciseId: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ee.entry_date::TEXT AS entry_date, ees.weight, ees.reps, ees.set_number
+         FROM exercise_entries ee
+         JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
+        WHERE ee.user_id = $1
+          AND ee.exercise_id = $2
+          AND ees.weight IS NOT NULL
+        ORDER BY ees.weight DESC,
+                 ees.reps DESC NULLS LAST,
+                 ee.entry_date DESC,
+                 ee.created_at DESC,
+                 ees.set_number DESC,
+                 ees.id DESC
+        LIMIT 1`,
+      [userId, exerciseId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getLastSetForExercise(userId: any, exerciseId: any) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ee.entry_date::TEXT AS entry_date, ees.weight, ees.reps, ees.set_number
+         FROM exercise_entries ee
+         JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
+        WHERE ee.user_id = $1
+          AND ee.exercise_id = $2
+          AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+        ORDER BY ee.entry_date DESC,
+                 ee.created_at DESC,
+                 ees.set_number DESC,
+                 ees.id DESC
+        LIMIT 1`,
+      [userId, exerciseId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
 async function deleteExerciseEntriesByEntrySourceAndDate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1201,6 +1249,8 @@ export { deleteExerciseEntry };
 export { getExerciseEntriesByDate };
 export { getExerciseProgressData };
 export { getExerciseHistory };
+export { getBestSetForExercise };
+export { getLastSetForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
 export default {
   upsertExerciseEntryData,
@@ -1218,5 +1268,7 @@ export default {
   getExerciseEntriesByDate,
   getExerciseProgressData,
   getExerciseHistory,
+  getBestSetForExercise,
+  getLastSetForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
 };

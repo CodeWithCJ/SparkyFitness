@@ -202,6 +202,26 @@ async function searchExercisesPaginated(
     throw error;
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSetStatsRow(row: any) {
+  return {
+    entryDate: row.entry_date,
+    weight: row.weight,
+    reps: row.reps,
+    setNumber: row.set_number,
+  };
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getExerciseStats(userId: any, exerciseId: any) {
+  const [bestRow, lastRow] = await Promise.all([
+    exerciseEntryDb.getBestSetForExercise(userId, exerciseId),
+    exerciseEntryDb.getLastSetForExercise(userId, exerciseId),
+  ]);
+  return {
+    bestSet: bestRow ? mapSetStatsRow(bestRow) : null,
+    lastSet: lastRow ? mapSetStatsRow(lastRow) : null,
+  };
+}
 async function getAvailableEquipment() {
   try {
     const equipment = await exerciseDb.getDistinctEquipment();
@@ -2241,6 +2261,7 @@ export { upsertExerciseEntryData };
 export { getExercisesWithPagination };
 export { searchExercises };
 export { searchExercisesPaginated };
+export { getExerciseStats };
 export { getAvailableEquipment };
 export { getAvailableMuscleGroups };
 export { createExercise };
@@ -2277,6 +2298,7 @@ export default {
   getExercisesWithPagination,
   searchExercises,
   searchExercisesPaginated,
+  getExerciseStats,
   getAvailableEquipment,
   getAvailableMuscleGroups,
   createExercise,

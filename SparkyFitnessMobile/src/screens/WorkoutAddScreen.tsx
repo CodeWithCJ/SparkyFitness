@@ -74,6 +74,21 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode, skipDraftLoad, initialDate });
 
+  const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
+
+  const wrappedAddExercise = useCallback(
+    (exercise: Parameters<typeof addExercise>[0]) => {
+      const result = addExercise(exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(result.exerciseClientId);
+        return next;
+      });
+      return result;
+    },
+    [addExercise],
+  );
+
   const {
     activeSetKey,
     activeSetField,
@@ -82,7 +97,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     handleAddSet,
     activateSet,
     deactivateSet,
-  } = useExerciseSetEditing({ addExercise, removeExercise, addSet });
+  } = useExerciseSetEditing({ addExercise: wrappedAddExercise, removeExercise, addSet });
+
+  const isEligibleForPrefill = useCallback(
+    (clientId: string) => eligibleIds.has(clientId),
+    [eligibleIds],
+  );
 
   const {
     createSession,
@@ -122,7 +142,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!preset || isEditMode || hasPopulatedPresetRef.current || isPreferencesLoading) return;
     hasPopulatedPresetRef.current = true;
-    populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+    const populatedIds = populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+    setEligibleIds(prev => {
+      const next = new Set(prev);
+      populatedIds.forEach(id => next.add(id));
+      return next;
+    });
   }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, initialDate]);
 
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
@@ -284,6 +309,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onRemoveExercise={handleRemoveExercise}
                   onAddExercisePress={openExerciseSearch}
                   onChangeRest={setExerciseRest}
+                  isEligibleForPrefill={isEligibleForPrefill}
                 />
 
                 {/* Bottom spacer so content isn't hidden behind footer */}
