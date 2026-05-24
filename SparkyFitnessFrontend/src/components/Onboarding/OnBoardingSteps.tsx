@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OptionButton } from './OptionButton';
+import { FoodSourcesStep } from './FoodSourcesStep';
 import { useTranslation } from 'react-i18next';
 import { OnboardingData } from '@/types/onboarding';
 import { UnitInput } from '@/components/ui/UnitInput';
@@ -67,10 +68,10 @@ export const OnboardingSteps = ({
     case 1:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             What is your sex?
           </h1>
-          <p className="text-gray-400 mb-8">
+          <p className="text-muted-foreground mb-8">
             Used to calculate your base metabolic rate.
           </p>
           <OptionButton
@@ -88,7 +89,7 @@ export const OnboardingSteps = ({
     case 2:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-8">
             What is your primary goal?
           </h1>
           <OptionButton
@@ -111,27 +112,27 @@ export const OnboardingSteps = ({
     case 3:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             What is your current weight?
           </h1>
-          <p className="text-gray-400 mb-8">Enter in {weightUnit}.</p>
+          <p className="text-muted-foreground mb-8">Enter in {weightUnit}.</p>
 
-          <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
+          <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <button
               onClick={() => setLocalWeightUnit('kg')}
-              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'kg' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'kg' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               kg
             </button>
             <button
               onClick={() => setLocalWeightUnit('lbs')}
-              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'lbs' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'lbs' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               lbs
             </button>
             <button
               onClick={() => setLocalWeightUnit('st_lbs')}
-              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'st_lbs' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'st_lbs' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               st/lb
             </button>
@@ -152,7 +153,7 @@ export const OnboardingSteps = ({
           <Button
             onClick={nextStep}
             disabled={!formData.currentWeight}
-            className="w-full mt-12 bg-green-600 hover:bg-green-700 text-white h-14 text-lg rounded-full"
+            className="w-full mt-12 h-14 text-lg rounded-full"
           >
             Continue
           </Button>
@@ -161,27 +162,27 @@ export const OnboardingSteps = ({
     case 4:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             What is your height?
           </h1>
-          <p className="text-gray-400 mb-8">Enter in {heightUnit}.</p>
+          <p className="text-muted-foreground mb-8">Enter in {heightUnit}.</p>
 
-          <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
+          <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <button
               onClick={() => setLocalHeightUnit('cm')}
-              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'cm' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'cm' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               cm
             </button>
             <button
               onClick={() => setLocalHeightUnit('inches')}
-              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'inches' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'inches' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               in
             </button>
             <button
               onClick={() => setLocalHeightUnit('ft_in')}
-              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'ft_in' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'ft_in' ? 'bg-green-600 text-white shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
             >
               ft/in
             </button>
@@ -200,7 +201,7 @@ export const OnboardingSteps = ({
           <Button
             onClick={nextStep}
             disabled={!formData.height}
-            className="w-full mt-12 bg-green-600 hover:bg-green-700 text-white h-14 text-lg rounded-full"
+            className="w-full mt-12 h-14 text-lg rounded-full"
           >
             Continue
           </Button>
@@ -209,15 +210,15 @@ export const OnboardingSteps = ({
     case 5:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             When were you born?
           </h1>
-          <p className="text-gray-400 mb-8">
+          <p className="text-muted-foreground mb-8">
             Age is a key factor in your metabolism.
           </p>
-          <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
+          <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <Select value={localDateFormat} onValueChange={setLocalDateFormat}>
-              <SelectTrigger className="w-[180px] bg-[#1c1c1e] text-white border-none rounded-md">
+              <SelectTrigger className="w-[180px] bg-card border-none rounded-md">
                 <SelectValue placeholder="Select format" />
               </SelectTrigger>
               <SelectContent>
@@ -245,12 +246,12 @@ export const OnboardingSteps = ({
               <PopoverTrigger asChild>
                 <Button
                   variant={'outline'}
-                  className={`w-[240px] pl-3 text-left font-normal bg-[#1c1c1e] border-none text-white hover:bg-[#2c2c2e] hover:text-white h-14 text-lg rounded-xl justify-start ${!formData.birthDate && 'text-muted-foreground'}`}
+                  className={`w-[240px] pl-3 text-left font-normal h-14 text-lg rounded-xl justify-start ${!formData.birthDate && 'text-muted-foreground'}`}
                 >
                   {formData.birthDate ? (
                     format(parseISO(formData.birthDate), localDateFormat)
                   ) : (
-                    <span className="text-gray-400">Pick a date</span>
+                    <span className="text-muted-foreground">Pick a date</span>
                   )}
                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                 </Button>
@@ -283,7 +284,7 @@ export const OnboardingSteps = ({
           <Button
             onClick={nextStep}
             disabled={!formData.birthDate}
-            className="w-full mt-12 bg-green-600 hover:bg-green-700 text-white h-14 text-lg rounded-full"
+            className="w-full mt-12 h-14 text-lg rounded-full"
           >
             Continue
           </Button>
@@ -292,10 +293,12 @@ export const OnboardingSteps = ({
     case 6:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Estimate your body fat
           </h1>
-          <p className="text-gray-400 mb-8">A visual estimate is sufficient.</p>
+          <p className="text-muted-foreground mb-8">
+            A visual estimate is sufficient.
+          </p>
           <div className="grid grid-cols-2 gap-4">
             {[
               'Low (<15%)',
@@ -306,11 +309,11 @@ export const OnboardingSteps = ({
               <button
                 key={range}
                 onClick={() => handleSelect('bodyFatRange', range)}
-                className={`p-6 rounded-xl border-2 bg-[#1c1c1e] text-white font-semibold
+                className={`p-6 rounded-xl border-2 bg-card text-foreground font-semibold transition-all duration-200
                      ${
                        formData.bodyFatRange === range
                          ? 'border-green-500'
-                         : 'border-transparent hover:border-gray-600'
+                         : 'border-border hover:border-green-500/50 hover:shadow-sm'
                      }`}
               >
                 {range}
@@ -322,10 +325,10 @@ export const OnboardingSteps = ({
     case 7:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             What is your target weight?
           </h1>
-          <p className="text-gray-400 mb-8">Your ultimate goal.</p>
+          <p className="text-muted-foreground mb-8">Your ultimate goal.</p>
           <div className="flex items-center justify-center">
             <UnitInput
               id="target-weight"
@@ -341,7 +344,7 @@ export const OnboardingSteps = ({
           <Button
             onClick={nextStep}
             disabled={!formData.targetWeight}
-            className="w-full mt-12 bg-green-600 hover:bg-green-700 text-white h-14 text-lg rounded-full"
+            className="w-full mt-12 h-14 text-lg rounded-full"
           >
             Continue
           </Button>
@@ -350,7 +353,7 @@ export const OnboardingSteps = ({
     case 8:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-8">
             How many meals do you eat in a typical day?
           </h1>
           {[3, 4, 5, 6].map((num) => (
@@ -366,7 +369,7 @@ export const OnboardingSteps = ({
     case 9:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-8">
             {t('onboarding.activityLevelTitle', 'How often do you exercise?')}
           </h1>
           <OptionButton
@@ -410,13 +413,13 @@ export const OnboardingSteps = ({
     case 10:
       return (
         <>
-          <h1 className="text-3xl font-bold text-white mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-8">
             {t(
               'onboarding.addBurnedCaloriesTitle',
               'Add burned calories from exercise?'
             )}
           </h1>
-          <p className="text-gray-400 mb-8">
+          <p className="text-muted-foreground mb-8">
             {t(
               'onboarding.addBurnedCaloriesDesc',
               'If you exercise, should we add those calories back to your daily budget?'
@@ -425,11 +428,11 @@ export const OnboardingSteps = ({
           <div className="flex gap-4 w-full">
             <button
               onClick={() => handleSelect('addBurnedCalories', false)}
-              className={`flex-1 p-6 rounded-full text-lg font-bold transition-all
+              className={`flex-1 p-6 rounded-full text-lg font-bold border-2 transition-all
                   ${
                     formData.addBurnedCalories === false
-                      ? 'bg-green-600 text-white'
-                      : 'bg-[#2c2c2e] text-gray-300'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-card text-foreground border-border hover:border-green-500/50 hover:shadow-sm'
                   }
                 `}
             >
@@ -437,11 +440,11 @@ export const OnboardingSteps = ({
             </button>
             <button
               onClick={() => handleSelect('addBurnedCalories', true)}
-              className={`flex-1 p-6 rounded-full text-lg font-bold transition-all
+              className={`flex-1 p-6 rounded-full text-lg font-bold border-2 transition-all
                   ${
                     formData.addBurnedCalories === true
-                      ? 'bg-green-600 text-white'
-                      : 'bg-[#2c2c2e] text-gray-300'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-card text-foreground border-border hover:border-green-500/50 hover:shadow-sm'
                   }
                 `}
             >
@@ -451,18 +454,20 @@ export const OnboardingSteps = ({
         </>
       );
     case 11:
+      return <FoodSourcesStep onContinue={nextStep} />;
+    case 12:
       return (
         <div className="flex flex-col items-center justify-center h-full animate-in fade-in duration-700">
           <div className="relative flex h-32 w-32 mb-8">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-20"></span>
-            <span className="relative inline-flex rounded-full h-32 w-32 bg-[#1c1c1e] items-center justify-center border-4 border-green-500">
+            <span className="relative inline-flex rounded-full h-32 w-32 bg-card items-center justify-center border-4 border-green-500">
               <Utensils className="h-12 w-12 text-green-500" />
             </span>
           </div>
-          <h2 className="text-2xl font-bold text-white text-center">
+          <h2 className="text-2xl font-bold text-foreground text-center">
             Preparing your personalized plan...
           </h2>
-          <p className="text-gray-500 mt-4">
+          <p className="text-muted-foreground mt-4">
             Crunching the numbers based on your unique profile.
           </p>
         </div>

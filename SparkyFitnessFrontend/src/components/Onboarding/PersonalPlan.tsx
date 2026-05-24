@@ -347,14 +347,16 @@ const PersonalPlan = ({
   return (
     <div className="animate-in slide-in-from-bottom duration-500 pb-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Your Personal Plan</h1>
-        <p className="text-gray-400 mt-2">
+        <h1 className="text-3xl font-bold text-foreground">
+          Your Personal Plan
+        </h1>
+        <p className="text-muted-foreground mt-2">
           Ready to reach your goal of {formData.primaryGoal.replace('_', ' ')}.
         </p>
       </div>
 
-      <Alert className="mb-6 bg-yellow-900/20 border-yellow-600/50 text-yellow-200">
-        <AlertTriangle className="h-4 w-4 stroke-yellow-500" />
+      <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-600/50 text-yellow-900 dark:text-yellow-200">
+        <AlertTriangle className="h-4 w-4 stroke-yellow-600 dark:stroke-yellow-500" />
         <AlertDescription className="text-sm">
           <strong>Medical Disclaimer:</strong> This plan is for informational
           purposes only and should not replace professional medical advice.
@@ -402,7 +404,7 @@ const PersonalPlan = ({
       />
 
       {/* Nutrient Sections Grid */}
-      <h2 className="text-xl font-bold text-white mb-4 ml-1 mt-8">
+      <h2 className="text-xl font-bold text-foreground mb-4 ml-1 mt-8">
         Nutrient Goals
       </h2>
       <NutrientGoals
@@ -420,7 +422,7 @@ const PersonalPlan = ({
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full bg-green-600 hover:bg-green-700 text-white h-14 text-lg rounded-full font-bold disabled:opacity-70 shadow-lg shadow-green-900/20"
+          className="w-full h-14 text-lg rounded-full font-bold disabled:opacity-70"
         >
           <PlayCircle className="mr-2 h-5 w-5" />
           {isSubmitting
@@ -432,7 +434,7 @@ const PersonalPlan = ({
           variant="outline"
           onClick={() => setIsSavePresetOpen(true)}
           disabled={isSubmitting}
-          className="w-full h-12 text-base rounded-full bg-[#1c1c1e] border-gray-700 text-gray-200 hover:bg-[#2c2c2e] hover:text-white transition-colors"
+          className="w-full h-12 text-base rounded-full"
         >
           <Save className="mr-2 h-4 w-4" />
           {t(

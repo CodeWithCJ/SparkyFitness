@@ -41,23 +41,23 @@ export const DietApproach = ({
   showDietApproach,
 }: DietApproachProps) => {
   return (
-    <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
+    <div className="bg-card rounded-2xl border border-border mb-6">
       <button
         onClick={() => setShowDietApproach(!showDietApproach)}
-        className="w-full p-4 flex items-center justify-between hover:bg-[#2c2c2e] transition-colors rounded-2xl"
+        className="w-full p-4 flex items-center justify-between hover:bg-muted transition-colors rounded-2xl"
       >
         <div className="flex items-center gap-2">
           <Utensils className="h-5 w-5 text-green-500" />
-          <span className="text-white font-semibold">Diet Approach</span>
+          <span className="text-foreground font-semibold">Diet Approach</span>
         </div>
         <ChevronLeft
-          className={`h-5 w-5 text-gray-400 transition-transform ${showDietApproach ? '-rotate-90' : 'rotate-180'}`}
+          className={`h-5 w-5 text-muted-foreground transition-transform ${showDietApproach ? '-rotate-90' : 'rotate-180'}`}
         />
       </button>
 
       {showDietApproach && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
-          <p className="text-gray-400 text-sm mb-4">
+        <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+          <p className="text-muted-foreground text-sm mb-4">
             Choose a preset diet or customize your macro split
           </p>
 
@@ -77,7 +77,7 @@ export const DietApproach = ({
               }
             }}
           >
-            <SelectTrigger className="w-full bg-[#2c2c2e] border-gray-700 text-white">
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -85,7 +85,7 @@ export const DietApproach = ({
                 <SelectItem key={diet.id} value={diet.id}>
                   <div>
                     <div className="font-semibold">{diet.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-muted-foreground">
                       {diet.carbsPercentage}% Carbs / {diet.proteinPercentage}%
                       Protein / {diet.fatPercentage}% Fat
                     </div>
@@ -95,16 +95,16 @@ export const DietApproach = ({
             </SelectContent>
           </Select>
 
-          <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
-            <p className="text-sm text-gray-300">
+          <div className="mt-3 p-3 bg-muted rounded-lg">
+            <p className="text-sm text-foreground">
               {getDietTemplate(localSelectedDiet)?.description}
             </p>
           </div>
 
           {localSelectedDiet === 'custom' && (
-            <div className="mt-6 space-y-6 p-4 bg-[#2c2c2e] rounded-lg border border-gray-700">
+            <div className="mt-6 space-y-6 p-4 bg-muted rounded-lg border border-border">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold text-white">
+                <h4 className="text-sm font-semibold text-foreground">
                   Custom Macro Split
                 </h4>
                 <span
@@ -133,7 +133,7 @@ export const DietApproach = ({
                       onClick={() =>
                         setLockedMacros((p) => ({ ...p, carbs: !p.carbs }))
                       }
-                      className="text-gray-400 hover:text-white"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       {lockedMacros.carbs ? (
                         <Lock size={16} />
@@ -141,7 +141,7 @@ export const DietApproach = ({
                         <Unlock size={16} />
                       )}
                     </button>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-foreground">
                       Carbohydrates
                     </label>
                   </div>
@@ -156,10 +156,10 @@ export const DietApproach = ({
                           parseInt(e.target.value, 10) || 0
                         )
                       }
-                      className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                      className="w-20 text-right bg-transparent h-8 text-sm"
                       disabled={lockedMacros.carbs}
                     />
-                    <span className="text-sm font-mono text-white">%</span>
+                    <span className="text-sm font-mono text-foreground">%</span>
                   </div>
                 </div>
                 <Slider
@@ -186,7 +186,7 @@ export const DietApproach = ({
                           protein: !p.protein,
                         }))
                       }
-                      className="text-gray-400 hover:text-white"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       {lockedMacros.protein ? (
                         <Lock size={16} />
@@ -194,7 +194,7 @@ export const DietApproach = ({
                         <Unlock size={16} />
                       )}
                     </button>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-foreground">
                       Protein
                     </label>
                   </div>
@@ -209,10 +209,10 @@ export const DietApproach = ({
                           parseInt(e.target.value, 10) || 0
                         )
                       }
-                      className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                      className="w-20 text-right bg-transparent h-8 text-sm"
                       disabled={lockedMacros.protein}
                     />
-                    <span className="text-sm font-mono text-white">%</span>
+                    <span className="text-sm font-mono text-foreground">%</span>
                   </div>
                 </div>
                 <Slider
@@ -236,7 +236,7 @@ export const DietApproach = ({
                       onClick={() =>
                         setLockedMacros((p) => ({ ...p, fat: !p.fat }))
                       }
-                      className="text-gray-400 hover:text-white"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       {lockedMacros.fat ? (
                         <Lock size={16} />
@@ -244,7 +244,7 @@ export const DietApproach = ({
                         <Unlock size={16} />
                       )}
                     </button>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-foreground">
                       Fat
                     </label>
                   </div>
@@ -259,10 +259,10 @@ export const DietApproach = ({
                           parseInt(e.target.value, 10) || 0
                         )
                       }
-                      className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                      className="w-20 text-right bg-transparent h-8 text-sm"
                       disabled={lockedMacros.fat}
                     />
-                    <span className="text-sm font-mono text-white">%</span>
+                    <span className="text-sm font-mono text-foreground">%</span>
                   </div>
                 </div>
                 <Slider
@@ -278,7 +278,7 @@ export const DietApproach = ({
                 />
               </div>
 
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Adjust or type in a value. Unlocked macros will auto-adjust to
                 maintain 100% total.
               </p>

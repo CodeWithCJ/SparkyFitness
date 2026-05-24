@@ -51,25 +51,27 @@ export const CalculationSettings = ({
   showAdvancedSettings,
 }: CalculationSettingsProps) => {
   return (
-    <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
+    <div className="bg-card rounded-2xl border border-border mb-6">
       <button
         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-        className="w-full p-4 flex items-center justify-between hover:bg-[#2c2c2e] transition-colors rounded-2xl"
+        className="w-full p-4 flex items-center justify-between hover:bg-muted transition-colors rounded-2xl"
       >
         <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-gray-400" />
-          <span className="text-white font-semibold">Calculation Settings</span>
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <span className="text-foreground font-semibold">
+            Calculation Settings
+          </span>
         </div>
         <ChevronLeft
-          className={`h-5 w-5 text-gray-400 transition-transform ${showAdvancedSettings ? '-rotate-90' : 'rotate-180'}`}
+          className={`h-5 w-5 text-muted-foreground transition-transform ${showAdvancedSettings ? '-rotate-90' : 'rotate-180'}`}
         />
       </button>
 
       {showAdvancedSettings && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
+        <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
           {/* Fat Breakdown Algorithm */}
           <div>
-            <Label className="text-gray-300 text-sm mb-2 block">
+            <Label className="text-foreground text-sm mb-2 block">
               Fat Breakdown Method
             </Label>
             <Select
@@ -78,7 +80,7 @@ export const CalculationSettings = ({
                 setLocalFatBreakdownAlgorithm(value as FatBreakdownAlgorithm)
               }
             >
-              <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -93,7 +95,7 @@ export const CalculationSettings = ({
 
           {/* Mineral Calculation Algorithm */}
           <div>
-            <Label className="text-gray-300 text-sm mb-2 block">
+            <Label className="text-foreground text-sm mb-2 block">
               Mineral Calculation
             </Label>
             <Select
@@ -102,7 +104,7 @@ export const CalculationSettings = ({
                 setLocalMineralAlgorithm(value as MineralCalculationAlgorithm)
               }
             >
-              <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -117,7 +119,7 @@ export const CalculationSettings = ({
 
           {/* Vitamin Calculation Algorithm */}
           <div>
-            <Label className="text-gray-300 text-sm mb-2 block">
+            <Label className="text-foreground text-sm mb-2 block">
               Vitamin Calculation
             </Label>
             <Select
@@ -126,7 +128,7 @@ export const CalculationSettings = ({
                 setLocalVitaminAlgorithm(value as VitaminCalculationAlgorithm)
               }
             >
-              <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -141,7 +143,7 @@ export const CalculationSettings = ({
 
           {/* Sugar Calculation Algorithm */}
           <div>
-            <Label className="text-gray-300 text-sm mb-2 block">
+            <Label className="text-foreground text-sm mb-2 block">
               Sugar Recommendation
             </Label>
             <Select
@@ -150,7 +152,7 @@ export const CalculationSettings = ({
                 setLocalSugarAlgorithm(value as SugarCalculationAlgorithm)
               }
             >
-              <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -163,7 +165,7 @@ export const CalculationSettings = ({
             </Select>
           </div>
 
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             These settings control how your nutrient goals are calculated. You
             can change them later in Settings.
           </p>
