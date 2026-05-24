@@ -18,7 +18,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
   const [barWidth, setBarWidth] = useState(0);
   const barHeight = 8;
   const borderRadius = 4;
-  const progress = goal > 0 ? current / goal : 0;
+  const progress = goal > 0 ? current / goal : current > 0 ? 1 : 0;
+  const showBar = goal > 0 || current > 0;
 
   const animatedProgress = useSharedValue(0);
 
@@ -60,48 +61,44 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
     width: overflowWidth.value,
   }));
 
-  const hasGoal = goal > 0;
-
   return (
     <View>
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-semibold text-text-primary">{label}</Text>
         <Text className="text-sm text-text-primary">
-          {hasGoal ? `${Math.round(current)} / ${Math.round(goal)} ${unit}` : `${Math.round(current)} ${unit}`}
+          {goal > 0 ? `${Math.round(current)} / ${Math.round(goal)} ${unit}` : `${Math.round(current)} ${unit}`}
         </Text>
       </View>
-      {hasGoal && (
-        <View
-          className="h-3"
-          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-        >
-          {barWidth > 0 && (
-            <View
-              style={{
-                width: barWidth,
-                height: barHeight,
-                borderRadius,
-                overflow: 'hidden',
-                backgroundColor: trackColor,
-                opacity,
-              }}
-            >
-              <Animated.View
-                style={[
-                  { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
-                  fillStyle,
-                ]}
-              />
-              <Animated.View
-                style={[
-                  { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
-                  overflowStyle,
-                ]}
-              />
-            </View>
-          )}
-        </View>
-      )}
+      {showBar && <View
+        className="h-3"
+        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+      >
+        {barWidth > 0 && (
+          <View
+            style={{
+              width: barWidth,
+              height: barHeight,
+              borderRadius,
+              overflow: 'hidden',
+              backgroundColor: trackColor,
+              opacity,
+            }}
+          >
+            <Animated.View
+              style={[
+                { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                fillStyle,
+              ]}
+            />
+            <Animated.View
+              style={[
+                { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                overflowStyle,
+              ]}
+            />
+          </View>
+        )}
+      </View>}
     </View>
   );
 };

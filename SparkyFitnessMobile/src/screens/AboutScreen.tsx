@@ -72,7 +72,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="p-4 flex-row items-center justify-between"
+            className="p-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => openUrl(DOCUMENTATION_URL)}
             activeOpacity={0.7}
           >
