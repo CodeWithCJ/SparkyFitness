@@ -939,9 +939,12 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
+      // Banner text picks up "or convert with AI" when AI is eligible for
+      // the swap (mirrors web's toast wording so users see the alternative
+      // option without scanning for a separate button label).
       expect(
         screen.getByText(
-          "Can't convert between units. Update nutrition values manually.",
+          "Can't convert between units. Update nutrition values manually or convert with AI.",
         ),
       ).toBeTruthy();
       expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);

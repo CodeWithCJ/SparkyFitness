@@ -36,10 +36,13 @@ export function resolveAutoConversionSource(
   selectedVariant: FoodUnitVariant | null,
   targetUnit: string,
 ): ResolvedAutoConversion | null {
-  if (selectedVariant?.source === 'ai_estimate') {
-    return null;
-  }
-
+  // Iterate every variant on the food and use the FIRST non-AI math source
+  // we find as the conversion donor. The currently-selected variant has no
+  // special priority — even if the selection is AI-sourced (cup AI), a
+  // sibling manual variant (g default) is still a valid donor for compatible
+  // target units (kg, oz, lb). This keeps green checkmarks visible on
+  // weight units when the user is viewing an AI volume variant, matching
+  // web's cross-row donor behavior.
   const candidateVariants = selectedVariant
     ? [selectedVariant, ...variants]
     : variants;

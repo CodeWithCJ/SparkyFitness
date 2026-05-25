@@ -76,20 +76,17 @@ const FoodUnitSelector = ({
   initialUnit,
   initialVariantId,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel, energyUnit, convertEnergy, aiAssistedConversions } =
-    usePreferences();
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
-  // AI estimate gate: requires (1) admin allowed user AI config, (2) user has
-  // an active AI service, (3) the per-user preference is on. Re-checked each
-  // render — turning the toggle off mid-dialog hides the section live.
+  // AI estimate gate: admin allowed user AI config + user has an active AI
+  // service. The per-user "AI Assisted Unit Conversions" preference was
+  // removed — when AI is configured, the feature is always available.
   const userAiConfigAllowedQuery = useUserAiConfigAllowed();
   const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
   const activeAiServiceQuery = useActiveAIService(open && userAiConfigAllowed);
   const aiEstimatesAvailable =
-    aiAssistedConversions === true &&
-    userAiConfigAllowed &&
-    !!activeAiServiceQuery.data;
+    userAiConfigAllowed && !!activeAiServiceQuery.data;
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? 'kcal' : 'kJ';

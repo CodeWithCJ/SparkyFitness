@@ -84,9 +84,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     borderStrong,
     textMuted,
     successIcon,
-    successText,
-    warningText,
-    dangerText,
+    warningIcon,
+    dangerIcon,
   ] = useCSSVariable([
     '--color-surface',
     '--color-raised',
@@ -94,23 +93,22 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     '--color-border-strong',
     '--color-text-muted',
     '--color-icon-success',
-    '--color-text-success',
-    '--color-text-warning',
-    '--color-text-danger-subtle',
-  ]) as [string, string, string, string, string, string, string, string, string];
+    '--color-icon-warning',
+    '--color-icon-danger',
+  ]) as [string, string, string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Confidence-tinted color for the AI-provenance Sparkles icon in the saved
-  // variants list. Mirrors the colored badge used by VariantCard on web and
-  // by the food-photo screen on mobile, so AI surfaces feel consistent.
+  // Confidence-tinted color for the AI-provenance Sparkles icon. Uses the
+  // icon-* CSS variables (not text-*) so the sparkle visually matches the
+  // green checkmark beside it — same saturation/weight, just different hue.
   const aiSparkleColorByTone: Record<ConfidenceTone, string> = useMemo(
     () => ({
       success: successIcon,
-      warning: warningText,
-      error: dangerText,
+      warning: warningIcon,
+      error: dangerIcon,
     }),
-    [dangerText, successIcon, warningText],
+    [dangerIcon, successIcon, warningIcon],
   );
 
   const selectedVariant = useMemo(
@@ -381,7 +379,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
           </Text>
           {isAiSourced && aiConfidence ? (
             <View accessible accessibilityLabel={aiAccessibilityLabel}>
-              <Icon name="sparkles" size={14} color={aiSparkleColor} />
+              <Icon name="sparkles" size={18} color={aiSparkleColor} />
             </View>
           ) : null}
         </View>
@@ -436,7 +434,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
           <View accessible accessibilityLabel={matchedAiAccessibilityLabel}>
             <Icon
               name="sparkles"
-              size={14}
+              size={18}
               color={matchedAiSparkleColor}
             />
           </View>

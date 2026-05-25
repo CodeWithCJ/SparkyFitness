@@ -1350,7 +1350,19 @@ const FoodForm: React.FC<FoodFormProps> = ({
             </View>
           ) : null}
 
-          {showManualUpdateBanner ? (
+          {showManualUpdateBanner ? (() => {
+            // AI eligibility for this swap. When true, the banner text picks
+            // up "or convert with AI" so the user knows there's an automated
+            // path forward besides typing values manually.
+            const canAiConvert =
+              aiEstimatesAvailable &&
+              swapContextRef.current != null &&
+              trustedAnchorRef.current != null &&
+              shouldOfferAiConversion(
+                trustedAnchorRef.current.serving_unit,
+                form.servingUnit,
+              );
+            return (
             <View className="mt-1.5 gap-2">
               <View
                 className="rounded-lg px-3 py-3 flex-row items-center gap-2.5"
@@ -1361,16 +1373,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  {"Can't convert between units. Update nutrition values manually."}
+                  {canAiConvert
+                    ? "Can't convert between units. Update nutrition values manually or convert with AI."
+                    : "Can't convert between units. Update nutrition values manually."}
                 </Text>
               </View>
-              {aiEstimatesAvailable &&
-                swapContextRef.current &&
-                trustedAnchorRef.current &&
-                shouldOfferAiConversion(
-                  trustedAnchorRef.current.serving_unit,
-                  form.servingUnit,
-                ) ? (
+              {canAiConvert ? (
                 <TouchableOpacity
                   onPress={handleAiEstimate}
                   disabled={isEstimatingAi}
@@ -1395,42 +1403,41 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 </TouchableOpacity>
               ) : null}
             </View>
-          ) : null}
+            );
+          })() : null}
 
           {selectedUnitSelection?.variant.source === 'ai_estimate' &&
           selectedUnitSelection.variant.ai_confidence ? (
-            <View className="mt-1.5 flex-row">
-              <View
-                className={`px-2 py-0.5 rounded-full ${
-                  aiBadgeBgClassByTone[
-                    CONFIDENCE_TONES[
-                      selectedUnitSelection.variant
-                        .ai_confidence as AiConfidence
-                    ]
+            <View
+              className={`mt-1.5 rounded-lg p-3 ${
+                aiBadgeBgClassByTone[
+                  CONFIDENCE_TONES[
+                    selectedUnitSelection.variant
+                      .ai_confidence as AiConfidence
                   ]
-                }`}
+                ]
+              }`}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{
+                  color:
+                    aiTextColorByTone[
+                      CONFIDENCE_TONES[
+                        selectedUnitSelection.variant
+                          .ai_confidence as AiConfidence
+                      ]
+                    ],
+                }}
               >
-                <Text
-                  className="text-xs font-semibold"
-                  style={{
-                    color:
-                      aiTextColorByTone[
-                        CONFIDENCE_TONES[
-                          selectedUnitSelection.variant
-                            .ai_confidence as AiConfidence
-                        ]
-                      ],
-                  }}
-                >
-                  {
-                    OVERALL_CONFIDENCE_LABELS[
-                      selectedUnitSelection.variant
-                        .ai_confidence as AiConfidence
-                    ]
-                  }{' '}
-                  estimate
-                </Text>
-              </View>
+                {
+                  OVERALL_CONFIDENCE_LABELS[
+                    selectedUnitSelection.variant
+                      .ai_confidence as AiConfidence
+                  ]
+                }{' '}
+                estimate
+              </Text>
             </View>
           ) : null}
 

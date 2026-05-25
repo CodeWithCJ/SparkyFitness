@@ -202,7 +202,12 @@ describe('useUnitConversion', () => {
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
 
-  it('disables auto-convert entirely when the selected variant is AI-estimated', () => {
+  it('falls back to a non-AI sibling variant when the selected variant is AI-estimated', () => {
+    // When the user has picked an AI variant (cup AI) but a sibling manual
+    // variant (tbsp) exists, auto-convert should still work via the manual
+    // donor — that's how a math-compatible target unit (tsp) keeps a green
+    // checkmark in the dropdown. The AI variant itself is skipped as a
+    // donor, but non-AI siblings are still valid math sources.
     const aiCupVariant = createVariant({
       id: 'ai-cup',
       serving_size: 1,
@@ -224,8 +229,33 @@ describe('useUnitConversion', () => {
       }),
     );
 
+    const resolved = resolveAutoConversionSource(
+      [aiCupVariant, tbspVariant],
+      aiCupVariant,
+      'tsp',
+    );
+    expect(resolved?.baseVariant.id).toBe('tbsp');
+    expect(result.current.buildConvertedVariant('tsp')).not.toBeNull();
+  });
+
+  it('still returns null when the only candidates are AI-estimated', () => {
+    const aiCupVariant = createVariant({
+      id: 'ai-cup',
+      serving_size: 1,
+      serving_unit: 'cup',
+      source: 'ai_estimate',
+      ai_confidence: 'high',
+    });
+
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [aiCupVariant],
+        selectedVariant: aiCupVariant,
+      }),
+    );
+
     expect(
-      resolveAutoConversionSource([aiCupVariant, tbspVariant], aiCupVariant, 'tsp'),
+      resolveAutoConversionSource([aiCupVariant], aiCupVariant, 'tsp'),
     ).toBeNull();
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });

@@ -341,7 +341,11 @@ describe('FoodUnitSelectorSheet', () => {
     expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
   });
 
-  it('hides compatible checkmarks when the selected saved variant is AI-estimated', () => {
+  it('shows compatible checkmarks via a non-AI sibling donor when the selected variant is AI-estimated', () => {
+    // Even when the current selection is an AI variant (cup AI), a sibling
+    // manual variant (tbsp) acts as a math donor — so tsp and ml still get
+    // green checkmarks because tbsp can math-convert to them. Matches web's
+    // cross-row donor behavior.
     const aiCupVariant = {
       id: 'variant-cup-ai',
       food_id: 'food-1',
@@ -378,11 +382,13 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
+    // tsp option should now show a checkmark because the manual tbsp donor
+    // provides a valid math path (tbsp → tsp is intra-volume).
     expect(
-      within(screen.getByTestId('food-unit-option-tbsp')).queryByText(
+      within(screen.getByTestId('food-unit-option-tsp')).queryByText(
         'icon-checkmark',
       ),
-    ).toBeNull();
+    ).not.toBeNull();
   });
 
   it('shows an error toast when saving a compatible draft unit fails', async () => {

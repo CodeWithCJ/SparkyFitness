@@ -54,27 +54,21 @@ const CustomFoodForm = ({
     handleSubmit,
     handleSyncConfirmation,
   } = useCustomFoodForm({ food, initialVariants, onSave });
-  const {
-    nutrientDisplayPreferences,
-    energyUnit,
-    convertEnergy,
-    aiAssistedConversions,
-  } = usePreferences();
+  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
+    usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const { data: customNutrients } = useCustomNutrients();
 
-  // AI gate for the per-row Estimate-with-AI button. Same combination Phase B
-  // uses in the diary dialog: admin allows user AI config + user has an active
-  // AI service + per-user preference is on. Re-checked each render so the
-  // settings toggle takes effect live.
+  // AI gate for the per-row Convert-with-AI button: admin allows user AI
+  // config + an active AI service exists. The per-user "AI Assisted Unit
+  // Conversions" toggle was removed — when AI services are configured, the
+  // feature is always available.
   const userAiConfigAllowedQuery = useUserAiConfigAllowed();
   const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
   const activeAiServiceQuery = useActiveAIService(userAiConfigAllowed);
   const aiEstimatesAvailable =
-    aiAssistedConversions === true &&
-    userAiConfigAllowed &&
-    !!activeAiServiceQuery.data;
+    userAiConfigAllowed && !!activeAiServiceQuery.data;
 
   // The food's default variant is the AI estimation source. Lookup by flag
   // rather than by position — submit-time validation guarantees exactly one.
