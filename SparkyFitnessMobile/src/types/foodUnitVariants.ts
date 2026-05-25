@@ -24,6 +24,13 @@ export interface FoodUnitVariant {
   custom_nutrients?: Record<string, string | number> | null;
 }
 
+export interface EquivalentUnit {
+  id?: string;
+  serving_size: number;
+  serving_unit: string;
+  _clientKey?: string;
+}
+
 export type FoodUnitSelectionResult =
   | { kind: 'existing'; variant: FoodUnitVariant }
   | {

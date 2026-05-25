@@ -77,5 +77,6 @@ export * from "./schemas/database/WorkoutPresetExercises.zod.ts";
 export * from "./schemas/database/WorkoutPresets.zod.ts";
 export * from "./constants/measurements.ts";
 export * from "./constants/calorieConstants.ts";
+export * from "./constants/foodVariantNutrients.ts";
 export * from "./utils/timezone.ts";
 export * from "./utils/calorieCalculations.ts";
