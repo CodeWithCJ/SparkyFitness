@@ -837,7 +837,13 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     const draftSelection =
       pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
 
-    if (draftSelection && foodId) {
+    // Adjust-entry-nutrition mode: the food entry itself always saves with
+    // the chosen unit + nutrition inline (food_entries has inline columns).
+    // The food's saved-variants list only gains the new draft variant when
+    // the user opts to "save for future use" via updateFoodToggle. Without
+    // this gate, every cross-unit estimate (AI or manual) would pollute the
+    // user's saved-unit picker even when they didn't ask for it.
+    if (draftSelection && foodId && updateFoodToggle) {
       try {
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
@@ -929,6 +935,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">Save nutrition for future use</Text>
               <Switch
+                accessibilityLabel="Save nutrition for future use"
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
                 trackColor={{ false: formDisabled, true: formEnabled }}

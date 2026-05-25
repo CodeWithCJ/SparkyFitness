@@ -3,7 +3,7 @@ import {
   resolveAutoConversionSource,
   useUnitConversion,
 } from '../../src/hooks/useUnitConversion';
-import { getConversionFactor } from '../../src/utils/servingSizeConversions';
+import { getConversionFactor } from '@workspace/shared';
 import type { FoodUnitVariant } from '../../src/types/foodUnitVariants';
 
 const createVariant = (
@@ -172,6 +172,61 @@ describe('useUnitConversion', () => {
       }),
     );
 
+    expect(result.current.buildConvertedVariant('tsp')).toBeNull();
+  });
+
+  it('skips AI-estimated variants as auto-convert sources', () => {
+    const gramsVariant = createVariant({
+      id: 'grams',
+      serving_size: 10,
+      serving_unit: 'g',
+    });
+    const aiTbspVariant = createVariant({
+      id: 'ai-tbsp',
+      serving_size: 1,
+      serving_unit: 'tbsp',
+      source: 'ai_estimate',
+      ai_confidence: 'medium',
+    });
+
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [gramsVariant, aiTbspVariant],
+        selectedVariant: gramsVariant,
+      }),
+    );
+
+    expect(
+      resolveAutoConversionSource([gramsVariant, aiTbspVariant], gramsVariant, 'tsp'),
+    ).toBeNull();
+    expect(result.current.buildConvertedVariant('tsp')).toBeNull();
+  });
+
+  it('disables auto-convert entirely when the selected variant is AI-estimated', () => {
+    const aiCupVariant = createVariant({
+      id: 'ai-cup',
+      serving_size: 1,
+      serving_unit: 'cup',
+      source: 'ai_estimate',
+      ai_confidence: 'high',
+    });
+    const tbspVariant = createVariant({
+      id: 'tbsp',
+      serving_size: 1,
+      serving_unit: 'tbsp',
+      calories: 24,
+    });
+
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [aiCupVariant, tbspVariant],
+        selectedVariant: aiCupVariant,
+      }),
+    );
+
+    expect(
+      resolveAutoConversionSource([aiCupVariant, tbspVariant], aiCupVariant, 'tsp'),
+    ).toBeNull();
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
 

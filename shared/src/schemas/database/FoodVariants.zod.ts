@@ -12,6 +12,7 @@ const foodsIdSchema = z.any();
 export const foodVariantsSchema = z.object({
   id: foodVariantsIdSchema,
   food_id: foodsIdSchema,
+  user_id: z.string(),
   serving_size: z.number(),
   serving_unit: z.string(),
   created_at: z.date(),
@@ -36,11 +37,15 @@ export const foodVariantsSchema = z.object({
   is_default: z.boolean().nullable(),
   glycemic_index: z.string().nullable(),
   custom_nutrients: z.unknown().nullable(),
+  source: z.enum(["manual", "ai_estimate", "imported"]),
+  ai_confidence: z.enum(["high", "medium", "low"]).nullable(),
+  ai_reasoning: z.string().nullable(),
 });
 
 export const foodVariantsInitializerSchema = z.object({
   id: foodVariantsIdSchema.optional(),
   food_id: foodsIdSchema,
+  user_id: z.string().optional(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
   created_at: z.date().optional(),
@@ -65,11 +70,15 @@ export const foodVariantsInitializerSchema = z.object({
   is_default: z.boolean().optional().nullable(),
   glycemic_index: z.string().optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  source: z.enum(["manual", "ai_estimate", "imported"]).optional(),
+  ai_confidence: z.enum(["high", "medium", "low"]).optional().nullable(),
+  ai_reasoning: z.string().optional().nullable(),
 });
 
 export const foodVariantsMutatorSchema = z.object({
   id: foodVariantsIdSchema.optional(),
   food_id: foodsIdSchema.optional(),
+  user_id: z.string().optional(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
   created_at: z.date().optional(),
@@ -94,6 +103,9 @@ export const foodVariantsMutatorSchema = z.object({
   is_default: z.boolean().optional().nullable(),
   glycemic_index: z.string().optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  source: z.enum(["manual", "ai_estimate", "imported"]).optional(),
+  ai_confidence: z.enum(["high", "medium", "low"]).optional().nullable(),
+  ai_reasoning: z.string().optional().nullable(),
 });
 
 export type FoodVariants = z.infer<typeof foodVariantsSchema>;

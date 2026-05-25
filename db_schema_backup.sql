@@ -1483,6 +1483,7 @@ COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for 
 CREATE TABLE public.food_variants (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     food_id uuid NOT NULL,
+    user_id uuid NOT NULL,
     serving_size numeric DEFAULT 1 NOT NULL,
     serving_unit text DEFAULT 'g'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -1507,7 +1508,12 @@ CREATE TABLE public.food_variants (
     is_default boolean DEFAULT false,
     glycemic_index text,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text])))
+    source text DEFAULT 'manual'::text NOT NULL,
+    ai_confidence text,
+    ai_reasoning text,
+    CONSTRAINT food_variants_ai_confidence_check CHECK ((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL)),
+    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 
 
@@ -2314,6 +2320,7 @@ CREATE TABLE public.user_preferences (
     auto_scale_online_imports boolean DEFAULT true,
     first_day_of_week smallint DEFAULT 0,
     barcode_fallback_open_food_facts boolean DEFAULT true,
+    ai_assisted_conversions boolean DEFAULT true NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK ((timezone IS NULL OR (timezone <> ''::text)))
@@ -3414,6 +3421,20 @@ CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries U
 
 
 --
+-- Name: food_variants_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX food_variants_user_id_idx ON public.food_variants USING btree (user_id);
+
+
+--
+-- Name: food_variants_food_user_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX food_variants_food_user_idx ON public.food_variants USING btree (food_id, user_id);
+
+
+--
 -- Name: weekly_goal_plans weekly_goal_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4267,6 +4288,14 @@ ALTER TABLE ONLY public.meal_plan_template_assignments
 
 ALTER TABLE ONLY public.food_variants
     ADD CONSTRAINT fk_food_variants_food_id FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: food_variants food_variants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_variants
+    ADD CONSTRAINT food_variants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -5484,14 +5513,25 @@ CREATE POLICY owner_policy ON public.workout_preset_exercises USING ((EXISTS ( S
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: food_variants select_and_modify_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: food_variants food_variants_select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
+CREATE POLICY food_variants_select_policy ON public.food_variants FOR SELECT USING (((food_variants.user_id = ( SELECT f.user_id
    FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (f.id = food_variants.food_id))) AND (EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) OR public.has_library_access_with_public(food_variants.user_id, false, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
+
+
+--
+-- Name: food_variants food_variants_modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY food_variants_modify_policy ON public.food_variants USING (((food_variants.user_id = (current_setting('app.user_id'::text))::uuid) AND (EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text])))))) WITH CHECK (((food_variants.user_id = (current_setting('app.user_id'::text))::uuid) AND (EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))));
 
 
 --

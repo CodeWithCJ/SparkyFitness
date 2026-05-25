@@ -7,6 +7,7 @@ import type { MealTypeDefinition } from '@/types/diary';
 
 const mockUpdateFoodEntry = jest.fn();
 const mockCreateVariant = jest.fn();
+let mockVariantsData: unknown[] = [];
 
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
@@ -52,7 +53,7 @@ jest.mock('@/hooks/Foods/useFoods', () => ({
 
 jest.mock('@/hooks/Foods/useFoodVariants', () => ({
   useFoodVariants: () => ({
-    data: [],
+    data: mockVariantsData,
     isLoading: false,
   }),
   useCreateFoodVariantMutation: () => ({
@@ -133,6 +134,23 @@ jest.mock('@/components/ui/select', () => {
   };
 });
 
+jest.mock('lucide-react', () => {
+  const actual = jest.requireActual('lucide-react');
+
+  return {
+    ...actual,
+    Check: ({ className }: { className?: string }) => (
+      <svg data-testid="check-icon" className={className} />
+    ),
+    Sparkles: ({
+      className,
+      ...props
+    }: React.SVGProps<SVGSVGElement> & { className?: string }) => (
+      <svg data-testid="sparkles-icon" className={className} {...props} />
+    ),
+  };
+});
+
 const mealTypes: MealTypeDefinition[] = [
   {
     id: 'meal-1',
@@ -157,6 +175,7 @@ const entry: FoodEntry = {
 describe('EditFoodEntryDialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockVariantsData = [];
   });
 
   it('shows the manual warning, hides preview, and disables save for unresolved incompatible units', async () => {
@@ -184,5 +203,39 @@ describe('EditFoodEntryDialog', () => {
     expect(
       screen.getByRole('button', { name: /Save Changes/i })
     ).toBeDisabled();
+  });
+
+  it('shows AI provenance on saved variants and hides compatible checks when an AI variant is selected', async () => {
+    mockVariantsData = [
+      {
+        id: 'cup-ai',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 30,
+        protein: 1,
+        carbs: 1,
+        fat: 1,
+        source: 'ai_estimate',
+        ai_confidence: 'medium',
+      },
+    ];
+
+    render(
+      <EditFoodEntryDialog
+        entry={{ ...entry, variant_id: 'cup-ai', unit: 'cup' }}
+        open={true}
+        onOpenChange={jest.fn()}
+        availableMealTypes={mealTypes}
+      />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByLabelText(/AI estimate \(Fair confidence\)/i).length
+      ).toBeGreaterThan(0);
+    });
+
+    const tbspButton = screen.getByRole('button', { name: /^tbsp$/i });
+    expect(tbspButton.querySelector('svg.text-green-500')).toBeNull();
   });
 });

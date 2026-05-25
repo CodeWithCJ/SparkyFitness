@@ -31,4 +31,7 @@ export interface UserPreferences {
   item_display_limit?: number;
   language?: string;
   first_day_of_week?: number;
+  /** AI-Assisted Unit Conversions toggle (server default: true). Gates the AI
+   *  estimate path inside the unit selector sheet for cross-category swaps. */
+  ai_assisted_conversions?: boolean;
 }

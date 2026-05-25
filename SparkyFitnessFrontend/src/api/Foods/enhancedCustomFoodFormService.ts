@@ -41,6 +41,9 @@ export const createFoodVariant = async (
       glycemic_index: variant.glycemic_index,
       is_default: false,
       custom_nutrients: variant.custom_nutrients || {},
+      source: variant.source,
+      ai_confidence: variant.ai_confidence,
+      ai_reasoning: variant.ai_reasoning,
     },
   });
 };
@@ -102,6 +105,9 @@ export const saveFood = async (
           is_default: variant.is_default || false, // Pass is_default flag
           glycemic_index: variant.glycemic_index,
           custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
+          source: variant.source,
+          ai_confidence: variant.ai_confidence,
+          ai_reasoning: variant.ai_reasoning,
         },
       });
     }
@@ -132,6 +138,9 @@ export const saveFood = async (
         is_default: variant.is_default || false, // Pass is_default flag
         glycemic_index: variant.glycemic_index,
         custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
+        source: variant.source,
+        ai_confidence: variant.ai_confidence,
+        ai_reasoning: variant.ai_reasoning,
       }));
       await apiCall('/foods/food-variants/bulk', {
         method: 'POST',
@@ -184,6 +193,9 @@ export const saveFood = async (
       is_default: true, // Explicitly mark as default for new food creation
       glycemic_index: primaryVariant.glycemic_index,
       custom_nutrients: primaryVariant.custom_nutrients || {}, // Include custom nutrients
+      source: primaryVariant.source,
+      ai_confidence: primaryVariant.ai_confidence,
+      ai_reasoning: primaryVariant.ai_reasoning,
     };
 
     savedFood = await apiCall('/foods', {
@@ -216,6 +228,9 @@ export const saveFood = async (
       is_default: false, // Explicitly mark as not default for additional variants
       glycemic_index: variant.glycemic_index,
       custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
+      source: variant.source,
+      ai_confidence: variant.ai_confidence,
+      ai_reasoning: variant.ai_reasoning,
     }));
 
     if (additionalVariantsToInsert.length > 0) {

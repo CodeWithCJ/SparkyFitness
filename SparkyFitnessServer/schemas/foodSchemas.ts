@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 
 export const FoodVariantSchema = z.object({
   id: z.string().optional(),
+  user_id: z.string().optional(),
   serving_size: z.number(),
   serving_unit: z.string(),
   calories: z.number(),
@@ -26,6 +27,9 @@ export const FoodVariantSchema = z.object({
   custom_nutrients: z
     .record(z.string(), z.union([z.string(), z.number()]))
     .optional(),
+  source: z.enum(['manual', 'ai_estimate', 'imported']).optional(),
+  ai_confidence: z.enum(['high', 'medium', 'low']).nullable().optional(),
+  ai_reasoning: z.string().nullable().optional(),
 });
 
 export type FoodVariant = z.infer<typeof FoodVariantSchema>;

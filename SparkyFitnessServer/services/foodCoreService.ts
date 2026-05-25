@@ -364,6 +364,13 @@ async function getFoodsWithPagination(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createFoodVariant(authenticatedUserId: any, variantData: any) {
   try {
+    // Stock + personal variant model: any user with library read access to the
+    // food can add a personal variant for themselves. `getFoodOwnerId` returns
+    // null when the user lacks RLS access (the food is invisible) — keep that
+    // as the "not found / no access" gate. We no longer block when the caller
+    // is not the food owner; the new variant simply gets `user_id =
+    // authenticatedUserId`, which classifies it as personal when food.user_id
+    // differs and stock when it matches.
     const foodOwnerId = await foodRepository.getFoodOwnerId(
       variantData.food_id,
       authenticatedUserId
@@ -371,12 +378,7 @@ async function createFoodVariant(authenticatedUserId: any, variantData: any) {
     if (!foodOwnerId) {
       throw new Error('Food not found.');
     }
-    if (foodOwnerId !== authenticatedUserId) {
-      throw new Error(
-        'Forbidden: You do not have permission to create a variant for this food.'
-      );
-    }
-    variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    variantData.user_id = authenticatedUserId; // Stamps stock vs personal based on food.user_id.
     const newVariant = await foodRepository.createFoodVariant(
       {
         ...variantData,
@@ -438,19 +440,14 @@ async function updateFoodVariant(
     if (!variant) {
       throw new Error('Food variant not found.');
     }
-    const foodOwnerId = await foodRepository.getFoodOwnerId(
-      variant.food_id,
-      authenticatedUserId
-    );
-    if (!foodOwnerId) {
-      throw new Error('Associated food not found.');
-    }
-    if (foodOwnerId !== authenticatedUserId) {
+    // Variant ownership is now per-row (stock + personal model). Modify is allowed
+    // only by the variant owner; food owner is no longer the gate.
+    if (variant.user_id !== authenticatedUserId) {
       throw new Error(
         'Forbidden: You do not have permission to update this food variant.'
       );
     }
-    variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    variantData.user_id = authenticatedUserId; // Keep stamping in case caller passes a new user_id.
     const updatedVariant = await foodRepository.updateFoodVariant(
       variantId,
       {
@@ -483,12 +480,12 @@ async function deleteFoodVariant(authenticatedUserId: any, variantId: any) {
     if (!variant) {
       throw new Error('Food variant not found.');
     }
-    const foodOwnerId = await foodRepository.getFoodOwnerId(
-      variant.food_id,
-      authenticatedUserId
-    );
-    if (!foodOwnerId) {
-      throw new Error('Associated food not found.');
+    // Variant ownership is now per-row (stock + personal model). Delete is
+    // allowed only by the variant owner; food owner is no longer the gate.
+    if (variant.user_id !== authenticatedUserId) {
+      throw new Error(
+        'Forbidden: You do not have permission to delete this food variant.'
+      );
     }
     const success = await foodRepository.deleteFoodVariant(
       variantId,
@@ -566,10 +563,8 @@ async function bulkCreateFoodVariants(
           variant.food_id,
           authenticatedUserId
         );
-        if (!foodOwnerId || foodOwnerId !== authenticatedUserId) {
-          throw new Error(
-            `Forbidden: You do not have permission to create a variant for food ID ${variant.food_id}.`
-          );
+        if (!foodOwnerId) {
+          throw new Error(`Food not found for food ID ${variant.food_id}.`);
         }
         return {
           ...variant,

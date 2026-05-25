@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,25 @@ import {
   canAutoConvertToUnit,
   useUnitConversion,
 } from '@/hooks/Foods/useUnitConversion';
+import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
+import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
+import {
+  CONFIDENCE_TONES,
+  OVERALL_CONFIDENCE_LABELS,
+  shouldOfferAiConversion,
+  type AiConfidence,
+  type ConfidenceTone,
+} from '@workspace/shared';
+
+// Confidence-tinted text colors for the saved-AI-variant indicator in the
+// picker. Mirrors the mobile food-photo screen's success/warning/error tones
+// so the AI badge feels consistent across all AI surfaces.
+const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  error: 'text-rose-600 dark:text-rose-400',
+};
+import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -57,8 +76,20 @@ const FoodUnitSelector = ({
   initialUnit,
   initialVariantId,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const { loggingLevel, energyUnit, convertEnergy, aiAssistedConversions } =
+    usePreferences();
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
+
+  // AI estimate gate: requires (1) admin allowed user AI config, (2) user has
+  // an active AI service, (3) the per-user preference is on. Re-checked each
+  // render — turning the toggle off mid-dialog hides the section live.
+  const userAiConfigAllowedQuery = useUserAiConfigAllowed();
+  const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
+  const activeAiServiceQuery = useActiveAIService(open && userAiConfigAllowed);
+  const aiEstimatesAvailable =
+    aiAssistedConversions === true &&
+    userAiConfigAllowed &&
+    !!activeAiServiceQuery.data;
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? 'kcal' : 'kJ';
@@ -84,6 +115,8 @@ const FoodUnitSelector = ({
     conversionBaseVariant,
     conversionError,
     setConversionError,
+    aiEstimateData,
+    setAiEstimateData,
     isConverting,
     convertibleUnits,
     dropdownValue,
@@ -128,6 +161,9 @@ const FoodUnitSelector = ({
         calcium: food.default_variant?.calcium || 0,
         iron: food.default_variant?.iron || 0,
         custom_nutrients: food.default_variant?.custom_nutrients,
+        source: food.default_variant?.source,
+        ai_confidence: food.default_variant?.ai_confidence,
+        ai_reasoning: food.default_variant?.ai_reasoning,
       };
 
       let combinedVariants: FoodVariant[] = [primaryUnit];
@@ -156,6 +192,10 @@ const FoodUnitSelector = ({
           calcium: variant.calcium || 0,
           iron: variant.iron || 0,
           custom_nutrients: variant.custom_nutrients,
+          // Preserve AI provenance so the dropdown can badge AI-source variants.
+          source: variant.source,
+          ai_confidence: variant.ai_confidence,
+          ai_reasoning: variant.ai_reasoning,
         }));
 
         const otherVariants = variantsFromDb.filter(
@@ -203,6 +243,9 @@ const FoodUnitSelector = ({
         calcium: food.default_variant?.calcium || 0,
         iron: food.default_variant?.iron || 0,
         custom_nutrients: food.default_variant?.custom_nutrients,
+        source: food.default_variant?.source,
+        ai_confidence: food.default_variant?.ai_confidence,
+        ai_reasoning: food.default_variant?.ai_reasoning,
       };
       setVariants([primaryUnit]);
       setSelectedVariant(primaryUnit);
@@ -362,48 +405,68 @@ const FoodUnitSelector = ({
                 </div>
                 <div>
                   <Label htmlFor="unit">Unit</Label>
-                  <Select
-                    value={dropdownValue}
-                    onValueChange={handleUnitChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variants.map(
-                        (variant) =>
-                          variant.id && (
-                            <SelectItem key={variant.id} value={variant.id}>
-                              {variant.serving_unit}
-                            </SelectItem>
-                          )
-                      )}
-                      {convertibleUnits.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {convertibleUnits.map((u) => {
-                            const compatible = canAutoConvertToUnit(
-                              variants,
-                              selectedVariant,
-                              u
-                            );
-                            return (
-                              <SelectItem key={u} value={u}>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={dropdownValue}
+                      onValueChange={handleUnitChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {variants.map(
+                          (variant) =>
+                            variant.id && (
+                              <SelectItem key={variant.id} value={variant.id}>
                                 <span className="flex items-center gap-1.5">
-                                  {u}
-                                  {compatible && (
-                                    <Check className="h-3 w-3 text-green-500" />
-                                  )}
+                                  {variant.serving_unit}
+                                  {variant.source === 'ai_estimate' &&
+                                    variant.ai_confidence && (
+                                      <Sparkles
+                                        className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
+                                        aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+                                      />
+                                    )}
                                 </span>
                               </SelectItem>
-                            );
-                          })}
-                        </>
+                            )
+                        )}
+                        {convertibleUnits.length > 0 && (
+                          <>
+                            <SelectSeparator />
+                            {convertibleUnits.map((u) => {
+                              const compatible = canAutoConvertToUnit(
+                                variants,
+                                selectedVariant,
+                                u
+                              );
+                              return (
+                                <SelectItem key={u} value={u}>
+                                  <span className="flex items-center gap-1.5">
+                                    {u}
+                                    {compatible && (
+                                      <Check className="h-3 w-3 text-green-500" />
+                                    )}
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
+                          </>
+                        )}
+                        <SelectSeparator />
+                        <SelectItem value="__custom__">
+                          Custom unit...
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {selectedVariant?.source === 'ai_estimate' &&
+                      selectedVariant.ai_confidence && (
+                        <Sparkles
+                          className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
+                          aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[selectedVariant.ai_confidence as AiConfidence]} confidence)`}
+                        />
                       )}
-                      <SelectSeparator />
-                      <SelectItem value="__custom__">Custom unit...</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  </div>
                 </div>
               </div>
 
@@ -471,6 +534,32 @@ const FoodUnitSelector = ({
                       <strong>{conversionBaseVariant?.serving_unit}</strong> are
                       in 1 <strong>{pendingUnit}</strong>.
                     </p>
+
+                    {/* AI estimate path: shown only when both units are standard
+                        weight/volume AND AI is configured AND preference is on. */}
+                    {aiEstimatesAvailable &&
+                      conversionBaseVariant?.serving_unit &&
+                      shouldOfferAiConversion(
+                        conversionBaseVariant.serving_unit,
+                        pendingUnit
+                      ) && (
+                        <AiEstimateSection
+                          food={{
+                            id: food.id,
+                            name: food.name,
+                            brand: food.brand,
+                          }}
+                          fromUnit={pendingUnit}
+                          toUnit={conversionBaseVariant.serving_unit}
+                          knownVariants={variants.map((v) => ({
+                            amount: v.serving_size,
+                            unit: v.serving_unit,
+                          }))}
+                          onAccept={setAiEstimateData}
+                          onEdit={() => setAiEstimateData(null)}
+                        />
+                      )}
+
                     <div>
                       <Label htmlFor="conversionFactor">
                         1 {pendingUnit} = ?{' '}
@@ -487,6 +576,11 @@ const FoodUnitSelector = ({
                           const val = e.target.value;
                           setConversionFactor(val === '' ? '' : Number(val));
                           setConversionError('');
+                          // Editing the factor manually invalidates the AI
+                          // provenance tag — the user is overriding the AI.
+                          if (aiEstimateData !== null) {
+                            setAiEstimateData(null);
+                          }
                         }}
                       />
                     </div>

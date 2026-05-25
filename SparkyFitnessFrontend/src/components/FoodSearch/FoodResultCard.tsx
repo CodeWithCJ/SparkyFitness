@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Share2 } from 'lucide-react';
+import { Edit, Share2, Sparkles } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
@@ -9,6 +9,19 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import {
+  CONFIDENCE_TONES,
+  OVERALL_CONFIDENCE_LABELS,
+  type AiConfidence,
+  type ConfidenceTone,
+} from '@workspace/shared';
+
+const AI_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
+  success:
+    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  error: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+};
 
 interface NutrientGridConfig {
   visibleNutrients: string[];
@@ -70,6 +83,23 @@ const FoodResultCard = ({
                   {providerLabel}
                 </Badge>
               )}
+              {isFood &&
+                foodItem.default_variant?.source === 'ai_estimate' &&
+                foodItem.default_variant.ai_confidence && (
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[foodItem.default_variant.ai_confidence as AiConfidence]]}`}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI{' '}
+                    {
+                      OVERALL_CONFIDENCE_LABELS[
+                        foodItem.default_variant.ai_confidence as AiConfidence
+                      ]
+                    }{' '}
+                    estimate
+                  </Badge>
+                )}
               {isFood && !isOnline && foodItem.user_id === activeUserId && (
                 <Badge variant="outline" className="text-xs">
                   {t('enhancedFoodSearch.private', 'Private')}

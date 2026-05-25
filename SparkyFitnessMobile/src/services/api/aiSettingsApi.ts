@@ -13,6 +13,46 @@ export interface ActiveAiServiceSetting {
   source?: 'user' | 'global' | string;
 }
 
+export async function fetchUserAiConfigAllowed(): Promise<boolean> {
+  const config = await getActiveServerConfig();
+  if (!config) return false;
+
+  const baseUrl = normalizeUrl(config.url);
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/api/global-settings/allow-user-ai-config`, {
+      method: 'GET',
+      headers: {
+        ...proxyHeadersToRecord(config.proxyHeaders),
+        ...getAuthHeaders(config),
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 401 && config.authType === 'session') {
+        notifySessionExpired(config.id);
+      }
+      addLog(
+        `[AI Settings] User AI config gate fetch failed: ${response.status}`,
+        'WARNING',
+      );
+      return false;
+    }
+
+    const body = await response.json();
+    return body?.allow_user_ai_config === true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(
+      `[AI Settings] User AI config gate fetch error: ${message}`,
+      'WARNING',
+    );
+    return false;
+  }
+}
+
 // Returns `null` when nothing is configured or any failure occurs — never
 // throws, so callers can gate UI without a try/catch.
 export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSetting | null> {

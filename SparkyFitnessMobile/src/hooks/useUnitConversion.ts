@@ -3,7 +3,17 @@ import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import {
   ALL_CONVERSION_UNITS,
   getConversionFactor,
-} from '../utils/servingSizeConversions';
+  type AiConfidence,
+} from '@workspace/shared';
+
+/** AI estimate payload, retained for callers that already typed against it.
+ *  AI estimation lives in FoodForm now — this hook no longer builds AI
+ *  variants directly. */
+export interface AiEstimateData {
+  estimatedAmount: number;
+  confidence: AiConfidence;
+  reasoning: string;
+}
 
 export interface UseUnitConversionOptions {
   variants: FoodUnitVariant[];
@@ -26,11 +36,18 @@ export function resolveAutoConversionSource(
   selectedVariant: FoodUnitVariant | null,
   targetUnit: string,
 ): ResolvedAutoConversion | null {
+  if (selectedVariant?.source === 'ai_estimate') {
+    return null;
+  }
+
   const candidateVariants = selectedVariant
     ? [selectedVariant, ...variants]
     : variants;
 
   for (const variant of candidateVariants) {
+    if (variant.source === 'ai_estimate') {
+      continue;
+    }
     const factor = getConversionFactor(variant.serving_unit, targetUnit);
     if (factor !== null) {
       return {

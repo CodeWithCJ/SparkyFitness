@@ -19,6 +19,8 @@ interface ConfirmationDialogProps {
   warning?: React.ReactNode;
   variant?: 'default' | 'destructive';
   confirmLabel?: string;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -30,6 +32,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   warning,
   variant = 'default',
   confirmLabel,
+  secondaryActionLabel,
+  onSecondaryAction,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,6 +53,11 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button variant="secondary" onClick={onSecondaryAction}>
+              {secondaryActionLabel}
+            </Button>
+          )}
           <Button
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}

@@ -19,7 +19,18 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     loggingLevel: 'DEBUG',
     energyUnit: 'kcal' as const,
     convertEnergy: (value: number) => value,
+    // AI conversions gated off in this manual-flow test suite.
+    aiAssistedConversions: false,
   }),
+}));
+
+// AI gate hooks — return inert data so the AiEstimateSection never renders in
+// these tests, which focus on the manual conversion flow.
+jest.mock('@/hooks/AI/useAIServiceSettings', () => ({
+  useActiveAIService: () => ({ data: undefined, isLoading: false }),
+}));
+jest.mock('@/hooks/AI/useUserAiConfigAllowed', () => ({
+  useUserAiConfigAllowed: () => ({ data: false, isLoading: false }),
 }));
 
 jest.mock('@/utils/logging', () => ({
@@ -132,13 +143,17 @@ const createFood = (defaultVariant: FoodVariant): Food => ({
 });
 
 describe('FoodUnitSelector', () => {
-  const renderSelector = async (food: Food) => {
+  const renderSelector = async (
+    food: Food,
+    props?: Partial<React.ComponentProps<typeof FoodUnitSelector>>
+  ) => {
     render(
       <FoodUnitSelector
         food={food}
         open={true}
         onOpenChange={jest.fn()}
         onSelect={jest.fn()}
+        {...props}
       />
     );
 
@@ -238,5 +253,32 @@ describe('FoodUnitSelector', () => {
 
     expect(screen.queryByText(/These units can/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add to Meal/i })).toBeEnabled();
+  });
+
+  it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 10,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([
+      createVariant({
+        id: 'cup-ai',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 30,
+        source: 'ai_estimate',
+        ai_confidence: 'medium',
+      }),
+    ]);
+
+    await renderSelector(food, { initialVariantId: 'cup-ai' });
+
+    const tbspItem = screen.getByRole('button', { name: /^tbsp$/i });
+
+    expect(tbspItem.querySelector('svg.text-green-500')).toBeNull();
   });
 });

@@ -6,6 +6,9 @@ import FoodForm from '../../src/components/FoodForm';
 const mockBottomSheetPicker = jest.fn();
 const mockFoodUnitSelectorSheet = jest.fn();
 let mockUnitSelectionPayload: any;
+let mockUserAiConfigAllowed = false;
+let mockActiveAiServiceSetting: any = null;
+let mockUserPreferences: any = undefined;
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const React = require('react');
@@ -55,10 +58,37 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+// FoodForm now queries the active AI service + user-AI-config policy + user
+// preferences to gate the inline AI estimate flow inside the unit selector
+// sheet. Those hooks use react-query under the hood, which would require a
+// QueryClientProvider. Mock them as inert so the form renders cleanly in
+// unit-test isolation.
+jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
+  useActiveAiServiceSetting: () => ({
+    data: mockActiveAiServiceSetting,
+    isLoading: false,
+  }),
+}));
+jest.mock('../../src/hooks/useUserAiConfigAllowed', () => ({
+  useUserAiConfigAllowed: () => ({
+    data: mockUserAiConfigAllowed,
+    isLoading: false,
+  }),
+}));
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: mockUserPreferences,
+    isLoading: false,
+  }),
+}));
+
 describe('FoodForm', () => {
   beforeEach(() => {
     mockBottomSheetPicker.mockClear();
     mockFoodUnitSelectorSheet.mockClear();
+    mockUserAiConfigAllowed = false;
+    mockActiveAiServiceSetting = null;
+    mockUserPreferences = undefined;
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     mockUnitSelectionPayload = {
       kind: 'draft',
@@ -571,6 +601,354 @@ describe('FoodForm', () => {
     ).toBeTruthy();
   });
 
+  it('turns auto scale off for non-AI-convertible incompatible unit drafts', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'piece',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+    });
+  });
+
+  it('keeps auto scale on for AI-convertible incompatible unit drafts', async () => {
+    mockUserAiConfigAllowed = true;
+    mockActiveAiServiceSetting = { provider: 'openai' };
+    mockUserPreferences = { ai_assisted_conversions: true };
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(screen.getByText('Convert with AI')).toBeTruthy();
+    });
+  });
+
+  it('keeps auto scale unchanged for compatible existing-unit selections', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'existing',
+      variant: {
+        id: 'variant-oz',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+            {
+              id: 'variant-oz',
+              food_id: 'food-1',
+              serving_size: 1,
+              serving_unit: 'oz',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+    });
+  });
+
+  it('shows the manual-update banner and turns auto scale off when an AI-selected unit swaps to a non-AI-convertible unit', async () => {
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'piece',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const aiCupVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate' as const,
+      ai_confidence: 'medium' as const,
+      ai_reasoning: 'Typical density estimate.',
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [aiCupVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: aiCupVariant,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Can't convert between units. Update nutrition values manually.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+    });
+    expect(screen.queryByText('Convert with AI')).toBeNull();
+  });
+
+  it('shows the manual-update banner and AI button when an AI-selected unit swaps to an AI-convertible unit', async () => {
+    mockUserAiConfigAllowed = true;
+    mockActiveAiServiceSetting = { provider: 'openai' };
+    mockUserPreferences = { ai_assisted_conversions: true };
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const aiCupVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate' as const,
+      ai_confidence: 'medium' as const,
+      ai_reasoning: 'Typical density estimate.',
+    };
+
+    const screen = render(
+      <FoodForm
+        showAutoScaleNutrition
+        initialAutoScaleNutritionEnabled
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [aiCupVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: aiCupVariant,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Can't convert between units. Update nutrition values manually.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(screen.getByText('Convert with AI')).toBeTruthy();
+    });
+  });
+
   it('confirms before submit when the manual-update banner is showing', () => {
     const onSubmit = jest.fn();
     const screen = render(
@@ -854,5 +1232,182 @@ describe('FoodForm', () => {
         fat: '4',
       }),
     );
+  });
+
+  it('shows the saved AI badge when the selected unit variant is AI-estimated', () => {
+    const aiVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate' as const,
+      ai_confidence: 'medium' as const,
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [aiVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: aiVariant,
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    // Phase G follow-up: the AI provenance shows up as a plain confidence
+    // label below the unit row (no sparkle, no "AI ·" prefix). The "AI"
+    // marker + sparkle is reserved for the dropdown rows inside the sheet
+    // (mirroring web), which aren't rendered while the sheet is closed.
+    expect(screen.getByText(/Fair estimate/)).toBeTruthy();
+    expect(screen.queryByText(/^AI$/)).toBeNull();
+  });
+
+  it('clears the AI badge after manually editing nutrition on a saved AI variant', async () => {
+    const onUnitSelectionChange = jest.fn();
+    const aiVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate' as const,
+      ai_confidence: 'medium' as const,
+      ai_reasoning: 'Typical density estimate.',
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [aiVariant],
+          selectedSelection: {
+            kind: 'existing',
+            variant: aiVariant,
+          },
+          onUnitSelectionChange,
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Fair estimate/)).toBeTruthy();
+
+    fireEvent.changeText(screen.getByDisplayValue('120'), '150');
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Fair estimate/)).toBeNull();
+    });
+
+    expect(onUnitSelectionChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'draft',
+        variant: expect.objectContaining({
+          serving_unit: 'cup',
+          source: 'manual',
+          ai_confidence: null,
+          ai_reasoning: null,
+        }),
+      }),
+    );
+    const latestSheetProps =
+      mockFoodUnitSelectorSheet.mock.calls[
+        mockFoodUnitSelectorSheet.mock.calls.length - 1
+      ]?.[0];
+    expect(latestSheetProps?.selectedVariantId).toBeUndefined();
+  });
+
+  it('uses the Convert with AI label when AI estimation is available for an incompatible swap', async () => {
+    mockUserAiConfigAllowed = true;
+    mockActiveAiServiceSetting = { provider: 'openai' };
+    mockUserPreferences = { ai_assisted_conversions: true };
+    mockUnitSelectionPayload = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      },
+      requiresNutritionUpdate: true,
+    };
+
+    const screen = render(
+      <FoodForm
+        initialValues={{
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+        }}
+        unitSelector={{
+          variants: [
+            {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          ],
+          selectedSelection: {
+            kind: 'existing',
+            variant: {
+              id: 'variant-g',
+              food_id: 'food-1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 10,
+              carbs: 8,
+              fat: 4,
+            },
+          },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Use Converted Unit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Convert with AI')).toBeTruthy();
+    });
   });
 });

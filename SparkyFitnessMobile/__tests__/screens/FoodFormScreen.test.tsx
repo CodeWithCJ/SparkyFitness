@@ -609,6 +609,14 @@ describe('FoodFormScreen', () => {
     // Variant creation is deferred until submit.
     expect(mockCreateVariant).not.toHaveBeenCalled();
 
+    // Phase F: "Save nutrition for future use" gates the variant POST in
+    // adjust-entry-nutrition mode. Toggle it ON to keep the variant-creation
+    // pathway under test; the no-toggle case has its own test below.
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true,
+    );
     fireEvent.press(screen.getByText('Update Values'));
 
     await waitFor(() => {
@@ -720,6 +728,14 @@ describe('FoodFormScreen', () => {
     fireEvent.press(screen.getByText('Select Converted Unit'));
     expect(mockCreateVariant).not.toHaveBeenCalled();
 
+    // Phase F: variant POST gated on the "Save nutrition for future use"
+    // toggle in adjust-entry-nutrition mode. Flip it ON to keep the
+    // create-variant pathway under test.
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true,
+    );
     fireEvent.press(screen.getByText('Update Values'));
 
     await waitFor(() => {
@@ -767,6 +783,100 @@ describe('FoodFormScreen', () => {
       }),
     );
   });
+
+  // Phase F6 regression: the AI / manual unit-conversion draft persists as a
+  // food_variants row ONLY when the user explicitly opts to "save for future
+  // use" in the adjust-entry-nutrition flow. The entry itself still records
+  // the chosen unit + nutrition inline.
+  it(
+    'skips the variant POST in adjust-entry-nutrition mode when the save-for-future-use toggle is off',
+    async () => {
+      mockUnitSelectionResult = {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'cup',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        },
+        requiresNutritionUpdate: true,
+      };
+      mockSubmittedFoodFormData = {
+        ...mockSubmittedFoodFormData,
+        servingSize: '1',
+        servingUnit: 'cup',
+        calories: '45',
+        protein: '4',
+        carbs: '6',
+        fat: '1',
+      };
+
+      const screen = renderScreen({
+        mode: 'adjust-entry-nutrition',
+        initialValues: {
+          name: 'Greek Yogurt',
+          servingSize: '100',
+          servingUnit: 'g',
+          calories: '120',
+        },
+        returnTo: 'FoodEntryAdd',
+        returnKey: 'FoodEntryAdd-key',
+        foodId: 'food-1',
+        variantId: 'variant-1',
+        customNutrients: null,
+        availableUnitVariants: [
+          {
+            id: 'variant-1',
+            food_id: 'food-1',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        ],
+        selectedUnitSelection: {
+          kind: 'existing',
+          variant: {
+            id: 'variant-1',
+            food_id: 'food-1',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        },
+      });
+
+      fireEvent.press(screen.getByText('Select Converted Unit'));
+      // Toggle stays OFF — default state. No need to interact with it.
+      fireEvent.press(screen.getByText('Update Values'));
+
+      await waitFor(() => {
+        expect(navigation.dispatch).toHaveBeenCalled();
+      });
+      // The defining assertion: no variant POST when the toggle is off.
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      // The entry's pending unit selection still propagates so the diary entry
+      // records the new unit + nutrition inline.
+      expect(navigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            params: expect.objectContaining({
+              adjustedUnitSelection: expect.objectContaining({
+                kind: 'draft',
+              }),
+            }),
+          }),
+        }),
+      );
+    },
+  );
 
   it('blocks submit when the name is missing', () => {
     mockSubmittedFoodFormData = {

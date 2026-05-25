@@ -6,6 +6,11 @@ import Button from './ui/Button';
 import FormInput from './FormInput';
 import Icon from './Icon';
 import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
+import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
+import { usePreferences } from '../hooks/usePreferences';
+import { useUserAiConfigAllowed } from '../hooks/useUserAiConfigAllowed';
+import { requestAiUnitConversion } from '../services/api/aiConversionApi';
+import Toast from 'react-native-toast-message';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
@@ -14,9 +19,14 @@ import type {
 import { formatFoodFormNumber } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
+  CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
+  OVERALL_CONFIDENCE_LABELS,
   getConversionFactor,
-} from '../utils/servingSizeConversions';
+  shouldOfferAiConversion,
+  type AiConfidence,
+  type ConfidenceTone,
+} from '@workspace/shared';
 
 export interface FoodFormData {
   name: string;
@@ -57,6 +67,11 @@ export interface FoodFormProps {
       | Promise<FoodUnitSelectionResult | void>
       | FoodUnitSelectionResult
       | void;
+    /** Food id for the inline AI estimate path. Omit (or pass undefined) for
+     *  unsaved foods — the sheet will then skip the persistent variant POST
+     *  and emit the AI variant inline as a draft selection so the parent form
+     *  can persist it only if the user later saves. */
+    foodId?: string;
   };
   /**
    * When the user picks a new serving unit compatible with the current one
@@ -161,6 +176,12 @@ const EMPTY_FORM: FoodFormData = {
 };
 
 const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
+
+// Confidence-tinted icon colors for the inline AI Sparkles badge that sits
+// next to the manual-update banner after an AI estimate auto-applies. Read
+// the CSS variables once at top-of-render and resolve via this map. Mirrors
+// the FoodUnitSelectorSheet picker badge so AI surfaces feel consistent.
+type AiToneColors = Record<ConfidenceTone, string>;
 
 function buildDisplayFormState(
   initialValues?: Partial<FoodFormData>,
@@ -549,6 +570,20 @@ const FoodForm: React.FC<FoodFormProps> = ({
     buildDisplayFormState(initialValues),
   );
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+
+  // AI gate for the inline AI estimate flow inside FoodUnitSelectorSheet.
+  // Re-checked on every render so flipping the preference live takes effect.
+  // The sheet itself further requires the swap to be incompatible
+  // weight↔volume — compatible swaps stay on the math-only path.
+  const { data: userAiConfigAllowed } = useUserAiConfigAllowed();
+  const { data: activeAiServiceSetting } = useActiveAiServiceSetting({
+    enabled: userAiConfigAllowed === true,
+  });
+  const { preferences: userPreferences } = usePreferences();
+  const aiEstimatesAvailable =
+    userAiConfigAllowed === true &&
+    !!activeAiServiceSetting &&
+    userPreferences?.ai_assisted_conversions !== false;
   const [autoScaleNutrition, setAutoScaleNutrition] = useState(
     initialAutoScaleNutritionEnabled,
   );
@@ -582,6 +617,33 @@ const FoodForm: React.FC<FoodFormProps> = ({
   >(buildPreciseNumericValues(initialValues));
   const lastServingSizeRef = useRef(parseDecimalInput(initialValues?.servingSize ?? ''));
   const hasTouchedAutoScaleRef = useRef(false);
+
+  // Captured at the moment of an incompatible unit swap (the one that opens
+  // the "manual update required" banner). Lets the inline AI button know
+  // what unit/quantity/nutrition to scale FROM when estimating the new unit.
+  // Cleared after AI succeeds or when the user picks a different unit.
+  const swapContextRef = useRef<{
+    fromUnit: string;
+    prevUnit: string;
+    prevServingSize: number;
+    prevNutrition: Partial<FoodFormData>;
+  } | null>(null);
+  const [isEstimatingAi, setIsEstimatingAi] = useState(false);
+
+  // Confidence-tone text colors for the AI badge that appears below the unit
+  // row after AI auto-applies. The sparkle icon is intentionally rendered
+  // only inside the dropdown rows (in FoodUnitSelectorSheet) — this badge is
+  // text-only ("Fair estimate" etc.).
+  const [aiSuccessText, aiWarningText, aiDangerText] = useCSSVariable([
+    '--color-text-success',
+    '--color-text-warning',
+    '--color-text-danger-subtle',
+  ]) as [string, string, string];
+  const aiTextColorByTone: AiToneColors = {
+    success: aiSuccessText,
+    warning: aiWarningText,
+    error: aiDangerText,
+  };
 
   const fieldRefs = {
     name: useRef<TextInput>(null),
@@ -640,6 +702,34 @@ const FoodForm: React.FC<FoodFormProps> = ({
   };
 
   const update = (field: keyof FoodFormData, value: string) => {
+    // Manual nutrition edits on an AI-tagged row override the estimate — drop
+    // the AI provenance so the saved variant isn't mislabeled. servingSize
+    // edits are intentionally NOT a tag-clearer (those are scale operations,
+    // and AI-then-auto-scale stays semantically "AI-sourced at the original
+    // quantity"). serving_unit changes route through the sheet, which always
+    // emits a fresh draft selection.
+    const isNutritionField = NUTRITION_FIELDS.includes(field);
+    if (
+      isNutritionField &&
+      selectedUnitSelection &&
+      selectedUnitSelection.variant.source === 'ai_estimate'
+    ) {
+      const clearedVariant: FoodUnitVariant = {
+        ...selectedUnitSelection.variant,
+        source: 'manual',
+        ai_confidence: null,
+        ai_reasoning: null,
+      };
+      const clearedSelection: FoodUnitSelectionResult = {
+        kind: 'draft',
+        variant: clearedVariant,
+      };
+      setSelectedUnitSelection(clearedSelection);
+      setSelectedSavedVariantId(undefined);
+      setShowManualUpdateBanner(false);
+      void unitSelector?.onUnitSelectionChange?.(clearedSelection);
+    }
+
     setForm((prev) => {
       if (
         NUMERIC_FOOD_FORM_FIELD_SET.has(field) &&
@@ -749,7 +839,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
       }
 
       if (normalizedSelection?.kind === 'draft') {
-        return previous ?? unitSelector?.variants[0]?.id;
+        const backingSavedVariant = unitSelector?.variants.find(
+          (variant) =>
+            Boolean(variant.id) &&
+            variant.id === normalizedSelection.variant.id,
+        );
+        return backingSavedVariant?.id;
       }
 
       return unitSelector?.variants[0]?.id;
@@ -816,6 +911,40 @@ const FoodForm: React.FC<FoodFormProps> = ({
   const handleUnitSelectorSelection = async (
     selection: FoodUnitSelectionResult,
   ) => {
+    // Capture the pre-swap state BEFORE we propagate, so the inline AI button
+    // (rendered next to the manual-update banner) can scale from the right
+    // anchor. We only need this for incompatible swaps that surface the
+    // banner — compatible swaps and existing variant picks bypass the AI path.
+    if (
+      selection.kind === 'draft' &&
+      selection.requiresNutritionUpdate === true
+    ) {
+      const prevUnit = form.servingUnit;
+      const prevServingSize =
+        preciseNumericValuesRef.current.servingSize ??
+        parseDecimalInput(form.servingSize);
+      if (
+        prevUnit &&
+        prevUnit !== selection.variant.serving_unit &&
+        Number.isFinite(prevServingSize) &&
+        prevServingSize > 0
+      ) {
+        swapContextRef.current = {
+          fromUnit: selection.variant.serving_unit,
+          prevUnit,
+          prevServingSize,
+          prevNutrition: Object.fromEntries(
+            NUTRITION_FIELDS.map((field) => [field, form[field]]),
+          ) as Partial<FoodFormData>,
+        };
+      } else {
+        swapContextRef.current = null;
+      }
+    } else {
+      // Any non-swap path invalidates the AI anchor.
+      swapContextRef.current = null;
+    }
+
     const nextSelection = normalizeSelectedUnitSelection(
       (await unitSelector?.onUnitSelectionChange?.(selection)) ?? selection,
     );
@@ -841,6 +970,16 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
     if (nextSelection.kind === 'draft') {
       if (nextSelection.requiresNutritionUpdate) {
+        const canAiConvert = shouldOfferAiConversion(
+          swapContextRef.current?.prevUnit ?? '',
+          nextSelection.variant.serving_unit,
+        );
+
+        if (!canAiConvert) {
+          setAutoScaleNutrition(false);
+          hasTouchedAutoScaleRef.current = true;
+        }
+
         setForm((previous) =>
           applyVariantUnitToFormState(previous, nextSelection.variant),
         );
@@ -854,6 +993,124 @@ const FoodForm: React.FC<FoodFormProps> = ({
     setForm((previous) =>
       applyVariantToFormState(previous, nextSelection.variant),
     );
+  };
+
+  /**
+   * Inline AI estimate: invoked from the button next to the manual-update
+   * banner. Uses the captured pre-swap context as the AI anchor — sends
+   * `fromAmount {fromUnit}` and asks for the equivalent in `{prevUnit}`,
+   * then scales the previous nutrition by `estimatedAmount / prevServingSize`.
+   *
+   * On success: auto-fills the row's nutrition, stamps AI provenance on the
+   * pending draft variant, restores Auto-Scale to the user's intent, and
+   * dismisses the banner. No "Use this" confirmation step — this surface is
+   * a single-tap commitment. Manual edits to nutrition fields afterward
+   * clear the AI tag (see update()).
+   */
+  const handleAiEstimate = async () => {
+    const context = swapContextRef.current;
+    if (!context) return;
+    const fromAmount =
+      preciseNumericValuesRef.current.servingSize ??
+      parseDecimalInput(form.servingSize);
+    if (!Number.isFinite(fromAmount) || fromAmount <= 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Set a serving size first',
+      });
+      return;
+    }
+
+    setIsEstimatingAi(true);
+    try {
+      const result = await requestAiUnitConversion({
+        foodId: unitSelector?.foodId ?? 'pending-new-food',
+        foodName: form.name.trim() || 'Untitled food',
+        brand: form.brand.trim() || undefined,
+        fromUnit: context.fromUnit,
+        fromAmount,
+        toUnit: context.prevUnit,
+        knownVariants: (unitSelector?.variants ?? []).map((v) => ({
+          amount: v.serving_size,
+          unit: v.serving_unit,
+        })),
+      });
+
+      // AI tells us: `fromAmount {fromUnit}` ≡ `estimatedAmount {prevUnit}`.
+      // The captured prevNutrition was for `prevServingSize {prevUnit}`.
+      // So the new nutrition for `fromAmount {fromUnit}` is
+      //   prevNutrition × (estimatedAmount / prevServingSize).
+      const ratio = result.estimatedAmount / context.prevServingSize;
+      const scaledNutrition: Partial<FoodFormData> = {};
+      const scaledPreciseUpdates: Partial<Record<NumericFoodFormField, number>> = {};
+      NUTRITION_FIELDS.forEach((field) => {
+        const prevValue = parseDecimalInput(context.prevNutrition[field] ?? '');
+        if (!Number.isFinite(prevValue)) return;
+        const next = prevValue * ratio;
+        scaledNutrition[field] = formatScaledInput(next);
+        scaledPreciseUpdates[field as NumericFoodFormField] = next;
+      });
+
+      // Apply scaled nutrition + clear banner. We don't change servingSize or
+      // servingUnit — the row already has the user's chosen new unit.
+      preciseNumericValuesRef.current = {
+        ...preciseNumericValuesRef.current,
+        ...scaledPreciseUpdates,
+      };
+      setForm((prev) => ({ ...prev, ...scaledNutrition }));
+      setShowManualUpdateBanner(false);
+
+      // Build an AI-tagged draft variant so the parent screen's deferred-POST
+      // pattern (FoodFormScreen.handleSubmit → buildVariantFromFormData) picks
+      // up source/ai_confidence/ai_reasoning. The variant's nutrition is
+      // already correct; on submit, buildVariantFromFormData spreads this
+      // variant first, then overwrites with the form's current numbers — so
+      // later manual edits override the AI nutrition while the provenance
+      // tag still survives unless update() explicitly clears it.
+      const aiVariant: FoodUnitVariant = {
+        id: FORM_DRAFT_UNIT_ID,
+        serving_size: fromAmount,
+        serving_unit: context.fromUnit,
+        calories: scaledPreciseUpdates.calories ?? 0,
+        protein: scaledPreciseUpdates.protein ?? 0,
+        carbs: scaledPreciseUpdates.carbs ?? 0,
+        fat: scaledPreciseUpdates.fat ?? 0,
+        dietary_fiber: scaledPreciseUpdates.fiber,
+        saturated_fat: scaledPreciseUpdates.saturatedFat,
+        trans_fat: scaledPreciseUpdates.transFat,
+        sodium: scaledPreciseUpdates.sodium,
+        sugars: scaledPreciseUpdates.sugars,
+        potassium: scaledPreciseUpdates.potassium,
+        cholesterol: scaledPreciseUpdates.cholesterol,
+        calcium: scaledPreciseUpdates.calcium,
+        iron: scaledPreciseUpdates.iron,
+        vitamin_a: scaledPreciseUpdates.vitaminA,
+        vitamin_c: scaledPreciseUpdates.vitaminC,
+        source: 'ai_estimate',
+        ai_confidence: result.confidence,
+        ai_reasoning: result.reasoning,
+      };
+      const aiSelection: FoodUnitSelectionResult = {
+        kind: 'draft',
+        variant: aiVariant,
+      };
+      setSelectedUnitSelection(aiSelection);
+      // Propagate to the screen so its pendingUnitSelection picks up the AI
+      // tags — buildVariantFromFormData spreads this variant on submit.
+      void unitSelector?.onUnitSelectionChange?.(aiSelection);
+
+      swapContextRef.current = null;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'AI estimate failed.';
+      Toast.show({
+        type: 'error',
+        text1: "Couldn't estimate",
+        text2: message,
+      });
+    } finally {
+      setIsEstimatingAi(false);
+    }
   };
 
   const renderTextField = (
@@ -1048,7 +1305,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           ) : null}
 
           {showManualUpdateBanner ? (
-            <View className="mt-1.5">
+            <View className="mt-1.5 gap-2">
               <View
                 className="rounded-lg px-3 py-3 flex-row items-center gap-2.5"
                 style={{ backgroundColor: infoBg }}
@@ -1061,6 +1318,60 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   {"Can't convert between units. Update nutrition values manually."}
                 </Text>
               </View>
+              {aiEstimatesAvailable &&
+                swapContextRef.current &&
+                shouldOfferAiConversion(
+                  swapContextRef.current.prevUnit,
+                  form.servingUnit,
+                ) ? (
+                <Button
+                  variant="secondary"
+                  onPress={handleAiEstimate}
+                  disabled={isEstimatingAi}
+                >
+                  {isEstimatingAi ? (
+                    <View className="flex-row items-center gap-2">
+                      <ActivityIndicator size="small" color={accentColor} />
+                      <Text className="text-text-primary font-semibold">
+                        Estimating…
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center gap-2">
+                      <Icon name="sparkles" size={16} color={accentColor} />
+                      <Text className="text-text-primary font-semibold">
+                        Convert with AI
+                      </Text>
+                    </View>
+                  )}
+                </Button>
+              ) : null}
+            </View>
+          ) : null}
+
+          {selectedUnitSelection?.variant.source === 'ai_estimate' &&
+          selectedUnitSelection.variant.ai_confidence ? (
+            <View className="mt-1.5 flex-row items-center">
+              <Text
+                className="text-xs font-semibold"
+                style={{
+                  color:
+                    aiTextColorByTone[
+                      CONFIDENCE_TONES[
+                        selectedUnitSelection.variant
+                          .ai_confidence as AiConfidence
+                      ]
+                    ],
+                }}
+              >
+                {
+                  OVERALL_CONFIDENCE_LABELS[
+                    selectedUnitSelection.variant
+                      .ai_confidence as AiConfidence
+                  ]
+                }{' '}
+                estimate
+              </Text>
             </View>
           ) : null}
 

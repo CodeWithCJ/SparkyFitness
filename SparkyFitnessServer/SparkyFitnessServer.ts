@@ -55,6 +55,7 @@ import globalSettingsRoutes from './routes/globalSettingsRoutes.js';
 import versionRoutes from './routes/versionRoutes.js';
 import onboardingRoutes from './routes/onboardingRoutes.js';
 import customNutrientRoutes from './routes/customNutrientRoutes.js';
+import aiUnitConversionRoutes from './routes/aiUnitConversionRoutes.js';
 import { applyMigrations } from './utils/dbMigrations.js';
 import { applyRlsPolicies } from './utils/applyRlsPolicies.js';
 import waterContainerRoutes from './routes/waterContainerRoutes.js';
@@ -377,6 +378,7 @@ app.get('/api/ping', (_req, res) =>
 );
 // Mounting all API routes
 app.use('/api/chat', chatRoutes);
+app.use('/api/ai', aiUnitConversionRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/v2/foods', v2FoodRoutes);
 app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);

@@ -1,27 +1,20 @@
-import type {
-  FoodPhotoEstimateConfidence,
-  FoodPhotoEstimateErrorCode,
+import {
+  CONFIDENCE_TONES,
+  ITEM_CONFIDENCE_LABELS,
+  OVERALL_CONFIDENCE_LABELS,
+  type ConfidenceTone,
+  type FoodPhotoEstimateErrorCode,
 } from '@workspace/shared';
 
-export type ConfidenceTone = 'success' | 'warning' | 'error';
+export type { ConfidenceTone };
 
-export const overallConfidenceLabels: Record<FoodPhotoEstimateConfidence, string> = {
-  high: 'Good',
-  medium: 'Fair',
-  low: 'Rough',
-};
-
-export const itemConfidenceLabels: Record<FoodPhotoEstimateConfidence, string> = {
-  high: 'Likely',
-  medium: 'Possible',
-  low: 'Uncertain',
-};
-
-export const confidenceTones: Record<FoodPhotoEstimateConfidence, ConfidenceTone> = {
-  high: 'success',
-  medium: 'warning',
-  low: 'error',
-};
+// Re-exports of the shared confidence-tier labels and tones. The mobile
+// food-photo flow was the original home of these constants; they now live in
+// @workspace/shared so the unit-conversion AI flow can reuse the same wording
+// and color scheme. Keep the lowercase aliases for callers in this app.
+export const overallConfidenceLabels = OVERALL_CONFIDENCE_LABELS;
+export const itemConfidenceLabels = ITEM_CONFIDENCE_LABELS;
+export const confidenceTones = CONFIDENCE_TONES;
 
 export interface EstimateErrorCopy {
   title: string;

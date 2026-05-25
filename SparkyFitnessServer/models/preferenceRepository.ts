@@ -34,6 +34,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         first_day_of_week = COALESCE($30, first_day_of_week),
         barcode_fallback_open_food_facts = COALESCE($31, barcode_fallback_open_food_facts),
         show_net_carbs = COALESCE($32, show_net_carbs),
+        ai_assisted_conversions = COALESCE($33, ai_assisted_conversions),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
@@ -71,6 +72,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.first_day_of_week,
         preferenceData.barcode_fallback_open_food_facts,
         preferenceData.show_net_carbs,
+        preferenceData.ai_assisted_conversions,
       ]
     );
     return result.rows[0];
@@ -147,6 +149,7 @@ async function upsertUserPreferences(preferenceData: any) {
        tdee_allow_negative_adjustment, auto_scale_online_imports, default_barcode_provider_id,
        first_day_of_week, barcode_fallback_open_food_facts,
        show_net_carbs,
+       ai_assisted_conversions,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -162,6 +165,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($30, 0),
        COALESCE($31, true),
        COALESCE($32, false),
+       COALESCE($33, true),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -194,6 +198,7 @@ async function upsertUserPreferences(preferenceData: any) {
        first_day_of_week = COALESCE(EXCLUDED.first_day_of_week, user_preferences.first_day_of_week),
        barcode_fallback_open_food_facts = COALESCE(EXCLUDED.barcode_fallback_open_food_facts, user_preferences.barcode_fallback_open_food_facts),
        show_net_carbs = COALESCE(EXCLUDED.show_net_carbs, user_preferences.show_net_carbs),
+       ai_assisted_conversions = COALESCE(EXCLUDED.ai_assisted_conversions, user_preferences.ai_assisted_conversions),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
@@ -230,6 +235,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.first_day_of_week,
         preferenceData.barcode_fallback_open_food_facts,
         preferenceData.show_net_carbs,
+        preferenceData.ai_assisted_conversions,
       ]
     );
     return result.rows[0];

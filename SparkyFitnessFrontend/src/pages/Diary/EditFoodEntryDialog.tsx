@@ -6,6 +6,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,10 +30,25 @@ import {
 import { useUpdateFoodEntryMutation } from '@/hooks/Diary/useFoodEntries';
 import { calculateNutrition } from '@/utils/nutritionCalculations';
 import { NutrientGrid } from './NutrientsGrid';
-import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
+import {
+  canAutoConvertToUnit,
+  useUnitConversion,
+} from '@/hooks/Foods/useUnitConversion';
 import { FoodEntryUpdateData, MealTypeDefinition } from '@/types/diary';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
+import {
+  CONFIDENCE_TONES,
+  OVERALL_CONFIDENCE_LABELS,
+  type AiConfidence,
+  type ConfidenceTone,
+} from '@workspace/shared';
+
+const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  error: 'text-rose-600 dark:text-rose-400',
+};
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -304,36 +320,68 @@ const EditFoodEntryDialog = ({
 
                 <div>
                   <Label htmlFor="unit">Unit</Label>
-                  <Select
-                    value={dropdownValue}
-                    onValueChange={handleUnitChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variants.map(
-                        (variant) =>
-                          variant.id && (
-                            <SelectItem key={variant.id} value={variant.id}>
-                              {variant.serving_unit}
-                            </SelectItem>
-                          )
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={dropdownValue}
+                      onValueChange={handleUnitChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {variants.map(
+                          (variant) =>
+                            variant.id && (
+                              <SelectItem key={variant.id} value={variant.id}>
+                                <span className="flex items-center gap-1.5">
+                                  {variant.serving_unit}
+                                  {variant.source === 'ai_estimate' &&
+                                    variant.ai_confidence && (
+                                      <Sparkles
+                                        className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
+                                        aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+                                      />
+                                    )}
+                                </span>
+                              </SelectItem>
+                            )
+                        )}
+                        {convertibleUnits.length > 0 && (
+                          <>
+                            <SelectSeparator />
+                            {convertibleUnits.map((u) => {
+                              const compatible = canAutoConvertToUnit(
+                                variants,
+                                selectedVariant,
+                                u
+                              );
+                              return (
+                                <SelectItem key={u} value={u}>
+                                  <span className="flex items-center gap-1.5">
+                                    {u}
+                                    {compatible && (
+                                      <Check className="h-3 w-3 text-green-500" />
+                                    )}
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
+                          </>
+                        )}
+                        <SelectSeparator />
+                        <SelectItem value="__custom__">
+                          Custom unit...
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {selectedVariant?.source === 'ai_estimate' &&
+                      selectedVariant.ai_confidence && (
+                        <Sparkles
+                          className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
+                          aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[selectedVariant.ai_confidence as AiConfidence]} confidence)`}
+                        />
                       )}
-                      {convertibleUnits.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {convertibleUnits.map((u) => (
-                            <SelectItem key={u} value={u}>
-                              {u}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      <SelectSeparator />
-                      <SelectItem value="__custom__">Custom unit...</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="meal">Meal</Label>

@@ -7,15 +7,20 @@ import { sanitizeGlycemicIndex } from './food.js';
 async function createFoodVariant(variantData: any, userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // user_id classifies stock (== food.user_id) vs personal variants.
+    // Caller must set variantData.user_id; foodCoreService stamps it from the
+    // authenticated user before invoking this.
     const result = await client.query(
       `INSERT INTO food_variants (
-        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, user_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, now(), now()) RETURNING id`,
+        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
+        source, ai_confidence, ai_reasoning, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()) RETURNING id`,
       [
         variantData.food_id,
+        variantData.user_id,
         variantData.serving_size,
         variantData.serving_unit,
         variantData.calories,
@@ -38,6 +43,9 @@ async function createFoodVariant(variantData: any, userId: any) {
         variantData.is_default || false,
         sanitizeGlycemicIndex(variantData.glycemic_index),
         variantData.custom_nutrients || {},
+        variantData.source || 'manual',
+        variantData.ai_confidence ?? null,
+        variantData.ai_reasoning ?? null,
       ]
     );
     return result.rows[0];
@@ -62,11 +70,11 @@ async function getFoodVariantById(id: any, userId: any) {
 async function getFoodVariantOwnerId(variantId: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
+    // Variant ownership now lives on food_variants.user_id directly (stock+personal model).
+    // Previously this returned the FOOD owner via JOIN; that's wrong for personal variants
+    // where variant.user_id != food.user_id.
     const result = await client.query(
-      `SELECT f.user_id
-       FROM food_variants fv
-       JOIN foods f ON fv.food_id = f.id
-       WHERE fv.id = $1`,
+      'SELECT user_id FROM food_variants WHERE id = $1',
       [variantId]
     );
     const ownerId = result.rows[0]?.user_id;
@@ -83,6 +91,9 @@ async function getFoodVariantOwnerId(variantId: any, userId: any) {
 async function getFoodVariantsByFoodId(foodId: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
+    // Stock + personal filter: return the food owner's stock variants plus
+    // this user's own personal variants. Other users' personal variants are
+    // excluded — RLS also gates them as defense in depth.
     const result = await client.query(
       'SELECT * FROM food_variants WHERE food_id = $1',
       [foodId]
@@ -97,6 +108,14 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
   // For update operations, we need the user_id of the food owner to ensure RLS is applied correctly.
   const client = await getClient(userId); // User-specific operation
   try {
+    const hasAiConfidence = Object.prototype.hasOwnProperty.call(
+      variantData,
+      'ai_confidence'
+    );
+    const hasAiReasoning = Object.prototype.hasOwnProperty.call(
+      variantData,
+      'ai_reasoning'
+    );
     const result = await client.query(
       `UPDATE food_variants SET
         food_id = COALESCE($1, food_id),
@@ -122,8 +141,11 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         is_default = COALESCE($21, is_default),
         glycemic_index = COALESCE($22, glycemic_index),
         custom_nutrients = COALESCE($23, custom_nutrients),
+        source = COALESCE($24, source),
+        ai_confidence = CASE WHEN $25 THEN $26 ELSE ai_confidence END,
+        ai_reasoning = CASE WHEN $27 THEN $28 ELSE ai_reasoning END,
         updated_at = now()
-      WHERE id = $24
+      WHERE id = $29
       RETURNING *`,
       [
         variantData.food_id,
@@ -149,6 +171,11 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         variantData.is_default,
         sanitizeGlycemicIndex(variantData.glycemic_index),
         variantData.custom_nutrients || {},
+        variantData.source,
+        hasAiConfidence,
+        variantData.ai_confidence ?? null,
+        hasAiReasoning,
+        variantData.ai_reasoning ?? null,
         id,
       ]
     );
@@ -185,14 +212,16 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
   try {
     const query = `
       INSERT INTO food_variants (
-        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, user_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients, created_at, updated_at
+        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
+        source, ai_confidence, ai_reasoning, created_at, updated_at
       ) VALUES %L RETURNING id`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
       variant.food_id,
+      variant.user_id,
       variant.serving_size,
       variant.serving_unit,
       variant.calories,
@@ -215,6 +244,9 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       variant.is_default || false,
       sanitizeGlycemicIndex(variant.glycemic_index),
       variant.custom_nutrients || {},
+      variant.source || 'manual',
+      variant.ai_confidence ?? null,
+      variant.ai_reasoning ?? null,
       'now()',
       'now()',
     ]);

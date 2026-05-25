@@ -422,19 +422,42 @@ WITH CHECK (has_diary_access(user_id));
 CREATE POLICY delete_policy ON public.food_entries FOR DELETE TO PUBLIC
 USING (has_diary_access(user_id));
 
-CREATE POLICY select_and_modify_policy ON public.food_variants FOR ALL TO PUBLIC
+-- food_variants: stock + personal model.
+-- Stock variants (variant.user_id == food.user_id) are visible to anyone who can
+-- read the food. Personal variants (variant.user_id != food.user_id) are visible
+-- only to the variant owner and their family-access viewers.
+-- Modify is restricted to the variant owner AND requires food access (defense
+-- in depth — preserves today's food-level access requirement for direct writes).
+CREATE POLICY food_variants_select_policy ON public.food_variants FOR SELECT TO PUBLIC
 USING (
-  EXISTS (
+  (
+    food_variants.user_id = (SELECT f.user_id FROM public.foods f WHERE f.id = food_variants.food_id)
+    AND EXISTS (
+      SELECT 1 FROM public.foods f
+      WHERE f.id = food_variants.food_id
+        AND has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library', 'can_manage_diary'])
+    )
+  )
+  OR
+  -- Personal variant: pass FALSE for is_shared so the helper reduces to owner-or-family-access.
+  has_library_access_with_public(food_variants.user_id, FALSE, ARRAY['can_view_food_library', 'can_manage_diary'])
+);
+
+CREATE POLICY food_variants_modify_policy ON public.food_variants FOR ALL TO PUBLIC
+USING (
+  food_variants.user_id = current_setting('app.user_id')::uuid
+  AND EXISTS (
     SELECT 1 FROM public.foods f
     WHERE f.id = food_variants.food_id
       AND has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library', 'can_manage_diary'])
   )
 )
 WITH CHECK (
-  EXISTS (
+  food_variants.user_id = current_setting('app.user_id')::uuid
+  AND EXISTS (
     SELECT 1 FROM public.foods f
     WHERE f.id = food_variants.food_id
-      AND has_diary_access(f.user_id)
+      AND has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library', 'can_manage_diary'])
   )
 );
 

@@ -3,7 +3,16 @@ import type { FoodVariant } from '@/types/food';
 import {
   ALL_CONVERSION_UNITS,
   getConversionFactor,
-} from '@/utils/servingSizeConversions';
+  type AiConfidence,
+} from '@workspace/shared';
+
+/** AI estimate accepted by the user — drives both the conversion factor and the
+ *  provenance metadata stamped onto the variant POST body. */
+export interface AiEstimateData {
+  estimatedAmount: number;
+  confidence: AiConfidence;
+  reasoning: string;
+}
 
 export interface UseUnitConversionOptions {
   variants: FoodVariant[];
@@ -23,6 +32,11 @@ export interface UseUnitConversionResult {
   conversionBaseVariant: FoodVariant | null;
   conversionError: string;
   setConversionError: (error: string) => void;
+  aiEstimateData: AiEstimateData | null;
+  /** Accept (non-null) auto-fills `conversionFactor` with the estimated amount.
+   *  Clearing to null leaves the factor alone so the user can edit from that
+   *  value (the "Edit" affordance in `<AiEstimateSection />`). */
+  setAiEstimateData: (data: AiEstimateData | null) => void;
   // Derived
   isConverting: boolean;
   convertibleUnits: string[];
@@ -51,11 +65,18 @@ export function resolveAutoConversionSource(
   selectedVariant: FoodVariant | null,
   targetUnit: string
 ): ResolvedAutoConversion | null {
+  if (selectedVariant?.source === 'ai_estimate') {
+    return null;
+  }
+
   const candidateVariants = selectedVariant
     ? [selectedVariant, ...variants]
     : variants;
 
   for (const variant of candidateVariants) {
+    if (variant.source === 'ai_estimate') {
+      continue;
+    }
     const factor = getConversionFactor(variant.serving_unit, targetUnit);
     if (factor !== null) {
       return {
@@ -92,6 +113,18 @@ export function useUnitConversion({
   const [conversionBaseVariant, setConversionBaseVariant] =
     useState<FoodVariant | null>(null);
   const [conversionError, setConversionError] = useState('');
+  const [aiEstimateData, setAiEstimateDataState] =
+    useState<AiEstimateData | null>(null);
+
+  const setAiEstimateData = useCallback((data: AiEstimateData | null) => {
+    setAiEstimateDataState(data);
+    if (data !== null) {
+      // Accepting an estimate fills the factor input so submit math Just Works.
+      setConversionFactor(data.estimatedAmount);
+    }
+    // Clearing (Edit) intentionally leaves conversionFactor alone — the user
+    // wants to take the AI value as a starting point and tweak it manually.
+  }, []);
 
   const isConverting = !!(pendingUnit || pendingUnitIsCustom);
 
@@ -120,7 +153,7 @@ export function useUnitConversion({
           : null;
     if (!base || effectiveFactor === null || !pendingUnit.trim()) return null;
     const ratio = effectiveFactor / base.serving_size;
-    return {
+    const variant: FoodVariant = {
       serving_size: 1,
       serving_unit: pendingUnit.trim(),
       calories: (base.calories || 0) * ratio,
@@ -147,11 +180,20 @@ export function useUnitConversion({
         ])
       ),
     };
+    // Stamp AI provenance when the user accepted an AI estimate. Manual flows
+    // omit these fields and the server defaults source = 'manual'.
+    if (aiEstimateData) {
+      variant.source = 'ai_estimate';
+      variant.ai_confidence = aiEstimateData.confidence;
+      variant.ai_reasoning = aiEstimateData.reasoning;
+    }
+    return variant;
   }, [
     conversionBaseVariant,
     conversionFactor,
     autoConversionFactor,
     pendingUnit,
+    aiEstimateData,
   ]);
 
   const handleUnitChange = useCallback(
@@ -163,6 +205,7 @@ export function useUnitConversion({
         setAutoConversionFactor(null);
         setConversionFactor('');
         setConversionError('');
+        setAiEstimateDataState(null);
         return;
       }
 
@@ -175,6 +218,7 @@ export function useUnitConversion({
         setAutoConversionFactor(null);
         setConversionBaseVariant(null);
         setConversionError('');
+        setAiEstimateDataState(null);
         return;
       }
 
@@ -195,6 +239,8 @@ export function useUnitConversion({
       setConversionBaseVariant(autoConversion?.baseVariant || manualBase);
       setAutoConversionFactor(autoConversion?.factor ?? null);
       setConversionError('');
+      // Estimate is bound to the prior fromUnit → toUnit pair; reset on change.
+      setAiEstimateDataState(null);
     },
     [selectedVariant, variants, onVariantSelect]
   );
@@ -206,6 +252,7 @@ export function useUnitConversion({
     setAutoConversionFactor(null);
     setConversionBaseVariant(null);
     setConversionError('');
+    setAiEstimateDataState(null);
   }, []);
 
   const resetConversionState = useCallback(() => {
@@ -215,6 +262,7 @@ export function useUnitConversion({
     setAutoConversionFactor(null);
     setConversionBaseVariant(null);
     setConversionError('');
+    setAiEstimateDataState(null);
   }, []);
 
   return {
@@ -227,6 +275,8 @@ export function useUnitConversion({
     conversionBaseVariant,
     conversionError,
     setConversionError,
+    aiEstimateData,
+    setAiEstimateData,
     isConverting,
     convertibleUnits,
     dropdownValue,
