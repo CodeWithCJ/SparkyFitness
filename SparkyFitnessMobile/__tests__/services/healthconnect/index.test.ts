@@ -9,6 +9,14 @@ import {
   syncHealthData,
 } from '../../../src/services/healthconnect/index';
 
+// Helpers — construct test dates in local time so the per-day window math
+// in aggregateCumulativeMetricByDay produces predictable output regardless
+// of the runtime timezone.
+const localMidnight = (y: number, m1to12: number, d: number) =>
+  new Date(y, m1to12 - 1, d, 0, 0, 0, 0);
+const localEndOfDay = (y: number, m1to12: number, d: number) =>
+  new Date(y, m1to12 - 1, d, 23, 59, 59, 999);
+
 import {
   initialize,
   requestPermission,
@@ -380,140 +388,124 @@ describe('readHealthRecords', () => {
 describe('getAggregatedStepsByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: tz-offset lookup finds no records (no offset captured).
+    mockReadRecords.mockResolvedValue({ records: [] });
   });
 
-  test('returns aggregated steps by date', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
+  test('returns one entry per local day with the native aggregate total', async () => {
+    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 5000 });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      date: '2024-01-15',
-      value: 5000,
-      type: 'step',
-    });
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 5000, type: 'step' },
+    ]);
+    expect(mockAggregateRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordType: 'Steps',
+        timeRangeFilter: expect.objectContaining({ operator: 'between' }),
+      }),
+    );
+    // Must NOT pass dataOriginFilter — that would defeat HC's native cross-origin dedup.
+    expect(mockAggregateRecord.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
   });
 
-  test('uses endTime for date assignment', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T14:00:00Z', count: 300, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-16T10:00:00Z', endTime: '2024-01-16T14:00:00Z', count: 500, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
+  test('passes through native cross-origin dedup (regression for #1279)', async () => {
+    // Simulates the empirically verified scenario: HC's native aggregate returns the
+    // deduped total across multiple origins. The helper must NOT post-process or
+    // recombine — it just emits what HC returned. If a future refactor regressed
+    // to per-origin Math.max or naive sum, this test would fail.
+    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 7000 });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-16T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result[0].value).toBe(7000);
+  });
+
+  test('iterates each local day in a multi-day range', async () => {
+    mockAggregateRecord
+      .mockResolvedValueOnce({ COUNT_TOTAL: 5000 })
+      .mockResolvedValueOnce({ COUNT_TOTAL: 6000 });
+
+    const result = await getAggregatedStepsByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
     );
 
     expect(result).toHaveLength(2);
-    // Records should be grouped by endTime date
-    expect(result.find(r => r.date === '2024-01-15')?.value).toBe(300);
-    expect(result.find(r => r.date === '2024-01-16')?.value).toBe(500);
+    expect(result.find((r) => r.date === '2024-01-15')?.value).toBe(5000);
+    expect(result.find((r) => r.date === '2024-01-16')?.value).toBe(6000);
+    expect(mockAggregateRecord).toHaveBeenCalledTimes(2);
   });
 
-  test('deduplicates across data origins by taking max per day', async () => {
+  test('skips days where the aggregate is zero or missing', async () => {
+    mockAggregateRecord
+      .mockResolvedValueOnce({ COUNT_TOTAL: 0 })
+      .mockResolvedValueOnce({ COUNT_TOTAL: 4200 });
+
+    const result = await getAggregatedStepsByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
+    );
+
+    expect(result).toEqual([{ date: '2024-01-16', value: 4200, type: 'step' }]);
+  });
+
+  test('captures per-day UTC offset from one raw record', async () => {
+    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 3000 });
     mockReadRecords.mockResolvedValue({
       records: [
-        // Phone recorded 5000 steps
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000, metadata: { dataOrigin: 'com.phone' } },
-        // Watch recorded 4500 steps (overlapping data)
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 1800, metadata: { dataOrigin: 'com.watch' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 2700, metadata: { dataOrigin: 'com.watch' } },
+        { startZoneOffset: { totalSeconds: -28800 } }, // -480 min (UTC-8)
       ],
     });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
-    expect(result).toHaveLength(1);
-    // Should take max (phone=5000) not sum (9500)
-    expect(result[0].value).toBe(5000);
+    expect(result[0].record_utc_offset_minutes).toBe(-480);
+    // Lookup must request only one record — it's purely for tz metadata.
+    expect(mockReadRecords.mock.calls[0][1]).toMatchObject({ pageSize: 1 });
   });
 
-  test('groups records with missing metadata as unknown origin', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
-      ],
-    });
-
-    const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    // Both grouped as 'unknown' origin, summed normally
-    expect(result[0].value).toBe(5000);
-  });
-
-  test('skips records with missing timestamps', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { count: 100, metadata: { dataOrigin: 'com.phone' } }, // No startTime or endTime
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
-
-    const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(2000);
-  });
-
-  test('returns empty array when no records found', async () => {
+  test('omits offset when the tz-lookup read returns nothing', async () => {
+    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 3000 });
     mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
-    expect(result).toEqual([]);
+    expect(result[0]).not.toHaveProperty('record_utc_offset_minutes');
   });
 
-  test('aggregates across multiple days', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-16T08:00:00Z', endTime: '2024-01-16T09:00:00Z', count: 6000, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
+  test('continues to other days when one aggregate call fails', async () => {
+    mockAggregateRecord
+      .mockRejectedValueOnce(new Error('HC error for day 1'))
+      .mockResolvedValueOnce({ COUNT_TOTAL: 4000 });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-16T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
     );
 
-    expect(result).toHaveLength(2);
-    expect(result.find(r => r.date === '2024-01-15')?.value).toBe(5000);
-    expect(result.find(r => r.date === '2024-01-16')?.value).toBe(6000);
+    expect(result).toEqual([{ date: '2024-01-16', value: 4000, type: 'step' }]);
   });
 
-  test('returns empty array on error', async () => {
-    mockReadRecords.mockRejectedValue(new Error('Failed to read'));
+  test('returns empty array when every day has no data', async () => {
+    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 0 });
 
     const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
     expect(result).toEqual([]);
@@ -523,83 +515,55 @@ describe('getAggregatedStepsByDate', () => {
 describe('getAggregatedActiveCaloriesByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  test('returns aggregated calories by date', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 }, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 }, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
-
-    const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      date: '2024-01-15',
-      value: 500,
-      type: 'active_calories',
-    });
-  });
-
-  test('deduplicates across data origins by taking max per day', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        // Phone recorded 500 kcal
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 }, metadata: { dataOrigin: 'com.phone' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 }, metadata: { dataOrigin: 'com.phone' } },
-        // Watch recorded 450 kcal (overlapping)
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 180 }, metadata: { dataOrigin: 'com.watch' } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 270 }, metadata: { dataOrigin: 'com.watch' } },
-      ],
-    });
-
-    const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    // Should take max (phone=500) not sum (950)
-    expect(result[0].value).toBe(500);
-  });
-
-  test('returns empty array when no records found', async () => {
     mockReadRecords.mockResolvedValue({ records: [] });
+  });
+
+  test('returns rounded kcal totals from the native aggregate', async () => {
+    mockAggregateRecord.mockResolvedValue({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 500.5 } });
 
     const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 501, type: 'active_calories' },
+    ]);
+    expect(mockAggregateRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ recordType: 'ActiveCaloriesBurned' }),
+    );
+    expect(mockAggregateRecord.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
+  });
+
+  test('passes through native cross-origin dedup (regression for #1279)', async () => {
+    // Same regression intent as Steps — assert the dedup value, not a sum.
+    mockAggregateRecord.mockResolvedValue({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 600 } });
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result[0].value).toBe(600);
+  });
+
+  test('skips days where the aggregate envelope is empty', async () => {
+    mockAggregateRecord.mockResolvedValue({});
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
     expect(result).toEqual([]);
   });
 
-  test('rounds calorie values', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 500.5 }, metadata: { dataOrigin: 'com.phone' } },
-      ],
-    });
+  test('returns empty array when the underlying aggregate always fails', async () => {
+    mockAggregateRecord.mockRejectedValue(new Error('HC unavailable'));
 
     const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result[0].value).toBe(501); // Math.round(500.5)
-  });
-
-  test('returns empty array on error', async () => {
-    mockReadRecords.mockRejectedValue(new Error('Failed to read'));
-
-    const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
     );
 
     expect(result).toEqual([]);

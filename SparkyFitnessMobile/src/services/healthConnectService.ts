@@ -11,9 +11,7 @@ import {
   SyncResult,
   HealthMetricStates,
   type TransformedRecord,
-  type HCZoneOffset,
 } from '../types/healthRecords';
-import { toDateStringWithOffset } from '../utils/dateUtils';
 import { SyncDuration } from './healthconnect/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
@@ -63,143 +61,49 @@ export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateA
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActiveCaloriesByDate;
 
-/** Derives date from a HC record using per-record zone offset when available. */
-const dateFromRecordOffset = (
-  timestamp: string,
-  startOffset?: HCZoneOffset,
-  endOffset?: HCZoneOffset,
-  preferEnd = false,
-): string => {
-  const preferred = preferEnd ? endOffset : startOffset;
-  const fallback = preferEnd ? startOffset : endOffset;
-  const offset = preferred ?? fallback;
-  if (offset?.totalSeconds != null) {
-    return toDateStringWithOffset(timestamp, Math.round(offset.totalSeconds / 60));
-  }
-  return HealthConnectAggregation.toLocalDateString(timestamp);
-};
-
-// Android implementations for additional aggregation functions
-// These aggregate raw records by date with deduplication across data sources
-export const getAggregatedTotalCaloriesByDate = async (
+export const getAggregatedTotalCaloriesByDate = (
   startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  type CalRecord = {
-    startTime?: string; endTime?: string; time?: string;
-    energy?: { inKilocalories?: number };
-    metadata?: { dataOrigin?: string };
-    startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset;
-  };
-  const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate) as CalRecord[];
-
-  const offsetByDate: Record<string, number> = {};
-
-  const byDate = HealthConnect.deduplicateByOrigin(
-    records,
-    (record: CalRecord) => {
-      const timestamp = record.endTime || record.startTime || record.time || '';
-      if (!timestamp) return '';
-      const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
-      if (!(date in offsetByDate)) {
-        const offset = record.endZoneOffset ?? record.startZoneOffset;
-        if (offset?.totalSeconds != null) {
-          offsetByDate[date] = Math.round(offset.totalSeconds / 60);
-        }
-      }
-      return date;
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  HealthConnect.aggregateCumulativeMetricByDay(
+    {
+      recordType: 'TotalCaloriesBurned',
+      outputType: 'total_calories',
+      extractValue: (r) => (r as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories ?? 0,
+      round: true,
     },
-    (record: CalRecord) => record.energy?.inKilocalories || 0,
+    startDate,
+    endDate,
   );
 
-  return Object.entries(byDate).map(([date, value]) => {
-    const rec: AggregatedHealthRecord = { date, value: Math.round(value), type: 'total_calories' };
-    if (date in offsetByDate) {
-      rec.record_utc_offset_minutes = offsetByDate[date];
-    }
-    return rec;
-  });
-};
-
-export const getAggregatedDistanceByDate = async (
+export const getAggregatedDistanceByDate = (
   startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  type DistRecord = {
-    startTime?: string; endTime?: string; time?: string;
-    distance?: { inMeters?: number };
-    metadata?: { dataOrigin?: string };
-    startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset;
-  };
-  const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate) as DistRecord[];
-
-  const offsetByDate: Record<string, number> = {};
-
-  const byDate = HealthConnect.deduplicateByOrigin(
-    records,
-    (record: DistRecord) => {
-      const timestamp = record.endTime || record.startTime || record.time || '';
-      if (!timestamp) return '';
-      const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
-      if (!(date in offsetByDate)) {
-        const offset = record.endZoneOffset ?? record.startZoneOffset;
-        if (offset?.totalSeconds != null) {
-          offsetByDate[date] = Math.round(offset.totalSeconds / 60);
-        }
-      }
-      return date;
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  HealthConnect.aggregateCumulativeMetricByDay(
+    {
+      recordType: 'Distance',
+      outputType: 'distance',
+      extractValue: (r) => (r as { DISTANCE?: { inMeters?: number } }).DISTANCE?.inMeters ?? 0,
+      round: true,
     },
-    (record: DistRecord) => record.distance?.inMeters || 0,
+    startDate,
+    endDate,
   );
 
-  return Object.entries(byDate).map(([date, value]) => {
-    const rec: AggregatedHealthRecord = { date, value: Math.round(value), type: 'distance' };
-    if (date in offsetByDate) {
-      rec.record_utc_offset_minutes = offsetByDate[date];
-    }
-    return rec;
-  });
-};
-
-export const getAggregatedFloorsClimbedByDate = async (
+export const getAggregatedFloorsClimbedByDate = (
   startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  type FloorRecord = {
-    startTime?: string; endTime?: string; time?: string;
-    floors?: number;
-    metadata?: { dataOrigin?: string };
-    startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset;
-  };
-  const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate) as FloorRecord[];
-
-  const offsetByDate: Record<string, number> = {};
-
-  const byDate = HealthConnect.deduplicateByOrigin(
-    records,
-    (record: FloorRecord) => {
-      const timestamp = record.endTime || record.startTime || record.time || '';
-      if (!timestamp) return '';
-      const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
-      if (!(date in offsetByDate)) {
-        const offset = record.endZoneOffset ?? record.startZoneOffset;
-        if (offset?.totalSeconds != null) {
-          offsetByDate[date] = Math.round(offset.totalSeconds / 60);
-        }
-      }
-      return date;
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  HealthConnect.aggregateCumulativeMetricByDay(
+    {
+      recordType: 'FloorsClimbed',
+      outputType: 'floors_climbed',
+      extractValue: (r) => (r as { FLOORS_CLIMBED_TOTAL?: number }).FLOORS_CLIMBED_TOTAL ?? 0,
     },
-    (record: FloorRecord) => record.floors || 0,
+    startDate,
+    endDate,
   );
-
-  return Object.entries(byDate).map(([date, value]) => {
-    const rec: AggregatedHealthRecord = { date, value: Math.round(value), type: 'floors_climbed' };
-    if (date in offsetByDate) {
-      rec.record_utc_offset_minutes = offsetByDate[date];
-    }
-    return rec;
-  });
-};
 
 // Android handles sleep aggregation in its transformation layer, so this is a passthrough
 export const aggregateSleepSessions = (records: unknown[]): unknown[] => records;
