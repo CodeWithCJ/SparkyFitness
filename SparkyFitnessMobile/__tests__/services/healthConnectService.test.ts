@@ -48,7 +48,6 @@ const androidService = require('../../src/services/healthConnectService.ts') as 
   getAggregatedDistanceByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
   getAggregatedFloorsClimbedByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
   syncHealthData: (syncDuration: string, healthMetricStates?: HealthMetricStates) => Promise<SyncResult>;
-  readStressRecords: (startDate: Date, endDate: Date) => Promise<unknown[]>;
 };
 
 describe('healthConnectService.ts (Android)', () => {
@@ -366,17 +365,6 @@ describe('healthConnectService.ts (Android)', () => {
 
       expect(floorsRecords.length).toBeGreaterThanOrEqual(1);
       expect(floorsRecords[0].value).toBe(8);
-    });
-  });
-
-  describe('readStressRecords', () => {
-    test('returns empty array on Android (iOS-only metric)', async () => {
-      const result = await androidService.readStressRecords(
-        new Date('2024-01-15T00:00:00Z'),
-        new Date('2024-01-15T23:59:59Z')
-      );
-
-      expect(result).toEqual([]);
     });
   });
 

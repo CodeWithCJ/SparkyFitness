@@ -5,58 +5,16 @@ import {
   aggregateRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
-import { HEALTH_METRICS } from '../../HealthMetrics';
-import {
-  aggregateStepsByDate,
-  aggregateActiveCaloriesByDate,
-  aggregateTotalCaloriesByDate,
-  aggregateByDay,
-} from './dataAggregation';
-import { transformHealthRecords } from './dataTransformation';
 import {
   AggregatedHealthRecord,
   PermissionRequest,
   GrantedPermission,
-  SyncResult,
-  HealthMetricStates,
-  type TransformedRecord,
   type HCZoneOffset,
 } from '../../types/healthRecords';
-import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
+import { getSyncStartDate } from '../../utils/syncUtils';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
-
-/**
- * Deduplicates cumulative records by taking the max total per data origin for each day.
- * When multiple apps (phone, watch, Google Fit) write overlapping data, naive summation
- * double-counts. This groups by origin and takes the highest source total per day.
- *
- * Note: aggregateGroupByPeriod would handle this natively, but react-native-health-connect
- * v3.5.0 has a bug where it uses Instant instead of LocalDateTime (issues #174, #194).
- */
-export const deduplicateByOrigin = (
-  records: { metadata?: { dataOrigin?: string }; [key: string]: unknown }[],
-  getDate: (record: any) => string,
-  getValue: (record: any) => number,
-): Record<string, number> => {
-  // Build: { date: { origin: total } }, skipping records with no valid date
-  const byDateAndOrigin: Record<string, Record<string, number>> = {};
-  for (const record of records) {
-    const date = getDate(record);
-    if (!date) continue;
-    const origin = record.metadata?.dataOrigin || 'unknown';
-    const value = getValue(record);
-    if (!byDateAndOrigin[date]) byDateAndOrigin[date] = {};
-    byDateAndOrigin[date][origin] = (byDateAndOrigin[date][origin] || 0) + value;
-  }
-  // For each date, take the max across origins
-  const result: Record<string, number> = {};
-  for (const [date, origins] of Object.entries(byDateAndOrigin)) {
-    result[date] = Math.max(...Object.values(origins));
-  }
-  return result;
-};
 
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
@@ -479,85 +437,4 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
   }));
 
   return enriched;
-};
-
-export const syncHealthData = async (
-  syncDuration: SyncDuration,
-  healthMetricStates: HealthMetricStates = {},
-  api: { syncHealthData: (data: unknown[]) => Promise<unknown> }
-): Promise<SyncResult> => {
-  const startDate = getSyncStartDate(syncDuration);
-  const endDate = new Date();
-
-  const enabledMetricStates = healthMetricStates && typeof healthMetricStates === 'object' ? healthMetricStates : {};
-  const healthDataTypesToSync = HEALTH_METRICS
-    .filter(metric => enabledMetricStates[metric.stateKey])
-    .map(metric => metric.recordType);
-
-  let allTransformedData: unknown[] = [];
-  const syncErrors: { type: string; error: string }[] = [];
-
-  for (const type of healthDataTypesToSync) {
-    try {
-      const rawRecords = await readHealthRecords(type, startDate, endDate);
-
-      if (rawRecords.length === 0) {
-        continue;
-      }
-
-      const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
-      if (!metricConfig) {
-        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
-        continue;
-      }
-
-      let dataToTransform: unknown[] = rawRecords;
-
-      if (type === 'Steps') {
-        dataToTransform = aggregateStepsByDate(rawRecords as Parameters<typeof aggregateStepsByDate>[0]);
-      } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = aggregateActiveCaloriesByDate(rawRecords as Parameters<typeof aggregateActiveCaloriesByDate>[0]);
-      } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = aggregateTotalCaloriesByDate(rawRecords as Parameters<typeof aggregateTotalCaloriesByDate>[0]);
-      } else if (type === 'ExerciseSession') {
-        dataToTransform = await enrichExerciseSessions(rawRecords);
-      }
-
-      const transformed = transformHealthRecords(dataToTransform, metricConfig);
-
-      if (metricConfig.aggregationStrategy) {
-        const aggregated = aggregateByDay(
-          transformed as TransformedRecord[],
-          metricConfig.type,
-          metricConfig.unit,
-          metricConfig.aggregationStrategy,
-        );
-        if (aggregated.length > 0) {
-          allTransformedData = allTransformedData.concat(aggregated);
-        }
-      } else if (transformed.length > 0) {
-        allTransformedData = allTransformedData.concat(transformed);
-      } else {
-        addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'WARNING');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorMsg = `Error reading or transforming ${type} records: ${message}`;
-      addLog(`[HealthConnectService] ${errorMsg}`, 'ERROR');
-      syncErrors.push({ type, error: message });
-    }
-  }
-
-  if (allTransformedData.length > 0) {
-    try {
-      const apiResponse = await api.syncHealthData(allTransformedData);
-      return { success: true, apiResponse, syncErrors };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error sending data to server: ${message}`);
-      return { success: false, error: message, syncErrors };
-    }
-  } else {
-    return { success: true, message: "No health data to sync.", syncErrors };
-  }
 };

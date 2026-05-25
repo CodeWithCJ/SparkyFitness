@@ -6,7 +6,6 @@ import {
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
   enrichExerciseSessions,
-  syncHealthData,
 } from '../../../src/services/healthconnect/index';
 
 // Helpers — construct test dates in local time so the per-day window math
@@ -24,7 +23,7 @@ import {
   aggregateRecord,
 } from 'react-native-health-connect';
 
-import type { PermissionRequest, GrantedPermission, HealthMetricStates } from '../../../src/types/healthRecords';
+import type { PermissionRequest, GrantedPermission } from '../../../src/types/healthRecords';
 import type { SyncDuration } from '../../../src/services/healthconnect/preferences';
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -872,158 +871,3 @@ describe('enrichExerciseSessions', () => {
   });
 });
 
-describe('syncHealthData', () => {
-  let mockApi: { syncHealthData: jest.Mock };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockApi = {
-      syncHealthData: jest.fn().mockResolvedValue({ success: true }),
-    };
-  });
-
-  test('syncs enabled metrics and calls API', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
-      ],
-    });
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: false };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.success).toBe(true);
-    expect(mockApi.syncHealthData).toHaveBeenCalled();
-  });
-
-  test('does not call API when no data to sync', async () => {
-    mockReadRecords.mockResolvedValue({ records: [] });
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.success).toBe(true);
-    expect(result.message).toBe('No health data to sync.');
-    expect(mockApi.syncHealthData).not.toHaveBeenCalled();
-  });
-
-  test('handles empty healthMetricStates', async () => {
-    const result = await syncHealthData('24h', {}, mockApi);
-
-    expect(result.success).toBe(true);
-    expect(result.message).toBe('No health data to sync.');
-  });
-
-  test('continues processing when one metric returns no records', async () => {
-    // readHealthRecords catches errors internally and returns [], so sync continues gracefully
-    // This test verifies that if Steps returns empty but HeartRate has data, HeartRate is still synced
-    mockReadRecords.mockImplementation((recordType: string) => {
-      if (recordType === 'Steps') {
-        // Steps has no records
-        return Promise.resolve({ records: [] });
-      }
-      if (recordType === 'HeartRate') {
-        return Promise.resolve({
-          records: [
-            { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
-          ],
-        });
-      }
-      return Promise.resolve({ records: [] });
-    });
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true, isHeartRateSyncEnabled: true };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.success).toBe(true);
-    // HeartRate data should still be synced
-    expect(mockApi.syncHealthData).toHaveBeenCalled();
-    const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs.some((r: { type: string }) => r.type.startsWith('heart_rate_'))).toBe(true);
-  });
-
-  test('returns error when API call fails', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [{ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 }],
-    });
-    mockApi.syncHealthData.mockRejectedValue(new Error('Server error'));
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('Server error');
-  });
-
-  test('aggregates Steps records before transformation', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
-      ],
-    });
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
-
-    await syncHealthData('24h', healthMetricStates, mockApi);
-
-    // Should have aggregated steps into single daily total
-    const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs).toHaveLength(1);
-    expect(apiCallArgs[0].value).toBe(5000);
-  });
-
-  test('aggregates HeartRate records with min/max/avg', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
-        { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 80 }] },
-      ],
-    });
-
-    const healthMetricStates: HealthMetricStates = { isHeartRateSyncEnabled: true };
-
-    await syncHealthData('24h', healthMetricStates, mockApi);
-
-    const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs).toHaveLength(3); // min, max, avg
-    const hrMin = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_min');
-    const hrMax = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_max');
-    const hrAvg = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_avg');
-    expect(hrMin.value).toBe(60);
-    expect(hrMax.value).toBe(80);
-    expect(hrAvg.value).toBe(70);
-  });
-
-  test('skips metric when no config found for record type', async () => {
-    // Mock HEALTH_METRICS to not include the metric we're trying to sync
-    // This tests the "No metric configuration found" path
-    mockReadRecords.mockResolvedValue({
-      records: [{ startTime: '2024-01-15T10:00:00Z', value: 100 }],
-    });
-
-    // With our mock HEALTH_METRICS, only these metrics are valid
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.success).toBe(true);
-  });
-
-  test('returns apiResponse on success', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [{ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 }],
-    });
-    mockApi.syncHealthData.mockResolvedValue({ processed: 1, success: true });
-
-    const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
-
-    const result = await syncHealthData('24h', healthMetricStates, mockApi);
-
-    expect(result.apiResponse).toEqual({ processed: 1, success: true });
-  });
-});

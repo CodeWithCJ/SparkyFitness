@@ -1,11 +1,10 @@
 import {
-  aggregateHeartRateByDate,
   aggregateSleepSessions,
   aggregateByDay,
   toLocalDateString,
 } from '../../../src/services/healthkit/dataAggregation';
 
-import type { HKHeartRateRecord, HKSleepRecord, TransformedRecord } from '../../../src/types/healthRecords';
+import type { HKSleepRecord, TransformedRecord } from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -45,62 +44,6 @@ describe('toLocalDateString', () => {
     const date = new Date(2024, 0, 5, 12, 0, 0);
     const result = toLocalDateString(date);
     expect(result).toBe('2024-01-05');
-  });
-});
-
-describe('aggregateHeartRateByDate', () => {
-  test('returns empty array for empty input', () => {
-    const result = aggregateHeartRateByDate([]);
-    expect(result).toEqual([]);
-  });
-
-  test('returns single record value', () => {
-    const records: HKHeartRateRecord[] = [
-      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
-    ];
-    const result = aggregateHeartRateByDate(records);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate', record_timezone: 'America/New_York' });
-  });
-
-  test('averages multiple records on the same day (rounded)', () => {
-    const records: HKHeartRateRecord[] = [
-      { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
-      { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 80 }] },
-      { startTime: '2024-01-15T18:00:00Z', samples: [{ beatsPerMinute: 70 }] },
-    ];
-    const result = aggregateHeartRateByDate(records);
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(70); // (60+80+70)/3 = 70
-  });
-
-  test('rounds average to nearest integer', () => {
-    const records: HKHeartRateRecord[] = [
-      { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 71 }] },
-      { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 72 }] },
-    ];
-    const result = aggregateHeartRateByDate(records);
-    expect(result[0].value).toBe(72); // (71+72)/2 = 71.5 -> 72
-  });
-
-  test('skips records with missing beatsPerMinute', () => {
-    const records = [
-      { startTime: '2024-01-15T08:00:00Z', samples: [{}] },
-      { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-    ] as HKHeartRateRecord[];
-    const result = aggregateHeartRateByDate(records);
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(75);
-  });
-
-  test('skips records with missing samples array', () => {
-    const records = [
-      { startTime: '2024-01-15T08:00:00Z' },
-      { startTime: '2024-01-15T12:00:00Z', samples: [{ beatsPerMinute: 75 }] },
-    ] as HKHeartRateRecord[];
-    const result = aggregateHeartRateByDate(records);
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(75);
   });
 });
 
@@ -421,14 +364,6 @@ describe('aggregateByDay', () => {
 });
 
 describe('timezone metadata propagation', () => {
-  test('aggregateHeartRateByDate includes device timezone on output', () => {
-    const records: HKHeartRateRecord[] = [
-      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
-    ];
-    const result = aggregateHeartRateByDate(records);
-    expect(result[0].record_timezone).toBe('America/New_York');
-  });
-
   test('aggregateByDay propagates record_timezone from input records', () => {
     const records: TransformedRecord[] = [
       { value: 100, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'Asia/Tokyo' },
@@ -469,17 +404,6 @@ describe('iOS aggregate strategy: device-local bucketing', () => {
   // the device timezone at query time, which may not match the timezone where the
   // activity originally occurred. This is accepted for Phase 5; the alternative
   // (switching to raw samples) would sacrifice accuracy for cumulative metrics.
-
-  test('aggregateHeartRateByDate always uses device timezone (no per-record offset available)', () => {
-    // HealthKit heart rate uses raw samples, not statistics.
-    // Still uses device-local time via toLocalDateString, tagged with device timezone.
-    const records: HKHeartRateRecord[] = [
-      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
-    ];
-    const result = aggregateHeartRateByDate(records);
-    expect(result[0].record_timezone).toBe('America/New_York');
-    expect(result[0].record_utc_offset_minutes).toBeUndefined();
-  });
 
   test('aggregateByDay preserves device timezone from upstream iOS queries', () => {
     // Simulates records that came through iOS getAggregatedStepsByDate,

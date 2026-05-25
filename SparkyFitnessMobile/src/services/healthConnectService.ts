@@ -24,40 +24,8 @@ export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
 export const readHealthRecords = HealthConnect.readHealthRecords;
 export const getSyncStartDate = HealthConnect.getSyncStartDate;
 
-export const readStepRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('Steps', startDate, endDate);
-
-export const readActiveCaloriesRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-
-export const readHeartRateRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('HeartRate', startDate, endDate);
-
-export const readSleepSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('SleepSession', startDate, endDate);
-
-// Stress metric is iOS-only (maps to MindfulSession in HealthKit)
-// Android Health Connect doesn't have a Stress record type
-export const readStressRecords = async (
-  _startDate: Date,
-  _endDate: Date
-): Promise<unknown[]> => {
-  return [];
-};
-
-export const readExerciseSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('ExerciseSession', startDate, endDate);
-
-export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthConnect.readHealthRecords('Workout', startDate, endDate);
-
-export const aggregateHeartRateByDate = HealthConnectAggregation.aggregateHeartRateByDate;
 export const aggregateByDay = HealthConnectAggregation.aggregateByDay;
-export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDate;
-export const aggregateTotalCaloriesByDate = HealthConnectAggregation.aggregateTotalCaloriesByDate;
-export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateActiveCaloriesByDate;
 
-// Deduplicated aggregation functions (JS-side dedup via metadata.dataOrigin)
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActiveCaloriesByDate;
 

@@ -27,29 +27,6 @@ export const getSyncStartDate = HealthKit.getSyncStartDate;
 export const resetDatabaseInaccessibleCount = HealthKit.resetDatabaseInaccessibleCount;
 export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCount;
 
-// Record reader functions for specific types
-export const readStepRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Steps', startDate, endDate);
-
-export const readActiveCaloriesRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-
-export const readHeartRateRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('HeartRate', startDate, endDate);
-
-export const readSleepSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('SleepSession', startDate, endDate);
-
-export const readStressRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Stress', startDate, endDate);
-
-export const readExerciseSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('ExerciseSession', startDate, endDate);
-
-export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Workout', startDate, endDate);
-
-export const aggregateHeartRateByDate = HealthKitAggregation.aggregateHeartRateByDate;
 export const aggregateByDay = HealthKitAggregation.aggregateByDay;
 
 // Deduplicated aggregation functions (use HealthKit's statistics API)
