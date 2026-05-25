@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
+import { Alert, View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -20,19 +20,30 @@ import { useCreateFoodVariant, useFoodVariants } from '../hooks/useFoodVariants'
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { parseOptional } from '../types/foodInfo';
-import { updateFoodVariant, updateFood } from '../services/api/foodsApi';
+import {
+  createFoodVariant,
+  deleteFoodVariant,
+  updateFoodVariant,
+  updateFood,
+  type CreateFoodVariantPayload,
+  type UpdateFoodVariantPayload,
+} from '../services/api/foodsApi';
 import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
 import type {
+  EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import {
   buildLocalUnitVariants,
   buildCreateFoodVariantPayload,
+  diffSiblingRows,
   formatServingSizeDisplay,
+  groupEquivalentVariants,
+  toEquivalentUnit,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -86,6 +97,36 @@ const NUMERIC_FOOD_FIELDS = new Set<keyof FoodFormData>([
   'vitaminA',
   'vitaminC',
 ]);
+
+function isBlankEquivalent(eq: EquivalentUnit): boolean {
+  return !eq.serving_unit || eq.serving_size <= 0;
+}
+
+function equivalentsDiffer(a: EquivalentUnit[], b: EquivalentUnit[]): boolean {
+  const left = a.filter((eq) => !isBlankEquivalent(eq));
+  const right = b.filter((eq) => !isBlankEquivalent(eq));
+  if (left.length !== right.length) return true;
+  for (let i = 0; i < left.length; i++) {
+    if ((left[i].id ?? '') !== (right[i].id ?? '')) return true;
+    if (Number(left[i].serving_size) !== Number(right[i].serving_size)) return true;
+    if ((left[i].serving_unit ?? '') !== (right[i].serving_unit ?? '')) return true;
+  }
+  return false;
+}
+
+function confirmDiscardEquivalents(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Discard unsaved equivalents?',
+      'You have unsaved equivalent sizes. Discard them to continue?',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Discard', style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { onDismiss: () => resolve(false) },
+    );
+  });
+}
 
 function validateFoodForm(data: FoodFormData): boolean {
   if (!data.name.trim()) {
@@ -853,7 +894,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -949,10 +990,76 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     Record<string, string | number> | null | undefined
   >(customNutrients);
 
+  const groups = useMemo(
+    () => groupEquivalentVariants(variants),
+    [variants],
+  );
+  const activeGroup = useMemo(
+    () =>
+      groups.find(
+        (g) =>
+          g.base.id === currentVariantId ||
+          g.equivalents.some((eq) => eq.id === currentVariantId),
+      ),
+    [groups, currentVariantId],
+  );
+  const otherSiblings = useMemo<EquivalentUnit[]>(() => {
+    if (!activeGroup) return [];
+    const all: EquivalentUnit[] = [
+      toEquivalentUnit(activeGroup.base),
+      ...activeGroup.equivalents,
+    ];
+    return all.filter((eq) => eq.id !== currentVariantId);
+  }, [activeGroup, currentVariantId]);
+
+  const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
+  const [equivalentBaseline, setEquivalentBaseline] = useState<EquivalentUnit[]>(
+    [],
+  );
+
+  const seedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const seedKey = `${currentVariantId}|${otherSiblings
+      .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
+      .join(',')}`;
+    if (seedKeyRef.current === seedKey) return;
+    seedKeyRef.current = seedKey;
+    setEquivalentDraft(otherSiblings);
+    setEquivalentBaseline(otherSiblings);
+  }, [currentVariantId, otherSiblings]);
+
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (isSavingRef.current) return;
+      if (!equivalentsDiffer(equivalentDraft, equivalentBaseline)) return;
+      e.preventDefault();
+      void confirmDiscardEquivalents().then((ok) => {
+        if (ok) navigation.dispatch(e.data.action);
+      });
+    });
+    return unsub;
+  }, [navigation, equivalentDraft, equivalentBaseline]);
+
   const handleUnitSelectionChange = useCallback(
     async (
       selection: FoodUnitSelectionResult,
     ): Promise<FoodUnitSelectionResult> => {
+      const isSwappingActive =
+        selection.kind === 'existing' &&
+        selection.variant.id !== currentVariantId;
+
+      if (
+        isSwappingActive &&
+        equivalentsDiffer(equivalentDraft, equivalentBaseline)
+      ) {
+        const confirmed = await confirmDiscardEquivalents();
+        if (!confirmed) {
+          return pendingUnitSelection ?? selection;
+        }
+      }
+
       if (selection.kind === 'existing') {
         setPendingUnitSelection(selection);
         setCurrentVariantId(selection.variant.id ?? variantId);
@@ -963,7 +1070,44 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       setPendingUnitSelection(selection);
       return selection;
     },
-    [variantId],
+    [
+      variantId,
+      currentVariantId,
+      equivalentDraft,
+      equivalentBaseline,
+      pendingUnitSelection,
+    ],
+  );
+
+  const isDraftSelection = pendingUnitSelection?.kind === 'draft';
+
+  const buildGroupNutrition = useCallback(
+    (
+      data: FoodFormData,
+      snapshot: FoodVariantDetail | undefined,
+    ): Partial<FoodVariantDetail> => ({
+      calories: parseDecimalInput(data.calories) || 0,
+      protein: parseDecimalInput(data.protein) || 0,
+      carbs: parseDecimalInput(data.carbs) || 0,
+      fat: parseDecimalInput(data.fat) || 0,
+      dietary_fiber: parseOptional(data.fiber),
+      saturated_fat: parseOptional(data.saturatedFat),
+      sodium: parseOptional(data.sodium),
+      sugars: parseOptional(data.sugars),
+      trans_fat: parseOptional(data.transFat),
+      potassium: parseOptional(data.potassium),
+      calcium: parseOptional(data.calcium),
+      iron: parseOptional(data.iron),
+      cholesterol: parseOptional(data.cholesterol),
+      vitamin_a: parseOptional(data.vitaminA),
+      vitamin_c: parseOptional(data.vitaminC),
+      polyunsaturated_fat: snapshot?.polyunsaturated_fat,
+      monounsaturated_fat: snapshot?.monounsaturated_fat,
+      glycemic_index: snapshot?.glycemic_index,
+      custom_nutrients:
+        snapshot?.custom_nutrients ?? currentCustomNutrients ?? undefined,
+    }),
+    [currentCustomNutrients],
   );
 
   const handleSubmit = async (data: FoodFormData) => {
@@ -978,6 +1122,13 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       let nextCustomNutrients = currentCustomNutrients;
       const draftSelection =
         pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
+
+      const foodPayload: { name?: string; brand?: string } = {};
+      if (data.name !== initialValues.name) foodPayload.name = data.name;
+      if (data.brand !== initialValues.brand) foodPayload.brand = data.brand || '';
+      const hasFoodMetadataChange = Object.keys(foodPayload).length > 0;
+
+      let equivalentChangedCount = 0;
 
       if (draftSelection) {
         const createdVariant = await createVariant(
@@ -996,18 +1147,90 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         nextCustomNutrients = createdVariant.custom_nutrients ?? null;
         setVariantBaselineValues(nextVariantBaselineValues);
         setCurrentCustomNutrients(nextCustomNutrients);
+
+        if (hasFoodMetadataChange) {
+          await updateFood(foodId, foodPayload);
+        }
+        invalidateFoodCaches(queryClient, foodId);
+      } else {
+        const activeSnapshot = variants?.find((v) => v.id === currentVariantId);
+        const groupNutrition = buildGroupNutrition(data, activeSnapshot);
+
+        const activeRow: Partial<FoodVariantDetail> & { id?: string } = {
+          id: currentVariantId,
+          food_id: foodId,
+          serving_size: parseDecimalInput(data.servingSize) || 0,
+          serving_unit: data.servingUnit || 'serving',
+          ...groupNutrition,
+        };
+
+        const cleanEquivalents = equivalentDraft.filter(
+          (eq) => !isBlankEquivalent(eq),
+        );
+        const siblingRows = cleanEquivalents.map((eq) => ({
+          id: eq.id,
+          food_id: foodId,
+          serving_size: eq.serving_size,
+          serving_unit: eq.serving_unit,
+          ...groupNutrition,
+        }));
+        const desired = [activeRow, ...siblingRows];
+
+        const activeGroupIds = new Set<string>();
+        if (activeGroup) {
+          activeGroupIds.add(activeGroup.base.id);
+          activeGroup.equivalents.forEach((eq) => {
+            if (eq.id) activeGroupIds.add(eq.id);
+          });
+        }
+        const currentRows: FoodVariantDetail[] = (variants ?? []).filter((v) =>
+          activeGroupIds.has(v.id),
+        );
+
+        const diff = diffSiblingRows(currentRows, desired);
+        equivalentChangedCount =
+          diff.creates.length +
+          diff.updates.filter((u) => u.id !== currentVariantId).length +
+          diff.deletes.length;
+
+        const writes: Promise<unknown>[] = [];
+
+        if (hasFoodMetadataChange) {
+          writes.push(updateFood(foodId, foodPayload));
+        }
+
+        for (const row of diff.creates) {
+          writes.push(
+            createFoodVariant(row as CreateFoodVariantPayload),
+          );
+        }
+        for (const row of diff.updates) {
+          const { id, ...payload } = row;
+          writes.push(
+            updateFoodVariant(id, payload as UpdateFoodVariantPayload),
+          );
+        }
+        for (const delId of diff.deletes) {
+          writes.push(deleteFoodVariant(delId));
+        }
+
+        if (writes.length > 0) {
+          await Promise.all(writes);
+          invalidateFoodCaches(queryClient, foodId);
+        }
       }
 
-      await persistFoodEdits({
-        queryClient,
-        foodId,
-        variantId: nextVariantId,
-        customNutrients: nextCustomNutrients,
-        data,
-        variantInitialValues: nextVariantBaselineValues,
-        foodInitialValues: initialValues,
+      setEquivalentBaseline(equivalentDraft);
+
+      Toast.show({
+        type: 'success',
+        text1:
+          equivalentChangedCount > 0
+            ? `Saved · ${equivalentChangedCount} equivalent unit${equivalentChangedCount === 1 ? '' : 's'} updated`
+            : 'Saved',
       });
 
+      isSavingRef.current = true;
       navigation.dispatch({
         ...CommonActions.setParams({
           updatedItem: buildUpdatedFoodInfo(item, data, nextVariantId),
@@ -1025,7 +1248,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1055,6 +1278,11 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
               }
             : undefined
         }
+        equivalents={{
+          items: equivalentDraft,
+          onChange: setEquivalentDraft,
+          disabled: isDraftSelection,
+        }}
       />
     </View>
   );

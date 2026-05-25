@@ -1,7 +1,8 @@
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { ExternalFoodVariant } from '../types/externalFoods';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
-import type { FoodUnitVariant } from '../types/foodUnitVariants';
+import type { EquivalentUnit, FoodUnitVariant } from '../types/foodUnitVariants';
 import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
 
 export interface FoodDisplayValues {
@@ -341,6 +342,110 @@ export function resolveFoodDisplayValues({
   }
 
   return foodInfoToDisplayValues(item);
+}
+
+type NutritionLike = Partial<Record<(typeof FOOD_VARIANT_NUTRIENT_FIELDS)[number], unknown>> & {
+  custom_nutrients?: Record<string, string | number> | null;
+};
+
+function coerceNumber(value: unknown): number {
+  if (value == null || value === '') return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
+  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
+    if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;
+  }
+  const ac = a.custom_nutrients ?? {};
+  const bc = b.custom_nutrients ?? {};
+  const keys = new Set([...Object.keys(ac), ...Object.keys(bc)]);
+  for (const key of keys) {
+    if (coerceNumber(ac[key]) !== coerceNumber(bc[key])) return false;
+  }
+  return true;
+}
+
+export function toEquivalentUnit(variant: FoodVariantDetail): EquivalentUnit {
+  return {
+    id: variant.id,
+    serving_size: variant.serving_size,
+    serving_unit: variant.serving_unit,
+  };
+}
+
+export interface VariantGroup {
+  base: FoodVariantDetail;
+  equivalents: EquivalentUnit[];
+}
+
+export function groupEquivalentVariants(
+  variants: FoodVariantDetail[] | undefined,
+): VariantGroup[] {
+  const groups: VariantGroup[] = [];
+  for (const variant of variants ?? []) {
+    const match = groups.find((g) => nutritionMatches(g.base, variant));
+    if (match) {
+      match.equivalents.push(toEquivalentUnit(variant));
+    } else {
+      groups.push({ base: variant, equivalents: [] });
+    }
+  }
+  return groups;
+}
+
+type DesiredSiblingRow = Partial<FoodVariantDetail> & { id?: string };
+
+export interface DiffSiblingRowsResult {
+  creates: DesiredSiblingRow[];
+  updates: (DesiredSiblingRow & { id: string })[];
+  deletes: string[];
+}
+
+function rowsEqual(
+  current: FoodVariantDetail,
+  desired: DesiredSiblingRow,
+): boolean {
+  if (coerceNumber(current.serving_size) !== coerceNumber(desired.serving_size)) return false;
+  if ((current.serving_unit ?? '') !== (desired.serving_unit ?? '')) return false;
+  if ((current.glycemic_index ?? '') !== (desired.glycemic_index ?? '')) return false;
+  return nutritionMatches(current, desired);
+}
+
+export function diffSiblingRows(
+  current: FoodVariantDetail[],
+  desired: DesiredSiblingRow[],
+): DiffSiblingRowsResult {
+  const currentById = new Map<string, FoodVariantDetail>();
+  for (const row of current) {
+    currentById.set(row.id, row);
+  }
+
+  const creates: DesiredSiblingRow[] = [];
+  const updates: (DesiredSiblingRow & { id: string })[] = [];
+  const desiredIds = new Set<string>();
+
+  for (const row of desired) {
+    if (!row.id) {
+      creates.push(row);
+      continue;
+    }
+    desiredIds.add(row.id);
+    const currentRow = currentById.get(row.id);
+    if (!currentRow) {
+      creates.push(row);
+      continue;
+    }
+    if (rowsEqual(currentRow, row)) continue;
+    updates.push(row as DesiredSiblingRow & { id: string });
+  }
+
+  const deletes = current
+    .filter((row) => !desiredIds.has(row.id))
+    .map((row) => row.id);
+
+  return { creates, updates, deletes };
 }
 
 export function applyDisplayValuesToFoodInfo(

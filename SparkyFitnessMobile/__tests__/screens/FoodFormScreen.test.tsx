@@ -165,6 +165,7 @@ describe('FoodFormScreen', () => {
     goBack: jest.fn(),
     navigate: jest.fn(),
     dispatch: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
   } as any;
 
   const mockSaveFoodAsync = jest.fn();

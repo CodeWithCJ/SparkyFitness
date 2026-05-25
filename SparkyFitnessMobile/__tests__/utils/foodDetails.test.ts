@@ -5,8 +5,11 @@ import {
   applyDisplayValuesToFoodInfo,
   buildExternalVariantOptions,
   buildLocalVariantOptions,
+  diffSiblingRows,
   foodInfoToDisplayValues,
   formatVariantLabel,
+  groupEquivalentVariants,
+  nutritionMatches,
   resolveFoodDisplayValues,
 } from '../../src/utils/foodDetails';
 
@@ -205,5 +208,145 @@ describe('applyDisplayValuesToFoodInfo', () => {
     // Untouched fields survive (name, source, etc).
     expect(merged.name).toBe(item.name);
     expect(merged.source).toBe(item.source);
+  });
+});
+
+describe('nutritionMatches', () => {
+  test('identical variants match', () => {
+    const v = makeLocalVariant({ calories: 100, protein: 10, carbs: 20, fat: 5 });
+    expect(nutritionMatches(v, { ...v })).toBe(true);
+  });
+
+  test('treats 0, null, and undefined as equivalent', () => {
+    const a = makeLocalVariant({ saturated_fat: 0 });
+    const b = makeLocalVariant({ saturated_fat: undefined });
+    expect(nutritionMatches(a, b)).toBe(true);
+  });
+
+  test('detects polyunsaturated_fat mismatch', () => {
+    const a = makeLocalVariant({ polyunsaturated_fat: 2 });
+    const b = makeLocalVariant({ polyunsaturated_fat: 3 });
+    expect(nutritionMatches(a, b)).toBe(false);
+  });
+
+  test('detects monounsaturated_fat mismatch', () => {
+    const a = makeLocalVariant({ monounsaturated_fat: 1 });
+    const b = makeLocalVariant({ monounsaturated_fat: 4 });
+    expect(nutritionMatches(a, b)).toBe(false);
+  });
+
+  test('detects custom_nutrients mismatch', () => {
+    const a = makeLocalVariant({ custom_nutrients: { magnesium: 50 } });
+    const b = makeLocalVariant({ custom_nutrients: { magnesium: 60 } });
+    expect(nutritionMatches(a, b)).toBe(false);
+  });
+
+  test('custom_nutrients with missing key treated as 0', () => {
+    const a = makeLocalVariant({ custom_nutrients: { magnesium: 0 } });
+    const b = makeLocalVariant({ custom_nutrients: {} });
+    expect(nutritionMatches(a, b)).toBe(true);
+  });
+});
+
+describe('groupEquivalentVariants', () => {
+  test('returns empty array for undefined input', () => {
+    expect(groupEquivalentVariants(undefined)).toEqual([]);
+  });
+
+  test('groups variants with byte-equal nutrition; preserves stable order', () => {
+    const base = makeLocalVariant({ id: 'a', serving_size: 100, serving_unit: 'g', calories: 100 });
+    const equivOne = makeLocalVariant({ id: 'b', serving_size: 1, serving_unit: 'cup', calories: 100 });
+    const equivTwo = makeLocalVariant({ id: 'c', serving_size: 1, serving_unit: 'oz', calories: 100 });
+
+    const groups = groupEquivalentVariants([base, equivOne, equivTwo]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].base.id).toBe('a');
+    expect(groups[0].equivalents.map((eq) => eq.id)).toEqual(['b', 'c']);
+  });
+
+  test('splits into separate groups when nutrition differs', () => {
+    const groupA = makeLocalVariant({ id: 'a', calories: 100 });
+    const groupB = makeLocalVariant({ id: 'b', calories: 200, serving_unit: 'cup', serving_size: 1 });
+
+    const groups = groupEquivalentVariants([groupA, groupB]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].base.id).toBe('a');
+    expect(groups[1].base.id).toBe('b');
+  });
+});
+
+describe('diffSiblingRows', () => {
+  test('active-row-is-base — sibling edits classified correctly', () => {
+    const base = makeLocalVariant({ id: 'a', serving_unit: 'g', serving_size: 100, calories: 100 });
+    const sibling = makeLocalVariant({ id: 'b', serving_unit: 'cup', serving_size: 1, calories: 100 });
+    const current = [base, sibling];
+
+    const desired = [
+      // Active is base, byte-equal — should NOT appear in updates
+      { ...base },
+      // Sibling — serving_size changed → update
+      { ...sibling, serving_size: 2 },
+      // New equivalent — create
+      { food_id: 'food-1', serving_size: 1, serving_unit: 'oz', calories: 100, protein: 0.3, carbs: 14, fat: 0.2 },
+    ];
+
+    const { creates, updates, deletes } = diffSiblingRows(current, desired);
+
+    expect(updates.map((u) => u.id)).toEqual(['b']);
+    expect(updates[0].serving_size).toBe(2);
+    expect(creates).toHaveLength(1);
+    expect(creates[0].serving_unit).toBe('oz');
+    expect(deletes).toEqual([]);
+  });
+
+  test('active-row-is-equivalent — base preserved as desired sibling, not deleted', () => {
+    // Regression: active is "cup"; user keeps "g" (base) as an equivalent.
+    const base = makeLocalVariant({ id: 'a', serving_unit: 'g', serving_size: 100, calories: 100 });
+    const cup = makeLocalVariant({ id: 'b', serving_unit: 'cup', serving_size: 1, calories: 100 });
+    const current = [base, cup];
+
+    const desired = [
+      // Active is cup
+      { ...cup },
+      // Base as a sibling — same id, byte-equal → no-op
+      { ...base },
+    ];
+
+    const { creates, updates, deletes } = diffSiblingRows(current, desired);
+
+    expect(creates).toEqual([]);
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
+  });
+
+  test('byte-equal updates filtered out', () => {
+    const variant = makeLocalVariant({ id: 'a', calories: 100, protein: 10, custom_nutrients: { magnesium: 50 } });
+    const { updates } = diffSiblingRows(
+      [variant],
+      [{ ...variant, custom_nutrients: { magnesium: 50 } }],
+    );
+    expect(updates).toEqual([]);
+  });
+
+  test('pure adds: every desired sibling without id is a create', () => {
+    const current: typeof makeLocalVariant extends (...args: any[]) => infer R ? R[] : never = [];
+    const { creates, updates, deletes } = diffSiblingRows(current, [
+      { food_id: 'food-1', serving_size: 1, serving_unit: 'cup', calories: 100, protein: 0.3, carbs: 14, fat: 0.2 },
+      { food_id: 'food-1', serving_size: 1, serving_unit: 'oz', calories: 100, protein: 0.3, carbs: 14, fat: 0.2 },
+    ]);
+    expect(creates).toHaveLength(2);
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual([]);
+  });
+
+  test('pure deletes: current rows not in desired are deleted', () => {
+    const a = makeLocalVariant({ id: 'a' });
+    const b = makeLocalVariant({ id: 'b' });
+    const { creates, updates, deletes } = diffSiblingRows([a, b], [{ ...a }]);
+    expect(creates).toEqual([]);
+    expect(updates).toEqual([]);
+    expect(deletes).toEqual(['b']);
   });
 });

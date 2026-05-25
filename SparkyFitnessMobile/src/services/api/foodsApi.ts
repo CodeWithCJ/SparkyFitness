@@ -166,6 +166,8 @@ export interface UpdateFoodVariantPayload {
   fat: number;
   dietary_fiber?: number;
   saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
   sodium?: number;
   sugars?: number;
   trans_fat?: number;
@@ -175,6 +177,7 @@ export interface UpdateFoodVariantPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
 }
 
@@ -188,6 +191,22 @@ export const updateFoodVariant = async (variantId: string, payload: UpdateFoodVa
     operation: 'update food variant',
     method: 'PUT',
     body: payload,
+  });
+};
+
+export interface DeleteFoodVariantResponse {
+  message?: string;
+}
+
+/**
+ * Deletes a food variant by ID.
+ */
+export const deleteFoodVariant = async (variantId: string): Promise<DeleteFoodVariantResponse> => {
+  return apiFetch<DeleteFoodVariantResponse>({
+    endpoint: `/api/foods/food-variants/${variantId}`,
+    serviceName: 'Foods API',
+    operation: 'delete food variant',
+    method: 'DELETE',
   });
 };
 
