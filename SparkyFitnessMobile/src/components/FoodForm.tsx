@@ -413,6 +413,12 @@ function formatScaledInput(value: number): string {
   return formatFoodFormNumber(value, 'nutrient') || '0';
 }
 
+let equivalentKeyCounter = 0;
+function makeEquivalentKey(): string {
+  equivalentKeyCounter += 1;
+  return `eq-${equivalentKeyCounter}`;
+}
+
 interface EquivalentsSectionProps {
   items: EquivalentUnit[];
   onChange: (next: EquivalentUnit[]) => void;
@@ -441,7 +447,10 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
   };
 
   const addRow = () => {
-    onChange([...items, { serving_size: 0, serving_unit: '' }]);
+    onChange([
+      ...items,
+      { serving_size: 0, serving_unit: '', _clientKey: makeEquivalentKey() },
+    ]);
   };
 
   return (
@@ -453,7 +462,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
         const sizeText = item.serving_size > 0 ? String(item.serving_size) : '';
         return (
           <View
-            key={`${index}-${item.id ?? 'new'}`}
+            key={item.id ?? item._clientKey ?? `idx-${index}`}
             className="flex-row gap-2 items-center"
           >
             <View className="flex-1">
