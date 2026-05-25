@@ -38,6 +38,11 @@ const STANDARD_UNIT_KEYS = new Set(
   ),
 );
 
+// `cups`/`lbs` are aliases of `cup`/`lb` kept in the shared unit list for
+// backwards compatibility with older saved variants. They shouldn't appear as
+// separate dropdown options — picking either is functionally identical.
+const UNIT_ALIASES_TO_HIDE = new Set(['cups', 'lbs']);
+
 const sheetContainer =
   Platform.OS === 'ios'
     ? ({ children }: React.PropsWithChildren) => (
@@ -152,7 +157,11 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     return FOOD_FORM_UNIT_GROUPS
       .map((group) => ({
         label: group.label,
-        units: group.units.filter((unit) => availableUnits.has(unit.toLowerCase())),
+        units: group.units.filter(
+          (unit) =>
+            availableUnits.has(unit.toLowerCase()) &&
+            !UNIT_ALIASES_TO_HIDE.has(unit.toLowerCase()),
+        ),
       }))
       .filter((group) => group.units.length > 0);
   }, [convertibleUnits, savedStandardUnits, selectedUnitKey]);

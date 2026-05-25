@@ -1,6 +1,9 @@
 export interface FoodUnitVariant {
   id?: string;
   food_id?: string;
+  // Marks this variant as the food's trusted default — the one AI estimates
+  // anchor on so subsequent estimates don't compound off other AI values.
+  is_default?: boolean;
   serving_size: number;
   serving_unit: string;
   calories: number;
