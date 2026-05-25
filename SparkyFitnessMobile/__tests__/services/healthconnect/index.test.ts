@@ -3,7 +3,9 @@ import {
   requestHealthPermissions,
   getSyncStartDate,
   readHealthRecords,
+  readHealthRecordsDetailed,
   getAggregatedStepsByDate,
+  getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDate,
   enrichExerciseSessions,
 } from '../../../src/services/healthconnect/index';
@@ -316,6 +318,36 @@ describe('readHealthRecords', () => {
     expect(result).toEqual([]);
   });
 
+  test('does not call native readRecords when the requested window is invalid', async () => {
+    const result = await readHealthRecordsDetailed(
+      'Steps',
+      new Date('2024-01-16T00:00:00Z'),
+      new Date('2024-01-15T00:00:00Z')
+    );
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toContain('startTime');
+    expect(mockReadRecords).not.toHaveBeenCalled();
+  });
+
+  test('recovers readable sub-windows after a page-one read failure', async () => {
+    const recoveredRecords = [{ startTime: '2024-01-15T00:30:00Z', beatsPerMinute: 72 }];
+    mockReadRecords
+      .mockRejectedValueOnce(new Error('Corrupt record in range'))
+      .mockRejectedValueOnce(new Error('Corrupt record in day'))
+      .mockResolvedValueOnce({ records: recoveredRecords })
+      .mockResolvedValueOnce({ records: [] });
+
+    const result = await readHealthRecordsDetailed(
+      'HeartRate',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T02:00:00Z')
+    );
+
+    expect(result).toEqual({ records: recoveredRecords });
+    expect(mockReadRecords).toHaveBeenCalledTimes(4);
+  });
+
   test('returns empty array when records is undefined', async () => {
     mockReadRecords.mockResolvedValue({});
 
@@ -508,6 +540,18 @@ describe('getAggregatedStepsByDate', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  test('does not call native aggregateRecord when the requested window is invalid', async () => {
+    const result = await getAggregatedStepsByDateDetailed(
+      localEndOfDay(2024, 1, 16),
+      localMidnight(2024, 1, 15),
+    );
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toContain('startTime');
+    expect(mockAggregateRecord).not.toHaveBeenCalled();
+    expect(mockReadRecords).not.toHaveBeenCalled();
   });
 });
 
@@ -717,6 +761,18 @@ describe('enrichExerciseSessions', () => {
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
 
+  test('does not enrich records with invalid time ranges', async () => {
+    const invalidSession = makeSession({
+      startTime: '2024-01-15T11:00:00Z',
+      endTime: '2024-01-15T10:00:00Z',
+    });
+
+    const result = await enrichExerciseSessions([invalidSession]);
+
+    expect(result[0]).toEqual(invalidSession);
+    expect(mockAggregateRecord).not.toHaveBeenCalled();
+  });
+
   test('issues all three aggregates in parallel with the same dataOriginFilter', async () => {
     mockAggregateRecord.mockResolvedValue({});
 
@@ -870,4 +926,3 @@ describe('enrichExerciseSessions', () => {
     expect((result[0] as { distance: { inMeters: number } }).distance).toEqual({ inMeters: 90 });
   });
 });
-

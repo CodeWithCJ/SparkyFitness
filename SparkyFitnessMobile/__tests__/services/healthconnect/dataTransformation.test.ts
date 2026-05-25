@@ -275,6 +275,15 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(0);
     });
 
+    test('skips when endTime is before startTime', () => {
+      const records = [
+        { startTime: '2024-01-16T06:00:00Z', endTime: '2024-01-15T22:00:00Z' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
+
+      expect(result).toHaveLength(0);
+    });
+
     test('processes sleep stages into duration breakdowns', () => {
       const records = [
         {
@@ -510,6 +519,15 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
         { endTime: '2024-01-15T09:00:00Z', exerciseType: 8 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
+
+      expect(result).toHaveLength(0);
+    });
+
+    test('skips when endTime is before startTime', () => {
+      const records = [
+        { startTime: '2024-01-15T09:00:00Z', endTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
       ];
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
 

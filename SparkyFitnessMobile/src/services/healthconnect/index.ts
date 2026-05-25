@@ -66,6 +66,8 @@ export const requestHealthPermissions = async (
 
 const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
+const FALLBACK_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_HOUR_WINDOW_MS = 60 * 60 * 1000;
 
 interface ReadRecordsOptions {
   timeRangeFilter: {
@@ -77,14 +79,73 @@ interface ReadRecordsOptions {
   pageToken?: string;
 }
 
-export const readHealthRecords = async (
+export interface HealthConnectReadResult {
+  records: unknown[];
+  error?: string;
+}
+
+export interface HealthConnectAggregateResult {
+  records: AggregatedHealthRecord[];
+  error?: string;
+}
+
+const formatDateForLog = (date: Date): string => {
+  const time = date.getTime();
+  return Number.isFinite(time) ? date.toISOString() : String(date);
+};
+
+const getWindowError = (
+  operation: string,
+  startDate: Date,
+  endDate: Date,
+): string | undefined => {
+  const startMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `Invalid Health Connect ${operation} window: startTime (${formatDateForLog(startDate)}) and endTime (${formatDateForLog(endDate)}) must be valid dates.`;
+  }
+
+  if (startMs >= endMs) {
+    return `Invalid Health Connect ${operation} window: startTime (${formatDateForLog(startDate)}) must be before endTime (${formatDateForLog(endDate)}).`;
+  }
+
+  return undefined;
+};
+
+const buildFallbackWindows = (
+  startDate: Date,
+  endDate: Date,
+  windowMs: number,
+): { start: Date; end: Date }[] => {
+  const windows: { start: Date; end: Date }[] = [];
+  let cursorMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  while (cursorMs < endMs) {
+    const nextMs = Math.min(cursorMs + windowMs, endMs);
+    if (nextMs > cursorMs) {
+      windows.push({ start: new Date(cursorMs), end: new Date(nextMs) });
+    }
+    cursorMs = nextMs;
+  }
+
+  return windows;
+};
+
+const readHealthRecordsOnce = async (
   recordType: string,
   startDate: Date,
   endDate: Date
-): Promise<unknown[]> => {
+): Promise<HealthConnectReadResult & { failedOnFirstPage: boolean }> => {
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
   let page = 0;
+  const windowError = getWindowError(`read for ${recordType}`, startDate, endDate);
+  if (windowError) {
+    addLog(`[HealthConnectService] ${windowError}`, 'WARNING');
+    return { records: [], error: windowError, failedOnFirstPage: true };
+  }
 
   try {
     do {
@@ -114,19 +175,101 @@ export const readHealthRecords = async (
     if (page > 1) {
       addLog(`[HealthConnectService] Read ${allRecords.length} ${recordType} records across ${page} pages`);
     }
-    if (page >= MAX_PAGES) {
-      addLog(`[HealthConnectService] Hit max page limit (${MAX_PAGES}) for ${recordType}`, 'WARNING');
+    if (pageToken && page >= MAX_PAGES) {
+      const error = `Hit max page limit (${MAX_PAGES}) for ${recordType}; returning ${allRecords.length} records collected so far.`;
+      addLog(`[HealthConnectService] ${error}`, 'WARNING');
+      return { records: allRecords, error, failedOnFirstPage: false };
     }
 
-    return allRecords;
+    return { records: allRecords, failedOnFirstPage: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
       'ERROR'
     );
-    return allRecords;
+    return { records: allRecords, error: message, failedOnFirstPage: page <= 1 && allRecords.length === 0 };
   }
+};
+
+const readHealthRecordsFallback = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectReadResult> => {
+  const records: unknown[] = [];
+  const errors: string[] = [];
+  const dayWindows = buildFallbackWindows(startDate, endDate, FALLBACK_DAY_WINDOW_MS);
+
+  addLog(
+    `[HealthConnectService] Retrying ${recordType} read in ${dayWindows.length} day window(s) after a page-1 failure.`,
+    'WARNING',
+  );
+
+  for (const dayWindow of dayWindows) {
+    const dayResult = await readHealthRecordsOnce(recordType, dayWindow.start, dayWindow.end);
+    if (!dayResult.error) {
+      records.push(...dayResult.records);
+      continue;
+    }
+
+    const durationMs = dayWindow.end.getTime() - dayWindow.start.getTime();
+    if (dayResult.failedOnFirstPage && durationMs > FALLBACK_HOUR_WINDOW_MS) {
+      const hourWindows = buildFallbackWindows(dayWindow.start, dayWindow.end, FALLBACK_HOUR_WINDOW_MS);
+      for (const hourWindow of hourWindows) {
+        const hourResult = await readHealthRecordsOnce(recordType, hourWindow.start, hourWindow.end);
+        records.push(...hourResult.records);
+        if (hourResult.error) {
+          errors.push(
+            `${formatDateForLog(hourWindow.start)}-${formatDateForLog(hourWindow.end)}: ${hourResult.error}`,
+          );
+        }
+      }
+      continue;
+    }
+
+    records.push(...dayResult.records);
+    errors.push(
+      `${formatDateForLog(dayWindow.start)}-${formatDateForLog(dayWindow.end)}: ${dayResult.error}`,
+    );
+  }
+
+  if (errors.length === 0) {
+    addLog(`[HealthConnectService] Recovered ${records.length} ${recordType} records using fallback windows.`, 'WARNING');
+    return { records };
+  }
+
+  const error = `Failed reading ${errors.length} fallback ${recordType} window(s); returning ${records.length} records collected. First error: ${errors[0]}`;
+  addLog(`[HealthConnectService] ${error}`, 'ERROR');
+  return { records, error };
+};
+
+export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<HealthConnectReadResult> => {
+  const result = await readHealthRecordsOnce(recordType, startDate, endDate);
+
+  if (!result.error || !result.failedOnFirstPage) {
+    return { records: result.records, error: result.error };
+  }
+
+  const windowMs = endDate.getTime() - startDate.getTime();
+  if (!Number.isFinite(windowMs) || windowMs <= FALLBACK_HOUR_WINDOW_MS) {
+    return { records: result.records, error: result.error };
+  }
+
+  return readHealthRecordsFallback(recordType, startDate, endDate);
+};
+
+export const readHealthRecords = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<unknown[]> => {
+  const result = await readHealthRecordsDetailed(recordType, startDate, endDate);
+  return result.records;
 };
 
 /**
@@ -202,6 +345,9 @@ const readZoneOffsetForWindow = async (
   windowEnd: Date,
 ): Promise<number | undefined> => {
   try {
+    if (getWindowError(`offset read for ${recordType}`, windowStart, windowEnd)) {
+      return undefined;
+    }
     const result = await readRecords(
       recordType as Parameters<typeof readRecords>[0],
       {
@@ -225,18 +371,32 @@ const readZoneOffsetForWindow = async (
   }
 };
 
-export const aggregateCumulativeMetricByDay = async (
+export const aggregateCumulativeMetricByDayDetailed = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
-): Promise<AggregatedHealthRecord[]> => {
+): Promise<HealthConnectAggregateResult> => {
   try {
+    const rangeError = getWindowError(`aggregate for ${spec.recordType}`, startDate, endDate);
+    if (rangeError) {
+      addLog(`[HealthConnectService] ${rangeError}`, 'WARNING');
+      return { records: [], error: rangeError };
+    }
+
     const windows = localDayWindows(startDate, endDate);
     const results: AggregatedHealthRecord[] = [];
+    const errors: string[] = [];
 
     for (const { dayString, windowStart, windowEnd } of windows) {
       let value: number;
       try {
+        const windowError = getWindowError(`aggregate for ${spec.recordType}`, windowStart, windowEnd);
+        if (windowError) {
+          errors.push(`${dayString}: ${windowError}`);
+          addLog(`[HealthConnectService] ${windowError}`, 'WARNING');
+          continue;
+        }
+
         const aggregate = await aggregateRecord({
           recordType: spec.recordType as Parameters<typeof aggregateRecord>[0]['recordType'],
           timeRangeFilter: {
@@ -249,6 +409,7 @@ export const aggregateCumulativeMetricByDay = async (
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         addLog(`[HealthConnectService] aggregateRecord(${spec.recordType}) failed for ${dayString}: ${message}`, 'WARNING');
+        errors.push(`${dayString}: ${message}`);
         continue;
       }
 
@@ -267,19 +428,34 @@ export const aggregateCumulativeMetricByDay = async (
     }
 
     addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
-    return results;
+    if (errors.length > 0) {
+      return {
+        records: results,
+        error: `${spec.recordType} aggregation failed for ${errors.length} window(s). First error: ${errors[0]}`,
+      };
+    }
+    return { records: results };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`, 'ERROR');
-    return [];
+    return { records: [], error: message };
   }
 };
 
-export const getAggregatedStepsByDate = (
+export const aggregateCumulativeMetricByDay = async (
+  spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
-): Promise<AggregatedHealthRecord[]> =>
-  aggregateCumulativeMetricByDay(
+): Promise<AggregatedHealthRecord[]> => {
+  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
+  return result.records;
+};
+
+export const getAggregatedStepsByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'Steps',
       outputType: 'step',
@@ -289,11 +465,17 @@ export const getAggregatedStepsByDate = (
     endDate,
   );
 
-export const getAggregatedActiveCaloriesByDate = (
+export const getAggregatedStepsByDate = (
   startDate: Date,
   endDate: Date,
 ): Promise<AggregatedHealthRecord[]> =>
-  aggregateCumulativeMetricByDay(
+  getAggregatedStepsByDateDetailed(startDate, endDate).then(result => result.records);
+
+export const getAggregatedActiveCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'ActiveCaloriesBurned',
       outputType: 'active_calories',
@@ -303,6 +485,12 @@ export const getAggregatedActiveCaloriesByDate = (
     startDate,
     endDate,
   );
+
+export const getAggregatedActiveCaloriesByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
 
 // Distance plausibility floor: drop tiny distance aggregates on long sessions —
 // Health Sync writes a few dozen meters of passive step-distance over the
@@ -387,6 +575,9 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
     };
 
     const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      return record;
+    }
 
     const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
