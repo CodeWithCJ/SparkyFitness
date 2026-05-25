@@ -1061,5 +1061,64 @@ describe('FoodFormScreen', () => {
     });
     expect(mockCreateVariant).not.toHaveBeenCalled();
   });
+
+  it('refuses to save edit-food submissions while the variants query is still loading', async () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: true,
+      isError: false,
+    });
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      name: 'Greek Yogurt',
+      brand: 'Brand Co',
+      servingSize: '100',
+      servingUnit: 'g',
+      calories: '120',
+      protein: '10',
+      carbs: '8',
+      fat: '4',
+    };
+
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {} as any,
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+    });
+
+    fireEvent.press(screen.getByText('Save Changes'));
+
+    await waitFor(() => {
+      expect(mockToast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      );
+    });
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+  });
 });
 

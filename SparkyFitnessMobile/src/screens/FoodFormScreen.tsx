@@ -1115,13 +1115,23 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       return;
     }
 
+    const draftSelection =
+      pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
+    if (!draftSelection && !variants) {
+      // Without the current variant list we can't diff sibling rows: the active
+      // row would be misclassified as a create and duplicate the existing variant.
+      Toast.show({
+        type: 'error',
+        text1: 'Still loading food details — try again in a moment.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let nextVariantId = currentVariantId;
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
-      const draftSelection =
-        pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
 
       const foodPayload: { name?: string; brand?: string } = {};
       if (data.name !== initialValues.name) foodPayload.name = data.name;
