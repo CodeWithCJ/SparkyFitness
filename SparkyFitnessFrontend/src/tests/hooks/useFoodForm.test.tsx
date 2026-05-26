@@ -451,9 +451,10 @@ describe('useCustomFoodForm', () => {
   });
 
   // Phase F: applyAiEstimate preserves the row's serving_size (no more
-  // canonicalization to 1) and restores is_locked to the user's auto-scale
-  // preference (the prior incompatible-unit swap typically cleared it).
-  it('applyAiEstimate keeps the row serving_size and restores is_locked to the auto-scale pref', async () => {
+  // canonicalization to 1) and restores is_locked to the row's own
+  // auto-scale preference (the prior incompatible-unit swap typically
+  // cleared it temporarily).
+  it('applyAiEstimate keeps the row serving_size and preserves a row-level auto-scale opt-out', async () => {
     mockAutoScaleOnlineImports = true;
     const initialVariants = [
       createVariant({ serving_size: 50, calories: 200 }),
@@ -504,9 +505,58 @@ describe('useCustomFoodForm', () => {
     // AI provenance stamped.
     expect(result.current.variants[1]?.source).toBe('ai_estimate');
     expect(result.current.variants[1]?.ai_confidence).toBe('medium');
-    // is_locked restored to user's auto-scale pref (true here).
-    expect(result.current.variants[1]?.is_locked).toBe(true);
+    // New rows start with auto-scale off, so AI apply should preserve that
+    // row-level opt-out instead of snapping back to the global default.
+    expect(result.current.variants[1]?.is_locked).toBe(false);
     // Manual-update flag cleared — AI satisfied the conversion.
+    expect(result.current.manualUnitConversionPending[1]).toBe(false);
+  });
+
+  it('applyAiEstimate preserves a row-level auto-scale opt-in when the user enabled it before estimating', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [
+      createVariant({ serving_size: 50, calories: 200 }),
+    ];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    act(() => {
+      result.current.addVariant();
+    });
+
+    expect(result.current.variants[1]?.is_locked).toBe(false);
+
+    act(() => {
+      result.current.updateVariant(1, 'is_locked', true);
+    });
+    act(() => {
+      result.current.updateVariant(1, 'serving_size', 2);
+    });
+    act(() => {
+      result.current.updateVariant(1, 'serving_unit', 'cup');
+    });
+
+    act(() => {
+      result.current.applyAiEstimate(1, {
+        estimatedAmount: 240,
+        confidence: 'medium',
+        reasoning: 'Typical density estimate.',
+      });
+    });
+
+    expect(result.current.variants[1]?.serving_size).toBe(2);
+    expect(result.current.variants[1]?.serving_unit).toBe('cup');
+    expect(result.current.variants[1]?.source).toBe('ai_estimate');
+    expect(result.current.variants[1]?.is_locked).toBe(true);
     expect(result.current.manualUnitConversionPending[1]).toBe(false);
   });
 
@@ -700,6 +750,9 @@ describe('useCustomFoodForm', () => {
       result.current.addVariant();
     });
     act(() => {
+      result.current.updateVariant(1, 'is_locked', true);
+    });
+    act(() => {
       result.current.updateVariant(1, 'serving_unit', 'cup');
     });
     act(() => {
@@ -752,6 +805,9 @@ describe('useCustomFoodForm', () => {
 
     act(() => {
       result.current.addVariant();
+    });
+    act(() => {
+      result.current.updateVariant(1, 'is_locked', true);
     });
     act(() => {
       result.current.updateVariant(1, 'serving_unit', 'cup');
@@ -1156,6 +1212,9 @@ describe('useCustomFoodForm', () => {
 
     act(() => {
       result.current.addVariant();
+    });
+    act(() => {
+      result.current.updateVariant(1, 'is_locked', true);
     });
     act(() => {
       result.current.updateVariant(1, 'serving_unit', 'cup');

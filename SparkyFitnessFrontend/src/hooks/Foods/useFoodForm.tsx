@@ -871,6 +871,8 @@ export function useCustomFoodForm({
       const scaled = scaleVariantNutrition(anchorVariant, ratio);
       const currentVariant = variants[index];
       if (!currentVariant) return;
+      const autoScaleIntentForVariant =
+        currentVariant.is_locked ?? autoScaleIntents[index] ?? false;
 
       const aiEstimatedVariant = {
         ...currentVariant,
@@ -894,9 +896,9 @@ export function useCustomFoodForm({
         custom_nutrients: scaled.custom_nutrients
           ? { ...scaled.custom_nutrients }
           : currentVariant.custom_nutrients,
-        // Restore auto-scale to the user's preference after the
-        // incompatible-unit swap cleared it.
-        is_locked: autoScaleOnlineImports,
+        // Restore auto-scale to this row's saved intent after the
+        // incompatible-unit swap may have temporarily cleared it.
+        is_locked: autoScaleIntentForVariant,
         source: 'ai_estimate' as const,
         ai_confidence: estimate.confidence,
         ai_reasoning: estimate.reasoning,
@@ -919,7 +921,7 @@ export function useCustomFoodForm({
 
       setAutoScaleIntents((prev) => {
         const next = [...prev];
-        next[index] = autoScaleOnlineImports;
+        next[index] = aiEstimatedVariant.is_locked ?? false;
         return next;
       });
 
@@ -938,7 +940,7 @@ export function useCustomFoodForm({
         return next;
       });
     },
-    [variants, originalVariants, autoScaleOnlineImports]
+    [variants, originalVariants, autoScaleIntents]
   );
 
   const updateField = (field: string, value: string | boolean) => {
