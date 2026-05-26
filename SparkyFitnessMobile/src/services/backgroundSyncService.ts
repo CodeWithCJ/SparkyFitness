@@ -15,6 +15,7 @@ import {
   getAggregatedTotalCaloriesByDateDetailed,
   getAggregatedDistanceByDateDetailed,
   getAggregatedFloorsClimbedByDateDetailed,
+  alignToLocalDayStart,
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
 } from './healthConnectService';
@@ -171,8 +172,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
 
   // Aggregated metrics (steps, calories) produce per-day totals. Use start-of-day
   // so we always send complete daily values rather than partial-window slices.
-  const aggregatedStartDate = new Date(sessionStartDate);
-  aggregatedStartDate.setHours(0, 0, 0, 0);
+  const aggregatedStartDate = alignToLocalDayStart(sessionStartDate);
 
   addLog(`[Background Sync] Syncing sessions from ${sessionStartDate.toISOString()}, aggregated from ${aggregatedStartDate.toISOString()} to ${endDate.toISOString()}`, 'DEBUG');
 
@@ -212,15 +212,12 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     },
   );
 
-  let hasTimeouts = false;
-
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     const metric = enabledMetrics[i];
 
     if (result.status === 'skipped') {
       syncErrors++;
-      hasTimeouts = true;
       addLog(
         `[Background Sync] Skipping ${metric.label} because an earlier metric timed out; will retry next cycle`,
         'WARNING',
@@ -239,9 +236,6 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       }
     } else {
       syncErrors++;
-      if (result.reason instanceof TimeoutError) {
-        hasTimeouts = true;
-      }
       const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
       addLog(`[Background Sync] Error syncing ${metric.label}: ${message}`, 'ERROR');
     }
@@ -272,7 +266,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     await syncHealthData(allData);
     await refreshHealthSyncCacheWhenActive();
 
-    if (hasTimeouts || syncErrors > 0) {
+    if (syncErrors > 0) {
       addLog(
         `[Background Sync] Skipping timestamp update — ${syncErrors} metric(s) had errors, will retry from same window`,
         'WARNING',

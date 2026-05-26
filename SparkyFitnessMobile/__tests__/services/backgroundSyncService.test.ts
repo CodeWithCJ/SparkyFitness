@@ -64,6 +64,11 @@ jest.mock('../../src/services/healthConnectService', () => {
     getAggregatedDistanceByDateDetailed: detailedRecords(getAggregatedDistanceByDate),
     getAggregatedFloorsClimbedByDate,
     getAggregatedFloorsClimbedByDateDetailed: detailedRecords(getAggregatedFloorsClimbedByDate),
+    alignToLocalDayStart: jest.fn((date: Date) => {
+      const aligned = new Date(date);
+      aligned.setHours(0, 0, 0, 0);
+      return aligned;
+    }),
     resetDatabaseInaccessibleCount: jest.fn(),
     getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
   };

@@ -13,41 +13,6 @@ export interface HCZoneOffset {
   totalSeconds: number;
 }
 
-/** Heart rate record from Health Connect */
-export interface HCHeartRateRecord {
-  startTime: string;
-  samples: { beatsPerMinute: number }[];
-  startZoneOffset?: HCZoneOffset;
-  endZoneOffset?: HCZoneOffset;
-}
-
-/** Heart rate record from HealthKit */
-export interface HKHeartRateRecord {
-  startTime: string;
-  samples: { beatsPerMinute: number }[];
-}
-
-/** Steps record from Health Connect */
-export interface HCStepsRecord {
-  startTime: string;
-  endTime?: string;
-  count: number;
-  startZoneOffset?: HCZoneOffset;
-  endZoneOffset?: HCZoneOffset;
-}
-
-/** Energy record (calories) from Health Connect */
-export interface HCEnergyRecord {
-  startTime: string;
-  endTime?: string;
-  energy: {
-    inCalories?: number;
-    inKilocalories?: number;
-  };
-  startZoneOffset?: HCZoneOffset;
-  endZoneOffset?: HCZoneOffset;
-}
-
 /** Sleep record from HealthKit - used as input to aggregateSleepSessions */
 export interface HKSleepRecord {
   startTime: string;
@@ -60,16 +25,6 @@ export interface HKSleepRecord {
 // ==========================================
 // INTERNAL ACCUMULATOR TYPES
 // ==========================================
-
-/** Internal accumulator for heart rate aggregation */
-export interface HeartRateAccumulator {
-  [date: string]: { total: number; count: number };
-}
-
-/** Internal accumulator for step/calorie aggregation */
-export interface SumAccumulator {
-  [date: string]: number;
-}
 
 /** Sleep stage type including 'in_bed' */
 export type SleepStageType = 'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'unknown';

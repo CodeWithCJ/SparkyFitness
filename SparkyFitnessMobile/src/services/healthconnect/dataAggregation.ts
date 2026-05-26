@@ -54,7 +54,8 @@ export const aggregateByDay = (
       }
       result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     } else if (strategy === 'last') {
-      // Take first record: source queries return newest-first ordering
+      // HealthKit-only strategy today; HK reads return newest-first so [0] is most
+      // recent. No HC metric uses 'last' — if added, note HC reads default ascending.
       result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     }
   }

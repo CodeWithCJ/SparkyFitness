@@ -8,6 +8,7 @@ import {
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDate,
   enrichExerciseSessions,
+  alignToLocalDayStart,
 } from '../../../src/services/healthconnect/index';
 
 // Helpers — construct test dates in local time so the per-day window math
@@ -621,18 +622,16 @@ describe('getAggregatedStepsByDate', () => {
     expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
   });
 
-  test('snaps upload rolling-window start times down to local midnight before querying HC', async () => {
+  test('queries HC with the caller-aligned start when sync callers pre-snap to local midnight', async () => {
     // Uploads emit date-only rows. Since HC anchors DAYS buckets at the supplied
-    // startTime, cumulative sync needs calendar-day boundaries before mapping
-    // bucket.startTime back to a YYYY-MM-DD date.
+    // startTime, cumulative sync callers must snap the start to a calendar-day
+    // boundary via alignToLocalDayStart before calling the aggregator.
     mockAggregateGroupByPeriod.mockResolvedValue([]);
 
     const rollingStart = new Date(2024, 0, 15, 14, 30, 0, 0);
     const now = new Date(2024, 0, 16, 14, 30, 0, 0);
 
-    await getAggregatedStepsByDateDetailed(rollingStart, now, {
-      alignStartToLocalDay: true,
-    });
+    await getAggregatedStepsByDateDetailed(alignToLocalDayStart(rollingStart), now);
 
     const call = mockAggregateGroupByPeriod.mock.calls[0][0];
     const queriedStart = new Date(call.timeRangeFilter.startTime);
@@ -645,6 +644,24 @@ describe('getAggregatedStepsByDate', () => {
     expect(queriedStart.getDate()).toBe(15);
     // End time is left as the caller provided it.
     expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
+  });
+});
+
+describe('alignToLocalDayStart', () => {
+  test('returns a new Date rounded down to local midnight', () => {
+    const input = new Date(2024, 0, 15, 14, 30, 45, 123);
+    const aligned = alignToLocalDayStart(input);
+
+    expect(aligned).not.toBe(input);
+    expect(aligned.getHours()).toBe(0);
+    expect(aligned.getMinutes()).toBe(0);
+    expect(aligned.getSeconds()).toBe(0);
+    expect(aligned.getMilliseconds()).toBe(0);
+    expect(aligned.getFullYear()).toBe(2024);
+    expect(aligned.getMonth()).toBe(0);
+    expect(aligned.getDate()).toBe(15);
+    // Source date is untouched.
+    expect(input.getHours()).toBe(14);
   });
 });
 

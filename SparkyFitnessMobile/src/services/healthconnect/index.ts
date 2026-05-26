@@ -331,15 +331,22 @@ export interface CumulativeMetricSpec {
   round?: boolean;
 }
 
-export interface AggregateCumulativeMetricOptions {
-  alignStartToLocalDay?: boolean;
-}
-
 const formatLocalDay = (date: Date): string => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+};
+
+/**
+ * Returns a copy of `date` rounded down to local midnight. Sync paths must
+ * align cumulative-metric query starts to a local-day boundary because HC's
+ * aggregateGroupByPeriod anchors DAYS buckets at the supplied start.
+ */
+export const alignToLocalDayStart = (date: Date): Date => {
+  const aligned = new Date(date);
+  aligned.setHours(0, 0, 0, 0);
+  return aligned;
 };
 
 /**
@@ -379,24 +386,18 @@ const readZoneOffsetForRange = async (
   }
 };
 
+// HC anchors DAYS buckets at the supplied startTime, so callers emitting
+// date-only rows must pass a calendar-day boundary (see alignToLocalDayStart).
 export const aggregateCumulativeMetricByDayDetailed = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
-  options: AggregateCumulativeMetricOptions = {},
 ): Promise<HealthConnectAggregateResult> => {
   try {
     const rangeError = getWindowError(`aggregate for ${spec.recordType}`, startDate, endDate);
     if (rangeError) {
       addLog(`[HealthConnectService] ${rangeError}`, 'WARNING');
       return { records: [], error: rangeError };
-    }
-
-    const queryStart = new Date(startDate);
-    if (options.alignStartToLocalDay) {
-      // HC anchors DAYS buckets at the supplied startTime, so upload callers
-      // that emit date-only rows need calendar-day boundaries.
-      queryStart.setHours(0, 0, 0, 0);
     }
 
     type PeriodBucket = { result: unknown; startTime: string; endTime: string };
@@ -406,7 +407,7 @@ export const aggregateCumulativeMetricByDayDetailed = async (
         recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
         timeRangeFilter: {
           operator: 'between',
-          startTime: queryStart.toISOString(),
+          startTime: startDate.toISOString(),
           endTime: endDate.toISOString(),
         },
         timeRangeSlicer: { period: 'DAYS', length: 1 },
@@ -420,7 +421,7 @@ export const aggregateCumulativeMetricByDayDetailed = async (
       return { records: [], error: message };
     }
 
-    const rangeOffset = await readZoneOffsetForRange(spec.recordType, queryStart, endDate);
+    const rangeOffset = await readZoneOffsetForRange(spec.recordType, startDate, endDate);
     const results: AggregatedHealthRecord[] = [];
 
     for (const bucket of buckets) {
@@ -452,16 +453,14 @@ export const aggregateCumulativeMetricByDay = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
-  options?: AggregateCumulativeMetricOptions,
 ): Promise<AggregatedHealthRecord[]> => {
-  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate, options);
+  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
   return result.records;
 };
 
 export const getAggregatedStepsByDateDetailed = (
   startDate: Date,
   endDate: Date,
-  options?: AggregateCumulativeMetricOptions,
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
@@ -471,7 +470,6 @@ export const getAggregatedStepsByDateDetailed = (
     },
     startDate,
     endDate,
-    options,
   );
 
 export const getAggregatedStepsByDate = (
@@ -483,7 +481,6 @@ export const getAggregatedStepsByDate = (
 export const getAggregatedActiveCaloriesByDateDetailed = (
   startDate: Date,
   endDate: Date,
-  options?: AggregateCumulativeMetricOptions,
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
@@ -494,7 +491,6 @@ export const getAggregatedActiveCaloriesByDateDetailed = (
     },
     startDate,
     endDate,
-    options,
   );
 
 export const getAggregatedActiveCaloriesByDate = (

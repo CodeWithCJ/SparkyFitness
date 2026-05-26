@@ -1135,6 +1135,25 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe(toLocalDateString(startDate));
     });
+
+    test('emits both days when end time-of-day is earlier than start time-of-day', () => {
+      // Day 1 20:00 → Day 2 08:00: regression test for premature loop termination
+      // when comparing Date objects directly while stepping by 24h.
+      const startDate = new Date(2024, 0, 15, 20, 0, 0);
+      const endDate = new Date(2024, 0, 16, 8, 0, 0);
+
+      const records = [
+        {
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(2);
+      expect(result[0].date).toBe(toLocalDateString(startDate));
+      expect(result[1].date).toBe(toLocalDateString(endDate));
+    });
   });
 
   describe('qualitative record types (skip processing)', () => {

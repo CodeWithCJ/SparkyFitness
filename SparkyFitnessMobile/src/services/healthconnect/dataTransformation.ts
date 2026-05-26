@@ -666,7 +666,11 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     const end = new Date(rec.endTime as string);
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return;
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    // Normalize to local midnight so a record like day1 20:00 → day2 08:00 still
+    // emits both calendar days (the loop otherwise terminates after day 1).
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    for (let d = startDay; d <= endDay; d.setDate(d.getDate() + 1)) {
       output.push({
         value: 1,
         type,

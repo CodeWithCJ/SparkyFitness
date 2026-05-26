@@ -37,6 +37,12 @@ export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCou
 
 export const aggregateByDay = HealthKitAggregation.aggregateByDay;
 
+export const alignToLocalDayStart = (date: Date): Date => {
+  const aligned = new Date(date);
+  aligned.setHours(0, 0, 0, 0);
+  return aligned;
+};
+
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
