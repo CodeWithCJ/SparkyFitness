@@ -50,6 +50,11 @@ const sheetContainer =
       )
     : undefined;
 
+const androidSparkleStyle =
+  Platform.OS === 'android'
+    ? ({ transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }] } as const)
+    : undefined;
+
 interface FoodUnitSelectorSheetProps {
   variants: FoodUnitVariant[];
   selectedVariantId?: string;
@@ -380,7 +385,12 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
           </Text>
           {isAiSourced && aiConfidence ? (
             <View accessible accessibilityLabel={aiAccessibilityLabel}>
-              <Icon name="sparkle" size={16} color={aiSparkleColor} />
+              <Icon
+                name="sparkles"
+                size={16}
+                color={aiSparkleColor}
+                style={androidSparkleStyle}
+              />
             </View>
           ) : null}
         </View>
@@ -434,9 +444,10 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         {matchedAiConfidence ? (
           <View accessible accessibilityLabel={matchedAiAccessibilityLabel}>
             <Icon
-              name="sparkle"
+              name="sparkles"
               size={16}
               color={matchedAiSparkleColor}
+              style={androidSparkleStyle}
             />
           </View>
         ) : compatible ? (

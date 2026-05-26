@@ -176,6 +176,10 @@ const EMPTY_FORM: FoodFormData = {
 };
 
 const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
+const androidSparkleStyle =
+  Platform.OS === 'android'
+    ? ({ transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }] } as const)
+    : undefined;
 
 // Confidence-tinted icon colors for the inline AI Sparkles badge that sits
 // next to the manual-update banner after an AI estimate auto-applies. Read
@@ -1394,7 +1398,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     </View>
                   ) : (
                     <View className="flex-row items-center gap-2">
-                      <Icon name="sparkle" size={16} color={textPrimary} />
+                      <Icon
+                        name="sparkles"
+                        size={16}
+                        color={textPrimary}
+                        style={androidSparkleStyle}
+                      />
                       <Text className="text-text-primary font-semibold">
                         Convert with AI
                       </Text>
