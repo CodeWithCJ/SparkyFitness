@@ -14,6 +14,12 @@ interface FoodNutritionSummaryProps {
   servings?: number;
   goalPercentages?: NutritionGoalPercentages;
   goalsLoading?: boolean;
+  // Opt-in: when true and values.fiber is available, the carbs row of the
+  // macro card swaps to "Net Carbs" (max(0, carbs - fiber)). Callers that
+  // display per-food/per-meal nutrition (food detail, meal builder) should
+  // leave this false; summary surfaces aggregating user consumption (e.g.
+  // MealTypeDetailScreen) opt in based on user_preferences.show_net_carbs.
+  showNetCarbs?: boolean;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -23,6 +29,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   servings = 1,
   goalPercentages,
   goalsLoading,
+  showNetCarbs = false,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
@@ -65,8 +72,10 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
         protein={scale(values.protein)}
         carbs={scale(values.carbs)}
         fat={scale(values.fat)}
+        fiber={values.fiber !== undefined ? scale(values.fiber) : undefined}
         goalPercentages={goalPercentages}
         goalsLoading={goalsLoading}
+        showNetCarbs={showNetCarbs}
       />
 
       {primaryNutrients.length > 0 ? (
