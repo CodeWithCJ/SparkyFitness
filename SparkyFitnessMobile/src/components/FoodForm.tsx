@@ -1394,7 +1394,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     </View>
                   ) : (
                     <View className="flex-row items-center gap-2">
-                      <Icon name="sparkles" size={16} color={textPrimary} />
+                      <Icon name="sparkle" size={16} color={textPrimary} />
                       <Text className="text-text-primary font-semibold">
                         Convert with AI
                       </Text>

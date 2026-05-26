@@ -380,7 +380,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
           </Text>
           {isAiSourced && aiConfidence ? (
             <View accessible accessibilityLabel={aiAccessibilityLabel}>
-              <Icon name="sparkles" size={16} color={aiSparkleColor} />
+              <Icon name="sparkle" size={16} color={aiSparkleColor} />
             </View>
           ) : null}
         </View>
@@ -434,7 +434,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         {matchedAiConfidence ? (
           <View accessible accessibilityLabel={matchedAiAccessibilityLabel}>
             <Icon
-              name="sparkles"
+              name="sparkle"
               size={16}
               color={matchedAiSparkleColor}
             />

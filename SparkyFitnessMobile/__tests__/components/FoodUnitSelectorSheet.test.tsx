@@ -183,7 +183,7 @@ describe('FoodUnitSelectorSheet', () => {
     );
 
     const aiRow = screen.getByTestId('food-unit-option-cup');
-    expect(within(aiRow).queryByText('icon-sparkles')).toBeTruthy();
+    expect(within(aiRow).queryByText('icon-sparkle')).toBeTruthy();
     expect(within(aiRow).queryByText('icon-checkmark')).toBeNull();
   });
 
