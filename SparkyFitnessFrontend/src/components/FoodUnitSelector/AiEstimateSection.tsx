@@ -3,7 +3,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
-import { requestAiUnitConversion } from '@/api/AiConversions/aiConversionApi';
+import { useAiUnitConversion } from '@/hooks/Foods/useAiUnitConversion';
 import { error as logError } from '@/utils/logging';
 import { OVERALL_CONFIDENCE_LABELS } from '@workspace/shared';
 
@@ -67,6 +67,7 @@ export function AiEstimateSection({
   onEdit,
 }: AiEstimateSectionProps) {
   const { loggingLevel } = usePreferences();
+  const requestAiUnitConversion = useAiUnitConversion();
   const [state, setState] = useState<SectionState>({ kind: 'idle' });
 
   // In auto-apply mode, onAccept may unmount this row by changing the parent's

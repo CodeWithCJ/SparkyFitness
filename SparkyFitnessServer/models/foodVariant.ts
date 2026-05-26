@@ -108,14 +108,8 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
   // For update operations, we need the user_id of the food owner to ensure RLS is applied correctly.
   const client = await getClient(userId); // User-specific operation
   try {
-    const hasAiConfidence = Object.prototype.hasOwnProperty.call(
-      variantData,
-      'ai_confidence'
-    );
-    const hasAiReasoning = Object.prototype.hasOwnProperty.call(
-      variantData,
-      'ai_reasoning'
-    );
+    const hasAiConfidence = variantData.ai_confidence !== undefined;
+    const hasAiReasoning = variantData.ai_reasoning !== undefined;
     const result = await client.query(
       `UPDATE food_variants SET
         food_id = COALESCE($1, food_id),

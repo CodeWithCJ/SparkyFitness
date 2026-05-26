@@ -725,6 +725,36 @@ describe('useCustomFoodForm', () => {
     );
   });
 
+  it('does not mention AI in the toast when AI services are unavailable', async () => {
+    mockAutoScaleOnlineImports = true;
+    const initialVariants = [
+      createVariant({ id: 'variant-g', is_default: true }),
+    ];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+        aiEstimatesAvailable: false,
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'cup');
+    });
+
+    expect(mockToast).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        description:
+          "Can't convert between units. Update nutrition values manually.",
+      })
+    );
+  });
+
   // Once a row has been AI-estimated, any unit swap (compatible OR
   // incompatible) keeps the AI tag and suppresses scaling. The user's rule:
   // sibling units in the same category should be AI-estimated independently

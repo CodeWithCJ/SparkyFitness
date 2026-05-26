@@ -33,6 +33,22 @@ const CustomFoodForm = ({
   initialVariants,
   visibleNutrients: passedVisibleNutrients,
 }: CustomFoodFormProps) => {
+  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
+    usePreferences();
+  const isMobile = useIsMobile();
+  const platform = isMobile ? 'mobile' : 'desktop';
+  const { data: customNutrients } = useCustomNutrients();
+
+  // AI gate for the per-row Convert-with-AI button: admin allows user AI
+  // config + an active AI service exists. The per-user "AI Assisted Unit
+  // Conversions" toggle was removed — when AI services are configured, the
+  // feature is always available.
+  const userAiConfigAllowedQuery = useUserAiConfigAllowed();
+  const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
+  const activeAiServiceQuery = useActiveAIService(userAiConfigAllowed);
+  const aiEstimatesAvailable =
+    userAiConfigAllowed && !!activeAiServiceQuery.data;
+
   const {
     formData,
     variants,
@@ -53,22 +69,12 @@ const CustomFoodForm = ({
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
-  } = useCustomFoodForm({ food, initialVariants, onSave });
-  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
-    usePreferences();
-  const isMobile = useIsMobile();
-  const platform = isMobile ? 'mobile' : 'desktop';
-  const { data: customNutrients } = useCustomNutrients();
-
-  // AI gate for the per-row Convert-with-AI button: admin allows user AI
-  // config + an active AI service exists. The per-user "AI Assisted Unit
-  // Conversions" toggle was removed — when AI services are configured, the
-  // feature is always available.
-  const userAiConfigAllowedQuery = useUserAiConfigAllowed();
-  const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
-  const activeAiServiceQuery = useActiveAIService(userAiConfigAllowed);
-  const aiEstimatesAvailable =
-    userAiConfigAllowed && !!activeAiServiceQuery.data;
+  } = useCustomFoodForm({
+    food,
+    initialVariants,
+    onSave,
+    aiEstimatesAvailable,
+  });
 
   // The food's default variant is the AI estimation source. Lookup by flag
   // rather than by position — submit-time validation guarantees exactly one.
@@ -234,7 +240,7 @@ const CustomFoodForm = ({
                       index={index}
                       variant={variant}
                       variantError={variantErrors[index] ?? ''}
-                      visibleNutrients={visibleNutrients} // Passing the ordered array here
+                      visibleNutrients={visibleNutrients}
                       energyUnit={energyUnit}
                       convertEnergy={convertEnergy}
                       customNutrients={customNutrients}
@@ -243,9 +249,10 @@ const CustomFoodForm = ({
                         (compatibleUnitsByIndex[index]?.length ?? 0) > 0
                       }
                       food={{
-                        // Sentinel id for foods that haven't been saved yet — the
-                        // AI endpoint only uses foodId for telemetry/context, not
-                        // for DB lookup, so a string suffices.
+                        // Sentinel id for foods that haven't been saved yet —
+                        // the AI endpoint only uses foodId for
+                        // telemetry/context, not for DB lookup, so a string
+                        // suffices.
                         id: food?.id || 'pending-new-food',
                         name: formData.name || food?.name || '',
                         brand: formData.brand || food?.brand || null,

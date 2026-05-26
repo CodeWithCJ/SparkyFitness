@@ -10,9 +10,11 @@ jest.mock('@/contexts/PreferencesContext', () => ({
   }),
 }));
 
-jest.mock('@/api/AiConversions/aiConversionApi', () => ({
-  requestAiUnitConversion: (...args: unknown[]) =>
-    mockRequestAiUnitConversion(...args),
+jest.mock('@/hooks/Foods/useAiUnitConversion', () => ({
+  useAiUnitConversion:
+    () =>
+    (...args: unknown[]) =>
+      mockRequestAiUnitConversion(...args),
 }));
 
 jest.mock('@/utils/logging', () => ({

@@ -38,6 +38,7 @@ interface UseCustomFoodFormProps {
   food?: Food;
   initialVariants?: FoodVariant[];
   onSave: (foodData: Food) => void;
+  aiEstimatesAvailable?: boolean;
 }
 
 type GroupedFormFoodVariant = FormFoodVariantWithEquivalents;
@@ -162,6 +163,7 @@ export function useCustomFoodForm({
   food,
   initialVariants,
   onSave,
+  aiEstimatesAvailable = true,
 }: UseCustomFoodFormProps) {
   const { user } = useAuth();
   const { energyUnit, convertEnergy, loggingLevel, autoScaleOnlineImports } =
@@ -684,10 +686,12 @@ export function useCustomFoodForm({
           updatedManualUnitConversionPending[index] = false;
           newVariant.is_locked = autoScaleIntentForVariant;
         } else {
-          const canAiConvert = canOfferAiConversionForUnits(
-            [currentVariant.serving_unit],
-            newUnit
-          );
+          const canAiConvert =
+            aiEstimatesAvailable &&
+            canOfferAiConversionForUnits(
+              [currentVariant.serving_unit],
+              newUnit
+            );
           newVariant.serving_unit = newUnit;
           updatedManualUnitConversionPending[index] = true;
           newVariant.is_locked = canAiConvert
@@ -750,10 +754,9 @@ export function useCustomFoodForm({
           updatedManualUnitConversionPending[index] = false;
           newVariant.is_locked = autoScaleIntentForVariant;
         } else {
-          const canAiConvert = canOfferAiConversionForUnits(
-            [oldUnit, trustedBaseUnit],
-            newUnit
-          );
+          const canAiConvert =
+            aiEstimatesAvailable &&
+            canOfferAiConversionForUnits([oldUnit, trustedBaseUnit], newUnit);
           toast(buildManualConversionToast(canAiConvert));
           updatedManualUnitConversionPending[index] = true;
           // Honor the user's auto-scale preference through incompatible

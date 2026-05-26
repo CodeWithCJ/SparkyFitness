@@ -92,6 +92,14 @@ interface ProviderConfig {
   timeout?: number;
 }
 
+function requiresCustomUrl(serviceType: string): boolean {
+  return (
+    serviceType === 'ollama' ||
+    serviceType === 'openai_compatible' ||
+    serviceType === 'custom'
+  );
+}
+
 async function callProvider(
   aiService: ProviderConfig,
   prompt: string
@@ -99,80 +107,74 @@ async function callProvider(
   const model = aiService.model_name || getDefaultModel(aiService.service_type);
   const apiKey = aiService.api_key;
   let response: Response;
+  let ollamaAgent: undici.Agent | null = null;
 
-  switch (aiService.service_type) {
-    case 'google':
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
+  try {
+    switch (aiService.service_type) {
+      case 'google':
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' },
+            }),
+          }
+        );
+        break;
+      case 'openai':
+      case 'openai_compatible':
+      case 'mistral':
+      case 'groq':
+      case 'openrouter':
+      case 'custom': {
+        const url =
+          aiService.service_type === 'openai'
+            ? 'https://api.openai.com/v1/chat/completions'
+            : aiService.service_type === 'openai_compatible'
+              ? `${aiService.custom_url}/chat/completions`
+              : aiService.service_type === 'mistral'
+                ? 'https://api.mistral.ai/v1/chat/completions'
+                : aiService.service_type === 'groq'
+                  ? 'https://api.groq.com/openai/v1/chat/completions'
+                  : aiService.service_type === 'openrouter'
+                    ? 'https://openrouter.ai/api/v1/chat/completions'
+                    : (aiService.custom_url as string);
+        response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' },
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            response_format: { type: 'json_object' },
           }),
-        }
-      );
-      break;
-    case 'openai':
-    case 'openai_compatible':
-    case 'mistral':
-    case 'groq':
-    case 'openrouter':
-    case 'custom': {
-      const url =
-        aiService.service_type === 'openai'
-          ? 'https://api.openai.com/v1/chat/completions'
-          : aiService.service_type === 'openai_compatible'
-            ? `${aiService.custom_url}/chat/completions`
-            : aiService.service_type === 'mistral'
-              ? 'https://api.mistral.ai/v1/chat/completions'
-              : aiService.service_type === 'groq'
-                ? 'https://api.groq.com/openai/v1/chat/completions'
-                : aiService.service_type === 'openrouter'
-                  ? 'https://openrouter.ai/api/v1/chat/completions'
-                  : (aiService.custom_url as string);
-      response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          ...(aiService.service_type === 'openrouter' && {
-            'HTTP-Referer': 'https://sparky-fitness.com',
-            'X-Title': 'Sparky Fitness',
+        });
+        break;
+      }
+      case 'anthropic':
+        response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'x-api-key': apiKey as string,
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 400,
+            messages: [{ role: 'user', content: prompt }],
           }),
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      break;
-    }
-    case 'anthropic':
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'x-api-key': apiKey as string,
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 400,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-      break;
-    case 'ollama': {
-      const timeout = aiService.timeout || 120000;
-      const ollamaAgent = new Agent({
-        headersTimeout: timeout,
-        bodyTimeout: timeout,
-      });
-      try {
+        });
+        break;
+      case 'ollama': {
+        const timeout = aiService.timeout || 120000;
+        ollamaAgent = new Agent({
+          headersTimeout: timeout,
+          bodyTimeout: timeout,
+        });
         response = await fetch(`${aiService.custom_url}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -185,58 +187,58 @@ async function callProvider(
           // @ts-expect-error undici dispatcher option is not in fetch DOM types
           dispatcher: ollamaAgent,
         });
-      } finally {
-        ollamaAgent.destroy();
+        break;
       }
-      break;
+      default:
+        throw new ProviderResponseError(
+          `Unsupported AI service type: ${aiService.service_type}`
+        );
     }
-    default:
-      throw new ProviderResponseError(
-        `Unsupported AI service type: ${aiService.service_type}`
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      log(
+        'error',
+        `AI unit conversion provider error: ${aiService.service_type} status=${response.status} body=${errorBody}`
       );
-  }
+      throw new ProviderResponseError(
+        `AI service returned status ${response.status}`
+      );
+    }
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    log(
-      'error',
-      `AI unit conversion provider error: ${aiService.service_type} status=${response.status} body=${errorBody}`
-    );
-    throw new ProviderResponseError(
-      `AI service returned status ${response.status}`
-    );
-  }
+    const data = await response.json();
+    let content: string | undefined;
+    switch (aiService.service_type) {
+      case 'google':
+        content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        break;
+      case 'openai':
+      case 'openai_compatible':
+      case 'mistral':
+      case 'groq':
+      case 'openrouter':
+      case 'custom':
+        content = data?.choices?.[0]?.message?.content;
+        break;
+      case 'anthropic':
+        content = data?.content?.[0]?.text;
+        break;
+      case 'ollama':
+        content = data?.message?.content;
+        break;
+    }
 
-  const data = await response.json();
-  let content: string | undefined;
-  switch (aiService.service_type) {
-    case 'google':
-      content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      break;
-    case 'openai':
-    case 'openai_compatible':
-    case 'mistral':
-    case 'groq':
-    case 'openrouter':
-    case 'custom':
-      content = data?.choices?.[0]?.message?.content;
-      break;
-    case 'anthropic':
-      content = data?.content?.[0]?.text;
-      break;
-    case 'ollama':
-      content = data?.message?.content;
-      break;
+    if (!content) {
+      throw new ProviderResponseError('AI provider returned no content.');
+    }
+    // Strip markdown code fences if any provider wrapped the JSON anyway.
+    return content
+      .replace(/^```(?:json)?\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
+  } finally {
+    ollamaAgent?.destroy();
   }
-
-  if (!content) {
-    throw new ProviderResponseError('AI provider returned no content.');
-  }
-  // Strip markdown code fences if any provider wrapped the JSON anyway.
-  return content
-    .replace(/^```(?:json)?\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
 }
 
 export async function estimateUnitConversion(
@@ -282,6 +284,12 @@ export async function estimateUnitConversion(
     userId
   );
   if (aiService.service_type !== 'ollama' && !aiService.api_key) {
+    throw new NoAiServiceError();
+  }
+  if (
+    requiresCustomUrl(aiService.service_type) &&
+    (!aiService.custom_url || aiService.custom_url.trim().length === 0)
+  ) {
     throw new NoAiServiceError();
   }
 

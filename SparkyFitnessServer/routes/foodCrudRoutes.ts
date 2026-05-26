@@ -7,6 +7,11 @@ import foodPhotoEstimationService from '../services/foodPhotoEstimationService.j
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 const router = express.Router();
 router.use(express.json());
+
+function getErrorMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null;
+}
+
 // Apply diary permission check to all food routes
 router.use(checkPermissionMiddleware('diary'));
 // AI-dedicated food search route to handle /api/foods/search
@@ -392,15 +397,12 @@ router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
     );
     res.status(201).json(createdVariants);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+    const message = getErrorMessage(error);
+    if (message?.startsWith('Forbidden')) {
+      return res.status(403).json({ error: message });
     }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Food not found')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+    if (message?.startsWith('Food not found')) {
+      return res.status(404).json({ error: message });
     }
     next(error);
   }

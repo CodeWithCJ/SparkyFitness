@@ -141,6 +141,35 @@ describe('estimateUnitConversion', () => {
     ).rejects.toBeInstanceOf(NoAiServiceError);
   });
 
+  it.each([
+    ['ollama', null],
+    ['custom', 'sk-test-key'],
+    ['openai_compatible', 'sk-test-key'],
+  ])(
+    'throws NoAiServiceError when %s requires a custom URL but none is configured',
+    async (serviceType, apiKey) => {
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof fetch;
+      // @ts-expect-error mocked
+      chatRepository.getActiveAiServiceSetting.mockResolvedValue(
+        makeAiSetting({ service_type: serviceType })
+      );
+      // @ts-expect-error mocked
+      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+        makeAiServiceDetail({
+          service_type: serviceType,
+          api_key: apiKey,
+          custom_url: '   ',
+        })
+      );
+
+      await expect(
+        estimateUnitConversion(TEST_USER_ID, baseRequest)
+      ).rejects.toBeInstanceOf(NoAiServiceError);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }
+  );
+
   it('returns parsed estimate on a successful OpenAI call', async () => {
     // @ts-expect-error mocked
     chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
