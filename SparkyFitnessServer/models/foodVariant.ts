@@ -42,8 +42,8 @@ async function createFoodVariant(variantData: any, userId: any) {
         variantData.iron,
         variantData.is_default || false,
         sanitizeGlycemicIndex(variantData.glycemic_index),
-        variantData.custom_nutrients || {},
-        variantData.source || 'manual',
+        variantData.custom_nutrients ?? {},
+        variantData.source ?? 'manual',
         variantData.ai_confidence ?? null,
         variantData.ai_reasoning ?? null,
       ]
@@ -164,7 +164,9 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         variantData.iron,
         variantData.is_default,
         sanitizeGlycemicIndex(variantData.glycemic_index),
-        variantData.custom_nutrients || {},
+        variantData.custom_nutrients === undefined
+          ? undefined
+          : (variantData.custom_nutrients ?? {}),
         variantData.source,
         hasAiConfidence,
         variantData.ai_confidence ?? null,
@@ -237,8 +239,8 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       variant.iron,
       variant.is_default || false,
       sanitizeGlycemicIndex(variant.glycemic_index),
-      variant.custom_nutrients || {},
-      variant.source || 'manual',
+      variant.custom_nutrients ?? {},
+      variant.source ?? 'manual',
       variant.ai_confidence ?? null,
       variant.ai_reasoning ?? null,
       'now()',

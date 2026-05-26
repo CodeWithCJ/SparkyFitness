@@ -214,8 +214,8 @@ async function createFood(foodData: any) {
         sanitizeNumeric(foodData.calcium),
         sanitizeNumeric(foodData.iron),
         sanitizeGlycemicIndex(foodData.glycemic_index),
-        foodData.custom_nutrients || {},
-        foodData.source || 'manual',
+        foodData.custom_nutrients ?? {},
+        foodData.source ?? 'manual',
         foodData.ai_confidence ?? null,
         foodData.ai_reasoning ?? null,
       ]
@@ -248,10 +248,10 @@ async function createFood(foodData: any) {
         iron: foodData.iron,
         is_default: true,
         user_id: newFood.user_id,
-        source: foodData.source || 'manual',
+        source: foodData.source ?? 'manual',
         ai_confidence: foodData.ai_confidence ?? null,
         ai_reasoning: foodData.ai_reasoning ?? null,
-        custom_nutrients: foodData.custom_nutrients || {},
+        custom_nutrients: foodData.custom_nutrients ?? {},
       },
     };
   } catch (error) {
@@ -840,8 +840,8 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
             sanitizeNumeric(variant.calcium),
             sanitizeNumeric(variant.iron),
             sanitizeGlycemicIndex(variant.glycemic_index),
-            variant.custom_nutrients || {},
-            variant.source || 'manual',
+            variant.custom_nutrients ?? {},
+            variant.source ?? 'manual',
             variant.ai_confidence ?? null,
             variant.ai_reasoning ?? null,
           ]
