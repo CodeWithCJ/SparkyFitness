@@ -52,11 +52,16 @@ const FLOORS_CLIMBED_SPEC: HealthConnect.CumulativeMetricSpec = {
   extractValue: (r) => (r as { FLOORS_CLIMBED_TOTAL?: number }).FLOORS_CLIMBED_TOTAL ?? 0,
 };
 
+const SYNC_AGGREGATE_OPTIONS: HealthConnect.AggregateCumulativeMetricOptions = {
+  alignStartToLocalDay: true,
+};
+
 export const getAggregatedTotalCaloriesByDateDetailed = (
   startDate: Date,
   endDate: Date,
+  options?: HealthConnect.AggregateCumulativeMetricOptions,
 ): Promise<HealthConnect.HealthConnectAggregateResult> =>
-  HealthConnect.aggregateCumulativeMetricByDayDetailed(TOTAL_CALORIES_SPEC, startDate, endDate);
+  HealthConnect.aggregateCumulativeMetricByDayDetailed(TOTAL_CALORIES_SPEC, startDate, endDate, options);
 
 export const getAggregatedTotalCaloriesByDate = (
   startDate: Date,
@@ -67,8 +72,9 @@ export const getAggregatedTotalCaloriesByDate = (
 export const getAggregatedDistanceByDateDetailed = (
   startDate: Date,
   endDate: Date,
+  options?: HealthConnect.AggregateCumulativeMetricOptions,
 ): Promise<HealthConnect.HealthConnectAggregateResult> =>
-  HealthConnect.aggregateCumulativeMetricByDayDetailed(DISTANCE_SPEC, startDate, endDate);
+  HealthConnect.aggregateCumulativeMetricByDayDetailed(DISTANCE_SPEC, startDate, endDate, options);
 
 export const getAggregatedDistanceByDate = (
   startDate: Date,
@@ -79,8 +85,9 @@ export const getAggregatedDistanceByDate = (
 export const getAggregatedFloorsClimbedByDateDetailed = (
   startDate: Date,
   endDate: Date,
+  options?: HealthConnect.AggregateCumulativeMetricOptions,
 ): Promise<HealthConnect.HealthConnectAggregateResult> =>
-  HealthConnect.aggregateCumulativeMetricByDayDetailed(FLOORS_CLIMBED_SPEC, startDate, endDate);
+  HealthConnect.aggregateCumulativeMetricByDayDetailed(FLOORS_CLIMBED_SPEC, startDate, endDate, options);
 
 export const getAggregatedFloorsClimbedByDate = (
   startDate: Date,
@@ -152,23 +159,23 @@ async function processMetric(
 
   // For cumulative metrics, use deduplicated aggregation functions
   if (type === 'Steps') {
-    const result = await HealthConnect.getAggregatedStepsByDateDetailed(startDate, endDate);
+    const result = await HealthConnect.getAggregatedStepsByDateDetailed(startDate, endDate, SYNC_AGGREGATE_OPTIONS);
     dataToTransform = result.records;
     error = metricReadError(type, result.error);
   } else if (type === 'ActiveCaloriesBurned') {
-    const result = await HealthConnect.getAggregatedActiveCaloriesByDateDetailed(startDate, endDate);
+    const result = await HealthConnect.getAggregatedActiveCaloriesByDateDetailed(startDate, endDate, SYNC_AGGREGATE_OPTIONS);
     dataToTransform = result.records;
     error = metricReadError(type, result.error);
   } else if (type === 'TotalCaloriesBurned') {
-    const result = await getAggregatedTotalCaloriesByDateDetailed(startDate, endDate);
+    const result = await getAggregatedTotalCaloriesByDateDetailed(startDate, endDate, SYNC_AGGREGATE_OPTIONS);
     dataToTransform = result.records;
     error = metricReadError(type, result.error);
   } else if (type === 'Distance') {
-    const result = await getAggregatedDistanceByDateDetailed(startDate, endDate);
+    const result = await getAggregatedDistanceByDateDetailed(startDate, endDate, SYNC_AGGREGATE_OPTIONS);
     dataToTransform = result.records;
     error = metricReadError(type, result.error);
   } else if (type === 'FloorsClimbed') {
-    const result = await getAggregatedFloorsClimbedByDateDetailed(startDate, endDate);
+    const result = await getAggregatedFloorsClimbedByDateDetailed(startDate, endDate, SYNC_AGGREGATE_OPTIONS);
     dataToTransform = result.records;
     error = metricReadError(type, result.error);
   } else if (type === 'ExerciseSession') {

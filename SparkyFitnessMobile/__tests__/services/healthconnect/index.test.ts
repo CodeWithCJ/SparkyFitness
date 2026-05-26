@@ -23,6 +23,7 @@ import {
   requestPermission,
   readRecords,
   aggregateRecord,
+  aggregateGroupByPeriod,
 } from 'react-native-health-connect';
 
 import type { PermissionRequest, GrantedPermission } from '../../../src/types/healthRecords';
@@ -46,6 +47,17 @@ const mockInitialize = initialize as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
 const mockReadRecords = readRecords as jest.Mock;
 const mockAggregateRecord = aggregateRecord as jest.Mock;
+const mockAggregateGroupByPeriod = aggregateGroupByPeriod as jest.Mock;
+
+// Helper to construct an aggregateGroupByPeriod bucket. startTime is the local
+// midnight of the day the bucket represents — formatLocalDay parses it with
+// the JS runtime's timezone, so we use a midnight ISO with no offset suffix
+// to keep tests timezone-independent.
+const periodBucket = (y: number, m1to12: number, d: number, result: unknown) => ({
+  result,
+  startTime: new Date(y, m1to12 - 1, d, 0, 0, 0, 0).toISOString(),
+  endTime: new Date(y, m1to12 - 1, d + 1, 0, 0, 0, 0).toISOString(),
+});
 
 describe('initHealthConnect', () => {
   beforeEach(() => {
@@ -330,6 +342,28 @@ describe('readHealthRecords', () => {
     expect(mockReadRecords).not.toHaveBeenCalled();
   });
 
+  test('does not split into fallback sub-windows when HC reports quota exceeded', async () => {
+    // The original error message format Health Connect returns on quota burst.
+    // Splitting the range into 90 daily windows (and each into 24 hourly ones)
+    // would multiply the call rate and keep us pinned against the quota, so
+    // the fallback path must short-circuit instead of recursing.
+    const quotaError = new Error(
+      'android.health.connect.HealthConnectException: API call quota exceeded, availableQuota: 0.8 requested: 1',
+    );
+    mockReadRecords.mockRejectedValue(quotaError);
+
+    const result = await readHealthRecordsDetailed(
+      'StepsCadence',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-04-14T00:00:00Z'), // 90-day range — would normally trigger fallback
+    );
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toContain('quota exceeded');
+    // Exactly one call — no fallback splitting.
+    expect(mockReadRecords).toHaveBeenCalledTimes(1);
+  });
+
   test('recovers readable sub-windows after a page-one read failure', async () => {
     const recoveredRecords = [{ startTime: '2024-01-15T00:30:00Z', beatsPerMinute: 72 }];
     mockReadRecords
@@ -421,10 +455,13 @@ describe('getAggregatedStepsByDate', () => {
     jest.clearAllMocks();
     // Default: tz-offset lookup finds no records (no offset captured).
     mockReadRecords.mockResolvedValue({ records: [] });
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
   });
 
   test('returns one entry per local day with the native aggregate total', async () => {
-    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 5000 });
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
+    ]);
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -434,14 +471,16 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toEqual([
       { date: '2024-01-15', value: 5000, type: 'step' },
     ]);
-    expect(mockAggregateRecord).toHaveBeenCalledWith(
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledWith(
       expect.objectContaining({
         recordType: 'Steps',
         timeRangeFilter: expect.objectContaining({ operator: 'between' }),
+        timeRangeSlicer: { period: 'DAYS', length: 1 },
       }),
     );
     // Must NOT pass dataOriginFilter — that would defeat HC's native cross-origin dedup.
-    expect(mockAggregateRecord.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
+    expect(mockAggregateGroupByPeriod.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
   });
 
   test('passes through native cross-origin dedup (regression for #1279)', async () => {
@@ -449,7 +488,9 @@ describe('getAggregatedStepsByDate', () => {
     // deduped total across multiple origins. The helper must NOT post-process or
     // recombine — it just emits what HC returned. If a future refactor regressed
     // to per-origin Math.max or naive sum, this test would fail.
-    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 7000 });
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 7000 }),
+    ]);
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -459,10 +500,11 @@ describe('getAggregatedStepsByDate', () => {
     expect(result[0].value).toBe(7000);
   });
 
-  test('iterates each local day in a multi-day range', async () => {
-    mockAggregateRecord
-      .mockResolvedValueOnce({ COUNT_TOTAL: 5000 })
-      .mockResolvedValueOnce({ COUNT_TOTAL: 6000 });
+  test('emits one entry per returned bucket in a multi-day range with a single native call', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
+      periodBucket(2024, 1, 16, { COUNT_TOTAL: 6000 }),
+    ]);
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -472,13 +514,16 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toHaveLength(2);
     expect(result.find((r) => r.date === '2024-01-15')?.value).toBe(5000);
     expect(result.find((r) => r.date === '2024-01-16')?.value).toBe(6000);
-    expect(mockAggregateRecord).toHaveBeenCalledTimes(2);
+    // Single native call regardless of how many days — this is the fix for
+    // the HC quota blowup on long syncs.
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
   });
 
-  test('skips days where the aggregate is zero or missing', async () => {
-    mockAggregateRecord
-      .mockResolvedValueOnce({ COUNT_TOTAL: 0 })
-      .mockResolvedValueOnce({ COUNT_TOTAL: 4200 });
+  test('skips buckets whose aggregate is zero or missing', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 0 }),
+      periodBucket(2024, 1, 16, { COUNT_TOTAL: 4200 }),
+    ]);
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -488,8 +533,11 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toEqual([{ date: '2024-01-16', value: 4200, type: 'step' }]);
   });
 
-  test('captures per-day UTC offset from one raw record', async () => {
-    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 3000 });
+  test('captures one range-wide UTC offset and attaches it to every day', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 3000 }),
+      periodBucket(2024, 1, 16, { COUNT_TOTAL: 3500 }),
+    ]);
     mockReadRecords.mockResolvedValue({
       records: [
         { startZoneOffset: { totalSeconds: -28800 } }, // -480 min (UTC-8)
@@ -498,16 +546,20 @@ describe('getAggregatedStepsByDate', () => {
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
-      localEndOfDay(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
     );
 
-    expect(result[0].record_utc_offset_minutes).toBe(-480);
-    // Lookup must request only one record — it's purely for tz metadata.
+    expect(result.every((r) => r.record_utc_offset_minutes === -480)).toBe(true);
+    // Offset lookup must be a single pageSize:1 read for the whole range —
+    // not per-day, which is what blew the quota in the first place.
+    expect(mockReadRecords).toHaveBeenCalledTimes(1);
     expect(mockReadRecords.mock.calls[0][1]).toMatchObject({ pageSize: 1 });
   });
 
   test('omits offset when the tz-lookup read returns nothing', async () => {
-    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 3000 });
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 3000 }),
+    ]);
     mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await getAggregatedStepsByDate(
@@ -518,21 +570,22 @@ describe('getAggregatedStepsByDate', () => {
     expect(result[0]).not.toHaveProperty('record_utc_offset_minutes');
   });
 
-  test('continues to other days when one aggregate call fails', async () => {
-    mockAggregateRecord
-      .mockRejectedValueOnce(new Error('HC error for day 1'))
-      .mockResolvedValueOnce({ COUNT_TOTAL: 4000 });
+  test('returns the error and empty records when aggregateGroupByPeriod rejects', async () => {
+    mockAggregateGroupByPeriod.mockRejectedValue(new Error('HC unavailable'));
 
-    const result = await getAggregatedStepsByDate(
+    const result = await getAggregatedStepsByDateDetailed(
       localMidnight(2024, 1, 15),
       localEndOfDay(2024, 1, 16),
     );
 
-    expect(result).toEqual([{ date: '2024-01-16', value: 4000, type: 'step' }]);
+    expect(result.records).toEqual([]);
+    expect(result.error).toBe('HC unavailable');
   });
 
-  test('returns empty array when every day has no data', async () => {
-    mockAggregateRecord.mockResolvedValue({ COUNT_TOTAL: 0 });
+  test('returns empty array when every bucket has no data', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 0 }),
+    ]);
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -542,7 +595,7 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toEqual([]);
   });
 
-  test('does not call native aggregateRecord when the requested window is invalid', async () => {
+  test('does not call native aggregate when the requested window is invalid', async () => {
     const result = await getAggregatedStepsByDateDetailed(
       localEndOfDay(2024, 1, 16),
       localMidnight(2024, 1, 15),
@@ -550,8 +603,48 @@ describe('getAggregatedStepsByDate', () => {
 
     expect(result.records).toEqual([]);
     expect(result.error).toContain('startTime');
+    expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
     expect(mockAggregateRecord).not.toHaveBeenCalled();
     expect(mockReadRecords).not.toHaveBeenCalled();
+  });
+
+  test('preserves rolling-window start times by default for display callers', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
+
+    const rollingStart = new Date(2024, 0, 15, 14, 30, 0, 0);
+    const now = new Date(2024, 0, 16, 14, 30, 0, 0);
+
+    await getAggregatedStepsByDateDetailed(rollingStart, now);
+
+    const call = mockAggregateGroupByPeriod.mock.calls[0][0];
+    expect(call.timeRangeFilter.startTime).toBe(rollingStart.toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
+  });
+
+  test('snaps upload rolling-window start times down to local midnight before querying HC', async () => {
+    // Uploads emit date-only rows. Since HC anchors DAYS buckets at the supplied
+    // startTime, cumulative sync needs calendar-day boundaries before mapping
+    // bucket.startTime back to a YYYY-MM-DD date.
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
+
+    const rollingStart = new Date(2024, 0, 15, 14, 30, 0, 0);
+    const now = new Date(2024, 0, 16, 14, 30, 0, 0);
+
+    await getAggregatedStepsByDateDetailed(rollingStart, now, {
+      alignStartToLocalDay: true,
+    });
+
+    const call = mockAggregateGroupByPeriod.mock.calls[0][0];
+    const queriedStart = new Date(call.timeRangeFilter.startTime);
+    expect(queriedStart.getHours()).toBe(0);
+    expect(queriedStart.getMinutes()).toBe(0);
+    expect(queriedStart.getSeconds()).toBe(0);
+    expect(queriedStart.getMilliseconds()).toBe(0);
+    expect(queriedStart.getFullYear()).toBe(2024);
+    expect(queriedStart.getMonth()).toBe(0);
+    expect(queriedStart.getDate()).toBe(15);
+    // End time is left as the caller provided it.
+    expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
   });
 });
 
@@ -559,10 +652,13 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockReadRecords.mockResolvedValue({ records: [] });
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
   });
 
   test('returns rounded kcal totals from the native aggregate', async () => {
-    mockAggregateRecord.mockResolvedValue({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 500.5 } });
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 500.5 } }),
+    ]);
 
     const result = await getAggregatedActiveCaloriesByDate(
       localMidnight(2024, 1, 15),
@@ -572,15 +668,20 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     expect(result).toEqual([
       { date: '2024-01-15', value: 501, type: 'active_calories' },
     ]);
-    expect(mockAggregateRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ recordType: 'ActiveCaloriesBurned' }),
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordType: 'ActiveCaloriesBurned',
+        timeRangeSlicer: { period: 'DAYS', length: 1 },
+      }),
     );
-    expect(mockAggregateRecord.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
+    expect(mockAggregateGroupByPeriod.mock.calls[0][0]).not.toHaveProperty('dataOriginFilter');
   });
 
   test('passes through native cross-origin dedup (regression for #1279)', async () => {
     // Same regression intent as Steps — assert the dedup value, not a sum.
-    mockAggregateRecord.mockResolvedValue({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 600 } });
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 600 } }),
+    ]);
 
     const result = await getAggregatedActiveCaloriesByDate(
       localMidnight(2024, 1, 15),
@@ -590,8 +691,10 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     expect(result[0].value).toBe(600);
   });
 
-  test('skips days where the aggregate envelope is empty', async () => {
-    mockAggregateRecord.mockResolvedValue({});
+  test('skips buckets whose aggregate envelope is empty', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, {}),
+    ]);
 
     const result = await getAggregatedActiveCaloriesByDate(
       localMidnight(2024, 1, 15),
@@ -601,8 +704,8 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     expect(result).toEqual([]);
   });
 
-  test('returns empty array when the underlying aggregate always fails', async () => {
-    mockAggregateRecord.mockRejectedValue(new Error('HC unavailable'));
+  test('returns empty records when the native aggregate call fails', async () => {
+    mockAggregateGroupByPeriod.mockRejectedValue(new Error('HC unavailable'));
 
     const result = await getAggregatedActiveCaloriesByDate(
       localMidnight(2024, 1, 15),

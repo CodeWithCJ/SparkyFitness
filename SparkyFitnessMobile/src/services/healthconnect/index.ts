@@ -3,6 +3,7 @@ import {
   requestPermission,
   readRecords,
   aggregateRecord,
+  aggregateGroupByPeriod,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import {
@@ -68,6 +69,17 @@ const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
 const FALLBACK_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const FALLBACK_HOUR_WINDOW_MS = 60 * 60 * 1000;
+
+// Health Connect enforces a foreground API call quota; once exceeded, every
+// subsequent call fails with "API call quota exceeded". Splitting the failed
+// range into more sub-windows (the normal fallback path) just multiplies the
+// call rate and prolongs the outage, so we short-circuit on quota errors.
+const QUOTA_ERROR_PATTERNS = [/quota exceeded/i, /api call quota/i];
+
+export const isQuotaExceededError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return QUOTA_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+};
 
 interface ReadRecordsOptions {
   timeRangeFilter: {
@@ -137,7 +149,7 @@ const readHealthRecordsOnce = async (
   recordType: string,
   startDate: Date,
   endDate: Date
-): Promise<HealthConnectReadResult & { failedOnFirstPage: boolean }> => {
+): Promise<HealthConnectReadResult & { failedOnFirstPage: boolean; quotaExceeded?: boolean }> => {
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
   let page = 0;
@@ -184,11 +196,17 @@ const readHealthRecordsOnce = async (
     return { records: allRecords, failedOnFirstPage: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const quotaExceeded = isQuotaExceededError(error);
     addLog(
       `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
       'ERROR'
     );
-    return { records: allRecords, error: message, failedOnFirstPage: page <= 1 && allRecords.length === 0 };
+    return {
+      records: allRecords,
+      error: message,
+      failedOnFirstPage: page <= 1 && allRecords.length === 0,
+      quotaExceeded,
+    };
   }
 };
 
@@ -255,6 +273,16 @@ export const readHealthRecordsDetailed = async (
     return { records: result.records, error: result.error };
   }
 
+  // Splitting into smaller windows would multiply the call rate and keep us
+  // pinned against the quota. Surface the original error instead.
+  if (result.quotaExceeded) {
+    addLog(
+      `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect quota exceeded.`,
+      'WARNING',
+    );
+    return { records: result.records, error: result.error };
+  }
+
   const windowMs = endDate.getTime() - startDate.getTime();
   if (!Number.isFinite(windowMs) || windowMs <= FALLBACK_HOUR_WINDOW_MS) {
     return { records: result.records, error: result.error };
@@ -273,15 +301,18 @@ export const readHealthRecords = async (
 };
 
 /**
- * Iterates local-day windows in [startDate, endDate] and aggregates a
- * cumulative metric via Health Connect's native aggregateRecord. HC's
- * native aggregation handles cross-origin dedup using the user's source
- * priority list — matching what HC's own UI displays — so callers do not
- * need to deduplicate records themselves (issue #1279).
+ * Aggregates a cumulative metric by local day for [startDate, endDate] using
+ * Health Connect's native aggregateGroupByPeriod (one call per range, not
+ * per day). HC's native aggregation handles cross-origin dedup using the
+ * user's source priority list — matching what HC's own UI displays — so
+ * callers do not need to deduplicate records themselves (issue #1279).
  *
- * Reads one raw record per day separately to capture the day's UTC offset,
- * preserving the per-day `record_utc_offset_minutes` metadata that the
- * server uses for timezone-aware day attribution.
+ * Captures one UTC offset for the whole range via a single pageSize:1 read
+ * and attaches it to every day's record. The server treats `date`-only
+ * payloads as authoritative for day attribution (see
+ * resolveHealthEntryDate's basisIsDayOnly short-circuit in
+ * measurementService.ts), so per-day offset precision is not load-bearing —
+ * the field exists for observability of timezone-metadata coverage.
  */
 export type CumulativeMetricRecordType =
   | 'Steps'
@@ -300,10 +331,8 @@ export interface CumulativeMetricSpec {
   round?: boolean;
 }
 
-interface LocalDayWindow {
-  dayString: string;
-  windowStart: Date;
-  windowEnd: Date;
+export interface AggregateCumulativeMetricOptions {
+  alignStartToLocalDay?: boolean;
 }
 
 const formatLocalDay = (date: Date): string => {
@@ -313,39 +342,18 @@ const formatLocalDay = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
-const localDayWindows = (start: Date, end: Date): LocalDayWindow[] => {
-  const windows: LocalDayWindow[] = [];
-  const cursor = new Date(start);
-  cursor.setHours(0, 0, 0, 0);
-  while (cursor <= end) {
-    const dayStart = new Date(cursor);
-    const nextDay = new Date(cursor);
-    nextDay.setDate(nextDay.getDate() + 1);
-    const windowStart = dayStart < start ? start : dayStart;
-    const windowEnd = nextDay > end ? end : nextDay;
-    if (windowEnd > windowStart) {
-      windows.push({
-        dayString: formatLocalDay(dayStart),
-        windowStart,
-        windowEnd,
-      });
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return windows;
-};
-
 /**
- * Reads a single record in the given window for the sole purpose of
- * capturing its UTC offset. Returns undefined if no record / no offset.
+ * Reads a single record in the range for the sole purpose of capturing one
+ * UTC offset to attach to every aggregated day. Returns undefined if no
+ * record / no offset / on any error (offset is observability-only metadata).
  */
-const readZoneOffsetForWindow = async (
+const readZoneOffsetForRange = async (
   recordType: CumulativeMetricRecordType,
-  windowStart: Date,
-  windowEnd: Date,
+  startDate: Date,
+  endDate: Date,
 ): Promise<number | undefined> => {
   try {
-    if (getWindowError(`offset read for ${recordType}`, windowStart, windowEnd)) {
+    if (getWindowError(`offset read for ${recordType}`, startDate, endDate)) {
       return undefined;
     }
     const result = await readRecords(
@@ -353,8 +361,8 @@ const readZoneOffsetForWindow = async (
       {
         timeRangeFilter: {
           operator: 'between',
-          startTime: windowStart.toISOString(),
-          endTime: windowEnd.toISOString(),
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
         },
         pageSize: 1,
       } as unknown as Parameters<typeof readRecords>[1],
@@ -375,6 +383,7 @@ export const aggregateCumulativeMetricByDayDetailed = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
+  options: AggregateCumulativeMetricOptions = {},
 ): Promise<HealthConnectAggregateResult> => {
   try {
     const rangeError = getWindowError(`aggregate for ${spec.recordType}`, startDate, endDate);
@@ -383,57 +392,54 @@ export const aggregateCumulativeMetricByDayDetailed = async (
       return { records: [], error: rangeError };
     }
 
-    const windows = localDayWindows(startDate, endDate);
+    const queryStart = new Date(startDate);
+    if (options.alignStartToLocalDay) {
+      // HC anchors DAYS buckets at the supplied startTime, so upload callers
+      // that emit date-only rows need calendar-day boundaries.
+      queryStart.setHours(0, 0, 0, 0);
+    }
+
+    type PeriodBucket = { result: unknown; startTime: string; endTime: string };
+    let buckets: PeriodBucket[];
+    try {
+      buckets = (await aggregateGroupByPeriod({
+        recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: queryStart.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+        timeRangeSlicer: { period: 'DAYS', length: 1 },
+      })) as unknown as PeriodBucket[];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[HealthConnectService] aggregateGroupByPeriod(${spec.recordType}) failed: ${message}`,
+        'ERROR',
+      );
+      return { records: [], error: message };
+    }
+
+    const rangeOffset = await readZoneOffsetForRange(spec.recordType, queryStart, endDate);
     const results: AggregatedHealthRecord[] = [];
-    const errors: string[] = [];
 
-    for (const { dayString, windowStart, windowEnd } of windows) {
-      let value: number;
-      try {
-        const windowError = getWindowError(`aggregate for ${spec.recordType}`, windowStart, windowEnd);
-        if (windowError) {
-          errors.push(`${dayString}: ${windowError}`);
-          addLog(`[HealthConnectService] ${windowError}`, 'WARNING');
-          continue;
-        }
-
-        const aggregate = await aggregateRecord({
-          recordType: spec.recordType as Parameters<typeof aggregateRecord>[0]['recordType'],
-          timeRangeFilter: {
-            operator: 'between',
-            startTime: windowStart.toISOString(),
-            endTime: windowEnd.toISOString(),
-          },
-        });
-        value = spec.extractValue(aggregate);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[HealthConnectService] aggregateRecord(${spec.recordType}) failed for ${dayString}: ${message}`, 'WARNING');
-        errors.push(`${dayString}: ${message}`);
-        continue;
-      }
-
+    for (const bucket of buckets) {
+      const value = spec.extractValue(bucket.result);
       if (!Number.isFinite(value) || value <= 0) continue;
 
-      const offset = await readZoneOffsetForWindow(spec.recordType, windowStart, windowEnd);
+      const dayString = formatLocalDay(new Date(bucket.startTime));
       const rec: AggregatedHealthRecord = {
         date: dayString,
         value: spec.round ? Math.round(value) : value,
         type: spec.outputType,
       };
-      if (offset != null) {
-        rec.record_utc_offset_minutes = offset;
+      if (rangeOffset != null) {
+        rec.record_utc_offset_minutes = rangeOffset;
       }
       results.push(rec);
     }
 
     addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
-    if (errors.length > 0) {
-      return {
-        records: results,
-        error: `${spec.recordType} aggregation failed for ${errors.length} window(s). First error: ${errors[0]}`,
-      };
-    }
     return { records: results };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -446,14 +452,16 @@ export const aggregateCumulativeMetricByDay = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
+  options?: AggregateCumulativeMetricOptions,
 ): Promise<AggregatedHealthRecord[]> => {
-  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
+  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate, options);
   return result.records;
 };
 
 export const getAggregatedStepsByDateDetailed = (
   startDate: Date,
   endDate: Date,
+  options?: AggregateCumulativeMetricOptions,
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
@@ -463,6 +471,7 @@ export const getAggregatedStepsByDateDetailed = (
     },
     startDate,
     endDate,
+    options,
   );
 
 export const getAggregatedStepsByDate = (
@@ -474,6 +483,7 @@ export const getAggregatedStepsByDate = (
 export const getAggregatedActiveCaloriesByDateDetailed = (
   startDate: Date,
   endDate: Date,
+  options?: AggregateCumulativeMetricOptions,
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
@@ -484,6 +494,7 @@ export const getAggregatedActiveCaloriesByDateDetailed = (
     },
     startDate,
     endDate,
+    options,
   );
 
 export const getAggregatedActiveCaloriesByDate = (
