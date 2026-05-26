@@ -1,3 +1,9 @@
+// jsdom doesn't expose TextEncoder/TextDecoder globally, but Expo SDK 55's "winter"
+// runtime lazily installs URL/URLSearchParams via whatwg-url-minimum, which requires them.
+const { TextEncoder, TextDecoder } = require('util');
+if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
+if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
+
 // Mock radon-ide (ESM module that Jest can't transform)
 jest.mock('radon-ide', () => ({
   preview: jest.fn(),

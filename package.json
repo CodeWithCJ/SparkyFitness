@@ -23,6 +23,7 @@
     },
     "onlyBuiltDependencies": [
       "@scarf/scarf",
+      "@shopify/react-native-skia",
       "@swc/core",
       "@parcel/watcher",
       "bcrypt",
