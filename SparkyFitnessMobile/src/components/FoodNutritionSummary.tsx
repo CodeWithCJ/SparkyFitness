@@ -35,11 +35,18 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
-  const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
-    () => buildNutrientDisplayList(values),
-    [values],
-  );
   const scale = (value: number) => value * servings;
+  const scaledCarbs = scale(values.carbs);
+  const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
+    () =>
+      buildNutrientDisplayList(values, {
+        showNetCarbs,
+        // Pre-scale carbs so the injected Total Carbs row matches the macro-bar
+        // value, which is also scaled by `servings` below.
+        carbs: showNetCarbs ? scaledCarbs : undefined,
+      }),
+    [values, showNetCarbs, scaledCarbs],
+  );
 
   const renderRow = (nutrient: NutrientDisplayItem, showBorder: boolean) => (
     <View

@@ -13,6 +13,7 @@ import { useProfile } from '../../src/hooks/useProfile';
 
 jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
+  usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
 }));
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({

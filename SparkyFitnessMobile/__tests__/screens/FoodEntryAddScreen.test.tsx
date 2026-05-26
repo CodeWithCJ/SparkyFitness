@@ -34,6 +34,8 @@ jest.mock('@tanstack/react-query', () => ({
 
 jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
+  usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
+  useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
 }));
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({

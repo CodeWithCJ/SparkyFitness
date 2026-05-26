@@ -49,6 +49,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   const foodDataProviderId = preferences?.default_food_data_provider_id ?? '';
   const autoScale = preferences?.auto_scale_open_food_facts_imports ?? true;
   const barcodeFallback = preferences?.barcode_fallback_open_food_facts ?? true;
+  const showNetCarbs = preferences?.show_net_carbs ?? false;
 
   const mutation = useMutation({
     mutationFn: (data: Partial<UserPreferences>) => updatePreferences(data),
@@ -91,6 +92,11 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
     [mutation],
   );
 
+  const handleShowNetCarbsToggle = useCallback(
+    (value: boolean) => mutation.mutate({ show_net_carbs: value }),
+    [mutation],
+  );
+
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ScrollView
@@ -107,7 +113,25 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
           >
             <Icon name="chevron-back" size={22} color={accentPrimary} />
           </Button>
-          <Text className="text-2xl font-bold text-text-primary">Food Search Settings</Text>
+          <Text className="text-2xl font-bold text-text-primary">Food Settings</Text>
+        </View>
+
+        {/* Show Net Carbs */}
+        <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base font-semibold text-text-primary flex-shrink">
+              Show Net Carbs
+            </Text>
+            <Switch
+              onValueChange={handleShowNetCarbsToggle}
+              value={showNetCarbs}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-4">
+            When enabled, carbohydrate summaries display net carbs (total carbs − fiber), and a Total Carbs row is added in nutrient breakdowns.
+          </Text>
         </View>
 
         {/* Default Online Search Provider */}

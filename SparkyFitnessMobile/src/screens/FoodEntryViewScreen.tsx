@@ -22,7 +22,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { useMealTypes } from '../hooks';
+import { useMealTypes, usePreferences } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
@@ -30,6 +30,7 @@ import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import type { FoodFormData } from '../components/FoodForm';
 import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type {
@@ -543,19 +544,38 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       '--color-macro-fat',
     ]) as [string, string, string, string, string];
 
+  const { preferences } = usePreferences();
+  const showNetCarbs = preferences?.show_net_carbs === true;
+
   const viewCalories = Math.round(scaledValue(entry.calories, entry));
   const viewProtein = Math.round(scaledValue(entry.protein, entry));
   const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
   const viewFat = Math.round(scaledValue(entry.fat, entry));
+  const viewFiber = Math.round(scaledValue(entry.dietary_fiber, entry));
+
+  // displayCarbs swaps to max(0, carbs - fiber) only when the toggle is on AND
+  // fiber data is available; otherwise it stays at total carbs. Used for both
+  // the bar value and bar-fill proportion so the visual representation reflects
+  // what the label claims. The Total Carbs row is preserved separately via
+  // buildNutrientDisplayList below.
+  const viewDisplayCarbs =
+    showNetCarbs && entry.dietary_fiber != null
+      ? getNetCarbsValue(viewCarbs, viewFiber)
+      : viewCarbs;
+  const editDisplayCarbs =
+    showNetCarbs && displayValues.fiber !== undefined
+      ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
+      : displayValues.carbs;
+  const carbsLabel = showNetCarbs ? 'Net Carbs' : 'Carbs';
 
   const viewProteinCals = viewProtein * 4;
-  const viewCarbsCals = viewCarbs * 4;
+  const viewCarbsCals = viewDisplayCarbs * 4;
   const viewFatCals = viewFat * 9;
   const viewTotalMacroCals =
     viewProteinCals + viewCarbsCals + viewFatCals;
 
   const editProteinCals = displayValues.protein * 4;
-  const editCarbsCals = displayValues.carbs * 4;
+  const editCarbsCals = editDisplayCarbs * 4;
   const editFatCals = displayValues.fat * 9;
   const editTotalMacroCals =
     editProteinCals + editCarbsCals + editFatCals;
@@ -572,7 +592,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
   const { primary: primaryNutrients, additional: additionalNutrients } =
-    buildNutrientDisplayList(displayValues);
+    buildNutrientDisplayList(displayValues, {
+      showNetCarbs,
+      // Scale the displayed Total Carbs row to whatever quantity the user is
+      // currently viewing/editing — matches the macro-bar carbs reading above.
+      carbs: showNetCarbs
+        ? isEditing
+          ? Math.round(scaled(displayValues.carbs))
+          : viewCarbs
+        : undefined,
+    });
   const hasAdditional = additionalNutrients.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
   const renderNutrientValue = (value: number, unit: string) =>
@@ -738,12 +767,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: Math.round(scaled(displayValues.protein)),
                       },
                       {
-                        label: 'Carbs',
-                        value: displayValues.carbs,
+                        label: carbsLabel,
+                        value: editDisplayCarbs,
                         color: carbsColor,
                         calFactor: 4,
                         totalCals: editTotalMacroCals,
-                        displayValue: Math.round(scaled(displayValues.carbs)),
+                        displayValue: Math.round(scaled(editDisplayCarbs)),
                       },
                       {
                         label: 'Fat',
@@ -764,12 +793,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: viewProtein,
                       },
                       {
-                        label: 'Carbs',
-                        value: viewCarbs,
+                        label: carbsLabel,
+                        value: viewDisplayCarbs,
                         color: carbsColor,
                         calFactor: 4,
                         totalCals: viewTotalMacroCals,
-                        displayValue: viewCarbs,
+                        displayValue: viewDisplayCarbs,
                       },
                       {
                         label: 'Fat',

@@ -19,6 +19,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useMealTypes } from '../hooks/useMealTypes';
+import { usePreferences } from '../hooks';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -80,6 +81,9 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     () => saveFoodPayloadToDisplayValues(saveFoodPayload),
     [saveFoodPayload],
   );
+
+  const { preferences } = usePreferences();
+  const showNetCarbs = preferences?.show_net_carbs === true;
 
   const servingsNumber = useMemo(() => {
     const parsed = parseDecimalInput(quantity);
@@ -205,6 +209,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
             servings={servingsNumber}
             goalPercentages={goalPercentages}
             goalsLoading={isGoalsLoading}
+            showNetCarbs={showNetCarbs}
           />
         </View>
 
