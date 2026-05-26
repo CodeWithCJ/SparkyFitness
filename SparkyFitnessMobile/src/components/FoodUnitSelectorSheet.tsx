@@ -84,7 +84,6 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     borderStrong,
     textMuted,
     successIcon,
-    successText,
     warningIcon,
     dangerIcon,
   ] = useCSSVariable([
@@ -94,26 +93,23 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     '--color-border-strong',
     '--color-text-muted',
     '--color-icon-success',
-    '--color-text-success',
     '--color-icon-warning',
     '--color-icon-danger',
-  ]) as [string, string, string, string, string, string, string, string, string];
+  ]) as [string, string, string, string, string, string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Confidence-tinted color for the AI-provenance Sparkles icon. Warning
-  // and error use the vivid icon-* CSS variables so the standalone glyph
-  // pops. Success uses --color-text-success instead because the green
-  // "emerald" family has a wider perceived range between shades — matching
-  // the badge text exactly is the only way the sparkle and the "Good
-  // estimate" badge feel like the same green.
+  // Confidence-tinted color for the AI-provenance Sparkles icon. All three
+  // tones use the vivid icon-* CSS variables so the standalone glyph pops
+  // as a saturated mid-tone rather than a washed-out pale color — mirrors
+  // web's `-500/-400` sparkle shade.
   const aiSparkleColorByTone: Record<ConfidenceTone, string> = useMemo(
     () => ({
-      success: successText,
+      success: successIcon,
       warning: warningIcon,
       error: dangerIcon,
     }),
-    [dangerIcon, successText, warningIcon],
+    [dangerIcon, successIcon, warningIcon],
   );
 
   const selectedVariant = useMemo(
