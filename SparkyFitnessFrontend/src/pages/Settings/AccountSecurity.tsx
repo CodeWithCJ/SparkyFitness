@@ -126,8 +126,8 @@ export const AccountSecurity = () => {
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t(
-              'settings.accountSecurity.verifyNewEmail',
-              "You'll need to verify your new email address"
+              'settings.accountSecurity.updateEmailHint',
+              'Your email address will be updated immediately.'
             )}
           </p>
         </div>
