@@ -27,20 +27,24 @@ import { NutrientGrid } from './NutrientFormGrid';
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 
-// Tailwind tone classes that approximate the mobile food-photo screen's
-// bg-bg-success / bg-bg-warning / bg-bg-danger-subtle semantics on web,
-// so the AI provenance badge feels visually consistent across platforms.
+// Tone classes for the AI provenance badge ("Good/Fair/Rough estimate").
+// `green` (true grass-green, hue ~142°) replaces `emerald` (~160°,
+// teal-leaning) so "Good" reads as a standard success color, not mint.
 const AI_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
-  success:
-    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  success: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
   warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
   error: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
 };
 
+// Vivid `-500/-400` icon shade in the same hue family as the badge text.
+// A thin dropdown sparkle at the badge's muted `-700/-300` reads as
+// washed-out mint/sage; the brighter `-500/-400` makes the sparkle pop as
+// grass-green / amber / rose while still belonging to the same color family
+// as the "Good/Fair/Rough estimate" pill.
 const AI_SPARKLE_TONE_CLASSES: Record<ConfidenceTone, string> = {
-  success: 'text-emerald-600 dark:text-emerald-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  error: 'text-rose-600 dark:text-rose-400',
+  success: 'text-green-500 dark:text-green-400',
+  warning: 'text-amber-500 dark:text-amber-400',
+  error: 'text-rose-500 dark:text-rose-400',
 };
 
 interface VariantCardProps {
