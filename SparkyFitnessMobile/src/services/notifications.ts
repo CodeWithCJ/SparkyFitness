@@ -27,7 +27,6 @@ export async function initNotifications(): Promise<void> {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
         name: 'Workout timer',
         importance: Notifications.AndroidImportance.HIGH,
-        sound: 'default',
         enableVibrate: true,
       });
     }
@@ -72,7 +71,7 @@ export async function scheduleRestNotification(
       content: {
         title: 'Rest complete',
         body: exerciseName,
-        sound: 'default',
+        sound: true,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
