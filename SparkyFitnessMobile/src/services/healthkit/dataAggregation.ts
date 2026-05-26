@@ -1,43 +1,16 @@
 import { addLog } from '../LogService';
 import {
-  HKHeartRateRecord,
   HKSleepRecord,
-  HeartRateAccumulator,
   SleepSessionAccumulator,
   SleepStageType,
-  AggregatedHealthRecord,
   AggregatedSleepSession,
   type TransformedRecord,
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
-import { toLocalDateString, getDeviceTimezone } from '../../utils/dateUtils';
+import { toLocalDateString } from '../../utils/dateUtils';
 
 // Re-export for backward compatibility
 export { toLocalDateString };
-
-export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): AggregatedHealthRecord[] => {
-  if (!Array.isArray(records)) return [];
-  const aggregatedData = records.reduce<HeartRateAccumulator>((acc, record) => {
-    try {
-      const date = toLocalDateString(record.startTime);
-      const heartRate = record.samples[0].beatsPerMinute;
-      if (heartRate == null || Number.isNaN(heartRate)) return acc;
-      if (!acc[date]) acc[date] = { total: 0, count: 0 };
-      acc[date].total += heartRate;
-      acc[date].count++;
-    } catch (e) { addLog(`[HealthKitService] Error processing heart rate record: ${(e as Error).message}`, 'WARNING'); }
-    return acc;
-  }, {});
-
-  const deviceTz = getDeviceTimezone();
-  const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
-    date,
-    value: Math.round(aggregatedData[date].total / aggregatedData[date].count),
-    type: 'heart_rate',
-    record_timezone: deviceTz,
-  }));
-  return result;
-};
 
 const mapHealthKitSleepStage = (hkStage: string | number): SleepStageType => {
   switch (hkStage) {

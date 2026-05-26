@@ -84,6 +84,32 @@ describe('useSyncHealthData', () => {
       });
     });
 
+    test('does not save last synced time when sync completes with metric errors', async () => {
+      const onSuccess = jest.fn();
+      mockHealthConnectSyncData.mockResolvedValue({
+        success: true,
+        syncErrors: [{ type: 'Steps', error: 'startTime must be before endTime' }],
+      });
+
+      const { result } = renderHook(() => useSyncHealthData({ onSuccess }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        result.current.mutate(testParams);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(mockSaveLastSyncedTime).not.toHaveBeenCalled();
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'info', text1: 'Sync incomplete' })
+      );
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
     test('shows info toast on mutate and success toast on completion', async () => {
       mockHealthConnectSyncData.mockResolvedValue({ success: true, syncErrors: [] });
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');

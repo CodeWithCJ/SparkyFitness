@@ -24,8 +24,12 @@ export function useSyncHealthData(options?: {
     mutationFn: async ({ timeRange, healthMetricStates }: SyncHealthDataParams) => {
       const result = await healthConnectSyncData(timeRange, healthMetricStates);
       if (result.success) {
-        const newSyncedTime = await saveLastSyncedTime();
-        return { lastSyncedTime: newSyncedTime };
+        const hadSyncErrors = result.syncErrors.length > 0;
+        const newSyncedTime = hadSyncErrors ? null : await saveLastSyncedTime();
+        return {
+          lastSyncedTime: newSyncedTime,
+          syncErrors: result.syncErrors,
+        };
       }
       throw new Error(result.error || 'Unknown sync error');
     },
@@ -42,14 +46,25 @@ export function useSyncHealthData(options?: {
       refreshHealthSyncCache(queryClient);
       queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
       if (showToasts) {
-        Toast.show({
-          type: 'success',
-          text1: 'Sync complete',
-          text2: 'Health data synced successfully.',
-          visibilityTime: 3000,
-        });
+        if (data.syncErrors.length > 0) {
+          Toast.show({
+            type: 'info',
+            text1: 'Sync incomplete',
+            text2: `${data.syncErrors.length} metric(s) could not be read. They will retry next sync.`,
+            visibilityTime: 4000,
+          });
+        } else {
+          Toast.show({
+            type: 'success',
+            text1: 'Sync complete',
+            text2: 'Health data synced successfully.',
+            visibilityTime: 3000,
+          });
+        }
       }
-      onSuccess?.(data.lastSyncedTime);
+      if (data.lastSyncedTime !== null) {
+        onSuccess?.(data.lastSyncedTime);
+      }
     },
     onError: (error: Error) => {
       addLog(`Sync Error: ${error.message}`, 'ERROR');

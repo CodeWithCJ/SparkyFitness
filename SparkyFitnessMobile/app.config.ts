@@ -49,7 +49,8 @@ const androidPermissions = [
   'android.permission.health.READ_VO2_MAX',
   'android.permission.health.READ_WEIGHT',
   'android.permission.health.READ_WHEELCHAIR_PUSHES',
-  'android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND'  
+  'android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND',
+  'android.permission.health.READ_HEALTH_DATA_HISTORY',
 ];
 
 const devAndroidPermissions = [

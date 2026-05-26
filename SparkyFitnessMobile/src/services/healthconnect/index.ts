@@ -3,62 +3,19 @@ import {
   requestPermission,
   readRecords,
   aggregateRecord,
+  aggregateGroupByPeriod,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
-import { HEALTH_METRICS } from '../../HealthMetrics';
-import {
-  aggregateStepsByDate,
-  aggregateActiveCaloriesByDate,
-  aggregateTotalCaloriesByDate,
-  aggregateByDay,
-  toLocalDateString,
-} from './dataAggregation';
-import { transformHealthRecords } from './dataTransformation';
 import {
   AggregatedHealthRecord,
   PermissionRequest,
   GrantedPermission,
-  SyncResult,
-  HealthMetricStates,
-  type TransformedRecord,
   type HCZoneOffset,
 } from '../../types/healthRecords';
-import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
-import { toDateStringWithOffset } from '../../utils/dateUtils';
+import { getSyncStartDate } from '../../utils/syncUtils';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
-
-/**
- * Deduplicates cumulative records by taking the max total per data origin for each day.
- * When multiple apps (phone, watch, Google Fit) write overlapping data, naive summation
- * double-counts. This groups by origin and takes the highest source total per day.
- *
- * Note: aggregateGroupByPeriod would handle this natively, but react-native-health-connect
- * v3.5.0 has a bug where it uses Instant instead of LocalDateTime (issues #174, #194).
- */
-export const deduplicateByOrigin = (
-  records: { metadata?: { dataOrigin?: string }; [key: string]: unknown }[],
-  getDate: (record: any) => string,
-  getValue: (record: any) => number,
-): Record<string, number> => {
-  // Build: { date: { origin: total } }, skipping records with no valid date
-  const byDateAndOrigin: Record<string, Record<string, number>> = {};
-  for (const record of records) {
-    const date = getDate(record);
-    if (!date) continue;
-    const origin = record.metadata?.dataOrigin || 'unknown';
-    const value = getValue(record);
-    if (!byDateAndOrigin[date]) byDateAndOrigin[date] = {};
-    byDateAndOrigin[date][origin] = (byDateAndOrigin[date][origin] || 0) + value;
-  }
-  // For each date, take the max across origins
-  const result: Record<string, number> = {};
-  for (const [date, origins] of Object.entries(byDateAndOrigin)) {
-    result[date] = Math.max(...Object.values(origins));
-  }
-  return result;
-};
 
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
@@ -110,6 +67,19 @@ export const requestHealthPermissions = async (
 
 const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
+const FALLBACK_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_HOUR_WINDOW_MS = 60 * 60 * 1000;
+
+// Health Connect enforces a foreground API call quota; once exceeded, every
+// subsequent call fails with "API call quota exceeded". Splitting the failed
+// range into more sub-windows (the normal fallback path) just multiplies the
+// call rate and prolongs the outage, so we short-circuit on quota errors.
+const QUOTA_ERROR_PATTERNS = [/quota exceeded/i, /api call quota/i];
+
+export const isQuotaExceededError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return QUOTA_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+};
 
 interface ReadRecordsOptions {
   timeRangeFilter: {
@@ -121,14 +91,73 @@ interface ReadRecordsOptions {
   pageToken?: string;
 }
 
-export const readHealthRecords = async (
+export interface HealthConnectReadResult {
+  records: unknown[];
+  error?: string;
+}
+
+export interface HealthConnectAggregateResult {
+  records: AggregatedHealthRecord[];
+  error?: string;
+}
+
+const formatDateForLog = (date: Date): string => {
+  const time = date.getTime();
+  return Number.isFinite(time) ? date.toISOString() : String(date);
+};
+
+const getWindowError = (
+  operation: string,
+  startDate: Date,
+  endDate: Date,
+): string | undefined => {
+  const startMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `Invalid Health Connect ${operation} window: startTime (${formatDateForLog(startDate)}) and endTime (${formatDateForLog(endDate)}) must be valid dates.`;
+  }
+
+  if (startMs >= endMs) {
+    return `Invalid Health Connect ${operation} window: startTime (${formatDateForLog(startDate)}) must be before endTime (${formatDateForLog(endDate)}).`;
+  }
+
+  return undefined;
+};
+
+const buildFallbackWindows = (
+  startDate: Date,
+  endDate: Date,
+  windowMs: number,
+): { start: Date; end: Date }[] => {
+  const windows: { start: Date; end: Date }[] = [];
+  let cursorMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  while (cursorMs < endMs) {
+    const nextMs = Math.min(cursorMs + windowMs, endMs);
+    if (nextMs > cursorMs) {
+      windows.push({ start: new Date(cursorMs), end: new Date(nextMs) });
+    }
+    cursorMs = nextMs;
+  }
+
+  return windows;
+};
+
+const readHealthRecordsOnce = async (
   recordType: string,
   startDate: Date,
   endDate: Date
-): Promise<unknown[]> => {
+): Promise<HealthConnectReadResult & { failedOnFirstPage: boolean; quotaExceeded?: boolean }> => {
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
   let page = 0;
+  const windowError = getWindowError(`read for ${recordType}`, startDate, endDate);
+  if (windowError) {
+    addLog(`[HealthConnectService] ${windowError}`, 'WARNING');
+    return { records: [], error: windowError, failedOnFirstPage: true };
+  }
 
   try {
     do {
@@ -158,145 +187,317 @@ export const readHealthRecords = async (
     if (page > 1) {
       addLog(`[HealthConnectService] Read ${allRecords.length} ${recordType} records across ${page} pages`);
     }
-    if (page >= MAX_PAGES) {
-      addLog(`[HealthConnectService] Hit max page limit (${MAX_PAGES}) for ${recordType}`, 'WARNING');
+    if (pageToken && page >= MAX_PAGES) {
+      const error = `Hit max page limit (${MAX_PAGES}) for ${recordType}; returning ${allRecords.length} records collected so far.`;
+      addLog(`[HealthConnectService] ${error}`, 'WARNING');
+      return { records: allRecords, error, failedOnFirstPage: false };
     }
 
-    return allRecords;
+    return { records: allRecords, failedOnFirstPage: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const quotaExceeded = isQuotaExceededError(error);
     addLog(
       `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
       'ERROR'
     );
-    return allRecords;
+    return {
+      records: allRecords,
+      error: message,
+      failedOnFirstPage: page <= 1 && allRecords.length === 0,
+      quotaExceeded,
+    };
   }
 };
 
-/** Derives date from a HC record using per-record zone offset when available. */
-const dateFromRecordOffset = (
-  timestamp: string,
-  startOffset?: HCZoneOffset,
-  endOffset?: HCZoneOffset,
-  preferEnd = false,
-): string => {
-  const preferred = preferEnd ? endOffset : startOffset;
-  const fallback = preferEnd ? startOffset : endOffset;
-  const offset = preferred ?? fallback;
-  if (offset?.totalSeconds != null) {
-    return toDateStringWithOffset(timestamp, Math.round(offset.totalSeconds / 60));
-  }
-  return toLocalDateString(timestamp);
-};
-
-// Get daily aggregated steps for a date range
-// Uses readRecords + JS-side deduplication via metadata.dataOrigin
-export const getAggregatedStepsByDate = async (
+const readHealthRecordsFallback = async (
+  recordType: string,
   startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  try {
-    const rawRecords = await readHealthRecords('Steps', startDate, endDate);
+  endDate: Date,
+): Promise<HealthConnectReadResult> => {
+  const records: unknown[] = [];
+  const errors: string[] = [];
+  const dayWindows = buildFallbackWindows(startDate, endDate, FALLBACK_DAY_WINDOW_MS);
 
-    if (rawRecords.length === 0) {
-      addLog(`[HealthConnectService] No step records found for date range`, 'DEBUG');
-      return [];
+  addLog(
+    `[HealthConnectService] Retrying ${recordType} read in ${dayWindows.length} day window(s) after a page-1 failure.`,
+    'WARNING',
+  );
+
+  for (const dayWindow of dayWindows) {
+    const dayResult = await readHealthRecordsOnce(recordType, dayWindow.start, dayWindow.end);
+    if (!dayResult.error) {
+      records.push(...dayResult.records);
+      continue;
     }
 
-    type StepRecord = { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number; startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
-    const typedRecords = rawRecords as StepRecord[];
-
-    // Track first-seen offset per date for output metadata
-    const offsetByDate: Record<string, number> = {};
-
-    const byDate = deduplicateByOrigin(
-      typedRecords,
-      (record: StepRecord) => {
-        const timestamp = record.endTime || record.startTime;
-        if (!timestamp) return '';
-        const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
-        if (!(date in offsetByDate)) {
-          const offset = (record.endZoneOffset ?? record.startZoneOffset);
-          if (offset?.totalSeconds != null) {
-            offsetByDate[date] = Math.round(offset.totalSeconds / 60);
-          }
+    const durationMs = dayWindow.end.getTime() - dayWindow.start.getTime();
+    if (dayResult.failedOnFirstPage && durationMs > FALLBACK_HOUR_WINDOW_MS) {
+      const hourWindows = buildFallbackWindows(dayWindow.start, dayWindow.end, FALLBACK_HOUR_WINDOW_MS);
+      for (const hourWindow of hourWindows) {
+        const hourResult = await readHealthRecordsOnce(recordType, hourWindow.start, hourWindow.end);
+        records.push(...hourResult.records);
+        if (hourResult.error) {
+          errors.push(
+            `${formatDateForLog(hourWindow.start)}-${formatDateForLog(hourWindow.end)}: ${hourResult.error}`,
+          );
         }
-        return date;
-      },
-      (record: StepRecord) => record.count || 0,
-    );
-
-    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => {
-      const rec: AggregatedHealthRecord = { date, value, type: 'step' };
-      if (date in offsetByDate) {
-        rec.record_utc_offset_minutes = offsetByDate[date];
       }
-      return rec;
-    });
-
-    addLog(`[HealthConnectService] Steps aggregation: ${results.length} days`, 'DEBUG');
-
-    return results;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Error in getAggregatedStepsByDate: ${message}`, 'ERROR');
-    return [];
-  }
-};
-
-// Get daily aggregated active calories for a date range
-// Uses readRecords + JS-side deduplication via metadata.dataOrigin
-export const getAggregatedActiveCaloriesByDate = async (
-  startDate: Date,
-  endDate: Date
-): Promise<AggregatedHealthRecord[]> => {
-  try {
-    const rawRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-
-    if (rawRecords.length === 0) {
-      addLog(`[HealthConnectService] No active calorie records found for date range`, 'DEBUG');
-      return [];
+      continue;
     }
 
-    type CalorieRecord = { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number }; startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
-    const typedRecords = rawRecords as CalorieRecord[];
-
-    const offsetByDate: Record<string, number> = {};
-
-    const byDate = deduplicateByOrigin(
-      typedRecords,
-      (record: CalorieRecord) => {
-        const timestamp = record.endTime || record.startTime;
-        if (!timestamp) return '';
-        const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
-        if (!(date in offsetByDate)) {
-          const offset = (record.endZoneOffset ?? record.startZoneOffset);
-          if (offset?.totalSeconds != null) {
-            offsetByDate[date] = Math.round(offset.totalSeconds / 60);
-          }
-        }
-        return date;
-      },
-      (record: CalorieRecord) => record.energy?.inKilocalories || 0,
+    records.push(...dayResult.records);
+    errors.push(
+      `${formatDateForLog(dayWindow.start)}-${formatDateForLog(dayWindow.end)}: ${dayResult.error}`,
     );
+  }
 
-    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => {
-      const rec: AggregatedHealthRecord = { date, value: Math.round(value), type: 'active_calories' };
-      if (date in offsetByDate) {
-        rec.record_utc_offset_minutes = offsetByDate[date];
-      }
-      return rec;
-    });
+  if (errors.length === 0) {
+    addLog(`[HealthConnectService] Recovered ${records.length} ${recordType} records using fallback windows.`, 'WARNING');
+    return { records };
+  }
 
-    addLog(`[HealthConnectService] Active calories aggregation: ${results.length} days`, 'DEBUG');
+  const error = `Failed reading ${errors.length} fallback ${recordType} window(s); returning ${records.length} records collected. First error: ${errors[0]}`;
+  addLog(`[HealthConnectService] ${error}`, 'ERROR');
+  return { records, error };
+};
 
-    return results;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Error in getAggregatedActiveCaloriesByDate: ${message}`, 'ERROR');
-    return [];
+export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<HealthConnectReadResult> => {
+  const result = await readHealthRecordsOnce(recordType, startDate, endDate);
+
+  if (!result.error || !result.failedOnFirstPage) {
+    return { records: result.records, error: result.error };
+  }
+
+  // Splitting into smaller windows would multiply the call rate and keep us
+  // pinned against the quota. Surface the original error instead.
+  if (result.quotaExceeded) {
+    addLog(
+      `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect quota exceeded.`,
+      'WARNING',
+    );
+    return { records: result.records, error: result.error };
+  }
+
+  const windowMs = endDate.getTime() - startDate.getTime();
+  if (!Number.isFinite(windowMs) || windowMs <= FALLBACK_HOUR_WINDOW_MS) {
+    return { records: result.records, error: result.error };
+  }
+
+  return readHealthRecordsFallback(recordType, startDate, endDate);
+};
+
+export const readHealthRecords = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<unknown[]> => {
+  const result = await readHealthRecordsDetailed(recordType, startDate, endDate);
+  return result.records;
+};
+
+/**
+ * Aggregates a cumulative metric by local day for [startDate, endDate] using
+ * Health Connect's native aggregateGroupByPeriod (one call per range, not
+ * per day). HC's native aggregation handles cross-origin dedup using the
+ * user's source priority list — matching what HC's own UI displays — so
+ * callers do not need to deduplicate records themselves (issue #1279).
+ *
+ * Captures one UTC offset for the whole range via a single pageSize:1 read
+ * and attaches it to every day's record. The server treats `date`-only
+ * payloads as authoritative for day attribution (see
+ * resolveHealthEntryDate's basisIsDayOnly short-circuit in
+ * measurementService.ts), so per-day offset precision is not load-bearing —
+ * the field exists for observability of timezone-metadata coverage.
+ */
+export type CumulativeMetricRecordType =
+  | 'Steps'
+  | 'Distance'
+  | 'ActiveCaloriesBurned'
+  | 'TotalCaloriesBurned'
+  | 'FloorsClimbed';
+
+export interface CumulativeMetricSpec {
+  recordType: CumulativeMetricRecordType;
+  /** Pulls the scalar total out of HC's aggregateRecord result envelope. */
+  extractValue: (result: unknown) => number;
+  /** Value emitted as AggregatedHealthRecord.type. */
+  outputType: string;
+  /** Round to integer (true for kcal / meters). Steps + floors are already integral. */
+  round?: boolean;
+}
+
+const formatLocalDay = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Returns a copy of `date` rounded down to local midnight. Sync paths must
+ * align cumulative-metric query starts to a local-day boundary because HC's
+ * aggregateGroupByPeriod anchors DAYS buckets at the supplied start.
+ */
+export const alignToLocalDayStart = (date: Date): Date => {
+  const aligned = new Date(date);
+  aligned.setHours(0, 0, 0, 0);
+  return aligned;
+};
+
+/**
+ * Reads a single record in the range for the sole purpose of capturing one
+ * UTC offset to attach to every aggregated day. Returns undefined if no
+ * record / no offset / on any error (offset is observability-only metadata).
+ */
+const readZoneOffsetForRange = async (
+  recordType: CumulativeMetricRecordType,
+  startDate: Date,
+  endDate: Date,
+): Promise<number | undefined> => {
+  try {
+    if (getWindowError(`offset read for ${recordType}`, startDate, endDate)) {
+      return undefined;
+    }
+    const result = await readRecords(
+      recordType as Parameters<typeof readRecords>[0],
+      {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+        pageSize: 1,
+      } as unknown as Parameters<typeof readRecords>[1],
+    );
+    type OffsetRecord = { startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
+    const record = (result.records as OffsetRecord[])[0];
+    const offset = record?.endZoneOffset ?? record?.startZoneOffset;
+    if (offset?.totalSeconds != null) {
+      return Math.round(offset.totalSeconds / 60);
+    }
+    return undefined;
+  } catch {
+    return undefined;
   }
 };
+
+// HC anchors DAYS buckets at the supplied startTime, so callers emitting
+// date-only rows must pass a calendar-day boundary (see alignToLocalDayStart).
+export const aggregateCumulativeMetricByDayDetailed = async (
+  spec: CumulativeMetricSpec,
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> => {
+  try {
+    const rangeError = getWindowError(`aggregate for ${spec.recordType}`, startDate, endDate);
+    if (rangeError) {
+      addLog(`[HealthConnectService] ${rangeError}`, 'WARNING');
+      return { records: [], error: rangeError };
+    }
+
+    type PeriodBucket = { result: unknown; startTime: string; endTime: string };
+    let buckets: PeriodBucket[];
+    try {
+      buckets = (await aggregateGroupByPeriod({
+        recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+        timeRangeSlicer: { period: 'DAYS', length: 1 },
+      })) as unknown as PeriodBucket[];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[HealthConnectService] aggregateGroupByPeriod(${spec.recordType}) failed: ${message}`,
+        'ERROR',
+      );
+      return { records: [], error: message };
+    }
+
+    const rangeOffset = await readZoneOffsetForRange(spec.recordType, startDate, endDate);
+    const results: AggregatedHealthRecord[] = [];
+
+    for (const bucket of buckets) {
+      const value = spec.extractValue(bucket.result);
+      if (!Number.isFinite(value) || value <= 0) continue;
+
+      const dayString = formatLocalDay(new Date(bucket.startTime));
+      const rec: AggregatedHealthRecord = {
+        date: dayString,
+        value: spec.round ? Math.round(value) : value,
+        type: spec.outputType,
+      };
+      if (rangeOffset != null) {
+        rec.record_utc_offset_minutes = rangeOffset;
+      }
+      results.push(rec);
+    }
+
+    addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
+    return { records: results };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`, 'ERROR');
+    return { records: [], error: message };
+  }
+};
+
+export const aggregateCumulativeMetricByDay = async (
+  spec: CumulativeMetricSpec,
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> => {
+  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
+  return result.records;
+};
+
+export const getAggregatedStepsByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'Steps',
+      outputType: 'step',
+      extractValue: (r) => (r as { COUNT_TOTAL?: number }).COUNT_TOTAL ?? 0,
+    },
+    startDate,
+    endDate,
+  );
+
+export const getAggregatedStepsByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedStepsByDateDetailed(startDate, endDate).then(result => result.records);
+
+export const getAggregatedActiveCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'ActiveCaloriesBurned',
+      outputType: 'active_calories',
+      extractValue: (r) => (r as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0,
+      round: true,
+    },
+    startDate,
+    endDate,
+  );
+
+export const getAggregatedActiveCaloriesByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
 
 // Distance plausibility floor: drop tiny distance aggregates on long sessions —
 // Health Sync writes a few dozen meters of passive step-distance over the
@@ -381,6 +582,9 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
     };
 
     const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      return record;
+    }
 
     const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
@@ -431,85 +635,4 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
   }));
 
   return enriched;
-};
-
-export const syncHealthData = async (
-  syncDuration: SyncDuration,
-  healthMetricStates: HealthMetricStates = {},
-  api: { syncHealthData: (data: unknown[]) => Promise<unknown> }
-): Promise<SyncResult> => {
-  const startDate = getSyncStartDate(syncDuration);
-  const endDate = new Date();
-
-  const enabledMetricStates = healthMetricStates && typeof healthMetricStates === 'object' ? healthMetricStates : {};
-  const healthDataTypesToSync = HEALTH_METRICS
-    .filter(metric => enabledMetricStates[metric.stateKey])
-    .map(metric => metric.recordType);
-
-  let allTransformedData: unknown[] = [];
-  const syncErrors: { type: string; error: string }[] = [];
-
-  for (const type of healthDataTypesToSync) {
-    try {
-      const rawRecords = await readHealthRecords(type, startDate, endDate);
-
-      if (rawRecords.length === 0) {
-        continue;
-      }
-
-      const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
-      if (!metricConfig) {
-        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
-        continue;
-      }
-
-      let dataToTransform: unknown[] = rawRecords;
-
-      if (type === 'Steps') {
-        dataToTransform = aggregateStepsByDate(rawRecords as Parameters<typeof aggregateStepsByDate>[0]);
-      } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = aggregateActiveCaloriesByDate(rawRecords as Parameters<typeof aggregateActiveCaloriesByDate>[0]);
-      } else if (type === 'TotalCaloriesBurned') {
-        dataToTransform = aggregateTotalCaloriesByDate(rawRecords as Parameters<typeof aggregateTotalCaloriesByDate>[0]);
-      } else if (type === 'ExerciseSession') {
-        dataToTransform = await enrichExerciseSessions(rawRecords);
-      }
-
-      const transformed = transformHealthRecords(dataToTransform, metricConfig);
-
-      if (metricConfig.aggregationStrategy) {
-        const aggregated = aggregateByDay(
-          transformed as TransformedRecord[],
-          metricConfig.type,
-          metricConfig.unit,
-          metricConfig.aggregationStrategy,
-        );
-        if (aggregated.length > 0) {
-          allTransformedData = allTransformedData.concat(aggregated);
-        }
-      } else if (transformed.length > 0) {
-        allTransformedData = allTransformedData.concat(transformed);
-      } else {
-        addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'WARNING');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const errorMsg = `Error reading or transforming ${type} records: ${message}`;
-      addLog(`[HealthConnectService] ${errorMsg}`, 'ERROR');
-      syncErrors.push({ type, error: message });
-    }
-  }
-
-  if (allTransformedData.length > 0) {
-    try {
-      const apiResponse = await api.syncHealthData(allTransformedData);
-      return { success: true, apiResponse, syncErrors };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error sending data to server: ${message}`);
-      return { success: false, error: message, syncErrors };
-    }
-  } else {
-    return { success: true, message: "No health data to sync.", syncErrors };
-  }
 };

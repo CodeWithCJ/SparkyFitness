@@ -1,0 +1,260 @@
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
+index 502352fc240d62d08957cc2ff7a8bd573eeb86d1..9a22318a79a3ae3e7884049a82380447e665d954 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
+@@ -71,7 +71,7 @@ class ReactActiveCaloriesBurnedRecord : ReactHealthRecordImpl<ActiveCaloriesBurn
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactBasalMetabolicRateRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactBasalMetabolicRateRecord.kt
+index 37fb90ac62c890d568ef6ab9e21ea778a7337547..f3fd9ba208fae366058bee07e13219d475fe9a01 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactBasalMetabolicRateRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactBasalMetabolicRateRecord.kt
+@@ -67,7 +67,7 @@ class ReactBasalMetabolicRateRecord : ReactHealthRecordImpl<BasalMetabolicRateRe
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactBloodPressureRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactBloodPressureRecord.kt
+index 7556e7bfc74741d8c1ccaeec7b8a54784a96c9e8..9f163285d74fb25b021750cb1d2ef20de977f79e 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactBloodPressureRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactBloodPressureRecord.kt
+@@ -73,7 +73,7 @@ class ReactBloodPressureRecord : ReactHealthRecordImpl<BloodPressureRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactCyclingPedalingCadenceRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactCyclingPedalingCadenceRecord.kt
+index 57e7bf09fddf450a5d25dff966352d2d273b2c72..5c4c4fc5aa1e867cb3483c594cc6b34becd85224 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactCyclingPedalingCadenceRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactCyclingPedalingCadenceRecord.kt
+@@ -78,7 +78,7 @@ class ReactCyclingPedalingCadenceRecord : ReactHealthRecordImpl<CyclingPedalingC
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
+index 131980b5cb1201a523a80c9b4d26bfbf136405ef..a403db33f5e601c8486f5377312ba0c2b8484886 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
+@@ -63,7 +63,7 @@ class ReactDistanceRecord : ReactHealthRecordImpl<DistanceRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactElevationGainedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactElevationGainedRecord.kt
+index bfc802eab2b60dde883b3d7acead053ddff19128..d1abc515faa6d666357e1946e8aa6fc45b524791 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactElevationGainedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactElevationGainedRecord.kt
+@@ -61,7 +61,7 @@ class ReactElevationGainedRecord : ReactHealthRecordImpl<ElevationGainedRecord>
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
+index 9de4059d66509fa6ce23204bfc2b289174994105..3dfdee5ef7dd49c6285fa9666ee57ee28d9595eb 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
+@@ -149,7 +149,7 @@ class ReactExerciseSessionRecord : ReactHealthRecordImpl<ExerciseSessionRecord>
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactFloorsClimbedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactFloorsClimbedRecord.kt
+index 779e772c0c31e9c2af359acaa4cccc8bad5467a1..75c9e420f9d33dd94e5b0ac86b4483f90cb5e01d 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactFloorsClimbedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactFloorsClimbedRecord.kt
+@@ -61,7 +61,7 @@ class ReactFloorsClimbedRecord : ReactHealthRecordImpl<FloorsClimbedRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeartRateRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeartRateRecord.kt
+index f70a3d5888c57ee4881f22e8f9d790c23e83f9d5..9500214fb092da83697332f492661ad410bea80d 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeartRateRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeartRateRecord.kt
+@@ -79,7 +79,7 @@ class ReactHeartRateRecord : ReactHealthRecordImpl<HeartRateRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeightRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeightRecord.kt
+index 7b36e9010a126175041161ef1ffd9f1d1edbda86..d92958552230a86eb4de33467575acad108c0919 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeightRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHeightRecord.kt
+@@ -60,7 +60,7 @@ class ReactHeightRecord : ReactHealthRecordImpl<HeightRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHydrationRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHydrationRecord.kt
+index e6cd34ba5585b6968bba46fe1b8f4c2439059c44..75a0e85346a70e5dfbe44cb4f33f1223f62d2360 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactHydrationRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactHydrationRecord.kt
+@@ -61,7 +61,7 @@ class ReactHydrationRecord : ReactHealthRecordImpl<HydrationRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactNutritionRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactNutritionRecord.kt
+index 6d0372b0339d39e2744e94469ad74c0df294d18d..3dd85a60b63de7228cc56371406922aed33197f8 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactNutritionRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactNutritionRecord.kt
+@@ -189,7 +189,7 @@ class ReactNutritionRecord : ReactHealthRecordImpl<NutritionRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactPowerRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactPowerRecord.kt
+index 4c8cadd45503d4fd742b36fd663d5b0e3cafc309..20eb48a05aff3ae7786475cd6d77ca65fca41bd4 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactPowerRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactPowerRecord.kt
+@@ -78,7 +78,7 @@ class ReactPowerRecord : ReactHealthRecordImpl<PowerRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactRestingHeartRateRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactRestingHeartRateRecord.kt
+index 3219b79a2c94db0a39cdb9efaa8d4a0d8f8d882d..e20c887aeb72c0b7558d4bd926050121832cd822 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactRestingHeartRateRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactRestingHeartRateRecord.kt
+@@ -62,7 +62,7 @@ class ReactRestingHeartRateRecord : ReactHealthRecordImpl<RestingHeartRateRecord
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactSleepSessionRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactSleepSessionRecord.kt
+index ae9027002f079bfe2b014af0d7f9063c07e5bde5..4f9c3755f062da89582db601683bc40ea85dabbf 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactSleepSessionRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactSleepSessionRecord.kt
+@@ -79,7 +79,7 @@ class ReactSleepSessionRecord : ReactHealthRecordImpl<SleepSessionRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactSpeedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactSpeedRecord.kt
+index c6a6a6df46ecfaf4f74353941267cfca9273791c..f5edc741ce8abdaea55bedba63b9b92ff11eb7da 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactSpeedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactSpeedRecord.kt
+@@ -78,7 +78,7 @@ class ReactSpeedRecord : ReactHealthRecordImpl<SpeedRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactStepsCadenceRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactStepsCadenceRecord.kt
+index ae107565c6c85e0fd003a658f9b36d6137079977..cc23c78816bac7b977d6dfeba3f9e0e5033f633d 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactStepsCadenceRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactStepsCadenceRecord.kt
+@@ -78,7 +78,7 @@ class ReactStepsCadenceRecord : ReactHealthRecordImpl<StepsCadenceRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactTotalCaloriesBurnedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactTotalCaloriesBurnedRecord.kt
+index 73f1fe47f66dd60ceac336833d81da13af6e26fc..89dc296c498869f287465f13c78dd6ffe4f2ed0b 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactTotalCaloriesBurnedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactTotalCaloriesBurnedRecord.kt
+@@ -61,7 +61,7 @@ class ReactTotalCaloriesBurnedRecord : ReactHealthRecordImpl<TotalCaloriesBurned
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactWeightRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactWeightRecord.kt
+index 2837eb01e83bddbc4c122dbf148da934a45f6b12..169a6c0aa1eb5c23cc3175c516a0fbe974bd16cf 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactWeightRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactWeightRecord.kt
+@@ -61,7 +61,7 @@ class ReactWeightRecord : ReactHealthRecordImpl<WeightRecord> {
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactWheelchairPushesRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactWheelchairPushesRecord.kt
+index ec2b66bebf2a46e132dc02abe438b2d5a3eb9bac..6dbd7c15e5ec1e3289a1c7c508e7c8445f88bb7c 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactWheelchairPushesRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactWheelchairPushesRecord.kt
+@@ -61,7 +61,7 @@ class ReactWheelchairPushesRecord : ReactHealthRecordImpl<WheelchairPushesRecord
+   override fun getAggregateGroupByPeriodRequest(record: ReadableMap): AggregateGroupByPeriodRequest {
+     return AggregateGroupByPeriodRequest(
+       metrics = aggregateMetrics,
+-      timeRangeFilter = record.getTimeRangeFilter("timeRangeFilter"),
++      timeRangeFilter = record.getTimeRangeFilterLocal("timeRangeFilter"),
+       timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
+       dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
+     )

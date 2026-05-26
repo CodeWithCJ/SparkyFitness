@@ -536,6 +536,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     if (isNaN(start) || isNaN(end)) return;
 
     const durationInSeconds = (end - start) / 1000;
+    if (durationInSeconds <= 0) return;
     const recordDate = toLocalDateString(rec.endTime as string);
 
     const stages = rec.stages as { startTime: string; endTime: string; stage: number }[] | undefined;
@@ -608,6 +609,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     if (isNaN(start) || isNaN(end)) return;
 
     const durationInSeconds = (end - start) / 1000;
+    if (durationInSeconds <= 0) return;
     const recordDate = toLocalDateString(rec.startTime as string);
     const exerciseType = rec.exerciseType as number | undefined;
     const activityTypeName = exerciseType
@@ -662,8 +664,13 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     const { unit, type } = metricConfig;
     const start = new Date(rec.startTime as string);
     const end = new Date(rec.endTime as string);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return;
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    // Normalize to local midnight so a record like day1 20:00 → day2 08:00 still
+    // emits both calendar days (the loop otherwise terminates after day 1).
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    for (let d = startDay; d <= endDay; d.setDate(d.getDate() + 1)) {
       output.push({
         value: 1,
         type,
