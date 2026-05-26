@@ -603,6 +603,7 @@ export function useCustomFoodForm({
           (donor, donorIndex) =>
             donorIndex !== index &&
             Boolean(donor?.id) &&
+            donor !== null &&
             donor?.source !== 'ai_estimate' &&
             getConversionFactor(donor.serving_unit, newUnit) !== null
         ) ??

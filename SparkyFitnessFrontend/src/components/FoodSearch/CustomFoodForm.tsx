@@ -98,9 +98,8 @@ const CustomFoodForm = ({
   const compatibleUnitsByIndex = useMemo(() => {
     const allUnits = UNIT_GROUPS.flatMap((group) => group.units);
 
-    return variants.map((variant, index) => {
+    return variants.map((_, index) => {
       const compatibleUnits = new Set<string>();
-      const currentUnit = variant.serving_unit;
       const trustedBase = conversionBaseVariants[index];
 
       const addCompatibleUnitsFromBase = (baseUnit: string) => {

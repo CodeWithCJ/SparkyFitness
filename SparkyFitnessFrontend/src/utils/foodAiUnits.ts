@@ -1,4 +1,9 @@
-import type { FoodVariant } from '@/types/food';
+type AiTrackedVariant = {
+  id?: string;
+  serving_unit?: string;
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
+};
 
 export type SavedAiUnitIndicator = {
   unit: string;
@@ -6,13 +11,15 @@ export type SavedAiUnitIndicator = {
 };
 
 export const deriveSavedAiUnits = (
-  loadedVariants: ReadonlyArray<FoodVariant | null | undefined>,
-  currentVariants: ReadonlyArray<FoodVariant | null | undefined>,
+  loadedVariants: ReadonlyArray<AiTrackedVariant | null | undefined>,
+  currentVariants: ReadonlyArray<AiTrackedVariant | null | undefined>,
   aiEstimatedUnits: ReadonlyArray<string | null | undefined>
 ): SavedAiUnitIndicator[] =>
   loadedVariants.flatMap((loadedVariant, index) => {
     if (
       !loadedVariant?.id ||
+      typeof loadedVariant.serving_unit !== 'string' ||
+      loadedVariant.serving_unit.length === 0 ||
       loadedVariant.source !== 'ai_estimate' ||
       (loadedVariant.ai_confidence !== 'high' &&
         loadedVariant.ai_confidence !== 'medium' &&
