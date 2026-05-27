@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { manageExerciseSchema, type ManageExerciseInput } from "../schemas/exercise.js";
+import { manageExerciseSchema, manageExerciseInput, type ManageExerciseInput } from "../schemas/exercise.js";
 import * as exerciseService from "../services/exerciseService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation } from "../utils/formatting.js";
@@ -25,7 +25,10 @@ Actions:
 - get_exercise_details(exercise_id?|exercise_name?)
 - create_workout_preset(name, exercise_ids)
 - get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?) — returns performance history`,
-      inputSchema: manageExerciseSchema,
+      // Publish the flat shape so MCP clients see the available fields.
+      // The SDK cannot serialize z.discriminatedUnion; manageExerciseSchema
+      // is still used below via safeParse for strict per-action validation.
+      inputSchema: manageExerciseInput,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -34,7 +37,11 @@ Actions:
       },
     },
     async (rawArgs): Promise<ToolResponse> => {
-      const args = rawArgs as unknown as ManageExerciseInput;
+      const parsed = manageExerciseSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return ERRORS.VALIDATION(parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; "));
+      }
+      const args: ManageExerciseInput = parsed.data;
       try {
         switch (args.action) {
           case "search_exercises": {
