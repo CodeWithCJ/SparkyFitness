@@ -20,6 +20,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { usePreferences } from '../hooks';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -94,10 +95,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!goalValue || goalValue === 0) return null;
     return Math.round((value / goalValue) * 100);
   };
+  const carbsForGoal =
+    showNetCarbs && displayValues.fiber !== undefined
+      ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
+      : displayValues.carbs;
   const goalPercentages = {
     calories: goalPercent(displayValues.calories * servingsNumber, goals?.calories),
     protein: goalPercent(displayValues.protein * servingsNumber, goals?.protein),
-    carbs: goalPercent(displayValues.carbs * servingsNumber, goals?.carbs),
+    carbs: goalPercent(carbsForGoal * servingsNumber, goals?.carbs),
     fat: goalPercent(displayValues.fat * servingsNumber, goals?.fat),
   };
 

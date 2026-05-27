@@ -196,6 +196,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
 
     const { eaten, burned, remaining, goal, progress } = summary.calorieBalance;
+    const showNetCarbs = preferences.show_net_carbs === true;
+    const carbsConsumed = showNetCarbs
+      ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
+      : summary.carbs.consumed;
 
     return (
       <ScrollView
@@ -226,12 +230,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           />
         )}
         {/* Macros Section - 2x2 grid in one card */}
-        {summary.foodEntries.length > 0 ? (() => {
-          const showNetCarbs = preferences.show_net_carbs === true;
-          const carbsConsumed = showNetCarbs
-            ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
-            : summary.carbs.consumed;
-          return (
+        {summary.foodEntries.length > 0 ? (
           <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
             <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
             <View className="flex-row flex-wrap justify-between">
@@ -265,8 +264,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             />
             </View>
           </View>
-          );
-        })() : null}
+        ) : null}
 
         {summary.foodEntries.length === 0 && (
           <Pressable

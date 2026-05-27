@@ -15,10 +15,11 @@ interface FoodNutritionSummaryProps {
   goalPercentages?: NutritionGoalPercentages;
   goalsLoading?: boolean;
   // Opt-in: when true and values.fiber is available, the carbs row of the
-  // macro card swaps to "Net Carbs" (max(0, carbs - fiber)). Callers that
-  // display per-food/per-meal nutrition (food detail, meal builder) should
-  // leave this false; summary surfaces aggregating user consumption (e.g.
-  // MealTypeDetailScreen) opt in based on user_preferences.show_net_carbs.
+  // macro card swaps to "Net Carbs" (max(0, carbs - fiber)), and a
+  // "Total Carbs" row is injected into the nutrient breakdown below.
+  // Applied across all surfaces (food detail, meal detail, meal-type detail,
+  // food entry, food photo flow) when user_preferences.show_net_carbs is
+  // enabled.
   showNetCarbs?: boolean;
 }
 
