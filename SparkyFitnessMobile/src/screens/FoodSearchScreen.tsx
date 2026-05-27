@@ -107,12 +107,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const hasUserSelectedProvider = useRef(false);
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
+  const hasUserSelectedTab = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const storedTab = await getLastUsedTab();
-      if (cancelled) return;
+      if (cancelled || hasUserSelectedTab.current) return;
       if (storedTab && !(isMealBuilderMode && storedTab === 'meal')) {
         setActiveTab(storedTab);
       }
@@ -123,6 +124,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [isMealBuilderMode]);
 
   const handleTabChange = useCallback((tab: TabKey) => {
+    hasUserSelectedTab.current = true;
     setActiveTab(tab);
     void setLastUsedTab(tab);
   }, []);
