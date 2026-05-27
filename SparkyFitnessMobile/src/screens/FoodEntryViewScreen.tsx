@@ -553,20 +553,20 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const viewFat = Math.round(scaledValue(entry.fat, entry));
   const viewFiber = Math.round(scaledValue(entry.dietary_fiber, entry));
 
-  // displayCarbs swaps to max(0, carbs - fiber) only when the toggle is on AND
-  // fiber data is available; otherwise it stays at total carbs. Used for both
-  // the bar value and bar-fill proportion so the visual representation reflects
-  // what the label claims. The Total Carbs row is preserved separately via
-  // buildNutrientDisplayList below.
-  const viewDisplayCarbs =
-    showNetCarbs && entry.dietary_fiber != null
-      ? getNetCarbsValue(viewCarbs, viewFiber)
-      : viewCarbs;
-  const editDisplayCarbs =
-    showNetCarbs && displayValues.fiber !== undefined
-      ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
-      : displayValues.carbs;
-  const carbsLabel = showNetCarbs ? 'Net Carbs' : 'Carbs';
+  // Per-mode gates: each mode reads from a different source (view = entry,
+  // edit = displayValues), so each needs its own fiber check. Without these
+  // the label could say "Net Carbs" while the value silently fell back to
+  // total carbs.
+  const viewUseNetCarbs = showNetCarbs && entry.dietary_fiber != null;
+  const editUseNetCarbs = showNetCarbs && displayValues.fiber !== undefined;
+  const viewDisplayCarbs = viewUseNetCarbs
+    ? getNetCarbsValue(viewCarbs, viewFiber)
+    : viewCarbs;
+  const editDisplayCarbs = editUseNetCarbs
+    ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
+    : displayValues.carbs;
+  const viewCarbsLabel = viewUseNetCarbs ? 'Net Carbs' : 'Carbs';
+  const editCarbsLabel = editUseNetCarbs ? 'Net Carbs' : 'Carbs';
 
   const viewProteinCals = viewProtein * 4;
   const viewCarbsCals = viewDisplayCarbs * 4;
@@ -591,16 +591,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       : `${servingsCount} servings \u00b7 ${entry.serving_size} ${entry.unit} per serving`;
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+  // Use the same per-mode gate the macro bar uses, and pass carbs raw —
+  // renderNutrientValue scales every other row the same way, so pre-scaling
+  // here would double-scale the displayed Total Carbs value.
+  const useNetCarbsInList = isEditing ? editUseNetCarbs : viewUseNetCarbs;
   const { primary: primaryNutrients, additional: additionalNutrients } =
     buildNutrientDisplayList(displayValues, {
-      showNetCarbs,
-      // Scale the displayed Total Carbs row to whatever quantity the user is
-      // currently viewing/editing — matches the macro-bar carbs reading above.
-      carbs: showNetCarbs
-        ? isEditing
-          ? Math.round(scaled(displayValues.carbs))
-          : viewCarbs
-        : undefined,
+      showNetCarbs: useNetCarbsInList,
+      carbs: useNetCarbsInList ? displayValues.carbs : undefined,
     });
   const hasAdditional = additionalNutrients.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
@@ -767,7 +765,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: Math.round(scaled(displayValues.protein)),
                       },
                       {
-                        label: carbsLabel,
+                        label: editCarbsLabel,
                         value: editDisplayCarbs,
                         color: carbsColor,
                         calFactor: 4,
@@ -793,7 +791,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: viewProtein,
                       },
                       {
-                        label: carbsLabel,
+                        label: viewCarbsLabel,
                         value: viewDisplayCarbs,
                         color: carbsColor,
                         calFactor: 4,

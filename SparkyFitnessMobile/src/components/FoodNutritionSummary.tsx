@@ -37,16 +37,18 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
   const scale = (value: number) => value * servings;
-  const scaledCarbs = scale(values.carbs);
+  // Gate the Total Carbs row injection on the same condition NutritionMacroCard
+  // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
+  // bar falls back to total carbs and the row would otherwise duplicate it.
+  const useNetCarbs = showNetCarbs && values.fiber !== undefined;
   const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
     () =>
       buildNutrientDisplayList(values, {
-        showNetCarbs,
-        // Pre-scale carbs so the injected Total Carbs row matches the macro-bar
-        // value, which is also scaled by `servings` below.
-        carbs: showNetCarbs ? scaledCarbs : undefined,
+        showNetCarbs: useNetCarbs,
+        // Pass raw carbs; renderRow scales by `servings` like every other row.
+        carbs: useNetCarbs ? values.carbs : undefined,
       }),
-    [values, showNetCarbs, scaledCarbs],
+    [values, useNetCarbs],
   );
 
   const renderRow = (nutrient: NutrientDisplayItem, showBorder: boolean) => (
