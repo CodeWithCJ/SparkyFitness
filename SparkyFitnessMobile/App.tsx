@@ -760,7 +760,7 @@ function AppContent() {
             name="FoodSearch"
             component={SafeFoodSearch}
             options={{
-              presentation: 'modal',
+              presentation: 'fullScreenModal',
               headerShown: false,
               gestureEnabled: true,
               ...androidModalAnimation,
