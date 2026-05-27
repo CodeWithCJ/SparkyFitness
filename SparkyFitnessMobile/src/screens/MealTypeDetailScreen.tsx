@@ -10,6 +10,7 @@ import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection } from '../hooks';
+import { usePreferences } from '../hooks/usePreferences';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
   calculateEntryNutrition,
@@ -33,6 +34,8 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     date,
     enabled: isConnected,
   });
+  const { preferences } = usePreferences({ enabled: isConnected });
+  const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -119,6 +122,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           name={label}
           brand={formatDateLabel(date)}
           values={nutrition}
+          showNetCarbs={showNetCarbs}
         />
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">

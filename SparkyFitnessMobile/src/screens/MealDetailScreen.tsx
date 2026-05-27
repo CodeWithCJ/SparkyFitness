@@ -8,7 +8,7 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteMeal, useMeal, useProfile, useServerConnection } from '../hooks';
+import { useDeleteMeal, useMeal, useProfile, useServerConnection, usePreferences } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
@@ -104,6 +104,8 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
+  const { preferences } = usePreferences({ enabled: isConnected });
+  const showNetCarbs = preferences?.show_net_carbs === true;
   const { meal, isLoading, isError, refetch } = useMeal(mealId, {
     enabled: isConnected,
     initialMeal,
@@ -184,6 +186,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           name={meal.name}
           brand={meal.description}
           values={displayValues}
+          showNetCarbs={showNetCarbs}
         />
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">

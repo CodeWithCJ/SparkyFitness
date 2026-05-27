@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import MacroCompositionRing from './MacroCompositionRing';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
 
 export interface NutritionGoalPercentages {
   calories?: number | null;
@@ -20,6 +21,11 @@ interface NutritionMacroCardProps {
   // When true, render the goal-bars layout even if percentages aren't computed
   // yet — avoids a ring→bars flash while the goals query is in flight.
   goalsLoading?: boolean;
+  // When showNetCarbs is true and fiber is provided, the carbs row swaps to
+  // "Net Carbs" with value max(0, carbs - fiber). Goal percentage and ring
+  // share are computed against this net value too, mirroring the web behavior.
+  showNetCarbs?: boolean;
+  fiber?: number;
 }
 
 const RING_SIZE = 130;
@@ -33,6 +39,8 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   heading,
   goalPercentages,
   goalsLoading,
+  showNetCarbs = false,
+  fiber,
 }) => {
   const [proteinColor, carbsColor, fatColor, trackColor] = useCSSVariable([
     '--color-macro-protein',
@@ -41,8 +49,12 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
     '--color-progress-track',
   ]) as [string, string, string, string];
 
+  const useNetCarbs = showNetCarbs && fiber !== undefined;
+  const displayCarbs = useNetCarbs ? getNetCarbsValue(carbs, fiber) : carbs;
+  const carbsLabel = useNetCarbs ? 'Net Carbs' : 'Carbs';
+
   const proteinCals = protein * 4;
-  const carbsCals = carbs * 4;
+  const carbsCals = displayCarbs * 4;
   const fatCals = fat * 9;
   const totalMacroCals = proteinCals + carbsCals + fatCals;
 
@@ -65,8 +77,8 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
     },
     {
       key: 'Carbs',
-      label: 'Carbs',
-      value: carbs,
+      label: carbsLabel,
+      value: displayCarbs,
       color: carbsColor,
       goalPercent: goalPercentages?.carbs,
     },

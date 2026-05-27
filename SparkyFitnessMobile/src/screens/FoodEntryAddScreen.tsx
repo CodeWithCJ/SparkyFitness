@@ -23,7 +23,8 @@ import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
-import { useMealTypes } from '../hooks';
+import { useMealTypes, usePreferences, useServerConnection } from '../hooks';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
   useCreateFoodVariant,
   useFoodVariants,
@@ -162,6 +163,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   );
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
+  const { isConnected } = useServerConnection();
+  const { preferences } = usePreferences({ enabled: isConnected });
+  const showNetCarbs = preferences?.show_net_carbs === true;
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(null);
   const [savedFoodOverride, setSavedFoodOverride] =
@@ -859,9 +863,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     return Math.round((value / goalValue) * 100);
   };
 
+  const carbsForGoal =
+    showNetCarbs && displayValues.fiber !== undefined
+      ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
+      : displayValues.carbs;
   const calorieGoalPct = goalPercent(scaled(displayValues.calories), goals?.calories);
   const proteinGoalPct = goalPercent(scaled(displayValues.protein), goals?.protein);
-  const carbsGoalPct = goalPercent(scaled(displayValues.carbs), goals?.carbs);
+  const carbsGoalPct = goalPercent(scaled(carbsForGoal), goals?.carbs);
   const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
@@ -968,6 +976,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             fat: fatGoalPct,
           }}
           goalsLoading={isGoalsLoading}
+          showNetCarbs={showNetCarbs}
         />
 
         <View className="mt-2">
