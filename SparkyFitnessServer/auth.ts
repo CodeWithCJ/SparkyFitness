@@ -253,8 +253,7 @@ const auth = betterAuth({
     },
     changeEmail: {
       enabled: true,
-      // @ts-expect-error
-      requireVerification: true,
+      updateEmailWithoutVerification: true,
     },
     additionalFields: {
       mfaTotpEnabled: {

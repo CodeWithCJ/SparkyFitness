@@ -1,3 +1,4 @@
+import { api } from '@/api/api';
 import { authClient } from '@/lib/auth-client';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -7,14 +8,12 @@ export const useChangeEmailMutation = () => {
 
   return useMutation({
     mutationFn: async ({ newEmail }: { newEmail: string }) => {
-      const { data, error } = await authClient.changeEmail({ newEmail });
-      if (error) throw error;
-      return data;
+      return api.post('/identity/update-email', { body: { newEmail } });
     },
     meta: {
       successMessage: t(
         'settings.accountSecurity.emailUpdateSuccess',
-        'Email update initiated. Please check your new email for confirmation.'
+        'Email updated successfully.'
       ),
       errorMessage: t(
         'settings.accountSecurity.emailUpdateError',
