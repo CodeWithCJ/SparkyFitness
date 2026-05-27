@@ -97,3 +97,56 @@ export const manageCheckinSchema = z.discriminatedUnion("action", [
 ]);
 
 export type ManageCheckinInput = z.infer<typeof manageCheckinSchema>;
+
+
+// Flat input shape published to MCP clients as `inputSchema`. See comment on
+// manageFoodInput in ./food.js for the rationale. Runtime validation still
+// uses manageCheckinSchema in the tool handler via safeParse.
+export const manageCheckinInput = z.object({
+  action: z.enum([
+    "log_biometrics",
+    "log_custom_metric",
+    "list_categories",
+    "create_category",
+    "log_mood",
+    "log_fasting",
+    "log_sleep",
+    "list_checkin_diary",
+    "get_fasting_status",
+    "get_biometrics_history",
+  ]).describe("Action to perform. Each value selects a per-action signature; see the tool description for required fields per action."),
+  entry_date: dateSchema.optional().describe("Date for the entry (YYYY-MM-DD)"),
+  // biometrics
+  weight: z.coerce.number().min(0).optional().describe("Weight value"),
+  weight_unit: weightUnitEnum.optional().describe("Unit for weight (defaults to kg)"),
+  steps: z.coerce.number().int().min(0).optional().describe("Daily step count"),
+  height: z.coerce.number().min(0).optional().describe("Height value"),
+  height_unit: heightUnitEnum.optional().describe("Unit for height"),
+  neck: z.coerce.number().min(0).optional().describe("Neck measurement"),
+  waist: z.coerce.number().min(0).optional().describe("Waist measurement"),
+  hips: z.coerce.number().min(0).optional().describe("Hips measurement"),
+  measurements_unit: measurementsUnitEnum.optional().describe("Unit for body measurements"),
+  body_fat: z.coerce.number().min(0).optional().describe("Body fat percentage"),
+  // custom metrics / categories
+  category_name: z.string().min(1).max(200).optional().describe("Name of the custom category"),
+  value: z.union([z.string(), z.coerce.number()]).optional().describe("Value to record (numeric or string)"),
+  unit: z.string().max(50).optional().describe("Unit for the recorded value"),
+  notes: z.string().max(2000).optional().describe("Optional notes"),
+  data_type: z.enum(["numeric", "boolean"]).optional().describe("Type of data for create_category"),
+  // mood
+  mood_value: z.coerce.number().int().min(1).max(10).optional().describe("Mood score (1-10)"),
+  // fasting
+  start_time: z.string().optional().describe("Start timestamp (ISO 8601) — for log_fasting"),
+  end_time: z.string().optional().describe("End timestamp (ISO 8601) — for log_fasting"),
+  fasting_status: fastingStatusEnum.optional().describe("Fasting session status"),
+  fasting_type: z.string().max(100).optional().describe("Type of fasting (e.g., 'Intermittent')"),
+  // sleep
+  duration_seconds: z.coerce.number().min(0).optional().describe("Total sleep duration in seconds"),
+  sleep_score: z.coerce.number().int().min(0).max(100).optional().describe("Sleep quality score (0-100)"),
+  bedtime: z.string().optional().describe("Bedtime timestamp (ISO 8601)"),
+  wake_time: z.string().optional().describe("Wake-up timestamp (ISO 8601)"),
+  source: z.string().max(100).optional().describe("Source of data (e.g., 'manual', 'Garmin')"),
+  // history range
+  start_date: dateSchema.optional().describe("Start date for the history range"),
+  end_date: dateSchema.optional().describe("End date for the history range"),
+});
