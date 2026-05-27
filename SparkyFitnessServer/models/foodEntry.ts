@@ -502,11 +502,12 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.iron,
         fe.glycemic_index,
         fe.custom_nutrients,
-        fe.allergens,
-        fe.traces
+        COALESCE(fe.allergens, fv.allergens) AS allergens,
+        COALESCE(fe.traces, fv.traces) AS traces
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
+       LEFT JOIN food_variants fv ON fe.variant_id = fv.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2
        ORDER BY mt.sort_order ASC, fe.created_at`,
       [userId, selectedDate]

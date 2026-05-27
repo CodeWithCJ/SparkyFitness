@@ -2155,6 +2155,23 @@ COMMENT ON COLUMN public."user".image IS 'Profile image URL synced from Better A
 -- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
 --
 
+CREATE TABLE public.user_allergen_preferences (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    allergen_name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT user_allergen_preferences_pkey PRIMARY KEY (id),
+    CONSTRAINT user_allergen_preferences_user_id_allergen_name_key UNIQUE (user_id, allergen_name),
+    CONSTRAINT user_allergen_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE
+);
+
+ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY owner_policy ON public.user_allergen_preferences
+  USING (user_id = public.current_user_id())
+  WITH CHECK (user_id = public.current_user_id());
+
+
 CREATE TABLE public.user_custom_nutrients (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,

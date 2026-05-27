@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, Trash2, Check, Plus, Sparkles } from 'lucide-react';
+import { Copy, Trash2, Check, Plus, X, Sparkles } from 'lucide-react';
 import type { EquivalentUnit, GlycemicIndex } from '@/types/food';
 import type { FormFoodVariant } from '@/utils/foodForm';
 import {
@@ -46,6 +48,24 @@ const AI_SPARKLE_TONE_CLASSES: Record<ConfidenceTone, string> = {
   warning: 'text-amber-500 dark:text-amber-400',
   error: 'text-rose-500 dark:text-rose-400',
 };
+
+const COMMON_ALLERGENS = [
+  'gluten',
+  'wheat',
+  'milk',
+  'eggs',
+  'peanuts',
+  'tree nuts',
+  'soy',
+  'fish',
+  'shellfish',
+  'crustaceans',
+  'sesame',
+  'celery',
+  'mustard',
+  'lupin',
+  'sulphites',
+];
 
 interface VariantCardProps {
   index: number;
@@ -91,7 +111,14 @@ interface VariantCardProps {
   onUpdate: (
     index: number,
     field: string,
-    value: string | number | boolean | null | GlycemicIndex | EquivalentUnit[]
+    value:
+      | string
+      | number
+      | boolean
+      | null
+      | GlycemicIndex
+      | EquivalentUnit[]
+      | string[]
   ) => void;
   onDuplicate: (index: number) => void;
   onRemove: (index: number) => void;
@@ -119,6 +146,24 @@ export function VariantCard({
   onRemove,
 }: VariantCardProps) {
   const equivalents = variant.equivalents ?? [];
+  const [allergenInput, setAllergenInput] = useState('');
+
+  const currentAllergens: string[] = variant.allergens ?? [];
+
+  const addAllergen = (name: string) => {
+    const trimmed = name.trim().toLowerCase();
+    if (!trimmed || currentAllergens.includes(trimmed)) return;
+    onUpdate(index, 'allergens', [...currentAllergens, trimmed]);
+    setAllergenInput('');
+  };
+
+  const removeAllergen = (name: string) => {
+    onUpdate(
+      index,
+      'allergens',
+      currentAllergens.filter((a) => a !== name)
+    );
+  };
 
   // Per-row AI gate. The anchor is supplied by the parent (defaults to the
   // food's default variant, or the row's previous state when the user just
@@ -425,6 +470,68 @@ export function VariantCard({
         customNutrients={customNutrients}
         onUpdate={onUpdate}
       />
+
+      <div className="mt-4 space-y-2">
+        <Label>Allergens</Label>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {COMMON_ALLERGENS.map((a) => (
+            <Badge
+              key={a}
+              variant={currentAllergens.includes(a) ? 'default' : 'outline'}
+              className={`cursor-pointer capitalize select-none text-xs ${currentAllergens.includes(a) ? 'opacity-60' : 'hover:bg-accent'}`}
+              onClick={() =>
+                currentAllergens.includes(a)
+                  ? removeAllergen(a)
+                  : addAllergen(a)
+              }
+            >
+              {currentAllergens.includes(a) && <X className="h-3 w-3 mr-1" />}
+              {a}
+            </Badge>
+          ))}
+        </div>
+        {currentAllergens.filter((a) => !COMMON_ALLERGENS.includes(a)).length >
+          0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {currentAllergens
+              .filter((a) => !COMMON_ALLERGENS.includes(a))
+              .map((a) => (
+                <Badge
+                  key={a}
+                  variant="secondary"
+                  className="capitalize text-xs cursor-pointer"
+                  onClick={() => removeAllergen(a)}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  {a}
+                </Badge>
+              ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Input
+            value={allergenInput}
+            onChange={(e) => setAllergenInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addAllergen(allergenInput);
+              }
+            }}
+            placeholder="Custom allergen…"
+            className="max-w-xs h-8 text-sm"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => addAllergen(allergenInput)}
+            disabled={!allergenInput.trim()}
+          >
+            Add
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 }

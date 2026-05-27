@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit, Share2, Sparkles } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
+import AllergenBadges from '@/components/AllergenBadges';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
@@ -151,6 +152,10 @@ const FoodResultCard = ({
                   Per {foodItem.default_variant.serving_size}
                   {foodItem.default_variant.serving_unit}
                 </p>
+                <AllergenBadges
+                  allergens={foodItem.default_variant.allergens}
+                  traces={foodItem.default_variant.traces}
+                />
               </>
             )}
           </div>

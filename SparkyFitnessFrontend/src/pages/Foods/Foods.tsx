@@ -45,6 +45,7 @@ import { Meal, MealFilter } from '@/types/meal';
 import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
 import DeleteFoodDialog, { PendingDeletion } from './DeleteFoodDialog';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
+import AllergenBadges from '@/components/AllergenBadges';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -250,6 +251,10 @@ const FoodDatabaseManager = () => {
                   defaultValue: `Per ${food.default_variant?.serving_size || 0} ${food.default_variant?.serving_unit || ''}`,
                 })}
               </span>
+              <AllergenBadges
+                allergens={food.default_variant?.allergens}
+                traces={food.default_variant?.traces}
+              />
             </div>
           );
         },

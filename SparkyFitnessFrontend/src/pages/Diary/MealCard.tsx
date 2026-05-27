@@ -58,6 +58,7 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import AllergenBadges from '@/components/AllergenBadges';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -450,6 +451,12 @@ const MealCard = ({
                                 </Badge>
                               )}
                           </div>
+                          {isFoodEntry && (
+                            <AllergenBadges
+                              allergens={(item as FoodEntry).allergens}
+                              traces={(item as FoodEntry).traces}
+                            />
+                          )}
                         </div>
                         {mobileCalories && (
                           <div className="text-right">
@@ -607,6 +614,12 @@ const MealCard = ({
                           );
                         })}
                       </div>
+                      {isFoodEntry && (
+                        <AllergenBadges
+                          allergens={(item as FoodEntry).allergens}
+                          traces={(item as FoodEntry).traces}
+                        />
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button

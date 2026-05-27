@@ -62,3 +62,7 @@ export const foodVariantKeys = {
   all: [...foodKeys.all, 'variants'] as const,
   byFood: (foodId: string) => [...foodKeys.all, 'variants', foodId] as const,
 };
+
+export const allergenPreferenceKeys = {
+  all: ['allergenPreferences'] as const,
+};

@@ -56,6 +56,7 @@ import versionRoutes from './routes/versionRoutes.js';
 import onboardingRoutes from './routes/onboardingRoutes.js';
 import customNutrientRoutes from './routes/customNutrientRoutes.js';
 import aiUnitConversionRoutes from './routes/aiUnitConversionRoutes.js';
+import allergenPreferenceRoutes from './routes/allergenPreferenceRoutes.js';
 import { applyMigrations } from './utils/dbMigrations.js';
 import { applyRlsPolicies } from './utils/applyRlsPolicies.js';
 import waterContainerRoutes from './routes/waterContainerRoutes.js';
@@ -432,6 +433,7 @@ app.use('/api/workout-presets', workoutPresetRoutes);
 app.use('/api/workout-plan-templates', workoutPlanTemplateRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/custom-nutrients', customNutrientRoutes);
+app.use('/api/allergen-preferences', allergenPreferenceRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
 // Swagger

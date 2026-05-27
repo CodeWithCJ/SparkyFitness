@@ -9,6 +9,7 @@ import {
   Cloud,
   Sparkles,
   UtensilsCrossed,
+  ShieldAlert,
 } from 'lucide-react';
 import FamilyAccessManager from './FamilyAccessManager';
 import AIServiceSettings from './AIServiceSettings';
@@ -25,6 +26,7 @@ import {
 import CalculationSettings from './CalculationSettings';
 import TooltipWarning from '@/components/TooltipWarning';
 import CustomNutrientsSettings from '@/pages/Settings/CustomNutrientsSettings';
+import AllergenSettings from '@/pages/Settings/AllergenSettings';
 import { DeveloperResources } from './DevloperResources';
 import { AccountSecurity } from './AccountSecurity';
 import { ApiSettings } from './ApiSettings';
@@ -100,6 +102,25 @@ const Settings = () => {
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <CustomNutrientsSettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="allergen-preferences"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description={t(
+              'settings.allergenPreferences.description',
+              'Track allergens you want to be warned about in foods'
+            )}
+          >
+            <ShieldAlert className="h-5 w-5" />
+            {t('settings.allergenPreferences.title', 'Allergen Preferences')}
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <AllergenSettings />
           </AccordionContent>
         </AccordionItem>
 
