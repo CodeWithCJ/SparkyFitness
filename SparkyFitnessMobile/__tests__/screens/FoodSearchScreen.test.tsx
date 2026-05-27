@@ -29,6 +29,11 @@ jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   fetchExternalFoodDetails: jest.fn(),
 }));
 
+jest.mock('../../src/services/foodSearchPreferences', () => ({
+  getLastUsedTab: jest.fn().mockResolvedValue(null),
+  setLastUsedTab: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',

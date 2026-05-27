@@ -346,8 +346,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     </View>
   );
 
-  const renderTabSwitcher = () => {
-    if (visibleTabs.length < 2 || searchText.length > 0) return null;
+  const renderTabSwitcherBar = () => {
+    if (visibleTabs.length < 2) return null;
 
     return (
       <View className="px-4 pb-2">
@@ -356,44 +356,63 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     );
   };
 
+  const isCurrentTabSearchActive =
+    (activeTab === 'search' && isSearchActive) ||
+    (activeTab === 'meal' && isMealSearchActive) ||
+    (activeTab === 'online' && isOnlineSearchActive);
+
+  const renderTabSwitcher = () => {
+    if (isCurrentTabSearchActive) return null;
+    return renderTabSwitcherBar();
+  };
+
   const renderSearchResults = () => {
     if (isSearching && searchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isSearchError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search foods
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to search foods
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (searchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center mb-4">
-            No matching foods found
-          </Text>
-          {!isMealBuilderMode ? (
-            <Button
-              variant="primary"
-              onPress={() =>
-                navigation.navigate('FoodScan', { date, initialMode: 'photo' })
-              }
-              className="self-stretch rounded-lg"
-            >
-              Estimate from photo
-            </Button>
-          ) : null}
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center mb-4">
+              No matching foods found
+            </Text>
+            {!isMealBuilderMode ? (
+              <Button
+                variant="primary"
+                onPress={() =>
+                  navigation.navigate('FoodScan', { date, initialMode: 'photo' })
+                }
+                className="self-stretch rounded-lg"
+              >
+                Estimate from photo
+              </Button>
+            ) : null}
+          </View>
+        </>
       );
     }
 
@@ -405,6 +424,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={renderTabSwitcherBar()}
       />
     );
   };
@@ -412,12 +432,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderSearchTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view foods
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to view foods
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -480,30 +503,42 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderMealSearchResults = () => {
     if (isMealSearching && mealSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isMealSearchError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search meals
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to search meals
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (mealSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching meals found
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center">
+              No matching meals found
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -515,6 +550,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={
+          <>
+            {renderTabSwitcherBar()}
+            {renderCreateMealCta()}
+          </>
+        }
       />
     );
   };
@@ -522,12 +563,16 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderMealTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view meals
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to view meals
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -537,31 +582,40 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     if (isMealsLoading) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isMealsError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load meals
-          </Text>
-          <Button variant="secondary" onPress={() => refetchMeals()} className="mt-4 px-6">
-            Retry
-          </Button>
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to load meals
+            </Text>
+            <Button variant="secondary" onPress={() => refetchMeals()} className="mt-4 px-6">
+              Retry
+            </Button>
+          </View>
+        </>
       );
     }
 
     if (meals.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">No meals found</Text>
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center">No meals found</Text>
+          </View>
+        </>
       );
     }
 
@@ -573,6 +627,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={renderCreateMealCta()}
       />
     );
   };
@@ -650,6 +705,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (isOnlineSearching && onlineSearchResults.length === 0) {
       return (
         <>
+          {renderTabSwitcherBar()}
           {renderProviderChips()}
           <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" color={accentColor} />
@@ -661,6 +717,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (isOnlineSearchError) {
       return (
         <>
+          {renderTabSwitcherBar()}
           {renderProviderChips()}
           <View className="flex-1 justify-center items-center px-6">
             <Icon name="alert-circle" size={48} color={accentColor} />
@@ -675,6 +732,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (onlineSearchResults.length === 0) {
       return (
         <>
+          {renderTabSwitcherBar()}
           {renderProviderChips()}
           <View className="flex-1 justify-center items-center px-6">
             <Text className="text-text-secondary text-base text-center">
@@ -693,7 +751,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
-        ListHeaderComponent={renderProviderChips()}
+        ListHeaderComponent={
+          <>
+            {renderTabSwitcherBar()}
+            {renderProviderChips()}
+          </>
+        }
         ListFooterComponent={
           isFetchNextPageError ? (
             <Button
@@ -726,45 +789,57 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderOnlineTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to search online foods
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to search online foods
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (isProvidersLoading) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isProvidersError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load providers
-          </Text>
-          <Button variant="secondary" onPress={() => refetchProviders()} className="mt-4 px-6">
-            Retry
-          </Button>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to load providers
+            </Text>
+            <Button variant="secondary" onPress={() => refetchProviders()} className="mt-4 px-6">
+              Retry
+            </Button>
+          </View>
+        </>
       );
     }
 
     if (providers.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="globe" size={48} color={textMuted} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            No online food providers configured
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="globe" size={48} color={textMuted} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              No online food providers configured
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -772,6 +847,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <View className="flex-1">
         {!isProviderSupported ? (
           <>
+            {isOnlineSearchActive ? renderTabSwitcherBar() : null}
             {renderProviderChips()}
             <View className="flex-1 justify-center items-center px-6">
               <Icon name="globe" size={48} color={textMuted} />
@@ -812,7 +888,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {renderHeaderBar()}
       {renderTabSwitcher()}
-      {renderCreateMealCta()}
 
       {renderTabContent()}
     </View>
