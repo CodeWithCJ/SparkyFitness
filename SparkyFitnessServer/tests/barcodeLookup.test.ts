@@ -213,6 +213,8 @@ describe('mapOpenFoodFactsProduct', () => {
         calcium: 0,
         iron: 0,
         is_default: true,
+        allergens: null,
+        traces: null,
       },
     });
   });

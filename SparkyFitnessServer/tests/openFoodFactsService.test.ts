@@ -4,6 +4,7 @@ import {
   invalidateOpenFoodFactsSession,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
+  mapOpenFoodFactsProduct,
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
@@ -198,6 +199,74 @@ describe('openFoodFactsService', () => {
         searchOpenFoodFactsByBarcodeFields('12345678')
       ).rejects.toThrow('OpenFoodFacts API error');
       expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('mapOpenFoodFactsProduct', () => {
+    const baseProduct = {
+      product_name: 'Test Bread',
+      brands: 'TestBrand',
+      code: '1234567890123',
+      serving_quantity: 50,
+      nutriments: {
+        'energy-kcal_100g': 250,
+        proteins_100g: 8,
+        carbohydrates_100g: 45,
+        fat_100g: 3,
+      },
+    };
+
+    it('extracts and normalizes allergens_tags and traces_tags', () => {
+      const product = {
+        ...baseProduct,
+        allergens_tags: ['en:gluten', 'en:milk', 'en:eggs'],
+        traces_tags: ['en:nuts', 'en:sesame'],
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.allergens).toEqual([
+        'gluten',
+        'milk',
+        'eggs',
+      ]);
+      expect(result.default_variant.traces).toEqual(['nuts', 'sesame']);
+    });
+
+    it('strips non-english language prefixes', () => {
+      const product = {
+        ...baseProduct,
+        allergens_tags: ['fr:gluten', 'de:milch'],
+        traces_tags: ['es:nueces'],
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.allergens).toEqual(['gluten', 'milch']);
+      expect(result.default_variant.traces).toEqual(['nueces']);
+    });
+
+    it('returns null for allergens and traces when tags are absent', () => {
+      const result = mapOpenFoodFactsProduct(baseProduct);
+      expect(result.default_variant.allergens).toBeNull();
+      expect(result.default_variant.traces).toBeNull();
+    });
+
+    it('returns null when tags are empty arrays', () => {
+      const product = {
+        ...baseProduct,
+        allergens_tags: [],
+        traces_tags: [],
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.allergens).toBeNull();
+      expect(result.default_variant.traces).toBeNull();
+    });
+
+    it('handles allergens present but traces absent', () => {
+      const product = {
+        ...baseProduct,
+        allergens_tags: ['en:soy'],
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.allergens).toEqual(['soy']);
+      expect(result.default_variant.traces).toBeNull();
     });
   });
 });
