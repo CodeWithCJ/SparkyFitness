@@ -309,6 +309,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
+            autoFocus
           />
         </View>
         {searchText.length > 0 ? (
