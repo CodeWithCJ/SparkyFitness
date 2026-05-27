@@ -175,6 +175,8 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         'glycemic_index',
         'serving_size',
         'serving_unit',
+        'allergens',
+        'traces',
       ];
       for (const field of nutritionOverrideFields) {
         if (entryData[field] !== undefined) {
@@ -217,31 +219,33 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         iron: entryData.iron,
         glycemic_index: entryData.glycemic_index,
         custom_nutrients: entryData.custom_nutrients || {},
+        allergens: entryData.allergens || null,
+        traces: entryData.traces || null,
       };
     }
     // Insert the food entry with the snapshot data
     const result = await client.query(
       `INSERT INTO food_entries (
          user_id, food_id, meal_id, meal_type_id, quantity, unit, entry_date, variant_id, meal_plan_template_id,
-         food_entry_meal_id, -- New column
+         food_entry_meal_id,
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
-         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, updated_by_user_id
+         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
        ) RETURNING *`,
       [
         entryData.user_id,
         entryData.food_id,
-        entryData.meal_id, // This should eventually be NULL or removed if not needed.
+        entryData.meal_id,
         mealTypeId,
         entryData.quantity,
         entryData.unit,
         entryData.entry_date,
         entryData.variant_id,
         entryData.meal_plan_template_id,
-        entryData.food_entry_meal_id, // New column value
+        entryData.food_entry_meal_id,
         createdByUserId, // created_by_user_id
         snapshot.name, // food_name
         snapshot.brand, // brand_name
@@ -266,6 +270,8 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         snapshot.iron,
         snapshot.glycemic_index,
         snapshot.custom_nutrients || {},
+        snapshot.allergens || null,
+        snapshot.traces || null,
         createdByUserId, // updated_by_user_id
       ]
     );
@@ -315,8 +321,10 @@ async function getFoodEntryById(entryId: any, userId: any) {
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
-        fe.glycemic_index, 
+        fe.glycemic_index,
         fe.custom_nutrients,
+        fe.allergens,
+        fe.traces,
         fe.user_id
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
@@ -408,7 +416,9 @@ async function updateFoodEntry(
         calcium = $26,
         iron = $27,
         glycemic_index = $28,
-        custom_nutrients = $29
+        custom_nutrients = $29,
+        allergens = $32,
+        traces = $33
       WHERE id = $30
       RETURNING *`,
       [
@@ -416,7 +426,7 @@ async function updateFoodEntry(
         entryData.unit,
         entryData.entry_date,
         entryData.variant_id,
-        entryData.food_entry_meal_id, // New column value
+        entryData.food_entry_meal_id,
         actingUserId,
         snapshotData.food_name,
         snapshotData.brand_name,
@@ -443,6 +453,8 @@ async function updateFoodEntry(
         snapshotData.custom_nutrients || {},
         entryId,
         mealTypeId,
+        snapshotData.allergens ?? null,
+        snapshotData.traces ?? null,
       ]
     );
     return result.rows[0];
@@ -489,7 +501,9 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.calcium,
         fe.iron,
         fe.glycemic_index,
-        fe.custom_nutrients
+        fe.custom_nutrients,
+        fe.allergens,
+        fe.traces
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id

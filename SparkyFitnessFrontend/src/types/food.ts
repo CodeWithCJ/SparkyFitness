@@ -37,6 +37,9 @@ export interface FoodVariant {
   // server-side when the client omits these fields.
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
+  custom_nutrients?: Record<string, string | number>;
+  allergens?: string[] | null;
+  traces?: string[] | null;: add allergens and traces from OpenFoodFacts)
 }
 
 export interface Food {
@@ -119,7 +122,9 @@ export interface FoodEntry {
   iron?: number;
   glycemic_index?: GlycemicIndex;
   serving_size?: number;
-  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
+  custom_nutrients?: Record<string, string | number>;
+  allergens?: string[] | null;
+  traces?: string[] | null;
 }
 
 export interface CSVData {
@@ -198,6 +203,8 @@ export type NumericFoodVariantKeys = Exclude<
   | 'user_id'
   | 'source'
   | 'ai_confidence'
+  | 'allergens'
+  | 'traces': add allergens and traces from OpenFoodFacts)
 >;
 export interface EquivalentUnit {
   id?: string;
