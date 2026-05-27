@@ -312,19 +312,26 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           />
         </View>
         {searchText.length > 0 ? (
-          <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
-            <Icon name="close" size={16} color={textMuted} />
+          <Button
+            variant="ghost"
+            onPress={() => setSearchText('')}
+            hitSlop={8}
+            className="ml-2 p-0"
+            accessibilityLabel="Clear search"
+          >
+            <Icon name="close" size={20} color={textMuted} />
           </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          onPress={openFoodScan}
-          hitSlop={8}
-          className="ml-2 p-0"
-          accessibilityLabel="Scan Food"
-        >
-          <Icon name="scan" size={20} color={accentColor} />
-        </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            onPress={openFoodScan}
+            hitSlop={8}
+            className="ml-2 p-0"
+            accessibilityLabel="Scan Food"
+          >
+            <Icon name="scan" size={20} color={accentColor} />
+          </Button>
+        )}
       </View>
 
       <Button
