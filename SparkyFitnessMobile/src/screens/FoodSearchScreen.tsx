@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import {
   usePreferences,
 } from '../hooks';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
+import { getLastUsedTab, setLastUsedTab } from '../services/foodSearchPreferences';
+import type { FoodSearchTab } from '../services/foodSearchPreferences';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
@@ -40,7 +42,7 @@ type FoodSection = {
   data: (FoodItem | TopFoodItem)[];
 };
 
-type TabKey = 'search' | 'online' | 'meal';
+type TabKey = FoodSearchTab;
 
 const ALL_TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
@@ -105,6 +107,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const hasUserSelectedProvider = useRef(false);
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const storedTab = await getLastUsedTab();
+      if (cancelled) return;
+      if (storedTab && !(isMealBuilderMode && storedTab === 'meal')) {
+        setActiveTab(storedTab);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMealBuilderMode]);
+
+  const handleTabChange = useCallback((tab: TabKey) => {
+    setActiveTab(tab);
+    void setLastUsedTab(tab);
+  }, []);
 
   const selectedProviderType = useMemo(
     () => providers.find((provider) => provider.id === selectedProvider)?.provider_type ?? '',
@@ -323,7 +344,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     return (
       <View className="px-4 pb-2">
-        <SegmentedControl segments={visibleTabs} activeKey={activeTab} onSelect={setActiveTab} />
+        <SegmentedControl segments={visibleTabs} activeKey={activeTab} onSelect={handleTabChange} />
       </View>
     );
   };
