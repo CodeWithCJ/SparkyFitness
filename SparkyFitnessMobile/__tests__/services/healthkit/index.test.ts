@@ -598,7 +598,7 @@ describe('readHealthRecords', () => {
     test('fetches workouts using queryWorkoutSamples', async () => {
       await initHealthConnect();
 
-      const mockGetAllStatistics = jest.fn().mockResolvedValue({});
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
       mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
@@ -607,7 +607,7 @@ describe('readHealthRecords', () => {
           duration: 3600,
           totalEnergyBurned: { unit: 'kcal', quantity: 500 },
           totalDistance: { unit: 'm', quantity: 5000 },
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
       ]);
 
@@ -626,16 +626,17 @@ describe('readHealthRecords', () => {
       });
     });
 
-    test('uses stats from getAllStatistics when available', async () => {
+    test('uses stats from getStatistic when available', async () => {
       await initHealthConnect();
 
-      const mockGetAllStatistics = jest.fn().mockResolvedValue({
-        'HKQuantityTypeIdentifierActiveEnergyBurned': {
-          sumQuantity: { quantity: 600 },
-        },
-        'HKQuantityTypeIdentifierDistanceWalkingRunning': {
-          sumQuantity: { quantity: 6000 },
-        },
+      const mockGetStatistic = jest.fn().mockImplementation((identifier: string) => {
+        if (identifier === 'HKQuantityTypeIdentifierActiveEnergyBurned') {
+          return Promise.resolve({ sumQuantity: { quantity: 600 } });
+        }
+        if (identifier === 'HKQuantityTypeIdentifierDistanceWalkingRunning') {
+          return Promise.resolve({ sumQuantity: { quantity: 6000 } });
+        }
+        return Promise.resolve(undefined);
       });
 
       mockQueryWorkoutSamples.mockResolvedValue([
@@ -646,7 +647,7 @@ describe('readHealthRecords', () => {
           duration: 3600,
           totalEnergyBurned: { inKilocalories: 500 }, // Should be overridden by stats
           totalDistance: { inMeters: 5000 }, // Should be overridden by stats
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
       ]);
 
@@ -660,10 +661,10 @@ describe('readHealthRecords', () => {
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(6000);
     });
 
-    test('falls back to direct properties when getAllStatistics fails', async () => {
+    test('pins units to kcal and meters on getStatistic calls (regression: user-preferred units leaked through)', async () => {
       await initHealthConnect();
 
-      const mockGetAllStatistics = jest.fn().mockRejectedValue(new Error('Stats unavailable'));
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
       mockQueryWorkoutSamples.mockResolvedValue([
         {
           startDate: '2024-01-15T08:00:00Z',
@@ -672,7 +673,48 @@ describe('readHealthRecords', () => {
           duration: 3600,
           totalEnergyBurned: { unit: 'kcal', quantity: 500 },
           totalDistance: { unit: 'm', quantity: 5000 },
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
+        },
+      ]);
+
+      await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Energy must be requested in kcal (default would follow the user's
+      // HealthKit preferred unit, which can be kJ).
+      expect(mockGetStatistic).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        'kcal'
+      );
+      // Distance must be requested in meters (default could be miles).
+      // dataTransformation.ts unconditionally divides by 1000 assuming meters,
+      // so a non-meter unit silently mis-scales the stored distance.
+      expect(mockGetStatistic).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierDistanceWalkingRunning',
+        'm'
+      );
+      expect(mockGetStatistic).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierDistanceCycling',
+        'm'
+      );
+    });
+
+    test('falls back to direct properties when getStatistic fails', async () => {
+      await initHealthConnect();
+
+      const mockGetStatistic = jest.fn().mockRejectedValue(new Error('Stats unavailable'));
+      mockQueryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          totalEnergyBurned: { unit: 'kcal', quantity: 500 },
+          totalDistance: { unit: 'm', quantity: 5000 },
+          getStatistic: mockGetStatistic,
         },
       ]);
 
@@ -686,14 +728,15 @@ describe('readHealthRecords', () => {
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(5000);
     });
 
-    test('checks multiple distance types in order', async () => {
+    test('checks multiple distance types in order, breaking on first hit', async () => {
       await initHealthConnect();
 
-      // Only cycling distance available
-      const mockGetAllStatistics = jest.fn().mockResolvedValue({
-        'HKQuantityTypeIdentifierDistanceCycling': {
-          sumQuantity: { quantity: 15000 },
-        },
+      // Only cycling distance available; running returns undefined first.
+      const mockGetStatistic = jest.fn().mockImplementation((identifier: string) => {
+        if (identifier === 'HKQuantityTypeIdentifierDistanceCycling') {
+          return Promise.resolve({ sumQuantity: { quantity: 15000 } });
+        }
+        return Promise.resolve(undefined);
       });
 
       mockQueryWorkoutSamples.mockResolvedValue([
@@ -704,7 +747,7 @@ describe('readHealthRecords', () => {
           duration: 3600,
           totalEnergyBurned: 400,
           totalDistance: 0,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
       ]);
 
@@ -715,12 +758,20 @@ describe('readHealthRecords', () => {
       );
 
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(15000);
+      // Once cycling matched, swimming/wheelchair/snow should not be queried.
+      const distanceCalls = mockGetStatistic.mock.calls.filter((c) =>
+        (c[0] as string).startsWith('HKQuantityTypeIdentifierDistance')
+      );
+      expect(distanceCalls.map((c) => c[0])).toEqual([
+        'HKQuantityTypeIdentifierDistanceWalkingRunning',
+        'HKQuantityTypeIdentifierDistanceCycling',
+      ]);
     });
 
     test('includes workouts that overlap with date range (boundary spanning)', async () => {
       await initHealthConnect();
 
-      const mockGetAllStatistics = jest.fn().mockResolvedValue({});
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
       mockQueryWorkoutSamples.mockResolvedValue([
         // Workout crossing midnight from previous day - INCLUDED (overlaps)
         {
@@ -728,7 +779,7 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-15T00:30:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
         // Fully within range - INCLUDED
         {
@@ -736,7 +787,7 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-15T09:00:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
         // Workout crossing midnight to next day - INCLUDED (overlaps)
         {
@@ -744,7 +795,7 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-16T00:30:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
         // Completely outside range (before) - EXCLUDED
         {
@@ -752,7 +803,7 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-13T09:00:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
         // Completely outside range (after) - EXCLUDED
         {
@@ -760,7 +811,7 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-16T09:00:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          getAllStatistics: mockGetAllStatistics,
+          getStatistic: mockGetStatistic,
         },
       ]);
 
