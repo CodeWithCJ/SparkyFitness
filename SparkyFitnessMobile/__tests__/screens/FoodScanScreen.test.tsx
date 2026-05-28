@@ -1,12 +1,13 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
 import { ApiError } from '../../src/services/api/errors';
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
-import { hasSeenFoodPhotoIntro } from '../../src/services/foodPhotoIntro';
+import { hasSeenFoodPhotoIntro, markFoodPhotoIntroSeen } from '../../src/services/foodPhotoIntro';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
@@ -430,6 +431,112 @@ describe('FoodScanScreen', () => {
       // Re-tap Photo while still on Photo — should refetch.
       fireEvent.press(screen.getByText('Photo'));
       expect(refetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('Photo library picker', () => {
+    const mockLaunchLibrary = ImagePicker.launchImageLibraryAsync as jest.MockedFunction<
+      typeof ImagePicker.launchImageLibraryAsync
+    >;
+    const mockMarkSeen = markFoodPhotoIntroSeen as jest.MockedFunction<
+      typeof markFoodPhotoIntroSeen
+    >;
+
+    beforeEach(() => {
+      mockLaunchLibrary.mockReset();
+    });
+
+    it('exposes the library button only in photo mode when AI is configured', async () => {
+      const screen = renderScreen();
+      // Not visible on barcode mode.
+      expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
+
+      fireEvent.press(screen.getByText('Photo'));
+      await waitFor(() => {
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+      });
+    });
+
+    it('hides the library button when AI photo is not available', async () => {
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        data: null,
+        isLoading: false,
+      } as any);
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/AI photo estimates aren.t set up/),
+        ).toBeTruthy();
+      });
+      expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
+    });
+
+    it('routes a picked photo into the FoodPhotoFlow > Improve screen', async () => {
+      mockLaunchLibrary.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file:///picked.jpg' } as any],
+      } as any);
+
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Choose photo from library'));
+      });
+
+      await waitFor(() => {
+        expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+      });
+      expect(mockMarkSeen).toHaveBeenCalled();
+      expect(mockNavigation.replace).toHaveBeenCalledWith('FoodPhotoFlow', {
+        screen: 'Improve',
+        params: { date: undefined, photo: { uri: 'file:///picked.jpg' } },
+      });
+    });
+
+    it('does nothing when the user cancels the system picker', async () => {
+      mockLaunchLibrary.mockResolvedValue({ canceled: true } as any);
+
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Choose photo from library'));
+      });
+
+      await waitFor(() => {
+        expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+      });
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+    });
+
+    it('ignores a second tap while the picker is still resolving', async () => {
+      let resolveLaunch: ((value: any) => void) | undefined;
+      mockLaunchLibrary.mockImplementation(
+        () => new Promise((resolve) => { resolveLaunch = resolve; }),
+      );
+
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+      });
+
+      const button = screen.getByLabelText('Choose photo from library');
+      await act(async () => {
+        fireEvent.press(button);
+        fireEvent.press(button);
+      });
+
+      expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveLaunch?.({ canceled: true });
+      });
     });
   });
 });
