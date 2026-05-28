@@ -128,6 +128,9 @@ importers:
       '@types/leaflet':
         specifier: ^1.9.21
         version: 1.9.21
+      '@workspace/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@zxing/library':
         specifier: ^0.21.3
         version: 0.21.3
