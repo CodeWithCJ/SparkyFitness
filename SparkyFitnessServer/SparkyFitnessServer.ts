@@ -103,6 +103,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
+// 304s from ETag revalidation break the iOS mobile app (#1353).
+app.set('etag', false);
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 console.log(
   `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
@@ -211,6 +213,11 @@ console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
 // Mount at both paths for compatibility during transition
 app.use('/api/uploads', express.static(UPLOADS_BASE_DIR));
 app.use('/uploads', express.static(UPLOADS_BASE_DIR));
+// Mounted after uploads so static image Cache-Control isn't clobbered.
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 // On-demand image serving route
 /**
  * @swagger
