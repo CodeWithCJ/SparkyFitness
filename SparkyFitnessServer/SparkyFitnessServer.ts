@@ -218,8 +218,12 @@ const uploadsStaticOptions = { etag: false, lastModified: false };
 app.use('/api/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));
 app.use('/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));
 // Mounted after uploads so static image Cache-Control isn't clobbered.
-app.use('/api', (_req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store');
+// Skip /api/uploads so the on-demand image route (which falls through static
+// on first download) doesn't get no-store applied to immutable image URLs.
+app.use('/api', (req, res, next) => {
+  if (!req.originalUrl.startsWith('/api/uploads')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
   next();
 });
 // On-demand image serving route
