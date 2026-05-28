@@ -203,6 +203,8 @@ const PersonalPlan = ({
       if (newPercentages[key] < 0) newPercentages[key] = 0;
     });
 
+    setCustomPercentages(newPercentages);
+
     const updatedPlan = createInitialPlan(
       formData,
       localEnergyUnit,
@@ -315,10 +317,10 @@ const PersonalPlan = ({
 
   const memoizedInitialPercentages = useMemo(
     () => ({
-      breakfast: editedPlan?.breakfast_percentage || 25,
-      lunch: editedPlan?.lunch_percentage || 25,
-      dinner: editedPlan?.dinner_percentage || 25,
-      snacks: editedPlan?.snacks_percentage || 25,
+      breakfast: editedPlan?.breakfast_percentage ?? 25,
+      lunch: editedPlan?.lunch_percentage ?? 25,
+      dinner: editedPlan?.dinner_percentage ?? 25,
+      snacks: editedPlan?.snacks_percentage ?? 25,
     }),
     [
       editedPlan?.breakfast_percentage,
