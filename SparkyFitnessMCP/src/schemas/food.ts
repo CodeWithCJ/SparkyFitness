@@ -50,7 +50,7 @@ const logFoodSchema = z.object({
 }).strict();
 
 const createFoodSchema = z.object({
-  action: z.literal("create_food"),
+  action: z.literal("create_food").describe("Create a food. AI clients: you MUST search the web and populate as many micro-nutrients (fat details, fiber, sugar, sodium, potassium, calcium, iron, vitamins), GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros."),
   food_name: z.string().min(1).max(200).describe("Name of the new food item"),
   brand: z.string().max(200).optional().describe("Brand name of the food"),
   calories: z.coerce.number().min(0).describe("Calories (kcal)"),

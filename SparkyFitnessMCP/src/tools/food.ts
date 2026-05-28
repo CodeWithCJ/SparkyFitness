@@ -21,7 +21,7 @@ export function registerFoodTools(server: McpServer, userId: string): void {
 Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
 - log_food(food_name, quantity, unit, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", entry_date, food_id?, variant_id?)
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?)
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?, ...) — AI clients should search the web and populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
 - search_meal(meal_name)
 - log_meal(meal_type, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)

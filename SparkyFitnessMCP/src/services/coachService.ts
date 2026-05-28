@@ -15,10 +15,10 @@ export async function getHealthSummary(
     // Nutrition summary from food_entries
     const nutritionResult = await client.query(
       `SELECT
-        COALESCE(SUM(calories), 0)::numeric AS total_calories,
-        COALESCE(AVG(protein), 0)::numeric AS avg_protein,
-        COALESCE(AVG(carbs), 0)::numeric AS avg_carbs,
-        COALESCE(AVG(fat), 0)::numeric AS avg_fat,
+        COALESCE(SUM(calories * quantity / NULLIF(serving_size, 0)), 0)::numeric AS total_calories,
+        COALESCE(AVG(protein * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_protein,
+        COALESCE(AVG(carbs * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_carbs,
+        COALESCE(AVG(fat * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_fat,
         COUNT(*)::int AS entry_count
        FROM food_entries
        WHERE entry_date >= $1 AND entry_date <= $2`,
@@ -97,7 +97,7 @@ export async function analyzeTrends(
 
     // Daily calorie totals
     const calorieResult = await client.query(
-      `SELECT entry_date, SUM(calories)::numeric AS daily_calories
+      `SELECT entry_date, SUM(calories * quantity / NULLIF(serving_size, 0))::numeric AS daily_calories
        FROM food_entries
        WHERE entry_date >= (CURRENT_DATE - $1::int)
        GROUP BY entry_date
@@ -165,7 +165,9 @@ export async function get30DayTrends(
         COALESCE(AVG(daily_cal), 0)::numeric AS avg_daily_calories,
         COALESCE(AVG(daily_protein), 0)::numeric AS avg_daily_protein
        FROM (
-         SELECT entry_date, SUM(calories) AS daily_cal, SUM(protein) AS daily_protein
+         SELECT entry_date, 
+                SUM(calories * quantity / NULLIF(serving_size, 0)) AS daily_cal, 
+                SUM(protein * quantity / NULLIF(serving_size, 0)) AS daily_protein
          FROM food_entries
          WHERE entry_date > ($1::date - INTERVAL '30 days') AND entry_date <= $1::date
          GROUP BY entry_date
@@ -265,20 +267,20 @@ export async function detectPatterns(
       `WITH daily_food AS (
         SELECT 
           entry_date, 
-          SUM(calories) as calories, 
-          SUM(protein) as protein,
-          SUM(carbs) as carbs,
-          SUM(fat) as fat,
-          SUM(sugars) as sugars,
-          SUM(sodium) as sodium,
-          SUM(dietary_fiber) as fiber,
-          SUM(saturated_fat) as sat_fat,
-          SUM(cholesterol) as cholesterol,
-          SUM(potassium) as potassium,
-          SUM(vitamin_a) as vit_a,
-          SUM(vitamin_c) as vit_c,
-          SUM(calcium) as calcium,
-          SUM(iron) as iron
+          SUM(calories * quantity / NULLIF(serving_size, 0)) as calories, 
+          SUM(protein * quantity / NULLIF(serving_size, 0)) as protein,
+          SUM(carbs * quantity / NULLIF(serving_size, 0)) as carbs,
+          SUM(fat * quantity / NULLIF(serving_size, 0)) as fat,
+          SUM(sugars * quantity / NULLIF(serving_size, 0)) as sugars,
+          SUM(sodium * quantity / NULLIF(serving_size, 0)) as sodium,
+          SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)) as fiber,
+          SUM(saturated_fat * quantity / NULLIF(serving_size, 0)) as sat_fat,
+          SUM(cholesterol * quantity / NULLIF(serving_size, 0)) as cholesterol,
+          SUM(potassium * quantity / NULLIF(serving_size, 0)) as potassium,
+          SUM(vitamin_a * quantity / NULLIF(serving_size, 0)) as vit_a,
+          SUM(vitamin_c * quantity / NULLIF(serving_size, 0)) as vit_c,
+          SUM(calcium * quantity / NULLIF(serving_size, 0)) as calcium,
+          SUM(iron * quantity / NULLIF(serving_size, 0)) as iron
         FROM food_entries
         WHERE user_id = $1 AND entry_date >= CURRENT_DATE - $2::int
         GROUP BY entry_date
