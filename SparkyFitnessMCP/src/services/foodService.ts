@@ -197,29 +197,15 @@ export async function logFood(
         const variantUnit = (v.serving_unit || "serving").toLowerCase();
         const userUnit = (params.unit || "serving").toLowerCase();
         
-        let multiplier: number;
-        if (userUnit === "serving" || userUnit !== variantUnit) {
-          // User is logging servings — each serving = the full variant macros
-          multiplier = params.quantity;
-        } else {
-          // Units match (e.g. both "g") — scale proportionally
-          multiplier = params.quantity / variantServingSize;
-        }
-
-        const scale = (val: unknown) => {
-          const n = Number(val);
-          return isNaN(n) ? null : Math.round(n * multiplier * 10) / 10;
-        };
-
         nutritionData = {
-          calories: scale(v.calories), protein: scale(v.protein),
-          carbs: scale(v.carbs), fat: scale(v.fat),
-          saturated_fat: scale(v.saturated_fat), polyunsaturated_fat: scale(v.polyunsaturated_fat),
-          monounsaturated_fat: scale(v.monounsaturated_fat), trans_fat: scale(v.trans_fat),
-          cholesterol: scale(v.cholesterol), sodium: scale(v.sodium), potassium: scale(v.potassium),
-          dietary_fiber: scale(v.dietary_fiber), sugars: scale(v.sugars),
-          vitamin_a: scale(v.vitamin_a), vitamin_c: scale(v.vitamin_c), calcium: scale(v.calcium),
-          iron: scale(v.iron), glycemic_index: v.glycemic_index,
+          calories: v.calories, protein: v.protein,
+          carbs: v.carbs, fat: v.fat,
+          saturated_fat: v.saturated_fat, polyunsaturated_fat: v.polyunsaturated_fat,
+          monounsaturated_fat: v.monounsaturated_fat, trans_fat: v.trans_fat,
+          cholesterol: v.cholesterol, sodium: v.sodium, potassium: v.potassium,
+          dietary_fiber: v.dietary_fiber, sugars: v.sugars,
+          vitamin_a: v.vitamin_a, vitamin_c: v.vitamin_c, calcium: v.calcium,
+          iron: v.iron, glycemic_index: v.glycemic_index,
         };
       }
     }
@@ -371,22 +357,6 @@ export async function createFood(
         const logQuantity = params.quantity || (params.unit === "serving" ? 1 : 100);
         const logUnit = params.unit || "serving";
         
-        const variantServingSize = Number(variant.serving_size) || 1;
-        const variantUnit = (variant.serving_unit || "serving").toLowerCase();
-        const userUnit = (logUnit || "serving").toLowerCase();
-        
-        let multiplier: number;
-        if (userUnit === "serving" || userUnit !== variantUnit) {
-          multiplier = logQuantity;
-        } else {
-          multiplier = logQuantity / variantServingSize;
-        }
-
-        const scale = (val: unknown) => {
-          const n = Number(val);
-          return isNaN(n) ? null : Math.round(n * multiplier * 10) / 10;
-        };
-
         const result = await client.query(
           `INSERT INTO food_entries (
              user_id, food_id, variant_id, entry_date, quantity, unit, meal_type_id,
@@ -401,11 +371,11 @@ export async function createFood(
           [
             userId, food.id, variant.id, entryDate, logQuantity, logUnit, mealTypeId,
             food.name, food.brand || null, variant.serving_size, variant.serving_unit,
-            scale(variant.calories), scale(variant.protein), scale(variant.carbs), scale(variant.fat),
-            scale(variant.saturated_fat), scale(variant.polyunsaturated_fat), scale(variant.monounsaturated_fat),
-            scale(variant.trans_fat), scale(variant.cholesterol), scale(variant.sodium), scale(variant.potassium),
-            scale(variant.dietary_fiber), scale(variant.sugars), scale(variant.vitamin_a), scale(variant.vitamin_c),
-            scale(variant.calcium), scale(variant.iron), variant.glycemic_index,
+            variant.calories ?? null, variant.protein ?? null, variant.carbs ?? null, variant.fat ?? null,
+            variant.saturated_fat ?? null, variant.polyunsaturated_fat ?? null, variant.monounsaturated_fat ?? null,
+            variant.trans_fat ?? null, variant.cholesterol ?? null, variant.sodium ?? null, variant.potassium ?? null,
+            variant.dietary_fiber ?? null, variant.sugars ?? null, variant.vitamin_a ?? null, variant.vitamin_c ?? null,
+            variant.calcium ?? null, variant.iron ?? null, variant.glycemic_index,
           ]
         );
         
@@ -576,8 +546,25 @@ export async function listDiary(
     );
 
     const foodEntries: FoodEntry[] = foodResult.rows.map((row: any) => {
-      const calories = Number(row.calories || 0);
-      const displayCalories = energyUnit === "kJ" ? convertEnergy(calories, "kcal", "kJ") : calories;
+      const servingSize = Number(row.serving_size) || 1;
+      const servingUnit = (row.serving_unit || "serving").toLowerCase();
+      const unit = (row.unit || "serving").toLowerCase();
+      const quantity = Number(row.quantity);
+
+      let multiplier: number;
+      if (unit === "serving" || unit !== servingUnit) {
+        multiplier = quantity;
+      } else {
+        multiplier = quantity / servingSize;
+      }
+
+      const scale = (val: unknown) => {
+        const n = Number(val);
+        return isNaN(n) ? 0 : Math.round(n * multiplier * 10) / 10;
+      };
+
+      const scaledCalories = scale(row.calories);
+      const displayCalories = energyUnit === "kJ" ? convertEnergy(scaledCalories, "kcal", "kJ") : scaledCalories;
 
       return {
         id: row.id,
@@ -592,9 +579,9 @@ export async function listDiary(
         nutritional_values: row.calories != null
           ? {
               calories: Math.round(displayCalories),
-              protein: Math.round((Number(row.protein) || 0) * 10) / 10,
-              carbs: Math.round((Number(row.carbs) || 0) * 10) / 10,
-              fat: Math.round((Number(row.fat) || 0) * 10) / 10,
+              protein: scale(row.protein),
+              carbs: scale(row.carbs),
+              fat: scale(row.fat),
             }
           : undefined,
       };
@@ -698,23 +685,23 @@ export async function getNutritionalSummary(
   return withClient(userId, async (client) => {
     const result = await client.query(
       `SELECT entry_date, 
-              SUM(calories) as calories, 
-              SUM(protein) as protein, 
-              SUM(carbs) as carbs, 
-              SUM(fat) as fat,
-              SUM(saturated_fat) as saturated_fat,
-              SUM(polyunsaturated_fat) as polyunsaturated_fat,
-              SUM(monounsaturated_fat) as monounsaturated_fat,
-              SUM(trans_fat) as trans_fat,
-              SUM(cholesterol) as cholesterol,
-              SUM(sodium) as sodium,
-              SUM(potassium) as potassium,
-              SUM(dietary_fiber) as fiber,
-              SUM(sugars) as sugar,
-              SUM(vitamin_a) as vitamin_a,
-              SUM(vitamin_c) as vitamin_c,
-              SUM(calcium) as calcium,
-              SUM(iron) as iron
+              SUM(calories * quantity / NULLIF(serving_size, 0)) as calories, 
+              SUM(protein * quantity / NULLIF(serving_size, 0)) as protein, 
+              SUM(carbs * quantity / NULLIF(serving_size, 0)) as carbs, 
+              SUM(fat * quantity / NULLIF(serving_size, 0)) as fat,
+              SUM(saturated_fat * quantity / NULLIF(serving_size, 0)) as saturated_fat,
+              SUM(polyunsaturated_fat * quantity / NULLIF(serving_size, 0)) as polyunsaturated_fat,
+              SUM(monounsaturated_fat * quantity / NULLIF(serving_size, 0)) as monounsaturated_fat,
+              SUM(trans_fat * quantity / NULLIF(serving_size, 0)) as trans_fat,
+              SUM(cholesterol * quantity / NULLIF(serving_size, 0)) as cholesterol,
+              SUM(sodium * quantity / NULLIF(serving_size, 0)) as sodium,
+              SUM(potassium * quantity / NULLIF(serving_size, 0)) as potassium,
+              SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)) as fiber,
+              SUM(sugars * quantity / NULLIF(serving_size, 0)) as sugar,
+              SUM(vitamin_a * quantity / NULLIF(serving_size, 0)) as vitamin_a,
+              SUM(vitamin_c * quantity / NULLIF(serving_size, 0)) as vitamin_c,
+              SUM(calcium * quantity / NULLIF(serving_size, 0)) as calcium,
+              SUM(iron * quantity / NULLIF(serving_size, 0)) as iron
        FROM food_entries
        WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3
        GROUP BY entry_date
@@ -727,6 +714,22 @@ export async function getNutritionalSummary(
       return {
         ...row,
         calories: energyUnit === "kJ" ? convertEnergy(calories, "kcal", "kJ") : calories,
+        protein: Number(row.protein || 0),
+        carbs: Number(row.carbs || 0),
+        fat: Number(row.fat || 0),
+        saturated_fat: Number(row.saturated_fat || 0),
+        polyunsaturated_fat: Number(row.polyunsaturated_fat || 0),
+        monounsaturated_fat: Number(row.monounsaturated_fat || 0),
+        trans_fat: Number(row.trans_fat || 0),
+        cholesterol: Number(row.cholesterol || 0),
+        sodium: Number(row.sodium || 0),
+        potassium: Number(row.potassium || 0),
+        fiber: Number(row.fiber || 0),
+        sugar: Number(row.sugar || 0),
+        vitamin_a: Number(row.vitamin_a || 0),
+        vitamin_c: Number(row.vitamin_c || 0),
+        calcium: Number(row.calcium || 0),
+        iron: Number(row.iron || 0),
         energy_unit: energyUnit,
       };
     });
