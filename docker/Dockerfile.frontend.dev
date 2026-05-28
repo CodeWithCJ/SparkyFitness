@@ -14,8 +14,11 @@ COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
 COPY shared/package.json shared/
 
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ patches/
+
 # Install workspace dependencies
-RUN pnpm install
+RUN pnpm install --filter sparkyfitnessfrontend...
 
 # Copy shared source (frontend imports @workspace/shared)
 COPY shared/ shared/
