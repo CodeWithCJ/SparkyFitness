@@ -13,7 +13,7 @@ const SideStat: React.FC<SideStatProps> = ({ label, value }) => (
     <Text className="text-xl font-bold text-text-primary">
       {Math.round(value).toLocaleString()}
     </Text>
-    <Text className="text-text-secondary text-sm mt-1">{label}</Text>
+    <Text className="text-text-secondary text-xs mt-1">{label}</Text>
   </View>
 );
 

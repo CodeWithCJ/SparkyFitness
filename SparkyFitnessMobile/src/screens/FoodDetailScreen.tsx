@@ -9,7 +9,7 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../hooks';
+import { useDeleteFood, useFoodVariants, useProfile, useServerConnection, usePreferences } from '../hooks';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -34,6 +34,8 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   ]) as [string, string];
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
+  const { preferences } = usePreferences({ enabled: isConnected });
+  const showNetCarbs = preferences?.show_net_carbs === true;
   const [food, setFood] = useState(item);
 
   const isLocalFood = food.source === 'local';
@@ -182,6 +184,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           name={food.name}
           brand={food.brand}
           values={displayValues}
+          showNetCarbs={showNetCarbs}
         />
 
         <View className="bg-surface rounded-xl p-4">

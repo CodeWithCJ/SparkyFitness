@@ -13,6 +13,7 @@ import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
 import HydrationGauge from '../components/HydrationGauge';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
@@ -195,6 +196,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
 
     const { eaten, burned, remaining, goal, progress } = summary.calorieBalance;
+    const showNetCarbs = preferences.show_net_carbs === true;
+    const carbsConsumed = showNetCarbs
+      ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
+      : summary.carbs.consumed;
 
     return (
       <ScrollView
@@ -237,8 +242,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               overfillColor={progressTrackOverfillColor}
             />
             <MacroCard
-              label="Carbs"
-              consumed={summary.carbs.consumed}
+              label={showNetCarbs ? 'Net Carbs' : 'Carbs'}
+              consumed={carbsConsumed}
               goal={summary.carbs.goal}
               color={carbsColor}
               overfillColor={progressTrackOverfillColor}

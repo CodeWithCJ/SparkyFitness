@@ -16,9 +16,11 @@ COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
 COPY shared/package.json shared/
 
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ patches/
 
 # Install workspace dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter sparkyfitnessserver...
 
 # Copy server and shared source
 COPY SparkyFitnessServer/ SparkyFitnessServer/

@@ -14,6 +14,13 @@ interface FoodNutritionSummaryProps {
   servings?: number;
   goalPercentages?: NutritionGoalPercentages;
   goalsLoading?: boolean;
+  // Opt-in: when true and values.fiber is available, the carbs row of the
+  // macro card swaps to "Net Carbs" (max(0, carbs - fiber)), and a
+  // "Total Carbs" row is injected into the nutrient breakdown below.
+  // Applied across all surfaces (food detail, meal detail, meal-type detail,
+  // food entry, food photo flow) when user_preferences.show_net_carbs is
+  // enabled.
+  showNetCarbs?: boolean;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -23,16 +30,26 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   servings = 1,
   goalPercentages,
   goalsLoading,
+  showNetCarbs = false,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
-  const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
-    () => buildNutrientDisplayList(values),
-    [values],
-  );
   const scale = (value: number) => value * servings;
+  // Gate the Total Carbs row injection on the same condition NutritionMacroCard
+  // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
+  // bar falls back to total carbs and the row would otherwise duplicate it.
+  const useNetCarbs = showNetCarbs && values.fiber !== undefined;
+  const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
+    () =>
+      buildNutrientDisplayList(values, {
+        showNetCarbs: useNetCarbs,
+        // Pass raw carbs; renderRow scales by `servings` like every other row.
+        carbs: useNetCarbs ? values.carbs : undefined,
+      }),
+    [values, useNetCarbs],
+  );
 
   const renderRow = (nutrient: NutrientDisplayItem, showBorder: boolean) => (
     <View
@@ -65,8 +82,10 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
         protein={scale(values.protein)}
         carbs={scale(values.carbs)}
         fat={scale(values.fat)}
+        fiber={values.fiber !== undefined ? scale(values.fiber) : undefined}
         goalPercentages={goalPercentages}
         goalsLoading={goalsLoading}
+        showNetCarbs={showNetCarbs}
       />
 
       {primaryNutrients.length > 0 ? (

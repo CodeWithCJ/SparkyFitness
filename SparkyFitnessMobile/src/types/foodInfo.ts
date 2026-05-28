@@ -59,8 +59,20 @@ export interface NutrientDisplayItem {
   unit: string;
 }
 
+export interface BuildNutrientDisplayListOptions {
+  // When true and `carbs` is provided, a "Total Carbs" row is inserted in the
+  // primary list immediately after the carb-cluster entries (Fiber, Sugars).
+  // Used by callers that have swapped the macro-bar Carbs label to "Net Carbs"
+  // so users can still see the unsubtracted total without losing the row.
+  showNetCarbs?: boolean;
+  carbs?: number;
+}
+
 /** Build primary + additional display lists from a camelCase nutrient source. */
-export function buildNutrientDisplayList(source: Partial<Record<ExtraNutrientKey, number>>) {
+export function buildNutrientDisplayList(
+  source: Partial<Record<ExtraNutrientKey, number>>,
+  options: BuildNutrientDisplayListOptions = {},
+) {
   const primary: NutrientDisplayItem[] = [];
   const additional: NutrientDisplayItem[] = [];
   for (const field of EXTRA_NUTRIENT_FIELDS) {
@@ -73,6 +85,22 @@ export function buildNutrientDisplayList(source: Partial<Record<ExtraNutrientKey
       primary.push(item);
     }
   }
+
+  if (options.showNetCarbs && options.carbs !== undefined) {
+    const carbClusterLabels = new Set(['Fiber', 'Sugars']);
+    let insertIdx = 0;
+    for (let i = 0; i < primary.length; i++) {
+      if (carbClusterLabels.has(primary[i].label)) {
+        insertIdx = i + 1;
+      }
+    }
+    primary.splice(insertIdx, 0, {
+      label: 'Total Carbs',
+      value: options.carbs,
+      unit: 'g',
+    });
+  }
+
   return { primary, additional };
 }
 

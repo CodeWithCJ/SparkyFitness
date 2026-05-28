@@ -155,7 +155,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
-                  title="Food Search Settings"
+                  title="Food Settings"
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />

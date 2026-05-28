@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   FlatList,
   ScrollView,
   TextInput,
-  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +26,8 @@ import {
   usePreferences,
 } from '../hooks';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
+import { getLastUsedTab, setLastUsedTab } from '../services/foodSearchPreferences';
+import type { FoodSearchTab } from '../services/foodSearchPreferences';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
@@ -41,7 +42,7 @@ type FoodSection = {
   data: (FoodItem | TopFoodItem)[];
 };
 
-type TabKey = 'search' | 'online' | 'meal';
+type TabKey = FoodSearchTab;
 
 const ALL_TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
@@ -106,6 +107,27 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const hasUserSelectedProvider = useRef(false);
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
+  const hasUserSelectedTab = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const storedTab = await getLastUsedTab();
+      if (cancelled || hasUserSelectedTab.current) return;
+      if (storedTab && !(isMealBuilderMode && storedTab === 'meal')) {
+        setActiveTab(storedTab);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMealBuilderMode]);
+
+  const handleTabChange = useCallback((tab: TabKey) => {
+    hasUserSelectedTab.current = true;
+    setActiveTab(tab);
+    void setLastUsedTab(tab);
+  }, []);
 
   const selectedProviderType = useMemo(
     () => providers.find((provider) => provider.id === selectedProvider)?.provider_type ?? '',
@@ -230,7 +252,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderItem = ({ item }: { item: FoodItem | TopFoodItem }) => (
     <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
+      className="px-4 py-2 border-b border-border-subtle"
       activeOpacity={0.7}
       onPress={() => showFoodInfo(foodItemToFoodInfo(item))}
     >
@@ -259,10 +281,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     </View>
   );
 
-  const renderSearchBar = () => (
-    <View className="px-4 py-2">
+  const renderHeaderBar = () => (
+    <View className="flex-row items-center px-4 py-2 gap-3">
+      <Button
+        variant="ghost"
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        className="p-0"
+        accessibilityLabel="Close"
+      >
+        <Icon name="close" size={22} color={accentColor} />
+      </Button>
+
       <View
-        className="flex-row items-center bg-raised rounded-lg px-3"
+        className="flex-1 flex-row items-center bg-raised rounded-lg px-3"
         style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
       >
         <Icon name="search" size={18} color={textMuted} />
@@ -279,64 +311,111 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
+            autoFocus
           />
         </View>
         {searchText.length > 0 ? (
-          <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
-            <Icon name="close" size={16} color={textMuted} />
+          <Button
+            variant="ghost"
+            onPress={() => setSearchText('')}
+            hitSlop={8}
+            className="ml-2 p-0"
+            accessibilityLabel="Clear search"
+          >
+            <Icon name="close" size={20} color={textMuted} />
           </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          onPress={openFoodScan}
-          hitSlop={8}
-          className="ml-2 p-0"
-          accessibilityLabel="Scan Food"
-        >
-          <Icon name="scan" size={20} color={accentColor} />
-        </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            onPress={openFoodScan}
+            hitSlop={8}
+            className="ml-2 p-0"
+            accessibilityLabel="Scan Food"
+          >
+            <Icon name="scan" size={20} color={accentColor} />
+          </Button>
+        )}
       </View>
+
+      <Button
+        variant="ghost"
+        onPress={handleHeaderActionPress}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        className="p-0"
+        accessibilityLabel={trailingActionLabel}
+      >
+        <Icon name="add" size={26} color={accentColor} />
+      </Button>
     </View>
   );
+
+  const renderTabSwitcherBar = () => {
+    if (visibleTabs.length < 2) return null;
+
+    return (
+      <View className="px-4 pb-2">
+        <SegmentedControl segments={visibleTabs} activeKey={activeTab} onSelect={handleTabChange} />
+      </View>
+    );
+  };
+
+  const isCurrentTabSearchActive =
+    (activeTab === 'search' && isSearchActive) ||
+    (activeTab === 'meal' && isMealSearchActive) ||
+    (activeTab === 'online' && isOnlineSearchActive);
+
+  const renderTabSwitcher = () => {
+    if (isCurrentTabSearchActive) return null;
+    return renderTabSwitcherBar();
+  };
 
   const renderSearchResults = () => {
     if (isSearching && searchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isSearchError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search foods
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to search foods
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (searchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center mb-4">
-            No matching foods found
-          </Text>
-          {!isMealBuilderMode ? (
-            <Button
-              variant="primary"
-              onPress={() =>
-                navigation.navigate('FoodScan', { date, initialMode: 'photo' })
-              }
-              className="self-stretch rounded-lg"
-            >
-              Estimate from photo
-            </Button>
-          ) : null}
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center mb-4">
+              No matching foods found
+            </Text>
+            {!isMealBuilderMode ? (
+              <Button
+                variant="primary"
+                onPress={() =>
+                  navigation.navigate('FoodScan', { date, initialMode: 'photo' })
+                }
+                className="self-stretch rounded-lg"
+              >
+                Estimate from photo
+              </Button>
+            ) : null}
+          </View>
+        </>
       );
     }
 
@@ -346,7 +425,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={renderTabSwitcherBar()}
       />
     );
   };
@@ -354,12 +435,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderSearchTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view foods
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to view foods
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -405,6 +489,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
       />
     );
@@ -421,30 +506,42 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderMealSearchResults = () => {
     if (isMealSearching && mealSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isMealSearchError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search meals
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to search meals
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (mealSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching meals found
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center">
+              No matching meals found
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -454,7 +551,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => renderMealRow(item, index === mealSearchResults.length - 1)}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={
+          <>
+            {renderTabSwitcherBar()}
+            {renderCreateMealCta()}
+          </>
+        }
       />
     );
   };
@@ -462,12 +566,16 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderMealTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view meals
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to view meals
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -477,31 +585,40 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     if (isMealsLoading) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isMealsError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load meals
-          </Text>
-          <Button variant="secondary" onPress={() => refetchMeals()} className="mt-4 px-6">
-            Retry
-          </Button>
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to load meals
+            </Text>
+            <Button variant="secondary" onPress={() => refetchMeals()} className="mt-4 px-6">
+              Retry
+            </Button>
+          </View>
+        </>
       );
     }
 
     if (meals.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">No meals found</Text>
-        </View>
+        <>
+          {renderCreateMealCta()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center">No meals found</Text>
+          </View>
+        </>
       );
     }
 
@@ -511,7 +628,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => renderMealRow(item, index === meals.length - 1)}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={renderCreateMealCta()}
       />
     );
   };
@@ -548,33 +667,82 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     </TouchableOpacity>
   );
 
+  const renderProviderChips = () => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerClassName="px-4 gap-2 items-center"
+      className="grow-0 py-2"
+    >
+      {providers.map((provider) => {
+        const isActive = provider.id === selectedProvider;
+
+        return (
+          <TouchableOpacity
+            key={provider.id}
+            onPress={() => {
+              hasUserSelectedProvider.current = true;
+              setSelectedProvider(provider.id);
+            }}
+            activeOpacity={0.7}
+            className={`flex-row items-center rounded-full px-3 py-1 border ${
+              isActive
+                ? 'border-accent-primary bg-accent-primary'
+                : 'border-border-subtle bg-raised'
+            }`}
+          >
+            <Text
+              className={`text-sm font-medium ${
+                isActive ? 'text-white' : 'text-text-primary'
+              }`}
+            >
+              {provider.provider_name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+
   const renderOnlineSearchResults = () => {
     if (isOnlineSearching && onlineSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderProviderChips()}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isOnlineSearchError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search {selectedProviderName}
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderProviderChips()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to search {selectedProviderName}
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (onlineSearchResults.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching foods found
-          </Text>
-        </View>
+        <>
+          {renderTabSwitcherBar()}
+          {renderProviderChips()}
+          <View className="flex-1 justify-center items-center px-6">
+            <Text className="text-text-secondary text-base text-center">
+              No matching foods found
+            </Text>
+          </View>
+        </>
       );
     }
 
@@ -584,7 +752,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalFoodItem}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerClassName="pb-safe-or-4"
+        ListHeaderComponent={
+          <>
+            {renderTabSwitcherBar()}
+            {renderProviderChips()}
+          </>
+        }
         ListFooterComponent={
           isFetchNextPageError ? (
             <Button
@@ -617,100 +792,85 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderOnlineTab = () => {
     if (!isConnected) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to search online foods
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="cloud-offline" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Connect to a server to search online foods
+            </Text>
+          </View>
+        </>
       );
     }
 
     if (isProvidersLoading) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
       );
     }
 
     if (isProvidersError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load providers
-          </Text>
-          <Button variant="secondary" onPress={() => refetchProviders()} className="mt-4 px-6">
-            Retry
-          </Button>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="alert-circle" size={48} color={accentColor} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              Failed to load providers
+            </Text>
+            <Button variant="secondary" onPress={() => refetchProviders()} className="mt-4 px-6">
+              Retry
+            </Button>
+          </View>
+        </>
       );
     }
 
     if (providers.length === 0) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="globe" size={48} color={textMuted} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            No online food providers configured
-          </Text>
-        </View>
+        <>
+          {isCurrentTabSearchActive ? renderTabSwitcherBar() : null}
+          <View className="flex-1 justify-center items-center px-6">
+            <Icon name="globe" size={48} color={textMuted} />
+            <Text className="text-text-secondary text-base mt-4 text-center">
+              No online food providers configured
+            </Text>
+          </View>
+        </>
       );
     }
 
     return (
       <View className="flex-1">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="px-4 gap-2 items-center"
-          className="grow-0"
-        >
-          {providers.map((provider) => {
-            const isActive = provider.id === selectedProvider;
-
-            return (
-              <TouchableOpacity
-                key={provider.id}
-                onPress={() => {
-                  hasUserSelectedProvider.current = true;
-                  setSelectedProvider(provider.id);
-                }}
-                activeOpacity={0.7}
-                className={`flex-row items-center rounded-full px-3 py-1 border ${
-                  isActive
-                    ? 'border-accent-primary bg-accent-primary'
-                    : 'border-border-subtle bg-raised'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    isActive ? 'text-white' : 'text-text-primary'
-                  }`}
-                >
-                  {provider.provider_name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
         {!isProviderSupported ? (
-          <View className="flex-1 justify-center items-center px-6">
-            <Icon name="globe" size={48} color={textMuted} />
-            <Text className="text-text-secondary text-base mt-4 text-center">
-              {selectedProviderName} search is not yet supported
-            </Text>
-          </View>
+          <>
+            {isOnlineSearchActive ? renderTabSwitcherBar() : null}
+            {renderProviderChips()}
+            <View className="flex-1 justify-center items-center px-6">
+              <Icon name="globe" size={48} color={textMuted} />
+              <Text className="text-text-secondary text-base mt-4 text-center">
+                {selectedProviderName} search is not yet supported
+              </Text>
+            </View>
+          </>
         ) : isOnlineSearchActive ? (
           renderOnlineSearchResults()
         ) : (
-          <View className="flex-1 justify-center items-center px-6">
-            <Icon name="search" size={48} color={textSecondary} />
-            <Text className="text-text-secondary text-base mt-4 text-center">
-              Search {selectedProviderName} for foods
-            </Text>
-          </View>
+          <>
+            {renderProviderChips()}
+            <View className="flex-1 justify-center items-center px-6">
+              <Icon name="search" size={48} color={textSecondary} />
+              <Text className="text-text-secondary text-base mt-4 text-center">
+                Search {selectedProviderName} for foods
+              </Text>
+            </View>
+          </>
         )}
       </View>
     );
@@ -728,40 +888,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <Button
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 p-0"
-          accessibilityLabel="Close"
-        >
-          <Icon name="close" size={22} color={accentColor} />
-        </Button>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Search Food
-        </Text>
-        <Button
-          variant="ghost"
-          onPress={handleHeaderActionPress}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 p-0"
-          accessibilityLabel={trailingActionLabel}
-        >
-          <Icon name="add" size={26} color={accentColor} />
-        </Button>
-      </View>
-
-      <View className="px-4 mt-2">
-        <SegmentedControl segments={visibleTabs} activeKey={activeTab} onSelect={setActiveTab} />
-      </View>
-
-      {renderSearchBar()}
-      {renderCreateMealCta()}
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      {renderHeaderBar()}
+      {renderTabSwitcher()}
 
       {renderTabContent()}
     </View>

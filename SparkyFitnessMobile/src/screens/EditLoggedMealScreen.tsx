@@ -11,7 +11,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useMealTypes } from '../hooks';
+import { useMealTypes, usePreferences } from '../hooks';
 import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
@@ -32,6 +32,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
   const { mealTypes } = useMealTypes();
+  const { preferences } = usePreferences();
+  const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [name, setName] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -141,6 +143,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const scaledProtein = (meal.protein ?? 0) * scaleFactor;
   const scaledCarbs = (meal.carbs ?? 0) * scaleFactor;
   const scaledFat = (meal.fat ?? 0) * scaleFactor;
+  const scaledFiber =
+    meal.dietary_fiber != null ? meal.dietary_fiber * scaleFactor : undefined;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -189,6 +193,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           protein={scaledProtein}
           carbs={scaledCarbs}
           fat={scaledFat}
+          fiber={scaledFiber}
+          showNetCarbs={showNetCarbs}
         />
 
         {/* Quantity */}
