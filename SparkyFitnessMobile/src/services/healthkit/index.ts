@@ -609,25 +609,28 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       ? (workoutAny.totalDistance?.quantity ?? 0)
       : (workoutAny.totalDistance ?? 0);
 
+    // Pin units explicitly on each getStatistic call. getAllStatistics returns
+    // values in the user's HealthKit-preferred unit (often miles / kJ), but the
+    // transform layer assumes meters / kcal, so we'd silently store mis-scaled
+    // values otherwise.
     try {
-      const stats = await w.getAllStatistics();
-
-      // Active energy burned (calories) - prefer stats if available
-      const energyStats = stats['HKQuantityTypeIdentifierActiveEnergyBurned'];
+      const energyStats = await w.getStatistic(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        'kcal',
+      );
       if (energyStats?.sumQuantity?.quantity) {
         totalEnergyBurned = energyStats.sumQuantity.quantity;
       }
 
-      // Distance - check multiple types based on workout activity
       const distanceTypes = [
         'HKQuantityTypeIdentifierDistanceWalkingRunning',
         'HKQuantityTypeIdentifierDistanceCycling',
         'HKQuantityTypeIdentifierDistanceSwimming',
         'HKQuantityTypeIdentifierDistanceWheelchair',
         'HKQuantityTypeIdentifierDistanceDownhillSnowSports',
-      ];
+      ] as const;
       for (const distanceType of distanceTypes) {
-        const distanceStats = stats[distanceType];
+        const distanceStats = await w.getStatistic(distanceType, 'm');
         if (distanceStats?.sumQuantity?.quantity) {
           totalDistance = distanceStats.sumQuantity.quantity;
           break;
