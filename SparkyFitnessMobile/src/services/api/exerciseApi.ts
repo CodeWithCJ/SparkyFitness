@@ -196,7 +196,7 @@ const parseJsonArray = (raw: unknown): string[] => {
   return [];
 };
 
-const transformExerciseRow = (row: Record<string, unknown>): Exercise => ({
+export const transformExerciseRow = (row: Record<string, unknown>): Exercise => ({
   id: String(row.id),
   name: String(row.name),
   category: (row.category as string | null) ?? null,

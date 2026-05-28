@@ -103,6 +103,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
+// 304s from ETag revalidation break the iOS mobile app (#1353).
+app.set('etag', false);
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 console.log(
   `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
@@ -208,9 +210,22 @@ const UPLOADS_BASE_DIR = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   : path.join(__dirname, 'uploads');
 
 console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
-// Mount at both paths for compatibility during transition
-app.use('/api/uploads', express.static(UPLOADS_BASE_DIR));
-app.use('/uploads', express.static(UPLOADS_BASE_DIR));
+// Mount at both paths for compatibility during transition.
+// Disable etag/lastModified — iOS CFNetwork mis-handles the resulting 304s
+// on freshly uploaded images (#1353). Filenames embed Date.now() so URLs
+// are already effectively immutable; clients still cache by URL.
+const uploadsStaticOptions = { etag: false, lastModified: false };
+app.use('/api/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));
+app.use('/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));
+// Mounted after uploads so static image Cache-Control isn't clobbered.
+// Skip /api/uploads so the on-demand image route (which falls through static
+// on first download) doesn't get no-store applied to immutable image URLs.
+app.use('/api', (req, res, next) => {
+  if (!req.originalUrl.startsWith('/api/uploads')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
+  next();
+});
 // On-demand image serving route
 /**
  * @swagger
@@ -302,7 +317,7 @@ app.get(
     );
 
     if (resolvedStatus !== 'NOT_FOUND') {
-      return res.sendFile(localImagePath);
+      return res.sendFile(localImagePath, uploadsStaticOptions);
     }
     // If not found, attempt to re-download. Resolve image paths from the
     // upstream free-exercise-db record (the canonical source) rather than a
@@ -323,7 +338,7 @@ app.get(
         originalRelativeImagePath
       );
       await downloadImage(externalImageUrl, exerciseId);
-      res.sendFile(localImagePath);
+      res.sendFile(localImagePath, uploadsStaticOptions);
     } catch (error) {
       // @ts-expect-error TS18046
       log('error', `Error serving image: ${error.message}`);
