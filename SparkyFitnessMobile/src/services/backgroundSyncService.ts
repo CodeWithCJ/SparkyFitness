@@ -6,15 +6,16 @@ import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import {
   loadHealthPreference,
-  readHealthRecords,
+  readHealthRecordsDetailed,
   transformHealthRecords,
   aggregateSleepSessions,
   aggregateByDay,
-  getAggregatedStepsByDate,
-  getAggregatedActiveCaloriesByDate,
-  getAggregatedTotalCaloriesByDate,
-  getAggregatedDistanceByDate,
-  getAggregatedFloorsClimbedByDate,
+  getAggregatedStepsByDateDetailed,
+  getAggregatedActiveCaloriesByDateDetailed,
+  getAggregatedTotalCaloriesByDateDetailed,
+  getAggregatedDistanceByDateDetailed,
+  getAggregatedFloorsClimbedByDateDetailed,
+  alignToLocalDayStart,
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
 } from './healthConnectService';
@@ -43,6 +44,11 @@ const BACKGROUND_TASK_NAME = 'healthDataSync';
 // upserts by record identity, so duplicates are harmless.
 const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+interface BackgroundMetricResult {
+  data: HealthDataPayload;
+  error?: string;
+}
+
 /**
  * Fetches and transforms a single health metric for background sync.
  * Cumulative metrics use the aggregation API; others read raw records.
@@ -52,25 +58,38 @@ async function processBackgroundMetric(
   aggregatedStartDate: Date,
   sessionStartDate: Date,
   endDate: Date,
-): Promise<HealthDataPayload> {
+): Promise<BackgroundMetricResult> {
   const type = metric.recordType;
   let dataToTransform: unknown[] = [];
+  let readError: string | undefined;
 
   // Cumulative metrics use the aggregation API (handles deduplication)
   if (type === 'Steps') {
-    dataToTransform = await getAggregatedStepsByDate(aggregatedStartDate, endDate);
+    const result = await getAggregatedStepsByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
   } else if (type === 'ActiveCaloriesBurned') {
-    dataToTransform = await getAggregatedActiveCaloriesByDate(aggregatedStartDate, endDate);
+    const result = await getAggregatedActiveCaloriesByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
   } else if (type === 'TotalCaloriesBurned') {
-    dataToTransform = await getAggregatedTotalCaloriesByDate(aggregatedStartDate, endDate);
+    const result = await getAggregatedTotalCaloriesByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
   } else if (type === 'Distance') {
-    dataToTransform = await getAggregatedDistanceByDate(aggregatedStartDate, endDate);
+    const result = await getAggregatedDistanceByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
   } else if (type === 'FloorsClimbed') {
-    dataToTransform = await getAggregatedFloorsClimbedByDate(aggregatedStartDate, endDate);
+    const result = await getAggregatedFloorsClimbedByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
   } else {
     // All other metrics: read raw records
-    const rawRecords = await readHealthRecords(type, sessionStartDate, endDate);
-    if (!rawRecords || rawRecords.length === 0) return [];
+    const result = await readHealthRecordsDetailed(type, sessionStartDate, endDate);
+    const rawRecords = result.records;
+    readError = result.error;
+    if (!rawRecords || rawRecords.length === 0) return { data: [], error: readError };
     dataToTransform = rawRecords;
 
     // Post-read aggregation for specific types
@@ -80,7 +99,7 @@ async function processBackgroundMetric(
   }
 
   const transformed = transformHealthRecords(dataToTransform, metric);
-  if (transformed.length === 0) return [];
+  if (transformed.length === 0) return { data: [], error: readError };
 
   if (metric.aggregationStrategy) {
     const aggregated = aggregateByDay(
@@ -89,10 +108,10 @@ async function processBackgroundMetric(
       metric.unit,
       metric.aggregationStrategy,
     );
-    return aggregated as HealthDataPayload;
+    return { data: aggregated as HealthDataPayload, error: readError };
   }
 
-  return transformed as HealthDataPayload;
+  return { data: transformed as HealthDataPayload, error: readError };
 }
 
 // Guard against overlapping syncs from concurrent triggers (background task,
@@ -153,8 +172,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
 
   // Aggregated metrics (steps, calories) produce per-day totals. Use start-of-day
   // so we always send complete daily values rather than partial-window slices.
-  const aggregatedStartDate = new Date(sessionStartDate);
-  aggregatedStartDate.setHours(0, 0, 0, 0);
+  const aggregatedStartDate = alignToLocalDayStart(sessionStartDate);
 
   addLog(`[Background Sync] Syncing sessions from ${sessionStartDate.toISOString()}, aggregated from ${aggregatedStartDate.toISOString()} to ${endDate.toISOString()}`, 'DEBUG');
 
@@ -194,29 +212,30 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     },
   );
 
-  let hasTimeouts = false;
-
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     const metric = enabledMetrics[i];
 
     if (result.status === 'skipped') {
       syncErrors++;
-      hasTimeouts = true;
       addLog(
         `[Background Sync] Skipping ${metric.label} because an earlier metric timed out; will retry next cycle`,
         'WARNING',
       );
     } else if (result.status === 'fulfilled') {
-      if (result.value.length > 0) {
-        allData.push(...result.value);
-        collectedCounts.push(`${metric.id}: ${result.value.length}`);
+      if (result.value.data.length > 0) {
+        allData.push(...result.value.data);
+        collectedCounts.push(`${metric.id}: ${result.value.data.length}`);
+      }
+      if (result.value.error) {
+        syncErrors++;
+        addLog(
+          `[Background Sync] ${metric.label} completed with read errors: ${result.value.error}`,
+          'WARNING',
+        );
       }
     } else {
       syncErrors++;
-      if (result.reason instanceof TimeoutError) {
-        hasTimeouts = true;
-      }
       const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
       addLog(`[Background Sync] Error syncing ${metric.label}: ${message}`, 'ERROR');
     }
@@ -247,9 +266,9 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     await syncHealthData(allData);
     await refreshHealthSyncCacheWhenActive();
 
-    if (hasTimeouts) {
+    if (syncErrors > 0) {
       addLog(
-        '[Background Sync] Skipping timestamp update — metric(s) timed out, will retry from same window',
+        `[Background Sync] Skipping timestamp update — ${syncErrors} metric(s) had errors, will retry from same window`,
         'WARNING',
       );
     } else {

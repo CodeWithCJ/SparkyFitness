@@ -91,3 +91,61 @@ export const manageExerciseSchema = z.discriminatedUnion("action", [
 ]);
 
 export type ManageExerciseInput = z.infer<typeof manageExerciseSchema>;
+
+
+// Flat input shape published to MCP clients as `inputSchema`. See comment on
+// manageFoodInput in ./food.js for the rationale (MCP TS SDK can't serialize
+// z.discriminatedUnion). Runtime validation still uses manageExerciseSchema
+// in the tool handler via safeParse.
+export const manageExerciseInput = z.object({
+  action: z.enum([
+    "search_exercises",
+    "create_exercise",
+    "log_exercise",
+    "list_exercise_diary",
+    "get_workout_presets",
+    "log_workout_preset",
+    "delete_exercise_entry",
+    "get_exercise_details",
+    "create_workout_preset",
+    "get_exercise_progress",
+  ]).describe("Action to perform. Each value selects a per-action signature; see the tool description for required fields per action."),
+  // identity
+  exercise_id: uuidSchema.optional().describe("Exercise UUID"),
+  exercise_name: z.string().min(1).max(200).optional().describe("Exercise name (alternative to exercise_id)"),
+  exercise_ids: z.array(uuidSchema).optional().describe("List of exercise UUIDs — for create_workout_preset"),
+  name: z.string().min(1).max(200).optional().describe("Name — for create_exercise / create_workout_preset"),
+  // search
+  searchTerm: z.string().min(1).max(200).optional().describe("Search term — required for search_exercises"),
+  muscleGroup: z.string().optional().describe("Muscle group filter (e.g., 'Chest')"),
+  equipment: z.string().optional().describe("Equipment filter (e.g., 'Dumbbell', 'None')"),
+  limit: z.coerce.number().int().min(1).max(100).optional().describe("Pagination limit"),
+  offset: z.coerce.number().int().min(0).optional().describe("Pagination offset"),
+  // create
+  category: z.string().optional().describe("Exercise category (e.g., 'Strength', 'Cardio')"),
+  calories_per_hour: z.coerce.number().min(0).optional().describe("Estimated calories burned per hour"),
+  description: z.string().max(1000).optional().describe("Description of the exercise"),
+  // log
+  entry_date: dateSchema.optional().describe("Date for the entry (YYYY-MM-DD)"),
+  duration_minutes: z.coerce.number().min(0).optional().describe("Duration in minutes"),
+  calories_burned: z.coerce.number().min(0).optional().describe("Calories burned"),
+  notes: z.string().max(2000).optional().describe("Additional notes"),
+  sets: z.union([
+    z.array(z.object({
+      reps: z.coerce.number().int().min(0).optional(),
+      weight: z.coerce.number().min(0).optional(),
+      duration: z.coerce.number().min(0).optional(),
+      rest_time: z.coerce.number().min(0).optional(),
+      set_type: setTypeEnum.optional(),
+    })),
+    z.string(),
+  ]).optional().describe("Set details as array of objects or JSON string"),
+  // presets
+  preset_id: uuidSchema.optional().describe("Workout preset UUID"),
+  preset_name: z.string().min(1).max(200).optional().describe("Workout preset name"),
+  // entry management
+  entry_id: uuidSchema.optional().describe("Exercise diary entry UUID — for delete_exercise_entry"),
+  // progress range
+  start_date: dateSchema.optional().describe("Start date for progress tracking"),
+  end_date: dateSchema.optional().describe("End date for progress tracking"),
+});

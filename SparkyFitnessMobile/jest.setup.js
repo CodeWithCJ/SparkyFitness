@@ -1,3 +1,9 @@
+// jsdom doesn't expose TextEncoder/TextDecoder globally, but Expo SDK 55's "winter"
+// runtime lazily installs URL/URLSearchParams via whatwg-url-minimum, which requires them.
+const { TextEncoder, TextDecoder } = require('util');
+if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
+if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
+
 // Mock radon-ide (ESM module that Jest can't transform)
 jest.mock('radon-ide', () => ({
   preview: jest.fn(),
@@ -69,6 +75,7 @@ jest.mock('react-native-health-connect', () => ({
   requestPermission: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
   aggregateRecord: jest.fn().mockResolvedValue({}),
+  aggregateGroupByPeriod: jest.fn().mockResolvedValue([]),
   getSdkStatus: jest.fn().mockResolvedValue(3),
   SdkAvailabilityStatus: {
     SDK_AVAILABLE: 3,

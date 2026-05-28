@@ -35,20 +35,44 @@ jest.mock('../../src/HealthMetrics', () => ({
   ],
 }));
 
-jest.mock('../../src/services/healthConnectService', () => ({
-  loadHealthPreference: jest.fn(),
-  readHealthRecords: jest.fn(),
-  transformHealthRecords: jest.fn((data) => data),
-  aggregateSleepSessions: jest.fn((data) => data),
-  aggregateByDay: jest.fn((data) => data),
-  getAggregatedStepsByDate: jest.fn(),
-  getAggregatedActiveCaloriesByDate: jest.fn(),
-  getAggregatedTotalCaloriesByDate: jest.fn(),
-  getAggregatedDistanceByDate: jest.fn(),
-  getAggregatedFloorsClimbedByDate: jest.fn(),
-  resetDatabaseInaccessibleCount: jest.fn(),
-  getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
-}));
+jest.mock('../../src/services/healthConnectService', () => {
+  const readHealthRecords = jest.fn();
+  const getAggregatedStepsByDate = jest.fn();
+  const getAggregatedActiveCaloriesByDate = jest.fn();
+  const getAggregatedTotalCaloriesByDate = jest.fn();
+  const getAggregatedDistanceByDate = jest.fn();
+  const getAggregatedFloorsClimbedByDate = jest.fn();
+  const detailedRecords = (fetchRecords: jest.Mock) => jest.fn(async (...args: unknown[]) => {
+    const records = await fetchRecords(...args);
+    return { records: records ?? [] };
+  });
+
+  return {
+    loadHealthPreference: jest.fn(),
+    readHealthRecords,
+    readHealthRecordsDetailed: detailedRecords(readHealthRecords),
+    transformHealthRecords: jest.fn((data) => data),
+    aggregateSleepSessions: jest.fn((data) => data),
+    aggregateByDay: jest.fn((data) => data),
+    getAggregatedStepsByDate,
+    getAggregatedStepsByDateDetailed: detailedRecords(getAggregatedStepsByDate),
+    getAggregatedActiveCaloriesByDate,
+    getAggregatedActiveCaloriesByDateDetailed: detailedRecords(getAggregatedActiveCaloriesByDate),
+    getAggregatedTotalCaloriesByDate,
+    getAggregatedTotalCaloriesByDateDetailed: detailedRecords(getAggregatedTotalCaloriesByDate),
+    getAggregatedDistanceByDate,
+    getAggregatedDistanceByDateDetailed: detailedRecords(getAggregatedDistanceByDate),
+    getAggregatedFloorsClimbedByDate,
+    getAggregatedFloorsClimbedByDateDetailed: detailedRecords(getAggregatedFloorsClimbedByDate),
+    alignToLocalDayStart: jest.fn((date: Date) => {
+      const aligned = new Date(date);
+      aligned.setHours(0, 0, 0, 0);
+      return aligned;
+    }),
+    resetDatabaseInaccessibleCount: jest.fn(),
+    getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
+  };
+});
 
 jest.mock('../../src/hooks/refreshHealthSyncCache', () => ({
   refreshHealthSyncCache: jest.fn(),
@@ -65,14 +89,20 @@ const storage = require('../../src/services/storage') as {
 const healthService = require('../../src/services/healthConnectService') as {
   loadHealthPreference: jest.Mock;
   readHealthRecords: jest.Mock;
+  readHealthRecordsDetailed: jest.Mock;
   transformHealthRecords: jest.Mock;
   aggregateSleepSessions: jest.Mock;
   aggregateByDay: jest.Mock;
   getAggregatedStepsByDate: jest.Mock;
+  getAggregatedStepsByDateDetailed: jest.Mock;
   getAggregatedActiveCaloriesByDate: jest.Mock;
+  getAggregatedActiveCaloriesByDateDetailed: jest.Mock;
   getAggregatedTotalCaloriesByDate: jest.Mock;
+  getAggregatedTotalCaloriesByDateDetailed: jest.Mock;
   getAggregatedDistanceByDate: jest.Mock;
+  getAggregatedDistanceByDateDetailed: jest.Mock;
   getAggregatedFloorsClimbedByDate: jest.Mock;
+  getAggregatedFloorsClimbedByDateDetailed: jest.Mock;
   resetDatabaseInaccessibleCount: jest.Mock;
   getDatabaseInaccessibleCount: jest.Mock;
 };
@@ -490,6 +520,28 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
+    test('syncs collected data but skips timestamp save when a metric read is partial', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isActiveCaloriesSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.getAggregatedStepsByDateDetailed.mockResolvedValueOnce({
+        records: [],
+        error: 'startTime must be before endTime',
+      });
+      healthService.getAggregatedActiveCaloriesByDateDetailed.mockResolvedValueOnce({
+        records: [{ value: 300 }],
+      });
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 300 }]);
+      expect(mockRefreshHealthSyncCache).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
     test('does not refresh caches when sync finishes in the background', async () => {
       setAppState('background');
       healthService.loadHealthPreference.mockImplementation((key: string) => {
@@ -579,7 +631,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(healthService.readHealthRecords).toHaveBeenCalled();
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 72 }]);
-      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
     test('completes sync even when all metrics throw', async () => {
@@ -612,7 +664,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
-      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
     test('continues when transformation throws', async () => {
@@ -634,7 +686,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
-      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
   });
 

@@ -275,6 +275,15 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(0);
     });
 
+    test('skips when endTime is before startTime', () => {
+      const records = [
+        { startTime: '2024-01-16T06:00:00Z', endTime: '2024-01-15T22:00:00Z' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
+
+      expect(result).toHaveLength(0);
+    });
+
     test('processes sleep stages into duration breakdowns', () => {
       const records = [
         {
@@ -510,6 +519,15 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
         { endTime: '2024-01-15T09:00:00Z', exerciseType: 8 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
+
+      expect(result).toHaveLength(0);
+    });
+
+    test('skips when endTime is before startTime', () => {
+      const records = [
+        { startTime: '2024-01-15T09:00:00Z', endTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
       ];
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
 
@@ -1116,6 +1134,25 @@ describe('transformHealthRecords', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe(toLocalDateString(startDate));
+    });
+
+    test('emits both days when end time-of-day is earlier than start time-of-day', () => {
+      // Day 1 20:00 → Day 2 08:00: regression test for premature loop termination
+      // when comparing Date objects directly while stepping by 24h.
+      const startDate = new Date(2024, 0, 15, 20, 0, 0);
+      const endDate = new Date(2024, 0, 16, 8, 0, 0);
+
+      const records = [
+        {
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(2);
+      expect(result[0].date).toBe(toLocalDateString(startDate));
+      expect(result[1].date).toBe(toLocalDateString(endDate));
     });
   });
 

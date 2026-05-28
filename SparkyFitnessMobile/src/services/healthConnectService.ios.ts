@@ -7,6 +7,7 @@ import { HealthDataPayload } from './api/healthDataApi';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { addLog } from './LogService';
 import {
+  AggregatedHealthRecord,
   SyncResult,
   HealthMetricStates,
   type TransformedRecord,
@@ -21,36 +22,26 @@ const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
 export const readHealthRecords = HealthKit.readHealthRecords;
+export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<{ records: unknown[]; error?: string }> => ({
+  records: await HealthKit.readHealthRecords(recordType, startDate, endDate),
+});
 export const getSyncStartDate = HealthKit.getSyncStartDate;
 
 // Locked-device detection (HealthKit database inaccessible)
 export const resetDatabaseInaccessibleCount = HealthKit.resetDatabaseInaccessibleCount;
 export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCount;
 
-// Record reader functions for specific types
-export const readStepRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Steps', startDate, endDate);
-
-export const readActiveCaloriesRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
-
-export const readHeartRateRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('HeartRate', startDate, endDate);
-
-export const readSleepSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('SleepSession', startDate, endDate);
-
-export const readStressRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Stress', startDate, endDate);
-
-export const readExerciseSessionRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('ExerciseSession', startDate, endDate);
-
-export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
-  HealthKit.readHealthRecords('Workout', startDate, endDate);
-
-export const aggregateHeartRateByDate = HealthKitAggregation.aggregateHeartRateByDate;
 export const aggregateByDay = HealthKitAggregation.aggregateByDay;
+
+export const alignToLocalDayStart = (date: Date): Date => {
+  const aligned = new Date(date);
+  aligned.setHours(0, 0, 0, 0);
+  return aligned;
+};
 
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
@@ -58,6 +49,39 @@ export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCa
 export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
 export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
 export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
+
+const aggregateDetailed = async (
+  fetchRecords: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>,
+  startDate: Date,
+  endDate: Date,
+): Promise<{ records: AggregatedHealthRecord[]; error?: string }> => ({
+  records: await fetchRecords(startDate, endDate),
+});
+
+export const getAggregatedStepsByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedStepsByDate, startDate, endDate);
+
+export const getAggregatedActiveCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedActiveCaloriesByDate, startDate, endDate);
+
+export const getAggregatedTotalCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedTotalCaloriesByDate, startDate, endDate);
+
+export const getAggregatedDistanceByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedDistanceByDate, startDate, endDate);
+
+export const getAggregatedFloorsClimbedByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedFloorsClimbedByDate, startDate, endDate);
 
 export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
 

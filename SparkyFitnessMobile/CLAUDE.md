@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-*Last updated: 2026-05-20*
+*Last updated: 2026-05-26*
 
 SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
@@ -30,8 +30,8 @@ tsc --noEmit                                   # Type check only
 
 ### Source Structure (`src/`)
 
-- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard`, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding, dashboard, diary, sync, logs; settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, food photo AI estimation (`FoodPhotoIntroScreen` + `FoodPhotoFlow` sub-stack: `FoodPhotoImproveScreen` → `FoodPhotoEstimateReviewScreen` → `FoodPhotoLogEntryScreen`), measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard` with `ExerciseStatsChip` showing best/last set, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), what's-new (`WhatsNewBanner` — version-gated banner above tab content), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
+- **screens/** — Top-level screens for onboarding (multi-step incl. theme switch + external food source config), dashboard, diary, sync, logs, `WhatsNewScreen` (version changelog); settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`/`EditBarcodeScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, food photo AI estimation (`FoodPhotoIntroScreen` + `FoodPhotoFlow` sub-stack: `FoodPhotoImproveScreen` → `FoodPhotoEstimateReviewScreen` → `FoodPhotoLogEntryScreen`), measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
   - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
@@ -89,6 +89,16 @@ For **cumulative metrics** (steps, calories), use `queryStatisticsForQuantity` w
 
 **Using correct approach:** Steps (`getAggregatedStepsByDate`), Active Calories, Total Calories, Distance, Floors Climbed. **Fine with raw samples:** Heart Rate, Weight, Body Fat, Sleep, etc.
 
+### Android Health Connect Aggregation
+
+Cumulative metrics (Steps, Distance, Active/Total Calories, Floors) are aggregated via HC's native `aggregateGroupByPeriod` — one call per range, not per day. HC's source-priority dedup matches what the Health Connect UI shows, so callers do not Math.max/dedup in JS (issue #1279). `enrichExerciseSessions` attaches per-session calories+distance via `aggregateRecord` over each session's time window, scoped to the session's `dataOrigin`.
+
+Read paths return a `{ records, error }` envelope (`readHealthRecordsDetailed`, `aggregateCumulativeMetricByDayDetailed`); the legacy non-detailed wrappers just unwrap `.records`. `backgroundSyncService` and `useSyncHealthData` skip persisting the last-synced timestamp when any metric returned a partial result or error — so a transient failure doesn't silently advance the cursor past unsynced data.
+
+App manifest grants `android.permission.health.READ_HEALTH_DATA_HISTORY` (configured in `app.config.ts`) so reads can reach data older than 30 days.
+
+**Patch — `react-native-health-connect@3.5.3`**: The library's `getAggregateGroupByPeriodRequest` only applied the `LocalDateTime` filter fix to `Steps`; every other record type still called `getTimeRangeFilter` (instant-based), which broke per-day grouping at DST boundaries and for any non-Steps cumulative metric. Patched at the repo root: `patches/react-native-health-connect@3.5.3.patch`, wired via `pnpm.patchedDependencies` in root `package.json`. The patch rewrites ~20 record types' `getAggregateGroupByPeriodRequest` to use `getTimeRangeFilterLocal`. Re-run `pnpm install` after changing the patch, then `npx expo prebuild -c` to rebuild Android. See `feedback_react_native_health_connect_local_filter`.
+
 ### Logging
 
 `LogService.ts` is the single source of truth for app logs. Prefer `addLog(message, status?, details?)` over `console.*` everywhere (see `feedback_logging`).
@@ -140,7 +150,7 @@ Pattern for adding a third widget is documented at the top of `plugins/withCalor
 
 The **Library** tab (`LibraryScreen`) is the entry point for all user-saved content — foods, meals, exercises, and workout presets. It surfaces "Create" tiles plus a recent-items preview per section, with "View all" pushing the section-specific paginated list:
 
-- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and the food-photo review screen. `FoodForm` includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes, a `convertServingSizeOnUnitChange` opt-in that converts the value when switching between compatible units (g↔oz) and leaves it alone for incompatible swaps (g→cup), and a `headerChildren` slot for callers (e.g. estimate review) to render an above-form summary.
+- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and the food-photo review screen. `FoodForm` supports **equivalent serving sizes** — variants grouped by nutrient signature so e.g. "1 cup (240g)" + "1 oz (28g)" map back to the same base variant; equivalents are edited inline and persisted via `foodsApi` variant endpoints. Also includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes, a `convertServingSizeOnUnitChange` opt-in that converts the value when switching between compatible units (g↔oz) and leaves it alone for incompatible swaps (g→cup), and a `headerChildren` slot for callers (e.g. estimate review) to render an above-form summary. `EditBarcodeScreen` manages additional barcodes for an existing food (so a scanned/manually-typed barcode finds the right food next time).
 - **Meals** — `MealsLibraryScreen` → `MealDetailScreen` and `MealAddScreen` (meal builder). Cross-screen ingredient handoff uses `services/mealBuilderSelection.ts` (set/consume pending selection). `MealTypeDetailScreen` shows a single meal type's day view from the diary.
 - **Exercises** — `ExercisesLibraryScreen` → `ExerciseDetailScreen` → `ExerciseFormScreen` for user-created exercises (advanced fields supported).
 - **Workout Presets** — `WorkoutPresetsLibraryScreen` → `WorkoutPresetDetailScreen` → `WorkoutPresetFormScreen` for managing reusable presets that feed `WorkoutAddScreen`.
@@ -211,11 +221,7 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/barcode/{barcode}` | External barcode lookup across providers | `externalFoodSearchApi` |
-| `GET /api/foods/openfoodfacts/search` | Search Open Food Facts (legacy direct path) | `externalFoodSearchApi` |
-| `GET /api/foods/usda/search` | Search USDA FoodData Central (legacy direct path) | `externalFoodSearchApi` |
-| `GET /api/foods/fatsecret/search` | Search FatSecret (legacy direct path) | `externalFoodSearchApi` |
-| `GET /api/foods/fatsecret/nutrients` | FatSecret detailed nutrients (legacy direct path) | `externalFoodSearchApi` |
-| `GET /api/foods/mealie/search` | Mealie recipe search (legacy direct path) | `externalFoodSearchApi` |
+| `GET /api/foods/{provider}/search` + `/fatsecret/nutrients` | Legacy direct-path external search (OFF/USDA/FatSecret/Mealie); v2 routes above are preferred | `externalFoodSearchApi` |
 | `GET /api/meals` | All saved meals | `mealsApi` |
 | `GET /api/meals/recent` | Recently used meals | `mealsApi` |
 | `GET /api/meals/search` | Search meals | `mealsApi` |

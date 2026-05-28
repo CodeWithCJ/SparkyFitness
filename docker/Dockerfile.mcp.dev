@@ -17,8 +17,11 @@ COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
 COPY SparkyFitnessMCP/package.json SparkyFitnessMCP/
 COPY shared/package.json shared/
 
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ patches/
+
 # Install workspace dependencies
-RUN pnpm install
+RUN pnpm install --filter sparkyfitness-mcp-server...
 
 COPY shared/ shared/
 COPY SparkyFitnessMCP/ SparkyFitnessMCP/
