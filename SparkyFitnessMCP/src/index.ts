@@ -11,6 +11,7 @@ import helmet from "helmet";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { serializeSignedCookie } from "better-call";
 import { authenticateToken } from "./auth/middleware.js";
 import { auth } from "./auth.js";
 import { registerAllTools } from "./tools/register.js";
@@ -59,27 +60,52 @@ app.post("/mcp", authenticateToken, async (req, res) => {
 
 // ─── Start MCP Stdio Mode (for AI clients) ────────────────────────────────────
 async function startStdio() {
-  // In stdio mode, we expect the API Key to be provided via environment variables
-  const apiKey = process.env.SPARKY_FITNESS_API_KEY || process.env.Authorization?.replace("Bearer ", "");
-  
-  if (!apiKey) {
-    console.error("[MCP] Authentication Error: No API Key provided in environment.");
+  // Priority 1: API Key (n8n, external tools, or server-wide config)
+  // Priority 2: Cookie or Authorization header forwarded from the backend (frontend sessions)
+  const authHeaders = new Headers();
+
+  if (process.env.SPARKY_FITNESS_API_KEY) {
+    // n8n / external tools path — explicit API key in env
+    authHeaders.set("x-api-key", process.env.SPARKY_FITNESS_API_KEY);
+  } else if (process.env.Authorization) {
+    // Bearer token forwarded from the backend (API key or session token)
+    const token = process.env.Authorization.replace("Bearer ", "");
+    if (token.length >= 64 && !token.includes(".")) {
+      // Looks like a 64-char API key
+      authHeaders.set("x-api-key", token);
+    } else {
+      // Session bearer token — sign it into a cookie like the server middleware does
+      const prefix = "sparky";
+      const cookieName = `${prefix}.session_token`;
+      const secretStr = Buffer.isBuffer(auth.options.secret)
+        ? auth.options.secret.toString()
+        : String(auth.options.secret);
+      const signed = await serializeSignedCookie("", token, secretStr);
+      const signedValue = signed.replace("=", "");
+      authHeaders.set("cookie", `${cookieName}=${signedValue}`);
+    }
+  } else if (process.env.Cookie) {
+    // Raw cookie string forwarded from the backend (frontend session cookie)
+    authHeaders.set("cookie", process.env.Cookie);
+  } else {
+    console.error(
+      "[MCP] Authentication Error: No credentials found in environment. " +
+      "Set SPARKY_FITNESS_API_KEY (for n8n/external tools) or ensure the " +
+      "backend forwards Authorization/Cookie (for frontend sessions)."
+    );
     process.exit(1);
   }
 
-  // Resolve user from API Key using Better Auth
-  const session = await auth.api.getSession({
-    headers: new Headers({ "x-api-key": apiKey })
-  });
+  const session = await auth.api.getSession({ headers: authHeaders });
 
   if (!session || !session.user) {
-    console.error("[MCP] Authentication Error: Invalid API Key.");
+    console.error("[MCP] Authentication Error: Credentials are invalid or session has expired.");
     process.exit(1);
   }
 
   const userId = session.user.id;
   console.error(`[MCP] Authenticated as ${session.user.email} (Stdio mode)`);
-  
+
   const mcpServer = new McpServer({ name: "sparkyfitness-mcp-server", version: "1.0.0" });
   registerAllTools(mcpServer, userId);
   const transport = new StdioServerTransport();

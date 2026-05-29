@@ -220,8 +220,8 @@ async function getChatHistoryByUserId(userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT content, message_type, created_at FROM sparky_chat_history ORDER BY created_at ASC LIMIT 5',
-      []
+      'SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at ASC LIMIT 50',
+      [userId]
     );
     return result.rows;
   } finally {
@@ -266,8 +266,9 @@ async function updateChatHistoryEntry(id: any, userId: any, updateData: any) {
         session_id = COALESCE($4, session_id),
         message = COALESCE($5, message),
         response = COALESCE($6, response),
+        parts = COALESCE($7, parts),
         updated_at = now()
-      WHERE id = $7
+      WHERE id = $8
       RETURNING *`,
       [
         updateData.content,
@@ -276,6 +277,7 @@ async function updateChatHistoryEntry(id: any, userId: any, updateData: any) {
         updateData.session_id,
         updateData.message,
         updateData.response,
+        updateData.parts ? JSON.stringify(updateData.parts) : null,
         id,
       ]
     );
@@ -312,13 +314,14 @@ async function saveChatHistory(historyData: any) {
   const client = await getClient(historyData.user_id); // User-specific operation
   try {
     await client.query(
-      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, created_at)
-       VALUES ($1, $2, $3, $4, now())`,
+      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, created_at)
+       VALUES ($1, $2, $3, $4, $5, now())`,
       [
         historyData.user_id,
         historyData.content,
         historyData.messageType,
         historyData.metadata,
+        historyData.parts ? JSON.stringify(historyData.parts) : null,
       ]
     );
     return true;

@@ -47,6 +47,7 @@ services:
       SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
+      SPARKY_FITNESS_MCP_URL: ${SPARKY_FITNESS_MCP_URL:-} # Pass MCP server URL if configured
       PUID: 1000
       GUID: 1000
     networks:

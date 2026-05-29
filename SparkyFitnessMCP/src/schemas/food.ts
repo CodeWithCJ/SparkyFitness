@@ -38,6 +38,12 @@ const searchFoodSchema = z.object({
   ...paginationSchema.shape,
 }).strict();
 
+const lookupFoodNutritionSchema = z.object({
+  action: z.literal("lookup_food_nutrition"),
+  food_name: z.string().min(1).max(200).describe("Name of the food to lookup"),
+  provider_type: z.enum(["internal", "openfoodfacts", "usda", "fatsecret", "mealie", "tandoor"]).optional().describe("Optional: Force a specific provider search, bypassing the cascade lookup"),
+}).strict();
+
 const logFoodSchema = z.object({
   action: z.literal("log_food"),
   food_name: z.string().min(1).max(200).describe("Name of the food item"),
@@ -152,6 +158,7 @@ const getWaterHistorySchema = z.object({
 
 export const manageFoodSchema = z.discriminatedUnion("action", [
   searchFoodSchema,
+  lookupFoodNutritionSchema,
   logFoodSchema,
   createFoodSchema,
   searchMealSchema,
@@ -179,6 +186,7 @@ export type ManageFoodInput = z.infer<typeof manageFoodSchema>;
 export const manageFoodInput = z.object({
   action: z.enum([
     "search_food",
+    "lookup_food_nutrition",
     "log_food",
     "create_food",
     "search_meal",
@@ -241,4 +249,6 @@ export const manageFoodInput = z.object({
   // range queries
   start_date: dateSchema.optional().describe("Start date for range queries"),
   end_date: dateSchema.optional().describe("End date for range queries"),
+  // explicit search provider
+  provider_type: z.enum(["internal", "openfoodfacts", "usda", "fatsecret", "mealie", "tandoor"]).optional().describe("Optional: Force a specific provider search (e.g. USDA)"),
 });

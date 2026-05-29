@@ -1,9 +1,26 @@
 import type { ToolResponse } from "../types.js";
+import { generateText } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 
-export function analyzeFoodImage(imageUrl: string): ToolResponse {
+function getModel() {
   const apiKey = process.env.VISION_API_KEY;
+  if (!apiKey) return null;
 
-  if (!apiKey) {
+  // Prefer Gemini if key starts with AIza, else assume OpenAI/Compatible
+  if (apiKey.startsWith("AIza")) {
+    const google = createGoogleGenerativeAI({ apiKey });
+    return google("gemini-1.5-flash");
+  } else {
+    const openai = createOpenAI({ apiKey });
+    return openai("gpt-4o-mini");
+  }
+}
+
+export async function analyzeFoodImage(imageUrl: string): Promise<ToolResponse> {
+  const model = getModel();
+
+  if (!model) {
     return {
       content: [{
         type: "text",
@@ -16,24 +33,46 @@ export function analyzeFoodImage(imageUrl: string): ToolResponse {
     };
   }
 
-  // Placeholder response — actual vision API integration pending
-  return {
-    content: [{
-      type: "text",
-      text: "🔬 Food Image Analysis\n\nVision API integration is pending implementation. The image has been received but cannot be analyzed yet.\n\nThis feature will use advanced vision models (Gemini/GPT-4o Vision) to estimate nutritional content from food photos.",
-    }],
-    structuredContent: {
-      status: "pending_implementation",
-      message: "Vision API integration is not yet implemented",
-      image_received: true,
-    },
-  };
+  try {
+    const { text } = await generateText({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Identify the food in this image and provide a detailed nutritional estimate (calories, protein, carbs, fat). If it's a full meal, estimate for each component and then total. Format the output clearly." },
+            { type: "image", image: imageUrl },
+          ],
+        },
+      ],
+    });
+
+    return {
+      content: [{
+        type: "text",
+        text: `🔬 Food Image Analysis Result:\n\n${text}`,
+      }],
+      structuredContent: {
+        status: "success",
+        analysis: text,
+      },
+    };
+  } catch (error: any) {
+    console.error("Vision Analysis Error:", error);
+    return {
+      content: [{
+        type: "text",
+        text: `❌ Error analyzing image: ${error.message}`,
+      }],
+      isError: true,
+    };
+  }
 }
 
-export function scanLabel(imageUrl: string): ToolResponse {
-  const apiKey = process.env.VISION_API_KEY;
+export async function scanLabel(imageUrl: string): Promise<ToolResponse> {
+  const model = getModel();
 
-  if (!apiKey) {
+  if (!model) {
     return {
       content: [{
         type: "text",
@@ -46,16 +85,38 @@ export function scanLabel(imageUrl: string): ToolResponse {
     };
   }
 
-  // Placeholder response — actual vision API integration pending
-  return {
-    content: [{
-      type: "text",
-      text: "🏷️ Nutrition Label Scan\n\nVision API integration is pending implementation. The label image has been received but cannot be scanned yet.\n\nThis feature will use OCR and structured data extraction to parse nutritional information from food packaging labels.",
-    }],
-    structuredContent: {
-      status: "pending_implementation",
-      message: "Vision API integration is not yet implemented",
-      image_received: true,
-    },
-  };
+  try {
+    const { text } = await generateText({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract all nutritional information from this label. Include serving size, calories, protein, carbs, fat, and any other available micronutrients. Format as structured text." },
+            { type: "image", image: imageUrl },
+          ],
+        },
+      ],
+    });
+
+    return {
+      content: [{
+        type: "text",
+        text: `🏷️ Nutrition Label Scan Result:\n\n${text}`,
+      }],
+      structuredContent: {
+        status: "success",
+        data: text,
+      },
+    };
+  } catch (error: any) {
+    console.error("Label Scan Error:", error);
+    return {
+      content: [{
+        type: "text",
+        text: `❌ Error scanning label: ${error.message}`,
+      }],
+      isError: true,
+    };
+  }
 }

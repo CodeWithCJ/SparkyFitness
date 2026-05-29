@@ -6,7 +6,7 @@ import { formatList, formatConfirmation, formatSuccess } from "../utils/formatti
 import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.js";
 
 const VALID_ACTIONS = [
-  "search_food", "log_food", "create_food", "search_meal", "log_meal",
+  "search_food", "lookup_food_nutrition", "log_food", "create_food", "search_meal", "log_meal",
   "list_diary", "delete_entry", "delete_food", "update_entry", "copy_from_yesterday", "save_as_meal_template",
   "log_water", "get_nutritional_summary", "get_water_history",
 ];
@@ -20,8 +20,9 @@ export function registerFoodTools(server: McpServer, userId: string): void {
 
 Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
+- lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda) if provider_type given.
 - log_food(food_name, quantity, unit, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", entry_date, food_id?, variant_id?)
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?, ...) — AI clients should search the web and populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?, ...) — AI clients should search the web and populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. ONLY call this if lookup_food_nutrition returns source='ai_estimate'.
 - search_meal(meal_name)
 - log_meal(meal_type, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -72,6 +73,57 @@ Actions:
               },
               { total_count: result.total_count, has_more: result.has_more, next_offset: result.next_offset }
             );
+          }
+
+          case "lookup_food_nutrition": {
+            const result = await foodService.lookupFoodNutrition(
+              userId, args.food_name!, args.provider_type as any
+            );
+            
+            if (result.source === "ai_estimate") {
+              return {
+                content: [{
+                  type: "text",
+                  text: `No matches found in internal DB or configured external databases/OpenFoodFacts for "${args.food_name}". You may estimate the nutrition using AI and save it using create_food.`
+                }],
+                structuredContent: result
+              };
+            }
+
+            const f = result.food;
+            let text = `### Found match in **${result.source}**:\n`;
+            text += `**${f.name}**`;
+            if (f.brand) text += ` (${f.brand})`;
+            
+            const v = f.default_variant || f.variants?.[0];
+            if (v) {
+              text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
+              text += `\n  Energy: ${v.calories ?? v.energy ?? 0} kcal`;
+              text += `\n  Macros: Protein: ${v.protein}g | Carbs: ${v.carbs}g | Fat: ${v.fat}g`;
+              if (v.saturated_fat != null || v.dietary_fiber != null || v.sugars != null || v.sodium != null) {
+                text += `\n  Details: Fiber: ${v.dietary_fiber ?? 0}g | Sugar: ${v.sugars ?? 0}g | Sodium: ${v.sodium ?? 0}mg | SatFat: ${v.saturated_fat ?? 0}g`;
+              }
+              if (f.provider_external_id) {
+                text += `\n  External ID: ${f.provider_external_id}`;
+              }
+            }
+
+            if (result.alternatives && result.alternatives.length > 0) {
+              text += `\n\n**Other Alternatives found:**`;
+              result.alternatives.slice(0, 5).forEach((alt: any) => {
+                const altV = alt.default_variant || alt.variants?.[0];
+                text += `\n- **${alt.name}**`;
+                if (alt.brand) text += ` (${alt.brand})`;
+                if (altV) {
+                  text += ` (${altV.serving_size}${altV.serving_unit}: ${altV.calories ?? altV.energy ?? 0} kcal)`;
+                }
+              });
+            }
+
+            return {
+              content: [{ type: "text", text }],
+              structuredContent: result
+            };
           }
 
           case "log_food": {

@@ -7,15 +7,15 @@ function getDefaultModel(serviceType: any) {
     case 'anthropic':
       return 'claude-3-5-sonnet-20241022';
     case 'google':
-      return 'gemini-pro';
+      return 'gemini-1.5-flash';
     case 'mistral':
       return 'mistral-large-latest';
     case 'groq':
       return 'llama3-8b-8192';
     case 'openrouter':
-      return 'google/gemma-3-27b-it:free';
+      return 'google/gemini-flash-1.5-8b:free';
     default:
-      return 'gpt-3.5-turbo';
+      return 'gpt-4o-mini';
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

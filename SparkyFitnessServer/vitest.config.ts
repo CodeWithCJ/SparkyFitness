@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load repository-root .env file before tests compile/run
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 export default defineConfig({
   resolve: {
@@ -12,7 +16,9 @@ export default defineConfig({
     environment: 'node',
     include: ['**/tests/**/*.test.ts'],
     env: {
+      // Retain the config encryption key override if desired, or fall back to .env
       SPARKY_FITNESS_API_ENCRYPTION_KEY:
+        process.env.SPARKY_FITNESS_API_ENCRYPTION_KEY ||
         '815271f86bec47c9d8fbd13f14fcc71e882bdcad19f2a6169cf7b2fdbc41210e',
     },
   },
