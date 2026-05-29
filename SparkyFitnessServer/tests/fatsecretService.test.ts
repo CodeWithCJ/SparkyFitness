@@ -1,7 +1,37 @@
 import { describe, expect, it } from 'vitest';
 import { mapFatSecretSearchItem } from '../integrations/fatsecret/fatsecretService.js';
 import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
+import { assertNoFatSecretApiError } from '../integrations/fatsecret/fatsecretService.js';
 describe('FatSecret Service Mapping', () => {
+  describe('assertNoFatSecretApiError', () => {
+    it('throws a descriptive error for the IP restriction envelope', () => {
+      const data = {
+        error: { code: 21, message: 'Invalid IP address detected: 1.2.3.4' },
+      };
+      let thrown: unknown;
+      try {
+        assertNoFatSecretApiError(data);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toContain('code 21');
+      expect((thrown as Error).message).toContain('Invalid IP address');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((thrown as any).status).toBe(502);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((thrown as any).fatSecretErrorCode).toBe(21);
+    });
+    it('does not throw for a successful response', () => {
+      expect(() =>
+        assertNoFatSecretApiError({ foods: { total_results: '0' } })
+      ).not.toThrow();
+    });
+    it('does not throw for null/undefined data', () => {
+      expect(() => assertNoFatSecretApiError(null)).not.toThrow();
+      expect(() => assertNoFatSecretApiError(undefined)).not.toThrow();
+    });
+  });
   describe('mapFatSecretSearchItem', () => {
     it('should map metric description correctly', () => {
       const item = {
