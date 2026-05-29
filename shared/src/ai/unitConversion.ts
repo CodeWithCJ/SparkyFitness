@@ -69,7 +69,6 @@ export type AiUnitConversionRequest = z.infer<typeof aiUnitConversionRequestSche
 export const aiUnitConversionResponseSchema = z.object({
   estimatedAmount: z.number().positive(),
   confidence: aiConfidenceSchema,
-  reasoning: z.string(),
   fromUnit: z.string(),
   fromAmount: z.number().positive(),
   toUnit: z.string(),
@@ -80,6 +79,21 @@ export type AiUnitConversionResponse = z.infer<typeof aiUnitConversionResponseSc
 export const aiProviderRawResponseSchema = z.object({
   estimated_amount: z.number().positive(),
   confidence: aiConfidenceSchema,
-  reasoning: z.string(),
 });
 export type AiProviderRawResponse = z.infer<typeof aiProviderRawResponseSchema>;
+
+/**
+ * Strict JSON Schema for provider-side structured outputs (OpenAI, Groq,
+ * OpenRouter, Anthropic, Gemini, Ollama). Mirrors `aiProviderRawResponseSchema`
+ * in shape. Consumed by every provider request builder in
+ * `aiUnitConversionService.callProvider` that supports per-shape validation.
+ */
+export const STRUCTURED_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    estimated_amount: { type: "number" },
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+  },
+  required: ["estimated_amount", "confidence"],
+  additionalProperties: false,
+} as const;

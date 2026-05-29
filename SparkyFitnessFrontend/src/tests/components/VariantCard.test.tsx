@@ -107,7 +107,6 @@ const createVariant = (
   fat: 5,
   source: 'manual',
   ai_confidence: null,
-  ai_reasoning: null,
   custom_nutrients: {},
   equivalents: [],
   ...overrides,
@@ -202,7 +201,6 @@ describe('VariantCard', () => {
         serving_unit: 'cup',
         source: 'ai_estimate',
         ai_confidence: 'medium',
-        ai_reasoning: 'Typical density estimate.',
       },
     });
 
@@ -226,7 +224,6 @@ describe('VariantCard', () => {
         serving_unit: 'cup',
         source: 'ai_estimate',
         ai_confidence: 'medium',
-        ai_reasoning: 'Typical density estimate.',
       },
       compatibleUnits: ['g', 'kg', 'oz', 'lb'],
     });

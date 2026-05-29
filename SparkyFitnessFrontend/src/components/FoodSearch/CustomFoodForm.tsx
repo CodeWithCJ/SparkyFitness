@@ -33,21 +33,26 @@ const CustomFoodForm = ({
   initialVariants,
   visibleNutrients: passedVisibleNutrients,
 }: CustomFoodFormProps) => {
-  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
-    usePreferences();
+  const {
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+    aiAssistedConversions,
+  } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const { data: customNutrients } = useCustomNutrients();
 
   // AI gate for the per-row Convert-with-AI button: admin allows user AI
-  // config + an active AI service exists. The per-user "AI Assisted Unit
-  // Conversions" toggle was removed — when AI services are configured, the
-  // feature is always available.
+  // config + active AI service exists + per-user preference is on. Re-checked
+  // each render so flipping the toggle takes effect live.
   const userAiConfigAllowedQuery = useUserAiConfigAllowed();
   const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
   const activeAiServiceQuery = useActiveAIService(userAiConfigAllowed);
   const aiEstimatesAvailable =
-    userAiConfigAllowed && !!activeAiServiceQuery.data;
+    aiAssistedConversions === true &&
+    userAiConfigAllowed &&
+    !!activeAiServiceQuery.data;
 
   const {
     formData,

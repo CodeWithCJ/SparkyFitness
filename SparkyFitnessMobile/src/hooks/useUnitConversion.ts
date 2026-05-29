@@ -12,7 +12,6 @@ import {
 export interface AiEstimateData {
   estimatedAmount: number;
   confidence: AiConfidence;
-  reasoning: string;
 }
 
 export interface UseUnitConversionOptions {

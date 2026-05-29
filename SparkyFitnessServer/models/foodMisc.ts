@@ -27,8 +27,7 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'custom_nutrients', fv.custom_nutrients,
     'user_id', fv.user_id,
     'source', fv.source,
-    'ai_confidence', fv.ai_confidence,
-    'ai_reasoning', fv.ai_reasoning
+    'ai_confidence', fv.ai_confidence
   ) AS default_variant
 `;
 

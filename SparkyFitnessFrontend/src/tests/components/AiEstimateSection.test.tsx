@@ -48,7 +48,6 @@ describe('AiEstimateSection', () => {
     mockRequestAiUnitConversion.mockResolvedValue({
       estimatedAmount: 125,
       confidence: 'medium',
-      reasoning: 'Typical density estimate.',
     });
 
     render(

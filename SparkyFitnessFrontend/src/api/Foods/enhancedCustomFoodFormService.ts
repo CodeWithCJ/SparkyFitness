@@ -43,7 +43,6 @@ export const createFoodVariant = async (
       custom_nutrients: variant.custom_nutrients || {},
       source: variant.source,
       ai_confidence: variant.ai_confidence,
-      ai_reasoning: variant.ai_reasoning,
     },
   });
 };
@@ -107,7 +106,6 @@ export const saveFood = async (
           custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
           source: variant.source,
           ai_confidence: variant.ai_confidence,
-          ai_reasoning: variant.ai_reasoning,
         },
       });
     }
@@ -140,7 +138,6 @@ export const saveFood = async (
         custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
         source: variant.source,
         ai_confidence: variant.ai_confidence,
-        ai_reasoning: variant.ai_reasoning,
       }));
       await apiCall('/foods/food-variants/bulk', {
         method: 'POST',
@@ -195,7 +192,6 @@ export const saveFood = async (
       custom_nutrients: primaryVariant.custom_nutrients || {}, // Include custom nutrients
       source: primaryVariant.source,
       ai_confidence: primaryVariant.ai_confidence,
-      ai_reasoning: primaryVariant.ai_reasoning,
     };
 
     savedFood = await apiCall('/foods', {
@@ -230,7 +226,6 @@ export const saveFood = async (
       custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
       source: variant.source,
       ai_confidence: variant.ai_confidence,
-      ai_reasoning: variant.ai_reasoning,
     }));
 
     if (additionalVariantsToInsert.length > 0) {

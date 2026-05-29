@@ -40,7 +40,6 @@ export interface FoodVariant {
   user_id?: string;
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
-  ai_reasoning?: string | null;
 }
 
 export interface Food {
@@ -202,7 +201,6 @@ export type NumericFoodVariantKeys = Exclude<
   | 'user_id'
   | 'source'
   | 'ai_confidence'
-  | 'ai_reasoning'
 >;
 export interface EquivalentUnit {
   id?: string;

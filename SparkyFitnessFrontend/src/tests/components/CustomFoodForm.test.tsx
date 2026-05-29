@@ -65,7 +65,6 @@ describe('deriveSavedAiUnits', () => {
         serving_unit: 'tsp',
         source: 'manual',
         ai_confidence: null,
-        ai_reasoning: null,
       }),
     ];
 

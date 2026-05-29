@@ -104,7 +104,6 @@ export interface CreateFoodVariantPayload {
   // source to 'manual' and AI fields to null when omitted.
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
-  ai_reasoning?: string | null;
 }
 
 /**

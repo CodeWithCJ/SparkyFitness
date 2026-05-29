@@ -54,7 +54,7 @@ describe('preferred default variant queries', () => {
     const queryStr = mockClient.query.mock.calls[0][0];
     expect(queryStr).toContain("'source', fv.source");
     expect(queryStr).toContain("'ai_confidence', fv.ai_confidence");
-    expect(queryStr).toContain("'ai_reasoning', fv.ai_reasoning");
+    expect(queryStr).not.toContain('ai_reasoning');
     expect(queryStr).toContain('LEFT JOIN LATERAL');
   });
 
@@ -64,7 +64,7 @@ describe('preferred default variant queries', () => {
     const queryStr = mockClient.query.mock.calls[0][0];
     expect(queryStr).toContain("'source', fv.source");
     expect(queryStr).toContain("'ai_confidence', fv.ai_confidence");
-    expect(queryStr).toContain("'ai_reasoning', fv.ai_reasoning");
+    expect(queryStr).not.toContain('ai_reasoning');
     expect(queryStr).toContain('LEFT JOIN LATERAL');
   });
 });

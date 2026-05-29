@@ -22,7 +22,7 @@ const router = express.Router();
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Estimated conversion with confidence + reasoning.
+ *         description: Estimated conversion with confidence.
  *       400:
  *         description: Units are incompatible for AI conversion.
  *       403:

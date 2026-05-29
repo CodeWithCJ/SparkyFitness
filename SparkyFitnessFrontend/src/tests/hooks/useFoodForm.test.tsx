@@ -106,7 +106,6 @@ const createPersistedVariantFixture = (): FoodVariant[] => [
     is_default: true,
     source: 'manual',
     ai_confidence: null,
-    ai_reasoning: null,
   }),
   createVariant({
     id: 'variant-cup-ai',
@@ -118,7 +117,6 @@ const createPersistedVariantFixture = (): FoodVariant[] => [
     fat: 13,
     source: 'ai_estimate',
     ai_confidence: 'medium',
-    ai_reasoning: 'Typical density estimate.',
   }),
 ];
 
@@ -165,7 +163,7 @@ describe('useCustomFoodForm', () => {
       expect.objectContaining({
         title: 'Manual Nutrition Update',
         description:
-          "Can't convert between units. Update nutrition values manually or convert with AI.",
+          "Can't convert between units. Update nutrition values manually.",
       })
     );
   });
@@ -494,7 +492,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical density estimate.',
       });
     });
 
@@ -549,7 +546,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical density estimate.',
       });
     });
 
@@ -622,7 +618,6 @@ describe('useCustomFoodForm', () => {
 
     expect(result.current.variants[2]?.source).toBe('manual');
     expect(result.current.variants[2]?.ai_confidence).toBeNull();
-    expect(result.current.variants[2]?.ai_reasoning).toBeNull();
     expect(result.current.variants[2]?.serving_size).toBe(100);
     expect(Number(result.current.variants[2]?.calories)).toBeCloseTo(100, 4);
     expect(result.current.manualUnitConversionPending[2]).toBe(false);
@@ -688,7 +683,7 @@ describe('useCustomFoodForm', () => {
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         description:
-          "Can't convert between units. Update nutrition values manually or convert with AI.",
+          "Can't convert between units. Update nutrition values manually.",
       })
     );
   });
@@ -720,7 +715,7 @@ describe('useCustomFoodForm', () => {
     expect(mockToast).toHaveBeenLastCalledWith(
       expect.objectContaining({
         description:
-          "Can't convert between units. Update nutrition values manually or convert with AI.",
+          "Can't convert between units. Update nutrition values manually.",
       })
     );
   });
@@ -789,7 +784,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'high',
-        reasoning: 'Water-like density.',
       });
     });
 
@@ -846,7 +840,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical density.',
       });
     });
 
@@ -899,7 +892,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'First estimate.',
       });
     });
 
@@ -914,14 +906,12 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 15,
         confidence: 'medium',
-        reasoning: 'Second estimate.',
       });
     });
 
     // 15 g (estimated) / 100 g (default) × 400 cal = 60 cal.
     expect(Number(result.current.variants[1]?.calories)).toBeCloseTo(60, 1);
     expect(result.current.variants[1]?.source).toBe('ai_estimate');
-    expect(result.current.variants[1]?.ai_reasoning).toBe('Second estimate.');
   });
 
   it('keeps the AI tag and suppresses scaling when the AI row is swapped to an incompatible unit', async () => {
@@ -950,7 +940,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'high',
-        reasoning: 'Water-like density.',
       });
     });
 
@@ -1013,7 +1002,6 @@ describe('useCustomFoodForm', () => {
         is_default: true,
         source: 'ai_estimate',
         ai_confidence: 'medium',
-        ai_reasoning: 'Typical density estimate.',
       }),
     ];
 
@@ -1036,7 +1024,7 @@ describe('useCustomFoodForm', () => {
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         description:
-          "Can't convert between units. Update nutrition values manually or convert with AI.",
+          "Can't convert between units. Update nutrition values manually.",
       })
     );
   });
@@ -1054,7 +1042,6 @@ describe('useCustomFoodForm', () => {
         is_default: true,
         source: 'ai_estimate',
         ai_confidence: 'medium',
-        ai_reasoning: 'Typical density estimate.',
       }),
     ];
 
@@ -1147,7 +1134,6 @@ describe('useCustomFoodForm', () => {
 
     expect(result.current.variants[0]?.source).toBe('manual');
     expect(result.current.variants[0]?.ai_confidence).toBeNull();
-    expect(result.current.variants[0]?.ai_reasoning).toBeNull();
   });
 
   it('clears the AI badge again when a row visits a saved AI unit and then switches to a trusted manual category', async () => {
@@ -1206,7 +1192,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical dairy density.',
       });
     });
 
@@ -1219,7 +1204,6 @@ describe('useCustomFoodForm', () => {
     expect(result.current.variants[1]?.calories).toBe(800);
     expect(result.current.variants[1]?.source).toBe('manual');
     expect(result.current.variants[1]?.ai_confidence).toBeNull();
-    expect(result.current.variants[1]?.ai_reasoning).toBeNull();
     expect(result.current.aiEstimatedUnits[1]).toBeNull();
   });
 
@@ -1253,7 +1237,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'high',
-        reasoning: 'Typical density estimate.',
       });
     });
     act(() => {
@@ -1266,9 +1249,6 @@ describe('useCustomFoodForm', () => {
     expect(result.current.variants[1]?.serving_size).toBe(3);
     expect(result.current.variants[1]?.calories).toBeCloseTo(2880, 1);
     expect(result.current.variants[1]?.ai_confidence).toBe('high');
-    expect(result.current.variants[1]?.ai_reasoning).toBe(
-      'Typical density estimate.'
-    );
     expect(result.current.aiEstimatedUnits[1]).toBe('cup');
   });
 
@@ -1299,7 +1279,6 @@ describe('useCustomFoodForm', () => {
       result.current.applyAiEstimate(1, {
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical density estimate.',
       });
     });
     act(() => {
@@ -1322,7 +1301,6 @@ describe('useCustomFoodForm', () => {
             serving_unit: 'cup',
             source: 'manual',
             ai_confidence: null,
-            ai_reasoning: null,
           }),
         ]),
       })

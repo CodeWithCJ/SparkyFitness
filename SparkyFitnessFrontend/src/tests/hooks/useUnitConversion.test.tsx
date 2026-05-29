@@ -313,7 +313,6 @@ describe('useUnitConversion', () => {
       result.current.setAiEstimateData({
         estimatedAmount: 240,
         confidence: 'medium',
-        reasoning: 'Typical dairy density ~1 g/ml × 240 ml ≈ 240 g.',
       });
     });
 
@@ -326,7 +325,6 @@ describe('useUnitConversion', () => {
       serving_unit: 'cup',
       source: 'ai_estimate',
       ai_confidence: 'medium',
-      ai_reasoning: 'Typical dairy density ~1 g/ml × 240 ml ≈ 240 g.',
     });
 
     // Edit affordance: clearing the estimate keeps the factor but removes AI tag.
@@ -338,7 +336,6 @@ describe('useUnitConversion', () => {
     expect(manualBuilt).toMatchObject({ serving_unit: 'cup' });
     expect(manualBuilt?.source).toBeUndefined();
     expect(manualBuilt?.ai_confidence).toBeUndefined();
-    expect(manualBuilt?.ai_reasoning).toBeUndefined();
   });
 
   it('clears aiEstimateData when the pending unit changes', () => {
@@ -361,7 +358,6 @@ describe('useUnitConversion', () => {
       result.current.setAiEstimateData({
         estimatedAmount: 240,
         confidence: 'high',
-        reasoning: 'x',
       });
     });
     expect(result.current.aiEstimateData).not.toBeNull();

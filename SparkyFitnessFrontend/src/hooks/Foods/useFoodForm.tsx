@@ -52,12 +52,11 @@ function toPositiveNumber(value: unknown): number | null {
   return numericValue;
 }
 
-function buildManualConversionToast(aiAvailable: boolean) {
+function buildManualConversionToast() {
   return {
     title: 'Manual Nutrition Update',
-    description: aiAvailable
-      ? "Can't convert between units. Update nutrition values manually or convert with AI."
-      : "Can't convert between units. Update nutrition values manually.",
+    description:
+      "Can't convert between units. Update nutrition values manually.",
   } as const;
 }
 
@@ -119,7 +118,6 @@ function buildExactVariantSnapshot(
     equivalents: deepClone(currentVariant.equivalents || []),
     is_locked: autoScaleIntent,
     ai_confidence: exactVariant.ai_confidence ?? null,
-    ai_reasoning: exactVariant.ai_reasoning ?? null,
   };
 }
 
@@ -528,7 +526,6 @@ export function useCustomFoodForm({
     ) {
       newVariant.source = 'manual';
       newVariant.ai_confidence = null;
-      newVariant.ai_reasoning = null;
       updatedAiEstimatedUnits[index] = null;
       updatedOriginalVariants[index] = deepClone(newVariant);
       updatedServingSizeScalingBaseVariants[index] = deepClone(newVariant);
@@ -673,7 +670,6 @@ export function useCustomFoodForm({
           newVariant.serving_unit = newUnit;
           newVariant.source = trustedManualBaseCandidate.source;
           newVariant.ai_confidence = null;
-          newVariant.ai_reasoning = null;
           newVariant.is_locked = autoScaleIntentForVariant;
           updatedManualUnitConversionPending[index] = false;
           updatedAiEstimatedUnits[index] = null;
@@ -697,7 +693,7 @@ export function useCustomFoodForm({
           newVariant.is_locked = canAiConvert
             ? autoScaleIntentForVariant
             : false;
-          toast(buildManualConversionToast(canAiConvert));
+          toast(buildManualConversionToast());
         }
         // Skip the rest of the unit-change branch.
         updatedVariants[index] = newVariant;
@@ -757,7 +753,7 @@ export function useCustomFoodForm({
           const canAiConvert =
             aiEstimatesAvailable &&
             canOfferAiConversionForUnits([oldUnit, trustedBaseUnit], newUnit);
-          toast(buildManualConversionToast(canAiConvert));
+          toast(buildManualConversionToast());
           updatedManualUnitConversionPending[index] = true;
           // Honor the user's auto-scale preference through incompatible
           // swaps. With AI estimation available, the user may want to set a
@@ -905,7 +901,6 @@ export function useCustomFoodForm({
         is_locked: autoScaleIntentForVariant,
         source: 'ai_estimate' as const,
         ai_confidence: estimate.confidence,
-        ai_reasoning: estimate.reasoning,
       };
 
       setVariants((prev) => {

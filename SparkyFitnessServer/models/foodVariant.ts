@@ -16,8 +16,8 @@ async function createFoodVariant(variantData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, ai_reasoning, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()) RETURNING id`,
+        source, ai_confidence, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
       [
         variantData.food_id,
         variantData.user_id,
@@ -45,7 +45,6 @@ async function createFoodVariant(variantData: any, userId: any) {
         variantData.custom_nutrients ?? {},
         variantData.source ?? 'manual',
         variantData.ai_confidence ?? null,
-        variantData.ai_reasoning ?? null,
       ]
     );
     return result.rows[0];
@@ -109,7 +108,6 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const hasAiConfidence = variantData.ai_confidence !== undefined;
-    const hasAiReasoning = variantData.ai_reasoning !== undefined;
     const result = await client.query(
       `UPDATE food_variants SET
         food_id = COALESCE($1, food_id),
@@ -137,9 +135,8 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         custom_nutrients = COALESCE($23, custom_nutrients),
         source = COALESCE($24, source),
         ai_confidence = CASE WHEN $25 THEN $26 ELSE ai_confidence END,
-        ai_reasoning = CASE WHEN $27 THEN $28 ELSE ai_reasoning END,
         updated_at = now()
-      WHERE id = $29
+      WHERE id = $27
       RETURNING *`,
       [
         variantData.food_id,
@@ -170,8 +167,6 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         variantData.source,
         hasAiConfidence,
         variantData.ai_confidence ?? null,
-        hasAiReasoning,
-        variantData.ai_reasoning ?? null,
         id,
       ]
     );
@@ -212,7 +207,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, ai_reasoning, created_at, updated_at
+        source, ai_confidence, created_at, updated_at
       ) VALUES %L RETURNING id`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
@@ -242,7 +237,6 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       variant.custom_nutrients ?? {},
       variant.source ?? 'manual',
       variant.ai_confidence ?? null,
-      variant.ai_reasoning ?? null,
       'now()',
       'now()',
     ]);

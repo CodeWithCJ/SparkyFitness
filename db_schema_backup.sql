@@ -1510,7 +1510,6 @@ CREATE TABLE public.food_variants (
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
     source text DEFAULT 'manual'::text NOT NULL,
     ai_confidence text,
-    ai_reasoning text,
     CONSTRAINT food_variants_ai_confidence_check CHECK ((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL)),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))

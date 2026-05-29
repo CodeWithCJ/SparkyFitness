@@ -203,9 +203,6 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
     ai_confidence: nullToUndefined(
       record.ai_confidence as 'high' | 'medium' | 'low' | null | undefined
     ),
-    ai_reasoning: nullToUndefined(
-      record.ai_reasoning as string | null | undefined
-    ),
   };
 }
 

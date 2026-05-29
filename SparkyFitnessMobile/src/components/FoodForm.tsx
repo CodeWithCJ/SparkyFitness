@@ -731,7 +731,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
         ...selectedUnitSelection.variant,
         source: 'manual',
         ai_confidence: null,
-        ai_reasoning: null,
       };
       const clearedSelection: FoodUnitSelectionResult = {
         kind: 'draft',
@@ -1112,7 +1111,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
       // Build an AI-tagged draft variant so the parent screen's deferred-POST
       // pattern (FoodFormScreen.handleSubmit → buildVariantFromFormData) picks
-      // up source/ai_confidence/ai_reasoning. The variant's nutrition is
+      // up source/ai_confidence. The variant's nutrition is
       // already correct; on submit, buildVariantFromFormData spreads this
       // variant first, then overwrites with the form's current numbers — so
       // later manual edits override the AI nutrition while the provenance
@@ -1138,7 +1137,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
         vitamin_c: scaledPreciseUpdates.vitaminC,
         source: 'ai_estimate',
         ai_confidence: result.confidence,
-        ai_reasoning: result.reasoning,
       };
       const aiSelection: FoodUnitSelectionResult = {
         kind: 'draft',
@@ -1355,9 +1353,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
           ) : null}
 
           {showManualUpdateBanner ? (() => {
-            // AI eligibility for this swap. When true, the banner text picks
-            // up "or convert with AI" so the user knows there's an automated
-            // path forward besides typing values manually.
+            // AI eligibility for this swap. When true, the Convert with AI
+            // button appears below the banner. The banner text itself is
+            // unconditional now — the button is the affordance.
             const canAiConvert =
               aiEstimatesAvailable &&
               swapContextRef.current != null &&
@@ -1377,9 +1375,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  {canAiConvert
-                    ? "Can't convert between units. Update nutrition values manually or convert with AI."
-                    : "Can't convert between units. Update nutrition values manually."}
+                  Can't convert between units. Update nutrition values manually.
                 </Text>
               </View>
               {canAiConvert ? (

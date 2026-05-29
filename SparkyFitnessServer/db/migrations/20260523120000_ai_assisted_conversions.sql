@@ -2,7 +2,7 @@
 --
 -- This migration adds:
 --   1. user_preferences.ai_assisted_conversions toggle (per-user opt-in).
---   2. food_variants provenance columns (source / ai_confidence / ai_reasoning).
+--   2. food_variants provenance columns (source / ai_confidence).
 --   3. food_variants.user_id ownership column with backfill from foods.user_id,
 --      enabling the "stock + personal" variant model. Existing rows backfill as
 --      stock (variant.user_id = food.user_id); new writes by non-owners become
@@ -28,8 +28,7 @@ ALTER TABLE public.food_variants
   ADD COLUMN IF NOT EXISTS source         TEXT NOT NULL DEFAULT 'manual'
     CHECK (source IN ('manual', 'ai_estimate', 'imported')),
   ADD COLUMN IF NOT EXISTS ai_confidence  TEXT NULL
-    CHECK (ai_confidence IN ('high', 'medium', 'low') OR ai_confidence IS NULL),
-  ADD COLUMN IF NOT EXISTS ai_reasoning   TEXT NULL;
+    CHECK (ai_confidence IN ('high', 'medium', 'low') OR ai_confidence IS NULL);
 
 -- 3. Variant ownership column — add as NULL, backfill from food owner, validate, then SET NOT NULL.
 --    foods.user_id is nullable in the base schema, so the backfill explicitly skips

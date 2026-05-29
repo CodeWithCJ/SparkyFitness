@@ -11,7 +11,6 @@ import {
 export interface AiEstimateData {
   estimatedAmount: number;
   confidence: AiConfidence;
-  reasoning: string;
 }
 
 export interface UseUnitConversionOptions {
@@ -185,7 +184,6 @@ export function useUnitConversion({
     if (aiEstimateData) {
       variant.source = 'ai_estimate';
       variant.ai_confidence = aiEstimateData.confidence;
-      variant.ai_reasoning = aiEstimateData.reasoning;
     }
     return variant;
   }, [

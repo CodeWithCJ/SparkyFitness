@@ -48,6 +48,16 @@ const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   warning: 'text-amber-600 dark:text-amber-400',
   error: 'text-rose-600 dark:text-rose-400',
 };
+
+// Filled-pill version of the same tone scheme, used inline next to the
+// conversion factor label after an AI estimate auto-applies. Matches
+// VariantCard's "Fair estimate" badge so the two surfaces feel like
+// one component family.
+const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
+  success: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
+  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  error: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+};
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 
 interface FoodUnitSelectorProps {
@@ -76,17 +86,20 @@ const FoodUnitSelector = ({
   initialUnit,
   initialVariantId,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const { loggingLevel, energyUnit, convertEnergy, aiAssistedConversions } =
+    usePreferences();
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
-  // AI estimate gate: admin allowed user AI config + user has an active AI
-  // service. The per-user "AI Assisted Unit Conversions" preference was
-  // removed — when AI is configured, the feature is always available.
+  // AI estimate gate: admin allowed user AI config + active AI service exists
+  // + per-user preference is on. Re-checked each render — flipping the toggle
+  // mid-dialog hides the AI section live.
   const userAiConfigAllowedQuery = useUserAiConfigAllowed();
   const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
   const activeAiServiceQuery = useActiveAIService(open && userAiConfigAllowed);
   const aiEstimatesAvailable =
-    userAiConfigAllowed && !!activeAiServiceQuery.data;
+    aiAssistedConversions === true &&
+    userAiConfigAllowed &&
+    !!activeAiServiceQuery.data;
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? 'kcal' : 'kJ';
@@ -160,7 +173,6 @@ const FoodUnitSelector = ({
         custom_nutrients: food.default_variant?.custom_nutrients,
         source: food.default_variant?.source,
         ai_confidence: food.default_variant?.ai_confidence,
-        ai_reasoning: food.default_variant?.ai_reasoning,
       };
 
       let combinedVariants: FoodVariant[] = [primaryUnit];
@@ -192,7 +204,6 @@ const FoodUnitSelector = ({
           // Preserve AI provenance so the dropdown can badge AI-source variants.
           source: variant.source,
           ai_confidence: variant.ai_confidence,
-          ai_reasoning: variant.ai_reasoning,
         }));
 
         const otherVariants = variantsFromDb.filter(
@@ -242,7 +253,6 @@ const FoodUnitSelector = ({
         custom_nutrients: food.default_variant?.custom_nutrients,
         source: food.default_variant?.source,
         ai_confidence: food.default_variant?.ai_confidence,
-        ai_reasoning: food.default_variant?.ai_reasoning,
       };
       setVariants([primaryUnit]);
       setSelectedVariant(primaryUnit);
@@ -532,14 +542,19 @@ const FoodUnitSelector = ({
                       in 1 <strong>{pendingUnit}</strong>.
                     </p>
 
-                    {/* AI estimate path: shown only when both units are standard
-                        weight/volume AND AI is configured AND preference is on. */}
+                    {/* AI estimate path: shown only when both units are
+                        standard weight/volume AND AI is configured AND
+                        preference is on AND no estimate has been auto-applied
+                        yet. Auto-apply mode fires onAccept immediately, so
+                        after success this whole block hides — the badge below
+                        the label takes over as the AI indicator. */}
                     {aiEstimatesAvailable &&
                       conversionBaseVariant?.serving_unit &&
                       shouldOfferAiConversion(
                         conversionBaseVariant.serving_unit,
                         pendingUnit
-                      ) && (
+                      ) &&
+                      aiEstimateData === null && (
                         <AiEstimateSection
                           food={{
                             id: food.id,
@@ -552,15 +567,34 @@ const FoodUnitSelector = ({
                             amount: v.serving_size,
                             unit: v.serving_unit,
                           }))}
+                          mode="auto-apply"
                           onAccept={setAiEstimateData}
                           onEdit={() => setAiEstimateData(null)}
                         />
                       )}
 
                     <div>
-                      <Label htmlFor="conversionFactor">
-                        1 {pendingUnit} = ?{' '}
-                        {conversionBaseVariant?.serving_unit}
+                      <Label
+                        htmlFor="conversionFactor"
+                        className="flex items-center gap-2"
+                      >
+                        <span>
+                          1 {pendingUnit} = ?{' '}
+                          {conversionBaseVariant?.serving_unit}
+                        </span>
+                        {aiEstimateData !== null && (
+                          <span
+                            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${AI_ESTIMATE_BADGE_TONE_CLASSES[CONFIDENCE_TONES[aiEstimateData.confidence]]}`}
+                            aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[aiEstimateData.confidence]} confidence)`}
+                          >
+                            {
+                              OVERALL_CONFIDENCE_LABELS[
+                                aiEstimateData.confidence
+                              ]
+                            }{' '}
+                            estimate
+                          </span>
+                        )}
                       </Label>
                       <Input
                         id="conversionFactor"

@@ -92,7 +92,6 @@ export function AiEstimateSection({
       const data: AiEstimateData = {
         estimatedAmount: result.estimatedAmount,
         confidence: result.confidence,
-        reasoning: result.reasoning,
       };
       if (mode === 'auto-apply') {
         onAcceptRef.current(data);
@@ -183,7 +182,6 @@ export function AiEstimateSection({
           - {OVERALL_CONFIDENCE_LABELS[data.confidence]} estimate
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">{data.reasoning}</p>
       {isLow && (
         <p className="text-xs text-destructive">
           Generic estimate - verify if accuracy matters.

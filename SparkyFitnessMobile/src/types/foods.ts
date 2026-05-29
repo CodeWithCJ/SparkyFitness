@@ -95,5 +95,4 @@ export interface FoodVariantDetail {
   user_id?: string;
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
-  ai_reasoning?: string | null;
 }

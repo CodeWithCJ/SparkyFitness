@@ -187,7 +187,6 @@ export function localVariantToUnitVariant(variant: FoodVariantDetail): FoodUnitV
     user_id: variant.user_id,
     source: variant.source,
     ai_confidence: variant.ai_confidence,
-    ai_reasoning: variant.ai_reasoning,
   };
 }
 
@@ -318,11 +317,10 @@ export function buildCreateFoodVariantInput(
     custom_nutrients: variant.custom_nutrients ?? undefined,
     // AI-Assisted Unit Conversions provenance — when the variant originated
     // from an AI estimate (deferred draft from FoodUnitSelectorSheet), preserve
-    // source/ai_confidence/ai_reasoning so the persisted row carries the
-    // provenance + badge surfaces on the picker next time.
+    // source/ai_confidence so the persisted row carries the provenance +
+    // badge surfaces on the picker next time.
     source: variant.source,
     ai_confidence: variant.ai_confidence,
-    ai_reasoning: variant.ai_reasoning,
   };
 }
 

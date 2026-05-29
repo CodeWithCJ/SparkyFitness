@@ -29,8 +29,7 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'custom_nutrients', fv.custom_nutrients,
     'user_id', fv.user_id,
     'source', fv.source,
-    'ai_confidence', fv.ai_confidence,
-    'ai_reasoning', fv.ai_reasoning
+    'ai_confidence', fv.ai_confidence
   ) AS default_variant
 `;
 
@@ -189,8 +188,8 @@ async function createFood(foodData: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, ai_reasoning, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, TRUE, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
+        source, ai_confidence, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, TRUE, $22, $23, $24, $25, now(), now()) RETURNING id`,
       [
         newFood.id,
         newFood.user_id,
@@ -217,7 +216,6 @@ async function createFood(foodData: any) {
         foodData.custom_nutrients ?? {},
         foodData.source ?? 'manual',
         foodData.ai_confidence ?? null,
-        foodData.ai_reasoning ?? null,
       ]
     );
     const newVariantId = variantResult.rows[0].id;
@@ -250,7 +248,6 @@ async function createFood(foodData: any) {
         user_id: newFood.user_id,
         source: foodData.source ?? 'manual',
         ai_confidence: foodData.ai_confidence ?? null,
-        ai_reasoning: foodData.ai_reasoning ?? null,
         custom_nutrients: foodData.custom_nutrients ?? {},
       },
     };
@@ -810,10 +807,10 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
-              source, ai_confidence, ai_reasoning, created_at, updated_at
+              source, ai_confidence, created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, now(), now()
+              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, now(), now()
             )`,
           [
             newFoodId,
@@ -843,7 +840,6 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
             variant.custom_nutrients ?? {},
             variant.source ?? 'manual',
             variant.ai_confidence ?? null,
-            variant.ai_reasoning ?? null,
           ]
         );
         totalVariantsCreated++;

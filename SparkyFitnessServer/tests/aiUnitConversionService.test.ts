@@ -10,6 +10,7 @@ import {
   IncompatibleRequestError,
   ProviderResponseError,
 } from '../services/aiUnitConversionService.js';
+import { STRUCTURED_OUTPUT_SCHEMA } from '@workspace/shared';
 
 vi.mock('../models/chatRepository');
 vi.mock('../models/globalSettingsRepository.js');
@@ -52,7 +53,6 @@ const baseRequest = {
 const sampleAiResponse = {
   estimated_amount: 227,
   confidence: 'medium' as const,
-  reasoning: 'Typical plain Greek yogurt density ~0.96 g/ml × 236 ml ≈ 227 g.',
 };
 
 function mockOpenAiFetch(payload: unknown = sampleAiResponse) {
@@ -183,7 +183,6 @@ describe('estimateUnitConversion', () => {
     expect(result).toEqual({
       estimatedAmount: 227,
       confidence: 'medium',
-      reasoning: sampleAiResponse.reasoning,
       fromUnit: 'cup',
       fromAmount: 1,
       toUnit: 'g',
@@ -220,7 +219,6 @@ describe('estimateUnitConversion', () => {
     mockOpenAiFetch({
       estimated_amount: 'not a number',
       confidence: 'medium',
-      reasoning: 'x',
     });
 
     await expect(
@@ -263,5 +261,219 @@ describe('estimateUnitConversion', () => {
 
     const result = await estimateUnitConversion(TEST_USER_ID, baseRequest);
     expect(result.estimatedAmount).toBe(227);
+  });
+});
+
+/**
+ * Per-provider request-body shape assertions. Each provider has its own
+ * structured-output mechanism; these tests pin down what we send in the
+ * outbound `fetch` body so a refactor can't silently break a provider path.
+ *
+ * Pattern: mock chatRepository to return a service for the given provider,
+ * stub `global.fetch` to capture the request, run an estimate, then assert
+ * the captured body against the documented per-provider shape.
+ */
+describe('per-provider request body shapes', () => {
+  const originalFetch = global.fetch;
+
+  function captureFetch(
+    payload: unknown = { estimated_amount: 227, confidence: 'medium' }
+  ): ReturnType<typeof vi.fn> {
+    const captureMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => '',
+      json: async () => ({
+        choices: [{ message: { content: JSON.stringify(payload) } }],
+        // Anthropic uses content[0].text; mock both shapes — the service
+        // picks whichever matches the provider via its existing extractor.
+        content: [{ text: JSON.stringify(payload) }],
+        // Google extractor reads candidates[0].content.parts[0].text
+        candidates: [
+          { content: { parts: [{ text: JSON.stringify(payload) }] } },
+        ],
+        // Ollama extractor reads message.content
+        message: { content: JSON.stringify(payload) },
+      }),
+    });
+    global.fetch = captureMock as typeof global.fetch;
+    return captureMock;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error mocked
+    getDefaultModel.mockReturnValue('default-model');
+    // @ts-expect-error mocked
+    globalSettingsRepository.isUserAiConfigAllowed.mockResolvedValue(true);
+    // @ts-expect-error mocked
+    preferenceRepository.getUserPreferences.mockResolvedValue({
+      ai_assisted_conversions: true,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  function setProvider(
+    serviceType: string,
+    detail: Partial<{ custom_url: string; model_name: string }> = {}
+  ) {
+    // @ts-expect-error mocked
+    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
+      makeAiSetting({ service_type: serviceType, ...detail })
+    );
+    // @ts-expect-error mocked
+    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      makeAiServiceDetail({ service_type: serviceType, ...detail })
+    );
+  }
+
+  function bodyFromCall(captureMock: ReturnType<typeof vi.fn>): {
+    url: string;
+    body: Record<string, unknown>;
+  } {
+    const call = captureMock.mock.calls[0];
+    return {
+      url: call[0] as string,
+      body: JSON.parse((call[1] as { body: string }).body) as Record<
+        string,
+        unknown
+      >,
+    };
+  }
+
+  it('OpenAI sends strict json_schema with STRUCTURED_OUTPUT_SCHEMA', async () => {
+    setProvider('openai');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://api.openai.com/v1/chat/completions');
+    expect(body.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: {
+        name: 'unit_conversion',
+        strict: true,
+        schema: STRUCTURED_OUTPUT_SCHEMA,
+      },
+    });
+  });
+
+  it('Groq mirrors OpenAI strict json_schema body', async () => {
+    setProvider('groq');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
+    expect(body.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: {
+        name: 'unit_conversion',
+        strict: true,
+        schema: STRUCTURED_OUTPUT_SCHEMA,
+      },
+    });
+    expect(body.provider).toBeUndefined();
+  });
+
+  it('OpenRouter sends strict json_schema AND provider.require_parameters', async () => {
+    setProvider('openrouter');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
+    expect(body.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: {
+        name: 'unit_conversion',
+        strict: true,
+        schema: STRUCTURED_OUTPUT_SCHEMA,
+      },
+    });
+    expect(body.provider).toEqual({ require_parameters: true });
+  });
+
+  it('Mistral keeps basic json_object mode (no strict schema)', async () => {
+    setProvider('mistral');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://api.mistral.ai/v1/chat/completions');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('Custom uses basic json_object mode + the user-supplied URL as-is', async () => {
+    setProvider('custom', { custom_url: 'https://example.local/api/foo' });
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://example.local/api/foo');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('openai_compatible uses basic json_object + appends /chat/completions', async () => {
+    setProvider('openai_compatible', {
+      custom_url: 'https://example.local/v1',
+    });
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://example.local/v1/chat/completions');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('Google Gemini sends generationConfig.responseSchema (without additionalProperties)', async () => {
+    // Older pattern is the one foodPhotoEstimationService uses — newer
+    // `responseFormat.text.{mimeType, schema}` is rejected by the v1beta
+    // REST endpoint with a 400 in live testing.
+    //
+    // Gemini's `responseSchema` is an OpenAPI subset that doesn't accept
+    // `additionalProperties`. We strip it before sending. The shared
+    // STRUCTURED_OUTPUT_SCHEMA stays canonical; the strip happens at the
+    // call site.
+    setProvider('google');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toContain(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+    );
+    const config = body.generationConfig as {
+      responseMimeType?: string;
+      responseSchema?: Record<string, unknown>;
+    };
+    expect(config.responseMimeType).toBe('application/json');
+    expect(config.responseSchema).toEqual({
+      type: STRUCTURED_OUTPUT_SCHEMA.type,
+      properties: STRUCTURED_OUTPUT_SCHEMA.properties,
+      required: STRUCTURED_OUTPUT_SCHEMA.required,
+    });
+    expect(config.responseSchema?.additionalProperties).toBeUndefined();
+  });
+
+  it('Anthropic sends output_config.format json_schema (NOT tool_use)', async () => {
+    setProvider('anthropic');
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('https://api.anthropic.com/v1/messages');
+    expect(body.output_config).toEqual({
+      format: {
+        type: 'json_schema',
+        schema: STRUCTURED_OUTPUT_SCHEMA,
+      },
+    });
+    expect(body.tools).toBeUndefined();
+  });
+
+  it('Ollama sends schema-as-format-value + temperature 0 + stream false', async () => {
+    setProvider('ollama', { custom_url: 'http://localhost:11434' });
+    const captureMock = captureFetch();
+    await estimateUnitConversion(TEST_USER_ID, baseRequest);
+    const { url, body } = bodyFromCall(captureMock);
+    expect(url).toBe('http://localhost:11434/api/chat');
+    expect(body.format).toEqual(STRUCTURED_OUTPUT_SCHEMA);
+    expect(body.stream).toBe(false);
+    expect((body.options as { temperature: number }).temperature).toBe(0);
   });
 });
