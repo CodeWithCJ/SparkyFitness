@@ -3,6 +3,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
+import { ApiError } from '../../src/services/api/errors';
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
 import { hasSeenFoodPhotoIntro } from '../../src/services/foodPhotoIntro';
@@ -145,6 +146,50 @@ describe('FoodScanScreen', () => {
     });
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
     expect(mockNavigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('shows the lookup-failed recovery card with the server message when lookup throws', async () => {
+    mockLookupBarcodeV2.mockRejectedValue(
+      new ApiError(
+        'Bad Gateway',
+        502,
+        JSON.stringify({ error: 'FatSecret API error (code 21): Invalid IP address detected' }),
+      ),
+    );
+    const screen = renderScreen();
+
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+      data: '012345678905',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Lookup failed')).toBeTruthy();
+    });
+    expect(
+      screen.getByText('FatSecret API error (code 21): Invalid IP address detected'),
+    ).toBeTruthy();
+    // The misleading not-found copy is not shown for a real failure.
+    expect(screen.queryByText('No match for barcode')).toBeNull();
+    // The flow stays recoverable.
+    expect(screen.getByText('Scan Nutrition Label')).toBeTruthy();
+    expect(screen.getByText('Add Food Manually')).toBeTruthy();
+    expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
+  });
+
+  it('falls back to generic copy when a thrown lookup carries no server message', async () => {
+    mockLookupBarcodeV2.mockRejectedValue(new Error('network down'));
+    const screen = renderScreen();
+
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+      data: '012345678905',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Lookup failed')).toBeTruthy();
+    });
+    expect(
+      screen.getByText("Couldn't look up this barcode. Please try again."),
+    ).toBeTruthy();
   });
 
   it('does not retrigger haptics while a scan lookup is locked', async () => {

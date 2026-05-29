@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { searchExternalFoods } from '../services/api/externalFoodSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { RateLimiter } from '../utils/rateLimiter';
@@ -53,6 +54,7 @@ export function useExternalFoodSearch(
     isSearching: query.isFetching && !query.isFetchingNextPage,
     isSearchActive,
     isSearchError: query.isError && !hasCurrentData,
+    searchErrorMessage: query.isError && !hasCurrentData ? getApiErrorMessage(query.error) : null,
     isProviderSupported,
     fetchNextPage: query.fetchNextPage,
     hasNextPage: query.hasNextPage,
