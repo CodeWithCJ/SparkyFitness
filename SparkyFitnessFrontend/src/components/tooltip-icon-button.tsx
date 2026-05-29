@@ -1,7 +1,7 @@
 'use client';
 
 import { type ComponentPropsWithRef, forwardRef } from 'react';
-import { Slot } from 'radix-ui';
+import { Slot } from '@radix-ui/react-slot';
 
 import {
   Tooltip,

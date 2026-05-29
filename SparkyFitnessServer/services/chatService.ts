@@ -286,12 +286,63 @@ async function saveSparkyChatHistory(
     throw error;
   }
 }
+async function getMcpClient(reqHeaders?: any) {
+  const mcpUrl = process.env.SPARKY_FITNESS_MCP_URL;
+
+  if (mcpUrl) {
+    const mcpEndpoint = mcpUrl.endsWith('/mcp') ? mcpUrl : `${mcpUrl}/mcp`;
+    // Forward the user's authorization and cookies to MCP
+    const headers: Record<string, string> = {};
+    if (reqHeaders?.authorization) {
+      headers['authorization'] = reqHeaders.authorization;
+    }
+    if (reqHeaders?.cookie) {
+      headers['cookie'] = reqHeaders.cookie;
+    }
+    log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
+    return await createMCPClient({
+      transport: {
+        type: 'http',
+        url: mcpEndpoint,
+        headers,
+      },
+    });
+  } else {
+    // Fallback for local Stdio transport (CLI mode / developer convenience)
+    log('info', 'Connecting to MCP server via local Stdio transport');
+    const indexCjsPath = path.resolve(
+      process.cwd(),
+      '../SparkyFitnessMCP/dist/index.cjs'
+    );
+    return await createMCPClient({
+      transport: new StdioClientTransport({
+        command: 'node',
+        args: [indexCjsPath],
+        env: {
+          ...process.env,
+          // For n8n / external tools: use server-level API key if configured.
+          // For frontend sessions: forward the user's cookie so the MCP
+          // process can authenticate via the existing session.
+          ...(process.env.SPARKY_FITNESS_API_KEY
+            ? { SPARKY_FITNESS_API_KEY: process.env.SPARKY_FITNESS_API_KEY }
+            : {
+                Authorization: reqHeaders?.authorization || '',
+                Cookie: reqHeaders?.cookie || '',
+              }),
+          MCP_TRANSPORT: 'stdio',
+        },
+      }),
+    });
+  }
+}
+
 async function processChatMessage(
   messages: any[],
   serviceConfigId: any,
   authenticatedUserId: any,
   reqHeaders?: any
 ) {
+  let mcpClient: any;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -361,54 +412,8 @@ async function processChatMessage(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    // Connect to MCP Server
-    let mcpClient: any;
-    const mcpUrl = process.env.SPARKY_FITNESS_MCP_URL;
-
-    if (mcpUrl) {
-      // Forward the user's authorization and cookies to MCP
-      const headers: Record<string, string> = {};
-      if (reqHeaders?.authorization) {
-        headers['authorization'] = reqHeaders.authorization;
-      }
-      if (reqHeaders?.cookie) {
-        headers['cookie'] = reqHeaders.cookie;
-      }
-      log('info', `Connecting to MCP server over HTTP: ${mcpUrl}`);
-      mcpClient = await createMCPClient({
-        transport: {
-          type: 'http',
-          url: mcpUrl,
-          headers,
-        },
-      });
-    } else {
-      // Fallback for local Stdio transport (CLI mode / developer convenience)
-      log('info', 'Connecting to MCP server via local Stdio transport');
-      const indexCjsPath = path.resolve(
-        process.cwd(),
-        '../SparkyFitnessMCP/dist/index.cjs'
-      );
-      mcpClient = await createMCPClient({
-        transport: new StdioClientTransport({
-          command: 'node',
-          args: [indexCjsPath],
-          env: {
-            ...process.env,
-            // For n8n / external tools: use server-level API key if configured.
-            // For frontend sessions: forward the user's cookie so the MCP
-            // process can authenticate via the existing session.
-            ...(process.env.SPARKY_FITNESS_API_KEY
-              ? { SPARKY_FITNESS_API_KEY: process.env.SPARKY_FITNESS_API_KEY }
-              : {
-                  Authorization: reqHeaders?.authorization || '',
-                  Cookie: reqHeaders?.cookie || '',
-                }),
-            MCP_TRANSPORT: 'stdio',
-          },
-        }),
-      });
-    }
+    // Connect to MCP Server using helper function
+    mcpClient = await getMcpClient(reqHeaders);
 
     // Load user context (categories, timezone)
     const [customCategories, chatTz] = await Promise.all([
@@ -470,21 +475,62 @@ Be precise with data extraction and call the correct tools in the correct order.
         chatbotTools[key] = tool;
       }
     }
+    log(
+      'info',
+      `Loaded ${Object.keys(chatbotTools).length} tools for chatbot: ${Object.keys(chatbotTools).join(', ')}`
+    );
 
     // Map conversation history messages to CoreMessage format
     const conversationMessages = messages.map((msg: any) => {
-      // Prioritize structured 'parts' if available (multimodal support)
-      if (msg.parts && Array.isArray(msg.parts)) {
-        return {
-          role: msg.message_type === 'assistant' ? 'assistant' : 'user',
-          content: msg.parts,
-        };
+      // If parts or content is an array of parts (text + images), pass them through
+      const partsSource =
+        msg.parts && Array.isArray(msg.parts)
+          ? msg.parts
+          : Array.isArray(msg.content)
+            ? msg.content
+            : null;
+
+      if (partsSource) {
+        const parts = partsSource
+          .map((part: any) => {
+            if (part.type === 'text') {
+              return { type: 'text' as const, text: part.text || '' };
+            }
+            if (
+              part.type === 'image' ||
+              part.type === 'image_url' ||
+              (part.type === 'file' &&
+                (part.mimeType?.startsWith('image/') ||
+                  part.mediaType?.startsWith('image/') ||
+                  part.url?.startsWith('data:image/')))
+            ) {
+              // Handle both base64 data URLs and remote URLs
+              const url = part.image_url?.url || part.image || part.url || '';
+              return { type: 'image' as const, image: url };
+            }
+            // Fallback: treat unknown parts as text
+            return { type: 'text' as const, text: String(part.text || '') };
+          })
+          .filter(
+            (p: any) =>
+              p.type === 'image' || (p.type === 'text' && p.text.trim() !== '')
+          );
+
+        if (parts.length > 0) {
+          return {
+            role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+              | 'assistant'
+              | 'user',
+            content: parts,
+          };
+        }
       }
 
-      // Fallback to legacy string content
       return {
-        role: msg.message_type === 'assistant' ? 'assistant' : 'user',
-        content: msg.content || '',
+        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+          | 'assistant'
+          | 'user',
+        content: typeof msg.content === 'string' ? msg.content : '',
       };
     });
 
@@ -570,9 +616,6 @@ Be precise with data extraction and call the correct tools in the correct order.
       },
     });
 
-    // Close MCP Client Connection
-    await mcpClient.close().catch(() => {});
-
     // Save history dynamically to DB (replacing frontend client-side saves)
     const lastUserMsg = incomingMessages[incomingMessages.length - 1];
     const userMessageContent = Array.isArray(lastUserMsg?.content)
@@ -582,12 +625,16 @@ Be precise with data extraction and call the correct tools in the correct order.
           .join(' ') || '[Image message]'
       : (lastUserMsg?.content as string) || 'Message sent';
 
+    const userMessageParts = Array.isArray(lastUserMsg?.content)
+      ? lastUserMsg.content
+      : [{ type: 'text' as const, text: String(lastUserMsg?.content || '') }];
+
     await chatRepository
       .saveChatHistory({
         user_id: authenticatedUserId,
         content: userMessageContent,
         messageType: 'user',
-        parts: lastUserMsg?.content,
+        parts: userMessageParts,
       })
       .catch((err: any) =>
         log('error', 'Failed to save user chat history:', err)
@@ -625,10 +672,39 @@ Be precise with data extraction and call the correct tools in the correct order.
       actionType = 'habit_logged';
     }
 
+    // Capture tool execution outputs
+    const responseMetadata: any = {};
+    if (executedToolsList.some((t) => t.name === 'sparky_manage_food')) {
+      const foodCall = executedToolsList.find(
+        (t) => t.name === 'sparky_manage_food'
+      );
+      if (foodCall && foodCall.args?.action === 'food_options') {
+        actionType = 'food_options';
+        const foodOptionsData = await processFoodOptionsRequest(
+          foodCall.args.food_name,
+          foodCall.args.serving_unit || 'serving',
+          authenticatedUserId,
+          serviceConfigId
+        );
+        responseMetadata.foodOptions = foodOptionsData;
+      }
+    } else if (
+      executedToolsList.some((t) => t.name === 'sparky_manage_exercise')
+    ) {
+      const exerciseCall = executedToolsList.find(
+        (t) => t.name === 'sparky_manage_exercise'
+      );
+      if (exerciseCall && exerciseCall.args?.action === 'exercise_options') {
+        actionType = 'exercise_options';
+        // Exercise options could be processed here similarly
+      }
+    }
+
     return {
       content: result.text,
       action: actionType,
       executedTools: executedToolsList,
+      metadata: responseMetadata,
     };
   } catch (error) {
     log(
@@ -637,6 +713,10 @@ Be precise with data extraction and call the correct tools in the correct order.
       error
     );
     throw error;
+  } finally {
+    if (mcpClient) {
+      await mcpClient.close().catch(() => {});
+    }
   }
 }
 async function processFoodOptionsRequest(
@@ -950,6 +1030,7 @@ async function processChatMessageStream(
   authenticatedUserId: any,
   reqHeaders?: any
 ) {
+  let mcpClient: any;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -1011,50 +1092,8 @@ async function processChatMessageStream(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    // Connect to MCP Server
-    let mcpClient: any;
-    const mcpUrl = process.env.SPARKY_FITNESS_MCP_URL;
-
-    if (mcpUrl) {
-      const headers: Record<string, string> = {};
-      if (reqHeaders?.authorization) {
-        headers['authorization'] = reqHeaders.authorization;
-      }
-      if (reqHeaders?.cookie) {
-        headers['cookie'] = reqHeaders.cookie;
-      }
-      mcpClient = await createMCPClient({
-        transport: {
-          type: 'http',
-          url: mcpUrl,
-          headers,
-        },
-      });
-    } else {
-      const indexCjsPath = path.resolve(
-        process.cwd(),
-        '../SparkyFitnessMCP/dist/index.cjs'
-      );
-      mcpClient = await createMCPClient({
-        transport: new StdioClientTransport({
-          command: 'node',
-          args: [indexCjsPath],
-          env: {
-            ...process.env,
-            // For n8n / external tools: use server-level API key if configured.
-            // For frontend sessions: forward the user's cookie so the MCP
-            // process can authenticate via the existing session.
-            ...(process.env.SPARKY_FITNESS_API_KEY
-              ? { SPARKY_FITNESS_API_KEY: process.env.SPARKY_FITNESS_API_KEY }
-              : {
-                  Authorization: reqHeaders?.authorization || '',
-                  Cookie: reqHeaders?.cookie || '',
-                }),
-            MCP_TRANSPORT: 'stdio',
-          },
-        }),
-      });
-    }
+    // Connect to MCP Server using helper function
+    mcpClient = await getMcpClient(reqHeaders);
 
     const [customCategories, chatTz] = await Promise.all([
       measurementRepository.getCustomCategories(authenticatedUserId),
@@ -1211,13 +1250,22 @@ Be precise with data extraction, search the database first if needed, and call t
           .reverse()
           .find((msg: any) => msg.role === 'user');
 
+        const userMessageParts = Array.isArray(lastUserMessage?.content)
+          ? lastUserMessage.content
+          : [
+              {
+                type: 'text' as const,
+                text: String(lastUserMessage?.content || ''),
+              },
+            ];
+
         // Save to DB on completion
         await chatRepository
           .saveChatHistory({
             user_id: authenticatedUserId,
             content: userMessageContent,
             messageType: 'user',
-            parts: lastUserMessage?.content,
+            parts: userMessageParts,
           })
           .catch((err: any) =>
             log('error', 'Failed to save user chat history:', err)
@@ -1238,6 +1286,9 @@ Be precise with data extraction, search the database first if needed, and call t
 
     return result;
   } catch (error) {
+    if (mcpClient) {
+      await mcpClient.close().catch(() => {});
+    }
     log(
       'error',
       `Error in processChatMessageStream for user ${authenticatedUserId}:`,
