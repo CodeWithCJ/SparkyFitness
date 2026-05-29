@@ -19,18 +19,19 @@ class AllergenPreferenceService {
   static async addAllergenPreference(userId: string, allergenName: string) {
     const client = await getClient(userId);
     try {
+      const normalizedName = allergenName.trim().toLowerCase();
       const id = uuidv4();
       const result = await client.query(
         `INSERT INTO user_allergen_preferences (id, user_id, allergen_name)
          VALUES ($1, $2, $3)
          ON CONFLICT (user_id, allergen_name) DO NOTHING
          RETURNING *`,
-        [id, userId, allergenName]
+        [id, userId, normalizedName]
       );
       if (result.rows.length === 0) {
         const existing = await client.query(
           'SELECT * FROM user_allergen_preferences WHERE user_id = $1 AND allergen_name = $2',
-          [userId, allergenName]
+          [userId, normalizedName]
         );
         return existing.rows[0];
       }

@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
 
 const AddAllergenBodySchema = z.object({
-  allergen_name: z.string().min(1),
+  allergen_name: z.string().min(1).max(100),
 });
 
 const router = express.Router();

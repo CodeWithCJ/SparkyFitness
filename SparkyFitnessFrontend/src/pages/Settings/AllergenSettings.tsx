@@ -44,7 +44,7 @@ const AllergenSettings: React.FC = () => {
 
   const { data: preferences } = useAllergenPreferences();
   const { mutateAsync: addAllergen } = useAddAllergenPreferenceMutation();
-  const { mutateAsync: removeAllergen } = useRemoveAllergenPreferenceMutation();
+  const { mutate: removeAllergen } = useRemoveAllergenPreferenceMutation();
 
   const existingNames = new Set(
     preferences?.map((p) => p.allergen_name.toLowerCase()) ?? []
@@ -60,8 +60,12 @@ const AllergenSettings: React.FC = () => {
       });
       return;
     }
-    await addAllergen(trimmed);
-    setNewAllergen('');
+    try {
+      await addAllergen(trimmed);
+      setNewAllergen('');
+    } catch {
+      // error surfaced via global query error handler
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
