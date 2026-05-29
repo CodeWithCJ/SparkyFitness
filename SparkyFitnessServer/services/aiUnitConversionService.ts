@@ -120,17 +120,10 @@ async function callProvider(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              // Older `responseMimeType` + `responseSchema` pattern — the
-              // same one `foodPhotoEstimationService` uses successfully
-              // today. The newer `generationConfig.responseFormat.text.{mimeType, schema}`
-              // pattern shown in the Gemini docs page does NOT work against
-              // the v1beta REST endpoint (it returns 400). Verified live.
-              //
-              // Gemini's `responseSchema` is an OpenAPI subset that does NOT
-              // accept `additionalProperties`. We strip it inline so the
-              // shared STRUCTURED_OUTPUT_SCHEMA (which has it for OpenAI /
-              // Anthropic strict-mode requirements) can still be the source
-              // of truth. `enum` on the string is supported. Verified live.
+              // Gemini v1beta: use the older responseSchema/responseMimeType pattern;
+              // the new responseFormat.text shape returns 400 here.
+              // responseSchema is an OpenAPI subset and rejects additionalProperties,
+              // so strip it from the shared schema inline.
               generationConfig: {
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -161,13 +154,10 @@ async function callProvider(
                   : aiService.service_type === 'openrouter'
                     ? 'https://openrouter.ai/api/v1/chat/completions'
                     : (aiService.custom_url as string);
-        // OpenAI / Groq / OpenRouter: strict json_schema mode (provider-side
-        // shape enforcement). Mistral / Custom / openai_compatible stick with
-        // basic json_object — those endpoints don't reliably support strict
-        // mode, and Zod-on-receipt still validates the shape.
-        // OpenRouter additionally gets `provider.require_parameters: true` so
-        // it refuses to route to a model that doesn't support structured
-        // outputs at all (fail-loudly upfront vs. silently degrade).
+        // Strict json_schema only on providers that reliably support it (OpenAI/Groq/OpenRouter);
+        // others use json_object + Zod-on-receipt.
+        // OpenRouter adds provider.require_parameters so it refuses to route to a model
+        // without structured-output support.
         const useStrictSchema =
           aiService.service_type === 'openai' ||
           aiService.service_type === 'groq' ||
@@ -190,12 +180,8 @@ async function callProvider(
         if (aiService.service_type === 'openrouter') {
           body.provider = { require_parameters: true };
         }
-        // Auth header pattern lifted from chatService:
-        //   • OpenAI-family endpoints (incl. Groq, Mistral, OpenRouter,
-        //     openai_compatible, custom) accept `Authorization: Bearer <key>`.
-        //   • OpenRouter additionally wants `HTTP-Referer` and `X-Title` so
-        //     it can attribute traffic to our app.
-        // Without these, providers return 401 "Invalid API Key".
+        // OpenAI-family providers use Bearer auth; OpenRouter additionally wants
+        // HTTP-Referer/X-Title for traffic attribution.
         response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -211,11 +197,7 @@ async function callProvider(
         break;
       }
       case 'anthropic':
-        // New `output_config.format` JSON-outputs pattern (Claude 4.5+ only).
-        // Older Claude models (3.x, 3.5) will return a 400 — that's the
-        // intended fail-loudly behavior (user reconfigures to a supported
-        // model). Fallback if needed: switch to the tool-use pattern from
-        // `foodPhotoEstimationService` (input_schema + tool_choice).
+        // output_config.format requires Claude 4.5+ (older models 400 — intended fail-loudly).
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -242,10 +224,7 @@ async function callProvider(
           headersTimeout: timeout,
           bodyTimeout: timeout,
         });
-        // Schema-as-format-value structured output (local Ollama only —
-        // Ollama Cloud doesn't support this). temperature: 0 for deterministic
-        // output. Fallback if Ollama rejects schema as format: switch back to
-        // `format: 'json'` (basic JSON mode, today's code).
+        // Local Ollama only (Cloud rejects schema-as-format); temperature: 0 for deterministic JSON.
         response = await fetch(`${aiService.custom_url}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -181,10 +181,7 @@ const androidSparkleStyle =
     ? ({ transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }] } as const)
     : undefined;
 
-// Confidence-tinted icon colors for the inline AI Sparkles badge that sits
-// next to the manual-update banner after an AI estimate auto-applies. Read
-// the CSS variables once at top-of-render and resolve via this map. Mirrors
-// the FoodUnitSelectorSheet picker badge so AI surfaces feel consistent.
+// Confidence tone colors for the inline post-estimate AI badge; mirrors the picker sheet.
 type AiToneColors = Record<ConfidenceTone, string>;
 
 function buildDisplayFormState(

@@ -40,19 +40,14 @@ import {
   type ConfidenceTone,
 } from '@workspace/shared';
 
-// Confidence-tinted text colors for the saved-AI-variant indicator in the
-// picker. Mirrors the mobile food-photo screen's success/warning/error tones
-// so the AI badge feels consistent across all AI surfaces.
+// Confidence tone classes for the saved-AI-variant indicator in the picker dropdown.
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
   warning: 'text-amber-600 dark:text-amber-400',
   error: 'text-rose-600 dark:text-rose-400',
 };
 
-// Filled-pill version of the same tone scheme, used inline next to the
-// conversion factor label after an AI estimate auto-applies. Matches
-// VariantCard's "Fair estimate" badge so the two surfaces feel like
-// one component family.
+// Filled-pill version of the same tones for the inline post-estimate badge.
 const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
   warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
@@ -90,9 +85,7 @@ const FoodUnitSelector = ({
     usePreferences();
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
-  // AI estimate gate: admin allowed user AI config + active AI service exists
-  // + per-user preference is on. Re-checked each render — flipping the toggle
-  // mid-dialog hides the AI section live.
+  // AI gate re-checked each render so toggling preferences mid-dialog takes effect live.
   const userAiConfigAllowedQuery = useUserAiConfigAllowed();
   const userAiConfigAllowed = userAiConfigAllowedQuery.data === true;
   const activeAiServiceQuery = useActiveAIService(open && userAiConfigAllowed);

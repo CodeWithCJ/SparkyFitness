@@ -5512,25 +5512,14 @@ CREATE POLICY owner_policy ON public.workout_preset_exercises USING ((EXISTS ( S
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: food_variants food_variants_select_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: food_variants select_and_modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY food_variants_select_policy ON public.food_variants FOR SELECT USING (((food_variants.user_id = ( SELECT f.user_id
+CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE (f.id = food_variants.food_id))) AND (EXISTS ( SELECT 1
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) OR public.has_library_access_with_public(food_variants.user_id, false, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]));
-
-
---
--- Name: food_variants food_variants_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY food_variants_modify_policy ON public.food_variants USING (((food_variants.user_id = (current_setting('app.user_id'::text))::uuid) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text])))))) WITH CHECK (((food_variants.user_id = (current_setting('app.user_id'::text))::uuid) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))));
+  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
 
 
 --
