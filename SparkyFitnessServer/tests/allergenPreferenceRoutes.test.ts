@@ -131,6 +131,7 @@ describe('Allergen Preference Routes', () => {
       const res = await request(app).post('/api/allergen-preferences').send({});
 
       expect(res.statusCode).toEqual(400);
+      expect(res.body).toHaveProperty('error', 'Invalid request body');
       expect(
         AllergenPreferenceService.addAllergenPreference
       ).not.toHaveBeenCalled();
@@ -142,6 +143,7 @@ describe('Allergen Preference Routes', () => {
         .send({ allergen_name: 123 });
 
       expect(res.statusCode).toEqual(400);
+      expect(res.body).toHaveProperty('error', 'Invalid request body');
       expect(
         AllergenPreferenceService.addAllergenPreference
       ).not.toHaveBeenCalled();

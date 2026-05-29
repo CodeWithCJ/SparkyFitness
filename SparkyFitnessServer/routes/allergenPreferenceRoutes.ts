@@ -1,7 +1,12 @@
 import express from 'express';
+import { z } from 'zod/v4';
 import AllergenPreferenceService from '../services/allergenPreferenceService.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
+
+const AddAllergenBodySchema = z.object({
+  allergen_name: z.string().min(1),
+});
 
 const router = express.Router();
 router.use(authenticate);
@@ -69,11 +74,12 @@ router.get('/', async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { allergen_name } = req.body;
-    if (!allergen_name || typeof allergen_name !== 'string') {
-      res.status(400).json({ message: 'allergen_name is required.' });
+    const bodyResult = AddAllergenBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      res.status(400).json({ error: 'Invalid request body' });
       return;
     }
+    const { allergen_name } = bodyResult.data;
     const preference = await AllergenPreferenceService.addAllergenPreference(
       req.userId,
       allergen_name.trim()
