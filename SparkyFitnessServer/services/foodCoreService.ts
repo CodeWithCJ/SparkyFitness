@@ -751,6 +751,18 @@ async function updateFoodEntriesSnapshot(
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function lookupBarcode(barcode: any, userId: any, providerId: any) {
+  // Providers are tried in turn, each failure caught so the next can run.
+  // Capture the first failure carrying an HTTP status (a surfaceable
+  // misconfiguration, e.g. FatSecret's IP error) to report instead of a
+  // misleading "not found" if every provider fails.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let surfaceableError: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const captureSurfaceable = (err: any) => {
+    if (!surfaceableError && err?.status) {
+      surfaceableError = err;
+    }
+  };
   try {
     const localFood = await foodRepository.findFoodByBarcode(barcode, userId);
     if (localFood) {
@@ -809,6 +821,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
         }
       } catch (fsError) {
         log('warn', `FatSecret barcode lookup failed for ${barcode}:`, fsError);
+        captureSurfaceable(fsError);
       }
     }
     // Try USDA if provider is configured
@@ -846,6 +859,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
         }
       } catch (usdaError) {
         log('warn', `USDA barcode lookup failed for ${barcode}:`, usdaError);
+        captureSurfaceable(usdaError);
       }
     }
     // Try OpenFoodFacts if it is the configured primary provider
@@ -878,6 +892,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
           `OpenFoodFacts barcode lookup failed for ${barcode}:`,
           error
         );
+        captureSurfaceable(error);
       }
     }
     // Fall back to OpenFoodFacts if not already tried and user preference allows it
@@ -932,7 +947,12 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
           `OpenFoodFacts lookup failed for barcode ${barcode}:`,
           error
         );
+        captureSurfaceable(error);
       }
+    }
+    // Every provider failed: report a misconfiguration rather than "not found".
+    if (surfaceableError) {
+      throw surfaceableError;
     }
     return { source: 'not_found', food: null };
   } catch (error) {

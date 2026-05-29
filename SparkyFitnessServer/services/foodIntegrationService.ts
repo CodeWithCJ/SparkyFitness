@@ -1,6 +1,7 @@
 import { log } from '../config/logging.js';
 import {
   getFatSecretAccessToken,
+  assertNoFatSecretApiError,
   foodNutrientCache,
   CACHE_DURATION_MS,
   FATSECRET_API_BASE_URL,
@@ -41,6 +42,7 @@ async function searchFatSecretFoods(
       throw new Error(`FatSecret API error: ${errorText}`);
     }
     const data = await response.json();
+    assertNoFatSecretApiError(data);
     const foods = data.foods || {};
     const totalCount = Number(foods.total_results || 0);
     const pageNum = Number(foods.page_number || 0) + 1;
@@ -100,6 +102,7 @@ async function getFatSecretNutrients(
       throw new Error(`FatSecret API error: ${errorText}`);
     }
     const data = await response.json();
+    assertNoFatSecretApiError(data);
     // Store in cache
     foodNutrientCache.set(foodId, {
       data: data,
