@@ -1375,7 +1375,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  Can't convert between units. Update nutrition values manually.
+                  {"Can't convert between units. Update nutrition values manually."}
                 </Text>
               </View>
               {canAiConvert ? (
