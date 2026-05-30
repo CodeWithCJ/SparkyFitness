@@ -48,6 +48,7 @@ export const loadChatHistory = async (
       isUser: item.message_type === 'user',
       timestamp: timestamp,
       metadata: item.metadata,
+      parts: item.parts,
     };
   });
 };

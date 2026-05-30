@@ -7,13 +7,13 @@ function getDefaultModel(serviceType: any) {
     case 'anthropic':
       return 'claude-3-5-sonnet-20241022';
     case 'google':
-      return 'gemini-1.5-flash';
+      return 'gemini-2.5-flash';
     case 'mistral':
       return 'mistral-large-latest';
     case 'groq':
-      return 'llama3-8b-8192';
+      return 'llama-3.3-70b-versatile';
     case 'openrouter':
-      return 'google/gemini-flash-1.5-8b:free';
+      return 'google/gemini-2.5-flash';
     default:
       return 'gpt-4o-mini';
   }

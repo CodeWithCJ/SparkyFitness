@@ -10,7 +10,7 @@ function getModel() {
   // Prefer Gemini if key starts with AIza, else assume OpenAI/Compatible
   if (apiKey.startsWith("AIza")) {
     const google = createGoogleGenerativeAI({ apiKey });
-    return google("gemini-1.5-flash");
+    return google("gemini-2.5-flash");
   } else {
     const openai = createOpenAI({ apiKey });
     return openai("gpt-4o-mini");

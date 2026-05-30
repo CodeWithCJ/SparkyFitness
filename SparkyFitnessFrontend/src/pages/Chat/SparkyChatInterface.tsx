@@ -15,14 +15,15 @@ import {
 } from '@assistant-ui/react-ai-sdk';
 import { Thread } from '@/components/thread';
 
+import { MessagePart, ImagePart } from '@/types/Chatbot_types';
+
 interface SparkyChatInnerProps {
   activeAIServiceSetting: { id: string } | null;
   history: Array<{
     id: string;
     content: string;
     isUser: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    parts?: any[];
+    parts?: MessagePart[];
   }>;
 }
 
@@ -34,22 +35,37 @@ const SparkyChatInner = ({
   const invalidateChat = useChatInvalidation();
   const userDate = formatDateToYYYYMMDD(new Date());
 
-  // Map database message history to ai@6.x UIMessage format (requires `parts`)
+  // Map database message history to ai@6.x UIMessage format (requires `parts` + `attachments`)
   const initialMessages = history.map((msg, i) => {
     // Prioritize structured 'parts' from database if available
-    const parts =
+    const parts: MessagePart[] =
       msg.parts && Array.isArray(msg.parts)
         ? msg.parts
         : [{ type: 'text' as const, text: msg.content }];
+
+    // Reconstruct attachments for messages that have image parts so that assistant-ui can render them
+    const attachments = msg.isUser
+      ? parts
+          .filter((part): part is ImagePart => part.type === 'image')
+          .map((part, partIdx: number) => ({
+            id: `${msg.id || `history-${i}`}-attachment-${partIdx}`,
+            name: `attachment-${partIdx}.png`,
+            type: 'image' as const,
+            contentType: 'image/png',
+            content: [part],
+          }))
+      : undefined;
 
     return {
       id: msg.id || `history-${i}`,
       role: msg.isUser ? ('user' as const) : ('assistant' as const),
       content: msg.content,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      parts: parts as any,
+      parts,
+      attachments,
     };
-  });
+  }) as unknown as NonNullable<
+    Parameters<typeof useChatRuntime>[0]
+  >['messages'];
 
   // Create assistant-ui runtime
   const runtime = useChatRuntime({
