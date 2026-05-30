@@ -28,6 +28,7 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -67,11 +68,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { useToast } from '@/hooks/use-toast';
+import { apiCall } from '@/api/api';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [viewingFood, setViewingFood] = useState<Food | null>(null);
+  const [syncingAllergens, setSyncingAllergens] = useState(false);
   const { data: customNutrients = [] } = useCustomNutrients();
 
   const {
@@ -136,6 +141,30 @@ const FoodDatabaseManager = () => {
   }, [isEditMode]);
 
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+
+  const handleSyncAllergens = async () => {
+    setSyncingAllergens(true);
+    try {
+      const result = (await apiCall('/foods/sync-allergens', {
+        method: 'POST',
+      })) as { updated: number; total: number };
+      toast({
+        title: 'Allergen sync complete',
+        description:
+          result.total === 0
+            ? 'All your OpenFoodFacts foods already have allergen data.'
+            : `Updated ${result.updated} of ${result.total} food(s).`,
+      });
+    } catch {
+      toast({
+        title: 'Sync failed',
+        description: 'Could not sync allergens. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingAllergens(false);
+    }
+  };
 
   const editableFoodIds = useMemo(() => {
     return foodData?.foods.filter((f) => canEdit(f)).map((f) => f.id) || [];
@@ -494,6 +523,31 @@ const FoodDatabaseManager = () => {
                   {!isMobile && (
                     <span>
                       {t('foodDatabaseManager.addNewFood', 'Add New Food')}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  size={isMobile ? 'icon' : 'default'}
+                  variant="outline"
+                  onClick={handleSyncAllergens}
+                  disabled={syncingAllergens}
+                  className="shrink-0"
+                  title={t(
+                    'foodDatabaseManager.syncAllergens',
+                    'Sync Allergens from OpenFoodFacts'
+                  )}
+                >
+                  <RefreshCw
+                    className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 mr-2'} ${syncingAllergens ? 'animate-spin' : ''}`}
+                  />
+                  {!isMobile && (
+                    <span>
+                      {syncingAllergens
+                        ? t('foodDatabaseManager.syncingAllergens', 'Syncing…')
+                        : t(
+                            'foodDatabaseManager.syncAllergens',
+                            'Sync Allergens'
+                          )}
                     </span>
                   )}
                 </Button>

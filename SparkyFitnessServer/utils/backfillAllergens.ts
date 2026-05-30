@@ -1,4 +1,4 @@
-import { getSystemClient } from '../db/poolManager.js';
+import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { searchOpenFoodFactsByBarcodeFields } from '../integrations/openfoodfacts/openFoodFactsService.js';
 
@@ -47,10 +47,13 @@ async function fetchWithRetry(
   }
 }
 
-export async function backfillOffAllergens(): Promise<void> {
-  const client = await getSystemClient();
+export async function backfillOffAllergens(
+  userId: string
+): Promise<{ updated: number; total: number }> {
+  // Use RLS-scoped client so only the requesting user's foods are processed
+  const client = await getClient(userId);
   try {
-    // allergens IS NULL means not yet checked — empty array means checked but no data
+    // allergens IS NULL means not yet checked — empty array means checked but no data found
     const { rows } = await client.query(`
       SELECT fv.id AS variant_id, f.provider_external_id AS barcode
       FROM food_variants fv
@@ -60,14 +63,15 @@ export async function backfillOffAllergens(): Promise<void> {
         AND fv.allergens IS NULL
     `);
 
-    if (rows.length === 0) {
-      log('info', 'backfillOffAllergens: nothing to backfill');
-      return;
+    const total = rows.length;
+
+    if (total === 0) {
+      return { updated: 0, total: 0 };
     }
 
     log(
       'info',
-      `backfillOffAllergens: backfilling allergens for ${rows.length} variant(s)`
+      `backfillOffAllergens: syncing allergens for ${total} variant(s)`
     );
 
     let updated = 0;
@@ -76,7 +80,7 @@ export async function backfillOffAllergens(): Promise<void> {
         const result = await fetchWithRetry(row.barcode);
 
         // Always write — empty arrays mark the variant as checked so it won't
-        // be retried on the next server start. NULL stays reserved for "not yet checked".
+        // be retried on the next sync. NULL stays reserved for "not yet checked".
         const allergens = result?.allergens ?? [];
         const traces = result?.traces ?? [];
 
@@ -92,11 +96,12 @@ export async function backfillOffAllergens(): Promise<void> {
         );
       }
 
-      // Respect OFF rate limit between every request
+      // Respect OFF rate limit (unauthenticated: ~15 req/min)
       await sleep(RATE_LIMIT_DELAY_MS);
     }
 
-    log('info', `backfillOffAllergens: updated ${updated} variant(s)`);
+    log('info', `backfillOffAllergens: updated ${updated}/${total} variant(s)`);
+    return { updated, total };
   } finally {
     client.release();
   }
