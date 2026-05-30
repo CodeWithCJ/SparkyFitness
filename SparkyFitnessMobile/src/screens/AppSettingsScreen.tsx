@@ -13,6 +13,7 @@ import {
   type ThemePreference,
 } from '../services/themeService';
 import { useHapticsEnabled, setHapticsEnabled } from '../services/haptics';
+import { useSoundsEnabled, setSoundsEnabled } from '../services/sounds';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
@@ -35,6 +36,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
 
   const appTheme = useThemePreference();
   const hapticsEnabled = useHapticsEnabled();
+  const soundsEnabled = useSoundsEnabled();
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -82,6 +84,21 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
           </View>
           <Text className="text-text-secondary text-sm mt-2">
             Light vibrations for timers and confirmations.
+          </Text>
+        </View>
+
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">Camera shutter</Text>
+            <Switch
+              value={soundsEnabled}
+              onValueChange={setSoundsEnabled}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            Play a sound when capturing photos.
           </Text>
         </View>
       </ScrollView>

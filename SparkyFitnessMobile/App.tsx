@@ -88,6 +88,7 @@ import {
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
 import { initializeHaptics } from './src/services/haptics';
+import { initializeSounds } from './src/services/sounds';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
@@ -430,6 +431,7 @@ function AppContent() {
     // Initialize theme from storage on app start
     initializeTheme();
     initializeHaptics();
+    initializeSounds();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
