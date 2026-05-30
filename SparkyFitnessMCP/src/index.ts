@@ -19,7 +19,10 @@ import pool from "./db/pool.js";
 import { GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./constants.js";
 
 const app = express();
-const PORT = parseInt(process.env.SPARKY_FITNESS_MCP_PORT || process.env.PORT || "3001", 10);
+const PORT = parseInt(
+  process.env.SPARKY_FITNESS_MCP_PORT || process.env.PORT || "3001",
+  10,
+);
 const TRANSPORT = process.env.MCP_TRANSPORT || "http";
 
 // ─── Security Middleware ─────────────────────────────────────────────────────
@@ -38,7 +41,9 @@ app.get("/health", async (_req, res) => {
     client.release();
     res.json({ status: "healthy", timestamp: new Date().toISOString() });
   } catch {
-    res.status(503).json({ status: "unhealthy", timestamp: new Date().toISOString() });
+    res
+      .status(503)
+      .json({ status: "unhealthy", timestamp: new Date().toISOString() });
   }
 });
 
@@ -46,15 +51,22 @@ app.get("/health", async (_req, res) => {
 app.post("/mcp", authenticateToken, async (req, res) => {
   const userId = req.userId!;
   try {
-    const mcpServer = new McpServer({ name: "sparkyfitness-mcp-server", version: "1.0.0" });
+    const mcpServer = new McpServer({
+      name: "sparkyfitness-mcp-server",
+      version: "1.0.0",
+    });
     registerAllTools(mcpServer, userId);
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
     res.on("close", () => transport.close());
     await mcpServer.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
     console.error("[MCP] HTTP error:", error);
-    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    if (!res.headersSent)
+      res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -80,8 +92,8 @@ async function startStdio() {
       const secretStr = Buffer.isBuffer(auth.options.secret)
         ? auth.options.secret.toString()
         : String(auth.options.secret);
-      const signed = await serializeSignedCookie("", token, secretStr);
-      const signedValue = signed.replace("=", "");
+      const signed = await serializeSignedCookie("temp", token, secretStr);
+      const signedValue = signed.split(";")[0].split("=")[1];
       authHeaders.set("cookie", `${cookieName}=${signedValue}`);
     }
   } else if (process.env.Cookie) {
@@ -90,8 +102,8 @@ async function startStdio() {
   } else {
     console.error(
       "[MCP] Authentication Error: No credentials found in environment. " +
-      "Set SPARKY_FITNESS_API_KEY (for n8n/external tools) or ensure the " +
-      "backend forwards Authorization/Cookie (for frontend sessions)."
+        "Set SPARKY_FITNESS_API_KEY (for n8n/external tools) or ensure the " +
+        "backend forwards Authorization/Cookie (for frontend sessions).",
     );
     process.exit(1);
   }
@@ -99,14 +111,19 @@ async function startStdio() {
   const session = await auth.api.getSession({ headers: authHeaders });
 
   if (!session || !session.user) {
-    console.error("[MCP] Authentication Error: Credentials are invalid or session has expired.");
+    console.error(
+      "[MCP] Authentication Error: Credentials are invalid or session has expired.",
+    );
     process.exit(1);
   }
 
   const userId = session.user.id;
   console.error(`[MCP] Authenticated as ${session.user.email} (Stdio mode)`);
 
-  const mcpServer = new McpServer({ name: "sparkyfitness-mcp-server", version: "1.0.0" });
+  const mcpServer = new McpServer({
+    name: "sparkyfitness-mcp-server",
+    version: "1.0.0",
+  });
   registerAllTools(mcpServer, userId);
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
@@ -120,7 +137,9 @@ async function start() {
   }
 
   const server = app.listen(PORT, () => {
-    console.log(`[MCP] SparkyFitness MCP Server running on port ${PORT} (HTTP)`);
+    console.log(
+      `[MCP] SparkyFitness MCP Server running on port ${PORT} (HTTP)`,
+    );
     console.log(`[MCP] Environment: ${process.env.NODE_ENV || "development"}`);
   });
 
@@ -136,7 +155,7 @@ async function start() {
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
-start().catch(err => {
+start().catch((err) => {
   console.error("[MCP] Startup error:", err);
   process.exit(1);
 });

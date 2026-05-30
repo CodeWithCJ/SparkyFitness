@@ -1219,7 +1219,7 @@ Be precise with data extraction, search the database first if needed, and call t
 
     log(
       'debug',
-      `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1].content).substring(0, 200)}`
+      `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
     );
 
     // Ensure the window starts with a user message (some models reject assistant-first history)
@@ -1284,7 +1284,7 @@ Be precise with data extraction, search the database first if needed, and call t
       },
     });
 
-    return result;
+    return { result, mcpClient };
   } catch (error) {
     if (mcpClient) {
       await mcpClient.close().catch(() => {});

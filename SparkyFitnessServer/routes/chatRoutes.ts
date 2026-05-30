@@ -152,12 +152,18 @@ router.post('/', authenticate, async (req, res, next) => {
 router.post('/stream', authenticate, async (req, res, next) => {
   const { messages, service_config_id } = req.body;
   try {
-    const result = await chatService.processChatMessageStream(
+    const { result, mcpClient } = await chatService.processChatMessageStream(
       messages,
       service_config_id,
       req.userId,
       req.headers
     );
+
+    res.on('close', () => {
+      if (mcpClient) {
+        mcpClient.close().catch(() => {});
+      }
+    });
 
     result.pipeUIMessageStreamToResponse(res);
   } catch (error) {
