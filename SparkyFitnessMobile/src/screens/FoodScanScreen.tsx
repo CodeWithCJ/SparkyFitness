@@ -23,6 +23,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -66,6 +67,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
+  const pickerLock = useRef(false);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
   const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
@@ -389,6 +391,35 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     }
   };
 
+  const handlePhotoPickFromLibrary = async () => {
+    // Guard against rapid double-taps re-entering the system picker.
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        quality: 0.7,
+        allowsMultipleSelection: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        return;
+      }
+      await markFoodPhotoIntroSeen();
+      navigation.replace('FoodPhotoFlow', {
+        screen: 'Improve',
+        params: { date, photo: { uri: asset.uri } },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+    } finally {
+      pickerLock.current = false;
+    }
+  };
+
   const handleDismissPhotoGate = () => {
     setPhotoGateVisible(false);
     setScanMode('barcode');
@@ -666,6 +697,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                       <View className="w-16 h-16 rounded-full bg-white" />
                     </TouchableOpacity>
                   )}
+                  {/* Centered between the capture button and the segmented control's left edge. */}
+                  {photoModeAvailable && !photoModeLoading ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        void handlePhotoPickFromLibrary();
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel="Choose photo from library"
+                      accessibilityRole="button"
+                      className="bg-black/50 rounded-full items-center justify-center"
+                      style={{
+                        position: 'absolute',
+                        left: '25%',
+                        top: 18,
+                        width: 44,
+                        height: 44,
+                        transform: [{ translateX: -26 }],
+                      }}
+                    >
+                      <Icon name="photo-library" size={26} color="#fff" />
+                    </TouchableOpacity>
+                  ) : null}
                   {/* Centered between the capture button and the segmented control's right edge. */}
                   <TouchableOpacity
                     onPress={() => navigation.navigate('FoodPhotoIntro', { date })}

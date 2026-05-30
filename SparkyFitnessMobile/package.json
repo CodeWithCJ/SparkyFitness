@@ -41,6 +41,7 @@
     "expo-font": "~55.0.8",
     "expo-haptics": "~55.0.14",
     "expo-health-connect": "^0.1.1",
+    "expo-image-picker": "~55.0.20",
     "expo-navigation-bar": "~55.0.13",
     "expo-notifications": "~55.0.23",
     "expo-secure-store": "~55.0.14",

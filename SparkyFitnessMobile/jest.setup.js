@@ -148,6 +148,11 @@ jest.mock('expo-camera', () => {
   };
 });
 
+// Mock expo-image-picker
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn().mockResolvedValue({ canceled: true }),
+}));
+
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => {
   const store = {};
