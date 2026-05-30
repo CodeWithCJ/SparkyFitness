@@ -4,18 +4,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const SOUNDS_KEY = '@HealthConnect:soundsEnabled';
 
 let soundsEnabled = true;
+let initialized = false;
 const listeners = new Set<(enabled: boolean) => void>();
 
 export async function initializeSounds(): Promise<void> {
+  if (initialized) return;
   try {
     const saved = await AsyncStorage.getItem(SOUNDS_KEY);
     if (saved !== null) soundsEnabled = saved === 'true';
   } catch {
     // fall back to default (enabled)
+  } finally {
+    initialized = true;
+    listeners.forEach((l) => l(soundsEnabled));
   }
 }
 
 export async function setSoundsEnabled(enabled: boolean): Promise<void> {
+  // An explicit user toggle wins over any still-pending initializeSounds().
+  initialized = true;
   soundsEnabled = enabled;
   listeners.forEach((l) => l(enabled));
   try {
@@ -29,9 +36,6 @@ export function useSoundsEnabled(): boolean {
   const [enabled, setEnabled] = useState<boolean>(soundsEnabled);
   useEffect(() => {
     listeners.add(setEnabled);
-    AsyncStorage.getItem(SOUNDS_KEY).then((saved) => {
-      if (saved !== null) setEnabled(saved === 'true');
-    });
     return () => {
       listeners.delete(setEnabled);
     };
@@ -41,4 +45,11 @@ export function useSoundsEnabled(): boolean {
 
 export function getSoundsEnabled(): boolean {
   return soundsEnabled;
+}
+
+/** Test-only helper — resets module-level state. */
+export function __resetSoundsStateForTests(): void {
+  soundsEnabled = true;
+  initialized = false;
+  listeners.clear();
 }
