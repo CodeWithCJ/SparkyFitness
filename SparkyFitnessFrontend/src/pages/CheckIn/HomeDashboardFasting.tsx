@@ -120,11 +120,11 @@ const HomeDashboardFasting = () => {
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-6">
         <div className="flex flex-col items-center justify-center">
-          {activeFast ? (
+          {activeFast && activeFast.start_time && activeFast.target_end_time ? (
             <div className="flex justify-center">
               <FastingTimerRing
                 startTime={parseISO(activeFast.start_time)}
-                targetEndTime={parseISO(activeFast.target_end_time!)}
+                targetEndTime={parseISO(activeFast.target_end_time)}
                 size={180}
               />
             </div>

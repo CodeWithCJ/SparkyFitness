@@ -48,6 +48,12 @@ function getYesterdayDate(): string {
   return addDays(getTodayDate(), -1);
 }
 
+/**
+ * Valid food-related external data provider types.
+ * These are used to filter the lookup cascade so we don't query exercise or health providers.
+ */
+const FOOD_PROVIDER_TYPES = ["fatsecret", "mealie", "tandoor", "usda", "openfoodfacts"];
+
 export async function searchFood(
   userId: string,
   foodName: string,
@@ -309,6 +315,11 @@ export async function createFood(
       );
       const food = foodResult.rows[0];
 
+      const targetUnit = params.unit || "serving";
+      const countBasedUnits = ["serving", "piece", "slice", "portion", "unit", "can", "bottle", "item", "pack"];
+      const isCountUnit = countBasedUnits.includes(targetUnit.toLowerCase());
+      const targetQuantity = params.quantity || (isCountUnit ? 1 : 100);
+
       // Insert default variant
       const variantResult = await client.query(
         `INSERT INTO food_variants (
@@ -323,8 +334,8 @@ export async function createFood(
                    vitamin_a, vitamin_c, calcium, iron, glycemic_index`,
         [
           food.id,
-          params.quantity || (params.unit === "serving" ? 1 : 100),
-          params.unit || "serving",
+          targetQuantity,
+          targetUnit,
           params.macros.calories,
           params.macros.protein,
           params.macros.carbs,
@@ -354,7 +365,7 @@ export async function createFood(
         const mealTypeId = await resolveMealTypeId(client, userId, params.meal_type);
 
         // Scale macros for the entry (same logic as logFood but simpler since we just created it)
-        const logQuantity = params.quantity || (params.unit === "serving" ? 1 : 100);
+        const logQuantity = params.quantity || (isCountUnit ? 1 : 100);
         const logUnit = params.unit || "serving";
         
         const result = await client.query(
@@ -975,3 +986,156 @@ export async function saveAsMealTemplate(
     }
   });
 }
+
+/**
+ * Perform a cascade search lookup for food nutrition:
+ * 1. Internal DB
+ * 2. User's active configured external providers (USDA, FatSecret, Mealie, Tandoor)
+ * 3. Free OpenFoodFacts provider
+ * Returns the matched food details or null if not found (indicating AI estimation fallback).
+ */
+export async function lookupFoodNutrition(
+  userId: string,
+  foodName: string,
+  providerType?: "internal" | "openfoodfacts" | "usda" | "fatsecret" | "mealie" | "tandoor"
+): Promise<{
+  source: string;
+  food: any | null;
+  alternatives?: any[];
+}> {
+  // Step 1: Internal DB Search (unless another provider was explicitly requested)
+  if (!providerType || providerType === "internal") {
+    const internalExact = await searchFood(userId, foodName, "exact");
+    if (internalExact.data.length > 0) {
+      return {
+        source: "internal",
+        food: internalExact.data[0],
+        alternatives: internalExact.data.slice(1),
+      };
+    }
+
+    const internalBroad = await searchFood(userId, foodName, "broad");
+    if (internalBroad.data.length > 0) {
+      return {
+        source: "internal",
+        food: internalBroad.data[0],
+        alternatives: internalBroad.data.slice(1),
+      };
+    }
+
+    // If "internal" was explicitly requested and not found, stop here
+    if (providerType === "internal") {
+      return { source: "internal", food: null };
+    }
+  }
+
+  // Obtain database client to query active providers and session tokens
+  return withClient(userId, async (client) => {
+    // Determine which providers to search
+    let targetProviders: { id?: string; provider_type: string; provider_name: string }[] = [];
+
+    if (providerType) {
+      // Explicit provider requested
+      if (providerType === "openfoodfacts") {
+        targetProviders.push({ provider_type: "openfoodfacts", provider_name: "OpenFoodFacts" });
+      } else {
+        const provRes = await client.query(
+          `SELECT id, provider_type, provider_name FROM external_data_providers
+           WHERE user_id = $1 AND provider_type = $2 AND is_active = TRUE LIMIT 1`,
+          [userId, providerType]
+        );
+        if (provRes.rows.length > 0) {
+          targetProviders.push(provRes.rows[0]);
+        } else {
+          // Fallback to unconfigured search if the user explicitly asked but has no row
+          targetProviders.push({ provider_type: providerType, provider_name: providerType });
+        }
+      }
+    } else {
+      // Cascade lookup: get all active providers for the user (filtered to food-related types)
+      const activeRes = await client.query(
+        `SELECT id, provider_type, provider_name FROM external_data_providers
+         WHERE user_id = $1 AND is_active = TRUE 
+         AND provider_type = ANY($2::text[])
+         ORDER BY sort_order ASC NULLS LAST, created_at DESC`,
+        [userId, FOOD_PROVIDER_TYPES]
+      );
+      targetProviders = activeRes.rows;
+
+      // Add OpenFoodFacts as fallback at the end if not already present in configured providers
+      if (!targetProviders.some((p) => p.provider_type === "openfoodfacts")) {
+        targetProviders.push({ provider_type: "openfoodfacts", provider_name: "OpenFoodFacts" });
+      }
+    }
+
+    // Retrieve a valid session token for authentication against the backend API
+    const sessionRes = await client.query(
+      `SELECT token FROM session 
+       WHERE user_id = $1 AND expires_at > NOW() 
+       ORDER BY expires_at DESC LIMIT 1`,
+      [userId]
+    );
+    const sessionToken = sessionRes.rows[0]?.token;
+
+    // Prepare auth headers for SparkyFitness Server request
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+    if (sessionToken) {
+      headers["Authorization"] = `Bearer ${sessionToken}`;
+    } else if (process.env.SPARKY_FITNESS_API_KEY) {
+      headers["x-api-key"] = process.env.SPARKY_FITNESS_API_KEY;
+    } else if (process.env.Authorization) {
+      headers["Authorization"] = process.env.Authorization;
+    } else if (process.env.Cookie) {
+      headers["Cookie"] = process.env.Cookie;
+    }
+
+    // Construct server URL using Docker/Local config
+    const host = process.env.SPARKY_FITNESS_SERVER_HOST || "localhost";
+    const port = process.env.SPARKY_FITNESS_SERVER_PORT || "3010";
+    const baseUrl = `http://${host}:${port}`;
+
+    // Loop through providers and perform searches sequentially until we find a match
+    for (const provider of targetProviders) {
+      try {
+        console.log(`[Lookup Cascade] Querying external provider: ${provider.provider_name} (${provider.provider_type})`);
+        const queryParams = new URLSearchParams({ query: foodName });
+        if (provider.id) {
+          queryParams.append("providerId", provider.id);
+        }
+
+        const url = `${baseUrl}/api/v2/foods/search/${provider.provider_type}?${queryParams.toString()}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+        });
+
+        if (response.ok) {
+          const data: any = await response.json();
+          if (data?.foods && data.foods.length > 0) {
+            console.log(`[Lookup Cascade] Success! Match found in provider: ${provider.provider_name}`);
+            return {
+              source: provider.provider_type,
+              food: data.foods[0],
+              alternatives: data.foods.slice(1),
+            };
+          }
+        } else {
+          console.warn(`[Lookup Cascade] Provider search returned non-200 status: ${response.status} for provider: ${provider.provider_name}`);
+        }
+      } catch (err) {
+        console.error(`[Lookup Cascade] Error searching provider ${provider.provider_name}:`, err);
+      }
+    }
+
+    // Cascade failed to find any external result
+    console.log(`[Lookup Cascade] No matches found in any provider for "${foodName}". Falling back to AI estimate.`);
+    return {
+      source: "ai_estimate",
+      food: null,
+    };
+  });
+}
+

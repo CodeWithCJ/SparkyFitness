@@ -82,9 +82,13 @@ SparkyAI provides a conversational interface for logging data and reviewing prog
 
 Note: AI features are currently in beta.
 
-## Quick Start (Server)
+## Installation
 
-Get a SparkyFitness server running in minutes using Docker Compose.
+Choose one of the two ways to run SparkyFitness:
+
+### 1. Self-Hosted
+
+Get a SparkyFitness server running in minutes using Docker Compose:
 
 ```bash
 # 1. Create a new folder
@@ -102,12 +106,19 @@ docker compose pull && docker compose up -d
 # Access application at http://localhost:8080
 ```
 
+_Note: For other self-hosted installation methods, refer to the documentation at [https://codewithcj.github.io/SparkyFitness/](https://codewithcj.github.io/SparkyFitness/)._
+
+### 2. Cloud (for non-technical users)
+
+If you are not a technical user and do not want to run SparkyFitness on your own server, you can use **[PikaPods](https://pikapods.com/)** to deploy a hosted instance of SparkyFitness in the cloud:
+
+[![Run on PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=sparkyfitness)
+
 ## 🎥 Video Tutorial
 
 [![Watch the video](https://img.youtube.com/vi/B13IiL2DeQc/maxresdefault.jpg)](https://www.youtube.com/watch?v=B13IiL2DeQc)
 
 Quick 2-minute tutorial showing how to install SparkyFitness (self-hosted fitness tracker).
-
 
 ## Documentation
 

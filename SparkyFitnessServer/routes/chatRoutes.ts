@@ -90,13 +90,17 @@ router.post('/', authenticate, async (req, res, next) => {
       );
       return res.status(200).json(result);
     }
-    const { content } = await chatService.processChatMessage(
+    const {
+      content,
+      action: actionType,
+      executedTools,
+    } = await chatService.processChatMessage(
       messages,
       service_config_id,
-
-      req.userId
+      req.userId,
+      req.headers
     );
-    return res.status(200).json({ content });
+    return res.status(200).json({ content, action: actionType, executedTools });
   } catch (error) {
     if (
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -142,6 +146,27 @@ router.post('/', authenticate, async (req, res, next) => {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       return res.status(statusCode).json({ error: error.message });
     }
+    next(error);
+  }
+});
+router.post('/stream', authenticate, async (req, res, next) => {
+  const { messages, service_config_id } = req.body;
+  try {
+    const { result, mcpClient } = await chatService.processChatMessageStream(
+      messages,
+      service_config_id,
+      req.userId,
+      req.headers
+    );
+
+    res.on('close', () => {
+      if (mcpClient) {
+        mcpClient.close().catch(() => {});
+      }
+    });
+
+    result.pipeUIMessageStreamToResponse(res);
+  } catch (error) {
     next(error);
   }
 });
