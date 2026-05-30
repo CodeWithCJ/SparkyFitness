@@ -28,7 +28,6 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  RefreshCw,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -68,13 +67,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { useSyncAllergens } from '@/hooks/useSyncAllergens';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [viewingFood, setViewingFood] = useState<Food | null>(null);
-  const { handleSyncAllergens, syncingAllergens } = useSyncAllergens();
   const { data: customNutrients = [] } = useCustomNutrients();
 
   const {
@@ -497,31 +494,6 @@ const FoodDatabaseManager = () => {
                   {!isMobile && (
                     <span>
                       {t('foodDatabaseManager.addNewFood', 'Add New Food')}
-                    </span>
-                  )}
-                </Button>
-                <Button
-                  size={isMobile ? 'icon' : 'default'}
-                  variant="outline"
-                  onClick={handleSyncAllergens}
-                  disabled={syncingAllergens}
-                  className="shrink-0"
-                  title={t(
-                    'foodDatabaseManager.syncAllergens',
-                    'Sync Allergens from OpenFoodFacts'
-                  )}
-                >
-                  <RefreshCw
-                    className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 mr-2'} ${syncingAllergens ? 'animate-spin' : ''}`}
-                  />
-                  {!isMobile && (
-                    <span>
-                      {syncingAllergens
-                        ? t('foodDatabaseManager.syncingAllergens', 'Syncing…')
-                        : t(
-                            'foodDatabaseManager.syncAllergens',
-                            'Sync Allergens'
-                          )}
                     </span>
                   )}
                 </Button>

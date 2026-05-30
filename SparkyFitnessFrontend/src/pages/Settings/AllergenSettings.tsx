@@ -4,8 +4,9 @@ import { useToast } from '../../hooks/use-toast';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Trash2 } from 'lucide-react';
+import { Trash2, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { useSyncAllergens } from '@/hooks/useSyncAllergens';
 import {
   Table,
   TableBody,
@@ -41,6 +42,7 @@ const COMMON_ALLERGENS = [
 const AllergenSettings: React.FC = () => {
   const [newAllergen, setNewAllergen] = useState('');
   const { toast } = useToast();
+  const { handleSyncAllergens, syncingAllergens } = useSyncAllergens();
 
   const { data: preferences } = useAllergenPreferences();
   const { mutateAsync: addAllergen } = useAddAllergenPreferenceMutation();
@@ -117,6 +119,24 @@ const AllergenSettings: React.FC = () => {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="p-4 border rounded-md shadow-sm space-y-2">
+        <h3 className="text-xl font-semibold">Sync from OpenFoodFacts</h3>
+        <p className="text-sm text-muted-foreground">
+          Fetch allergen data for your saved OpenFoodFacts foods. Only needs to
+          be done once.
+        </p>
+        <Button
+          variant="outline"
+          onClick={handleSyncAllergens}
+          disabled={syncingAllergens}
+        >
+          <RefreshCw
+            className={`w-4 h-4 mr-2 ${syncingAllergens ? 'animate-spin' : ''}`}
+          />
+          {syncingAllergens ? 'Syncing…' : 'Sync Allergens'}
+        </Button>
       </div>
 
       <div className="p-4 border rounded-md shadow-sm">
