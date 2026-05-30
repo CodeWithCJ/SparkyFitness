@@ -106,6 +106,8 @@ docker compose pull && docker compose up -d
 # Access application at http://localhost:8080
 ```
 
+_Note: For other self-hosted installation methods, refer to the documentation at [https://codewithcj.github.io/SparkyFitness/](https://codewithcj.github.io/SparkyFitness/)._
+
 ### 2. Cloud (for non-technical users)
 
 If you are not a technical user and do not want to run SparkyFitness on your own server, you can use **[PikaPods](https://pikapods.com/)** to deploy a hosted instance of SparkyFitness in the cloud:
