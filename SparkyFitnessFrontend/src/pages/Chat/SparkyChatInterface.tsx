@@ -14,6 +14,7 @@ import {
   useChatRuntime,
 } from '@assistant-ui/react-ai-sdk';
 import { Thread } from '@/components/thread';
+import { useToast } from '@/hooks/use-toast';
 
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 
@@ -34,6 +35,7 @@ const SparkyChatInner = ({
   const invalidateDiary = useDiaryInvalidation();
   const invalidateChat = useChatInvalidation();
   const userDate = formatDateToYYYYMMDD(new Date());
+  const { toast } = useToast();
 
   // Map database message history to ai@6.x UIMessage format (requires `parts` + `attachments`)
   const initialMessages = history.map((msg, i) => {
@@ -67,7 +69,6 @@ const SparkyChatInner = ({
     Parameters<typeof useChatRuntime>[0]
   >['messages'];
 
-  // Create assistant-ui runtime
   const runtime = useChatRuntime({
     transport: new AssistantChatTransport({
       api: '/api/chat/stream',
@@ -81,6 +82,15 @@ const SparkyChatInner = ({
       // Invalidate queries to refresh diary nutrition and check-ins in real-time
       invalidateDiary();
       invalidateChat();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Chat Error',
+        description:
+          error.message ||
+          'Failed to process message. Please check your AI service settings.',
+        variant: 'destructive',
+      });
     },
   });
 
