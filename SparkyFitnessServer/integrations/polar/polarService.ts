@@ -473,7 +473,7 @@ async function fetchPhysicalInfo(
       userId,
       externalUserId,
       accessToken,
-      'physical_information'
+      'physical-information'
     );
     if (!transaction) return [];
     const transactionId = transaction['transaction-id'];
@@ -510,8 +510,8 @@ async function fetchPhysicalInfo(
         userId,
         externalUserId,
         accessToken,
-        'physical_information',
-        transactionId
+        transactionId,
+        'physical-information'
       );
     }
     return results;
@@ -653,7 +653,10 @@ async function fetchRecentExercises(userId: any, accessToken: any) {
       }
     );
     logRawResponse('polar', 'raw_exercises_recent', response.data);
-    const exercises = response.data || [];
+    const exercisesData = response.data || {};
+    const exercises = Array.isArray(exercisesData)
+      ? exercisesData
+      : exercisesData.exercises || [];
     log(
       'info',
       `Fetched ${exercises.length} recent exercises (List API) for user ${userId}.`
@@ -724,8 +727,8 @@ async function fetchDailyActivity(
         userId,
         externalUserId,
         accessToken,
-        'activity',
-        transactionId
+        transactionId,
+        'activity'
       );
     }
     return results;
@@ -763,7 +766,10 @@ async function fetchRecentDailyActivity(userId: any, accessToken: any) {
       }
     );
     logRawResponse('polar', 'raw_activity_list', response.data);
-    const activities = response.data || [];
+    const activitiesData = response.data || {};
+    const activities = Array.isArray(activitiesData)
+      ? activitiesData
+      : activitiesData.activities || activitiesData['activity-log'] || [];
     log(
       'info',
       `Fetched ${activities.length} days of recent daily activity (List API) for user ${userId}.`

@@ -70,7 +70,11 @@ async function syncPolarData(
       // Process exercises
       const allExercises = [];
       if (responses['raw_exercises_recent']) {
-        allExercises.push(...responses['raw_exercises_recent'].data);
+        const exercisesData = responses['raw_exercises_recent'].data || {};
+        const exercises = Array.isArray(exercisesData)
+          ? exercisesData
+          : exercisesData.exercises || [];
+        allExercises.push(...exercises);
       }
       Object.keys(responses).forEach((key) => {
         if (key.startsWith('raw_exercise_item_')) {
@@ -92,7 +96,11 @@ async function syncPolarData(
       // Process activities
       const allActivities = [];
       if (responses['raw_activity_list']) {
-        allActivities.push(...responses['raw_activity_list'].data);
+        const activitiesData = responses['raw_activity_list'].data || {};
+        const activities = Array.isArray(activitiesData)
+          ? activitiesData
+          : activitiesData.activities || activitiesData['activity-log'] || [];
+        allActivities.push(...activities);
       }
       Object.keys(responses).forEach((key) => {
         if (key.startsWith('raw_activity_item_')) {

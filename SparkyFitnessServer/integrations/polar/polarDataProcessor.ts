@@ -3,6 +3,7 @@ import { log } from '../../config/logging.js';
 import exerciseRepository from '../../models/exercise.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import sleepRepository from '../../models/sleepRepository.js';
+import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 /**
  * Helper to get a value from a Polar object regardless of hyphen or underscore usage.
  */
@@ -130,12 +131,23 @@ async function processPolarExercises(
       const durationMinutes = duration
         ? Math.round(iso8601ToSeconds(duration) / 60)
         : 0;
+      const heartRateObj =
+        getVal(exercise, 'heart-rate') || getVal(exercise, 'heart_rate');
+      const avgHeartRate = heartRateObj
+        ? Math.round(getVal(heartRateObj, 'average') ?? 0)
+        : null;
+      const distanceKm =
+        distance > 0 ? parseFloat((distance / 1000).toFixed(2)) : null;
+
       const exerciseEntryData = {
         exercise_id: exerciseDef.id,
         duration_minutes: durationMinutes,
         calories_burned: calories,
         entry_date: entryDate,
         notes: `Logged from Polar Flow: ${sport}. ID: ${exerciseId}.${distance > 0 ? ` Distance: ${(distance / 1000).toFixed(2)}km.` : ''}`,
+        distance: distanceKm,
+        avg_heart_rate: avgHeartRate,
+        source_id: exerciseId ? exerciseId.toString() : null,
         sets: [
           {
             set_number: 1,
@@ -148,12 +160,21 @@ async function processPolarExercises(
           },
         ],
       };
-      await exerciseEntryRepository.createExerciseEntry(
+      const newEntry = await exerciseEntryRepository.createExerciseEntry(
         userId,
         exerciseEntryData,
         createdByUserId,
         'Polar'
       );
+      if (newEntry && newEntry.id) {
+        await activityDetailsRepository.createActivityDetail(userId, {
+          exercise_entry_id: newEntry.id,
+          provider_name: 'Polar',
+          detail_type: 'full_activity_data',
+          detail_data: exercise,
+          created_by_user_id: createdByUserId,
+        });
+      }
       log(
         'info',
         `Logged Polar exercise entry for user ${userId}: ${exerciseDef.name} on ${entryDate}.`
