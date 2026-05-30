@@ -68,15 +68,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { useToast } from '@/hooks/use-toast';
-import { apiCall } from '@/api/api';
+import { useSyncAllergens } from '@/hooks/useSyncAllergens';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { toast } = useToast();
   const [viewingFood, setViewingFood] = useState<Food | null>(null);
-  const [syncingAllergens, setSyncingAllergens] = useState(false);
+  const { handleSyncAllergens, syncingAllergens } = useSyncAllergens();
   const { data: customNutrients = [] } = useCustomNutrients();
 
   const {
@@ -141,30 +139,6 @@ const FoodDatabaseManager = () => {
   }, [isEditMode]);
 
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-
-  const handleSyncAllergens = async () => {
-    setSyncingAllergens(true);
-    try {
-      const result = (await apiCall('/foods/sync-allergens', {
-        method: 'POST',
-      })) as { updated: number; total: number };
-      toast({
-        title: 'Allergen sync complete',
-        description:
-          result.total === 0
-            ? 'All your OpenFoodFacts foods already have allergen data.'
-            : `Updated ${result.updated} of ${result.total} food(s).`,
-      });
-    } catch {
-      toast({
-        title: 'Sync failed',
-        description: 'Could not sync allergens. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSyncingAllergens(false);
-    }
-  };
 
   const editableFoodIds = useMemo(() => {
     return foodData?.foods.filter((f) => canEdit(f)).map((f) => f.id) || [];
