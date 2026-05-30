@@ -61,4 +61,18 @@ describe('sounds service', () => {
 
     expect(getSoundsEnabled()).toBe(false);
   });
+
+  it('does not let initializeSounds overwrite a user toggle that lands mid-flight', async () => {
+    // Storage has "true". Start init but don't await it yet — it is now sitting
+    // on `await AsyncStorage.getItem(...)`.
+    await AsyncStorage.setItem(STORAGE_KEY, 'true');
+    const initPromise = initializeSounds();
+
+    // While the storage read is in flight, the user toggles off.
+    await setSoundsEnabled(false);
+
+    // Now let initializeSounds resolve. It must not clobber the user value.
+    await initPromise;
+    expect(getSoundsEnabled()).toBe(false);
+  });
 });

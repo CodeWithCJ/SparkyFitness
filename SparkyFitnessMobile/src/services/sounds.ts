@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SOUNDS_KEY = '@HealthConnect:soundsEnabled';
@@ -11,12 +11,18 @@ export async function initializeSounds(): Promise<void> {
   if (initialized) return;
   try {
     const saved = await AsyncStorage.getItem(SOUNDS_KEY);
-    if (saved !== null) soundsEnabled = saved === 'true';
+    // A user toggle that landed during the await above already set
+    // `initialized = true`; don't clobber their choice with stored state.
+    if (!initialized && saved !== null) {
+      soundsEnabled = saved === 'true';
+    }
   } catch {
     // fall back to default (enabled)
   } finally {
-    initialized = true;
-    listeners.forEach((l) => l(soundsEnabled));
+    if (!initialized) {
+      initialized = true;
+      listeners.forEach((l) => l(soundsEnabled));
+    }
   }
 }
 
@@ -33,14 +39,15 @@ export async function setSoundsEnabled(enabled: boolean): Promise<void> {
 }
 
 export function useSoundsEnabled(): boolean {
-  const [enabled, setEnabled] = useState<boolean>(soundsEnabled);
-  useEffect(() => {
-    listeners.add(setEnabled);
-    return () => {
-      listeners.delete(setEnabled);
-    };
-  }, []);
-  return enabled;
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => {
+        listeners.delete(callback);
+      };
+    },
+    () => soundsEnabled,
+  );
 }
 
 export function getSoundsEnabled(): boolean {
