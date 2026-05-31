@@ -151,6 +151,17 @@ jest.mock('@/api/Admin/globalSettingsService', () => ({
   },
 }));
 
+// UserChatPreferences (rendered by AIServiceSettings) now reads
+// `aiAssistedConversions` from PreferencesContext. Stub the hook so the test
+// suite doesn't need a real PreferencesProvider.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    aiAssistedConversions: true,
+    setAiAssistedConversions: jest.fn(),
+    saveAllPreferences: jest.fn(async () => undefined),
+  }),
+}));
+
 // Mock window.confirm
 const mockConfirm = jest.fn();
 window.confirm = mockConfirm;

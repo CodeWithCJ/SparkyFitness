@@ -1,4 +1,53 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+
+const DEFAULT_VARIANT_JSON_SQL = `
+  json_build_object(
+    'id', fv.id,
+    'serving_size', fv.serving_size,
+    'serving_unit', fv.serving_unit,
+    'calories', fv.calories,
+    'protein', fv.protein,
+    'carbs', fv.carbs,
+    'fat', fv.fat,
+    'saturated_fat', fv.saturated_fat,
+    'polyunsaturated_fat', fv.polyunsaturated_fat,
+    'monounsaturated_fat', fv.monounsaturated_fat,
+    'trans_fat', fv.trans_fat,
+    'cholesterol', fv.cholesterol,
+    'sodium', fv.sodium,
+    'potassium', fv.potassium,
+    'dietary_fiber', fv.dietary_fiber,
+    'sugars', fv.sugars,
+    'vitamin_a', fv.vitamin_a,
+    'vitamin_c', fv.vitamin_c,
+    'calcium', fv.calcium,
+    'iron', fv.iron,
+    'is_default', fv.is_default,
+    'glycemic_index', fv.glycemic_index,
+    'custom_nutrients', fv.custom_nutrients,
+    'user_id', fv.user_id,
+    'source', fv.source,
+    'ai_confidence', fv.ai_confidence
+  ) AS default_variant
+`;
+
+const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
+  LEFT JOIN LATERAL (
+    SELECT candidate_fv.*
+    FROM food_variants candidate_fv
+    WHERE candidate_fv.food_id = f.id
+      AND candidate_fv.is_default = TRUE
+    ORDER BY
+      CASE
+        WHEN candidate_fv.user_id = current_user_id() THEN 0
+        WHEN candidate_fv.user_id = f.user_id THEN 1
+        ELSE 2
+      END,
+      candidate_fv.updated_at DESC,
+      candidate_fv.id
+    LIMIT 1
+  ) fv ON TRUE
+`;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getFoodDataProviderById(providerId: any) {
   const client = await getSystemClient(); // System-level operation
@@ -45,34 +94,10 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
         f.shared_with_public,
         f.provider_external_id,
         f.provider_type,
-        json_build_object(
-          'id', fv.id,
-          'serving_size', fv.serving_size,
-          'serving_unit', fv.serving_unit,
-          'calories', fv.calories,
-          'protein', fv.protein,
-          'carbs', fv.carbs,
-          'fat', fv.fat,
-          'saturated_fat', fv.saturated_fat,
-          'polyunsaturated_fat', fv.polyunsaturated_fat,
-          'monounsaturated_fat', fv.monounsaturated_fat,
-          'trans_fat', fv.trans_fat,
-          'cholesterol', fv.cholesterol,
-          'sodium', fv.sodium,
-          'potassium', fv.potassium,
-          'dietary_fiber', fv.dietary_fiber,
-          'sugars', fv.sugars,
-          'vitamin_a', fv.vitamin_a,
-          'vitamin_c', fv.vitamin_c,
-          'calcium', fv.calcium,
-          'iron', fv.iron,
-          'is_default', fv.is_default,
-          'glycemic_index', fv.glycemic_index,
-          'custom_nutrients', fv.custom_nutrients
-        ) AS default_variant
+        ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       JOIN RecentFoodEntries rfe ON f.id = rfe.food_id
-      LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
+      ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.is_quick_food = FALSE
       ORDER BY rfe.last_used_date DESC`,
       queryParams
@@ -116,34 +141,10 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         tfe.usage_count,
-        json_build_object(
-          'id', fv.id,
-          'serving_size', fv.serving_size,
-          'serving_unit', fv.serving_unit,
-          'calories', fv.calories,
-          'protein', fv.protein,
-          'carbs', fv.carbs,
-          'fat', fv.fat,
-          'saturated_fat', fv.saturated_fat,
-          'polyunsaturated_fat', fv.polyunsaturated_fat,
-          'monounsaturated_fat', fv.monounsaturated_fat,
-          'trans_fat', fv.trans_fat,
-          'cholesterol', fv.cholesterol,
-          'sodium', fv.sodium,
-          'potassium', fv.potassium,
-          'dietary_fiber', fv.dietary_fiber,
-          'sugars', fv.sugars,
-          'vitamin_a', fv.vitamin_a,
-          'vitamin_c', fv.vitamin_c,
-          'calcium', fv.calcium,
-          'iron', fv.iron,
-          'is_default', fv.is_default,
-          'glycemic_index', fv.glycemic_index,
-          'custom_nutrients', fv.custom_nutrients
-        ) AS default_variant
+        ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       JOIN TopFoodEntries tfe ON f.id = tfe.food_id
-      LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
+      ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.is_quick_food = FALSE
       ORDER BY tfe.usage_count DESC`,
       queryParams

@@ -71,8 +71,10 @@
       --color-icon-success:      hsl(146, 72%, 35%);
       --color-text-info:         hsl(217, 68%, 38%);
       --color-text-warning:      hsl(28, 80%, 28%);
+      --color-icon-warning:      hsl(36, 90%, 45%);
       --color-text-danger:       hsl(358, 98%, 97%);
       --color-text-danger-subtle: hsl(358, 72%, 38%);
+      --color-icon-danger:       hsl(358, 80%, 50%);
     }
       
     @variant dark {
@@ -129,8 +131,10 @@
       --color-icon-success:      hsl(145, 79%, 57%);
       --color-text-info:         hsl(214, 100%, 91%);
       --color-text-warning:      hsl(43, 86%, 86%);
+      --color-icon-warning:      hsl(38, 90%, 60%);
       --color-text-danger:       hsl(357, 68%, 94%);
       --color-text-danger-subtle: hsl(357, 88%, 88%);
+      --color-icon-danger:       hsl(358, 80%, 65%);
     }
 
     @variant amoled {
@@ -187,8 +191,10 @@
       --color-icon-success:      hsl(145, 79%, 57%);
       --color-text-info:         hsl(214, 100%, 91%);
       --color-text-warning:      hsl(43, 86%, 86%);
+      --color-icon-warning:      hsl(38, 90%, 60%);
       --color-text-danger:       hsl(357, 68%, 94%);
       --color-text-danger-subtle: hsl(357, 88%, 88%);
+      --color-icon-danger:       hsl(358, 80%, 65%);
     }
   }
 }

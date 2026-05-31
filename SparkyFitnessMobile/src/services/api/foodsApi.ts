@@ -100,6 +100,10 @@ export interface CreateFoodVariantPayload {
   vitamin_c?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  // AI-Assisted Unit Conversions provenance — optional; server defaults
+  // source to 'manual' and AI fields to null when omitted.
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
 }
 
 /**

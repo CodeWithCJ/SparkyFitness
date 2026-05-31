@@ -1,6 +1,9 @@
 export interface FoodUnitVariant {
   id?: string;
   food_id?: string;
+  // Marks this variant as the food's trusted default — the one AI estimates
+  // anchor on so subsequent estimates don't compound off other AI values.
+  is_default?: boolean;
   serving_size: number;
   serving_unit: string;
   calories: number;
@@ -22,6 +25,10 @@ export interface FoodUnitVariant {
   iron?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
+  // AI-Assisted Unit Conversions provenance. source defaults to 'manual'
+  // server-side when omitted.
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
 }
 
 export interface EquivalentUnit {

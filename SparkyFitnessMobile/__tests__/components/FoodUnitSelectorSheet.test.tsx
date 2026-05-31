@@ -155,6 +155,38 @@ describe('FoodUnitSelectorSheet', () => {
     expect(screen.queryByText('icon-chevron-forward')).toBeNull();
   });
 
+  it('shows sparkles instead of green checks for saved AI standard-unit variants', () => {
+    const aiCupVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate',
+      ai_confidence: 'medium',
+    };
+
+    const screen = render(
+      <FoodUnitSelectorSheet
+        variants={[variants[0], aiCupVariant] as any}
+        selectedVariantId="variant-g"
+        selectedSelection={{
+          kind: 'existing',
+          variant: variants[0] as any,
+        }}
+        onSelect={jest.fn()}
+        renderTrigger={() => <></>}
+      />,
+    );
+
+    const aiRow = screen.getByTestId('food-unit-option-cup');
+    expect(within(aiRow).queryByText('icon-sparkles')).toBeTruthy();
+    expect(within(aiRow).queryByText('icon-checkmark')).toBeNull();
+  });
+
   it('highlights the selected grouped unit row for a draft/manual selection', () => {
     const screen = render(
       <FoodUnitSelectorSheet
@@ -307,6 +339,56 @@ describe('FoodUnitSelectorSheet', () => {
       screen.queryByText('Please update the nutrition values manually.'),
     ).toBeNull();
     expect(within(screen.getByTestId('food-unit-option-cup')).queryByText('icon-checkmark')).toBeNull();
+  });
+
+  it('shows compatible checkmarks via a non-AI sibling donor when the selected variant is AI-estimated', () => {
+    // Even when the current selection is an AI variant (cup AI), a sibling
+    // manual variant (tbsp) acts as a math donor — so tsp and ml still get
+    // green checkmarks because tbsp can math-convert to them. Matches web's
+    // cross-row donor behavior.
+    const aiCupVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate',
+      ai_confidence: 'high',
+    };
+    const tbspVariant = {
+      id: 'variant-tbsp',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'tbsp',
+      calories: 24,
+      protein: 2,
+      carbs: 1,
+      fat: 1,
+    };
+
+    const screen = render(
+      <FoodUnitSelectorSheet
+        variants={[aiCupVariant, tbspVariant] as any}
+        selectedVariantId="variant-cup-ai"
+        selectedSelection={{
+          kind: 'existing',
+          variant: aiCupVariant as any,
+        }}
+        onSelect={jest.fn()}
+        renderTrigger={() => <></>}
+      />,
+    );
+
+    // tsp option should now show a checkmark because the manual tbsp donor
+    // provides a valid math path (tbsp → tsp is intra-volume).
+    expect(
+      within(screen.getByTestId('food-unit-option-tsp')).queryByText(
+        'icon-checkmark',
+      ),
+    ).not.toBeNull();
   });
 
   it('shows an error toast when saving a compatible draft unit fails', async () => {

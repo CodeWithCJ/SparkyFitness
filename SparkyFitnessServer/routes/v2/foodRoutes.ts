@@ -164,6 +164,7 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
   return {
     ...record,
     id: nullToUndefined(record.id as string | null | undefined),
+    user_id: nullToUndefined(record.user_id as string | null | undefined),
     saturated_fat: nullToUndefined(
       record.saturated_fat as number | null | undefined
     ),
@@ -195,6 +196,12 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
         | Record<string, string | number>
         | null
         | undefined
+    ),
+    source: nullToUndefined(
+      record.source as 'manual' | 'ai_estimate' | 'imported' | null | undefined
+    ),
+    ai_confidence: nullToUndefined(
+      record.ai_confidence as 'high' | 'medium' | 'low' | null | undefined
     ),
   };
 }

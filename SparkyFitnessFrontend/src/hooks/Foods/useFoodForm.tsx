@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,7 +20,11 @@ import {
   sanitizeGlycemicIndexFrontend,
 } from '@/utils/foodForm';
 import { nutrientFields } from '@/constants/foodForm';
-import { getConversionFactor } from '@/utils/servingSizeConversions';
+import {
+  getConversionFactor,
+  shouldOfferAiConversion,
+} from '@workspace/shared';
+import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import type {
   EquivalentUnit,
   Food,
@@ -34,9 +38,33 @@ interface UseCustomFoodFormProps {
   food?: Food;
   initialVariants?: FoodVariant[];
   onSave: (foodData: Food) => void;
+  aiEstimatesAvailable?: boolean;
 }
 
 type GroupedFormFoodVariant = FormFoodVariantWithEquivalents;
+
+type VariantMeta = {
+  manualUnitConversionPending: boolean;
+  aiEstimatedUnit: string | null;
+  autoScaleIntent: boolean;
+  hasTrustedCompatibilityBase: boolean;
+  error: string;
+};
+
+const DEFAULT_VARIANT_META: VariantMeta = {
+  manualUnitConversionPending: false,
+  aiEstimatedUnit: null,
+  autoScaleIntent: false,
+  hasTrustedCompatibilityBase: false,
+  error: '',
+};
+
+type SwapOutcome = {
+  variant: GroupedFormFoodVariant;
+  metaPatch: Partial<VariantMeta>;
+  originalPatch?: GroupedFormFoodVariant;
+  scalingPatch?: GroupedFormFoodVariant;
+} | null;
 
 function toPositiveNumber(value: unknown): number | null {
   const numericValue = Number(value);
@@ -47,11 +75,24 @@ function toPositiveNumber(value: unknown): number | null {
   return numericValue;
 }
 
-function buildManualConversionToast(baseUnit: string, targetUnit: string) {
+function buildManualConversionToast() {
   return {
-    title: 'Manual conversion required',
-    description: `"${baseUnit}" and "${targetUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
+    title: 'Manual Nutrition Update',
+    description:
+      "Can't convert between units. Update nutrition values manually.",
   } as const;
+}
+
+function canOfferAiConversionForUnits(
+  fromUnits: Array<string | null | undefined>,
+  toUnit: string
+) {
+  return fromUnits.some(
+    (fromUnit) =>
+      typeof fromUnit === 'string' &&
+      fromUnit.length > 0 &&
+      shouldOfferAiConversion(fromUnit, toUnit)
+  );
 }
 
 function scaleVariantNutrition(
@@ -86,6 +127,21 @@ function scaleVariantNutrition(
   }
 
   return scaledVariant;
+}
+
+function buildExactVariantSnapshot(
+  exactVariant: FormFoodVariant,
+  currentVariant: GroupedFormFoodVariant,
+  autoScaleIntent: boolean
+): GroupedFormFoodVariant {
+  return {
+    ...deepClone(exactVariant),
+    id: currentVariant.id,
+    is_default: currentVariant.is_default,
+    equivalents: deepClone(currentVariant.equivalents || []),
+    is_locked: autoScaleIntent,
+    ai_confidence: exactVariant.ai_confidence ?? null,
+  };
 }
 
 function groupEquivalentVariants(
@@ -124,10 +180,152 @@ function groupEquivalentVariants(
   return grouped;
 }
 
+function tryExactUnitSwap(
+  currentVariant: GroupedFormFoodVariant,
+  loadedVariants: (GroupedFormFoodVariant | null)[],
+  index: number,
+  targetUnit: string,
+  autoScaleIntent: boolean,
+  prevHasTrustedBase: boolean
+): SwapOutcome {
+  const loadedVariant = loadedVariants[index] ?? null;
+  const exactSavedVariant =
+    (loadedVariant && targetUnit === loadedVariant.serving_unit
+      ? loadedVariant
+      : null) ??
+    loadedVariants.find(
+      (donor, donorIndex) =>
+        donorIndex !== index &&
+        Boolean(donor?.id) &&
+        donor?.serving_unit === targetUnit
+    ) ??
+    null;
+  if (!exactSavedVariant) return null;
+
+  const variant = buildExactVariantSnapshot(
+    exactSavedVariant,
+    currentVariant,
+    autoScaleIntent
+  );
+  const isAi = exactSavedVariant.source === 'ai_estimate';
+  return {
+    variant,
+    metaPatch: {
+      manualUnitConversionPending: false,
+      aiEstimatedUnit: isAi ? targetUnit : null,
+      hasTrustedCompatibilityBase: !isAi || prevHasTrustedBase,
+    },
+    originalPatch: isAi ? undefined : deepClone(variant),
+  };
+}
+
+function tryConversionWithTrustedBase(
+  currentVariant: GroupedFormFoodVariant,
+  loadedVariants: (GroupedFormFoodVariant | null)[],
+  index: number,
+  variantHasTrustedCompatibilityBase: boolean,
+  trustedConversionBaseVariant: GroupedFormFoodVariant,
+  targetUnit: string,
+  autoScaleIntent: boolean
+): SwapOutcome {
+  const trustedOwnManualBase =
+    variantHasTrustedCompatibilityBase &&
+    trustedConversionBaseVariant?.source !== 'ai_estimate'
+      ? trustedConversionBaseVariant
+      : null;
+  const trustedManualBaseCandidate =
+    (trustedOwnManualBase &&
+    getConversionFactor(trustedOwnManualBase.serving_unit, targetUnit) !== null
+      ? trustedOwnManualBase
+      : null) ??
+    loadedVariants.find(
+      (donor, donorIndex) =>
+        donorIndex !== index &&
+        Boolean(donor?.id) &&
+        donor !== null &&
+        donor?.source !== 'ai_estimate' &&
+        getConversionFactor(donor.serving_unit, targetUnit) !== null
+    ) ??
+    null;
+  if (!trustedManualBaseCandidate) return null;
+
+  const baseServingSize = toPositiveNumber(
+    trustedManualBaseCandidate.serving_size
+  );
+  const nextServingSize = toPositiveNumber(currentVariant.serving_size);
+  const baseFactor = getConversionFactor(
+    trustedManualBaseCandidate.serving_unit,
+    targetUnit
+  );
+  if (
+    baseServingSize === null ||
+    nextServingSize === null ||
+    baseFactor === null
+  ) {
+    return null;
+  }
+
+  const ratio = (nextServingSize * baseFactor) / baseServingSize;
+  const variant = scaleVariantNutrition(
+    trustedManualBaseCandidate,
+    ratio
+  ) as GroupedFormFoodVariant;
+  variant.serving_size = currentVariant.serving_size;
+  variant.serving_unit = targetUnit;
+  variant.source = trustedManualBaseCandidate.source;
+  variant.ai_confidence = null;
+  variant.is_locked = autoScaleIntent;
+
+  return {
+    variant,
+    metaPatch: {
+      manualUnitConversionPending: false,
+      aiEstimatedUnit: null,
+      hasTrustedCompatibilityBase: true,
+    },
+  };
+}
+
+function evaluateAiSwapBack(
+  newVariant: GroupedFormFoodVariant,
+  fromUnit: string,
+  savedAiUnit: string | null,
+  targetUnit: string,
+  autoScaleIntent: boolean,
+  aiEstimatesAvailable: boolean
+): {
+  variant: GroupedFormFoodVariant;
+  metaPatch: Partial<VariantMeta>;
+  showManualToast: boolean;
+} {
+  const variant = { ...newVariant };
+  if (savedAiUnit !== null && targetUnit === savedAiUnit) {
+    variant.serving_unit = targetUnit;
+    variant.is_locked = autoScaleIntent;
+    return {
+      variant,
+      metaPatch: { manualUnitConversionPending: false },
+      showManualToast: false,
+    };
+  }
+
+  const canAiConvert =
+    aiEstimatesAvailable &&
+    canOfferAiConversionForUnits([fromUnit], targetUnit);
+  variant.serving_unit = targetUnit;
+  variant.is_locked = canAiConvert ? autoScaleIntent : false;
+  return {
+    variant,
+    metaPatch: { manualUnitConversionPending: true },
+    showManualToast: true,
+  };
+}
+
 export function useCustomFoodForm({
   food,
   initialVariants,
   onSave,
+  aiEstimatesAvailable = true,
 }: UseCustomFoodFormProps) {
   const { user } = useAuth();
   const { energyUnit, convertEnergy, loggingLevel, autoScaleOnlineImports } =
@@ -146,15 +344,12 @@ export function useCustomFoodForm({
   const [originalVariants, setOriginalVariants] = useState<
     GroupedFormFoodVariant[]
   >([]);
+  const [servingSizeScalingBaseVariants, setServingSizeScalingBaseVariants] =
+    useState<GroupedFormFoodVariant[]>([]);
   const [loadedVariants, setLoadedVariants] = useState<
-    GroupedFormFoodVariant[]
+    (GroupedFormFoodVariant | null)[]
   >([]);
-  const [manualUnitConversionPending, setManualUnitConversionPending] =
-    useState<boolean[]>([]);
-  const [autoScaleIntents, setAutoScaleIntents] = useState<boolean[]>([]);
-  const [hasTrustedCompatibilityBase, setHasTrustedCompatibilityBase] =
-    useState<boolean[]>([]);
-  const [variantErrors, setVariantErrors] = useState<string[]>([]);
+  const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -168,18 +363,20 @@ export function useCustomFoodForm({
       grouped: GroupedFormFoodVariant[],
       options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
     ) => {
-      const snapshot = deepClone(grouped);
+      const trustedSnapshot = deepClone(grouped);
+      const scalingSnapshot = deepClone(grouped);
       setVariants(grouped);
-      setOriginalVariants(snapshot);
-      setLoadedVariants(snapshot);
-      setManualUnitConversionPending(new Array(grouped.length).fill(false));
-      setAutoScaleIntents(
-        new Array(grouped.length).fill(options.autoScaleIntent)
+      setOriginalVariants(trustedSnapshot);
+      setServingSizeScalingBaseVariants(scalingSnapshot);
+      setLoadedVariants(deepClone(grouped));
+      setVariantMeta(
+        grouped.map((v) => ({
+          ...DEFAULT_VARIANT_META,
+          aiEstimatedUnit: v.source === 'ai_estimate' ? v.serving_unit : null,
+          autoScaleIntent: options.autoScaleIntent,
+          hasTrustedCompatibilityBase: options.hasTrustedBase,
+        }))
       );
-      setHasTrustedCompatibilityBase(
-        new Array(grouped.length).fill(options.hasTrustedBase)
-      );
-      setVariantErrors(new Array(grouped.length).fill(''));
     },
     []
   );
@@ -331,20 +528,20 @@ export function useCustomFoodForm({
 
     setVariants((prev) => [...prev, groupedVariant]);
     setOriginalVariants((prev) => [...prev, clone]);
-    setLoadedVariants((prev) => [...prev, clone]);
-    setManualUnitConversionPending((prev) => [...prev, false]);
-    setAutoScaleIntents((prev) => [...prev, false]);
-    setHasTrustedCompatibilityBase((prev) => [...prev, false]);
-    setVariantErrors((prev) => [...prev, '']);
+    setServingSizeScalingBaseVariants((prev) => [...prev, deepClone(clone)]);
+    setLoadedVariants((prev) => [...prev, null]);
+    setVariantMeta((prev) => [...prev, { ...DEFAULT_VARIANT_META }]);
   };
 
   const duplicateVariant = (index: number) => {
     const src = variants[index];
     const sourceOriginalVariant = originalVariants[index];
-    const sourceLoadedVariant = loadedVariants[index];
+    const sourceServingSizeScalingBaseVariant =
+      servingSizeScalingBaseVariants[index];
+    const sourceMeta = variantMeta[index] ?? DEFAULT_VARIANT_META;
     const sourceRequiresManualConversion =
-      manualUnitConversionPending[index] ?? false;
-    const sourceAutoScaleIntent = autoScaleIntents[index] ?? false;
+      sourceMeta.manualUnitConversionPending;
+    const sourceAutoScaleIntent = sourceMeta.autoScaleIntent;
 
     if (!src) {
       error(
@@ -366,25 +563,24 @@ export function useCustomFoodForm({
     const originalClone = deepClone(
       sourceRequiresManualConversion ? sourceOriginalVariant || src : newVariant
     );
-    const loadedClone = deepClone(
-      sourceRequiresManualConversion
-        ? sourceLoadedVariant || sourceOriginalVariant || src
-        : newVariant
+    const scalingClone = deepClone(
+      sourceServingSizeScalingBaseVariant || newVariant
     );
 
     setVariants((prev) => [...prev, newVariant]);
     setOriginalVariants((prev) => [...prev, originalClone]);
-    setLoadedVariants((prev) => [...prev, loadedClone]);
-    setManualUnitConversionPending((prev) => [
+    setServingSizeScalingBaseVariants((prev) => [...prev, scalingClone]);
+    setLoadedVariants((prev) => [...prev, null]);
+    setVariantMeta((prev) => [
       ...prev,
-      sourceRequiresManualConversion,
+      {
+        manualUnitConversionPending: sourceRequiresManualConversion,
+        aiEstimatedUnit: src.source === 'ai_estimate' ? src.serving_unit : null,
+        autoScaleIntent: sourceAutoScaleIntent,
+        hasTrustedCompatibilityBase: sourceMeta.hasTrustedCompatibilityBase,
+        error: '',
+      },
     ]);
-    setAutoScaleIntents((prev) => [...prev, sourceAutoScaleIntent]);
-    setHasTrustedCompatibilityBase((prev) => [
-      ...prev,
-      hasTrustedCompatibilityBase[index] ?? false,
-    ]);
-    setVariantErrors((prev) => [...prev, '']);
   };
 
   const removeVariant = (index: number) => {
@@ -399,32 +595,36 @@ export function useCustomFoodForm({
     }
     setVariants((prev) => prev.filter((_, i) => i !== index));
     setOriginalVariants((prev) => prev.filter((_, i) => i !== index));
+    setServingSizeScalingBaseVariants((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
     setLoadedVariants((prev) => prev.filter((_, i) => i !== index));
-    setManualUnitConversionPending((prev) =>
-      prev.filter((_, i) => i !== index)
-    );
-    setAutoScaleIntents((prev) => prev.filter((_, i) => i !== index));
-    setHasTrustedCompatibilityBase((prev) =>
-      prev.filter((_, i) => i !== index)
-    );
-    setVariantErrors((prev) => prev.filter((_, i) => i !== index));
+    setVariantMeta((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateVariant = (
     index: number,
     field: keyof FormFoodVariant | string,
-    value: string | number | boolean | GlycemicIndex | EquivalentUnit[]
+    value: string | number | boolean | null | GlycemicIndex | EquivalentUnit[]
   ) => {
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants];
-    const updatedManualUnitConversionPending = [...manualUnitConversionPending];
-    const updatedAutoScaleIntents = [...autoScaleIntents];
+    const updatedServingSizeScalingBaseVariants = [
+      ...servingSizeScalingBaseVariants,
+    ];
     const currentVariant = updatedVariants[index];
 
     if (!currentVariant) {
       error(loggingLevel, 'Could not find variant to update at index:', index);
       return;
     }
+
+    const prevMeta = variantMeta[index] ?? DEFAULT_VARIANT_META;
+    const metaPatch: Partial<VariantMeta> = {};
+    const readMeta = <K extends keyof VariantMeta>(key: K): VariantMeta[K] =>
+      metaPatch[key] !== undefined
+        ? (metaPatch[key] as VariantMeta[K])
+        : prevMeta[key];
 
     const isCustomNutrient = customNutrients?.some((n) => n.name === field);
     const isNutrientField =
@@ -453,12 +653,23 @@ export function useCustomFoodForm({
       (newVariant as Record<string, unknown>)[field] = value;
     }
 
-    const updatedErrors = [...variantErrors];
+    // Manual nutrient edits drop the AI tag (serving_size edits don't — they're scaling, not overriding).
+    if (
+      (isCustomNutrient || isNutrientField) &&
+      currentVariant.source === 'ai_estimate'
+    ) {
+      newVariant.source = 'manual';
+      newVariant.ai_confidence = null;
+      metaPatch.aiEstimatedUnit = null;
+      metaPatch.hasTrustedCompatibilityBase = true;
+      updatedOriginalVariants[index] = deepClone(newVariant);
+      updatedServingSizeScalingBaseVariants[index] = deepClone(newVariant);
+    }
+
     if (field === 'serving_size') {
       const num = Number(value);
-      updatedErrors[index] =
+      metaPatch.error =
         isNaN(num) || num <= 0 ? 'Serving size must be a positive number.' : '';
-      setVariantErrors(updatedErrors);
     }
 
     if (field === 'calories' && value !== '' && typeof value === 'number') {
@@ -467,14 +678,20 @@ export function useCustomFoodForm({
 
     if (field === 'is_locked') {
       const nextLocked = Boolean(value);
-      updatedAutoScaleIntents[index] = nextLocked;
+      metaPatch.autoScaleIntent = nextLocked;
       newVariant.is_locked = nextLocked;
 
       if (nextLocked) {
-        updatedManualUnitConversionPending[index] = false;
+        metaPatch.manualUnitConversionPending = false;
         if (toPositiveNumber(newVariant.serving_size) !== null) {
-          updatedOriginalVariants[index] = deepClone(newVariant);
+          updatedServingSizeScalingBaseVariants[index] = deepClone(newVariant);
+          if (newVariant.source !== 'ai_estimate') {
+            updatedOriginalVariants[index] = deepClone(newVariant);
+          }
           setOriginalVariants(updatedOriginalVariants);
+          setServingSizeScalingBaseVariants(
+            updatedServingSizeScalingBaseVariants
+          );
         }
       }
     }
@@ -482,26 +699,87 @@ export function useCustomFoodForm({
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
-      const loadedVariant = loadedVariants[index];
-      const variantHasTrustedCompatibilityBase =
-        hasTrustedCompatibilityBase[index] ?? false;
-      const scalingBaseVariant =
+      const loadedVariant = loadedVariants[index] ?? null;
+      const trustedConversionBaseVariant =
         updatedOriginalVariants[index] ?? loadedVariant ?? currentVariant;
-      const trustedBaseUnit = scalingBaseVariant?.serving_unit ?? oldUnit;
-      const manualConversionPendingForVariant =
-        updatedManualUnitConversionPending[index] ?? false;
-      const autoScaleIntentForVariant = updatedAutoScaleIntents[index] ?? false;
+      const trustedBaseUnit =
+        trustedConversionBaseVariant?.serving_unit ?? oldUnit;
+      const manualConversionPendingForVariant = readMeta(
+        'manualUnitConversionPending'
+      );
+      const autoScaleIntentForVariant = readMeta('autoScaleIntent');
 
-      if (!variantHasTrustedCompatibilityBase) {
+      const exactSwap = tryExactUnitSwap(
+        currentVariant,
+        loadedVariants,
+        index,
+        newUnit,
+        autoScaleIntentForVariant,
+        readMeta('hasTrustedCompatibilityBase')
+      );
+      if (exactSwap) {
+        newVariant = exactSwap.variant;
+        Object.assign(metaPatch, exactSwap.metaPatch);
+        updatedServingSizeScalingBaseVariants[index] = deepClone(newVariant);
+        if (exactSwap.originalPatch) {
+          updatedOriginalVariants[index] = exactSwap.originalPatch;
+        }
+
+        updatedVariants[index] = newVariant;
+        setVariants(updatedVariants);
+        setOriginalVariants(updatedOriginalVariants);
+        setServingSizeScalingBaseVariants(
+          updatedServingSizeScalingBaseVariants
+        );
+        setVariantMeta((prev) =>
+          prev.map((m, i) => (i === index ? { ...m, ...metaPatch } : m))
+        );
+        return;
+      }
+
+      const trustedSwap = tryConversionWithTrustedBase(
+        currentVariant,
+        loadedVariants,
+        index,
+        readMeta('hasTrustedCompatibilityBase'),
+        trustedConversionBaseVariant,
+        newUnit,
+        autoScaleIntentForVariant
+      );
+      if (trustedSwap) {
+        newVariant = trustedSwap.variant;
+        Object.assign(metaPatch, trustedSwap.metaPatch);
+      } else if (currentVariant.source === 'ai_estimate') {
+        // AI-tagged rows: swap back to the original AI unit clears pending; any other unit re-prompts via the AI flow.
+        const aiSwap = evaluateAiSwapBack(
+          newVariant,
+          currentVariant.serving_unit,
+          readMeta('aiEstimatedUnit'),
+          newUnit,
+          autoScaleIntentForVariant,
+          aiEstimatesAvailable
+        );
+        newVariant = aiSwap.variant;
+        Object.assign(metaPatch, aiSwap.metaPatch);
+        if (aiSwap.showManualToast) {
+          toast(buildManualConversionToast());
+        }
+        updatedVariants[index] = newVariant;
+        setVariants(updatedVariants);
+        setVariantMeta((prev) =>
+          prev.map((m, i) => (i === index ? { ...m, ...metaPatch } : m))
+        );
+        return;
+      } else if (!readMeta('hasTrustedCompatibilityBase')) {
         newVariant.serving_unit = newUnit;
-        updatedManualUnitConversionPending[index] = false;
+        metaPatch.manualUnitConversionPending = false;
         newVariant.is_locked = autoScaleIntentForVariant;
       } else if (loadedVariant && newUnit === loadedVariant.serving_unit) {
         for (const nutrient of nutrientFields) {
           newVariant[nutrient] = loadedVariant[nutrient];
         }
         newVariant.custom_nutrients = deepClone(loadedVariant.custom_nutrients);
-        updatedManualUnitConversionPending[index] = false;
+        metaPatch.manualUnitConversionPending = false;
         newVariant.is_locked = autoScaleIntentForVariant;
       } else {
         const directFactor = getConversionFactor(oldUnit, newUnit);
@@ -510,21 +788,24 @@ export function useCustomFoodForm({
         if (
           manualConversionPendingForVariant &&
           trustedBaseFactor !== null &&
-          scalingBaseVariant
+          trustedConversionBaseVariant
         ) {
           const baseServingSize = toPositiveNumber(
-            scalingBaseVariant.serving_size
+            trustedConversionBaseVariant.serving_size
           );
           const newServingSize = toPositiveNumber(currentVariant.serving_size);
 
           if (baseServingSize !== null && newServingSize !== null) {
             const ratio =
               (newServingSize * trustedBaseFactor) / baseServingSize;
-            newVariant = scaleVariantNutrition(scalingBaseVariant, ratio);
+            newVariant = scaleVariantNutrition(
+              trustedConversionBaseVariant,
+              ratio
+            );
           }
           newVariant.serving_size = currentVariant.serving_size;
           newVariant.serving_unit = newUnit;
-          updatedManualUnitConversionPending[index] = false;
+          metaPatch.manualUnitConversionPending = false;
           newVariant.is_locked = autoScaleIntentForVariant;
         } else if (
           !manualConversionPendingForVariant &&
@@ -533,12 +814,18 @@ export function useCustomFoodForm({
           newVariant = scaleVariantNutrition(currentVariant, directFactor);
           newVariant.serving_size = currentVariant.serving_size;
           newVariant.serving_unit = newUnit;
-          updatedManualUnitConversionPending[index] = false;
+          metaPatch.manualUnitConversionPending = false;
           newVariant.is_locked = autoScaleIntentForVariant;
         } else {
-          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
-          updatedManualUnitConversionPending[index] = true;
-          newVariant.is_locked = false;
+          const canAiConvert =
+            aiEstimatesAvailable &&
+            canOfferAiConversionForUnits([oldUnit, trustedBaseUnit], newUnit);
+          toast(buildManualConversionToast());
+          metaPatch.manualUnitConversionPending = true;
+          // Honor auto-scale only when this swap can be auto-converted; incompatible swaps clear it.
+          newVariant.is_locked = canAiConvert
+            ? autoScaleIntentForVariant
+            : false;
         }
       }
     }
@@ -552,48 +839,156 @@ export function useCustomFoodForm({
     if (
       field === 'serving_size' &&
       newVariant.is_locked &&
-      !(updatedManualUnitConversionPending[index] ?? false)
+      !readMeta('manualUnitConversionPending')
     ) {
-      const originalVariant = updatedOriginalVariants[index];
-      if (!originalVariant) {
-        error(loggingLevel, 'Could not find original variant at index:', index);
+      const scalingBaseVariant =
+        updatedServingSizeScalingBaseVariants[index] ?? currentVariant;
+      if (!scalingBaseVariant) {
+        error(
+          loggingLevel,
+          'Could not find serving-size scaling base variant at index:',
+          index
+        );
         return;
       }
-      const baseServingSize = toPositiveNumber(originalVariant.serving_size);
+      const baseServingSize = toPositiveNumber(scalingBaseVariant.serving_size);
       const nextServingSize = toPositiveNumber(value);
       if (baseServingSize !== null && nextServingSize !== null) {
         const ratio = nextServingSize / baseServingSize;
-        newVariant = scaleVariantNutrition(originalVariant, ratio, 4);
+        newVariant = scaleVariantNutrition(scalingBaseVariant, ratio, 4);
         newVariant.serving_size = nextServingSize;
       }
     } else if (
       field !== 'serving_unit' ||
-      !(updatedManualUnitConversionPending[index] ?? false)
+      !readMeta('manualUnitConversionPending')
     ) {
-      updatedOriginalVariants[index] = deepClone(newVariant);
-      setOriginalVariants(updatedOriginalVariants);
+      updatedServingSizeScalingBaseVariants[index] = deepClone(newVariant);
+      setServingSizeScalingBaseVariants(updatedServingSizeScalingBaseVariants);
+      // originalVariants is the AI anchor and must stay frozen while a manual conversion is pending.
+      if (
+        newVariant.source !== 'ai_estimate' &&
+        !readMeta('manualUnitConversionPending')
+      ) {
+        updatedOriginalVariants[index] = deepClone(newVariant);
+        setOriginalVariants(updatedOriginalVariants);
+      }
     }
 
     updatedVariants[index] = newVariant;
     setVariants(updatedVariants);
-    setManualUnitConversionPending(updatedManualUnitConversionPending);
-    setAutoScaleIntents(updatedAutoScaleIntents);
+    if (Object.keys(metaPatch).length > 0) {
+      setVariantMeta((prev) =>
+        prev.map((m, i) => (i === index ? { ...m, ...metaPatch } : m))
+      );
+    }
   };
+
+  // Apply an AI-estimated conversion to a row. Anchor is always the food's
+  // default variant (so AI estimates don't compound on prior AI values); when
+  // the row IS the default, fall back to originalVariants[default] (the
+  // pre-swap snapshot — the default's serving_unit is the post-swap target
+  // and not a valid anchor). Scaling = estimate.estimatedAmount / anchor.serving_size;
+  // we preserve the row's serving_size rather than canonicalize to 1, and
+  // restore is_locked from the row's saved auto-scale intent.
+  const applyAiEstimate = useCallback(
+    (index: number, estimate: AiEstimateData) => {
+      const defaultIndex = variants.findIndex((v) => v.is_default);
+      const fallbackDefaultIndex = defaultIndex !== -1 ? defaultIndex : 0;
+      const isSwappingDefault = index === fallbackDefaultIndex;
+      const anchorVariant = isSwappingDefault
+        ? originalVariants[fallbackDefaultIndex]
+        : variants[fallbackDefaultIndex];
+      if (!anchorVariant) return;
+
+      const baseSize = toPositiveNumber(anchorVariant.serving_size);
+      if (baseSize === null) {
+        toast({
+          title: 'Set the default variant first',
+          description:
+            'The default variant needs a positive serving size before AI can estimate other units.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const ratio = estimate.estimatedAmount / baseSize;
+      const scaled = scaleVariantNutrition(anchorVariant, ratio);
+      const currentVariant = variants[index];
+      if (!currentVariant) return;
+      const autoScaleIntentForVariant =
+        currentVariant.is_locked ??
+        variantMeta[index]?.autoScaleIntent ??
+        false;
+
+      const aiEstimatedVariant = {
+        ...currentVariant,
+        calories: scaled.calories,
+        protein: scaled.protein,
+        carbs: scaled.carbs,
+        fat: scaled.fat,
+        saturated_fat: scaled.saturated_fat,
+        polyunsaturated_fat: scaled.polyunsaturated_fat,
+        monounsaturated_fat: scaled.monounsaturated_fat,
+        trans_fat: scaled.trans_fat,
+        cholesterol: scaled.cholesterol,
+        sodium: scaled.sodium,
+        potassium: scaled.potassium,
+        dietary_fiber: scaled.dietary_fiber,
+        sugars: scaled.sugars,
+        vitamin_a: scaled.vitamin_a,
+        vitamin_c: scaled.vitamin_c,
+        calcium: scaled.calcium,
+        iron: scaled.iron,
+        custom_nutrients: scaled.custom_nutrients
+          ? { ...scaled.custom_nutrients }
+          : currentVariant.custom_nutrients,
+        is_locked: autoScaleIntentForVariant,
+        source: 'ai_estimate' as const,
+        ai_confidence: estimate.confidence,
+      };
+
+      setVariants((prev) => {
+        const next = [...prev];
+        if (!next[index]) return prev;
+        next[index] = aiEstimatedVariant;
+        return next;
+      });
+
+      setServingSizeScalingBaseVariants((prev) => {
+        const next = [...prev];
+        next[index] = deepClone(aiEstimatedVariant);
+        return next;
+      });
+
+      setVariantMeta((prev) =>
+        prev.map((m, i) =>
+          i === index
+            ? {
+                ...m,
+                autoScaleIntent: aiEstimatedVariant.is_locked ?? false,
+                manualUnitConversionPending: false,
+                aiEstimatedUnit: aiEstimatedVariant.serving_unit,
+              }
+            : m
+        )
+      );
+    },
+    [variants, originalVariants, variantMeta]
+  );
 
   const updateField = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
+  const validateBeforeSave = useCallback(() => {
     const newVariantErrors = variants.map((v) =>
       isNaN(Number(v.serving_size)) || Number(v.serving_size) <= 0
         ? 'Serving size must be a positive number.'
         : ''
     );
-    setVariantErrors(newVariantErrors);
+    setVariantMeta((prev) =>
+      prev.map((m, i) => ({ ...m, error: newVariantErrors[i] ?? '' }))
+    );
 
     if (newVariantErrors.some((entry) => entry !== '')) {
       toast({
@@ -601,7 +996,7 @@ export function useCustomFoodForm({
         description: 'Please correct the errors in the unit variants.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
     const defaultCount = variants.filter((v) => v.is_default).length;
@@ -611,7 +1006,7 @@ export function useCustomFoodForm({
         description: 'At least one variant must be marked as the default unit.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
     if (defaultCount > 1) {
       toast({
@@ -619,8 +1014,14 @@ export function useCustomFoodForm({
         description: 'Only one variant can be marked as the default unit.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
+
+    return true;
+  }, [variants]);
+
+  const persistFood = useCallback(async () => {
+    if (!user) return;
 
     setLoading(true);
     try {
@@ -639,7 +1040,6 @@ export function useCustomFoodForm({
 
       variants.forEach((variant) => {
         const { equivalents, ...baseVariant } = variant;
-
         expandedVariants.push(baseVariant as FormFoodVariant);
 
         if (equivalents && equivalents.length > 0) {
@@ -674,6 +1074,16 @@ export function useCustomFoodForm({
     } finally {
       setLoading(false);
     }
+  }, [food, formData, onSave, resetForm, saveFood, user, variants]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateBeforeSave()) {
+      return;
+    }
+
+    await persistFood();
   };
 
   const handleSyncConfirmation = async () => {
@@ -688,6 +1098,23 @@ export function useCustomFoodForm({
     if (food) onSave(food);
   };
 
+  const variantErrors = useMemo(
+    () => variantMeta.map((m) => m.error),
+    [variantMeta]
+  );
+  const manualUnitConversionPending = useMemo(
+    () => variantMeta.map((m) => m.manualUnitConversionPending),
+    [variantMeta]
+  );
+  const hasTrustedCompatibilityBase = useMemo(
+    () => variantMeta.map((m) => m.hasTrustedCompatibilityBase),
+    [variantMeta]
+  );
+  const aiEstimatedUnits = useMemo(
+    () => variantMeta.map((m) => m.aiEstimatedUnit),
+    [variantMeta]
+  );
+
   return {
     formData,
     variants,
@@ -698,12 +1125,15 @@ export function useCustomFoodForm({
     loadedVariants,
     conversionBaseVariants: originalVariants,
     hasTrustedCompatibilityBase,
+    manualUnitConversionPending,
+    aiEstimatedUnits,
     platform,
     updateField,
     addVariant,
     duplicateVariant,
     removeVariant,
     updateVariant,
+    applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
   };

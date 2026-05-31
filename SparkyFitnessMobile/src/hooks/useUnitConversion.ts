@@ -3,7 +3,16 @@ import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import {
   ALL_CONVERSION_UNITS,
   getConversionFactor,
-} from '../utils/servingSizeConversions';
+  type AiConfidence,
+} from '@workspace/shared';
+
+/** AI estimate payload, retained for callers that already typed against it.
+ *  AI estimation lives in FoodForm now — this hook no longer builds AI
+ *  variants directly. */
+export interface AiEstimateData {
+  estimatedAmount: number;
+  confidence: AiConfidence;
+}
 
 export interface UseUnitConversionOptions {
   variants: FoodUnitVariant[];
@@ -26,11 +35,21 @@ export function resolveAutoConversionSource(
   selectedVariant: FoodUnitVariant | null,
   targetUnit: string,
 ): ResolvedAutoConversion | null {
+  // Iterate every variant on the food and use the FIRST non-AI math source
+  // we find as the conversion donor. The currently-selected variant has no
+  // special priority — even if the selection is AI-sourced (cup AI), a
+  // sibling manual variant (g default) is still a valid donor for compatible
+  // target units (kg, oz, lb). This keeps green checkmarks visible on
+  // weight units when the user is viewing an AI volume variant, matching
+  // web's cross-row donor behavior.
   const candidateVariants = selectedVariant
     ? [selectedVariant, ...variants]
     : variants;
 
   for (const variant of candidateVariants) {
+    if (variant.source === 'ai_estimate') {
+      continue;
+    }
     const factor = getConversionFactor(variant.serving_unit, targetUnit);
     if (factor !== null) {
       return {

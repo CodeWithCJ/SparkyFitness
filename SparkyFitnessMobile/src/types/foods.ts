@@ -87,4 +87,11 @@ export interface FoodVariantDetail {
   is_default?: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  // AI-Assisted Unit Conversions provenance — server always returns these on
+  // saved variants. Forwarded by `localVariantToUnitVariant` so the sheet's
+  // source check recognizes AI variants and doesn't treat them as regular
+  // math conversion donors (which would show green checkmarks for sibling
+  // units when it shouldn't).
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
 }

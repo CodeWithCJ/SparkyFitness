@@ -9,6 +9,19 @@ jest.mock('react-native-toast-message', () => ({
   default: { show: jest.fn() },
 }));
 
+// FoodForm (rendered inside this screen) gates its inline AI estimate flow on
+// these hooks. They all call react-query — without a QueryClientProvider in
+// the test setup they'd crash. Mock them as inert.
+jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
+  useActiveAiServiceSetting: () => ({ data: null, isLoading: false }),
+}));
+jest.mock('../../src/hooks/useUserAiConfigAllowed', () => ({
+  useUserAiConfigAllowed: () => ({ data: false, isLoading: false }),
+}));
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: undefined, isLoading: false }),
+}));
+
 // Surface every option (flattening sections) as a Pressable so tests can select
 // units by tapping their displayed label (e.g. "g", "oz").
 jest.mock('../../src/components/BottomSheetPicker', () => {

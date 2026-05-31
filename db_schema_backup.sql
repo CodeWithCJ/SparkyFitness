@@ -1515,7 +1515,11 @@ CREATE TABLE public.food_variants (
     is_default boolean DEFAULT false,
     glycemic_index text,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text])))
+    source text DEFAULT 'manual'::text NOT NULL,
+    ai_confidence text,
+    CONSTRAINT food_variants_ai_confidence_check CHECK ((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL)),
+    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 
 
@@ -2329,6 +2333,7 @@ CREATE TABLE public.user_preferences (
     auto_scale_online_imports boolean DEFAULT true,
     first_day_of_week smallint DEFAULT 0,
     barcode_fallback_open_food_facts boolean DEFAULT true,
+    ai_assisted_conversions boolean DEFAULT true NOT NULL,
     show_net_carbs boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),

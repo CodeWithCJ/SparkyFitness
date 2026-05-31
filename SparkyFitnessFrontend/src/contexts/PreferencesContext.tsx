@@ -90,6 +90,7 @@ interface PreferencesContextType {
   bodyFatAlgorithm: BodyFatAlgorithm;
   includeBmrInNetCalories: boolean;
   showNetCarbs: boolean;
+  aiAssistedConversions: boolean;
   fatBreakdownAlgorithm: FatBreakdownAlgorithm;
   mineralCalculationAlgorithm: MineralCalculationAlgorithm;
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
@@ -124,6 +125,7 @@ interface PreferencesContextType {
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
   setIncludeBmrInNetCalories: (include: boolean) => void;
   setShowNetCarbs: (show: boolean) => void;
+  setAiAssistedConversions: (enabled: boolean) => void;
   setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
   setMineralCalculationAlgorithm: (
     algorithm: MineralCalculationAlgorithm
@@ -190,6 +192,7 @@ export interface DefaultPreferences {
   body_fat_algorithm: BodyFatAlgorithm;
   include_bmr_in_net_calories: boolean;
   show_net_carbs: boolean;
+  ai_assisted_conversions: boolean;
   fat_breakdown_algorithm: FatBreakdownAlgorithm;
   mineral_calculation_algorithm: MineralCalculationAlgorithm;
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
@@ -272,6 +275,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] =
     useState<boolean>(false);
   const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
+  // AI-Assisted Unit Conversions: per-user toggle for the diary/food-form AI
+  // estimate path. Default true matches the server migration (DEFAULT TRUE).
+  const [aiAssistedConversions, setAiAssistedConversionsState] =
+    useState<boolean>(true);
   const [fatBreakdownAlgorithm, setFatBreakdownAlgorithmState] =
     useState<FatBreakdownAlgorithm>(FatBreakdownAlgorithm.AHA_GUIDELINES);
   const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] =
@@ -530,6 +537,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         selected_diet: 'balanced',
         first_day_of_week: 0,
         show_net_carbs: false,
+        ai_assisted_conversions: true,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -620,6 +628,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.include_bmr_in_net_calories ?? false
         );
         setShowNetCarbsState(data.show_net_carbs ?? false);
+        setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
         setFatBreakdownAlgorithmState(
           data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
         );
@@ -778,6 +787,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         include_bmr_in_net_calories:
           newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
         show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
+        ai_assisted_conversions:
+          newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
         fat_breakdown_algorithm:
           newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
         mineral_calculation_algorithm:
@@ -832,6 +843,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bodyFatAlgorithm,
       includeBmrInNetCalories,
       showNetCarbs,
+      aiAssistedConversions,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
@@ -1037,6 +1049,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bodyFatAlgorithm,
       includeBmrInNetCalories,
       showNetCarbs,
+      aiAssistedConversions,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,
@@ -1068,6 +1081,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
       setIncludeBmrInNetCalories: setIncludeBmrInNetCaloriesState,
       setShowNetCarbs: setShowNetCarbsState,
+      setAiAssistedConversions: setAiAssistedConversionsState,
       setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
       setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
       setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
@@ -1112,6 +1126,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bodyFatAlgorithm,
       includeBmrInNetCalories,
       showNetCarbs,
+      aiAssistedConversions,
       fatBreakdownAlgorithm,
       mineralCalculationAlgorithm,
       vitaminCalculationAlgorithm,

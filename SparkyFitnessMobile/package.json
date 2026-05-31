@@ -100,7 +100,8 @@
       "__tests__/hooks/queryTestUtils\\.ts$"
     ],
     "moduleNameMapper": {
-      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts"
+      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
+      "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker|@workspace/shared|zod)/)"

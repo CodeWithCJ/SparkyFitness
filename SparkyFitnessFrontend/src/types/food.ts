@@ -33,6 +33,10 @@ export interface FoodVariant {
   is_locked?: boolean;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
+  // AI-Assisted Unit Conversions provenance. source defaults to 'manual'
+  // server-side when the client omits these fields.
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
 }
 
 export interface Food {
@@ -189,6 +193,11 @@ export type NumericFoodVariantKeys = Exclude<
   | 'is_locked'
   | 'glycemic_index'
   | 'custom_nutrients'
+  // AI-Assisted Unit Conversions provenance — these are strings/enums, not
+  // numerics, so the form-variant `string | ''` mapping must not include them.
+  | 'user_id'
+  | 'source'
+  | 'ai_confidence'
 >;
 export interface EquivalentUnit {
   id?: string;

@@ -158,6 +158,7 @@ export function localVariantToUnitVariant(variant: FoodVariantDetail): FoodUnitV
   return {
     id: variant.id,
     food_id: variant.food_id,
+    is_default: variant.is_default,
     serving_size: variant.serving_size,
     serving_unit: variant.serving_unit,
     calories: variant.calories,
@@ -179,6 +180,12 @@ export function localVariantToUnitVariant(variant: FoodVariantDetail): FoodUnitV
     iron: variant.iron,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: variant.custom_nutrients ?? null,
+    // Forward AI provenance so the sheet's `selectedVariant.source` check
+    // recognizes AI variants on reopen — without this, an AI cup variant
+    // loaded from the server would look like a regular math source and
+    // sibling volume units would all show green checkmarks.
+    source: variant.source,
+    ai_confidence: variant.ai_confidence,
   };
 }
 
@@ -307,6 +314,12 @@ export function buildCreateFoodVariantInput(
     vitamin_c: variant.vitamin_c,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: variant.custom_nutrients ?? undefined,
+    // AI-Assisted Unit Conversions provenance — when the variant originated
+    // from an AI estimate (deferred draft from FoodUnitSelectorSheet), preserve
+    // source/ai_confidence so the persisted row carries the provenance +
+    // badge surfaces on the picker next time.
+    source: variant.source,
+    ai_confidence: variant.ai_confidence,
   };
 }
 

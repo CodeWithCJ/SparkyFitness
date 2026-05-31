@@ -7,6 +7,11 @@ import foodPhotoEstimationService from '../services/foodPhotoEstimationService.j
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 const router = express.Router();
 router.use(express.json());
+
+function getErrorMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null;
+}
+
 // Apply diary permission check to all food routes
 router.use(checkPermissionMiddleware('diary'));
 // AI-dedicated food search route to handle /api/foods/search
@@ -295,7 +300,7 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
 router.post('/food-variants', authenticate, async (req, res, next) => {
   try {
     const newVariant = await foodService.createFoodVariant(
-      req.userId,
+      req.authenticatedUserId || req.userId,
       req.body
     );
     res.status(201).json(newVariant);
@@ -387,15 +392,17 @@ router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
   try {
     const variantsData = req.body;
     const createdVariants = await foodService.bulkCreateFoodVariants(
-      req.userId,
+      req.authenticatedUserId || req.userId,
       variantsData
     );
     res.status(201).json(createdVariants);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+    const message = getErrorMessage(error);
+    if (message?.startsWith('Forbidden')) {
+      return res.status(403).json({ error: message });
+    }
+    if (message?.startsWith('Food not found')) {
+      return res.status(404).json({ error: message });
     }
     next(error);
   }
@@ -500,7 +507,7 @@ router.put('/food-variants/:id', authenticate, async (req, res, next) => {
   }
   try {
     const updatedVariant = await foodService.updateFoodVariant(
-      req.userId,
+      req.authenticatedUserId || req.userId,
       id,
       req.body
     );
@@ -554,7 +561,10 @@ router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Food Variant ID is required.' });
   }
   try {
-    await foodService.deleteFoodVariant(req.userId, id);
+    await foodService.deleteFoodVariant(
+      req.authenticatedUserId || req.userId,
+      id
+    );
     res.status(200).json({ message: 'Food variant deleted successfully.' });
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
