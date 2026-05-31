@@ -1,4 +1,7 @@
 import bcrypt from 'bcryptjs';
+import { promisify } from 'util';
+
+const hashAsync = promisify(bcrypt.hash);
 import { v4 as uuidv4 } from 'uuid';
 import userRepository from '../models/userRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
@@ -175,7 +178,7 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
 async function updateUserPassword(authenticatedUserId: any, newPassword: any) {
   try {
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    const hashedPassword = await hashAsync(newPassword, saltRounds);
     const success = await userRepository.updateUserPassword(
       authenticatedUserId,
       hashedPassword

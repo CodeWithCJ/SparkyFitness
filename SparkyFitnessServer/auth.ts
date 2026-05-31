@@ -3,6 +3,10 @@ import { APIError } from 'better-auth/api';
 import pg from 'pg';
 import { log } from './config/logging.js';
 import bcrypt from 'bcryptjs';
+import { promisify } from 'util';
+
+const hashAsync = promisify(bcrypt.hash);
+const compareAsync = promisify(bcrypt.compare);
 import { syncUserGroups } from './utils/oidcGroupSync.js';
 import userRepository from './models/userRepository.js';
 import { resolveTwoFactorDisableUserUpdate } from './utils/twoFactorState.js';
@@ -194,10 +198,10 @@ const auth = betterAuth({
     password: {
       // Use bcrypt for compatibility with existing hashes
       hash: async (password) => {
-        return await bcrypt.hash(password, 10);
+        return await hashAsync(password, 10);
       },
       verify: async ({ password, hash }) => {
-        return await bcrypt.compare(password, hash);
+        return await compareAsync(password, hash);
       },
     },
   },
