@@ -470,19 +470,54 @@ async function fetchPhysicalInfo(
   try {
     log(
       'info',
-      `Fetching Polar physical info (non-transactional) for user ${userId}...`
+      `Creating Polar transaction (physical-information) for user ${userId}...`
     );
-    const response = await axios.get(
-      `${POLAR_API_BASE_URL}/users/physical-info`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-        },
+    // 1. Create Transaction
+    const transaction = await createTransaction(
+      userId,
+      externalUserId,
+      accessToken,
+      'physical-information'
+    );
+    if (!transaction) return [];
+    const transactionId = transaction['transaction-id'];
+    const resourceUrls = transaction['physical-informations'] || [];
+    const results = [];
+    // 2. Fetch Data
+    for (const url of resourceUrls) {
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+          },
+        });
+        const resourceId = url.split('/').pop();
+        logRawResponse(
+          'polar',
+          `raw_physical_info_item_${resourceId}`,
+          response.data
+        );
+        results.push(response.data);
+      } catch (err) {
+        log(
+          'error',
+          // @ts-expect-error TS(2571): Object is of type 'unknown'.
+          `Error fetching physical info resource ${url}: ${err.message}`
+        );
       }
-    );
-    logRawResponse('polar', 'raw_physical_info_item_current', response.data);
-    return [response.data];
+    }
+    // 3. Commit Transaction
+    if (transactionId) {
+      await commitTransaction(
+        userId,
+        externalUserId,
+        accessToken,
+        transactionId,
+        'physical-information'
+      );
+    }
+    return results;
   } catch (error) {
     log(
       'error',
@@ -500,24 +535,45 @@ async function fetchRecentPhysicalInfo(userId: any, accessToken: any) {
   try {
     log(
       'info',
-      `Fetching recent Polar physical info (non-transactional) for user ${userId}...`
+      `Fetching recent Polar physical info (via User Profile fallback) for user ${userId}...`
     );
-    const response = await axios.get(
-      `${POLAR_API_BASE_URL}/users/physical-info`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-        },
+    // Find the external user ID first
+    const client = await getSystemClient();
+    let externalUserId = null;
+    try {
+      const result = await client.query(
+        "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'",
+        [userId]
+      );
+      if (result.rows.length > 0) {
+        externalUserId = result.rows[0].external_user_id;
       }
-    );
-    logRawResponse('polar', 'raw_physical_info_list', response.data);
-    return [response.data];
+    } finally {
+      client.release();
+    }
+    if (!externalUserId) {
+      log(
+        'warn',
+        `Polar provider ID not found for user ${userId} to fetch profile fallback.`
+      );
+      return [];
+    }
+    const profile = await fetchUserProfile(userId, externalUserId, accessToken);
+    if (profile && (profile.weight || profile.height)) {
+      const data = {
+        weight: profile.weight,
+        height: profile.height,
+        created: new Date().toISOString(),
+      };
+      logRawResponse('polar', 'raw_physical_info_list', [data]);
+      return [data];
+    }
+    return [];
   } catch (error) {
     log(
       'error',
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error fetching recent Polar physical info (non-transactional) for user ${userId}: ${error.message}`
+      `Error fetching recent Polar physical info fallback for user ${userId}: ${error.message}`
     );
     return [];
   }
