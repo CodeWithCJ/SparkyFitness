@@ -344,6 +344,20 @@ async function getMcpClient(reqHeaders?: IncomingHttpHeaders) {
     if (reqHeaders?.cookie) {
       headers['cookie'] = reqHeaders.cookie;
     }
+    // Forward proxy headers so Better Auth accepts secure cookies over internal HTTP
+    const isHttps =
+      process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https');
+    const protoHeader = reqHeaders?.['x-forwarded-proto'];
+    const resolvedProto = Array.isArray(protoHeader)
+      ? protoHeader[0]
+      : protoHeader;
+    headers['x-forwarded-proto'] =
+      resolvedProto || (isHttps ? 'https' : 'http');
+    const hostHeader = reqHeaders?.['x-forwarded-host'];
+    const resolvedHost = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
+    if (resolvedHost) {
+      headers['x-forwarded-host'] = resolvedHost;
+    }
     log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
     return await createMCPClient({
       transport: {

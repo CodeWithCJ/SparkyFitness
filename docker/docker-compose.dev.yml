@@ -121,6 +121,8 @@ services:
   #     SPARKY_FITNESS_DB_PORT: ${SPARKY_FITNESS_DB_PORT:-5432}
   #     BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Variable is required and must be set}
   #     MCP_TRANSPORT: "http" # Default to HTTP for Docker
+  #     SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
+  #     SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
   #   volumes:
   #     - ../SparkyFitnessMCP:/app/SparkyFitnessMCP:z
   #     - /app/SparkyFitnessMCP/node_modules
