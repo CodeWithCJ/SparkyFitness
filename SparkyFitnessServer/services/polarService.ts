@@ -59,6 +59,17 @@ async function syncPolarData(
       if (responses['raw_physical_info_item'] && allPhysicalInfo.length === 0) {
         allPhysicalInfo.push(responses['raw_physical_info_item'].data);
       }
+      // User Profile Fallback for mock data (to get weight/height)
+      if (allPhysicalInfo.length === 0 && responses['raw_user_profile']) {
+        const userProfile = responses['raw_user_profile'].data;
+        if (userProfile && (userProfile.weight || userProfile.height)) {
+          allPhysicalInfo.push({
+            weight: userProfile.weight,
+            height: userProfile.height,
+            created: new Date().toISOString(),
+          });
+        }
+      }
       if (allPhysicalInfo.length > 0) {
         await polarDataProcessor.processPolarPhysicalInfo(
           userId,
