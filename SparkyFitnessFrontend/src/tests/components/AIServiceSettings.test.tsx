@@ -590,4 +590,43 @@ describe('AIServiceSettings', () => {
       expect(screen.getByText('Custom prompt')).toBeInTheDocument();
     });
   });
+
+  it('toggle sends full service payload so model_name and other fields are not overwritten', async () => {
+    const serviceWithCustomModel: AiServiceSettingsResponse = {
+      id: 'user-service2',
+      user_id: 'user1',
+      service_name: 'My Custom Service',
+      service_type: 'openai',
+      custom_url: 'https://my-proxy.example.com',
+      is_active: true,
+      system_prompt: 'Be concise.',
+      model_name: 'my-fine-tuned-model',
+      is_public: false,
+      source: 'user',
+    };
+    mockGetAIServices.mockResolvedValue([serviceWithCustomModel]);
+    mockUpdateAIService.mockResolvedValue({
+      ...serviceWithCustomModel,
+      is_active: false,
+    });
+
+    renderWithClient(<AIServiceSettings />);
+
+    await screen.findByText('My Custom Service');
+
+    const toggleSwitch = await screen.findByRole('switch');
+    fireEvent.click(toggleSwitch);
+
+    await waitFor(() => {
+      expect(mockUpdateAIService).toHaveBeenCalledWith(
+        'user-service2',
+        expect.objectContaining({
+          is_active: false,
+          model_name: 'my-fine-tuned-model',
+          custom_url: 'https://my-proxy.example.com',
+          system_prompt: 'Be concise.',
+        })
+      );
+    });
+  });
 });
