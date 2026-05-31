@@ -17,6 +17,7 @@ import { Thread } from '@/components/thread';
 import { useToast } from '@/hooks/use-toast';
 
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
+import { type UIMessage } from 'ai';
 
 interface SparkyChatInnerProps {
   activeAIServiceSetting: { id: string } | null;
@@ -27,6 +28,61 @@ interface SparkyChatInnerProps {
     parts?: MessagePart[];
   }>;
 }
+
+const resizeImageBase64 = (
+  base64Str: string,
+  maxDim = 1024
+): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!base64Str.startsWith('data:image/')) {
+      resolve(base64Str);
+      return;
+    }
+
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width <= maxDim && height <= maxDim) {
+        resolve(base64Str);
+        return;
+      }
+
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(base64Str);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      // Convert to JPEG with 0.8 quality to keep size minimal
+      const resized = canvas.toDataURL('image/jpeg', 0.8);
+      resolve(resized);
+    };
+
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
 
 const SparkyChatInner = ({
   activeAIServiceSetting,
@@ -75,6 +131,37 @@ const SparkyChatInner = ({
       body: {
         service_config_id: activeAIServiceSetting?.id,
         user_date: userDate,
+      },
+      prepareSendMessagesRequest: async (options: {
+        id: string;
+        messages: UIMessage[];
+        requestMetadata: unknown;
+        body: Record<string, any> | undefined;
+        credentials: RequestCredentials | undefined;
+        headers: HeadersInit | undefined;
+        api: string;
+      }) => {
+        if (options.messages) {
+          for (const message of options.messages) {
+            if (message.role === 'user' && message.parts) {
+              for (const part of message.parts) {
+                if (
+                  part.type === 'file' &&
+                  part.mediaType.startsWith('image/') &&
+                  part.url.startsWith('data:image/')
+                ) {
+                  part.url = await resizeImageBase64(part.url);
+                }
+              }
+            }
+          }
+        }
+        return {
+          body: {
+            ...options.body,
+            messages: options.messages,
+          },
+        };
       },
     }),
     messages: initialMessages,
