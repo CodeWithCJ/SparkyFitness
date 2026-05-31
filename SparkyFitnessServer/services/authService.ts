@@ -1,10 +1,13 @@
 import bcrypt from 'bcryptjs';
+import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import userRepository from '../models/userRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import adminActivityLogRepository from '../models/adminActivityLogRepository.js';
+
+const hashAsync = promisify(bcrypt.hash);
 /**
  * Gets consistent user data by ID.
  * Used internally by various app services.
@@ -175,7 +178,7 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
 async function updateUserPassword(authenticatedUserId: any, newPassword: any) {
   try {
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    const hashedPassword = await hashAsync(newPassword, saltRounds);
     const success = await userRepository.updateUserPassword(
       authenticatedUserId,
       hashedPassword
