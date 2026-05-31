@@ -16,6 +16,7 @@ import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import foodRepository from '../models/foodRepository.js';
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
  * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
@@ -336,6 +337,168 @@ function sanitizeHealthConnectSleepStageEvents(stageEvents: any) {
     return sanitized;
   }, []);
 }
+// Delete-then-insert idempotency for provider-sourced entries: groups the given
+// entries by source, computes each source's [min,max] resolved-day range, and
+// invokes deleteFn(userId, startDate, endDate, source). Shared by the exercise
+// and nutrition pre-cleanup passes so a re-sync of a date range never duplicates
+// rows; manual/web entries (no matching source) are left untouched.
+async function preCleanEntriesBySourceAndDate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entries: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fallbackTimezone: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  label: string,
+  deleteFn: (
+    userId: unknown,
+    startDate: string,
+    endDate: string,
+    source: string
+  ) => Promise<unknown>
+) {
+  if (entries.length === 0) return;
+  const daysBySource: Record<string, Set<string>> = {};
+  for (const entry of entries) {
+    const source = entry.source || 'manual';
+    const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
+    if (!resolved) continue;
+    (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
+  }
+  for (const source of Object.keys(daysBySource)) {
+    const days = [...daysBySource[source]].sort();
+    if (days.length === 0) continue;
+    const startDate = days[0];
+    const endDate = days[days.length - 1];
+    log(
+      'info',
+      `[processHealthData] Pre-cleanup: Deleting existing ${label} for source '${source}' from ${startDate} to ${endDate}.`
+    );
+    await deleteFn(userId, startDate, endDate, source);
+  }
+}
+
+// Health Connect nutrient fields that map to dedicated food_entry columns.
+// (Vitamins/minerals without a column arrive already grouped in custom_nutrients.)
+const NUTRITION_DIRECT_COLUMNS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+] as const;
+
+// Provider tag for Health Connect-sourced foods. Foods are reused per name via
+// (provider_type, provider_external_id); the diary entry is keyed by (source,
+// source_id) — the same provider model the Garmin nutrition sync uses.
+const HEALTH_CONNECT_PROVIDER_TYPE = 'health_connect';
+
+// Ingest a single Health Connect NutritionRecord as a food entry.
+//
+// A NutritionRecord is a *consumed amount*, not a per-serving food definition, so
+// the food/variant is just a labelled container: we reuse one food per name
+// (provider_external_id = name) and refresh its variant to the latest values,
+// mirroring the Garmin nutrition path (findFoodByProviderExternalId /
+// updateFoodVariantNutrition). The consumed nutrients are written onto the diary
+// entry itself, so two different amounts of the same food keep their own values
+// instead of collapsing to one variant's. The entry upserts by (source,
+// source_id), so re-syncing the same record updates in place — which lets the
+// client chunk freely without a destructive range-delete.
+async function ingestNutritionFoodEntry(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dataEntry: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  parsedDate: string
+) {
+  const trimmedName =
+    typeof dataEntry.food_name === 'string' ? dataEntry.food_name.trim() : '';
+  const foodName = trimmedName || 'Health Connect food';
+  // Named records reuse one food per name; nameless ones key off the record id so
+  // each gets its own (hidden) food instead of collapsing onto a single shared
+  // 'Health Connect food' row whose variant would churn on every sync.
+  const providerExternalId = trimmedName || dataEntry.source_id || foodName;
+
+  // Consumed nutrients (serving_size = 1, so one serving = the consumed amount).
+  // Fields the provider omitted are stored as null, never a phantom 0.
+  const nutrients: Record<string, number | null> = {};
+  for (const field of NUTRITION_DIRECT_COLUMNS) {
+    nutrients[field] = dataEntry[field] ?? null;
+  }
+
+  // Reuse this provider's food for the same external id if present (refreshing its
+  // variant to the latest values), else create it. The provider_type scoping
+  // keeps user-authored library foods untouched.
+  let food = await foodRepository.findFoodByProviderExternalId(
+    userId,
+    providerExternalId,
+    HEALTH_CONNECT_PROVIDER_TYPE
+  );
+  let variantId = food?.default_variant_id ?? food?.default_variant?.id;
+  if (food && variantId) {
+    await foodRepository.updateFoodVariantNutrition(variantId, userId, {
+      serving_size: 1,
+      serving_unit: 'serving',
+      ...nutrients,
+    });
+  } else {
+    food = await foodRepository.createFood({
+      name: foodName,
+      user_id: userId,
+      is_custom: false,
+      // Hidden from food search (these are diary-only provider entries, and the
+      // generic 'Health Connect food' name would otherwise clutter results).
+      is_quick_food: true,
+      provider_type: HEALTH_CONNECT_PROVIDER_TYPE,
+      provider_external_id: providerExternalId,
+      shared_with_public: false,
+      // food_variants.source is constrained to manual|ai_estimate|imported.
+      source: 'imported',
+      serving_size: 1,
+      serving_unit: 'serving',
+      ...nutrients,
+    });
+    variantId = food.default_variant_id ?? food.default_variant?.id;
+  }
+
+  // The consumed nutrients are passed through as snapshot overrides so the entry
+  // keeps its own values; createFoodEntry upserts on (user, source, source_id).
+  return foodRepository.createFoodEntry(
+    {
+      user_id: userId,
+      food_id: food.id,
+      variant_id: variantId,
+      quantity: 1,
+      unit: 'serving',
+      entry_date: parsedDate,
+      meal_type: dataEntry.meal_type || 'snacks',
+      serving_size: 1,
+      serving_unit: 'serving',
+      food_name: foodName,
+      ...nutrients,
+      // Idempotency key. Tagged with the provider (not the client's display
+      // label) so it stays consistent with the food's provider_type.
+      source: HEALTH_CONNECT_PROVIDER_TYPE,
+      source_id: dataEntry.source_id || null,
+    },
+    actingUserId
+  );
+}
+
 async function processHealthData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   healthDataArray: any,
@@ -362,49 +525,23 @@ async function processHealthData(
     }
     return sleepContext;
   };
-  // 0. Pre-Cleanup: Delete existing Exercise entries for the date range to prevent duplicates
-  // (delete-then-insert idempotency for exercise/workout sessions).
-  // Sleep is intentionally excluded: a partial-window re-sync (e.g. only post-midnight stages)
-  // must NOT wipe the previously-stored full night. Sleep ingest is merge-based via
-  // upsertSleepStageEvent ON CONFLICT + aggregate recompute. See issue #1180.
-  const entriesToClean = healthDataArray.filter(
+  // 0. Pre-Cleanup (delete-then-insert idempotency) for exercise/workout sessions.
+  // Sleep is intentionally excluded: a partial-window re-sync (e.g. only
+  // post-midnight stages) must NOT wipe the previously-stored full night — sleep
+  // ingest is merge-based via upsertSleepStageEvent ON CONFLICT + aggregate
+  // recompute (issue #1180). Nutrition is also excluded: it upserts each entry by
+  // (source, source_id) in its case below, so it needs no range-delete and can be
+  // chunked freely by the client.
+  await preCleanEntriesBySourceAndDate(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (d: any) => d.type === 'ExerciseSession' || d.type === 'Workout'
+    healthDataArray.filter(
+      (d: any) => d.type === 'ExerciseSession' || d.type === 'Workout'
+    ),
+    tz,
+    userId,
+    'exercise entries',
+    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate
   );
-  if (entriesToClean.length > 0) {
-    const datesBySource = {};
-    for (const entry of entriesToClean) {
-      const source = entry.source || 'manual';
-      const resolved = resolveHealthEntryDate(entry, tz);
-      if (resolved) {
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        if (!datesBySource[source]) {
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-          datesBySource[source] = {};
-        }
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        datesBySource[source][resolved.parsedDate] = true;
-      }
-    }
-    for (const source in datesBySource) {
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      const dates = Object.keys(datesBySource[source]).sort();
-      if (dates.length > 0) {
-        const startDate = dates[0];
-        const endDate = dates[dates.length - 1];
-        log(
-          'info',
-          `[processHealthData] Pre-cleanup: Deleting existing exercise entries for source '${source}' from ${startDate} to ${endDate}.`
-        );
-        await exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate(
-          userId,
-          startDate,
-          endDate,
-          source
-        );
-      }
-    }
-  }
   for (const dataEntry of healthDataArray) {
     const {
       value,
@@ -420,6 +557,7 @@ async function processHealthData(
       'Stress',
       'ExerciseSession',
       'Workout',
+      'Nutrition',
     ];
     const isComplexType = complexTypes.includes(type);
     if (
@@ -761,6 +899,44 @@ async function processHealthData(
             errors.push({
               // @ts-expect-error TS(2571): Object is of type 'unknown'.
               error: `Failed to process Workout entry: ${workoutError.message}`,
+              entry: dataEntry,
+            });
+          }
+          break;
+        }
+        // Ingest a Health Connect NutritionRecord as a food entry
+        // (see ingestNutritionFoodEntry).
+        case 'Nutrition': {
+          // Idempotency depends on source_id (the upsert key). A record without
+          // one can't be deduped and would re-insert on every sync, so skip it
+          // rather than risk duplicates (guards against client/device variance).
+          if (!dataEntry.source_id) {
+            log(
+              'warn',
+              `[processHealthData] Skipping Nutrition record without source_id (cannot dedupe): '${dataEntry.food_name || 'unnamed'}'`
+            );
+            break;
+          }
+          try {
+            const foodEntry = await ingestNutritionFoodEntry(
+              dataEntry,
+              userId,
+              actingUserId,
+              parsedDate
+            );
+            processedResults.push({ type, status: 'success', data: foodEntry });
+          } catch (nutritionError) {
+            const errMsg =
+              nutritionError instanceof Error
+                ? nutritionError.message
+                : String(nutritionError);
+            log(
+              'error',
+              `Error processing Nutrition entry: ${errMsg}`,
+              dataEntry
+            );
+            errors.push({
+              error: `Failed to process Nutrition entry: ${errMsg}`,
               entry: dataEntry,
             });
           }

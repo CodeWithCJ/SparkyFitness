@@ -4,6 +4,8 @@ import {
   TransformOutput,
   TransformedRecord,
   TransformedExerciseSession,
+  TransformedNutritionEntry,
+  SparkyMealType,
   AggregatedSleepSession,
   RecordTimezoneMetadata,
   SleepStageType,
@@ -230,14 +232,6 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     const value = extractNestedValue(rec, 'speed', 'inMetersPerSecond');
     const date = getDateString(rec.startTime);
     return value !== null && date ? { value, date } : null;
-  },
-
-  Nutrition: (rec) => {
-    const energy = rec.energy as Record<string, number> | undefined;
-    if (!energy?.inCalories) return null;
-    const value = energy.inCalories / 1000;
-    const date = getDateString(rec.startTime);
-    return date ? { value, date } : null;
   },
 
   // Direct value records
@@ -482,7 +476,120 @@ const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
   }
 };
 
+// Health Connect MealType constants → Sparky meal_type slug.
+// HC: BREAKFAST=1, LUNCH=2, DINNER=3, SNACK=4, UNKNOWN=0.
+const mapHealthConnectMealType = (mealType: unknown): SparkyMealType => {
+  switch (mealType) {
+    case 1: return 'breakfast';
+    case 2: return 'lunch';
+    case 3: return 'dinner';
+    case 4: return 'snacks';
+    default: return 'snacks'; // UNKNOWN/0 → snacks (no neutral bucket in Sparky)
+  }
+};
+
+// HC stores every nutrient as Mass (grams), but Sparky's food columns expect a
+// specific unit per nutrient — matching how OpenFoodFacts/Garmin populate them:
+// macros in grams, most minerals/vitamins in mg, a few trace nutrients in mcg.
+// We convert from grams accordingly; otherwise e.g. sodium lands 1000x too low.
+const G_TO_MG = 1_000;
+const G_TO_MCG = 1_000_000;
+
+// HC NutritionRecord Mass field → { Sparky column, grams→column-unit factor }.
+const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: number }[] = [
+  { hcField: 'protein', column: 'protein', factor: 1 },
+  { hcField: 'totalCarbohydrate', column: 'carbs', factor: 1 },
+  { hcField: 'totalFat', column: 'fat', factor: 1 },
+  { hcField: 'saturatedFat', column: 'saturated_fat', factor: 1 },
+  { hcField: 'polyunsaturatedFat', column: 'polyunsaturated_fat', factor: 1 },
+  { hcField: 'monounsaturatedFat', column: 'monounsaturated_fat', factor: 1 },
+  { hcField: 'transFat', column: 'trans_fat', factor: 1 },
+  { hcField: 'dietaryFiber', column: 'dietary_fiber', factor: 1 },
+  { hcField: 'sugar', column: 'sugars', factor: 1 },
+  { hcField: 'cholesterol', column: 'cholesterol', factor: G_TO_MG },
+  { hcField: 'sodium', column: 'sodium', factor: G_TO_MG },
+  { hcField: 'potassium', column: 'potassium', factor: G_TO_MG },
+  { hcField: 'calcium', column: 'calcium', factor: G_TO_MG },
+  { hcField: 'iron', column: 'iron', factor: G_TO_MG },
+  { hcField: 'vitaminC', column: 'vitamin_c', factor: G_TO_MG },
+  { hcField: 'vitaminA', column: 'vitamin_a', factor: G_TO_MCG },
+];
+
+// HC's other Mass nutrients (biotin, magnesium, vitaminB12, …) are intentionally
+// dropped: Sparky has no column for them, and its custom_nutrients are matched by
+// name to *user-defined* nutrients with *user-chosen* units — so there's no unit
+// we could store them in that would display correctly. Forwarding them would be
+// fabricating both the value's unit and a name that nothing renders.
+
+// Strip float noise (4.949999999999999 -> 4.95). Significant figures (not fixed
+// decimals) so small post-conversion values aren't truncated.
+const tidyNumber = (value: number): number => Number(value.toPrecision(6));
+
+// HC's native bridge emits `{ inGrams: 0 }` / `{ inKilocalories: 0 }` for every
+// nutrient a source did NOT set — it cannot distinguish "0" from "absent". So we
+// treat 0 (and NaN) as "not provided" and omit it, rather than writing a wall of
+// phantom zeros to the food entry. A genuinely-zero nutrient is reported as
+// "unknown" rather than a misleading 0, which is the honest representation.
+const extractMassGrams = (rec: Record<string, unknown>, field: string): number | undefined => {
+  const grams = (rec[field] as { inGrams?: number } | undefined)?.inGrams;
+  return grams != null && !isNaN(grams) && grams > 0 ? grams : undefined;
+};
+
+// Convert grams to the target unit and strip float noise.
+const convertMass = (grams: number | undefined, factor: number): number | undefined =>
+  grams != null ? tidyNumber(grams * factor) : undefined;
+
+// Energy carries inKilocalories; some sources only populate inCalories.
+const extractEnergyKcal = (rec: Record<string, unknown>, field: string): number | undefined => {
+  const energy = rec[field] as { inKilocalories?: number; inCalories?: number } | undefined;
+  const kcal =
+    energy?.inKilocalories != null && !isNaN(energy.inKilocalories)
+      ? energy.inKilocalories
+      : energy?.inCalories != null && !isNaN(energy.inCalories)
+        ? energy.inCalories / 1000
+        : undefined;
+  return kcal != null && kcal > 0 ? tidyNumber(kcal) : undefined;
+};
+
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
+  Nutrition: (rec, _record, _metricConfig, output) => {
+    if (!rec.startTime) return;
+
+    const metadata = rec.metadata as { id?: string } | undefined;
+    // Skip records without HC's stable id: the server keys idempotent re-sync on
+    // it, so an id-less record would create a duplicate entry on every sync.
+    if (!metadata?.id) return;
+
+    // Send only the instant (timestamp) plus the offset metadata, never a
+    // pre-bucketed day string: the server derives the calendar day from the
+    // instant + offset. Sending a day string alongside a timestamp makes the
+    // server parse it as UTC midnight and shift negative-offset zones to the
+    // previous day.
+    const entry: TransformedNutritionEntry = {
+      type: 'Nutrition',
+      source: HEALTH_CONNECT_SOURCE,
+      // metadata.id is HC's own UUID — globally unique. (clientRecordId is set by
+      // the writing app and could collide across apps, so it's not used as the key.)
+      source_id: metadata?.id,
+      timestamp: rec.startTime as string,
+      food_name: (rec.name as string) || 'Health Connect food',
+      meal_type: mapHealthConnectMealType(rec.mealType),
+      ...extractTimezoneMetadata(rec),
+    };
+
+    const calories = extractEnergyKcal(rec, 'energy');
+    if (calories != null) entry.calories = calories;
+
+    for (const { hcField, column, factor } of HC_NUTRIENT_COLUMNS) {
+      const value = convertMass(extractMassGrams(rec, hcField), factor);
+      if (value != null) {
+        (entry as unknown as Record<string, unknown>)[column] = value;
+      }
+    }
+
+    output.push(entry);
+  },
+
   HeartRate: (rec, _record, metricConfig, output) => {
     const samples = rec.samples as { beatsPerMinute: number }[] | undefined;
     if (!rec.startTime || !samples) return;
