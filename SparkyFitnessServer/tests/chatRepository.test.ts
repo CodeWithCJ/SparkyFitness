@@ -24,11 +24,8 @@ describe('chatRepository.upsertAiServiceSetting', () => {
       query: vi.fn(),
       release: vi.fn(),
     };
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on type
-    getClient.mockResolvedValue(mockClient);
     vi.clearAllMocks();
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on type
-    getClient.mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   it('omitting model_name/custom_url/system_prompt sends undefined to SQL (documents why callers must send full payload)', async () => {
