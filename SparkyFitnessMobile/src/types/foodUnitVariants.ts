@@ -25,10 +25,8 @@ export interface FoodUnitVariant {
   iron?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
-  // AI-Assisted Unit Conversions provenance (stock + personal model from
-  // server-side Phase A). user_id is the variant owner; source defaults to
-  // 'manual' server-side when omitted.
-  user_id?: string;
+  // AI-Assisted Unit Conversions provenance. source defaults to 'manual'
+  // server-side when omitted.
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
 }

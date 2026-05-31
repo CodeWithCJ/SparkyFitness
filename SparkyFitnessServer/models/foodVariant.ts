@@ -7,20 +7,16 @@ import { sanitizeGlycemicIndex } from './food.js';
 async function createFoodVariant(variantData: any, userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
-    // user_id classifies stock (== food.user_id) vs personal variants.
-    // Caller must set variantData.user_id; foodCoreService stamps it from the
-    // authenticated user before invoking this.
     const result = await client.query(
       `INSERT INTO food_variants (
-        food_id, user_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
         source, ai_confidence, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, now(), now()) RETURNING id`,
       [
         variantData.food_id,
-        variantData.user_id,
         variantData.serving_size,
         variantData.serving_unit,
         variantData.calories,
@@ -69,11 +65,11 @@ async function getFoodVariantById(id: any, userId: any) {
 async function getFoodVariantOwnerId(variantId: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
-    // Variant ownership now lives on food_variants.user_id directly (stock+personal model).
-    // Previously this returned the FOOD owner via JOIN; that's wrong for personal variants
-    // where variant.user_id != food.user_id.
     const result = await client.query(
-      'SELECT user_id FROM food_variants WHERE id = $1',
+      `SELECT f.user_id
+       FROM food_variants fv
+       JOIN foods f ON fv.food_id = f.id
+       WHERE fv.id = $1`,
       [variantId]
     );
     const ownerId = result.rows[0]?.user_id;
@@ -90,9 +86,6 @@ async function getFoodVariantOwnerId(variantId: any, userId: any) {
 async function getFoodVariantsByFoodId(foodId: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
-    // Stock + personal filter: return the food owner's stock variants plus
-    // this user's own personal variants. Other users' personal variants are
-    // excluded — RLS also gates them as defense in depth.
     const result = await client.query(
       'SELECT * FROM food_variants WHERE food_id = $1',
       [foodId]
@@ -203,7 +196,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
   try {
     const query = `
       INSERT INTO food_variants (
-        food_id, user_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
@@ -212,7 +205,6 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
       variant.food_id,
-      variant.user_id,
       variant.serving_size,
       variant.serving_unit,
       variant.calories,

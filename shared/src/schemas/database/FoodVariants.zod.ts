@@ -12,7 +12,6 @@ const foodsIdSchema = z.any();
 export const foodVariantsSchema = z.object({
   id: foodVariantsIdSchema,
   food_id: foodsIdSchema,
-  user_id: z.string(),
   serving_size: z.number(),
   serving_unit: z.string(),
   created_at: z.date(),
@@ -44,7 +43,6 @@ export const foodVariantsSchema = z.object({
 export const foodVariantsInitializerSchema = z.object({
   id: foodVariantsIdSchema.optional(),
   food_id: foodsIdSchema,
-  user_id: z.string().optional(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
   created_at: z.date().optional(),
@@ -76,7 +74,6 @@ export const foodVariantsInitializerSchema = z.object({
 export const foodVariantsMutatorSchema = z.object({
   id: foodVariantsIdSchema.optional(),
   food_id: foodsIdSchema.optional(),
-  user_id: z.string().optional(),
   serving_size: z.number().optional(),
   serving_unit: z.string().optional(),
   created_at: z.date().optional(),

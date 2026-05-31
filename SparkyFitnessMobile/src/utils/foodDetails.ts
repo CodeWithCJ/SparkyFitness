@@ -184,7 +184,6 @@ export function localVariantToUnitVariant(variant: FoodVariantDetail): FoodUnitV
     // recognizes AI variants on reopen — without this, an AI cup variant
     // loaded from the server would look like a regular math source and
     // sibling volume units would all show green checkmarks.
-    user_id: variant.user_id,
     source: variant.source,
     ai_confidence: variant.ai_confidence,
   };

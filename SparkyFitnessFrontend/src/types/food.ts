@@ -33,11 +33,8 @@ export interface FoodVariant {
   is_locked?: boolean;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
-  // AI-Assisted Unit Conversions provenance (stock + personal model).
-  // user_id is the variant owner (food owner for stock variants, the creator
-  // for personal variants). source defaults to 'manual' server-side when the
-  // client omits these fields.
-  user_id?: string;
+  // AI-Assisted Unit Conversions provenance. source defaults to 'manual'
+  // server-side when the client omits these fields.
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
 }

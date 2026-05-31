@@ -1483,7 +1483,6 @@ COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for 
 CREATE TABLE public.food_variants (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     food_id uuid NOT NULL,
-    user_id uuid NOT NULL,
     serving_size numeric DEFAULT 1 NOT NULL,
     serving_unit text DEFAULT 'g'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -3420,20 +3419,6 @@ CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries U
 
 
 --
--- Name: food_variants_user_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX food_variants_user_id_idx ON public.food_variants USING btree (user_id);
-
-
---
--- Name: food_variants_food_user_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX food_variants_food_user_idx ON public.food_variants USING btree (food_id, user_id);
-
-
---
 -- Name: weekly_goal_plans weekly_goal_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4287,14 +4272,6 @@ ALTER TABLE ONLY public.meal_plan_template_assignments
 
 ALTER TABLE ONLY public.food_variants
     ADD CONSTRAINT fk_food_variants_food_id FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
-
-
---
--- Name: food_variants food_variants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.food_variants
-    ADD CONSTRAINT food_variants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
