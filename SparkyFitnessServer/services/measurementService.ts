@@ -521,8 +521,7 @@ async function processHealthData(
           processedResults.push({ type, status: 'success', data: result });
           break;
         }
-        case 'weight':
-        case 'body_fat_percentage': {
+        case 'weight': {
           const numericValue = parseFloat(value);
           if (isNaN(numericValue) || numericValue <= 0) {
             errors.push({
@@ -531,12 +530,30 @@ async function processHealthData(
             });
             break;
           }
-          const checkInMeasurements = { [type]: numericValue };
           result = await measurementRepository.upsertCheckInMeasurements(
             userId,
             actingUserId,
             parsedDate,
-            checkInMeasurements
+            { weight: numericValue }
+          );
+          processedResults.push({ type, status: 'success', data: result });
+          break;
+        }
+        case 'body_fat_percentage':
+        case 'body_fat': {
+          const numericValue = parseFloat(value);
+          if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
+            errors.push({
+              error: `Invalid value for ${type}. Must be between 0 and 100.`,
+              entry: dataEntry,
+            });
+            break;
+          }
+          result = await measurementRepository.upsertCheckInMeasurements(
+            userId,
+            actingUserId,
+            parsedDate,
+            { body_fat_percentage: numericValue }
           );
           processedResults.push({ type, status: 'success', data: result });
           break;

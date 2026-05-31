@@ -169,6 +169,37 @@ describe('processHealthData default units (#567)', () => {
       measurementRepository.upsertCustomMeasurement
     ).not.toHaveBeenCalled();
   });
+
+  it('stores Health Connect body_fat in check-in measurements as body_fat_percentage', async () => {
+    measurementRepository.upsertCheckInMeasurements = vi
+      .fn()
+      .mockResolvedValue({ id: 'check-in-1', body_fat_percentage: 18.4 });
+
+    const result = await measurementService.processHealthData(
+      [
+        {
+          type: 'body_fat',
+          value: 18.4,
+          date: '2025-02-01',
+          source: 'HealthConnect',
+          unit: '%',
+        },
+      ],
+      userId,
+      actingUserId
+    );
+
+    expect(result.processed).toHaveLength(1);
+    expect(
+      measurementRepository.upsertCheckInMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, '2025-02-01', {
+      body_fat_percentage: 18.4,
+    });
+    expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
+  });
 });
 describe('Aggregated health metric default units', () => {
   const userId = 'user-123';
