@@ -39,7 +39,7 @@ export interface FoodVariant {
   ai_confidence?: 'high' | 'medium' | 'low' | null;
   custom_nutrients?: Record<string, string | number>;
   allergens?: string[] | null;
-  traces?: string[] | null;: add allergens and traces from OpenFoodFacts)
+  traces?: string[] | null;
 }
 
 export interface Food {
@@ -204,7 +204,7 @@ export type NumericFoodVariantKeys = Exclude<
   | 'source'
   | 'ai_confidence'
   | 'allergens'
-  | 'traces': add allergens and traces from OpenFoodFacts)
+  | 'traces'
 >;
 export interface EquivalentUnit {
   id?: string;

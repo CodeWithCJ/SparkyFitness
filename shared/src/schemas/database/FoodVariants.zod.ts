@@ -39,7 +39,7 @@ export const foodVariantsSchema = z.object({
   source: z.enum(["manual", "ai_estimate", "imported"]),
   ai_confidence: z.enum(["high", "medium", "low"]).nullable(),
   allergens: z.array(z.string()).nullable(),
-  traces: z.array(z.string()).nullable(),: add allergens and traces from OpenFoodFacts)
+  traces: z.array(z.string()).nullable(),
 });
 
 export const foodVariantsInitializerSchema = z.object({
@@ -72,7 +72,7 @@ export const foodVariantsInitializerSchema = z.object({
   source: z.enum(["manual", "ai_estimate", "imported"]).optional(),
   ai_confidence: z.enum(["high", "medium", "low"]).optional().nullable(),
   allergens: z.array(z.string()).optional().nullable(),
-  traces: z.array(z.string()).optional().nullable(),: add allergens and traces from OpenFoodFacts)
+  traces: z.array(z.string()).optional().nullable(),
 });
 
 export const foodVariantsMutatorSchema = z.object({
@@ -105,7 +105,7 @@ export const foodVariantsMutatorSchema = z.object({
   source: z.enum(["manual", "ai_estimate", "imported"]).optional(),
   ai_confidence: z.enum(["high", "medium", "low"]).optional().nullable(),
   allergens: z.array(z.string()).optional().nullable(),
-  traces: z.array(z.string()).optional().nullable(),: add allergens and traces from OpenFoodFacts)
+  traces: z.array(z.string()).optional().nullable(),
 });
 
 export type FoodVariants = z.infer<typeof foodVariantsSchema>;
