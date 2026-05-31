@@ -40,7 +40,6 @@ const resizeImageBase64 = (
     }
 
     const img = new Image();
-    img.src = base64Str;
     img.onload = () => {
       let width = img.width;
       let height = img.height;
@@ -81,6 +80,8 @@ const resizeImageBase64 = (
     img.onerror = () => {
       resolve(base64Str);
     };
+
+    img.src = base64Str;
   });
 };
 
@@ -149,8 +150,8 @@ const SparkyChatInner = ({
                 message.parts.map(async (part) => {
                   if (
                     part.type === 'file' &&
-                    part.mediaType.startsWith('image/') &&
-                    part.url.startsWith('data:image/')
+                    part.mediaType?.startsWith('image/') &&
+                    part.url?.startsWith('data:image/')
                   ) {
                     const resizedUrl = await resizeImageBase64(part.url);
                     return { ...part, url: resizedUrl };
