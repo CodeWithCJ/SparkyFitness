@@ -435,7 +435,24 @@ const AIServiceSettings = () => {
     }
 
     try {
-      await updateService({ serviceId, serviceData: { is_active: isActive } });
+      const isCustomModel = originalService.model_name
+        ? !getModelOptions(originalService.service_type ?? '').includes(
+            originalService.model_name
+          )
+        : false;
+      const serviceData = updateAiServiceSettingsFormSchema.parse({
+        service_name: originalService.service_name,
+        service_type: originalService.service_type,
+        api_key: '',
+        custom_url: originalService.custom_url ?? '',
+        system_prompt: originalService.system_prompt ?? '',
+        is_active: isActive,
+        model_name: isCustomModel ? '' : (originalService.model_name ?? ''),
+        showCustomModelInput: isCustomModel,
+        custom_model_name: originalService.model_name ?? '',
+      });
+      if (serviceData.api_key === '') delete serviceData.api_key;
+      await updateService({ serviceId, serviceData });
       toast({
         title: t('settings.aiService.userSettings.success'),
         description: isActive
