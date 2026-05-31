@@ -101,11 +101,13 @@ export const saveFood = async (
           vitamin_c: variant.vitamin_c,
           calcium: variant.calcium,
           iron: variant.iron,
-          is_default: variant.is_default || false, // Pass is_default flag
+          is_default: variant.is_default || false,
           glycemic_index: variant.glycemic_index,
-          custom_nutrients: variant.custom_nutrients || {}, // Include custom nutrients
+          custom_nutrients: variant.custom_nutrients || {},
           source: variant.source,
           ai_confidence: variant.ai_confidence,
+          allergens: variant.allergens ?? null,
+          traces: variant.traces ?? null,
         },
       });
     }

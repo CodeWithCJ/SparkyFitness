@@ -7,6 +7,10 @@ jest.mock('@/components/FoodSearch/NutrientGrid', () => ({
   NutrientGrid: () => <div data-testid="nutrient-grid" />,
 }));
 
+jest.mock('@/hooks/useAllergenPreferences', () => ({
+  useAllergenPreferences: () => ({ data: [] }),
+}));
+
 jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({
     activeUserId: 'user-1',

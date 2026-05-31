@@ -29,6 +29,8 @@ export const FoodVariantSchema = z.object({
     .optional(),
   source: z.enum(['manual', 'ai_estimate', 'imported']).optional(),
   ai_confidence: z.enum(['high', 'medium', 'low']).nullable().optional(),
+  allergens: z.array(z.string()).nullable().optional(),
+  traces: z.array(z.string()).nullable().optional(),
 });
 
 export type FoodVariant = z.infer<typeof FoodVariantSchema>;

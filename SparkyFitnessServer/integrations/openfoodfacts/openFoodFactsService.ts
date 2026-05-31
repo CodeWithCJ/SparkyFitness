@@ -18,6 +18,8 @@ const OFF_FIELDS = [
   'serving_size',
   'serving_quantity',
   'nutriments',
+  'allergens_tags',
+  'traces_tags',
 ];
 
 // Wraps fetch with optional session-cookie authentication for OFF endpoints.
@@ -157,6 +159,11 @@ async function searchOpenFoodFactsByBarcodeFields(
     throw error;
   }
 }
+function normalizeAllergenTags(tags: string[] | undefined): string[] | null {
+  if (!tags || tags.length === 0) return null;
+  return tags.map((t) => t.replace(/^[a-z]{2}:/, ''));
+}
+
 function mapOpenFoodFactsProduct(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   product: any,
@@ -228,7 +235,11 @@ function mapOpenFoodFactsProduct(
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',
     is_custom: false,
-    default_variant: defaultVariant,
+    default_variant: {
+      ...defaultVariant,
+      allergens: normalizeAllergenTags(product.allergens_tags),
+      traces: normalizeAllergenTags(product.traces_tags),
+    },
   };
 }
 export { searchOpenFoodFacts };

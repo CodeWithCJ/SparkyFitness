@@ -50,6 +50,8 @@ export const foodEntriesSchema = z.object({
   meal_id: mealsIdSchema.nullable(),
   food_entry_meal_id: foodEntryMealsIdSchema.nullable(),
   custom_nutrients: z.unknown().nullable(),
+  allergens: z.array(z.string()).nullable(),
+  traces: z.array(z.string()).nullable(),
   meal_type_id: mealTypesIdSchema,
 });
 
@@ -90,6 +92,8 @@ export const foodEntriesInitializerSchema = z.object({
   meal_id: mealsIdSchema.optional().nullable(),
   food_entry_meal_id: foodEntryMealsIdSchema.optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  allergens: z.array(z.string()).optional().nullable(),
+  traces: z.array(z.string()).optional().nullable(),
   meal_type_id: mealTypesIdSchema,
 });
 
@@ -130,6 +134,8 @@ export const foodEntriesMutatorSchema = z.object({
   meal_id: mealsIdSchema.optional().nullable(),
   food_entry_meal_id: foodEntryMealsIdSchema.optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  allergens: z.array(z.string()).optional().nullable(),
+  traces: z.array(z.string()).optional().nullable(),
   meal_type_id: mealTypesIdSchema.optional(),
 });
 

@@ -5,6 +5,7 @@ import foodService from '../services/foodService.js';
 import labelScanService from '../services/labelScanService.js';
 import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
+import { backfillOffAllergens } from '../utils/backfillAllergens.js';
 const router = express.Router();
 router.use(express.json());
 
@@ -1118,4 +1119,14 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
+router.post('/sync-allergens', authenticate, async (req, res, next) => {
+  try {
+    const result = await backfillOffAllergens(req.userId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

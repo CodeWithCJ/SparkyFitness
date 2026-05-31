@@ -71,6 +71,7 @@ BEGIN
     'sleep_entry_stages',
     'fasting_logs',
     'user_custom_nutrients',
+    'user_allergen_preferences',
     'sleep_need_calculations',
     'daily_sleep_need',
     'day_classification_cache'
@@ -338,6 +339,7 @@ SELECT create_owner_policy('user_preferences');
 SELECT create_owner_policy('user_water_containers');
 SELECT create_owner_policy('weekly_goal_plans');
 SELECT create_owner_policy('user_custom_nutrients');
+SELECT create_owner_policy('user_allergen_preferences');
 
 -- Admin Activity Logs: Only the admin who performed the action or other admins can view
 CREATE POLICY admin_only_select ON public.admin_activity_logs FOR SELECT TO PUBLIC
