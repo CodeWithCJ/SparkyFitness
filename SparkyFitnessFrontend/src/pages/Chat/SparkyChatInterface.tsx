@@ -136,30 +136,38 @@ const SparkyChatInner = ({
         id: string;
         messages: UIMessage[];
         requestMetadata: unknown;
-        body: Record<string, any> | undefined;
+        body: Record<string, unknown> | undefined;
         credentials: RequestCredentials | undefined;
         headers: HeadersInit | undefined;
         api: string;
       }) => {
-        if (options.messages) {
-          for (const message of options.messages) {
+        // Deep copy/map messages to avoid in-place mutation and process in parallel
+        const processedMessages = await Promise.all(
+          options.messages.map(async (message) => {
             if (message.role === 'user' && message.parts) {
-              for (const part of message.parts) {
-                if (
-                  part.type === 'file' &&
-                  part.mediaType.startsWith('image/') &&
-                  part.url.startsWith('data:image/')
-                ) {
-                  part.url = await resizeImageBase64(part.url);
-                }
-              }
+              const processedParts = await Promise.all(
+                message.parts.map(async (part) => {
+                  if (
+                    part.type === 'file' &&
+                    part.mediaType.startsWith('image/') &&
+                    part.url.startsWith('data:image/')
+                  ) {
+                    const resizedUrl = await resizeImageBase64(part.url);
+                    return { ...part, url: resizedUrl };
+                  }
+                  return part;
+                })
+              );
+              return { ...message, parts: processedParts };
             }
-          }
-        }
+            return message;
+          })
+        );
+
         return {
           body: {
             ...options.body,
-            messages: options.messages,
+            messages: processedMessages,
           },
         };
       },
