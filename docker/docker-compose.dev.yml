@@ -123,6 +123,9 @@ services:
   #     MCP_TRANSPORT: "http" # Default to HTTP for Docker
   #     SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
   #     SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
+  #     SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://localhost:3004}
+  #     ALLOW_PRIVATE_NETWORK_CORS: ${ALLOW_PRIVATE_NETWORK_CORS:-false}
+  #     SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: ${SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS:-}
   #   volumes:
   #     - ../SparkyFitnessMCP:/app/SparkyFitnessMCP:z
   #     - /app/SparkyFitnessMCP/node_modules

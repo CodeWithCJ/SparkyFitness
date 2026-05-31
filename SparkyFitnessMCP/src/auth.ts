@@ -53,6 +53,11 @@ export const auth = betterAuth({
   ],
   advanced: {
     cookiePrefix: "sparky",
+    useSecureCookies:
+      process.env.ALLOW_PRIVATE_NETWORK_CORS === "true" ||
+      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS?.includes("http://")
+        ? false
+        : process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
   },
   user: {
     fields: {
