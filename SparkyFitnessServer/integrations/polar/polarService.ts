@@ -468,53 +468,21 @@ async function fetchPhysicalInfo(
   accessToken: any
 ) {
   try {
-    // 1. Create Transaction
-    const transaction = await createTransaction(
-      userId,
-      externalUserId,
-      accessToken,
-      'physical_information'
+    log(
+      'info',
+      `Fetching Polar physical info (non-transactional) for user ${userId}...`
     );
-    if (!transaction) return [];
-    const transactionId = transaction['transaction-id'];
-    const resourceUrls = transaction['physical-informations'] || [];
-    const results = [];
-    // 2. Fetch Data
-    for (const url of resourceUrls) {
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-          },
-        });
-        // Use a unique key based on the resource URL or a timestamp to avoid overwriting
-        const resourceId = url.split('/').pop();
-        logRawResponse(
-          'polar',
-          `raw_physical_info_item_${resourceId}`,
-          response.data
-        );
-        results.push(response.data);
-      } catch (err) {
-        log(
-          'error',
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          `Error fetching physical info resource ${url}: ${err.message}`
-        );
+    const response = await axios.get(
+      `${POLAR_API_BASE_URL}/users/physical-info`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
       }
-    }
-    // 3. Commit Transaction
-    if (transactionId) {
-      await commitTransaction(
-        userId,
-        externalUserId,
-        accessToken,
-        'physical_information',
-        transactionId
-      );
-    }
-    return results;
+    );
+    logRawResponse('polar', 'raw_physical_info_item_current', response.data);
+    return [response.data];
   } catch (error) {
     log(
       'error',
@@ -532,10 +500,10 @@ async function fetchRecentPhysicalInfo(userId: any, accessToken: any) {
   try {
     log(
       'info',
-      `Fetching recent Polar physical info (List API) for user ${userId}...`
+      `Fetching recent Polar physical info (non-transactional) for user ${userId}...`
     );
     const response = await axios.get(
-      `${POLAR_API_BASE_URL}/users/physical-information`,
+      `${POLAR_API_BASE_URL}/users/physical-info`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -544,17 +512,12 @@ async function fetchRecentPhysicalInfo(userId: any, accessToken: any) {
       }
     );
     logRawResponse('polar', 'raw_physical_info_list', response.data);
-    const physicalInfo = response.data['physical-informations'] || [];
-    log(
-      'info',
-      `Fetched ${physicalInfo.length} recent physical info entries (List API) for user ${userId}.`
-    );
-    return physicalInfo;
+    return [response.data];
   } catch (error) {
     log(
       'error',
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error fetching recent Polar physical info (List API) for user ${userId}: ${error.message}`
+      `Error fetching recent Polar physical info (non-transactional) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -571,65 +534,7 @@ async function fetchExercises(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   accessToken: any
 ) {
-  try {
-    // 1. Create Transaction
-    const transaction = await createTransaction(
-      userId,
-      externalUserId,
-      accessToken,
-      'exercise'
-    );
-    if (!transaction) return [];
-    const transactionId = transaction['transaction-id'];
-    const resourceUrls = transaction['exercises'] || [];
-    const results = [];
-    // 2. Fetch Data
-    for (const url of resourceUrls) {
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-          },
-        });
-        const exerciseId = response.data.id || url.split('/').pop();
-        logRawResponse(
-          'polar',
-          `raw_exercise_item_${exerciseId}`,
-          response.data
-        );
-        // Note: Can also fetch samples/zones here if needed, usually passed as query params?
-        // The URL from transaction is the direct resource link.
-        // Docs say: "Use samples and zones query parameters to return optional samples and zone information"
-        // But the transaction URL might already include them? No, usually base resource.
-        // We'll trust the direct Get for now. We might need to append ?samples=true&zones=true if the transaction URL doesn't include it.
-        // Standard Polar practice is to append params if we want details.
-        // But let's start basic.
-        results.push(response.data);
-      } catch (err) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        log('error', `Error fetching exercise resource ${url}: ${err.message}`);
-      }
-    }
-    // 3. Commit Transaction
-    if (transactionId) {
-      await commitTransaction(
-        userId,
-        externalUserId,
-        accessToken,
-        transactionId,
-        'exercise'
-      );
-    }
-    return results;
-  } catch (error) {
-    log(
-      'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error fetching Polar exercises for user ${userId}: ${error.message}`
-    );
-    return [];
-  }
+  return await fetchRecentExercises(userId, accessToken);
 }
 /**
  * Fetch recent exercises using the List API (last 30 days).
@@ -653,7 +558,10 @@ async function fetchRecentExercises(userId: any, accessToken: any) {
       }
     );
     logRawResponse('polar', 'raw_exercises_recent', response.data);
-    const exercises = response.data || [];
+    const exercisesData = response.data || {};
+    const exercises = Array.isArray(exercisesData)
+      ? exercisesData
+      : exercisesData.exercises || [];
     log(
       'info',
       `Fetched ${exercises.length} recent exercises (List API) for user ${userId}.`
@@ -680,63 +588,7 @@ async function fetchDailyActivity(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   accessToken: any
 ) {
-  try {
-    // 1. Create Transaction
-    const transaction = await createTransaction(
-      userId,
-      externalUserId,
-      accessToken,
-      'activity'
-    );
-    if (!transaction) return [];
-    const transactionId = transaction['transaction-id'];
-    const resourceUrls = transaction['activity-log'] || []; // Check key in docs: 'activity-log' usually?
-    // Docs for 'activity-transactions' response say:
-    // "resource-uri": "...", "user-id": ..., "transaction-id": ..., "activity-log": ["url1", "url2"]
-    const results = [];
-    // 2. Fetch Data
-    for (const url of resourceUrls) {
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-          },
-        });
-        const activityId = url.split('/').pop();
-        logRawResponse(
-          'polar',
-          `raw_activity_item_${activityId}`,
-          response.data
-        );
-        results.push(response.data);
-      } catch (err) {
-        log(
-          'error',
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          `Error fetching daily activity resource ${url}: ${err.message}`
-        );
-      }
-    }
-    // 3. Commit Transaction
-    if (transactionId) {
-      await commitTransaction(
-        userId,
-        externalUserId,
-        accessToken,
-        'activity',
-        transactionId
-      );
-    }
-    return results;
-  } catch (error) {
-    log(
-      'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error fetching Polar daily activity for user ${userId}: ${error.message}`
-    );
-    return [];
-  }
+  return await fetchRecentDailyActivity(userId, accessToken);
 }
 /**
  * Fetch recent Daily Activity data using List API (last 28 days).
@@ -754,7 +606,7 @@ async function fetchRecentDailyActivity(userId: any, accessToken: any) {
     const from = addDays(to, -28);
     log('debug', `Requesting Polar activity from ${from} to ${to}`);
     const response = await axios.get(
-      `${POLAR_API_BASE_URL}/users/activities/?from=${from}&to=${to}`,
+      `${POLAR_API_BASE_URL}/users/activities?from=${from}&to=${to}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -763,7 +615,10 @@ async function fetchRecentDailyActivity(userId: any, accessToken: any) {
       }
     );
     logRawResponse('polar', 'raw_activity_list', response.data);
-    const activities = response.data || [];
+    const activitiesData = response.data || {};
+    const activities = Array.isArray(activitiesData)
+      ? activitiesData
+      : activitiesData.activities || activitiesData['activity-log'] || [];
     log(
       'info',
       `Fetched ${activities.length} days of recent daily activity (List API) for user ${userId}.`
@@ -910,7 +765,6 @@ async function fetchAndProcessPolarData(userId: any, createdByUserId: any) {
     await polarDataProcessor.processPolarExercises(
       userId,
       createdByUserId,
-      // @ts-expect-error TS(2345): Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       exercises
     );
   }
@@ -1002,6 +856,8 @@ export { fetchAndProcessPolarData };
 export { disconnectPolar };
 export { getStatus };
 export { getValidAccessToken };
+export { createTransaction };
+export { commitTransaction };
 export default {
   getAuthorizationUrl,
   exchangeCodeForTokens,
@@ -1019,4 +875,6 @@ export default {
   disconnectPolar,
   getStatus,
   getValidAccessToken,
+  createTransaction,
+  commitTransaction,
 };

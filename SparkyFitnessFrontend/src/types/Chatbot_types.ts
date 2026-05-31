@@ -94,10 +94,23 @@ export interface MessageMetadata {
   foodName?: string;
 }
 
+export interface TextPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImagePart {
+  type: 'image';
+  image: string;
+}
+
+export type MessagePart = TextPart | ImagePart;
+
 export interface Message {
   id: string;
   content: string;
   isUser: boolean;
   timestamp: Date;
   metadata?: MessageMetadata;
+  parts?: MessagePart[];
 }

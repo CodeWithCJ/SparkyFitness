@@ -24,6 +24,10 @@ export default tseslint.config(
 
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
 
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off',
+    },
+
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -48,6 +52,7 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
       // Node.js specific rules
       'n/no-missing-require': 'error',
       'n/no-unpublished-require': 'off',

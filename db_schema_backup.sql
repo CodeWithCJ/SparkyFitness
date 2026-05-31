@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
+\restrict vZHQ844afmEDovDccz8lqf7vMog3jyQGPd4EhtMPSyhXpOAffTnJqdepgYKnZVr
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.0
@@ -1324,7 +1324,8 @@ CREATE TABLE public.external_data_providers (
     scope text,
     last_sync_at timestamp with time zone,
     sync_frequency text DEFAULT 'manual'::text,
-    oauth_state text
+    oauth_state text,
+    sort_order integer
 );
 
 
@@ -1333,6 +1334,13 @@ CREATE TABLE public.external_data_providers (
 --
 
 COMMENT ON COLUMN public.external_data_providers.provider_type IS 'References the external_provider_types table. Refactored from a CHECK constraint to a lookup table.';
+
+
+--
+-- Name: COLUMN external_data_providers.sort_order; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.external_data_providers.sort_order IS 'Manual display order for provider selection UI (lower value appears first).';
 
 
 --
@@ -1588,7 +1596,7 @@ CREATE TABLE public.goal_presets (
     dinner_percentage numeric,
     snacks_percentage numeric,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    CONSTRAINT chk_meal_percentages_sum CHECK ((((breakfast_percentage IS NULL) AND (lunch_percentage IS NULL) AND (dinner_percentage IS NULL) AND (snacks_percentage IS NULL)) OR ((((breakfast_percentage + lunch_percentage) + dinner_percentage) + snacks_percentage) = (100)::numeric)))
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
 );
 
 
@@ -1709,17 +1717,17 @@ COMMENT ON COLUMN public.meals.serving_size IS 'Quantity of one serving in servi
 
 
 --
--- Name: COLUMN meals.total_servings; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
-
-
---
 -- Name: COLUMN meals.serving_unit; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.meals.serving_unit IS 'Unit of measurement for the serving size (e.g., g, ml, serving, oz, cup)';
+
+
+--
+-- Name: COLUMN meals.total_servings; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
 
 
 --
@@ -2049,8 +2057,16 @@ CREATE TABLE public.sparky_chat_history (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     message text,
     response text,
+    parts jsonb,
     CONSTRAINT sparky_chat_history_message_type_check CHECK ((message_type = ANY (ARRAY['user'::text, 'assistant'::text])))
 );
+
+
+--
+-- Name: COLUMN sparky_chat_history.parts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sparky_chat_history.parts IS 'Stores multimodal message parts (text, image, etc.) as an array of objects. Compatible with Vercel AI SDK CoreMessage parts.';
 
 
 --
@@ -2182,7 +2198,7 @@ CREATE TABLE public.user_goals (
     snacks_percentage numeric,
     water_goal_ml numeric(10,3),
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    CONSTRAINT chk_meal_percentages_sum CHECK ((((breakfast_percentage IS NULL) AND (lunch_percentage IS NULL) AND (dinner_percentage IS NULL) AND (snacks_percentage IS NULL)) OR ((((breakfast_percentage + lunch_percentage) + dinner_percentage) + snacks_percentage) = (100)::numeric)))
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
 );
 
 
@@ -2294,14 +2310,13 @@ CREATE TABLE public.user_preferences (
     system_prompt text DEFAULT 'You are Sparky, a helpful AI assistant for health and fitness tracking. Be friendly, encouraging, and provide accurate information about nutrition, exercise, and wellness.'::text,
     auto_clear_history text DEFAULT 'never'::text,
     logging_level text DEFAULT 'ERROR'::text,
-    timezone text DEFAULT NULL,
+    timezone text,
     default_food_data_provider_id uuid,
     item_display_limit integer DEFAULT 10 NOT NULL,
     water_display_unit character varying(50) DEFAULT 'ml'::character varying,
     bmr_algorithm text DEFAULT 'Mifflin-St Jeor'::text NOT NULL,
     body_fat_algorithm text DEFAULT 'U.S. Navy'::text NOT NULL,
     include_bmr_in_net_calories boolean DEFAULT false NOT NULL,
-    show_net_carbs boolean DEFAULT false NOT NULL,
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
     language character varying(10) DEFAULT 'en'::character varying,
     calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
@@ -2319,9 +2334,10 @@ CREATE TABLE public.user_preferences (
     first_day_of_week smallint DEFAULT 0,
     barcode_fallback_open_food_facts boolean DEFAULT true,
     ai_assisted_conversions boolean DEFAULT true NOT NULL,
+    show_net_carbs boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK ((timezone IS NULL OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
 );
 
 
@@ -3396,14 +3412,6 @@ ALTER TABLE ONLY public.verification
 
 
 --
--- Name: water_intake water_intake_user_date_source_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_user_date_source_unique UNIQUE (user_id, entry_date, source);
-
-
---
 -- Name: water_intake_entries water_intake_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3412,10 +3420,11 @@ ALTER TABLE ONLY public.water_intake_entries
 
 
 --
--- Name: idx_water_intake_entries_user_date; Type: INDEX; Schema: public; Owner: -
+-- Name: water_intake water_intake_user_date_source_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
+ALTER TABLE ONLY public.water_intake
+    ADD CONSTRAINT water_intake_user_date_source_unique UNIQUE (user_id, entry_date, source);
 
 
 --
@@ -3743,13 +3752,6 @@ CREATE INDEX idx_sleep_entry_stages_user_id ON public.sleep_entry_stages USING b
 
 
 --
--- Name: sleep_entry_stages_entry_natural_key_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX sleep_entry_stages_entry_natural_key_idx ON public.sleep_entry_stages USING btree (entry_id, start_time, end_time);
-
-
---
 -- Name: idx_sleep_need_calc_user; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3813,6 +3815,13 @@ CREATE INDEX idx_verification_identifier ON public.verification USING btree (ide
 
 
 --
+-- Name: idx_water_intake_entries_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
+
+
+--
 -- Name: idx_workout_preset_exercise_sets_preset_exercise_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3824,6 +3833,13 @@ CREATE INDEX idx_workout_preset_exercise_sets_preset_exercise_id ON public.worko
 --
 
 CREATE UNIQUE INDEX one_active_meal_plan_per_user ON public.meal_plan_templates USING btree (user_id) WHERE (is_active = true);
+
+
+--
+-- Name: sleep_entry_stages_entry_natural_key_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX sleep_entry_stages_entry_natural_key_idx ON public.sleep_entry_stages USING btree (entry_id, start_time, end_time);
 
 
 --
@@ -4691,22 +4707,6 @@ ALTER TABLE ONLY public.water_intake
 
 
 --
--- Name: water_intake water_intake_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
-
-
---
--- Name: water_intake_entries water_intake_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.water_intake_entries
-    ADD CONSTRAINT water_intake_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
-
-
---
 -- Name: water_intake_entries water_intake_entries_container_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4720,6 +4720,22 @@ ALTER TABLE ONLY public.water_intake_entries
 
 ALTER TABLE ONLY public.water_intake_entries
     ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: water_intake_entries water_intake_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: water_intake water_intake_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake
+    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -5241,6 +5257,13 @@ CREATE POLICY modify_policy ON public.water_intake USING (public.has_diary_acces
 
 
 --
+-- Name: water_intake_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.water_intake_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: workout_plan_templates modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5659,6 +5682,13 @@ CREATE POLICY select_policy ON public.water_intake FOR SELECT USING (public.has_
 
 
 --
+-- Name: water_intake_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.water_intake_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
 -- Name: workout_plan_templates select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5756,6 +5786,12 @@ ALTER TABLE public.user_water_containers ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.water_intake ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: water_intake_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.water_intake_entries ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: weekly_goal_plans; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7173,6 +7209,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky uat";
 
 
 --
+-- Name: TABLE water_intake_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO sparky_uat;
+
+
+--
 -- Name: TABLE weekly_goal_plans; Type: ACL; Schema: public; Owner: -
 --
 
@@ -7347,4 +7392,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
+\unrestrict vZHQ844afmEDovDccz8lqf7vMog3jyQGPd4EhtMPSyhXpOAffTnJqdepgYKnZVr
+

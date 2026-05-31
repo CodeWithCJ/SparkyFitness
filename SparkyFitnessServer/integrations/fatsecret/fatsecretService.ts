@@ -107,6 +107,30 @@ function evaluateFraction(fractionStr: any) {
   }
   return total || 0;
 }
+// FatSecret's REST endpoints return HTTP 200 even on failure, embedding the
+// error as { error: { code, message } } (e.g. code 21 "Invalid IP" when the
+// server IP isn't whitelisted). Surface it instead of letting it fall through
+// as empty "No results found".
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function assertNoFatSecretApiError(data: any) {
+  const apiError = data?.error;
+  const hasCode = apiError?.code !== undefined && apiError?.code !== null;
+  const hasMessage =
+    apiError?.message !== undefined && apiError?.message !== null;
+  if (!apiError || (!hasCode && !hasMessage)) {
+    return;
+  }
+  const code = apiError.code;
+  const message = apiError.message || 'Unknown FatSecret API error';
+  throw Object.assign(
+    new Error(
+      `FatSecret API error${hasCode ? ` (code ${code})` : ''}: ${message}`
+    ),
+    // `status` is honored by the v2 route handlers; `statusCode` by the
+    // centralized errorHandler middleware.
+    { status: 502, statusCode: 502, fatSecretErrorCode: code }
+  );
+}
 // Function to get FatSecret OAuth 2.0 Access Token
 async function getFatSecretAccessToken(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,9 +245,10 @@ async function searchFatSecretByBarcode(
       throw new Error(`FatSecret Barcode API error: ${errorText}`);
     }
     const data = await response.json();
-    if (data.error && data.error.code === '211') {
+    if (data.error && String(data.error.code) === '211') {
       return null; // No food item detected
     }
+    assertNoFatSecretApiError(data);
     return data;
   } catch (error) {
     log('error', `Error searching FatSecret by barcode ${barcode}:`, error);
@@ -465,6 +490,7 @@ function mapFatSecretSearchItem(item: any) {
   };
 }
 export { getFatSecretAccessToken };
+export { assertNoFatSecretApiError };
 export { searchFatSecretByBarcode };
 export { mapFatSecretFood };
 export { mapFatSecretSearchItem };
@@ -473,6 +499,7 @@ export { CACHE_DURATION_MS };
 export { FATSECRET_API_BASE_URL };
 export default {
   getFatSecretAccessToken,
+  assertNoFatSecretApiError,
   searchFatSecretByBarcode,
   mapFatSecretFood,
   mapFatSecretSearchItem,

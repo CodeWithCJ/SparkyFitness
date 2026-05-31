@@ -23,8 +23,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
+import { useSoundsEnabled } from '../services/sounds';
 import { toFormString } from '../types/foodInfo';
 import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { isFoodPhotoAvailable } from '../services/api/aiSettingsApi';
@@ -59,10 +62,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [permission, requestPermission] = useCameraPermissions();
+  const soundsEnabled = useSoundsEnabled();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
+  const pickerLock = useRef(false);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
   const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
@@ -82,6 +87,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     return requested;
   });
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState<{ barcode: string; message: string } | null>(null);
   const [labelProcessing, setLabelProcessing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<{ base64: string; uri: string } | null>(null);
   const [manualEntryVisible, setManualEntryVisible] = useState(false);
@@ -132,6 +138,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     barcode: string,
     { shouldFireSuccessHaptic = false }: { shouldFireSuccessHaptic?: boolean } = {},
   ) => {
+    setNotFoundBarcode(null);
+    setLookupError(null);
     try {
       const result = await lookupBarcodeV2(barcode);
 
@@ -207,8 +215,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           }),
         );
       }
-    } catch {
-      setNotFoundBarcode(barcode);
+    } catch (error) {
+      const message =
+        getApiErrorMessage(error) ?? "Couldn't look up this barcode. Please try again.";
+      setLookupError({ barcode, message });
     } finally {
       setLoading(false);
     }
@@ -257,7 +267,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const handleLabelCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7, shutterSound: soundsEnabled });
       if (!photo?.base64) {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
         return;
@@ -297,7 +307,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             vitaminA: toFormString(result.vitamin_a),
             vitaminC: toFormString(result.vitamin_c),
           },
-          barcode: notFoundBarcode ?? undefined,
+          barcode: lookupError?.barcode ?? notFoundBarcode ?? undefined,
           providerType: 'label_scan',
         }),
       );
@@ -326,6 +336,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     }
     setScanMode(key);
     setNotFoundBarcode(null);
+    setLookupError(null);
     setCapturedPhoto(null);
     setScanned(false);
     scanLock.current = false;
@@ -364,7 +375,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const handlePhotoCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ base64: false, quality: 0.7 });
+      const photo = await cameraRef.current.takePictureAsync({ base64: false, quality: 0.7, shutterSound: soundsEnabled });
       if (!photo?.uri) {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
         return;
@@ -377,6 +388,35 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       });
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+    }
+  };
+
+  const handlePhotoPickFromLibrary = async () => {
+    // Guard against rapid double-taps re-entering the system picker.
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        quality: 0.7,
+        allowsMultipleSelection: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        return;
+      }
+      await markFoodPhotoIntroSeen();
+      navigation.replace('FoodPhotoFlow', {
+        screen: 'Improve',
+        params: { date, photo: { uri: asset.uri } },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+    } finally {
+      pickerLock.current = false;
     }
   };
 
@@ -439,7 +479,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         enableTorch={flashlight}
       />
 
-      {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible ? (
+      {scanMode === 'barcode' && !notFoundBarcode && !lookupError && !loading && !manualEntryVisible ? (
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
           <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 120 }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
@@ -506,15 +546,19 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       ) : null}
 
-      {!isCaptureBarcodeMode && !capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode ? (
+      {!isCaptureBarcodeMode && !capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && (notFoundBarcode || lookupError) ? (
         <View
           className="absolute left-0 right-0 items-center px-8"
           style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
-            <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
+            <Text className="text-text-primary text-base font-semibold">
+              {lookupError ? 'Lookup failed' : 'No match for barcode'}
+            </Text>
             <Text className="text-text-secondary text-sm text-center">
-              You can scan the nutrition label or enter it manually.
+              {lookupError
+                ? lookupError.message
+                : 'You can scan the nutrition label or enter it manually.'}
             </Text>
             <View className="gap-3 mt-2 self-stretch">
               <UIButton
@@ -530,7 +574,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 onPress={() => navigation.replace(
                   'FoodForm',
                   buildFoodFormParams({
-                    barcode: notFoundBarcode,
+                    barcode: lookupError?.barcode ?? notFoundBarcode ?? undefined,
                   }),
                 )}
                 className="rounded-lg"
@@ -613,7 +657,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          {!(scanMode === 'barcode' && notFoundBarcode) &&
+          {!(scanMode === 'barcode' && (notFoundBarcode || lookupError)) &&
           !(scanMode === 'photo' && photoGateVisible) ? (
             <View className="h-20 items-center justify-center self-stretch">
               {scanMode === 'barcode' ? (
@@ -653,6 +697,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                       <View className="w-16 h-16 rounded-full bg-white" />
                     </TouchableOpacity>
                   )}
+                  {/* Centered between the capture button and the segmented control's left edge. */}
+                  {photoModeAvailable && !photoModeLoading ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        void handlePhotoPickFromLibrary();
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel="Choose photo from library"
+                      accessibilityRole="button"
+                      className="bg-black/50 rounded-full items-center justify-center"
+                      style={{
+                        position: 'absolute',
+                        left: '25%',
+                        top: 18,
+                        width: 44,
+                        height: 44,
+                        transform: [{ translateX: -26 }],
+                      }}
+                    >
+                      <Icon name="photo-library" size={26} color="#fff" />
+                    </TouchableOpacity>
+                  ) : null}
                   {/* Centered between the capture button and the segmented control's right edge. */}
                   <TouchableOpacity
                     onPress={() => navigation.navigate('FoodPhotoIntro', { date })}

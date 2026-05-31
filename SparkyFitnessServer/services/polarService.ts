@@ -70,7 +70,11 @@ async function syncPolarData(
       // Process exercises
       const allExercises = [];
       if (responses['raw_exercises_recent']) {
-        allExercises.push(...responses['raw_exercises_recent'].data);
+        const exercisesData = responses['raw_exercises_recent'].data || {};
+        const exercises = Array.isArray(exercisesData)
+          ? exercisesData
+          : exercisesData.exercises || [];
+        allExercises.push(...exercises);
       }
       Object.keys(responses).forEach((key) => {
         if (key.startsWith('raw_exercise_item_')) {
@@ -92,7 +96,11 @@ async function syncPolarData(
       // Process activities
       const allActivities = [];
       if (responses['raw_activity_list']) {
-        allActivities.push(...responses['raw_activity_list'].data);
+        const activitiesData = responses['raw_activity_list'].data || {};
+        const activities = Array.isArray(activitiesData)
+          ? activitiesData
+          : activitiesData.activities || activitiesData['activity-log'] || [];
+        allActivities.push(...activities);
       }
       Object.keys(responses).forEach((key) => {
         if (key.startsWith('raw_activity_item_')) {
@@ -196,7 +204,7 @@ async function syncPolarData(
         )
       )) || [];
     const newExercises =
-      (await safeFetch('exercises_transaction', () =>
+      (await safeFetch('exercises', () =>
         polarIntegrationService.fetchExercises(
           userId,
           externalUserId,
@@ -204,7 +212,7 @@ async function syncPolarData(
         )
       )) || [];
     const newActivities =
-      (await safeFetch('activities_transaction', () =>
+      (await safeFetch('activities', () =>
         polarIntegrationService.fetchDailyActivity(
           userId,
           externalUserId,
@@ -216,17 +224,8 @@ async function syncPolarData(
     if (syncType === 'manual') {
       log(
         'info',
-        `[polarService] Manual sync: Fetching recent history for user ${userId}.`
+        `[polarService] Manual sync: Fetching user profile fallback for user ${userId}.`
       );
-      const recentExercises = await safeFetch('exercises_recent', () =>
-        polarIntegrationService.fetchRecentExercises(userId, accessToken)
-      );
-      if (recentExercises) allExercises = [...allExercises, ...recentExercises];
-      const recentActivities = await safeFetch('activities_recent', () =>
-        polarIntegrationService.fetchRecentDailyActivity(userId, accessToken)
-      );
-      if (recentActivities)
-        allActivities = [...allActivities, ...recentActivities];
       const userProfile = await safeFetch('user_profile', () =>
         polarIntegrationService.fetchUserProfile(
           userId,

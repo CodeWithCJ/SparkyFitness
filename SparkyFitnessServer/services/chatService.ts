@@ -4,15 +4,71 @@ import { log } from '../config/logging.js';
 import { getDefaultModel } from '../ai/config.js';
 import undici from 'undici';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
+import {
+  todayInZone,
+  DatabaseCustomCategories,
+  AiServiceSettings,
+  SparkyChatHistory,
+  SparkyChatHistoryMutator,
+} from '@workspace/shared';
+import { IncomingHttpHeaders } from 'http';
+import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
+
+interface ChatMessagePart {
+  type: 'text' | 'image' | 'image_url' | 'file';
+  text?: string;
+  content?: string;
+  mimeType?: string;
+  mediaType?: string;
+  url?: string;
+  image?: string;
+  image_url?: { url: string };
+}
+
+interface ProcessedMessagePart {
+  type: 'text' | 'image';
+  text?: string;
+  image?: string;
+}
+
+interface ChatMessage {
+  role: string;
+  content?: string | ChatMessagePart[];
+  parts?: ChatMessagePart[];
+}
+
+interface FoodOptionsApiResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+  content?: Array<{
+    text?: string;
+  }>;
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+  message?: {
+    content?: string;
+  };
+}
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { generateText, streamText, stepCountIs } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import path from 'path';
+
 const { Agent } = undici; // Import Agent from undici
 async function handleAiServiceSettings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  action: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  serviceData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any
+  action: string,
+  serviceData: Partial<AiServiceSettings> & { api_key?: string },
+  authenticatedUserId: string
 ) {
   try {
     if (action === 'save_ai_service_settings') {
@@ -25,7 +81,7 @@ async function handleAiServiceSettings(
         throw new Error('AI service setting not found.');
       }
       const { _encrypted_api_key, _api_key_iv, _api_key_tag, ...safeSetting } =
-        result;
+        result as Record<string, unknown>;
       return {
         message: 'AI service settings saved successfully.',
         setting: safeSetting,
@@ -44,10 +100,8 @@ async function handleAiServiceSettings(
 }
 
 async function getAiServiceSettings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any
+  authenticatedUserId: string,
+  targetUserId: string
 ) {
   try {
     const settings =
@@ -64,10 +118,8 @@ async function getAiServiceSettings(
 }
 
 async function getActiveAiServiceSetting(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any
+  authenticatedUserId: string,
+  targetUserId: string
 ) {
   try {
     const setting =
@@ -89,8 +141,8 @@ async function getActiveAiServiceSetting(
     return null; // Return null on error
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteAiServiceSetting(authenticatedUserId: any, id: any) {
+
+async function deleteAiServiceSetting(authenticatedUserId: string, id: string) {
   try {
     // Verify that the setting belongs to the authenticated user before deleting
     const setting = await chatRepository.getAiServiceSettingById(
@@ -117,8 +169,7 @@ async function deleteAiServiceSetting(authenticatedUserId: any, id: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearOldChatHistory(authenticatedUserId: any) {
+async function clearOldChatHistory(authenticatedUserId: string) {
   try {
     await chatRepository.clearOldChatHistory(authenticatedUserId);
     return { message: 'Old chat history cleared successfully.' };
@@ -133,10 +184,8 @@ async function clearOldChatHistory(authenticatedUserId: any) {
 }
 
 async function getSparkyChatHistory(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any
+  authenticatedUserId: string,
+  targetUserId: string
 ) {
   try {
     const history = await chatRepository.getChatHistoryByUserId(targetUserId);
@@ -150,8 +199,11 @@ async function getSparkyChatHistory(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getSparkyChatHistoryEntry(authenticatedUserId: any, id: any) {
+
+async function getSparkyChatHistoryEntry(
+  authenticatedUserId: string,
+  id: string
+) {
   try {
     const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
       id,
@@ -175,12 +227,9 @@ async function getSparkyChatHistoryEntry(authenticatedUserId: any, id: any) {
   }
 }
 async function updateSparkyChatHistoryEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  authenticatedUserId: string,
+  id: string,
+  updateData: SparkyChatHistoryMutator
 ) {
   try {
     // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
@@ -213,8 +262,11 @@ async function updateSparkyChatHistoryEntry(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteSparkyChatHistoryEntry(authenticatedUserId: any, id: any) {
+
+async function deleteSparkyChatHistoryEntry(
+  authenticatedUserId: string,
+  id: string
+) {
   try {
     // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
     const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id);
@@ -243,8 +295,8 @@ async function deleteSparkyChatHistoryEntry(authenticatedUserId: any, id: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearAllSparkyChatHistory(authenticatedUserId: any) {
+
+async function clearAllSparkyChatHistory(authenticatedUserId: string) {
   try {
     await chatRepository.clearAllChatHistory(authenticatedUserId);
     return { message: 'All chat history cleared successfully.' };
@@ -259,10 +311,11 @@ async function clearAllSparkyChatHistory(authenticatedUserId: any) {
 }
 
 async function saveSparkyChatHistory(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  historyData: any
+  authenticatedUserId: string,
+  historyData: Partial<SparkyChatHistory> & {
+    messageType?: 'user' | 'assistant';
+    parts?: ChatMessagePart[];
+  }
 ) {
   try {
     // Ensure the history is saved for the authenticated user
@@ -278,20 +331,101 @@ async function saveSparkyChatHistory(
     throw error;
   }
 }
+async function getMcpClient(reqHeaders?: IncomingHttpHeaders) {
+  const mcpUrl = process.env.SPARKY_FITNESS_MCP_URL;
+
+  if (mcpUrl) {
+    const mcpEndpoint = mcpUrl.endsWith('/mcp') ? mcpUrl : `${mcpUrl}/mcp`;
+    // Forward the user's authorization and cookies to MCP
+    const headers: Record<string, string> = {};
+    if (reqHeaders?.authorization) {
+      headers['authorization'] = reqHeaders.authorization;
+    }
+    if (reqHeaders?.cookie) {
+      headers['cookie'] = reqHeaders.cookie;
+    }
+    log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
+    return await createMCPClient({
+      transport: {
+        type: 'http',
+        url: mcpEndpoint,
+        headers,
+      },
+    });
+  } else {
+    // Fallback for local Stdio transport (CLI mode / developer convenience)
+    log('info', 'Connecting to MCP server via local Stdio transport');
+    const indexCjsPath = path.resolve(
+      process.cwd(),
+      '../SparkyFitnessMCP/dist/index.cjs'
+    );
+    return await createMCPClient({
+      transport: new StdioClientTransport({
+        command: 'node',
+        args: [indexCjsPath],
+        env: {
+          ...process.env,
+          // For n8n / external tools: use server-level API key if configured.
+          // For frontend sessions: forward the user's cookie so the MCP
+          // process can authenticate via the existing session.
+          ...(process.env.SPARKY_FITNESS_API_KEY
+            ? { SPARKY_FITNESS_API_KEY: process.env.SPARKY_FITNESS_API_KEY }
+            : {
+                Authorization: reqHeaders?.authorization || '',
+                Cookie: reqHeaders?.cookie || '',
+              }),
+          MCP_TRANSPORT: 'stdio',
+        },
+      }),
+    });
+  }
+}
+
+function getSystemPrompt(chatTz: string, customCategoriesList: string): string {
+  return `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
+
+The current local date is ${todayInZone(chatTz)}.
+
+When the user mentions logging food, exercise, or measurements, prioritize using the matching tools.
+
+Here are the user's existing custom measurement categories:
+${customCategoriesList}
+
+When logging measurements or custom categories, compare user inputs to the list above. If you find a match or variations (synonyms, capitalization), use the exact category name.
+
+For solid food items or beverages that are not water, use the 'sparky_manage_food' tool. Do NOT classify water as food. Use the 'sparky_manage_water' tool for water intake.
+
+## MANDATORY FOOD LOOKUP RULE
+BEFORE creating any new food entry or logging food that may not exist in the database, you MUST call 'sparky_lookup_food_nutrition' first to search for verified nutritional data. This tool searches internal database, user food providers, OpenFoodFacts, and other verified sources.
+
+- If 'sparky_lookup_food_nutrition' returns nutrition data (calories > 0), use that data when calling 'sparky_manage_food'. Do NOT override it with your own estimates.
+- Only use AI-estimated nutrition if 'sparky_lookup_food_nutrition' explicitly returns no data or a zero-calorie result.
+- Always tell the user the source of nutrition data (e.g., "from OpenFoodFacts", "from internal database", "AI estimate").
+- If the user explicitly asks for internet search or a specific source, pass that preference to 'sparky_lookup_food_nutrition' using the source_preference parameter.
+- **Maximized Nutritional Detail (CRITICAL)**: When creating or logging a food via 'sparky_manage_food' with 'create_food', you MUST populate EVERY single nutritional field (saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, fiber, sugar, vitamin_a, vitamin_c, calcium, iron, gi). Do NOT default to logging only main macros (calories, protein, carbs, fat). Even if the source data or user description lacks detailed micro-nutrients, you MUST use your comprehensive biochemical and culinary knowledge to calculate and estimate realistic, scientifically sound values for every field (e.g., estimating fiber for grains, sugar for fruits, saturated fat & cholesterol for meat, sodium for prepared/seasoned dishes). Omit no fields, and do not default them to zero unless the food truly contains none of that nutrient.
+
+## VISION SUPPORT
+You are a multimodal AI. When the user provides an image (photo of food, meal, or nutrition label):
+1. **Analyze it directly** using your built-in vision capabilities. You can see the images in the conversation history.
+2. If you need a more structured nutritional estimate or if the image is a complex meal, you can use the 'sparky_analyze_food_image' tool as a secondary step.
+3. For nutrition labels, you can use 'sparky_scan_label' to ensure high accuracy in data extraction.
+4. Based on your analysis, proceed to log the entry using the appropriate tools (e.g., 'sparky_manage_food').
+
+Be precise with data extraction and call the correct tools in the correct order.`;
+}
+
 async function processChatMessage(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  messages: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  serviceConfigId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any
+  messages: ChatMessage[],
+  serviceConfigId: string,
+  authenticatedUserId: string,
+  reqHeaders?: IncomingHttpHeaders
 ) {
+  let mcpClient: Awaited<ReturnType<typeof getMcpClient>> | undefined;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
     }
     if (!serviceConfigId) {
-      // Check if serviceConfigId is provided
       throw new Error('AI service configuration ID is missing.');
     }
     const aiService = await chatRepository.getAiServiceSettingForBackend(
@@ -301,498 +435,342 @@ async function processChatMessage(
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
     }
-    // Log which source was used
+
     const source = aiService.source || 'unknown';
     log(
       'info',
       `Processing chat message for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
     );
-    // Ensure API key is present, unless it's Ollama
+
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
       throw new Error('API key missing for selected AI service.');
     }
-    let response;
-    const model =
+
+    const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
-    // Comprehensive system prompt from old Supabase Edge Function
-    // Fetch user's custom categories to provide context to the AI
+
+    // Initialize Vercel AI SDK Model based on service_type
+    let modelInstance: Parameters<typeof generateText>[0]['model'];
+    const apiKey = aiService.api_key;
+
+    if (aiService.service_type === 'openai') {
+      const provider = createOpenAI({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'anthropic') {
+      const provider = createAnthropic({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'google') {
+      const provider = createGoogleGenerativeAI({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (
+      aiService.service_type === 'ollama' ||
+      aiService.service_type === 'openai_compatible' ||
+      aiService.service_type === 'custom' ||
+      aiService.service_type === 'mistral' ||
+      aiService.service_type === 'groq' ||
+      aiService.service_type === 'openrouter'
+    ) {
+      // Connect as OpenAI-compatible
+      let baseURL = aiService.custom_url;
+      if (aiService.service_type === 'ollama') {
+        baseURL = `${aiService.custom_url}/v1`;
+      } else if (aiService.service_type === 'groq') {
+        baseURL = 'https://api.groq.com/openai/v1';
+      } else if (aiService.service_type === 'openrouter') {
+        baseURL = 'https://openrouter.ai/api/v1';
+      } else if (aiService.service_type === 'mistral') {
+        baseURL = 'https://api.mistral.ai/v1';
+      }
+      const provider = createOpenAI({
+        baseURL,
+        apiKey: apiKey || 'no-key',
+      });
+      modelInstance = provider.chat(modelName);
+    } else {
+      throw new Error(`Unsupported service type: ${aiService.service_type}`);
+    }
+
+    // Connect to MCP Server using helper function
+    mcpClient = await getMcpClient(reqHeaders);
+
+    // Load user context (categories, timezone)
     const [customCategories, chatTz] = await Promise.all([
       measurementRepository.getCustomCategories(authenticatedUserId),
       loadUserTimezone(authenticatedUserId),
     ]);
+
     const customCategoriesList =
       customCategories.length > 0
         ? customCategories
             .map(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (cat: any) =>
+              (cat: DatabaseCustomCategories) =>
                 `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
             )
             .join('\n')
         : 'None';
-    const systemPromptContent = `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
 
-The current date is ${todayInZone(chatTz)}.
+    const systemPromptContent = getSystemPrompt(chatTz, customCategoriesList);
 
-**CRITICAL INSTRUCTION:** When the user mentions "water" in any context related to consumption or intake, you MUST use the 'log_water' intent. Do NOT classify water as a 'log_food' item.
+    // Retrieve and filter tools from MCP server
+    const allTools = await mcpClient.tools();
 
-You will receive user input, which can include text and/or images. Your task is to identify the user's intent and extract relevant data. You MUST respond with a JSON object containing the 'intent' and 'data', strictly adhering to the defined intents and their required data structures.
+    // Filter developer/test tools out
+    const chatbotTools: NonNullable<
+      Parameters<typeof generateText>[0]['tools']
+    > = {};
+    for (const [key, tool] of Object.entries(allTools)) {
+      const isBlocked = [
+        'sparky_run_project_tests',
+        'sparky_inspect_schema',
+      ].includes(key);
+      if (!isBlocked) {
+        chatbotTools[key] = tool;
+      }
+    }
+    log(
+      'info',
+      `Loaded ${Object.keys(chatbotTools).length} tools for chatbot: ${Object.keys(chatbotTools).join(', ')}`
+    );
 
-For image inputs:
-- Analyze the image to identify food items, estimate quantities, and infer nutritional information.
-- If the image clearly shows food, prioritize the 'log_food' intent.
-- Extract food_name, quantity, unit, and meal_type from the image content.
-- **CRITICAL:** Always infer and include *estimated* nutritional details (calories, protein, carbs, fat, etc.) based on the identified food and estimated quantity, populating the corresponding fields in the 'log_food' intent's data. Do NOT default to 0 if an estimation can be made.
-- If the image is not food-related or unclear, treat the text input as primary.
+    // Map conversation history messages to CoreMessage format
+    const conversationMessages = messages.map((msg: ChatMessage) => {
+      // If parts or content is an array of parts (text + images), pass them through
+      const partsSource =
+        msg.parts && Array.isArray(msg.parts)
+          ? msg.parts
+          : Array.isArray(msg.content)
+            ? msg.content
+            : null;
 
-**IMPORTANT:** If the user specifies a date or time (e.g., "yesterday", "last Monday", "at 7 PM"), extract this information and include it as a 'entryDate' field in the top level of the JSON object. **Provide relative terms like "today", "yesterday", "tomorrow", or a specific date in 'MM-DD' or 'YYYY-MM-DD' format. Do NOT try to resolve relative terms to a full date yourself.** If no date is specified, omit the 'entryDate' field.
-
-When the user mentions logging food, exercise, or measurements, prioritize extracting the exact name of the item (food name, exercise name, measurement name) as accurately as possible from the user's input. This is crucial for looking up existing items in the database.
-
-Here are the user's existing custom measurement categories:
-${customCategoriesList}
-
-When the user mentions a custom measurement, compare it to the list above. If you find a match or a very similar variation (considering synonyms and capitalization), use the **exact name** from the list in the 'name' field of the measurement data. If no clear match is found in the list, use the name as provided by the user.
-
-**For 'log_food' intent, pay close attention to the unit specified by the user and match it in the 'unit' field of the food data.**
-- If the user says "gram" or "g", use "g".
-- If the user says "cup" or "cups", use "cup".
-- If the user refers to individual items by count (e.g., "two apples", "3 eggs"), use "piece".
-- If the unit is not explicitly mentioned, infer the most appropriate unit based on the food item and context (e.g., "apple" is likely "piece", "rice" is likely "g" or "cup"). Refer to common food units used in the application (like 'g', 'cup', 'oz', 'ml', 'serving', 'piece').
-
-Possible intents and their required data. You MUST select one of these intents and provide the data in the specified format:
-- 'log_food': User wants to log food. This intent is for solid food items or beverages that are not water. **This intent MUST NOT be used for logging water intake.**
-  - If you can confidently identify a single food item and its details, data should include:
-    - food_name: string (e.g., "apple", "chicken breast", "Dosa") - Extract the most likely exact name.
-    - quantity: number (e.g., 1, 100) - Infer if possible, default to 1 if a specific quantity isn't clear but a food is mentioned.
-    - unit: string (e.g., "piece", "g", "oz", "ml", "cup", "serving") - **CRITICAL: Match the user's specified unit exactly.** If the user refers to individual items by count (e.g., "two apples", "3 eggs"), use "piece". If no unit is explicitly mentioned, infer the most appropriate unit based on the food item and context (e.g., "apple" is likely "piece", "rice" is likely "g" or "cup"). Refer to common food units used in the application (like 'g', 'cup', 'oz', 'ml', 'serving', 'piece').
-    - meal_type: string ("breakfast", "lunch", "dinner", "snacks") - Infer based on time of day or context, default to "snacks".
-    - **Include as many of the following nutritional fields as you can extract from the user's input or your knowledge about the food:**
-      - calories: number
-      - protein: number
-      - carbs: number
-      - fat: number
-      - saturated_fat: number
-      - polyunsaturated_fat: number
-      - monounsaturated_fat: number
-      - trans_fat: number
-      - cholesterol: number
-      - sodium: number
-      - potassium: number
-      - dietary_fiber: number
-      - sugars: number
-      - vitamin_a: number
-      - vitamin_c: number
-      - calcium: number
-      - iron: number
-      - FoodOption: array of realistic food options (if applicable)
-      - serving_size: number
-      - serving_unit: string
-
-
-- 'log_exercise': User wants to log exercise. Data should include:
- - exercise_name: string (e.g., "running", "yoga") - Extract the most likely exact name.
- - duration_minutes: number | null (e.g., 30, 60) - Infer if possible.
- - distance: number | null (e.g., 5, 3.1) - Infer if mentioned.
- - distance_unit: string | null ("miles", "km") - Infer if mentioned.
-- 'log_measurement': User wants to log a body measurement or steps. Data should include an array of measurements:
- - measurements: Array of objects, each with:
-   - type: string ("weight", "neck", "waist", "hips", "steps", "custom") - Use "custom" for any measurement not in the standard list.
-   - value: number
-   - unit: string | null (e.g., "kg", "lbs", "cm", "inches", "steps") - Infer if possible, default to null for steps.
-   - name: string | null (required if type is "custom") - **Crucially, if the user mentions a custom category from the list provided, use its exact name here.**
-- 'log_water': User wants to log water intake. This intent should be prioritized when the user mentions "water" in conjunction with a quantity or a desire to log water. The AI should understand from the user's context that they are referring to drinking water. Data should include:
- - glasses_consumed: number (e.g., 1, 2) - Infer if possible, default to 1.
-- 'ask_question': User is asking a general question or seeking advice. Data is an empty object {}.
-- 'chat': User is engaging in casual conversation. Data is an empty object {}.
-
-If the intent is 'ask_question' or 'chat', also provide a 'response' field with a friendly and helpful text response. For logging intents, the 'response' field is optional and can be a simple confirmation or encouraging remark.
-
-If you cannot determine the intent or extract data with high confidence, default to 'ask_question' or 'chat' and provide a suitable response asking for clarification.
-
-Output format MUST be a JSON object with 'intent' (string) and 'data' (object) fields, and optionally 'entryDate' (string with relative term or date format). Do NOT include any other text outside the JSON object.
-
-Example JSON output for logging weight for yesterday:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "weight", "value": 70, "unit": "kg"}]}, "entryDate": "yesterday"}
-
-Example JSON output for asking a question:
-{"intent": "ask_question", "data": {}, "response": "I can help with that! What's your question?"}
-
-Example JSON output for logging steps:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "steps", "value": 10000, "unit": "steps"}]}}
-
-Example JSON output for logging food for today with detailed nutrition:
-{"intent": "log_food", "data": {"food_name": "apple", "quantity": 1, "unit": "piece", "meal_type": "snack", "calories": 95, "carbs": 25, "sugars": 19, "dietary_fiber": 4, "vitamin_c": 9}, "entryDate": "today"}
-
-Example JSON output for logging exercise:
-{"intent": "log_exercise", "data": {"exercise_name": "running", "duration_minutes": 30, "distance": 3, "distance_unit": "miles"}, "entryDate": "06-18"}
-
-Example JSON output for logging a custom measurement (e.g., Blood Sugar), using the exact name from the provided list:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "custom", "name": "Blood Sugar", "value": 140, "unit": "mg/dL"}]}, "entryDate": "today"}
-
-Example JSON output for logging water:
-{"intent": "log_water", "data": {"glasses_consumed": 2}, "entryDate": "today"}
-
-Example JSON output for logging current weight:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "weight", "value": 72, "unit": "kg"}]}}
-
-
-Be precise with data extraction and follow the JSON structure exactly.
-
-**Special Instruction: Food Option Generation**
-If you receive a request in the format "GENERATE_FOOD_OPTIONS:[food name] in [unit]", respond with a JSON array of 2-3 realistic \`FoodOption\` objects for the specified food name.
-**Prioritize providing a \`serving_unit\` that matches the requested unit if it's a common and logical unit for that food.** If the requested unit is not common or logical for the food, provide a common and realistic serving unit (e.g., "g", "piece", "serving"). Each \`FoodOption\` should include:
-- name: string (e.g., "\`Apple (medium)\`", "\`Cooked Rice (per cup)\`")
-- calories: number (estimated)
-- protein: number (estimated)
-- carbs: number (estimated)
-- fat: number (estimated)
-- serving_size: number (e.g., 1, 100, 0.5) - This MUST be a numeric value representing the quantity.
-- serving_unit: string (e.g., "\`piece\`", "\`g\`", "\`cup\`", "\`oz\`") - This MUST be the unit string only, without any numeric quantity.
-
-Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
-[
-  {"\`name\`": "\`Apple (medium)\`", "\`calories\`": 95, "\`protein\`": 0.5, "\`carbs\`": 25, "\`fat\`": 0.3, "\`serving_size\`": 1, "\`serving_unit\`": "\`piece\`"},
-  {"\`name\`": "\`Apple (100g)\`", "\`calories\`": 52, "\`protein\`": 0.3, "\`carbs\`": 14, "\`fat\`": 0.2, "\`serving_size\`": 100, "\`serving_unit\`": "\`g\`"}
-]
-`;
-    const messagesForAI = [{ role: 'system', content: systemPromptContent }];
-    // Add user messages
-    messagesForAI.push(...messages.filter((msg) => msg.role === 'user')); // Assuming 'messages' from frontend only contains user messages
-    // For Google AI
-    const cleanSystemPrompt = systemPromptContent
-      .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 1000);
-    switch (aiService.service_type) {
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom':
-        log(
-          'debug',
-          `[AI Service Request] Type: ${aiService.service_type}, URL: ${
-            aiService.service_type === 'openai'
-              ? 'https://api.openai.com/v1/chat/completions'
-              : aiService.service_type === 'openai_compatible'
-                ? `${aiService.custom_url}/chat/completions`
-                : aiService.service_type === 'mistral'
-                  ? 'https://api.mistral.ai/v1/chat/completions'
-                  : aiService.service_type === 'groq'
-                    ? 'https://api.groq.com/openai/v1/chat/completions'
-                    : aiService.service_type === 'openrouter'
-                      ? 'https://openrouter.ai/api/v1/chat/completions'
-                      : aiService.custom_url
-          }, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch(
-          aiService.service_type === 'openai'
-            ? 'https://api.openai.com/v1/chat/completions'
-            : aiService.service_type === 'openai_compatible'
-              ? `${aiService.custom_url}/chat/completions`
-              : aiService.service_type === 'mistral'
-                ? 'https://api.mistral.ai/v1/chat/completions'
-                : aiService.service_type === 'groq'
-                  ? 'https://api.groq.com/openai/v1/chat/completions'
-                  : aiService.service_type === 'openrouter'
-                    ? 'https://openrouter.ai/api/v1/chat/completions'
-                    : aiService.custom_url,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(aiService.service_type === 'openrouter' && {
-                'HTTP-Referer': 'https://sparky-fitness.com',
-                'X-Title': 'Sparky Fitness',
-              }),
-              ...(aiService.api_key && {
-                Authorization: `Bearer ${aiService.api_key}`,
-              }),
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: messagesForAI,
-              temperature: 0.7,
-            }),
-          }
-        );
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
-      case 'anthropic':
-        log(
-          'debug',
-          `[AI Service Request] Type: Anthropic, URL: https://api.anthropic.com/v1/messages, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            ...(aiService.api_key && { 'x-api-key': aiService.api_key }),
-          },
-          body: JSON.stringify({
-            model: model,
-            max_tokens: 1000,
-            messages: messagesForAI.filter((msg) => msg.role !== 'system'), // Anthropic system prompt is separate
-            system: systemPromptContent,
-          }),
-        });
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
-      case 'google': {
-        const googleBody = {
-          contents: messagesForAI
-            .map((msg) => {
-              const role = msg.role === 'assistant' ? 'model' : 'user';
-              let parts = [];
-              if (typeof msg.content === 'string') {
-                parts.push({ text: msg.content });
-              } else if (Array.isArray(msg.content)) {
-                parts = msg.content
-                  // @ts-expect-error TS(2339): Property 'map' does not exist on type 'never'.
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  .map((part: any) => {
-                    if (part.type === 'text') {
-                      return { text: part.text };
-                    } else if (
-                      part.type === 'image_url' &&
-                      part.image_url?.url
-                    ) {
-                      try {
-                        const urlParts = part.image_url.url.split(';base64,');
-                        if (urlParts.length !== 2) {
-                          log(
-                            'error',
-                            'Invalid data URL format for image part. Expected "data:[mimeType];base64,[data]".'
-                          );
-                          return null;
-                        }
-                        const mimeTypeMatch =
-                          urlParts[0].match(/^data:(.*?)(;|$)/);
-                        let mimeType = '';
-                        if (mimeTypeMatch && mimeTypeMatch[1]) {
-                          mimeType = mimeTypeMatch[1];
-                        } else {
-                          log(
-                            'error',
-                            'Could not extract mime type from data URL prefix:',
-                            urlParts[0]
-                          );
-                          return null;
-                        }
-                        const base64Data = urlParts[1];
-                        return {
-                          inline_data: {
-                            mime_type: mimeType,
-                            data: base64Data,
-                          },
-                        };
-                      } catch (e) {
-                        log('error', 'Error processing image data URL:', e);
-                        return null;
-                      }
-                    }
-                    return null;
-                  })
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  .filter((part: any) => part !== null);
-              }
-              if (
-                parts.length === 0 &&
-                Array.isArray(msg.content) &&
-                msg.content.some((part) => part.type === 'image_url')
-              ) {
-                parts.push({ text: '' });
-              }
-              return {
-                parts: parts,
-                role: role,
-              };
-            })
-            .filter((content) => content.parts.length > 0),
-        };
-        if (googleBody.contents.length === 0) {
-          throw new Error(
-            'No valid content (text or image) found to send to Google AI.'
+      if (partsSource) {
+        const parts = (partsSource as ChatMessagePart[])
+          .map((part: ChatMessagePart) => {
+            if (part.type === 'text') {
+              return { type: 'text' as const, text: part.text || '' };
+            }
+            if (
+              part.type === 'image' ||
+              part.type === 'image_url' ||
+              (part.type === 'file' &&
+                (part.mimeType?.startsWith('image/') ||
+                  part.mediaType?.startsWith('image/') ||
+                  part.url?.startsWith('data:image/')))
+            ) {
+              // Handle both base64 data URLs and remote URLs
+              const url = part.image_url?.url || part.image || part.url || '';
+              return { type: 'image' as const, image: url };
+            }
+            // Fallback: treat unknown parts as text
+            return { type: 'text' as const, text: String(part.text || '') };
+          })
+          .filter(
+            (p: ProcessedMessagePart) =>
+              p.type === 'image' ||
+              (p.type === 'text' && p.text && p.text.trim() !== '')
           );
-        }
-        if (cleanSystemPrompt && cleanSystemPrompt.length > 0) {
-          // @ts-expect-error TS(2339): Property 'systemInstruction' does not exist on typ... Remove this comment to see the full error message
-          googleBody.systemInstruction = {
-            parts: [{ text: cleanSystemPrompt }],
+
+        if (parts.length > 0) {
+          return {
+            role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+              | 'assistant'
+              | 'user',
+            content: parts,
           };
         }
-        if (!aiService.api_key) {
-          throw new Error('API key missing for Google AI service.');
-        }
-        log(
-          'debug',
-          `[AI Service Request] Type: Google, URL: https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=..., Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${aiService.api_key}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(googleBody),
-          }
-        );
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
       }
-      // For Ollama, extract only the text content from the last user message
-      // and send it as a string. Ollama does not support multimodal input
-      // in the same way as other providers.
-      case 'ollama': {
-        const ollamaMessages = messagesForAI.map((msg) => {
-          let contentString = '';
-          if (Array.isArray(msg.content)) {
-            const textParts = msg.content.filter(
-              (part) => part.type === 'text'
-            );
-            if (textParts.length > 0) {
-              contentString = textParts.map((part) => part.text).join(' ');
+
+      return {
+        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+          | 'assistant'
+          | 'user',
+        content: typeof msg.content === 'string' ? msg.content : '',
+      };
+    });
+
+    // Add the incoming message(s) to the history
+    const incomingMessages = messages.map((msg: ChatMessage) => {
+      if (Array.isArray(msg.parts) || Array.isArray(msg.content)) {
+        const partsSource = (
+          Array.isArray(msg.parts) ? msg.parts : msg.content
+        ) as ChatMessagePart[];
+        const parts = partsSource
+          .map((part: ChatMessagePart) => {
+            if (part.type === 'text') {
+              return {
+                type: 'text' as const,
+                text: part.text || part.content || '',
+              };
             }
-            const imageParts = msg.content.filter(
-              (part) => part.type === 'image_url'
-            );
-            if (imageParts.length > 0) {
-              log(
-                'warn',
-                'Image data detected for Ollama service. Ollama does not support multimodal input in this format. Image data will be ignored.'
-              );
+            if (
+              part.type === 'image' ||
+              part.type === 'image_url' ||
+              (part.type === 'file' &&
+                (part.mimeType?.startsWith('image/') ||
+                  part.mediaType?.startsWith('image/') ||
+                  part.url?.startsWith('data:image/')))
+            ) {
+              const url = part.image_url?.url || part.image || part.url || '';
+              return { type: 'image' as const, image: url };
             }
-          } else if (typeof msg.content === 'string') {
-            contentString = msg.content;
-          }
-          return { role: msg.role, content: contentString };
-        });
-        const timeout = aiService.timeout || 1200000; // Default to 1200 seconds (20 minutes)
-        log('info', `Ollama chat request timeout set to ${timeout}ms`);
-        // Create an undici Agent with the desired timeouts
-        const ollamaAgent = new Agent({
-          headersTimeout: timeout,
-          bodyTimeout: timeout,
-        });
-        try {
-          log(
-            'debug',
-            `[AI Service Request] Type: Ollama, URL: ${aiService.custom_url}/api/chat, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
+            return { type: 'text' as const, text: String(part.text || '') };
+          })
+          .filter(
+            (p: ProcessedMessagePart) =>
+              p.type === 'image' ||
+              (p.type === 'text' && p.text && p.text.trim() !== '')
           );
-          response = await fetch(`${aiService.custom_url}/api/chat`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: ollamaMessages,
-              stream: false,
-            }),
-            // Pass the undici agent to the fetch call
-            // @ts-expect-error TS(2769): No overload matches this call.
-            dispatcher: ollamaAgent,
+
+        return {
+          role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+            | 'assistant'
+            | 'user',
+          content: parts,
+        };
+      }
+
+      return {
+        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
+          | 'assistant'
+          | 'user',
+        content: typeof msg.content === 'string' ? msg.content : '',
+      };
+    });
+
+    conversationMessages.push(...incomingMessages);
+
+    // Filter out trailing empty assistant messages if sent by the client
+    while (
+      conversationMessages.length > 0 &&
+      conversationMessages[conversationMessages.length - 1].role ===
+        'assistant' &&
+      !conversationMessages[conversationMessages.length - 1].content
+    ) {
+      conversationMessages.pop();
+    }
+
+    const executedToolsList: Array<{
+      name: string;
+      args: Record<string, unknown>;
+    }> = [];
+
+    const result = await generateText({
+      model: modelInstance,
+      system: systemPromptContent,
+      messages: conversationMessages as NonNullable<
+        Parameters<typeof generateText>[0]['messages']
+      >,
+      tools: chatbotTools,
+      stopWhen: stepCountIs(50),
+      onStepFinish({ toolCalls }) {
+        if (toolCalls && toolCalls.length > 0) {
+          toolCalls.forEach((call) => {
+            const toolCall = call as unknown as {
+              toolName: string;
+              args: Record<string, unknown>;
+            };
+            log(
+              'info',
+              `Agent executed tool call: ${toolCall.toolName} with args: ${JSON.stringify(toolCall.args)}`
+            );
+            executedToolsList.push({
+              name: toolCall.toolName,
+              args: toolCall.args,
+            });
           });
-        } catch (error) {
-          // Translate undici timeouts into a clear timeout error
-          if (
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            error.name === 'HeadersTimeoutError' ||
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            error.name === 'BodyTimeoutError'
-          ) {
-            throw new Error(
-              `Ollama chat request timed out after ${timeout}ms due to undici timeout.`,
-              { cause: error }
-            );
-          }
-          // For network-level errors (ECONNREFUSED, ENOTFOUND, etc.) surface a 502-style error so the route returns JSON
-          // Prefix with a recognizable token so the router can map to an appropriate HTTP status
-          throw new Error(
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
-            { cause: error }
-          );
-        } finally {
-          // Destroy the agent to prevent resource leaks
-          ollamaAgent.destroy();
         }
-        break;
-      }
-      default: {
-        const hasImage = messagesForAI.some(
-          (msg) =>
-            Array.isArray(msg.content) &&
-            msg.content.some((part) => part.type === 'image_url')
+      },
+    });
+
+    // Save history dynamically to DB (replacing frontend client-side saves)
+    const lastUserMsg = incomingMessages[incomingMessages.length - 1];
+    const userMessageContent = Array.isArray(lastUserMsg?.content)
+      ? lastUserMsg.content
+          .filter((p: ChatMessagePart) => p.type === 'text')
+          .map((p: ChatMessagePart) => p.text || '')
+          .join(' ') || '[Image message]'
+      : (lastUserMsg?.content as string) || 'Message sent';
+
+    const userMessageParts = Array.isArray(lastUserMsg?.content)
+      ? lastUserMsg.content
+      : [{ type: 'text' as const, text: String(lastUserMsg?.content || '') }];
+
+    await chatRepository
+      .saveChatHistory({
+        user_id: authenticatedUserId,
+        content: userMessageContent,
+        messageType: 'user',
+        parts: userMessageParts,
+      })
+      .catch((err: unknown) =>
+        log('error', 'Failed to save user chat history:', err)
+      );
+
+    await chatRepository
+      .saveChatHistory({
+        user_id: authenticatedUserId,
+        content: result.text,
+        messageType: 'assistant',
+        parts: [{ type: 'text', text: result.text }],
+      })
+      .catch((err: unknown) =>
+        log('error', 'Failed to save assistant chat history:', err)
+      );
+
+    // Determine the general action type based on executed tools
+    let actionType = 'advice';
+    if (executedToolsList.some((t) => t.name === 'sparky_manage_food')) {
+      const logFoodCall = executedToolsList.find(
+        (t) => t.name === 'sparky_manage_food' && t.args?.action === 'log_food'
+      );
+      actionType = logFoodCall ? 'food_added' : 'advice';
+    } else if (
+      executedToolsList.some((t) => t.name === 'sparky_manage_exercise')
+    ) {
+      actionType = 'exercise_added';
+    } else if (
+      executedToolsList.some((t) => t.name === 'sparky_manage_checkin')
+    ) {
+      actionType = 'measurement_added';
+    } else if (
+      executedToolsList.some((t) => t.name === 'sparky_manage_habits')
+    ) {
+      actionType = 'habit_logged';
+    }
+
+    // Capture tool execution outputs
+    const responseMetadata: Record<string, unknown> = {};
+    if (executedToolsList.some((t) => t.name === 'sparky_manage_food')) {
+      const foodCall = executedToolsList.find(
+        (t) => t.name === 'sparky_manage_food'
+      );
+      if (foodCall && foodCall.args?.action === 'food_options') {
+        actionType = 'food_options';
+        const foodOptionsData = await processFoodOptionsRequest(
+          foodCall.args.food_name as string,
+          (foodCall.args.serving_unit as string) || 'serving',
+          authenticatedUserId,
+          serviceConfigId
         );
-        if (hasImage) {
-          throw new Error(
-            `Image analysis is not supported for the selected AI service type: ${aiService.service_type}. Please select a multimodal model like Google Gemini in settings.`,
-            { cause: { serviceType: aiService.service_type } }
-          );
-        }
-        throw new Error(`Unsupported service type: ${aiService.service_type}`, {
-          cause: { serviceType: aiService.service_type },
-        });
+        responseMetadata.foodOptions = foodOptionsData;
+      }
+    } else if (
+      executedToolsList.some((t) => t.name === 'sparky_manage_exercise')
+    ) {
+      const exerciseCall = executedToolsList.find(
+        (t) => t.name === 'sparky_manage_exercise'
+      );
+      if (exerciseCall && exerciseCall.args?.action === 'exercise_options') {
+        actionType = 'exercise_options';
+        // Exercise options could be processed here similarly
       }
     }
-    if (!response.ok) {
-      const errorBody = await response.text();
-      log(
-        'error',
-        `AI service API call error for ${aiService.service_type}. Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get('content-type')}, Body: ${errorBody}`
-      );
-      throw new Error(
-        `AI service API call error: ${response.status} - ${response.statusText}`
-      );
-    }
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const errorBody = await response.text();
-      log(
-        'error',
-        `AI service returned non-JSON response. Content-Type: ${contentType}, Body: ${errorBody}`
-      );
-      throw new Error(
-        `AI service returned non-JSON response. Expected application/json but got ${contentType}. Raw Body: ${errorBody.substring(0, 200)}...`
-      );
-    }
-    const data = await response.json();
-    let content = '';
-    switch (aiService.service_type) {
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom':
-        content =
-          data.choices?.[0]?.message?.content || 'No response from AI service';
-        break;
-      case 'anthropic':
-        content = data.content?.[0]?.text || 'No response from AI service';
-        break;
-      case 'google':
-        content =
-          data.candidates?.[0]?.content?.parts?.[0]?.text ||
-          'No response from AI service';
-        break;
-      case 'ollama':
-        content = data.message?.content || 'No response from AI service';
-        break;
-    }
-    return { content };
+
+    return {
+      content: result.text,
+      action: actionType,
+      executedTools: executedToolsList,
+      metadata: responseMetadata,
+    };
   } catch (error) {
     log(
       'error',
@@ -800,17 +778,17 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
       error
     );
     throw error;
+  } finally {
+    if (mcpClient) {
+      await mcpClient.close().catch(() => {});
+    }
   }
 }
 async function processFoodOptionsRequest(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodName: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unit: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  serviceConfigId: any
+  foodName: string,
+  unit: string,
+  authenticatedUserId: string,
+  serviceConfigId: string
 ) {
   // Changed serviceConfig to serviceConfigId
   try {
@@ -835,15 +813,15 @@ async function processFoodOptionsRequest(
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
       throw new Error('API key missing for selected AI service.');
     }
-    const systemPrompt = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: Always provide estimated nutritional details for each food option. Do NOT default to 0 for any nutritional field if an estimation can be made.** Do NOT include any other text.
+    const systemPrompt = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information for EVERY field (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: You MUST estimate and populate every single micro-nutritional field. Do NOT default to 0 or leave blank any nutritional field if a realistic scientific estimation can be made based on the food type. Use your biochemical and culinary knowledge to calculate typical distributions.** Do NOT include any other text.
 **CRITICAL: When a unit is specified in the request (e.g., 'GENERATE_FOOD_OPTIONS:apple in piece'), ensure the \`serving_unit\` in the generated \`FoodOption\` objects matches the requested unit exactly, if it's a common and logical unit for that food. If not, provide a common and realistic serving unit.**`;
-    const messages = [
+    const messages: Array<{ role: string; content: string }> = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `GENERATE_FOOD_OPTIONS:${foodName} in ${unit}` },
     ];
     const model =
       aiService.model_name || getDefaultModel(aiService.service_type);
-    let response;
+    let response: Response;
     switch (aiService.service_type) {
       case 'openai':
       case 'openai_compatible':
@@ -936,6 +914,9 @@ async function processFoodOptionsRequest(
               };
             })
             .filter((content) => content.parts[0].text.trim() !== ''),
+          systemInstruction: undefined as
+            | { parts: Array<{ text: string }> }
+            | undefined,
         };
         if (googleBodyFoodOptions.contents.length === 0) {
           throw new Error('No valid content found to send to Google AI.');
@@ -944,12 +925,11 @@ async function processFoodOptionsRequest(
           .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
-          .substring(0, 1000);
+          .substring(0, 2000);
         if (
           cleanSystemPromptFoodOptions &&
           cleanSystemPromptFoodOptions.length > 0
         ) {
-          // @ts-expect-error TS(2339): Property 'systemInstruction' does not exist on typ... Remove this comment to see the full error message
           googleBodyFoodOptions.systemInstruction = {
             parts: [{ text: cleanSystemPromptFoodOptions }],
           };
@@ -979,18 +959,7 @@ async function processFoodOptionsRequest(
       // For Ollama, extract only the text content from the messages
       case 'ollama': {
         const ollamaMessagesFoodOptions = messages.map((msg) => {
-          let contentString = '';
-          if (Array.isArray(msg.content)) {
-            const textParts = msg.content.filter(
-              (part) => part.type === 'text'
-            );
-            if (textParts.length > 0) {
-              contentString = textParts.map((part) => part.text).join(' ');
-            }
-          } else if (typeof msg.content === 'string') {
-            contentString = msg.content;
-          }
-          return { role: msg.role, content: contentString };
+          return { role: msg.role, content: msg.content };
         });
         const timeoutFoodOptions = aiService.timeout || 1200000; // Default to 1200 seconds (20 minutes)
         log(
@@ -1073,7 +1042,7 @@ async function processFoodOptionsRequest(
         `AI service returned non-JSON response for food options. Expected application/json but got ${contentTypeFoodOptions}. Raw Body: ${errorBody.substring(0, 200)}...`
       );
     }
-    const data = await response.json();
+    const data = (await response.json()) as FoodOptionsApiResponse;
     let content = '';
     switch (aiService.service_type) {
       case 'openai':
@@ -1107,6 +1076,272 @@ async function processFoodOptionsRequest(
     throw error;
   }
 }
+async function processChatMessageStream(
+  messages: ChatMessage[],
+  serviceConfigId: string,
+  authenticatedUserId: string,
+  reqHeaders?: IncomingHttpHeaders
+) {
+  let mcpClient: Awaited<ReturnType<typeof getMcpClient>> | undefined;
+  try {
+    if (!Array.isArray(messages) || messages.length === 0) {
+      throw new Error('Invalid messages format.');
+    }
+    if (!serviceConfigId) {
+      throw new Error('AI service configuration ID is missing.');
+    }
+    const aiService = await chatRepository.getAiServiceSettingForBackend(
+      serviceConfigId,
+      authenticatedUserId
+    );
+    if (!aiService) {
+      throw new Error('AI service setting not found for the provided ID.');
+    }
+
+    const apiKey = aiService.api_key;
+    const modelName =
+      aiService.model_name || getDefaultModel(aiService.service_type);
+
+    log(
+      'info',
+      `Streaming chat message with service: ${aiService.service_type}, model: ${modelName}`
+    );
+
+    let modelInstance: Parameters<typeof streamText>[0]['model'];
+    if (aiService.service_type === 'openai') {
+      const provider = createOpenAI({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'anthropic') {
+      const provider = createAnthropic({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'google') {
+      const provider = createGoogleGenerativeAI({ apiKey });
+      modelInstance = provider(modelName);
+    } else if (
+      aiService.service_type === 'ollama' ||
+      aiService.service_type === 'openai_compatible' ||
+      aiService.service_type === 'custom' ||
+      aiService.service_type === 'mistral' ||
+      aiService.service_type === 'groq' ||
+      aiService.service_type === 'openrouter'
+    ) {
+      let baseURL = aiService.custom_url;
+      if (aiService.service_type === 'ollama') {
+        baseURL = `${aiService.custom_url}/v1`;
+      } else if (aiService.service_type === 'groq') {
+        baseURL = 'https://api.groq.com/openai/v1';
+      } else if (aiService.service_type === 'openrouter') {
+        baseURL = 'https://openrouter.ai/api/v1';
+      } else if (aiService.service_type === 'mistral') {
+        baseURL = 'https://api.mistral.ai/v1';
+      }
+      const provider = createOpenAI({
+        baseURL,
+        apiKey: apiKey || 'no-key',
+      });
+      modelInstance = provider.chat(modelName);
+    } else {
+      throw new Error(`Unsupported service type: ${aiService.service_type}`);
+    }
+
+    // Connect to MCP Server using helper function
+    mcpClient = await getMcpClient(reqHeaders);
+
+    const [customCategories, chatTz] = await Promise.all([
+      measurementRepository.getCustomCategories(authenticatedUserId),
+      loadUserTimezone(authenticatedUserId),
+    ]);
+
+    const customCategoriesList =
+      customCategories.length > 0
+        ? customCategories
+            .map(
+              (cat: DatabaseCustomCategories) =>
+                `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
+            )
+            .join('\n')
+        : 'None';
+
+    const systemPromptContent = getSystemPrompt(chatTz, customCategoriesList);
+
+    const allTools = await mcpClient.tools();
+    const chatbotTools: NonNullable<Parameters<typeof streamText>[0]['tools']> =
+      {};
+    for (const [key, tool] of Object.entries(allTools)) {
+      const isBlocked = [
+        'sparky_run_project_tests',
+        'sparky_inspect_schema',
+      ].includes(key);
+      if (!isBlocked) {
+        chatbotTools[key] = tool;
+      }
+    }
+    log(
+      'info',
+      `Loaded ${Object.keys(chatbotTools).length} tools for chatbot: ${Object.keys(chatbotTools).join(', ')}`
+    );
+
+    const conversationMessages = messages.map((msg: ChatMessage) => {
+      // If parts or content is an array of parts (text + images), pass them through
+      const partsSource = Array.isArray(msg.parts)
+        ? msg.parts
+        : Array.isArray(msg.content)
+          ? msg.content
+          : null;
+
+      if (partsSource) {
+        const parts = (partsSource as ChatMessagePart[])
+          .map((part: ChatMessagePart) => {
+            if (part.type === 'text') {
+              return { type: 'text' as const, text: part.text || '' };
+            }
+            if (
+              part.type === 'image' ||
+              part.type === 'image_url' ||
+              (part.type === 'file' &&
+                (part.mimeType?.startsWith('image/') ||
+                  part.mediaType?.startsWith('image/') ||
+                  part.url?.startsWith('data:image/')))
+            ) {
+              // Handle both base64 data URLs and remote URLs
+              const url = part.image_url?.url || part.image || part.url || '';
+              return { type: 'image' as const, image: url };
+            }
+            // Fallback: treat unknown parts as text
+            return { type: 'text' as const, text: String(part.text || '') };
+          })
+          .filter(
+            (p: ProcessedMessagePart) =>
+              p.type === 'image' ||
+              (p.type === 'text' && p.text && p.text.trim() !== '')
+          );
+
+        if (parts.length > 0) {
+          return {
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: parts,
+          };
+        }
+      }
+
+      // If content is a plain string, use as-is
+      if (typeof msg.content === 'string' && msg.content.trim() !== '') {
+        return {
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content,
+        };
+      }
+
+      return {
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: '',
+      };
+    });
+
+    // Filter out trailing empty assistant messages if sent by the client
+    while (
+      conversationMessages.length > 0 &&
+      conversationMessages[conversationMessages.length - 1].role ===
+        'assistant' &&
+      (!conversationMessages[conversationMessages.length - 1].content ||
+        (Array.isArray(
+          conversationMessages[conversationMessages.length - 1].content
+        ) &&
+          conversationMessages[conversationMessages.length - 1].content
+            .length === 0))
+    ) {
+      conversationMessages.pop();
+    }
+
+    // Use a sliding window of recent messages to give the LLM multi-turn context
+    // ...
+    const CONTEXT_WINDOW = 20;
+    const llmMessages = conversationMessages.slice(-CONTEXT_WINDOW);
+
+    log(
+      'debug',
+      `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
+    );
+
+    // Ensure the window starts with a user message (some models reject assistant-first history)
+    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
+      llmMessages.shift();
+    }
+
+    const lastMsg = llmMessages[llmMessages.length - 1];
+    const userMessageContent = Array.isArray(lastMsg?.content)
+      ? lastMsg.content
+          .filter((p: ChatMessagePart) => p.type === 'text')
+          .map((p: ChatMessagePart) => p.text || '')
+          .join(' ') || '[Image message]'
+      : (lastMsg?.content as string) || 'Message sent';
+
+    const result = streamText({
+      model: modelInstance,
+      system: systemPromptContent,
+      messages: llmMessages as NonNullable<
+        Parameters<typeof streamText>[0]['messages']
+      >,
+      tools: chatbotTools,
+      stopWhen: stepCountIs(50),
+      onFinish: async ({ text }) => {
+        // Close MCP Client
+        if (mcpClient) {
+          await mcpClient.close().catch(() => {});
+        }
+
+        // Get the last user message from conversationMessages to ensure parts are captured
+        const lastUserMessage = [...conversationMessages]
+          .reverse()
+          .find((msg) => msg.role === 'user');
+
+        const userMessageParts = Array.isArray(lastUserMessage?.content)
+          ? lastUserMessage.content
+          : [
+              {
+                type: 'text' as const,
+                text: String(lastUserMessage?.content || ''),
+              },
+            ];
+
+        // Save to DB on completion
+        await chatRepository
+          .saveChatHistory({
+            user_id: authenticatedUserId,
+            content: userMessageContent,
+            messageType: 'user',
+            parts: userMessageParts,
+          })
+          .catch((err: unknown) =>
+            log('error', 'Failed to save user chat history:', err)
+          );
+
+        await chatRepository
+          .saveChatHistory({
+            user_id: authenticatedUserId,
+            content: text,
+            messageType: 'assistant',
+            parts: [{ type: 'text', text }],
+          })
+          .catch((err: unknown) =>
+            log('error', 'Failed to save assistant chat history:', err)
+          );
+      },
+    });
+
+    return { result, mcpClient };
+  } catch (error) {
+    if (mcpClient) {
+      await mcpClient.close().catch(() => {});
+    }
+    log(
+      'error',
+      `Error in processChatMessageStream for user ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 export { handleAiServiceSettings };
 export { getAiServiceSettings };
 export { getActiveAiServiceSetting };
@@ -1120,6 +1355,7 @@ export { clearAllSparkyChatHistory };
 export { saveSparkyChatHistory };
 export { processChatMessage };
 export { processFoodOptionsRequest };
+export { processChatMessageStream };
 export default {
   handleAiServiceSettings,
   getAiServiceSettings,
@@ -1134,4 +1370,5 @@ export default {
   saveSparkyChatHistory,
   processChatMessage,
   processFoodOptionsRequest,
+  processChatMessageStream,
 };

@@ -31,29 +31,37 @@ export const getModelOptions = (serviceType: string): string[] => {
       return [
         'gpt-4o',
         'gpt-4o-mini',
+        'o1',
+        'o1-mini',
+        'o3-mini',
         'gpt-4-turbo',
         'gpt-4',
         'gpt-3.5-turbo',
-        'o1-preview',
-        'o1-mini',
       ];
     case 'anthropic':
       return [
+        'claude-3-7-sonnet-20250219',
         'claude-3-5-sonnet-20241022',
+        'claude-3-5-haiku-20241022',
         'claude-3-opus-20240229',
         'claude-3-sonnet-20240229',
         'claude-3-haiku-20240307',
       ];
     case 'google':
       return [
-        'gemini-pro',
-        'gemini-pro-vision',
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite-preview-02-05',
         'gemini-1.5-pro',
         'gemini-1.5-flash',
+        'gemini-pro',
       ];
     case 'mistral':
       return [
         'mistral-large-latest',
+        'pixtral-12b-2409',
+        'pixtral-large-latest',
         'mistral-medium-latest',
         'mistral-small-latest',
         'open-mistral-7b',
@@ -61,21 +69,25 @@ export const getModelOptions = (serviceType: string): string[] => {
       ];
     case 'groq':
       return [
-        'llama-3.1-8b-instant',
+        'deepseek-r1-distill-llama-70b',
         'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+        'llama-3.2-11b-vision-preview',
         'meta-llama/llama-guard-4-12b',
-        'whisper-large-v3',
-        'whisper-large-v3-turbo',
       ];
     case 'openrouter':
       return [
-        'google/gemma-2-9b-it:free',
+        'google/gemini-2.5-flash',
+        'google/gemini-2.5-pro',
+        'deepseek/deepseek-r1:free',
+        'deepseek/deepseek-r1',
+        'deepseek/deepseek-chat',
+        'anthropic/claude-3.7-sonnet',
         'google/gemma-3-27b-it:free',
+        'google/gemma-2-9b-it:free',
         'meta-llama/llama-3.2-3b-instruct:free',
         'meta-llama/llama-3.1-8b-instruct:free',
         'qwen/qwen-2.5-72b-instruct:free',
-        'deepseek/deepseek-chat',
-        'deepseek/deepseek-r1:free',
         'meta-llama/llama-3.1-405b:free',
       ];
     default:

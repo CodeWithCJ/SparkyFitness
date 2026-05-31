@@ -25,7 +25,9 @@ import {
   useExternalFoodSearch,
   usePreferences,
 } from '../hooks';
+import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
 import { getLastUsedTab, setLastUsedTab } from '../services/foodSearchPreferences';
 import type { FoodSearchTab } from '../services/foodSearchPreferences';
 import { FoodItem, TopFoodItem } from '../types/foods';
@@ -144,6 +146,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isSearching: isOnlineSearching,
     isSearchActive: isOnlineSearchActive,
     isSearchError: isOnlineSearchError,
+    searchErrorMessage: onlineSearchErrorMessage,
     isProviderSupported,
     fetchNextPage,
     hasNextPage,
@@ -211,7 +214,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       try {
         const detailed = await fetchExternalFoodDetails('fatsecret', item.id, selectedProvider);
         showFoodInfo(externalFoodItemToFoodInfo(detailed));
-      } catch {
+      } catch (error) {
+        const message = getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
+        Toast.show({ type: 'error', text1: 'Details unavailable', text2: message });
         showFoodInfo(externalFoodItemToFoodInfo(item));
       } finally {
         setLoadingFoodId(null);
@@ -725,7 +730,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <View className="flex-1 justify-center items-center px-6">
             <Icon name="alert-circle" size={48} color={accentColor} />
             <Text className="text-text-secondary text-base mt-4 text-center">
-              Failed to search {selectedProviderName}
+              {onlineSearchErrorMessage ?? `Failed to search ${selectedProviderName}`}
             </Text>
           </View>
         </>
