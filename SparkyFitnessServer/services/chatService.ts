@@ -348,14 +348,15 @@ async function getMcpClient(reqHeaders?: IncomingHttpHeaders) {
     const isHttps =
       process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https');
     const protoHeader = reqHeaders?.['x-forwarded-proto'];
+    const resolvedProto = Array.isArray(protoHeader)
+      ? protoHeader[0]
+      : protoHeader;
     headers['x-forwarded-proto'] =
-      (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader) ||
-      (isHttps ? 'https' : 'http');
+      resolvedProto || (isHttps ? 'https' : 'http');
     const hostHeader = reqHeaders?.['x-forwarded-host'];
-    if (hostHeader) {
-      headers['x-forwarded-host'] = Array.isArray(hostHeader)
-        ? hostHeader[0]
-        : hostHeader;
+    const resolvedHost = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
+    if (resolvedHost) {
+      headers['x-forwarded-host'] = resolvedHost;
     }
     log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
     return await createMCPClient({
