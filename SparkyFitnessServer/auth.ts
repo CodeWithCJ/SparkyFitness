@@ -2,8 +2,7 @@ import { betterAuth } from 'better-auth';
 import { APIError } from 'better-auth/api';
 import pg from 'pg';
 import { log } from './config/logging.js';
-// @ts-expect-error
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { syncUserGroups } from './utils/oidcGroupSync.js';
 import userRepository from './models/userRepository.js';
 import { resolveTwoFactorDisableUserUpdate } from './utils/twoFactorState.js';

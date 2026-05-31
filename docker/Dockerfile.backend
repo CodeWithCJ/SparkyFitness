@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
 # Stage 1: Install workspace dependencies and deploy server
-FROM node:24-alpine AS backend_builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS backend_builder
 
 RUN corepack enable
 
