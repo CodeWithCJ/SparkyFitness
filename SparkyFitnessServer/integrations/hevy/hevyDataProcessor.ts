@@ -139,7 +139,9 @@ async function processSingleWorkout(
         set_type: mapSetType(set.type),
         weight: set.weight_kg,
         reps: set.reps,
-        duration: set.duration_seconds ? set.duration_seconds / 60 : null,
+        duration: set.duration_seconds
+          ? Math.round(set.duration_seconds / 60)
+          : null,
         rpe: set.rpe,
       })),
     };
