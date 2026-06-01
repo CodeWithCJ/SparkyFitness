@@ -3,7 +3,7 @@
 FROM python:3.13.7-slim-trixie
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl openssl \
+    && apt-get install -y --no-install-recommends ca-certificates curl openssl git \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
