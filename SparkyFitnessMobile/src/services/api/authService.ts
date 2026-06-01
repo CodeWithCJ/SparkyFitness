@@ -1,6 +1,7 @@
 import { NativeModules } from 'react-native';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
+import { checkIsLocalNetwork } from './networkUtils';
 
 export class LoginError extends Error {
   constructor(message: string, public statusCode?: number) {
@@ -225,7 +226,8 @@ export const login = async (
 ): Promise<LoginResult> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  if (!__DEV__ && !baseUrl.startsWith('https://')) {
+  const isLocalNetwork = checkIsLocalNetwork(baseUrl);
+  if (!__DEV__ && !baseUrl.startsWith('https://') && !isLocalNetwork) {
     throw new LoginError('A secure (HTTPS) server URL is required to sign in.');
   }
 

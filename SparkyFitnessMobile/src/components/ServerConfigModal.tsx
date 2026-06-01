@@ -37,6 +37,7 @@ import {
   type ProxyHeader,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { checkIsLocalNetwork } from '../services/api/networkUtils';
 
 type AuthTab = 'signIn' | 'apiKey';
 
@@ -166,7 +167,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
     if (!email.trim()) { setError('Please enter your email.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    const isLocalNetwork = checkIsLocalNetwork(url);
+    if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
       setError('HTTPS is required for server connections.');
       return;
     }
@@ -300,7 +302,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
     if (!apiKey.trim()) { setError('Please enter an API key.'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    const isLocalNetwork = checkIsLocalNetwork(url);
+    if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
       setError('HTTPS is required for server connections.');
       return;
     }
@@ -347,7 +350,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const handleSaveWithoutAuth = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    const isLocalNetwork = checkIsLocalNetwork(url);
+    if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
       setError('HTTPS is required for server connections.');
       return;
     }

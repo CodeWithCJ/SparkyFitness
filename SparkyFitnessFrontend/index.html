@@ -1,6 +1,31 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        try {
+          const theme = localStorage.getItem('theme') || 'system';
+          let resolvedTheme = theme;
+          if (theme === 'system') {
+            resolvedTheme =
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          } else if (theme === 'whoop') {
+            resolvedTheme = 'dark';
+          }
+          if (resolvedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.error('Failed to pre-set theme:', e);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"

@@ -2,6 +2,7 @@ import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
+import { checkIsLocalNetwork } from './networkUtils';
 
 export const normalizeUrl = (url: string): string => {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -26,7 +27,8 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
   const baseUrl = normalizeUrl(config.url);
 
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  const isLocalNetwork = checkIsLocalNetwork(baseUrl);
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://') && !isLocalNetwork) {
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
 

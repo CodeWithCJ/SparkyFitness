@@ -4,6 +4,7 @@ import { normalizeUrl } from './apiClient';
 import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
+import { checkIsLocalNetwork } from './networkUtils';
 import type { SleepStageEvent } from '../../types/mobileHealthData';
 
 interface BaseHealthDataPayloadItem {
@@ -246,8 +247,8 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   }
 
   const url = normalizeUrl(config.url);
-
-  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+  const isLocalNetwork = checkIsLocalNetwork(url);
+  if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
 
@@ -294,8 +295,8 @@ export const checkServerConnection = async (): Promise<boolean> => {
   }
 
   const url = normalizeUrl(config.url);
-
-  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+  const isLocalNetwork = checkIsLocalNetwork(url);
+  if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
     addLog('[API] Connection check blocked: HTTPS is required', 'WARNING');
     return false;
   }

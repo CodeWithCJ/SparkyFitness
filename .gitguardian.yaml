@@ -1,0 +1,4 @@
+version: 2
+secret:
+  ignored_paths:
+    - 'SparkyFitnessFrontend/public/locales/lv/translation.json'

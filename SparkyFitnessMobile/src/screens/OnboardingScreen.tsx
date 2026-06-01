@@ -30,6 +30,7 @@ import {
 } from '../services/api/authService';
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { checkIsLocalNetwork } from '../services/api/networkUtils';
 import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -136,7 +137,8 @@ export default function OnboardingScreen({ navigation }: Props) {
       setError('Enter a valid SparkyFitness URL');
       return;
     }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    const isLocalNetwork = checkIsLocalNetwork(url);
+    if (!__DEV__ && url.toLowerCase().startsWith('http://') && !isLocalNetwork) {
       setError('HTTPS is required for server connections.');
       return;
     }
