@@ -394,7 +394,7 @@ const FoodUnitSelector = ({
                     id="quantity"
                     type="number"
                     step="any"
-                    min="0.1"
+                    min="0.01"
                     value={quantity}
                     onChange={(e) => {
                       const newQuantity = Number(e.target.value);

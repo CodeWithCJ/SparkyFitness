@@ -136,7 +136,7 @@ const MealUnitSelector = ({
                   id="quantity"
                   type="number"
                   step="any"
-                  min="0.1"
+                  min="0.01"
                   value={quantity}
                   ref={focusAndSelect}
                   onChange={(e) => {
