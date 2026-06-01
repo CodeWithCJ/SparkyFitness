@@ -393,7 +393,7 @@ const FoodUnitSelector = ({
                     ref={quantityInputRef}
                     id="quantity"
                     type="number"
-                    step="0.1"
+                    step="any"
                     min="0.1"
                     value={quantity}
                     onChange={(e) => {

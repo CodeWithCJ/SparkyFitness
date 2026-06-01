@@ -310,7 +310,7 @@ const EditFoodEntryDialog = ({
                   <Input
                     id="quantity"
                     type="number"
-                    step="0.1"
+                    step="any"
                     min="0.1"
                     value={quantity}
                     ref={inputRef}

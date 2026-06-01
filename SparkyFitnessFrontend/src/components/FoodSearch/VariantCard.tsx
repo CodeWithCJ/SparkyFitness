@@ -253,7 +253,7 @@ export function VariantCard({
               <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
               <NumericInput
                 id={`serving-size-${index}`}
-                step="0.1"
+                step="any"
                 value={
                   variant.serving_size !== undefined
                     ? variant.serving_size
@@ -435,7 +435,7 @@ export function VariantCard({
               <Input
                 id={`eq-size-${index}-${eqIndex}`}
                 type="number"
-                step="0.1"
+                step="any"
                 value={eq.serving_size}
                 onChange={(e) =>
                   updateEquivalent(
