@@ -17,6 +17,12 @@ const REQUEST_TIMEOUT_MS = 90_000;
 
 const SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic']);
 
+// Providers whose vision APIs reject HEIC/HEIF (only Gemini accepts them).
+// Caught here so the user gets a clean UNSUPPORTED_MIME_TYPE instead of an
+// opaque upstream 400 surfaced as a 502.
+const HEIC_MIME_TYPES = new Set(['image/heic', 'image/heif']);
+const HEIC_UNSUPPORTED_PROVIDERS = new Set(['openai', 'anthropic']);
+
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
@@ -249,12 +255,49 @@ Rules:
   - Only ask clarifying questions that would materially change the estimate.`;
 }
 
-export interface EstimateFoodPhotoNutritionInput {
-  base64Image: string;
+export interface PhotoImage {
+  base64: string;
   mimeType: string;
+}
+
+export interface EstimateFoodPhotoNutritionInput {
+  /** One or more images for a single estimate. Preferred over base64Image/mimeType. */
+  images?: PhotoImage[];
+  /** Legacy single-image field; use images[]. Still accepted for backward compatibility. */
+  base64Image?: string;
+  /** Legacy single-image field; use images[]. Still accepted for backward compatibility. */
+  mimeType?: string;
   userId: string;
   description?: string;
   weightSlot?: string;
+}
+
+// Anthropic's Messages API rejects the non-standard 'image/jpg'; normalize it
+// to the canonical 'image/jpeg'. The route already rejects 'image/jpg' via its
+// allow-list, so this is defense-in-depth for the independently-exported
+// service rather than a currently-reachable path.
+function normalizeMimeType(mimeType: string): string {
+  return mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
+}
+
+function resolveImages(input: EstimateFoodPhotoNutritionInput): PhotoImage[] {
+  const raw =
+    input.images && input.images.length > 0
+      ? input.images
+      : input.base64Image && input.mimeType
+        ? [{ base64: input.base64Image, mimeType: input.mimeType }]
+        : [];
+  return raw
+    .filter(
+      (img): img is PhotoImage =>
+        !!img &&
+        typeof img.base64 === 'string' &&
+        typeof img.mimeType === 'string'
+    )
+    .map((img) => ({
+      base64: img.base64,
+      mimeType: normalizeMimeType(img.mimeType),
+    }));
 }
 
 export type EstimateFoodPhotoNutritionResult =
@@ -273,8 +316,7 @@ type ProviderExtractResult =
 
 function buildGoogleRequest(
   apiKey: string,
-  base64Image: string,
-  mimeType: string,
+  images: PhotoImage[],
   prompt: string,
   model: string
 ): ProviderRequest {
@@ -289,7 +331,9 @@ function buildGoogleRequest(
         {
           role: 'user',
           parts: [
-            { inline_data: { mime_type: mimeType, data: base64Image } },
+            ...images.map((img) => ({
+              inline_data: { mime_type: img.mimeType, data: img.base64 },
+            })),
             { text: prompt },
           ],
         },
@@ -329,8 +373,7 @@ function extractGoogleResponse(data: unknown): ProviderExtractResult {
 
 function buildOpenAiRequest(
   apiKey: string,
-  base64Image: string,
-  mimeType: string,
+  images: PhotoImage[],
   prompt: string,
   strictSchema: JsonSchemaNode,
   model: string
@@ -347,10 +390,10 @@ function buildOpenAiRequest(
         {
           role: 'user',
           content: [
-            {
+            ...images.map((img) => ({
               type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64Image}` },
-            },
+              image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+            })),
             { type: 'text', text: prompt },
           ],
         },
@@ -419,8 +462,7 @@ function extractOpenAiResponse(data: unknown): ProviderExtractResult {
 
 function buildAnthropicRequest(
   apiKey: string,
-  base64Image: string,
-  mimeType: string,
+  images: PhotoImage[],
   prompt: string,
   strictSchema: JsonSchemaNode,
   model: string
@@ -449,14 +491,14 @@ function buildAnthropicRequest(
         {
           role: 'user',
           content: [
-            {
+            ...images.map((img) => ({
               type: 'image',
               source: {
                 type: 'base64',
-                media_type: mimeType,
-                data: base64Image,
+                media_type: img.mimeType,
+                data: img.base64,
               },
-            },
+            })),
             { type: 'text', text: prompt },
           ],
         },
@@ -517,13 +559,15 @@ function extractAnthropicResponse(data: unknown): ProviderExtractResult {
 async function estimateFoodPhotoNutrition(
   input: EstimateFoodPhotoNutritionInput
 ): Promise<EstimateFoodPhotoNutritionResult> {
-  const {
-    base64Image,
-    mimeType,
-    userId,
-    description = '',
-    weightSlot = '',
-  } = input;
+  const { userId, description = '', weightSlot = '' } = input;
+  const images = resolveImages(input);
+  if (images.length === 0) {
+    return {
+      success: false,
+      code: 'INVALID_REQUEST',
+      error: 'At least one image is required.',
+    };
+  }
 
   const setting = await chatRepository.getActiveAiServiceSetting(userId);
   if (!setting) {
@@ -563,22 +607,26 @@ async function estimateFoodPhotoNutrition(
   const providerType = aiService.service_type;
   const model = aiService.model_name || getDefaultVisionModel(providerType);
 
+  if (
+    HEIC_UNSUPPORTED_PROVIDERS.has(providerType) &&
+    images.some((img) => HEIC_MIME_TYPES.has(img.mimeType))
+  ) {
+    return {
+      success: false,
+      code: 'UNSUPPORTED_MIME_TYPE',
+      error: `The active AI provider (${providerType}) does not support HEIC/HEIF images. Please use JPEG, PNG, or WebP.`,
+    };
+  }
+
   let request: ProviderRequest;
   switch (providerType) {
     case 'google':
-      request = buildGoogleRequest(
-        apiKey,
-        base64Image,
-        mimeType,
-        prompt,
-        model
-      );
+      request = buildGoogleRequest(apiKey, images, prompt, model);
       break;
     case 'openai':
       request = buildOpenAiRequest(
         apiKey,
-        base64Image,
-        mimeType,
+        images,
         prompt,
         toStrictJsonSchema(RESPONSE_SCHEMA),
         model
@@ -587,8 +635,7 @@ async function estimateFoodPhotoNutrition(
     case 'anthropic':
       request = buildAnthropicRequest(
         apiKey,
-        base64Image,
-        mimeType,
+        images,
         prompt,
         toStrictJsonSchema(RESPONSE_SCHEMA),
         model

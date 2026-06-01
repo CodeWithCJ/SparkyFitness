@@ -671,6 +671,15 @@ const ALLOWED_PHOTO_MIME_TYPES = new Set([
 const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024;
 const MAX_DESCRIPTION_LENGTH = 500;
 const OZ_TO_GRAMS = 28.3495;
+const MAX_PHOTO_IMAGES = (() => {
+  const raw = Number(process.env.AI_PHOTO_ESTIMATE_MAX_IMAGES);
+  return Number.isInteger(raw) && raw > 0 ? raw : 6;
+})();
+// Cap the combined base64 payload across all images. The per-image 8MB limit
+// alone allows up to MAX_PHOTO_IMAGES * 8MB, which (parsed, mapped, and
+// re-stringified for the provider) can spike memory enough to OOM a small box
+// under concurrent load.
+const MAX_TOTAL_BASE64_LENGTH = 24 * 1024 * 1024;
 
 const PHOTO_ESTIMATION_ERROR_HTTP_STATUS: Record<
   FoodPhotoEstimateErrorCode,
@@ -693,31 +702,74 @@ router.post(
   authenticate,
   checkPermissionMiddleware('diary'),
   async (req, res, next) => {
-    const { image, mime_type, description, total_weight, weight_unit } =
+    const { image, mime_type, images, description, total_weight, weight_unit } =
       req.body ?? {};
 
-    if (typeof image !== 'string' || image.length === 0) {
+    // Normalize to an array of { image, mime_type } entries. Accepts the
+    // multi-image `images[]` shape or the legacy single `image`/`mime_type`
+    // fields (kept for backward compatibility).
+    let rawImages: unknown[];
+    if (images !== undefined) {
+      if (!Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({
+          error: 'images must be a non-empty array.',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      rawImages = images;
+    } else if (image !== undefined || mime_type !== undefined) {
+      rawImages = [{ image, mime_type }];
+    } else {
       return res
         .status(400)
         .json({ error: 'image is required.', code: 'INVALID_REQUEST' });
     }
-    if (typeof mime_type !== 'string' || mime_type.length === 0) {
-      return res
-        .status(400)
-        .json({ error: 'mime_type is required.', code: 'INVALID_REQUEST' });
-    }
-    if (image.length > MAX_BASE64_IMAGE_LENGTH) {
+
+    if (rawImages.length > MAX_PHOTO_IMAGES) {
       return res.status(400).json({
-        error: 'image exceeds the maximum allowed size of 8MB (base64).',
-        code: 'IMAGE_TOO_LARGE',
+        error: `A maximum of ${MAX_PHOTO_IMAGES} images is allowed per estimate.`,
+        code: 'INVALID_REQUEST',
       });
     }
-    if (!ALLOWED_PHOTO_MIME_TYPES.has(mime_type)) {
-      return res.status(400).json({
-        error: `Unsupported mime_type '${mime_type}'. Allowed: ${[...ALLOWED_PHOTO_MIME_TYPES].join(', ')}.`,
-        code: 'UNSUPPORTED_MIME_TYPE',
-      });
+
+    const photoImages: { base64: string; mimeType: string }[] = [];
+    let totalBase64Length = 0;
+    for (const entry of rawImages) {
+      const img = (entry as { image?: unknown } | null)?.image;
+      const mt = (entry as { mime_type?: unknown } | null)?.mime_type;
+      if (typeof img !== 'string' || img.length === 0) {
+        return res
+          .status(400)
+          .json({ error: 'image is required.', code: 'INVALID_REQUEST' });
+      }
+      if (typeof mt !== 'string' || mt.length === 0) {
+        return res
+          .status(400)
+          .json({ error: 'mime_type is required.', code: 'INVALID_REQUEST' });
+      }
+      if (img.length > MAX_BASE64_IMAGE_LENGTH) {
+        return res.status(400).json({
+          error: 'image exceeds the maximum allowed size of 8MB (base64).',
+          code: 'IMAGE_TOO_LARGE',
+        });
+      }
+      totalBase64Length += img.length;
+      if (totalBase64Length > MAX_TOTAL_BASE64_LENGTH) {
+        return res.status(400).json({
+          error:
+            'The combined size of all images exceeds the allowed limit of 24MB (base64).',
+          code: 'IMAGE_TOO_LARGE',
+        });
+      }
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(mt)) {
+        return res.status(400).json({
+          error: `Unsupported mime_type '${mt}'. Allowed: ${[...ALLOWED_PHOTO_MIME_TYPES].join(', ')}.`,
+          code: 'UNSUPPORTED_MIME_TYPE',
+        });
+      }
+      photoImages.push({ base64: img, mimeType: mt });
     }
+
     if (description !== undefined) {
       if (
         typeof description !== 'string' ||
@@ -768,8 +820,7 @@ router.post(
     try {
       const result =
         await foodPhotoEstimationService.estimateFoodPhotoNutrition({
-          base64Image: image,
-          mimeType: mime_type,
+          images: photoImages,
           userId: req.userId,
           description: typeof description === 'string' ? description : '',
           weightSlot,

@@ -627,9 +627,18 @@ export async function scanNutritionLabel(base64Image: string, mimeType: string):
   });
 }
 
-export interface EstimateFoodPhotoInput {
+export interface ImagePayload {
   base64Image: string;
   mimeType: string;
+}
+
+export interface EstimateFoodPhotoInput {
+  /** One or more images for a single estimate. Preferred over base64Image/mimeType. */
+  images?: ImagePayload[];
+  /** Legacy single-image field; use images[]. Still accepted during transition. */
+  base64Image?: string;
+  /** Legacy single-image field; use images[]. Still accepted during transition. */
+  mimeType?: string;
   description?: string;
   totalWeight?: number;
   weightUnit?: 'g' | 'oz';
@@ -664,9 +673,21 @@ export async function estimateFoodPhoto(
     );
   }
 
+  const images: ImagePayload[] =
+    input.images && input.images.length > 0
+      ? input.images
+      : input.base64Image && input.mimeType
+        ? [{ base64Image: input.base64Image, mimeType: input.mimeType }]
+        : [];
+  if (images.length === 0) {
+    throw new FoodPhotoEstimateError('INVALID_REQUEST', 'At least one image is required.');
+  }
+
   const body: Record<string, unknown> = {
-    image: input.base64Image,
-    mime_type: input.mimeType,
+    images: images.map((img) => ({
+      image: img.base64Image,
+      mime_type: img.mimeType,
+    })),
   };
   if (input.description !== undefined) body.description = input.description;
   if (input.totalWeight !== undefined) body.total_weight = input.totalWeight;

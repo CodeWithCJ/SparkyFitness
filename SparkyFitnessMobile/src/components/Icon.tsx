@@ -33,6 +33,7 @@ const ICON_MAP = {
   'radio-button-on': { sf: 'circle.inset.filled', ion: 'radio-button-on' },
   'radio-button-off': { sf: 'circle', ion: 'radio-button-off' },
   'camera-reverse': { sf: 'camera.rotate', ion: 'camera-reverse-outline' },
+  'camera': { sf: 'camera', ion: 'camera-outline' },
   'photo-library': { sf: 'photo.on.rectangle', ion: 'images-outline' },
   'pencil': { sf: 'pencil', ion: 'create-outline' },
   'pause': { sf: 'pause.fill', ion: 'pause' },

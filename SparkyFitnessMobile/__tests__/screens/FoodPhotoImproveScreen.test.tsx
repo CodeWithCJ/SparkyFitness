@@ -97,7 +97,7 @@ describe('FoodPhotoImproveScreen', () => {
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
-  it('Generate with empty fields sends only image+mimeType, base64 is read once', async () => {
+  it('Generate with empty fields sends a single-image images[] payload, base64 is read once', async () => {
     const screen = renderScreen();
 
     fireEvent.press(screen.getByText('Generate estimate'));
@@ -109,8 +109,7 @@ describe('FoodPhotoImproveScreen', () => {
     const [input] = mockMutate.mock.calls[0];
     expect(input).toEqual(
       expect.objectContaining({
-        base64Image: 'AAAA-base64',
-        mimeType: 'image/jpeg',
+        images: [{ base64Image: 'AAAA-base64', mimeType: 'image/jpeg' }],
         description: undefined,
         totalWeight: undefined,
         weightUnit: undefined,
@@ -158,8 +157,7 @@ describe('FoodPhotoImproveScreen', () => {
     const [input] = mockMutate.mock.calls[0];
     expect(input).toEqual(
       expect.objectContaining({
-        base64Image: 'AAAA-base64',
-        mimeType: 'image/jpeg',
+        images: [{ base64Image: 'AAAA-base64', mimeType: 'image/jpeg' }],
         description: 'yogurt and berries',
         totalWeight: 250,
         weightUnit: 'g',

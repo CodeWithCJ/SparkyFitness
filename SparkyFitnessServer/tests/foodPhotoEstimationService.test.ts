@@ -186,6 +186,43 @@ describe('estimateFoodPhotoNutrition', () => {
     }
   });
 
+  it('rejects HEIC with UNSUPPORTED_MIME_TYPE for openai before any upstream call', async () => {
+    // @ts-expect-error mocked
+    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
+      makeSetting({ service_type: 'openai' })
+    );
+    // @ts-expect-error mocked
+    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      makeServiceDetail({ service_type: 'openai', api_key: 'oai-key' })
+    );
+    const fetchSpy = vi.fn();
+    global.fetch = fetchSpy;
+    const result = await estimateFoodPhotoNutrition({
+      images: [{ base64: 'aGVsbG8=', mimeType: 'image/heic' }],
+      userId: TEST_USER_ID,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe('UNSUPPORTED_MIME_TYPE');
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('allows HEIC for google (Gemini supports it)', async () => {
+    // @ts-expect-error mocked
+    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
+    // @ts-expect-error mocked
+    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      makeServiceDetail()
+    );
+    mockGoogleSuccess(sampleEstimate);
+    const result = await estimateFoodPhotoNutrition({
+      images: [{ base64: 'aGVsbG8=', mimeType: 'image/heic' }],
+      userId: TEST_USER_ID,
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('returns the parsed estimate on Google happy path', async () => {
     // @ts-expect-error mocked
     chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
@@ -451,6 +488,56 @@ describe('estimateFoodPhotoNutrition', () => {
       expect(imagePart).toBeDefined();
       expect(imagePart.inline_data.data).toBe(TEST_BASE64);
       expect(imagePart.inline_data.mime_type).toBe(TEST_MIME);
+    });
+
+    it('emits one inline_data part per image when given multiple images, prompt last', async () => {
+      await estimateFoodPhotoNutrition({
+        images: [
+          { base64: 'aW1nMQ==', mimeType: 'image/jpeg' },
+          { base64: 'aW1nMg==', mimeType: 'image/png' },
+        ],
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const parts = body.contents[0].parts;
+      const imageParts = parts.filter(
+        (p: { inline_data?: unknown }) => p.inline_data !== undefined
+      );
+      expect(imageParts).toHaveLength(2);
+      expect(imageParts[0].inline_data.data).toBe('aW1nMQ==');
+      expect(imageParts[0].inline_data.mime_type).toBe('image/jpeg');
+      expect(imageParts[1].inline_data.data).toBe('aW1nMg==');
+      expect(imageParts[1].inline_data.mime_type).toBe('image/png');
+      // Prompt text part comes after the images.
+      expect(typeof parts[parts.length - 1].text).toBe('string');
+    });
+
+    it('returns INVALID_REQUEST when no image is supplied', async () => {
+      const result = await estimateFoodPhotoNutrition({
+        images: [],
+        userId: TEST_USER_ID,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('INVALID_REQUEST');
+      }
+    });
+
+    it("normalizes 'image/jpg' to 'image/jpeg' before sending to the provider", async () => {
+      await estimateFoodPhotoNutrition({
+        images: [{ base64: 'aW1n', mimeType: 'image/jpg' }],
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const imagePart = body.contents[0].parts.find(
+        (p: { inline_data?: { mime_type?: string } }) =>
+          p.inline_data !== undefined
+      );
+      expect(imagePart.inline_data.mime_type).toBe('image/jpeg');
     });
 
     it("renders weight slot as '<n> g' for gram input", async () => {
