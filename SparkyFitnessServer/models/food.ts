@@ -181,15 +181,14 @@ async function createFood(foodData: any) {
     // 2. Create the primary food variant and mark it as default
     const variantResult = await client.query(
       `INSERT INTO food_variants (
-        food_id, user_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
         source, ai_confidence, allergens, traces, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, TRUE, $22, $23, $24, $25, $26, $27, now(), now()) RETURNING id`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
       [
         newFood.id,
-        newFood.user_id,
         sanitizeNumeric(foodData.serving_size),
         foodData.serving_unit,
         sanitizeNumeric(foodData.calories),
@@ -804,19 +803,17 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
       for (const variant of food.variants) {
         await client.query(
           `INSERT INTO food_variants (
-              food_id, user_id, serving_size, serving_unit, is_default, calories, protein, carbs, fat,
+              food_id, serving_size, serving_unit, is_default, calories, protein, carbs, fat,
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
               source, ai_confidence, allergens, traces, created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()
+              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, now(), now()
             )`,
           [
             newFoodId,
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            food.user_id,
             sanitizeNumeric(variant.serving_size),
             variant.serving_unit,
             sanitizeBoolean(variant.is_default) ?? true,
