@@ -559,7 +559,10 @@ async function getSleepEntriesByUserIdAndDateRange(
             se.resting_heart_rate,
             se.created_at,
             se.updated_at,
-            json_agg(sse.* ORDER BY sse.start_time) AS stage_events
+            COALESCE(
+                json_agg(sse.* ORDER BY sse.start_time) FILTER (WHERE sse.id IS NOT NULL),
+                '[]'::json
+            ) AS stage_events
             FROM sleep_entries se
             LEFT JOIN sleep_entry_stages sse ON se.id = sse.entry_id
             WHERE se.user_id = $1 AND se.entry_date BETWEEN $2 AND $3
