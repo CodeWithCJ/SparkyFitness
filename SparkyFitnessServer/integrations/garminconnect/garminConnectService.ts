@@ -201,6 +201,16 @@ async function syncGarminHealthAndWellness(
       `syncGarminHealthAndWellness: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
     );
 
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
+    if (!provider || !provider.garth_dump) {
+      throw new Error('Garmin tokens not found for this user.');
+    }
+    let decryptedGarthDump = provider.garth_dump;
+
     const aggregatedResult: any = {
       data: {},
     };
@@ -210,15 +220,6 @@ async function syncGarminHealthAndWellness(
         'info',
         `syncGarminHealthAndWellness: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
       );
-      const provider =
-        await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-          userId,
-          'garmin'
-        );
-      if (!provider || !provider.garth_dump) {
-        throw new Error('Garmin tokens not found for this user.');
-      }
-      const decryptedGarthDump = provider.garth_dump;
 
       const response = await axios.post(
         `${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`,
@@ -241,6 +242,7 @@ async function syncGarminHealthAndWellness(
           `Detected token refresh during health sync chunk for user ${userId}. Updating...`
         );
         await handleGarminTokens(userId, result.new_tokens);
+        decryptedGarthDump = JSON.stringify(result.new_tokens);
       }
 
       if (result.data) {
@@ -296,6 +298,16 @@ async function fetchGarminActivitiesAndWorkouts(
       `fetchGarminActivitiesAndWorkouts: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
     );
 
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
+    if (!provider || !provider.garth_dump) {
+      throw new Error('Garmin tokens not found for this user.');
+    }
+    let decryptedGarthDump = provider.garth_dump;
+
     const aggregatedResult: any = {
       user_id: userId,
       start_date: startDate,
@@ -309,15 +321,6 @@ async function fetchGarminActivitiesAndWorkouts(
         'info',
         `fetchGarminActivitiesAndWorkouts: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
       );
-      const provider =
-        await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-          userId,
-          'garmin'
-        );
-      if (!provider || !provider.garth_dump) {
-        throw new Error('Garmin tokens not found for this user.');
-      }
-      const decryptedGarthDump = provider.garth_dump;
 
       const response = await axios.post(
         `${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`,
@@ -340,6 +343,7 @@ async function fetchGarminActivitiesAndWorkouts(
           `Detected token refresh during activity sync chunk for user ${userId}. Updating...`
         );
         await handleGarminTokens(userId, result.new_tokens);
+        decryptedGarthDump = JSON.stringify(result.new_tokens);
       }
 
       if (result.activities && Array.isArray(result.activities)) {
