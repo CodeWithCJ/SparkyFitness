@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { manageGoalsSchema, type ManageGoalsInput } from "../schemas/goals.js";
+import { manageGoalsSchema, manageGoalsInput, type ManageGoalsInput } from "../schemas/goals.js";
 import * as goalService from "../services/goalService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
@@ -18,10 +18,14 @@ Actions:
 - get_goals(target_date?) — returns the goals active on a specific date
 - set_goals(start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?) — sets new goals from a start date
 - list_goal_timeline() — lists all goal changes over time`,
-      inputSchema: manageGoalsSchema,
+      inputSchema: manageGoalsInput,
     },
     async (rawArgs): Promise<ToolResponse> => {
-      const args = rawArgs as unknown as ManageGoalsInput;
+      const parsed = manageGoalsSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return ERRORS.VALIDATION(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+      }
+      const args: ManageGoalsInput = parsed.data;
       try {
         switch (args.action) {
           case "get_goals": {

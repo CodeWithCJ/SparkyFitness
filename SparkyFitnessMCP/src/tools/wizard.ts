@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { manageWizardSchema, type ManageWizardInput } from "../schemas/wizard.js";
+import { manageWizardSchema, manageWizardInput, type ManageWizardInput } from "../schemas/wizard.js";
+import { ERRORS } from "../utils/errors.js";
 import type { ToolResponse } from "../types.js";
 
 const STEPS = {
@@ -39,10 +40,14 @@ export function registerWizardTools(server: McpServer, userId: string): void {
     {
       title: "Daily Check-in Wizard",
       description: "A guided, step-by-step interactive assistant for your daily health check-in. Use 'daily_checkin' action and pass the current step.",
-      inputSchema: manageWizardSchema,
+      inputSchema: manageWizardInput,
     },
     async (rawArgs): Promise<ToolResponse> => {
-      const args = rawArgs as unknown as ManageWizardInput;
+      const parsed = manageWizardSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return ERRORS.VALIDATION(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+      }
+      const args: ManageWizardInput = parsed.data;
       
       const currentStep = args.step || "start";
       const stepInfo = (STEPS as any)[currentStep];

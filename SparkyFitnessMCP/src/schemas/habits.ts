@@ -26,3 +26,18 @@ export const manageHabitsSchema = z.discriminatedUnion("action", [
 ]);
 
 export type ManageHabitsInput = z.infer<typeof manageHabitsSchema>;
+
+// Flat shape published to MCP clients as `inputSchema`. The MCP TS SDK serializes
+// `z.object()` to JSON Schema but emits an empty object for `z.discriminatedUnion()`,
+// so clients can't see `action` or the per-action fields. Strict per-action
+// validation still runs in the tool handler via `manageHabitsSchema.safeParse`.
+export const manageHabitsInput = z.object({
+  action: z
+    .enum(["list_habits", "log_habit", "get_habit_history"])
+    .describe("Action to perform; see the tool description for the fields each action needs."),
+  habit_id: uuidSchema.optional().describe("log_habit / get_habit_history: UUID of the habit"),
+  entry_date: dateSchema.optional().describe("log_habit: date to log the habit for"),
+  completed: z.boolean().optional().describe("log_habit: whether the habit was completed"),
+  start_date: optionalDateSchema.describe("get_habit_history: range start date"),
+  end_date: optionalDateSchema.describe("get_habit_history: range end date"),
+});
