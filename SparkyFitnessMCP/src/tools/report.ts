@@ -32,7 +32,7 @@ export function registerReportTools(server: McpServer, userId: string): void {
     async (rawArgs): Promise<ToolResponse> => {
       const parsed = manageReportSchema.safeParse(rawArgs);
       if (!parsed.success) {
-        return ERRORS.VALIDATION(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+        return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
       }
       const args: ManageReportInput = parsed.data;
       try {
