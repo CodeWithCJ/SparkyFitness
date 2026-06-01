@@ -25,7 +25,7 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'is_default', fv.is_default,
     'glycemic_index', fv.glycemic_index,
     'custom_nutrients', fv.custom_nutrients,
-    'user_id', fv.user_id,
+    'user_id', f.user_id,
     'source', fv.source,
     'ai_confidence', fv.ai_confidence
   ) AS default_variant
@@ -38,11 +38,6 @@ const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
     WHERE candidate_fv.food_id = f.id
       AND candidate_fv.is_default = TRUE
     ORDER BY
-      CASE
-        WHEN candidate_fv.user_id = current_user_id() THEN 0
-        WHEN candidate_fv.user_id = f.user_id THEN 1
-        ELSE 2
-      END,
       candidate_fv.updated_at DESC,
       candidate_fv.id
     LIMIT 1

@@ -26,15 +26,13 @@ describe('preferred default variant queries', () => {
     vi.clearAllMocks();
   });
 
-  it('searchFoods prefers a single viewer-specific default variant via lateral join', async () => {
+  it('searchFoods prefers a default variant via lateral join', async () => {
     await searchFoods('yogurt', userId, false, true, false, 10);
 
     const queryStr = mockClient.query.mock.calls[0][0];
     expect(queryStr).toContain('LEFT JOIN LATERAL');
-    expect(queryStr).toContain(
-      'WHEN candidate_fv.user_id = current_user_id() THEN 0'
-    );
-    expect(queryStr).toContain('WHEN candidate_fv.user_id = f.user_id THEN 1');
+    expect(queryStr).toContain('candidate_fv.food_id = f.id');
+    expect(queryStr).toContain('candidate_fv.is_default = TRUE');
     expect(queryStr).not.toContain(
       'LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE'
     );
