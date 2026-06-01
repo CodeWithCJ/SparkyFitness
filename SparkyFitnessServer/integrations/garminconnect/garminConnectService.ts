@@ -3,6 +3,7 @@ import axios from 'axios';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 import { encrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { GarminJwtPayload, GarminTokenPayload } from 'types/garmin.ts';
+import { addDays } from '@workspace/shared';
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
 
@@ -180,43 +181,81 @@ async function syncGarminHealthAndWellness(
   metricTypes?: string[]
 ) {
   try {
-    const provider =
-      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-        userId,
-        'garmin'
-      );
-    if (!provider || !provider.garth_dump) {
-      throw new Error('Garmin tokens not found for this user.');
-    }
-    const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
-    log(
-      'debug',
-      `syncGarminHealthAndWellness: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`
-    );
-    const response = await axios.post(
-      `${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`,
-      {
-        user_id: userId,
-        tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
-        start_date: startDate,
-        end_date: endDate,
-        metric_types: metricTypes || [], // Pass an empty array if metricTypes is not provided
-      },
-      {
-        timeout: 120000, // 2 minutes timeout
-      }
-    );
-    const result = response.data;
+    const chunks: { start: string; end: string }[] = [];
+    let currentStart = startDate;
+    const endLimit = endDate;
 
-    if (result.new_tokens) {
+    while (currentStart <= endLimit) {
+      const nextEndCandidate = addDays(currentStart, 6);
+      const nextEnd =
+        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
+      chunks.push({
+        start: currentStart,
+        end: nextEnd,
+      });
+      currentStart = addDays(nextEnd, 1);
+    }
+
+    log(
+      'info',
+      `syncGarminHealthAndWellness: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+    );
+
+    const aggregatedResult: any = {
+      data: {},
+    };
+
+    for (const chunk of chunks) {
       log(
         'info',
-        `Detected token refresh during health sync for user ${userId}. Updating...`
+        `syncGarminHealthAndWellness: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
       );
-      await handleGarminTokens(userId, result.new_tokens);
+      const provider =
+        await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+          userId,
+          'garmin'
+        );
+      if (!provider || !provider.garth_dump) {
+        throw new Error('Garmin tokens not found for this user.');
+      }
+      const decryptedGarthDump = provider.garth_dump;
+
+      const response = await axios.post(
+        `${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`,
+        {
+          user_id: userId,
+          tokens: decryptedGarthDump,
+          start_date: chunk.start,
+          end_date: chunk.end,
+          metric_types: metricTypes || [],
+        },
+        {
+          timeout: 120000,
+        }
+      );
+      const result = response.data;
+
+      if (result.new_tokens) {
+        log(
+          'info',
+          `Detected token refresh during health sync chunk for user ${userId}. Updating...`
+        );
+        await handleGarminTokens(userId, result.new_tokens);
+      }
+
+      if (result.data) {
+        for (const metric in result.data) {
+          if (!aggregatedResult.data[metric]) {
+            aggregatedResult.data[metric] = [];
+          }
+          if (Array.isArray(result.data[metric])) {
+            aggregatedResult.data[metric].push(...result.data[metric]);
+          }
+        }
+      }
     }
 
-    return result;
+    return aggregatedResult;
   } catch (error: unknown) {
     const { detail, errorData } = formatGarminMicroserviceError(error);
     log(
@@ -237,38 +276,81 @@ async function fetchGarminActivitiesAndWorkouts(
   activityType?: string
 ) {
   try {
-    const provider =
-      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-        userId,
-        'garmin'
-      );
-    if (!provider || !provider.garth_dump) {
-      throw new Error('Garmin tokens not found for this user.');
+    const chunks: { start: string; end: string }[] = [];
+    let currentStart = startDate;
+    const endLimit = endDate;
+
+    while (currentStart <= endLimit) {
+      const nextEndCandidate = addDays(currentStart, 6);
+      const nextEnd =
+        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
+      chunks.push({
+        start: currentStart,
+        end: nextEnd,
+      });
+      currentStart = addDays(nextEnd, 1);
     }
-    const decryptedGarthDump = provider.garth_dump;
+
     log(
-      'debug',
-      `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`
+      'info',
+      `fetchGarminActivitiesAndWorkouts: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
     );
-    const response = await axios.post(
-      `${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`,
-      {
-        user_id: userId,
-        tokens: decryptedGarthDump,
-        start_date: startDate,
-        end_date: endDate,
-        activity_type: activityType,
-      },
-      {
-        timeout: 120000, // 2 minutes timeout
+
+    const aggregatedResult: any = {
+      user_id: userId,
+      start_date: startDate,
+      end_date: endDate,
+      activities: [],
+      workouts: [],
+    };
+
+    for (const chunk of chunks) {
+      log(
+        'info',
+        `fetchGarminActivitiesAndWorkouts: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
+      );
+      const provider =
+        await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+          userId,
+          'garmin'
+        );
+      if (!provider || !provider.garth_dump) {
+        throw new Error('Garmin tokens not found for this user.');
       }
-    );
-    log(
-      'debug',
-      `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`,
-      response.data
-    );
-    return response.data;
+      const decryptedGarthDump = provider.garth_dump;
+
+      const response = await axios.post(
+        `${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`,
+        {
+          user_id: userId,
+          tokens: decryptedGarthDump,
+          start_date: chunk.start,
+          end_date: chunk.end,
+          activity_type: activityType,
+        },
+        {
+          timeout: 120000,
+        }
+      );
+      const result = response.data;
+
+      if (result.new_tokens) {
+        log(
+          'info',
+          `Detected token refresh during activity sync chunk for user ${userId}. Updating...`
+        );
+        await handleGarminTokens(userId, result.new_tokens);
+      }
+
+      if (result.activities && Array.isArray(result.activities)) {
+        aggregatedResult.activities.push(...result.activities);
+      }
+      if (result.workouts && Array.isArray(result.workouts)) {
+        aggregatedResult.workouts.push(...result.workouts);
+      }
+    }
+
+    return aggregatedResult;
   } catch (error: unknown) {
     const { detail, errorData } = formatGarminMicroserviceError(error);
     log(
