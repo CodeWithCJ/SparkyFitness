@@ -28,3 +28,21 @@ export const manageGoalsSchema = z.discriminatedUnion("action", [
 ]);
 
 export type ManageGoalsInput = z.infer<typeof manageGoalsSchema>;
+
+// Flat shape published to MCP clients as `inputSchema`. The MCP TS SDK serializes
+// `z.object()` to JSON Schema but emits an empty object for `z.discriminatedUnion()`,
+// so clients can't see `action` or the per-action fields. Strict per-action
+// validation still runs in the tool handler via `manageGoalsSchema.safeParse`.
+export const manageGoalsInput = z.object({
+  action: z
+    .enum(["get_goals", "set_goals", "list_goal_timeline"])
+    .describe("Action to perform; see the tool description for the fields each action needs."),
+  target_date: optionalDateSchema.describe("get_goals: date to fetch goals for (defaults to today)"),
+  start_date: dateSchema.optional().describe("set_goals: date when these goals take effect"),
+  calories: z.coerce.number().min(0).optional().describe("set_goals: daily calorie goal"),
+  protein: z.coerce.number().min(0).optional().describe("set_goals: daily protein goal (g)"),
+  carbs: z.coerce.number().min(0).optional().describe("set_goals: daily carbohydrate goal (g)"),
+  fat: z.coerce.number().min(0).optional().describe("set_goals: daily fat goal (g)"),
+  water_goal_ml: z.coerce.number().min(0).optional().describe("set_goals: daily water intake goal (ml)"),
+  weight: z.coerce.number().min(0).optional().describe("set_goals: target body weight"),
+});

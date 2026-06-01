@@ -34,3 +34,22 @@ export const manageProfileSchema = z.discriminatedUnion("action", [
 ]);
 
 export type ManageProfileInput = z.infer<typeof manageProfileSchema>;
+
+// Flat shape published to MCP clients as `inputSchema`. The MCP TS SDK serializes
+// `z.object()` to JSON Schema but emits an empty object for `z.discriminatedUnion()`,
+// so clients can't see `action` or the per-action fields. Strict per-action
+// validation still runs in the tool handler via `manageProfileSchema.safeParse`.
+export const manageProfileInput = z.object({
+  action: z
+    .enum(["get_profile", "update_profile", "get_preferences", "update_preferences"])
+    .describe("Action to perform; see the tool description for the fields each action needs."),
+  display_name: z.string().min(1).max(200).optional().describe("update_profile: user's display name"),
+  email: z.string().email().optional().describe("update_profile: user's email address"),
+  image: z.string().url().optional().describe("update_profile: profile image URL"),
+  timezone: z.string().optional().describe("update_preferences: timezone (e.g., 'UTC', 'America/New_York')"),
+  energy_unit: z.enum(["kcal", "kJ"]).optional().describe("update_preferences: unit for energy"),
+  default_weight_unit: z.enum(["kg", "lbs"]).optional().describe("update_preferences: default weight unit"),
+  default_measurement_unit: z.enum(["cm", "in"]).optional().describe("update_preferences: default measurement unit"),
+  default_distance_unit: z.enum(["km", "miles"]).optional().describe("update_preferences: default distance unit"),
+  water_display_unit: z.enum(["ml", "oz"]).optional().describe("update_preferences: default water unit"),
+});

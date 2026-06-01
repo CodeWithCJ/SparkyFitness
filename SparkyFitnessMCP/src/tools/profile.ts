@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { manageProfileSchema, type ManageProfileInput } from "../schemas/profile.js";
+import { manageProfileSchema, manageProfileInput, type ManageProfileInput } from "../schemas/profile.js";
 import * as profileService from "../services/profileService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
@@ -19,10 +19,14 @@ Actions:
 - update_profile(display_name?, email?, image?) — updates account details
 - get_preferences() — returns user preferences (timezone, units)
 - update_preferences(timezone?, energy_unit?, default_weight_unit?, default_distance_unit?) — updates preferences`,
-      inputSchema: manageProfileSchema,
+      inputSchema: manageProfileInput,
     },
     async (rawArgs): Promise<ToolResponse> => {
-      const args = rawArgs as unknown as ManageProfileInput;
+      const parsed = manageProfileSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+      }
+      const args: ManageProfileInput = parsed.data;
       try {
         switch (args.action) {
           case "get_profile": {

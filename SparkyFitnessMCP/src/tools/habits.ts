@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { manageHabitsSchema, type ManageHabitsInput } from "../schemas/habits.js";
+import { manageHabitsSchema, manageHabitsInput, type ManageHabitsInput } from "../schemas/habits.js";
 import * as habitService from "../services/habitService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
@@ -18,10 +18,14 @@ Actions:
 - list_habits() — returns all habits (custom categories with boolean type)
 - log_habit(habit_id, entry_date, completed) — logs whether a habit was done on a specific date
 - get_habit_history(habit_id, start_date?, end_date?) — returns completion history for a habit`,
-      inputSchema: manageHabitsSchema,
+      inputSchema: manageHabitsInput,
     },
     async (rawArgs): Promise<ToolResponse> => {
-      const args = rawArgs as unknown as ManageHabitsInput;
+      const parsed = manageHabitsSchema.safeParse(rawArgs);
+      if (!parsed.success) {
+        return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+      }
+      const args: ManageHabitsInput = parsed.data;
       try {
         switch (args.action) {
           case "list_habits": {
