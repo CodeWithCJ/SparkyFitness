@@ -17,11 +17,11 @@ export function registerExerciseTools(server: McpServer, userId: string): void {
 Actions:
 - search_exercises(searchTerm, muscleGroup?, equipment?, limit?, offset?)
 - create_exercise(name, category?, calories_per_hour?, description?)
-- log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, sets?:JSON string or array of [{reps,weight,duration,rest_time,set_type}])
+- log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,rest_time,set_type,rpe,notes}]) — distance/avg_heart_rate/steps are for cardio
 - list_exercise_diary(entry_date)
 - get_workout_presets()
 - log_workout_preset(entry_date, preset_id?|preset_name?)
-- update_exercise_entry(entry_id, entry_date?, duration_minutes?, calories_burned?, notes?, sets?) — only the provided fields change; sets, when provided, replace all existing sets
+- update_exercise_entry(entry_id, entry_date?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?) — only the provided fields change; sets, when provided, replace all existing sets
 - delete_exercise_entry(entry_id)
 - get_exercise_details(exercise_id?|exercise_name?)
 - create_workout_preset(name, exercise_ids)
@@ -82,6 +82,9 @@ Actions:
               duration_minutes: args.duration_minutes,
               calories_burned: args.calories_burned,
               notes: args.notes,
+              distance: args.distance,
+              avg_heart_rate: args.avg_heart_rate,
+              steps: args.steps,
               sets: parsedSets,
             });
             return formatConfirmation(
@@ -100,6 +103,24 @@ Actions:
                 if (e.sets.length > 0) text += ` — ${e.sets.length} sets`;
                 if (e.duration_minutes) text += ` | ${e.duration_minutes} min`;
                 if (e.calories_burned) text += ` | ${e.calories_burned} kcal`;
+                if (e.distance != null) text += ` | ${e.distance} dist`;
+                if (e.avg_heart_rate != null) text += ` | ${e.avg_heart_rate} bpm`;
+                if (e.steps != null) text += ` | ${e.steps} steps`;
+                if (e.sets.length > 0) {
+                  const setLine = e.sets
+                    .map((s) => {
+                      const parts: string[] = [];
+                      if (s.reps != null) parts.push(`${s.reps}r`);
+                      if (s.weight != null) parts.push(`${s.weight}kg`);
+                      if (s.rpe != null) parts.push(`RPE ${s.rpe}`);
+                      let str = parts.join("×");
+                      if (s.notes) str += ` (${s.notes})`;
+                      return str;
+                    })
+                    .filter(Boolean)
+                    .join("; ");
+                  if (setLine) text += `\n  Sets: ${setLine}`;
+                }
                 if (e.notes) text += `\n  Notes: ${e.notes}`;
                 text += `\n  ID: ${e.id}`;
                 return text;
@@ -149,6 +170,9 @@ Actions:
               duration_minutes: args.duration_minutes,
               calories_burned: args.calories_burned,
               notes: args.notes,
+              distance: args.distance,
+              avg_heart_rate: args.avg_heart_rate,
+              steps: args.steps,
               sets: parsedSets,
             });
             if (!updated) return ERRORS.NOT_FOUND("Exercise Entry", args.entry_id);

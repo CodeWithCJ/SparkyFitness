@@ -117,6 +117,9 @@ export async function logExercise(
     duration_minutes?: number;
     calories_burned?: number;
     notes?: string;
+    distance?: number;
+    avg_heart_rate?: number;
+    steps?: number;
     sets?: ExerciseSet[];
   }
 ): Promise<ExerciseEntry> {
@@ -165,10 +168,10 @@ export async function logExercise(
     // exercise_entries does NOT have a sets jsonb column.
     // Sets are stored in the exercise_entry_sets table.
     const result = await client.query(
-      `INSERT INTO exercise_entries (user_id, exercise_id, entry_date, duration_minutes, calories_burned, notes, exercise_name, category, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual', $1, $1, NOW(), NOW())
-       RETURNING id, user_id, exercise_id, entry_date, duration_minutes, calories_burned, notes, created_at`,
-      [userId, exerciseId, params.entry_date, params.duration_minutes || 0, params.calories_burned || 0, params.notes || null, exerciseName, exerciseCategory]
+      `INSERT INTO exercise_entries (user_id, exercise_id, entry_date, duration_minutes, calories_burned, notes, distance, avg_heart_rate, steps, exercise_name, category, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'manual', $1, $1, NOW(), NOW())
+       RETURNING id, user_id, exercise_id, entry_date, duration_minutes, calories_burned, notes, distance, avg_heart_rate, steps, created_at`,
+      [userId, exerciseId, params.entry_date, params.duration_minutes || 0, params.calories_burned || 0, params.notes || null, params.distance ?? null, params.avg_heart_rate ?? null, params.steps ?? null, exerciseName, exerciseCategory]
     );
 
     const row = result.rows[0];
@@ -180,9 +183,9 @@ export async function logExercise(
       for (let i = 0; i < params.sets.length; i++) {
         const s = params.sets[i];
         await client.query(
-          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
-          [entryId, i + 1, s.set_type || "Working Set", s.reps || null, s.weight || null, s.duration || null, s.rest_time || null]
+          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, rpe, notes, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
+          [entryId, i + 1, s.set_type || "Working Set", s.reps ?? null, s.weight ?? null, s.duration ?? null, s.rest_time ?? null, s.rpe ?? null, s.notes ?? null]
         );
         sets.push(s);
       }
@@ -198,6 +201,9 @@ export async function logExercise(
       duration_minutes: row.duration_minutes,
       calories_burned: row.calories_burned,
       notes: row.notes,
+      distance: row.distance != null ? Number(row.distance) : undefined,
+      avg_heart_rate: row.avg_heart_rate ?? undefined,
+      steps: row.steps ?? undefined,
       created_at: row.created_at,
     };
   });
@@ -207,7 +213,7 @@ export async function listExerciseDiary(userId: string, entryDate: string): Prom
   return withClient(userId, async (client) => {
     const result = await client.query(
       `SELECT ee.id, ee.user_id, ee.exercise_id, e.name AS exercise_name, ee.entry_date,
-              ee.duration_minutes, ee.calories_burned, ee.notes, ee.created_at
+              ee.duration_minutes, ee.calories_burned, ee.notes, ee.distance, ee.avg_heart_rate, ee.steps, ee.created_at
        FROM exercise_entries ee
        JOIN exercises e ON ee.exercise_id = e.id
        WHERE ee.entry_date = $1
@@ -221,7 +227,7 @@ export async function listExerciseDiary(userId: string, entryDate: string): Prom
 
     // Fetch all sets for all entries in a single query
     const setsResult = await client.query(
-      `SELECT exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time
+      `SELECT exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, rpe, notes
        FROM exercise_entry_sets
        WHERE exercise_entry_id = ANY($1)
        ORDER BY exercise_entry_id, set_number ASC`,
@@ -240,6 +246,8 @@ export async function listExerciseDiary(userId: string, entryDate: string): Prom
         weight: s.weight ? Number(s.weight) : undefined,
         duration: s.duration,
         rest_time: s.rest_time,
+        rpe: s.rpe != null ? Number(s.rpe) : undefined,
+        notes: s.notes ?? undefined,
       });
     }
 
@@ -253,6 +261,9 @@ export async function listExerciseDiary(userId: string, entryDate: string): Prom
       duration_minutes: row.duration_minutes,
       calories_burned: row.calories_burned,
       notes: row.notes,
+      distance: row.distance != null ? Number(row.distance) : undefined,
+      avg_heart_rate: row.avg_heart_rate ?? undefined,
+      steps: row.steps ?? undefined,
       created_at: row.created_at,
     }));
   });
@@ -452,6 +463,9 @@ export async function updateExerciseEntry(
     duration_minutes?: number;
     calories_burned?: number;
     notes?: string;
+    distance?: number;
+    avg_heart_rate?: number;
+    steps?: number;
     sets?: ExerciseSet[];
   }
 ): Promise<boolean> {
@@ -467,6 +481,9 @@ export async function updateExerciseEntry(
       if (params.duration_minutes !== undefined) { setClauses.push(`duration_minutes = $${idx++}`); values.push(params.duration_minutes); }
       if (params.calories_burned !== undefined) { setClauses.push(`calories_burned = $${idx++}`); values.push(params.calories_burned); }
       if (params.notes !== undefined) { setClauses.push(`notes = $${idx++}`); values.push(params.notes); }
+      if (params.distance !== undefined) { setClauses.push(`distance = $${idx++}`); values.push(params.distance); }
+      if (params.avg_heart_rate !== undefined) { setClauses.push(`avg_heart_rate = $${idx++}`); values.push(params.avg_heart_rate); }
+      if (params.steps !== undefined) { setClauses.push(`steps = $${idx++}`); values.push(params.steps); }
 
       // Always touch the audit columns; this also guarantees at least one
       // assignment so the statement is valid even for a sets-only update.
@@ -491,9 +508,9 @@ export async function updateExerciseEntry(
         for (let i = 0; i < params.sets.length; i++) {
           const s = params.sets[i];
           await client.query(
-            `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
-            [params.entry_id, i + 1, s.set_type || "Working Set", s.reps ?? null, s.weight ?? null, s.duration ?? null, s.rest_time ?? null]
+            `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, rpe, notes, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
+            [params.entry_id, i + 1, s.set_type || "Working Set", s.reps ?? null, s.weight ?? null, s.duration ?? null, s.rest_time ?? null, s.rpe ?? null, s.notes ?? null]
           );
         }
       }
