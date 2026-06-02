@@ -135,7 +135,11 @@ Actions:
             // Parse sets if it arrives as a JSON string (MCP serialisation quirk), matching log_exercise.
             let parsedSets: ExerciseSet[] | undefined;
             if (typeof args.sets === "string") {
-              try { parsedSets = JSON.parse(args.sets); } catch { parsedSets = undefined; }
+              try {
+                parsedSets = JSON.parse(args.sets);
+              } catch {
+                return ERRORS.VALIDATION("Invalid JSON format for sets");
+              }
             } else {
               parsedSets = args.sets as ExerciseSet[] | undefined;
             }

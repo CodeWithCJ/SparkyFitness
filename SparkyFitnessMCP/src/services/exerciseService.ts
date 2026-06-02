@@ -493,7 +493,7 @@ export async function updateExerciseEntry(
           await client.query(
             `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
-            [params.entry_id, i + 1, s.set_type || "Working Set", s.reps || null, s.weight || null, s.duration || null, s.rest_time || null]
+            [params.entry_id, i + 1, s.set_type || "Working Set", s.reps ?? null, s.weight ?? null, s.duration ?? null, s.rest_time ?? null]
           );
         }
       }
