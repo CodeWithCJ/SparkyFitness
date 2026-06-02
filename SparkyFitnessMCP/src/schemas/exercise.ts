@@ -7,6 +7,8 @@ const exerciseSetSchema = z.object({
   duration: z.coerce.number().min(0).optional().describe("Duration in seconds"),
   rest_time: z.coerce.number().min(0).optional().describe("Rest time in seconds"),
   set_type: setTypeEnum.default("Working Set"),
+  rpe: z.coerce.number().min(0).max(10).optional().describe("Rate of Perceived Exertion (0-10 scale, one decimal allowed)"),
+  notes: z.string().max(1000).optional().describe("Note for this set"),
 }).strict();
 
 const searchExercisesSchema = z.object({
@@ -33,6 +35,9 @@ const logExerciseSchema = z.object({
   duration_minutes: z.coerce.number().min(0).optional().describe("Duration in minutes"),
   calories_burned: z.coerce.number().min(0).optional().describe("Calories burned"),
   notes: z.string().max(2000).optional().describe("Additional notes"),
+  distance: z.coerce.number().min(0).optional().describe("Distance covered, in the user's distance unit (e.g. km) — for cardio"),
+  avg_heart_rate: z.coerce.number().int().min(0).max(300).optional().describe("Average heart rate in bpm — for cardio"),
+  steps: z.coerce.number().int().min(0).optional().describe("Step count for the activity"),
   sets: z.union([z.array(exerciseSetSchema), z.string()]).optional().describe("Set details as array or JSON string"),
 }).strict();
 
@@ -59,6 +64,9 @@ const updateExerciseEntrySchema = z.object({
   duration_minutes: z.coerce.number().min(0).optional().describe("Duration in minutes"),
   calories_burned: z.coerce.number().min(0).optional().describe("Calories burned"),
   notes: z.string().max(2000).optional().describe("Additional notes"),
+  distance: z.coerce.number().min(0).optional().describe("Distance covered, in the user's distance unit (e.g. km) — for cardio"),
+  avg_heart_rate: z.coerce.number().int().min(0).max(300).optional().describe("Average heart rate in bpm — for cardio"),
+  steps: z.coerce.number().int().min(0).optional().describe("Step count for the activity"),
   sets: z.union([z.array(exerciseSetSchema), z.string()]).optional().describe("Replacement set details as array or JSON string; replaces all existing sets when provided"),
 }).strict();
 
@@ -142,6 +150,9 @@ export const manageExerciseInput = z.object({
   duration_minutes: z.coerce.number().min(0).optional().describe("Duration in minutes"),
   calories_burned: z.coerce.number().min(0).optional().describe("Calories burned"),
   notes: z.string().max(2000).optional().describe("Additional notes"),
+  distance: z.coerce.number().min(0).optional().describe("Distance covered, in the user's distance unit (e.g. km) — cardio, for log/update"),
+  avg_heart_rate: z.coerce.number().int().min(0).max(300).optional().describe("Average heart rate in bpm — cardio, for log/update"),
+  steps: z.coerce.number().int().min(0).optional().describe("Step count for the activity — for log/update"),
   sets: z.union([
     z.array(z.object({
       reps: z.coerce.number().int().min(0).optional(),
@@ -149,9 +160,11 @@ export const manageExerciseInput = z.object({
       duration: z.coerce.number().min(0).optional(),
       rest_time: z.coerce.number().min(0).optional(),
       set_type: setTypeEnum.optional(),
+      rpe: z.coerce.number().min(0).max(10).optional(),
+      notes: z.string().max(1000).optional(),
     })),
     z.string(),
-  ]).optional().describe("Set details as array of objects or JSON string"),
+  ]).optional().describe("Set details as array of objects or JSON string; per-set fields include rpe and notes"),
   // presets
   preset_id: uuidSchema.optional().describe("Workout preset UUID"),
   preset_name: z.string().min(1).max(200).optional().describe("Workout preset name"),

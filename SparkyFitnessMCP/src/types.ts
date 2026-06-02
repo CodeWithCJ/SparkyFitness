@@ -38,6 +38,8 @@ export interface ExerciseSet {
   duration?: number;
   rest_time?: number;
   set_type: "Working Set" | "Warmup" | "Drop Set" | "Failure";
+  rpe?: number;
+  notes?: string;
 }
 
 export interface ExerciseEntry {
@@ -50,6 +52,9 @@ export interface ExerciseEntry {
   duration_minutes?: number;
   calories_burned?: number;
   notes?: string;
+  distance?: number;
+  avg_heart_rate?: number;
+  steps?: number;
   created_at: string;
 }
 
