@@ -5,7 +5,7 @@ import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation } from "../utils/formatting.js";
 import type { ToolResponse, Exercise, ExerciseEntry, ExerciseSet } from "../types.js";
 
-const VALID_ACTIONS = ["search_exercises", "create_exercise", "log_exercise", "list_exercise_diary", "get_workout_presets", "log_workout_preset", "delete_exercise_entry", "get_exercise_details", "create_workout_preset", "get_exercise_progress"];
+const VALID_ACTIONS = ["search_exercises", "create_exercise", "log_exercise", "list_exercise_diary", "get_workout_presets", "log_workout_preset", "update_exercise_entry", "delete_exercise_entry", "get_exercise_details", "create_workout_preset", "get_exercise_progress"];
 
 export function registerExerciseTools(server: McpServer, userId: string): void {
   server.registerTool(
@@ -21,6 +21,7 @@ Actions:
 - list_exercise_diary(entry_date)
 - get_workout_presets()
 - log_workout_preset(entry_date, preset_id?|preset_name?)
+- update_exercise_entry(entry_id, entry_date?, duration_minutes?, calories_burned?, notes?, sets?) — only the provided fields change; sets, when provided, replace all existing sets
 - delete_exercise_entry(entry_id)
 - get_exercise_details(exercise_id?|exercise_name?)
 - create_workout_preset(name, exercise_ids)
@@ -128,6 +129,30 @@ Actions:
               `Workout preset logged for ${args.entry_date}. ${entries.length} exercises added.`,
               { entries_count: entries.length, entry_date: args.entry_date }
             );
+          }
+
+          case "update_exercise_entry": {
+            // Parse sets if it arrives as a JSON string (MCP serialisation quirk), matching log_exercise.
+            let parsedSets: ExerciseSet[] | undefined;
+            if (typeof args.sets === "string") {
+              try {
+                parsedSets = JSON.parse(args.sets);
+              } catch {
+                return ERRORS.VALIDATION("Invalid JSON format for sets");
+              }
+            } else {
+              parsedSets = args.sets as ExerciseSet[] | undefined;
+            }
+            const updated = await exerciseService.updateExerciseEntry(userId, {
+              entry_id: args.entry_id,
+              entry_date: args.entry_date,
+              duration_minutes: args.duration_minutes,
+              calories_burned: args.calories_burned,
+              notes: args.notes,
+              sets: parsedSets,
+            });
+            if (!updated) return ERRORS.NOT_FOUND("Exercise Entry", args.entry_id);
+            return formatConfirmation(`Exercise entry updated.`, { entry_id: args.entry_id });
           }
 
           case "delete_exercise_entry": {

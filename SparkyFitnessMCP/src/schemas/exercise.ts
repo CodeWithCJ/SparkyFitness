@@ -52,6 +52,16 @@ const logWorkoutPresetSchema = z.object({
   entry_date: dateSchema,
 }).strict();
 
+const updateExerciseEntrySchema = z.object({
+  action: z.literal("update_exercise_entry"),
+  entry_id: uuidSchema.describe("UUID of the exercise entry to update"),
+  entry_date: dateSchema.optional().describe("New date for the entry (YYYY-MM-DD)"),
+  duration_minutes: z.coerce.number().min(0).optional().describe("Duration in minutes"),
+  calories_burned: z.coerce.number().min(0).optional().describe("Calories burned"),
+  notes: z.string().max(2000).optional().describe("Additional notes"),
+  sets: z.union([z.array(exerciseSetSchema), z.string()]).optional().describe("Replacement set details as array or JSON string; replaces all existing sets when provided"),
+}).strict();
+
 const deleteExerciseEntrySchema = z.object({
   action: z.literal("delete_exercise_entry"),
   entry_id: uuidSchema.describe("UUID of the exercise entry to delete"),
@@ -84,6 +94,7 @@ export const manageExerciseSchema = z.discriminatedUnion("action", [
   listExerciseDiarySchema,
   getWorkoutPresetsSchema,
   logWorkoutPresetSchema,
+  updateExerciseEntrySchema,
   deleteExerciseEntrySchema,
   getExerciseDetailsSchema,
   createWorkoutPresetSchema,
@@ -105,6 +116,7 @@ export const manageExerciseInput = z.object({
     "list_exercise_diary",
     "get_workout_presets",
     "log_workout_preset",
+    "update_exercise_entry",
     "delete_exercise_entry",
     "get_exercise_details",
     "create_workout_preset",
@@ -144,7 +156,7 @@ export const manageExerciseInput = z.object({
   preset_id: uuidSchema.optional().describe("Workout preset UUID"),
   preset_name: z.string().min(1).max(200).optional().describe("Workout preset name"),
   // entry management
-  entry_id: uuidSchema.optional().describe("Exercise diary entry UUID — for delete_exercise_entry"),
+  entry_id: uuidSchema.optional().describe("Exercise diary entry UUID — for update_exercise_entry / delete_exercise_entry"),
   // progress range
   start_date: dateSchema.optional().describe("Start date for progress tracking"),
   end_date: dateSchema.optional().describe("End date for progress tracking"),
