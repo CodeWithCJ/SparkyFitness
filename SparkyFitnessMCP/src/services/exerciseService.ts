@@ -444,6 +444,69 @@ export async function logWorkoutPreset(
   });
 }
 
+export async function updateExerciseEntry(
+  userId: string,
+  params: {
+    entry_id: string;
+    entry_date?: string;
+    duration_minutes?: number;
+    calories_burned?: number;
+    notes?: string;
+    sets?: ExerciseSet[];
+  }
+): Promise<boolean> {
+  return withClient(userId, async (client) => {
+    await client.query("BEGIN");
+    try {
+      // Build a partial UPDATE from the fields that were actually provided.
+      const setClauses: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      if (params.entry_date !== undefined) { setClauses.push(`entry_date = $${idx++}`); values.push(params.entry_date); }
+      if (params.duration_minutes !== undefined) { setClauses.push(`duration_minutes = $${idx++}`); values.push(params.duration_minutes); }
+      if (params.calories_burned !== undefined) { setClauses.push(`calories_burned = $${idx++}`); values.push(params.calories_burned); }
+      if (params.notes !== undefined) { setClauses.push(`notes = $${idx++}`); values.push(params.notes); }
+
+      // Always touch the audit columns; this also guarantees at least one
+      // assignment so the statement is valid even for a sets-only update.
+      setClauses.push(`updated_by_user_id = $${idx++}`); values.push(userId);
+      setClauses.push("updated_at = NOW()");
+
+      values.push(params.entry_id);
+      const result = await client.query(
+        `UPDATE exercise_entries SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING id`,
+        values
+      );
+
+      // RLS scopes the row to the current user; an absent/foreign id updates nothing.
+      if ((result.rowCount ?? 0) === 0) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+
+      // When sets are provided, fully replace the existing sets (mirrors logExercise inserts).
+      if (params.sets !== undefined) {
+        await client.query("DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1", [params.entry_id]);
+        for (let i = 0; i < params.sets.length; i++) {
+          const s = params.sets[i];
+          await client.query(
+            `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+            [params.entry_id, i + 1, s.set_type || "Working Set", s.reps || null, s.weight || null, s.duration || null, s.rest_time || null]
+          );
+        }
+      }
+
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
 export async function deleteExerciseEntry(userId: string, entryId: string): Promise<boolean> {
   return withClient(userId, async (client) => {
     // exercise_entry_sets should cascade delete, but delete explicitly to be safe
