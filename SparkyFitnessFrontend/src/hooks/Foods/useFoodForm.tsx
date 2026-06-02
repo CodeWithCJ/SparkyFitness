@@ -609,7 +609,7 @@ export function useCustomFoodForm({
       | string
       | number
       | boolean
-      | null
+      | undefined
       | GlycemicIndex
       | EquivalentUnit[]
       | string[]
@@ -645,13 +645,14 @@ export function useCustomFoodForm({
         ...currentVariant,
         custom_nutrients: {
           ...currentVariant.custom_nutrients,
-          [field]: value === '' ? '' : Number(value),
+          [field]: value === '' || value === undefined ? '' : Number(value),
         },
       };
     } else if (isNutrientField) {
       newVariant = {
         ...currentVariant,
-        [field as keyof FormFoodVariant]: value === '' ? '' : Number(value),
+        [field as keyof FormFoodVariant]:
+          value === '' || value === undefined ? '' : Number(value),
       };
     } else {
       newVariant = {

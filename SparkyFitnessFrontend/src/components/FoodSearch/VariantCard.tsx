@@ -28,6 +28,7 @@ import { UserCustomNutrient } from '@/types/customNutrient';
 import { NutrientGrid } from './NutrientFormGrid';
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
+import { NumericInput } from '../NumericInput';
 
 // Tone classes for the AI provenance badge ("Good/Fair/Rough estimate").
 // `green` (true grass-green, hue ~142°) replaces `emerald` (~160°,
@@ -115,7 +116,7 @@ interface VariantCardProps {
       | string
       | number
       | boolean
-      | null
+      | undefined
       | GlycemicIndex
       | EquivalentUnit[]
       | string[]
@@ -224,13 +225,16 @@ export function VariantCard({
           <div className="flex items-end gap-2">
             <div className="flex flex-col">
               <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
-              <Input
+              <NumericInput
                 id={`serving-size-${index}`}
-                type="number"
                 step="0.1"
-                value={variant.serving_size}
-                onChange={(e) =>
-                  onUpdate(index, 'serving_size', Number(e.target.value))
+                value={
+                  variant.serving_size !== undefined
+                    ? variant.serving_size
+                    : undefined
+                }
+                onValueChange={(value) =>
+                  onUpdate(index, 'serving_size', value)
                 }
                 className="w-24"
               />

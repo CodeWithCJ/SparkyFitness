@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { VariantCard } from '@/components/FoodSearch/VariantCard';
 import type { FoodVariant } from '@/types/food';
@@ -167,6 +167,48 @@ describe('VariantCard', () => {
     expect(
       within(getUnitRow('piece')).getByTestId('compatible-unit-option-0-piece')
     ).toBeInTheDocument();
+  });
+
+  it('keeps serving size empty after typing a number and clearing it', () => {
+    const StatefulVariantCard = () => {
+      const [variant, setVariant] = React.useState(createVariant());
+
+      return (
+        <VariantCard
+          index={0}
+          variant={variant}
+          variantError=""
+          visibleNutrients={['calories']}
+          energyUnit="kcal"
+          convertEnergy={(value) => value}
+          showCompatibleUnitIndicators={false}
+          food={{ id: 'food-1', name: 'Test Food', brand: null }}
+          defaultVariant={createVariant()}
+          aiEstimateAnchorUnit={null}
+          aiEstimatesAvailable={false}
+          savedAiUnits={[]}
+          aiEstimatedUnit={null}
+          compatibleUnits={[]}
+          onApplyAiEstimate={jest.fn()}
+          onUpdate={(_, field, value) => {
+            setVariant((prev) => ({ ...prev, [field]: value }));
+          }}
+          onDuplicate={jest.fn()}
+          onRemove={jest.fn()}
+        />
+      );
+    };
+
+    render(<StatefulVariantCard />);
+
+    const servingSizeInput = screen.getByLabelText('Serving Size');
+
+    fireEvent.change(servingSizeInput, { target: { value: '12' } });
+    expect(servingSizeInput).toHaveValue(12);
+
+    fireEvent.change(servingSizeInput, { target: { value: '' } });
+
+    expect(servingSizeInput).toHaveDisplayValue('');
   });
 
   it('shows intra-category math checkmarks for non-AI rows only', () => {

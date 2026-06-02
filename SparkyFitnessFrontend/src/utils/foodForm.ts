@@ -6,7 +6,7 @@ import {
 
 // Local type that allows empty string for form inputs
 export type FormFoodVariant = Omit<FoodVariant, NumericFoodVariantKeys> & {
-  [K in NumericFoodVariantKeys]?: number | '';
+  [K in NumericFoodVariantKeys]?: number;
 };
 
 // Helper to convert FormFoodVariant to FoodVariant (empty strings become 0)
@@ -39,25 +39,27 @@ export const foodVariantToFormVariant = (
   variant: FoodVariant
 ): FormFoodVariant => ({
   ...variant,
-  calories: variant.calories === 0 ? '' : variant.calories,
-  protein: variant.protein === 0 ? '' : variant.protein,
-  carbs: variant.carbs === 0 ? '' : variant.carbs,
-  fat: variant.fat === 0 ? '' : variant.fat,
-  saturated_fat: variant.saturated_fat === 0 ? '' : variant.saturated_fat,
+  calories: variant.calories === 0 ? undefined : variant.calories,
+  protein: variant.protein === 0 ? undefined : variant.protein,
+  carbs: variant.carbs === 0 ? undefined : variant.carbs,
+  fat: variant.fat === 0 ? undefined : variant.fat,
+  saturated_fat:
+    variant.saturated_fat === 0 ? undefined : variant.saturated_fat,
   polyunsaturated_fat:
-    variant.polyunsaturated_fat === 0 ? '' : variant.polyunsaturated_fat,
+    variant.polyunsaturated_fat === 0 ? undefined : variant.polyunsaturated_fat,
   monounsaturated_fat:
-    variant.monounsaturated_fat === 0 ? '' : variant.monounsaturated_fat,
-  trans_fat: variant.trans_fat === 0 ? '' : variant.trans_fat,
-  cholesterol: variant.cholesterol === 0 ? '' : variant.cholesterol,
-  sodium: variant.sodium === 0 ? '' : variant.sodium,
-  potassium: variant.potassium === 0 ? '' : variant.potassium,
-  dietary_fiber: variant.dietary_fiber === 0 ? '' : variant.dietary_fiber,
-  sugars: variant.sugars === 0 ? '' : variant.sugars,
-  vitamin_a: variant.vitamin_a === 0 ? '' : variant.vitamin_a,
-  vitamin_c: variant.vitamin_c === 0 ? '' : variant.vitamin_c,
-  calcium: variant.calcium === 0 ? '' : variant.calcium,
-  iron: variant.iron === 0 ? '' : variant.iron,
+    variant.monounsaturated_fat === 0 ? undefined : variant.monounsaturated_fat,
+  trans_fat: variant.trans_fat === 0 ? undefined : variant.trans_fat,
+  cholesterol: variant.cholesterol === 0 ? undefined : variant.cholesterol,
+  sodium: variant.sodium === 0 ? undefined : variant.sodium,
+  potassium: variant.potassium === 0 ? undefined : variant.potassium,
+  dietary_fiber:
+    variant.dietary_fiber === 0 ? undefined : variant.dietary_fiber,
+  sugars: variant.sugars === 0 ? undefined : variant.sugars,
+  vitamin_a: variant.vitamin_a === 0 ? undefined : variant.vitamin_a,
+  vitamin_c: variant.vitamin_c === 0 ? undefined : variant.vitamin_c,
+  calcium: variant.calcium === 0 ? undefined : variant.calcium,
+  iron: variant.iron === 0 ? undefined : variant.iron,
 });
 
 export const sanitizeGlycemicIndexFrontend = (
@@ -91,23 +93,23 @@ export function createDefaultFormVariant(
   const base: FormFoodVariant = {
     serving_size: 100,
     serving_unit: 'g',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    saturated_fat: '',
-    polyunsaturated_fat: '',
-    monounsaturated_fat: '',
-    trans_fat: '',
-    cholesterol: '',
-    sodium: '',
-    potassium: '',
-    dietary_fiber: '',
-    sugars: '',
-    vitamin_a: '',
-    vitamin_c: '',
-    calcium: '',
-    iron: '',
+    calories: undefined,
+    protein: undefined,
+    carbs: undefined,
+    fat: undefined,
+    saturated_fat: undefined,
+    polyunsaturated_fat: undefined,
+    monounsaturated_fat: undefined,
+    trans_fat: undefined,
+    cholesterol: undefined,
+    sodium: undefined,
+    potassium: undefined,
+    dietary_fiber: undefined,
+    sugars: undefined,
+    vitamin_a: undefined,
+    vitamin_c: undefined,
+    calcium: undefined,
+    iron: undefined,
     is_default: true,
     is_locked: false,
     glycemic_index: 'None' as GlycemicIndex,

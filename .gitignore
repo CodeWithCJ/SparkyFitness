@@ -12,6 +12,9 @@ postgresql
 !helm/chart/charts/postgresql/
 !helm/chart/charts/postgresql/**
 node_modules
+.cache
+.pnpm-store
+pnpm-store
 dist
 dist-ssr
 *.local

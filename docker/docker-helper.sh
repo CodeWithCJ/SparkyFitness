@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # SparkyFitness Docker Management Script
 # Usage: ./docker-helper.sh [dev|prod] [up|down|build|logs|ps|clean]
@@ -89,6 +89,7 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.$ENVIRONMENT.yml"
 
 # Change to project root for correct build context
 cd "$PROJECT_ROOT"
+ENV_FILE="$(pwd)/.env"
 
 echo "🚀 SparkyFitness Docker Manager"
 echo "Environment: $ENVIRONMENT"
@@ -101,9 +102,9 @@ case $ACTION in
     "up")
         echo "Starting services..."
         if [ "$ENVIRONMENT" = "dev" ]; then
-            docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" up --build -d
+            docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up --build -d
         else
-            docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" up -d
+            docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
         fi
         echo "✅ Services started successfully!"
         echo ""
@@ -120,25 +121,25 @@ case $ACTION in
         ;;
     "down")
         echo "Stopping services..."
-        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" down
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
         echo "✅ Services stopped successfully!"
         ;;
     "build")
         echo "Building services..."
-        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" build
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build
         echo "✅ Services built successfully!"
         ;;
     "logs")
         echo "Showing logs..."
-        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" logs -f
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs -f
         ;;
     "ps")
         echo "Service status:"
-        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" ps
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
         ;;
     "clean")
         echo "Cleaning up containers, networks, and images..."
-        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" down --volumes --remove-orphans
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down --volumes --remove-orphans
         docker system prune -f
         echo "✅ Cleanup completed!"
         ;;

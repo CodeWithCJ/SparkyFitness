@@ -117,13 +117,16 @@ jobs:
               errors.push('**[MANDATORY for Mobile changes]** Check the "Tested on device or emulator" checkbox.');
             }
 
-            // Screenshots — validate the box is backed by actual images
+            // Screenshots — validate the box is backed by actual images or videos
             const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
             if (screenshotsChecked) {
-              // Look for markdown images or <img> tags only (not bare URLs)
-              const hasImages = /!\[.*?\]\(.+?\)|<img\s/i.test(body);
-              if (!hasImages) {
-                errors.push('**[MANDATORY for UI changes]** You checked the Screenshots box but no images were found in the PR body.');
+              const hasMedia =
+                /!\[.*?\]\(.+?\)/i.test(body) ||
+                /<(?:img|video)\s/i.test(body) ||
+                /\[[^\]]+\]\([^)]*\.(?:apng|avif|gif|jpe?g|mov|mp4|png|svg|webm)(?:[?#][^)]*)?\)/i.test(body)
+
+              if (!hasMedia) {
+                errors.push('**[MANDATORY for UI changes]** You checked the Screenshots box but no images or videos were found in the PR body.');
               }
             }
 
