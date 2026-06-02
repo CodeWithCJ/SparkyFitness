@@ -578,8 +578,9 @@ async function getEnergyCurve(userId: any) {
   }
   const medianWakeHour = median(wakeTimes);
   const medianSleepHour =
-    sleepTimes.length > 0 ? circularMedian(sleepTimes) : medianWakeHour - 8;
-  // Circadian parameters
+    sleepTimes.length > 0
+      ? circularMedian(sleepTimes)
+      : (medianWakeHour - 8 + 24) % 24; // Circadian parameters
   const nadirHour = medianWakeHour - 2;
   // Sleep debt
   const debtData = await calculateSleepDebt(userId);
