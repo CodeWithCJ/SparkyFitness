@@ -112,8 +112,10 @@ Actions:
                       const parts: string[] = [];
                       if (s.reps != null) parts.push(`${s.reps}r`);
                       if (s.weight != null) parts.push(`${s.weight}kg`);
+                      if (s.duration != null) parts.push(`${s.duration}s`);
                       if (s.rpe != null) parts.push(`RPE ${s.rpe}`);
                       let str = parts.join("×");
+                      if (s.rest_time != null) str += ` (rest ${s.rest_time}s)`;
                       if (s.notes) str += ` (${s.notes})`;
                       return str;
                     })
