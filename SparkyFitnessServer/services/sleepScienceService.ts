@@ -50,12 +50,11 @@ function mean(values: any) {
   return values.reduce((sum: any, v: any) => sum + v, 0) / values.length;
 }
 // Median of clock times (decimal hours) treated as points on a 24h circle.
-function circularMedian(values: any, period = 24) {
+function circularMedian(values: number[], period = 24): number {
   if (values.length === 0) return 0;
   const twoPi = 2 * Math.PI;
   let sumSin = 0;
   let sumCos = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const v of values) {
     const angle = (v / period) * twoPi;
     sumSin += Math.sin(angle);
@@ -63,8 +62,7 @@ function circularMedian(values: any, period = 24) {
   }
   const center = (Math.atan2(sumSin, sumCos) / twoPi) * period;
   const half = period / 2;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unwrapped = values.map((v: any) => {
+  const unwrapped = values.map((v) => {
     let delta = (((v - center) % period) + period) % period;
     if (delta > half) delta -= period;
     return center + delta;
