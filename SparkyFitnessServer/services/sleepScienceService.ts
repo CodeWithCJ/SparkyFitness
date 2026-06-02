@@ -49,6 +49,26 @@ function mean(values: any) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return values.reduce((sum: any, v: any) => sum + v, 0) / values.length;
 }
+// Median of clock times (decimal hours) treated as points on a 24h circle.
+function circularMedian(values: number[], period = 24): number {
+  if (values.length === 0) return 0;
+  const twoPi = 2 * Math.PI;
+  let sumSin = 0;
+  let sumCos = 0;
+  for (const v of values) {
+    const angle = (v / period) * twoPi;
+    sumSin += Math.sin(angle);
+    sumCos += Math.cos(angle);
+  }
+  const center = (Math.atan2(sumSin, sumCos) / twoPi) * period;
+  const half = period / 2;
+  const unwrapped = values.map((v) => {
+    let delta = (((v - center) % period) + period) % period;
+    if (delta > half) delta -= period;
+    return center + delta;
+  });
+  return ((median(unwrapped) % period) + period) % period;
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function standardDeviation(values: any) {
   if (values.length < 2) return 0;
@@ -558,8 +578,9 @@ async function getEnergyCurve(userId: any) {
   }
   const medianWakeHour = median(wakeTimes);
   const medianSleepHour =
-    sleepTimes.length > 0 ? median(sleepTimes) : medianWakeHour - 8;
-  // Circadian parameters
+    sleepTimes.length > 0
+      ? circularMedian(sleepTimes)
+      : (medianWakeHour - 8 + 24) % 24; // Circadian parameters
   const nadirHour = medianWakeHour - 2;
   // Sleep debt
   const debtData = await calculateSleepDebt(userId);
@@ -716,7 +737,8 @@ async function getChronotype(userId: any) {
     };
   }
   const medianWakeHour = median(wakeTimes);
-  const medianSleepHour = sleepTimes.length > 0 ? median(sleepTimes) : null;
+  const medianSleepHour =
+    sleepTimes.length > 0 ? circularMedian(sleepTimes) : null;
   // Classify
   let chronotype;
   if (medianWakeHour < CHRONOTYPE_BOUNDARIES.EARLY_BEFORE) {
