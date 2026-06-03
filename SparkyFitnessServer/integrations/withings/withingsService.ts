@@ -46,7 +46,7 @@ async function getAuthorizationUrl(userId: any) {
       app_id_tag,
       ENCRYPTION_KEY
     );
-    const scope = 'user.info,user.metrics,user.activity'; // Define required scopes
+    const scope = 'user.info,user.metrics,user.activity,user.sleepevents'; // Define required scopes
     const state = userId; // Use the userId as the state to identify the user on callback
     // Store state in session or database to validate on callback
     return `${WITHINGS_ACCOUNT_BASE_URL}/oauth2_user/authorize2?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback&state=${state}`;

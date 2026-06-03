@@ -16,21 +16,46 @@ log(
  * Orchestrate a full Withings data sync for a user
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
+ * @param {string} [customStartDate] - Optional start date (YYYY-MM-DD)
+ * @param {string} [customEndDate] - Optional end date (YYYY-MM-DD)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function syncWithingsData(userId: any, syncType = 'manual') {
+async function syncWithingsData(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  syncType = 'manual',
+  customStartDate: string | null = null,
+  customEndDate: string | null = null
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let startDate: any, endDate: any;
   const tz = await loadUserTimezone(userId);
-  const todayStr = todayInZone(tz);
-  // Calculate dates for sync
-  const startDateYMD = addDays(todayStr, -7);
-  const endDateYMD = addDays(todayStr, 1);
-  const { start: startDateUtc } = dayRangeToUtcRange(
-    startDateYMD,
-    todayStr,
+  const today = todayInZone(tz);
+  if (customStartDate) {
+    startDate = customStartDate;
+    endDate = customEndDate || today;
+  } else if (syncType === 'manual') {
+    endDate = today;
+    startDate = addDays(today, -7);
+  } else if (syncType === 'scheduled') {
+    endDate = today;
+    startDate = addDays(today, -7);
+  } else {
+    throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
+  }
+
+  const startDateYMD = startDate;
+  const endDateYMD = addDays(endDate, 1);
+  const { start: startDateUtc, end: endDateUtc } = dayRangeToUtcRange(
+    startDate,
+    endDate,
     tz
   );
   const startDateUnix = Math.floor(startDateUtc.getTime() / 1000);
-  const endDateUnix = Math.floor(Date.now() / 1000);
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const endDateUnix = Math.min(
+    Math.floor(endDateUtc.getTime() / 1000),
+    nowUnix
+  );
   log(
     'info',
     `[withingsService] Starting Withings sync (${syncType}) for user ${userId}. Loading from: ${WITHINGS_DATA_SOURCE}`
