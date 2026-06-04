@@ -269,6 +269,12 @@ const auth = betterAuth({
         defaultValue: false,
         returned: true,
       },
+      lastLoginAt: {
+        type: 'date',
+        fieldName: 'last_login_at',
+        required: false,
+        returned: true,
+      },
     },
   },
   account: {

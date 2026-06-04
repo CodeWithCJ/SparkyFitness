@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ import { BetterAuthUser } from '@/types/auth';
 
 const MFASettings = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { loggingLevel } = usePreferences();
   const [totpLoading, setTotpLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
@@ -90,6 +92,10 @@ const MFASettings = () => {
 
           toast({ title: 'Success', description: 'TOTP disabled.' });
           await refetch();
+          queryClient.invalidateQueries({
+            queryKey: ['users'],
+            refetchType: 'all',
+          });
           break;
         }
         case 'generateBackup': {
@@ -132,6 +138,10 @@ const MFASettings = () => {
 
       toast({ title: 'Success', description: 'TOTP verified and enabled!' });
       await refetch();
+      queryClient.invalidateQueries({
+        queryKey: ['users'],
+        refetchType: 'all',
+      });
       setOtpAuthUrl(null); // Clear OTP URL after successful verification
       setTotpCode(''); // Clear TOTP code after successful verification
     } catch (error: unknown) {

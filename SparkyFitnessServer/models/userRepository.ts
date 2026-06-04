@@ -338,6 +338,8 @@ async function getAllUsers(
         NOT COALESCE(u.banned, false) as is_active,
         u.created_at,
         u.last_login_at,
+        u.mfa_totp_enabled,
+        u.mfa_email_enabled,
         p.full_name
       FROM "user" u
       LEFT JOIN profiles p ON u.id = p.id

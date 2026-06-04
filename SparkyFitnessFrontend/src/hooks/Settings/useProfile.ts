@@ -51,7 +51,14 @@ export const useUploadAvatarMutation = (userId: string) => {
 };
 
 export const useToggleEmailMfaMutation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: toggleEmailMfa,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['users'],
+        refetchType: 'all',
+      });
+    },
   });
 };
