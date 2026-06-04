@@ -109,6 +109,19 @@ router.post('/callback', async (req, res) => {
  *     tags: [External Integrations]
  *     security:
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate:
+ *                 type: string
+ *                 description: YYYY-MM-DD start date
+ *               endDate:
+ *                 type: string
+ *                 description: YYYY-MM-DD end date
  *     responses:
  *       200:
  *         description: Sync completed successfully.
@@ -117,9 +130,12 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
   log('info', 'Received request to /withings/sync');
   try {
     const userId = req.userId;
+    const { startDate, endDate } = req.body || {};
     const result = await withingsServiceCentral.syncWithingsData(
       userId,
-      'manual'
+      'manual',
+      startDate,
+      endDate
     );
     log(
       'info',
