@@ -48,6 +48,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     bmrAlgorithm,
   } = usePreferences();
 
+  const isLeanMassBmr =
+    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
+
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
 
@@ -379,8 +382,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </AlertTitle>
               <AlertDescription className="text-red-700 text-xs leading-relaxed flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-1 sm:gap-x-1">
                 <span>
-                  {bmrAlgorithm === 'Katch-McArdle' ||
-                  bmrAlgorithm === 'Cunningham'
+                  {isLeanMassBmr
                     ? t(
                         'exercise.dailyProgress.katchCunninghamMissingDesc',
                         'Weight and Body Fat Percentage are missing. Calorie goals may be inaccurate.'
@@ -395,14 +397,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   size="sm"
                   className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
                   onClick={() =>
-                    bmrAlgorithm === 'Katch-McArdle' ||
-                    bmrAlgorithm === 'Cunningham'
+                    isLeanMassBmr
                       ? navigate('/checkin')
                       : navigate('/settings?section=profile-information')
                   }
                 >
-                  {bmrAlgorithm === 'Katch-McArdle' ||
-                  bmrAlgorithm === 'Cunningham'
+                  {isLeanMassBmr
                     ? t(
                         'exercise.dailyProgress.enterMeasurements',
                         'Enter Measurements'
