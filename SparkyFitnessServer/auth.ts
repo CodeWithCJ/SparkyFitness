@@ -461,7 +461,6 @@ const auth = betterAuth({
             await userRepository.ensureUserInitialization(
               user.id,
               user.name || user.email.split('@')[0],
-              // @ts-expect-error
               user.image
             );
             // Also initialize default nutrient preferences

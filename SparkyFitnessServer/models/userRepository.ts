@@ -1,14 +1,11 @@
+import { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 
 async function createUser(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  email: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  hashedPassword: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  full_name: any
+  userId: string,
+  email: string,
+  hashedPassword: string,
+  full_name: string
 ) {
   const client = await getSystemClient(); // System client for user creation
   try {
@@ -34,8 +31,7 @@ async function createUser(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserByEmail(email: any) {
+async function findUserByEmail(email: string) {
   const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
     const result = await client.query(
@@ -53,8 +49,7 @@ async function findUserByEmail(email: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserById(userId: any) {
+async function findUserById(userId: string) {
   const client = await getSystemClient(); // System client for finding user by ID (authentication/admin)
   try {
     const result = await client.query(
@@ -76,8 +71,7 @@ async function findUserById(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserIdByEmail(email: any) {
+async function findUserIdByEmail(email: string) {
   const client = await getSystemClient(); // System client for finding user ID by email (authentication)
   try {
     const result = await client.query(
@@ -89,8 +83,7 @@ async function findUserIdByEmail(email: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getAccessibleUsers(userId: any) {
+async function getAccessibleUsers(userId: string) {
   const client = await getSystemClient(); // System client for bypassing RLS
   try {
     const result = await client.query(
@@ -113,8 +106,7 @@ async function getAccessibleUsers(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getUserProfile(userId: any) {
+async function getUserProfile(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -127,20 +119,13 @@ async function getUserProfile(userId: any) {
   }
 }
 async function updateUserProfile(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  full_name: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  phone_number: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date_of_birth: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bio: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  avatar_url: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  gender: any
+  userId: string,
+  full_name: string | null | undefined,
+  phone_number: string | null | undefined,
+  date_of_birth: string | Date | null | undefined,
+  bio: string | null | undefined,
+  avatar_url: string | null | undefined,
+  gender: string | null | undefined
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -162,8 +147,7 @@ async function updateUserProfile(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserPassword(userId: any, hashedPassword: any) {
+async function updateUserPassword(userId: string, hashedPassword: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -175,8 +159,7 @@ async function updateUserPassword(userId: any, hashedPassword: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserEmail(userId: any, newEmail: any) {
+async function updateUserEmail(userId: string, newEmail: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -197,8 +180,7 @@ async function updateUserEmail(userId: any, newEmail: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getUserRole(userId: any) {
+async function getUserRole(userId: string) {
   const client = await getSystemClient(); // System client for getting user role (admin check)
   try {
     const result = await client.query('SELECT role FROM "user" WHERE id = $1', [
@@ -209,8 +191,7 @@ async function getUserRole(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserRole(userId: any, role: any) {
+async function updateUserRole(userId: string, role: string) {
   const client = await getSystemClient(); // System client for updating user role (admin operation)
   try {
     const result = await client.query(
@@ -224,16 +205,11 @@ async function updateUserRole(userId: any, role: any) {
 }
 
 async function createOidcUser(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  email: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fullName: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  oidcSub: any
+  userId: string,
+  email: string,
+  fullName: string,
+  providerId: string,
+  oidcSub: string
 ) {
   const client = await getSystemClient(); // System client for OIDC user creation
   try {
@@ -261,8 +237,7 @@ async function createOidcUser(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserOidcLink(userId: any, providerId: any) {
+async function findUserOidcLink(userId: string, providerId: string) {
   const client = await getSystemClient(); // System client for finding OIDC link (authentication)
   try {
     const result = await client.query(
@@ -274,8 +249,11 @@ async function findUserOidcLink(userId: any, providerId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createUserOidcLink(userId: any, providerId: any, oidcSub: any) {
+async function createUserOidcLink(
+  userId: string,
+  providerId: string,
+  oidcSub: string
+) {
   const client = await getSystemClient(); // System client for creating OIDC link
   try {
     await client.query(
@@ -286,8 +264,7 @@ async function createUserOidcLink(userId: any, providerId: any, oidcSub: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserByOidcSub(oidcSub: any, providerId: any) {
+async function findUserByOidcSub(oidcSub: string, providerId: string) {
   const client = await getSystemClient(); // System client for finding user by OIDC sub (authentication)
   try {
     const result = await client.query(
@@ -302,8 +279,7 @@ async function findUserByOidcSub(oidcSub: any, providerId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserOidcLink(linkId: any, newOidcSub: any) {
+async function updateUserOidcLink(linkId: string, newOidcSub: string) {
   const client = await getSystemClient(); // System client for updating OIDC link
   try {
     await client.query(
@@ -324,8 +300,7 @@ async function updatePasswordResetToken() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findUserByPasswordResetToken(token: any) {
+async function findUserByPasswordResetToken(token: string) {
   const client = await getSystemClient(); // System client for password reset token lookup
   try {
     const result = await client.query(
@@ -337,8 +312,7 @@ async function findUserByPasswordResetToken(token: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserLastLogin(userId: any) {
+async function updateUserLastLogin(userId: string) {
   const client = await getSystemClient(); // System client for updating last login
   try {
     await client.query(
@@ -349,8 +323,11 @@ async function updateUserLastLogin(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getAllUsers(limit: any, offset: any, searchTerm: any) {
+async function getAllUsers(
+  limit: number,
+  offset: number,
+  searchTerm?: string | null
+) {
   const client = await getSystemClient(); // System client for getting all users (admin operation)
   try {
     let query = `
@@ -380,8 +357,7 @@ async function getAllUsers(limit: any, offset: any, searchTerm: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteUser(userId: any) {
+async function deleteUser(userId: string) {
   const client = await getSystemClient(); // System client for deleting user (admin operation)
   try {
     // Delete from "user" (this should trigger cascades for session, account, etc.)
@@ -398,8 +374,7 @@ async function deleteUser(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserStatus(userId: any, isActive: any) {
+async function updateUserStatus(userId: string, isActive: boolean) {
   const client = await getSystemClient(); // System client for updating user status (admin operation)
   try {
     const banned = !isActive;
@@ -412,8 +387,7 @@ async function updateUserStatus(userId: any, isActive: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserFullName(userId: any, fullName: any) {
+async function updateUserFullName(userId: string, fullName: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -426,18 +400,12 @@ async function updateUserFullName(userId: any, fullName: any) {
   }
 }
 async function updateUserMfaSettings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mfaSecret: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mfaTotpEnabled: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mfaEmailEnabled: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mfaRecoveryCodes: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mfaEnforced: any
+  userId: string,
+  mfaSecret: string | null | undefined,
+  mfaTotpEnabled: boolean | null | undefined,
+  mfaEmailEnabled: boolean | null | undefined,
+  mfaRecoveryCodes: string | string[] | null | undefined,
+  mfaEnforced: boolean | null | undefined
 ) {
   const client = await getSystemClient();
   try {
@@ -474,8 +442,7 @@ async function updateUserMfaSettings(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMfaSettings(userId: any) {
+async function getMfaSettings(userId: string) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -492,8 +459,7 @@ async function getMfaSettings(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function isOidcUser(userId: any) {
+async function isOidcUser(userId: string) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -506,12 +472,10 @@ async function isOidcUser(userId: any) {
   }
 }
 async function ensureUserInitialization(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fullName: any,
-  avatarUrl = null,
-  existingClient = null
+  userId: string,
+  fullName: string,
+  avatarUrl: string | null | undefined = null,
+  existingClient: PoolClient | null = null
 ) {
   const client = existingClient || (await getSystemClient());
   try {

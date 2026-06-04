@@ -61,7 +61,7 @@ router.get('/users', async (req, res, next) => {
       parseInt(limit),
       // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
       parseInt(offset),
-      searchTerm
+      typeof searchTerm === 'string' ? searchTerm : undefined
     );
     res.status(200).json(users);
   } catch (error) {
