@@ -387,7 +387,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       }
     }
 
-    if (selectedVariantId === activeItem.variantId) {
+    if ((selectedVariantId ?? null) === (activeItem.variantId ?? null)) {
       return activeItem.customNutrients ?? null;
     }
 
@@ -1023,7 +1023,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   returnKey: route.key,
                   foodId: isLocalFood ? activeItem.id : undefined,
                   variantId: isLocalFood ? selectedVariantId : undefined,
-                  customNutrients: isLocalFood ? selectedCustomNutrients : undefined,
+                  customNutrients: isLocalFood ? (selectedCustomNutrients ?? null) : undefined,
                   availableUnitVariants: selectorVariants,
                   selectedUnitSelection: displayUnitSelection,
                   initialValues: {
