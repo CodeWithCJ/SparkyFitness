@@ -43,10 +43,10 @@ COPY --from=mcp_builder /deploy ./
 COPY --from=mcp_builder /app/SparkyFitnessMCP/dist ./dist
 
 # Expose the MCP server port
-EXPOSE 3011
+EXPOSE 3001
 
 # Healthcheck
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["node", "-e", "require('http').get('http://127.0.0.1:3011/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=15s CMD ["node", "-e", "require('http').get('http://127.0.0.1:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
 
 # Run the built MCP server
 CMD ["node", "dist/index.cjs"]
