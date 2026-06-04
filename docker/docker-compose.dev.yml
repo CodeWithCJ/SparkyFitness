@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ./docker_volume/postgresql:/var/lib/postgresql/data:z
+      - ./docker_volume/postgresql:/var/lib/postgresql:z
     networks:
       - sparkyfitness-network
     ports:
