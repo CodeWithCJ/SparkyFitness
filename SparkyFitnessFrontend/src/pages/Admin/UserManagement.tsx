@@ -137,22 +137,23 @@ const UserManagement: React.FC = () => {
 
   const handleToggleUserStatus = (
     userId: string,
-    userName: string,
+    userName: string | null,
     newCheckedState: boolean
   ) => {
     const action = newCheckedState ? 'activate' : 'deactivate';
+    const displayName = userName || 'User';
     if (
       !window.confirm(
         t('admin.userManagement.toggleUserStatusConfirm', {
           action,
-          userName,
-          defaultValue: `Are you sure you want to ${action} user ${userName}?`,
+          userName: displayName,
+          defaultValue: `Are you sure you want to ${action} user ${displayName}?`,
         })
       )
     )
       return;
 
-    updateStatus({ userId, isActive: newCheckedState });
+    updateStatus({ userId, isActive: newCheckedState, userName: displayName });
   };
 
   const handleToggleUserRole = (

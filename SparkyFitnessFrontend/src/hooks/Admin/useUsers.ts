@@ -84,15 +84,31 @@ export const useUpdateUserStatus = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
-      userManagementService.updateUserStatus(userId, isActive),
+    mutationFn: ({
+      userId,
+      isActive,
+    }: {
+      userId: string;
+      isActive: boolean;
+      userName?: string;
+    }) => userManagementService.updateUserStatus(userId, isActive),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
     meta: {
       errorMessage: t('error', 'Error'),
-      successMessage: t(
-        'admin.userManagement.userStatusUpdated',
-        'User status updated.'
-      ),
+      successMessage: (_data: unknown, variables: unknown) => {
+        const { isActive, userName } = variables as {
+          userId: string;
+          isActive: boolean;
+          userName?: string;
+        };
+        const actionText = isActive ? 'activate' : 'deactivate';
+        const nameText = userName || 'User';
+        return t('admin.userManagement.userStatusUpdated', {
+          userName: nameText,
+          action: actionText,
+          defaultValue: `User ${nameText} ${actionText}d successfully.`,
+        });
+      },
     },
   });
 };

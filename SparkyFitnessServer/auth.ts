@@ -534,8 +534,17 @@ const auth = betterAuth({
         after: async (session) => {
           log(
             'info',
-            `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`
+            `[AUTH] Hook: Session created for user ${session.userId}. Updating last login and checking group sync.`
           );
+          try {
+            await userRepository.updateUserLastLogin(session.userId);
+          } catch (loginError) {
+            log(
+              'error',
+              `[AUTH] Hook Error: Failed to update last login for user ${session.userId}:`,
+              loginError
+            );
+          }
           try {
             // Get all accounts for this user to find the OIDC provider used
             const client = await authPool.connect();

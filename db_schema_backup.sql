@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict vZHQ844afmEDovDccz8lqf7vMog3jyQGPd4EhtMPSyhXpOAffTnJqdepgYKnZVr
+\restrict tGmxTeKSu7MfeiqshFPq1OVApXU7t9W02961x6i06YLmvvnr5ewBvWlRMVYzFUS
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.0
@@ -1436,9 +1436,9 @@ CREATE TABLE public.food_entries (
     meal_id uuid,
     food_entry_meal_id uuid,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
+    meal_type_id uuid NOT NULL,
     allergens text[],
     traces text[],
-    meal_type_id uuid NOT NULL,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
 
@@ -1519,12 +1519,11 @@ CREATE TABLE public.food_variants (
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
     source text DEFAULT 'manual'::text NOT NULL,
     ai_confidence text,
-    CONSTRAINT food_variants_ai_confidence_check CHECK ((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL)),
-    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
-    CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
     allergens text[],
     traces text[],
-    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))): add allergens and traces from OpenFoodFacts)
+    CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
+    CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 
 
@@ -2133,7 +2132,8 @@ CREATE TABLE public."user" (
     magic_link_token text,
     magic_link_expires timestamp with time zone,
     mfa_totp_enabled boolean DEFAULT false,
-    image text
+    image text,
+    last_login_at timestamp with time zone
 );
 
 
@@ -2152,25 +2152,20 @@ COMMENT ON COLUMN public."user".image IS 'Profile image URL synced from Better A
 
 
 --
--- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
+-- Name: user_allergen_preferences; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_allergen_preferences (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     allergen_name text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT user_allergen_preferences_pkey PRIMARY KEY (id),
-    CONSTRAINT user_allergen_preferences_user_id_allergen_name_key UNIQUE (user_id, allergen_name),
-    CONSTRAINT user_allergen_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE
+    created_at timestamp with time zone DEFAULT now()
 );
 
-ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY owner_policy ON public.user_allergen_preferences
-  USING (user_id = public.current_user_id())
-  WITH CHECK (user_id = public.current_user_id());
-
+--
+-- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
+--
 
 CREATE TABLE public.user_custom_nutrients (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2355,8 +2350,8 @@ CREATE TABLE public.user_preferences (
     auto_scale_online_imports boolean DEFAULT true,
     first_day_of_week smallint DEFAULT 0,
     barcode_fallback_open_food_facts boolean DEFAULT true,
-    ai_assisted_conversions boolean DEFAULT true NOT NULL,
     show_net_carbs boolean DEFAULT false NOT NULL,
+    ai_assisted_conversions boolean DEFAULT true NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -3338,6 +3333,22 @@ ALTER TABLE ONLY public.external_data_providers
 
 
 --
+-- Name: user_allergen_preferences user_allergen_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergen_preferences
+    ADD CONSTRAINT user_allergen_preferences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_allergen_preferences user_allergen_preferences_user_id_allergen_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergen_preferences
+    ADD CONSTRAINT user_allergen_preferences_user_id_allergen_name_key UNIQUE (user_id, allergen_name);
+
+
+--
 -- Name: user_custom_nutrients user_custom_nutrients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3526,6 +3537,13 @@ ALTER TABLE ONLY system.schema_migrations
 --
 
 CREATE INDEX idx_magic_link_token ON auth.users USING btree (magic_link_token);
+
+
+--
+-- Name: check_in_measurements_user_date_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX check_in_measurements_user_date_unique ON public.check_in_measurements USING btree (user_id, entry_date);
 
 
 --
@@ -4657,6 +4675,14 @@ ALTER TABLE ONLY public.two_factor
 
 
 --
+-- Name: user_allergen_preferences user_allergen_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergen_preferences
+    ADD CONSTRAINT user_allergen_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_custom_nutrients user_custom_nutrients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5421,6 +5447,13 @@ CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = publi
 
 
 --
+-- Name: user_allergen_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_allergen_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: user_custom_nutrients owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5754,6 +5787,12 @@ ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY update_policy ON public.food_entries FOR UPDATE USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
+
+--
+-- Name: user_allergen_preferences; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_custom_nutrients; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7096,6 +7135,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky uat";
 
 
 --
+-- Name: TABLE user_allergen_preferences; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO sparky_uat;
+
+
+--
 -- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
 --
 
@@ -7414,5 +7462,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vZHQ844afmEDovDccz8lqf7vMog3jyQGPd4EhtMPSyhXpOAffTnJqdepgYKnZVr
+\unrestrict tGmxTeKSu7MfeiqshFPq1OVApXU7t9W02961x6i06YLmvvnr5ewBvWlRMVYzFUS
 

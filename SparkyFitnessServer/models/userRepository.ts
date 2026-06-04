@@ -342,7 +342,7 @@ async function updateUserLastLogin(userId: any) {
   const client = await getSystemClient(); // System client for updating last login
   try {
     await client.query(
-      'UPDATE "user" SET updated_at = now() WHERE id = $1', // Better Auth doesn't have last_login_at by default
+      'UPDATE "user" SET last_login_at = now(), updated_at = now() WHERE id = $1',
       [userId]
     );
   } finally {
@@ -358,8 +358,9 @@ async function getAllUsers(limit: any, offset: any, searchTerm: any) {
         u.id,
         u.email,
         u.role,
-        true as is_active,
+        NOT COALESCE(u.banned, false) as is_active,
         u.created_at,
+        u.last_login_at,
         p.full_name
       FROM "user" u
       LEFT JOIN profiles p ON u.id = p.id
@@ -401,9 +402,10 @@ async function deleteUser(userId: any) {
 async function updateUserStatus(userId: any, isActive: any) {
   const client = await getSystemClient(); // System client for updating user status (admin operation)
   try {
+    const banned = !isActive;
     const result = await client.query(
-      'UPDATE "user" SET updated_at = now() WHERE id = $2 RETURNING id',
-      [isActive, userId]
+      'UPDATE "user" SET banned = $1, updated_at = now() WHERE id = $2 RETURNING id',
+      [banned, userId]
     );
     return result.rowCount > 0;
   } finally {
