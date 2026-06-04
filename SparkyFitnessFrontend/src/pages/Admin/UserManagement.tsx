@@ -132,7 +132,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    resetPassword(userId);
+    resetPassword({ userId, userName });
   };
 
   const handleToggleUserStatus = (
@@ -184,7 +184,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    resetMfa(userId);
+    resetMfa({ userId, userName });
   };
 
   const handleSortChange = (column: keyof User) => {

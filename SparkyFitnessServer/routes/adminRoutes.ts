@@ -435,12 +435,13 @@ router.post('/users/:userId/reset-password', async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-    // @ts-expect-error TS(2339): Property 'forgotPassword' does not exist on type '... Remove this comment to see the full error message
-    await auth.api.forgotPassword({
-      email: user.email,
-      redirectTo:
-        (process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080') +
-        '/reset-password',
+    await auth.api.requestPasswordReset({
+      body: {
+        email: user.email,
+        redirectTo:
+          (process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080') +
+          '/reset-password',
+      },
     });
 
     await logAdminAction(req.userId, userId, 'USER_PASSWORD_RESET_INITIATED', {

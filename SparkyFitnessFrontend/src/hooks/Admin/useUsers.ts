@@ -64,18 +64,23 @@ export const useDeleteUser = () => {
   });
 };
 
-// Mutation: Passwort zurücksetzen
 export const useResetUserPassword = () => {
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: (userId: string) =>
+    mutationFn: ({ userId }: { userId: string; userName: string }) =>
       userManagementService.resetUserPassword(userId),
     meta: {
       errorMessage: t('error', 'Error'),
-      successMessage: t(
-        'admin.userManagement.resetPasswordInitiated',
-        'Password reset initiated.'
-      ),
+      successMessage: (_data: unknown, variables: unknown) => {
+        const { userName } = variables as {
+          userId: string;
+          userName: string;
+        };
+        return t('admin.userManagement.resetPasswordInitiated', {
+          userName: userName || 'User',
+          defaultValue: `Password reset initiated for ${userName || 'User'}.`,
+        });
+      },
     },
   });
 };
@@ -128,9 +133,24 @@ export const useUpdateUserRole = () => {
 };
 
 export const useResetUserMfa = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string) => userManagementService.resetUserMfa(userId),
+    mutationFn: ({ userId }: { userId: string; userName: string }) =>
+      userManagementService.resetUserMfa(userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    meta: {
+      errorMessage: t('error', 'Error'),
+      successMessage: (_data: unknown, variables: unknown) => {
+        const { userName } = variables as {
+          userId: string;
+          userName: string;
+        };
+        return t('admin.userManagement.resetMfaSuccess', {
+          userName: userName || 'User',
+          defaultValue: `MFA reset successfully for ${userName || 'User'}.`,
+        });
+      },
+    },
   });
 };
