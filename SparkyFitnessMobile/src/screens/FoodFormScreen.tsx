@@ -1002,15 +1002,6 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       return;
     }
 
-    console.log('[AdjustNutrition] handleSubmit', {
-      foodId,
-      variantId,
-      currentVariantId,
-      canUpdateVariant,
-      updateFoodToggle,
-      customNutrients,
-    });
-
     // If the user wants to save equivalents we need the full variant list to
     // diff sibling rows. Guard the same way EditFoodMode does.
     const draftSelectionEarly =
@@ -1188,7 +1179,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           }
 
           if (saveVariantId) {
-            await persistFoodEdits({
+            const saved = await persistFoodEdits({
               queryClient,
               foodId,
               variantId: saveVariantId,
@@ -1197,6 +1188,11 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
               variantInitialValues: initialValues,
               foodInitialValues: initialValues,
             });
+            // Even when nutrition is unchanged, invalidate caches so the variant
+            // appears in the library for the user who just toggled save ON.
+            if (!saved) {
+              invalidateFoodCaches(queryClient, foodId);
+            }
           }
         }
 
