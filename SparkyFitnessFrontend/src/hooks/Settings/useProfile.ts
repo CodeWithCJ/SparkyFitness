@@ -55,10 +55,8 @@ export const useToggleEmailMfaMutation = () => {
   return useMutation({
     mutationFn: toggleEmailMfa,
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['users'],
-        refetchType: 'all',
-      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
     },
   });
 };

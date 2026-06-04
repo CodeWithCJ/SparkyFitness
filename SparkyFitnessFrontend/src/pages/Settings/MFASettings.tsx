@@ -92,10 +92,8 @@ const MFASettings = () => {
 
           toast({ title: 'Success', description: 'TOTP disabled.' });
           await refetch();
-          queryClient.invalidateQueries({
-            queryKey: ['users'],
-            refetchType: 'all',
-          });
+          queryClient.invalidateQueries({ queryKey: ['users'] });
+          queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
           break;
         }
         case 'generateBackup': {
@@ -138,10 +136,8 @@ const MFASettings = () => {
 
       toast({ title: 'Success', description: 'TOTP verified and enabled!' });
       await refetch();
-      queryClient.invalidateQueries({
-        queryKey: ['users'],
-        refetchType: 'all',
-      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
       setOtpAuthUrl(null); // Clear OTP URL after successful verification
       setTotpCode(''); // Clear TOTP code after successful verification
     } catch (error: unknown) {
