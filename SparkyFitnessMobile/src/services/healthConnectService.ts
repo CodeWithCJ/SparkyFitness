@@ -229,25 +229,11 @@ export const syncHealthData = async (
   const results = await runTasksInBatches(
     healthDataTypesToSync,
     METRIC_FETCH_CONCURRENCY,
-    type => {
-      let metricSessionStartDate = sessionStartDate;
-      let metricAggregatedStartDate = aggregatedStartDate;
-
-      // Slow-changing body measurements require a longer history for calculations (like Adaptive TDEE) and charts
-      const historicalMetrics = ['Weight', 'Height', 'BodyFat', 'LeanBodyMass', 'BoneMass'];
-      if (historicalMetrics.includes(type)) {
-        const ninetyDaysAgo = new Date();
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-        metricSessionStartDate = ninetyDaysAgo;
-        metricAggregatedStartDate = HealthConnect.alignToLocalDayStart(ninetyDaysAgo);
-      }
-
-      return withTimeout(
-        processMetric(type, metricAggregatedStartDate, metricSessionStartDate, endDate),
-        METRIC_TIMEOUT_MS,
-        `Health Connect query for ${type}`,
-      );
-    },
+    type => withTimeout(
+      processMetric(type, aggregatedStartDate, sessionStartDate, endDate),
+      METRIC_TIMEOUT_MS,
+      `Health Connect query for ${type}`,
+    ),
     {
       stopOnError: error => error instanceof TimeoutError,
     },
