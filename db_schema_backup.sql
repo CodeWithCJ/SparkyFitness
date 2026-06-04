@@ -1616,7 +1616,28 @@ CREATE TABLE public.meal_foods (
     quantity numeric NOT NULL,
     unit character varying(50) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    serving_size numeric,
+    serving_unit text,
+    calories numeric,
+    protein numeric,
+    carbs numeric,
+    fat numeric,
+    saturated_fat numeric,
+    polyunsaturated_fat numeric,
+    monounsaturated_fat numeric,
+    trans_fat numeric,
+    cholesterol numeric,
+    sodium numeric,
+    potassium numeric,
+    dietary_fiber numeric,
+    sugars numeric,
+    vitamin_a numeric,
+    vitamin_c numeric,
+    calcium numeric,
+    iron numeric,
+    glycemic_index text,
+    custom_nutrients jsonb
 );
 
 

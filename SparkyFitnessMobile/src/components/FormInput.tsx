@@ -47,7 +47,6 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
           },
           style,
         ]}
-        inputAccessoryViewID="none"
         {...props}
       />
     );

@@ -68,6 +68,7 @@ export type RootStackParamList = {
         date?: string;
         adjustedValues?: FoodFormData;
         adjustedUnitSelection?: FoodUnitSelectionResult;
+        selectedVariantOverride?: FoodUnitVariant;
         pickerMode?: FoodPickerMode;
         ingredientIndex?: number;
         returnDepth?: number;

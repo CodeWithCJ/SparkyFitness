@@ -645,12 +645,33 @@ async function createMealFromDiaryEntries(
         missingFoods.push(`${entry.food_name} (No variant found)`);
         continue;
       }
-      // 3. Transform food entries into meal template format
+      // 3. Transform food entries into meal template format, carrying the
+      // per-entry nutrition snapshot so adjusted values survive in the template.
       mealFoods.push({
         food_id: entry.food_id,
-        variant_id: entry.variant_id || food.default_variant.id, // Use entry's variant_id or default
+        variant_id: entry.variant_id || food.default_variant.id,
         quantity: entry.quantity,
         unit: entry.unit,
+        serving_size: entry.serving_size,
+        serving_unit: entry.serving_unit,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+        saturated_fat: entry.saturated_fat,
+        polyunsaturated_fat: entry.polyunsaturated_fat,
+        monounsaturated_fat: entry.monounsaturated_fat,
+        trans_fat: entry.trans_fat,
+        cholesterol: entry.cholesterol,
+        sodium: entry.sodium,
+        potassium: entry.potassium,
+        dietary_fiber: entry.dietary_fiber,
+        sugars: entry.sugars,
+        vitamin_a: entry.vitamin_a,
+        vitamin_c: entry.vitamin_c,
+        calcium: entry.calcium,
+        iron: entry.iron,
+        glycemic_index: entry.glycemic_index,
         custom_nutrients: entry.custom_nutrients || {},
       });
     }
