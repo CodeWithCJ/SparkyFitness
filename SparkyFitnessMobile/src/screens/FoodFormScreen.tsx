@@ -992,6 +992,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   );
 
   const isDraftSelection = pendingUnitSelection?.kind === 'draft';
+  // Show equivalents for local foods (canUpdateVariant) and also when navigating
+  // from FoodEntryAdd for external foods — equivalents get deferred to onSuccess
+  // of addEntry once the food has a real food_id.
+  const showEquivalents = canUpdateVariant || params.returnTo === 'FoodEntryAdd';
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!validateFoodForm(data)) {
@@ -1263,11 +1267,19 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       }
     }
 
+    const cleanEquivalentsForReturn = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+
     isSavingRef.current = true;
     navigation.dispatch({
       ...CommonActions.setParams({
         adjustedValues: data,
         adjustedUnitSelection: nextUnitSelection,
+        // For external foods on the FoodEntryAdd path, return equivalents so
+        // FoodEntryAddScreen can persist them after the food is saved.
+        pendingEquivalents:
+          !canUpdateVariant && params.returnTo === 'FoodEntryAdd' && cleanEquivalentsForReturn.length > 0
+            ? cleanEquivalentsForReturn
+            : undefined,
       }),
       source: returnKey,
     });
@@ -1304,7 +1316,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
               }
             : undefined
         }
-        equivalents={canUpdateVariant ? {
+        equivalents={showEquivalents ? {
           items: equivalentDraft,
           onChange: setEquivalentDraft,
           disabled: isDraftSelection,

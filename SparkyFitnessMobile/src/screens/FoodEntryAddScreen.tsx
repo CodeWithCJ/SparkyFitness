@@ -37,9 +37,14 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import type { FoodFormData } from '../components/FoodForm';
 import type { MealIngredientDraft } from '../types/meals';
 import type {
+  EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
+import {
+  createFoodVariant,
+  type CreateFoodVariantPayload,
+} from '../services/api/foodsApi';
 import {
   type FoodInfoItem,
   foodItemToFoodInfo,
@@ -478,9 +483,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const servingSizeRef = useRef(displayValues.servingSize);
+  const pendingEquivalentsRef = useRef<EquivalentUnit[] | null>(null);
 
   const adjustedFromNav = route.params?.adjustedValues;
   const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
+  const pendingEquivalentsFromNav = route.params?.pendingEquivalents;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
@@ -552,6 +559,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     localUnitVariants,
     navigation,
   ]);
+
+  useEffect(() => {
+    if (!pendingEquivalentsFromNav) return;
+    pendingEquivalentsRef.current = pendingEquivalentsFromNav;
+    navigation.setParams({ pendingEquivalents: undefined });
+  }, [pendingEquivalentsFromNav, navigation]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -713,7 +726,37 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const { addEntry, addEntryAsync, isPending: isAddPending, invalidateCache } =
     useAddFoodEntry({
-      onSuccess: () => {
+      onSuccess: (entry) => {
+        if (entry.food_id && pendingEquivalentsRef.current) {
+          const equivalents = pendingEquivalentsRef.current;
+          pendingEquivalentsRef.current = null;
+          void Promise.all(
+            equivalents.map((eq) =>
+              createFoodVariant({
+                food_id: entry.food_id!,
+                serving_size: eq.serving_size,
+                serving_unit: eq.serving_unit,
+                calories: displayValues.calories,
+                protein: displayValues.protein,
+                carbs: displayValues.carbs,
+                fat: displayValues.fat,
+                dietary_fiber: displayValues.fiber,
+                saturated_fat: displayValues.saturatedFat,
+                sodium: displayValues.sodium,
+                sugars: displayValues.sugars,
+                trans_fat: displayValues.transFat,
+                potassium: displayValues.potassium,
+                calcium: displayValues.calcium,
+                iron: displayValues.iron,
+                cholesterol: displayValues.cholesterol,
+                vitamin_a: displayValues.vitaminA,
+                vitamin_c: displayValues.vitaminC,
+              } as CreateFoodVariantPayload),
+            ),
+          ).catch(() => {
+            Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+          });
+        }
         invalidateCache(selectedDate);
         navigation.dispatch(StackActions.popToTop());
       },

@@ -289,7 +289,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       }
     }
 
-    if (selectedVariantId === entry.variant_id) {
+    if ((selectedVariantId ?? null) === (entry.variant_id ?? null)) {
       return entry.custom_nutrients ?? null;
     }
 
@@ -466,7 +466,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       returnKey: route.key,
       foodId: entry.food_id ?? undefined,
       variantId: selectedVariantId,
-      customNutrients: selectedCustomNutrients,
+      customNutrients: selectedCustomNutrients ?? null,
       availableUnitVariants: selectorVariants,
       selectedUnitSelection: displayUnitSelection,
       initialValues: {
