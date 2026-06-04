@@ -45,6 +45,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     energyUnit,
     convertEnergy,
     weightUnit,
+    bmrAlgorithm,
   } = usePreferences();
 
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
@@ -378,20 +379,38 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </AlertTitle>
               <AlertDescription className="text-red-700 text-xs leading-relaxed flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-1 sm:gap-x-1">
                 <span>
-                  {t(
-                    'exercise.dailyProgress.profileIncompleteDesc',
-                    'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
-                  )}
+                  {bmrAlgorithm === 'Katch-McArdle' ||
+                  bmrAlgorithm === 'Cunningham'
+                    ? t(
+                        'exercise.dailyProgress.katchCunninghamMissingDesc',
+                        'Weight and Body Fat Percentage are missing. Calorie goals may be inaccurate.'
+                      )
+                    : t(
+                        'exercise.dailyProgress.profileIncompleteDesc',
+                        'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
+                      )}
                 </span>
                 <Button
                   variant="link"
                   size="sm"
                   className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
                   onClick={() =>
-                    navigate('/settings?section=profile-information')
+                    bmrAlgorithm === 'Katch-McArdle' ||
+                    bmrAlgorithm === 'Cunningham'
+                      ? navigate('/checkin')
+                      : navigate('/settings?section=profile-information')
                   }
                 >
-                  {t('exercise.dailyProgress.updateProfile', 'Update Profile')}
+                  {bmrAlgorithm === 'Katch-McArdle' ||
+                  bmrAlgorithm === 'Cunningham'
+                    ? t(
+                        'exercise.dailyProgress.enterMeasurements',
+                        'Enter Measurements'
+                      )
+                    : t(
+                        'exercise.dailyProgress.updateProfile',
+                        'Update Profile'
+                      )}
                 </Button>
               </AlertDescription>
             </Alert>
