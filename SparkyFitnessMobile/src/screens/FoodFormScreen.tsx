@@ -1178,20 +1178,47 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
             }
           }
 
-          if (saveVariantId) {
-            const saved = await persistFoodEdits({
-              queryClient,
-              foodId,
-              variantId: saveVariantId,
-              customNutrients,
-              data,
-              variantInitialValues: initialValues,
-              foodInitialValues: initialValues,
-            });
-            // Even when nutrition is unchanged, invalidate caches so the variant
-            // appears in the library for the user who just toggled save ON.
-            if (!saved) {
+          // Check whether the form's serving size/unit matches an existing DB
+          // variant. If not, save as new directly — no dialog needed since the
+          // user explicitly toggled save ON and the variant doesn't exist yet.
+          if (saveVariantId && foodId) {
+            const formServingSize = parseDecimalInput(data.servingSize) || 0;
+            const formServingUnit = data.servingUnit || 'serving';
+            const matchingDbVariant = (variants ?? []).find(
+              (v) =>
+                Number(v.serving_size) === formServingSize &&
+                v.serving_unit === formServingUnit,
+            );
+
+            if (!matchingDbVariant) {
+              // No DB variant matches these serving values — create a new one.
+              const createdVariant = await createVariant(
+                buildCreateFoodVariantPayload(
+                  foodId,
+                  buildVariantFromFormData(data, existingSelection),
+                ),
+              );
+              nextUnitSelection = { kind: 'existing', variant: createdVariant };
+              saveVariantId = createdVariant.id;
+              equivDiffVariantId = createdVariant.id;
+              setPendingUnitSelection(nextUnitSelection);
+              setCurrentVariantId(createdVariant.id);
               invalidateFoodCaches(queryClient, foodId);
+            } else {
+              // Matching variant exists — update it if nutrition changed.
+              const dbVariantValues = buildFormValuesFromVariant(matchingDbVariant);
+              const saved = await persistFoodEdits({
+                queryClient,
+                foodId,
+                variantId: matchingDbVariant.id,
+                customNutrients,
+                data,
+                variantInitialValues: dbVariantValues,
+                foodInitialValues: initialValues,
+              });
+              if (!saved) {
+                invalidateFoodCaches(queryClient, foodId);
+              }
             }
           }
         }
