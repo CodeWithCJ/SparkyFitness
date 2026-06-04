@@ -269,6 +269,12 @@ const auth = betterAuth({
         defaultValue: false,
         returned: true,
       },
+      lastLoginAt: {
+        type: 'date',
+        fieldName: 'last_login_at',
+        required: false,
+        returned: true,
+      },
     },
   },
   account: {
@@ -461,7 +467,6 @@ const auth = betterAuth({
             await userRepository.ensureUserInitialization(
               user.id,
               user.name || user.email.split('@')[0],
-              // @ts-expect-error
               user.image
             );
             // Also initialize default nutrient preferences
@@ -534,8 +539,17 @@ const auth = betterAuth({
         after: async (session) => {
           log(
             'info',
-            `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`
+            `[AUTH] Hook: Session created for user ${session.userId}. Updating last login and checking group sync.`
           );
+          try {
+            await userRepository.updateUserLastLogin(session.userId);
+          } catch (loginError) {
+            log(
+              'error',
+              `[AUTH] Hook Error: Failed to update last login for user ${session.userId}:`,
+              loginError
+            );
+          }
           try {
             // Get all accounts for this user to find the OIDC provider used
             const client = await authPool.connect();

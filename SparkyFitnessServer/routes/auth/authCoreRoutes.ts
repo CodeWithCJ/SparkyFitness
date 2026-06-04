@@ -146,7 +146,7 @@ router.get('/settings', async (req, res) => {
  */
 router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
   const { email } = req.query;
-  if (!email) {
+  if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
   }
   try {

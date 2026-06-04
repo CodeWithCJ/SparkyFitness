@@ -19,6 +19,7 @@ vi.mock('../models/userRepository.js', () => ({
   default: {
     ensureUserInitialization: vi.fn().mockResolvedValue(undefined),
     getUserRole: vi.fn().mockResolvedValue('user'),
+    updateUserLastLogin: vi.fn().mockResolvedValue(undefined),
   },
 }));
 

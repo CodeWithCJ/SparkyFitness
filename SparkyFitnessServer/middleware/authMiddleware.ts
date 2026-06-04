@@ -91,6 +91,20 @@ const authenticate = async (req: any, res: any, next: any) => {
       req.authenticatedUserId = session.user.id;
       req.originalUserId = req.authenticatedUserId;
       req.user = session.user; // Full user object (includes role)
+
+      // Asynchronously update last login if it hasn't been updated in the last hour
+      const lastLogin =
+        (session.user as any).lastLoginAt ||
+        (session.user as any).last_login_at;
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (!lastLogin || new Date(lastLogin) < oneHourAgo) {
+        const nowStr = new Date().toISOString();
+        (session.user as any).lastLoginAt = nowStr;
+        (session.user as any).last_login_at = nowStr;
+        userRepository.updateUserLastLogin(session.user.id).catch((err) => {
+          log('error', 'Failed to update user last login in middleware:', err);
+        });
+      }
       // Handle 'sparky_active_user_id' cookie for context switching
       const activeUserId = req.cookies.sparky_active_user_id;
       if (activeUserId && activeUserId !== req.authenticatedUserId) {

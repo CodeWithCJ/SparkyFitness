@@ -73,10 +73,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       prevSessionRef.current = session;
     }
 
-    // Only process if session has actual user data AND it's different from what we have
-    if (session?.user && (!user || user.id !== session.user.id)) {
-      const extUser = session.user as unknown as ExtendedSessionUser;
-
+    const extUser = session?.user as unknown as ExtendedSessionUser | undefined;
+    if (
+      extUser &&
+      (!user ||
+        user.id !== extUser.id ||
+        user.twoFactorEnabled !== !!extUser.twoFactorEnabled ||
+        user.mfaEmailEnabled !== !!extUser.mfaEmailEnabled)
+    ) {
       const sessionUser: User = {
         id: extUser.id,
         activeUserId: extUser.activeUserId || extUser.id,
