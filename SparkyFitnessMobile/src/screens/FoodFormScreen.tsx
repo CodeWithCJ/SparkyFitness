@@ -1002,6 +1002,15 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       return;
     }
 
+    console.log('[AdjustNutrition] handleSubmit', {
+      foodId,
+      variantId,
+      currentVariantId,
+      canUpdateVariant,
+      updateFoodToggle,
+      customNutrients,
+    });
+
     // If the user wants to save equivalents we need the full variant list to
     // diff sibling rows. Guard the same way EditFoodMode does.
     const draftSelectionEarly =
