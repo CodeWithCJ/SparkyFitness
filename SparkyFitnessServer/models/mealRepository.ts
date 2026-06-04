@@ -100,8 +100,8 @@ async function createMeal(mealData: any) {
         food.iron ?? null,
         food.glycemic_index ?? null,
         food.custom_nutrients ?? null,
-        'now()',
-        'now()',
+        new Date(),
+        new Date(),
       ]);
       const mealFoodsQuery = format(
         `INSERT INTO meal_foods (

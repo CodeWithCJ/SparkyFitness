@@ -1089,10 +1089,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
                   ...groupNutrFirst,
                 } as CreateFoodVariantPayload),
               ),
-            ).then(() => {
-              invalidateFoodCaches(queryClient, foodId);
-            }).catch(() => {
+            ).catch(() => {
               Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+            }).finally(() => {
+              invalidateFoodCaches(queryClient, foodId);
             });
             setEquivalentBaseline(equivalentDraft);
           }
@@ -1162,10 +1162,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
                         ...groupNutr,
                       } as CreateFoodVariantPayload),
                     ),
-                  ).then(() => {
-                    invalidateFoodCaches(queryClient, foodId);
-                  }).catch(() => {
+                  ).catch(() => {
                     Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                  }).finally(() => {
+                    invalidateFoodCaches(queryClient, foodId);
                   });
                   setEquivalentBaseline(equivalentDraft);
                 }

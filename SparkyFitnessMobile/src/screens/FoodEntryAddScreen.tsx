@@ -184,12 +184,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     return {
       name: item.name,
       brand: item.brand ?? '',
-      servingSize: String(item.servingSize),
+      servingSize: item.servingSize != null ? String(item.servingSize) : '',
       servingUnit: item.servingUnit,
-      calories: String(item.calories),
-      protein: String(item.protein),
-      carbs: String(item.carbs),
-      fat: String(item.fat),
+      calories: item.calories != null ? String(item.calories) : '',
+      protein: item.protein != null ? String(item.protein) : '',
+      carbs: item.carbs != null ? String(item.carbs) : '',
+      fat: item.fat != null ? String(item.fat) : '',
       fiber: toFormString(item.fiber),
       saturatedFat: toFormString(item.saturatedFat),
       transFat: toFormString(item.transFat),
@@ -726,36 +726,38 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const { addEntry, addEntryAsync, isPending: isAddPending, invalidateCache } =
     useAddFoodEntry({
-      onSuccess: (entry) => {
+      onSuccess: async (entry) => {
         if (entry.food_id && pendingEquivalentsRef.current) {
           const equivalents = pendingEquivalentsRef.current;
           pendingEquivalentsRef.current = null;
-          void Promise.all(
-            equivalents.map((eq) =>
-              createFoodVariant({
-                food_id: entry.food_id!,
-                serving_size: eq.serving_size,
-                serving_unit: eq.serving_unit,
-                calories: displayValues.calories,
-                protein: displayValues.protein,
-                carbs: displayValues.carbs,
-                fat: displayValues.fat,
-                dietary_fiber: displayValues.fiber,
-                saturated_fat: displayValues.saturatedFat,
-                sodium: displayValues.sodium,
-                sugars: displayValues.sugars,
-                trans_fat: displayValues.transFat,
-                potassium: displayValues.potassium,
-                calcium: displayValues.calcium,
-                iron: displayValues.iron,
-                cholesterol: displayValues.cholesterol,
-                vitamin_a: displayValues.vitaminA,
-                vitamin_c: displayValues.vitaminC,
-              } as CreateFoodVariantPayload),
-            ),
-          ).catch(() => {
+          try {
+            await Promise.all(
+              equivalents.map((eq) =>
+                createFoodVariant({
+                  food_id: entry.food_id!,
+                  serving_size: eq.serving_size,
+                  serving_unit: eq.serving_unit,
+                  calories: displayValues.calories,
+                  protein: displayValues.protein,
+                  carbs: displayValues.carbs,
+                  fat: displayValues.fat,
+                  dietary_fiber: displayValues.fiber,
+                  saturated_fat: displayValues.saturatedFat,
+                  sodium: displayValues.sodium,
+                  sugars: displayValues.sugars,
+                  trans_fat: displayValues.transFat,
+                  potassium: displayValues.potassium,
+                  calcium: displayValues.calcium,
+                  iron: displayValues.iron,
+                  cholesterol: displayValues.cholesterol,
+                  vitamin_a: displayValues.vitaminA,
+                  vitamin_c: displayValues.vitaminC,
+                } as CreateFoodVariantPayload),
+              ),
+            );
+          } catch {
             Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
-          });
+          }
         }
         invalidateCache(selectedDate);
         navigation.dispatch(StackActions.popToTop());

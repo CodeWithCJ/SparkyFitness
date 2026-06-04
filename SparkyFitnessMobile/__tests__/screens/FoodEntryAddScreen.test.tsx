@@ -1158,6 +1158,7 @@ describe('FoodEntryAddScreen', () => {
 
       // Find and press the nutrition edit (pencil) button
       const editButtons = screen.queryAllByTestId('icon-pencil');
+      expect(editButtons.length).toBeGreaterThan(0);
       if (editButtons.length > 0) {
         fireEvent.press(editButtons[0]);
         expect(navigation.navigate).toHaveBeenCalledWith(
