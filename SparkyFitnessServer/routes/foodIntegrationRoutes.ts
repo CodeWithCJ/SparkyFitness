@@ -189,7 +189,7 @@ router.use('/usda', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/fatsecret/search:
+ * /foods/fatsecret/search:
  *   get:
  *     summary: Search for foods on FatSecret
  *     tags: [External Integrations]
@@ -243,7 +243,7 @@ router.get('/fatsecret/search', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/fatsecret/nutrients:
+ * /foods/fatsecret/nutrients:
  *   get:
  *     summary: Get nutrient information from FatSecret
  *     tags: [External Integrations]
@@ -287,7 +287,7 @@ router.get('/fatsecret/nutrients', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/fatsecret/barcode/{barcode}:
+ * /foods/fatsecret/barcode/{barcode}:
  *   get:
  *     summary: Search for food by barcode on FatSecret
  *     tags: [External Integrations]
@@ -342,7 +342,7 @@ router.get(
 );
 /**
  * @swagger
- * /food-integration/openfoodfacts/search:
+ * /foods/openfoodfacts/search:
  *   get:
  *     summary: Search for foods on Open Food Facts
  *     tags: [External Integrations]
@@ -401,7 +401,7 @@ router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/openfoodfacts/barcode/{barcode}:
+ * /foods/openfoodfacts/barcode/{barcode}:
  *   get:
  *     summary: Search for food by barcode on Open Food Facts
  *     tags: [External Integrations]
@@ -455,7 +455,7 @@ router.get(
 );
 /**
  * @swagger
- * /food-integration/nutritionix/search:
+ * /foods/nutritionix/search:
  *   get:
  *     summary: Search for foods on Nutritionix
  *     tags: [External Integrations]
@@ -495,7 +495,7 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/nutritionix/nutrients:
+ * /foods/nutritionix/nutrients:
  *   get:
  *     summary: Get nutrient information from Nutritionix
  *     tags: [External Integrations]
@@ -535,7 +535,7 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/nutritionix/item:
+ * /foods/nutritionix/item:
  *   get:
  *     summary: Get branded food nutrient information from Nutritionix
  *     tags: [External Integrations]
@@ -574,7 +574,7 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
 // AI-dedicated food search route to handle /api/foods/search
 /**
  * @swagger
- * /food-integration/mealie/search:
+ * /foods/mealie/search:
  *   get:
  *     summary: Search for foods on Mealie
  *     tags: [External Integrations]
@@ -633,7 +633,7 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/mealie/details:
+ * /foods/mealie/details:
  *   get:
  *     summary: Get food details from Mealie
  *     tags: [External Integrations]
@@ -679,7 +679,7 @@ router.get('/mealie/details', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/tandoor/search:
+ * /foods/tandoor/search:
  *   get:
  *     summary: Search for foods on Tandoor
  *     tags: [External Integrations]
@@ -725,7 +725,7 @@ router.get('/tandoor/search', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/tandoor/details:
+ * /foods/tandoor/details:
  *   get:
  *     summary: Get food details from Tandoor
  *     tags: [External Integrations]
@@ -771,7 +771,7 @@ router.get('/tandoor/details', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/usda/search:
+ * /foods/usda/search:
  *   get:
  *     summary: Search for foods on USDA FoodData Central
  *     tags: [External Integrations]
@@ -846,7 +846,7 @@ router.get('/usda/barcode/:barcode', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-integration/usda/details:
+ * /foods/usda/details:
  *   get:
  *     summary: Get food details from USDA FoodData Central
  *     tags: [External Integrations]

@@ -6,7 +6,7 @@ import withingsServiceCentral from '../services/withingsService.js';
 const router = express.Router();
 /**
  * @swagger
- * /integrations/withings/authorize:
+ * /withings/authorize:
  *   get:
  *     summary: Initiate Withings OAuth flow
  *     tags: [External Integrations]
@@ -39,7 +39,7 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
 });
 /**
  * @swagger
- * /integrations/withings/callback:
+ * /withings/callback:
  *   post:
  *     summary: Handle Withings OAuth callback
  *     tags: [External Integrations]
@@ -103,7 +103,7 @@ router.post('/callback', async (req, res) => {
 });
 /**
  * @swagger
- * /integrations/withings/sync:
+ * /withings/sync:
  *   post:
  *     summary: Manually trigger a Withings data sync
  *     tags: [External Integrations]
@@ -159,7 +159,7 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
 });
 /**
  * @swagger
- * /integrations/withings/disconnect:
+ * /withings/disconnect:
  *   post:
  *     summary: Disconnect a Withings account
  *     tags: [External Integrations]
@@ -188,7 +188,7 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
 });
 /**
  * @swagger
- * /integrations/withings/status:
+ * /withings/status:
  *   get:
  *     summary: Get Withings connection status and last sync time
  *     tags: [External Integrations]

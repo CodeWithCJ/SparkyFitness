@@ -5,7 +5,7 @@ import authMiddleware from '../middleware/authMiddleware.js';
 const router = express.Router();
 /**
  * @swagger
- * /api/integrations/hevy/sync:
+ * /integrations/hevy/sync:
  *   post:
  *     summary: Manually trigger a Hevy data sync
  *     tags: [External Integrations]
@@ -52,7 +52,7 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
 });
 /**
  * @swagger
- * /api/integrations/hevy/status:
+ * /integrations/hevy/status:
  *   get:
  *     summary: Get Hevy connection status
  *     tags: [External Integrations]

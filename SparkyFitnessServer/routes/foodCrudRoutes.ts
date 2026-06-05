@@ -18,7 +18,7 @@ router.use(checkPermissionMiddleware('diary'));
 // AI-dedicated food search route to handle /api/foods/search
 /**
  * @swagger
- * /food-crud/search:
+ * /foods/search:
  *   get:
  *     summary: Search for foods (AI-dedicated)
  *     tags: [Nutrition & Meals]
@@ -90,7 +90,7 @@ router.get('/search', authenticate, async (req, res, next) => {
 // General food search route (should come before specific ID routes)
 /**
  * @swagger
- * /food-crud:
+ * /foods:
  *   get:
  *     summary: Search for foods
  *     tags: [Nutrition & Meals]
@@ -172,7 +172,7 @@ router.get('/', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud:
+ * /foods:
  *   post:
  *     summary: Create a new food
  *     tags: [Nutrition & Meals]
@@ -210,7 +210,7 @@ router.post('/', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/foods-paginated:
+ * /foods/foods-paginated:
  *   get:
  *     summary: Get foods with pagination
  *     tags: [Nutrition & Meals]
@@ -275,7 +275,7 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants:
+ * /foods/food-variants:
  *   post:
  *     summary: Create a new food variant
  *     tags: [Nutrition & Meals]
@@ -321,7 +321,7 @@ router.post('/food-variants', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants:
+ * /foods/food-variants:
  *   get:
  *     summary: Get food variants by food ID
  *     tags: [Nutrition & Meals]
@@ -364,7 +364,7 @@ router.get('/food-variants', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants/bulk:
+ * /foods/food-variants/bulk:
  *   post:
  *     summary: Bulk create food variants
  *     tags: [Nutrition & Meals]
@@ -410,7 +410,7 @@ router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants/{id}:
+ * /foods/food-variants/{id}:
  *   get:
  *     summary: Get a food variant by ID
  *     tags: [Nutrition & Meals]
@@ -465,7 +465,7 @@ router.get('/food-variants/:id', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants/{id}:
+ * /foods/food-variants/{id}:
  *   put:
  *     summary: Update a food variant
  *     tags: [Nutrition & Meals]
@@ -533,7 +533,7 @@ router.put('/food-variants/:id', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/food-variants/{id}:
+ * /foods/food-variants/{id}:
  *   delete:
  *     summary: Delete a food variant
  *     tags: [Nutrition & Meals]
@@ -587,7 +587,7 @@ router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/barcode/{barcode}:
+ * /foods/barcode/{barcode}:
  *   get:
  *     summary: Look up a food by barcode
  *     tags: [Nutrition & Meals]
@@ -788,7 +788,7 @@ router.post(
 );
 /**
  * @swagger
- * /food-crud/{foodId}:
+ * /foods/{foodId}:
  *   get:
  *     summary: Get a food by ID
  *     tags: [Nutrition & Meals]
@@ -839,7 +839,7 @@ router.get('/:foodId', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/{id}:
+ * /foods/{id}:
  *   put:
  *     summary: Update a food
  *     tags: [Nutrition & Meals]
@@ -896,7 +896,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/{id}/deletion-impact:
+ * /foods/{id}/deletion-impact:
  *   get:
  *     summary: Get food deletion impact
  *     tags: [Nutrition & Meals]
@@ -943,7 +943,7 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/{id}:
+ * /foods/{id}:
  *   delete:
  *     summary: Delete a food
  *     tags: [Nutrition & Meals]
@@ -1016,7 +1016,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/import-from-csv:
+ * /foods/import-from-csv:
  *   post:
  *     summary: Import foods from CSV
  *     tags: [Nutrition & Meals]
@@ -1052,7 +1052,7 @@ router.post('/import-from-csv', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/needs-review:
+ * /foods/needs-review:
  *   get:
  *     summary: Get foods needing review
  *     tags: [Nutrition & Meals]
@@ -1079,7 +1079,7 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
- * /food-crud/update-snapshot:
+ * /foods/update-snapshot:
  *   post:
  *     summary: Update food entries snapshot
  *     tags: [Nutrition & Meals]
