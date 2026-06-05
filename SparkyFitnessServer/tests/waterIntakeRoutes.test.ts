@@ -5,7 +5,6 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import measurementService from '../services/measurementService.js';
 import errorHandler from '../middleware/errorHandler.js';
-// @ts-expect-error TS(1192): Module '"/home/simsat/dev/SparkyFitness/SparkyFitn... Remove this comment to see the full error message
 import waterIntakeRoutes from '../routes/v2/waterIntakeRoutes.js';
 vi.mock('../services/measurementService.js', () => ({
   default: {
