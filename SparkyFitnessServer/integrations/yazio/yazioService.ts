@@ -1,7 +1,7 @@
 import { log } from '../../config/logging.js';
 import { normalizeBarcode } from '../../utils/foodUtils.js';
 
-const DEFAULT_YAZIO_API_BASE_URL = 'https://yzapi.yazio.com/v15';
+const DEFAULT_YAZIO_API_BASE_URL = 'https://yzapi.yazio.com/v18';
 const TOKEN_CACHE_SKEW_MS = 60_000;
 const YAZIO_OAUTH_CONFIG_ERROR =
   'YAZIO is not available because the server is missing YAZIO_CLIENT_ID and/or YAZIO_CLIENT_SECRET. Configure the YAZIO OAuth client credentials on the server, then restart it.';
