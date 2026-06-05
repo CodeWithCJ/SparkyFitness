@@ -1,5 +1,18 @@
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'swag... Remove this comment to see the full error message
 import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const swaggerScanPaths = [
+  path.join(__dirname, '../routes/**/*.ts'),
+  path.join(__dirname, '../models/**/*.ts'),
+  path.join(__dirname, '../SparkyFitnessServer.ts'),
+  path.join(__dirname, '../routes/**/*.js'),
+  path.join(__dirname, '../models/**/*.js'),
+  path.join(__dirname, '../SparkyFitnessServer.js'),
+];
+
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -1422,12 +1435,7 @@ const options = {
       },
     ],
   },
-  apis: [
-    './routes/*.js',
-    './routes/auth/*.js',
-    './models/*.js',
-    './SparkyFitnessServer.js',
-  ], // Paths to files containing OpenAPI definitions
+  apis: swaggerScanPaths, // Paths to files containing OpenAPI definitions
 };
 const specs = swaggerJsdoc(options);
 export default specs;
