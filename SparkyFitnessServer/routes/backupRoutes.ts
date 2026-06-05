@@ -46,7 +46,7 @@ ensureTempUploadDirectory(); // Call once on startup
  */
 /**
  * @swagger
- * /backup/manual:
+ * /admin/backup/manual:
  *   post:
  *     summary: Trigger a manual backup
  *     tags: [System & Admin]
@@ -99,7 +99,7 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
 });
 /**
  * @swagger
- * /backup/restore:
+ * /admin/backup/restore:
  *   post:
  *     summary: Upload and restore a backup
  *     tags: [System & Admin]
@@ -214,7 +214,7 @@ router.post(
  */
 /**
  * @swagger
- * /backup/settings:
+ * /admin/backup/settings:
  *   get:
  *     summary: Get backup settings
  *     tags: [System & Admin]
@@ -253,7 +253,7 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
 });
 /**
  * @swagger
- * /backup/settings:
+ * /admin/backup/settings:
  *   post:
  *     summary: Update backup settings
  *     tags: [System & Admin]

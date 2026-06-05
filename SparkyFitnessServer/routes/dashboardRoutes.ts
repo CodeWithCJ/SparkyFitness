@@ -7,7 +7,7 @@ import { todayInZone } from '@workspace/shared';
 const router = express.Router();
 /**
  * @swagger
- * /api/dashboard/stats:
+ * /dashboard/stats:
  *   get:
  *     summary: Get dashboard statistics for external widgets
  *     tags: [Dashboard]

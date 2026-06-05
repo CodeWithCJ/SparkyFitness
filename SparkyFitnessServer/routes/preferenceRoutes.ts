@@ -38,7 +38,7 @@ router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
 // Endpoint to update user preferences
 /**
  * @swagger
- * /preferences:
+ * /user-preferences:
  *   put:
  *     summary: Update user preferences
  *     tags: [Goals & Personalization]
@@ -89,7 +89,7 @@ router.put('/', authenticate, async (req, res, next) => {
 // Endpoint to delete user preferences
 /**
  * @swagger
- * /preferences:
+ * /user-preferences:
  *   delete:
  *     summary: Delete user preferences
  *     tags: [Goals & Personalization]
@@ -124,7 +124,7 @@ router.delete('/', authenticate, async (req, res, next) => {
 // Endpoint to fetch user preferences
 /**
  * @swagger
- * /preferences:
+ * /user-preferences:
  *   get:
  *     summary: Get user preferences
  *     tags: [Goals & Personalization]
@@ -163,7 +163,7 @@ router.get('/', authenticate, async (req, res, next) => {
 // Endpoint to upsert user preferences
 /**
  * @swagger
- * /preferences:
+ * /user-preferences:
  *   post:
  *     summary: Upsert user preferences
  *     tags: [Goals & Personalization]

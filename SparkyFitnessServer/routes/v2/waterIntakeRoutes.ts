@@ -18,7 +18,7 @@ router.use(checkPermissionMiddleware('checkin'));
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/entry/{id}:
+ * /v2/measurements/water-intake/entry/{id}:
  *   get:
  *     summary: Get a water intake entry by ID
  *     tags: [Wellness & Metrics]
@@ -122,7 +122,7 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/{date}:
+ * /v2/measurements/water-intake/{date}:
  *   get:
  *     summary: Get water intake for a date
  *     tags: [Wellness & Metrics]
@@ -214,7 +214,7 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake:
+ * /v2/measurements/water-intake:
  *   post:
  *     summary: Upsert a water intake entry
  *     tags: [Wellness & Metrics]
@@ -321,7 +321,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/{id}:
+ * /v2/measurements/water-intake/{id}:
  *   put:
  *     summary: Update a water intake entry
  *     tags: [Wellness & Metrics]
@@ -461,7 +461,7 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/{id}:
+ * /v2/measurements/water-intake/{id}:
  *   delete:
  *     summary: Delete a water intake entry
  *     tags: [Wellness & Metrics]
@@ -526,7 +526,7 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/{date}/log:
+ * /v2/measurements/water-intake/{date}/log:
  *   get:
  *     summary: Get water intake log entries for a date
  *     tags: [Wellness & Metrics]
@@ -602,7 +602,7 @@ const getWaterIntakeLogHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /api/v2/measurements/water-intake/log/{id}:
+ * /v2/measurements/water-intake/log/{id}:
  *   delete:
  *     summary: Delete a water intake log entry
  *     tags: [Wellness & Metrics]

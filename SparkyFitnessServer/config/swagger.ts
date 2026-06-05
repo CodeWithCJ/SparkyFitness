@@ -5,12 +5,12 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const swaggerScanPaths = [
-  path.join(__dirname, '../routes/**/*.ts'),
-  path.join(__dirname, '../models/**/*.ts'),
-  path.join(__dirname, '../SparkyFitnessServer.ts'),
-  path.join(__dirname, '../routes/**/*.js'),
-  path.join(__dirname, '../models/**/*.js'),
-  path.join(__dirname, '../SparkyFitnessServer.js'),
+  path.join(__dirname, '../routes/**/*.ts').replace(/\\/g, '/'),
+  path.join(__dirname, '../models/**/*.ts').replace(/\\/g, '/'),
+  path.join(__dirname, '../SparkyFitnessServer.ts').replace(/\\/g, '/'),
+  path.join(__dirname, '../routes/**/*.js').replace(/\\/g, '/'),
+  path.join(__dirname, '../models/**/*.js').replace(/\\/g, '/'),
+  path.join(__dirname, '../SparkyFitnessServer.js').replace(/\\/g, '/'),
 ];
 
 const options = {
@@ -1248,7 +1248,41 @@ const options = {
             },
           },
         },
+        NutritionSummary: {
+          type: 'object',
+          properties: {
+            total_calories: {
+              type: 'number',
+              description: 'Total calories consumed',
+            },
+            total_protein: {
+              type: 'number',
+              description: 'Total protein consumed in grams',
+            },
+            total_carbs: {
+              type: 'number',
+              description: 'Total carbohydrates consumed in grams',
+            },
+            total_fat: {
+              type: 'number',
+              description: 'Total fat consumed in grams',
+            },
+            total_dietary_fiber: {
+              type: 'number',
+              description: 'Total dietary fiber consumed in grams',
+            },
+            total_custom_nutrients: {
+              type: 'object',
+              additionalProperties: {
+                type: 'number',
+              },
+              description: 'Aggregated custom nutrients values',
+            },
+          },
+        },
       },
+    },
+    paths: {
       '/admin/auth/settings/mfa-mandatory': {
         get: {
           tags: ['Identity & Security'],
