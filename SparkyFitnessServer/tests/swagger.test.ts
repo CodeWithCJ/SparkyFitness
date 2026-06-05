@@ -99,7 +99,9 @@ function buildMountMap(
             let combined = path
               .join(parentPrefix, mountPath)
               .replace(/\\/g, '/');
-            if (combined.startsWith('/api')) {
+            if (combined === '/api') {
+              combined = '/';
+            } else if (combined.startsWith('/api/')) {
               combined = combined.slice(4);
             }
             if (!combined.startsWith('/')) {
