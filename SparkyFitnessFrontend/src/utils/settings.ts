@@ -16,6 +16,13 @@ export const providerRequirements: Record<string, string[]> = {
   yazio: ['app_id', 'app_key'],
 };
 
+const providerFieldLabels: Record<string, Record<string, string>> = {
+  yazio: {
+    app_id: 'YAZIO email / username',
+    app_key: 'YAZIO password',
+  },
+};
+
 export const validateProvider = (
   provider: Partial<ExternalDataProvider>
 ): string | null => {
@@ -26,7 +33,9 @@ export const validateProvider = (
 
   for (const field of requiredFields) {
     if (!provider[field as keyof ExternalDataProvider]) {
-      return `Please provide ${field} for ${provider.provider_type}`;
+      const label =
+        providerFieldLabels[provider.provider_type || '']?.[field] || field;
+      return `Please provide ${label} for ${provider.provider_type}`;
     }
   }
 

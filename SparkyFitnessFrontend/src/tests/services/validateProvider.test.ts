@@ -39,4 +39,14 @@ describe('validateProvider', () => {
     const result = validateProvider(input);
     expect(result).toBeNull();
   });
+
+  it('uses YAZIO-specific credential labels', () => {
+    const input: Partial<ExternalDataProvider> = {
+      provider_name: 'YAZIO',
+      provider_type: 'yazio',
+      app_id: 'user@example.com',
+    };
+    const result = validateProvider(input);
+    expect(result).toBe('Please provide YAZIO password for yazio');
+  });
 });

@@ -401,6 +401,12 @@ export const ProviderCard = ({
             )}
           </div>
         )}
+
+        {provider.availability_error && (
+          <p className="text-sm text-destructive mt-2">
+            {provider.availability_error}
+          </p>
+        )}
       </div>
 
       {['fitbit', 'withings', 'polar', 'garmin', 'hevy', 'strava'].includes(

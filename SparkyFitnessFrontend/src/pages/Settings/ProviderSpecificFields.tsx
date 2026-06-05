@@ -168,6 +168,8 @@ export const ProviderSpecificFields = ({
         <p className="text-sm text-muted-foreground col-span-2">
           YAZIO does not provide an official public API. This experimental
           provider uses a private API and may stop working if YAZIO changes it.
+          The server must also be configured with YAZIO_CLIENT_ID and
+          YAZIO_CLIENT_SECRET before YAZIO searches are available.
         </p>
       )}
 

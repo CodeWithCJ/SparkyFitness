@@ -1,6 +1,10 @@
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { log } from '../config/logging.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
+import {
+  YAZIO_OAUTH_CONFIG_ERROR,
+  hasYazioOAuthConfig,
+} from '../integrations/yazio/yazioService.js';
 
 // Build a 400-tagged Error for user-input validation failures so the
 // centralized errorHandler surfaces them as client errors instead of the
@@ -35,28 +39,47 @@ function redactCredentialsForNonOwner(provider: any, authenticatedUserId: any) {
   return rest;
 }
 
+// YAZIO uses per-provider username/password credentials, but the private API
+// token exchange also needs server-level OAuth client credentials. Keep
+// misconfigured rows visible in Settings while preventing clients from
+// offering them as usable search providers.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyRuntimeAvailability(provider: any) {
+  if (provider.provider_type === 'yazio' && !hasYazioOAuthConfig()) {
+    return {
+      ...provider,
+      is_active: false,
+      availability_error: YAZIO_OAUTH_CONFIG_ERROR,
+    };
+  }
+
+  return provider;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExternalDataProviders(userId: any) {
   try {
     const providers =
       await externalProviderRepository.getExternalDataProviders(userId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const providersWithVisibility = providers.map((p: any) => ({
-      ...redactCredentialsForNonOwner(p, userId),
+    const providersWithVisibility = providers.map((p: any) =>
+      applyRuntimeAvailability({
+        ...redactCredentialsForNonOwner(p, userId),
 
-      visibility:
-        p.user_id === userId
-          ? 'private'
-          : p.shared_with_public
-            ? 'public'
-            : 'family',
+        visibility:
+          p.user_id === userId
+            ? 'private'
+            : p.shared_with_public
+              ? 'public'
+              : 'family',
 
-      shared_with_public: !!p.shared_with_public,
+        shared_with_public: !!p.shared_with_public,
 
-      has_token:
-        p.encrypted_access_token !== null &&
-        p.encrypted_access_token !== undefined,
-    }));
+        has_token:
+          p.encrypted_access_token !== null &&
+          p.encrypted_access_token !== undefined,
+      })
+    );
     // log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
     return providersWithVisibility;
   } catch (error) {
@@ -87,19 +110,21 @@ async function getExternalDataProvidersForUser(
       authenticatedUserId === targetUserId
         ? providers
         : providers.filter((p) => !p.is_strictly_private);
-    const providersWithVisibility = filteredProviders.map((p) => ({
-      ...redactCredentialsForNonOwner(p, authenticatedUserId),
-      visibility:
-        p.user_id === authenticatedUserId
-          ? 'private'
-          : p.shared_with_public
-            ? 'public'
-            : 'family',
-      shared_with_public: !!p.shared_with_public,
-      has_token:
-        p.encrypted_access_token !== null &&
-        p.encrypted_access_token !== undefined,
-    }));
+    const providersWithVisibility = filteredProviders.map((p) =>
+      applyRuntimeAvailability({
+        ...redactCredentialsForNonOwner(p, authenticatedUserId),
+        visibility:
+          p.user_id === authenticatedUserId
+            ? 'private'
+            : p.shared_with_public
+              ? 'public'
+              : 'family',
+        shared_with_public: !!p.shared_with_public,
+        has_token:
+          p.encrypted_access_token !== null &&
+          p.encrypted_access_token !== undefined,
+      })
+    );
     return providersWithVisibility;
   } catch (error) {
     log(

@@ -77,6 +77,7 @@ export const getModelOptions = (serviceType: string): string[] => {
       ];
     case 'openrouter':
       return [
+        'openrouter/owl-alpha',
         'google/gemini-2.5-flash',
         'google/gemini-2.5-pro',
         'deepseek/deepseek-r1:free',

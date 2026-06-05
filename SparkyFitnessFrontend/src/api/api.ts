@@ -13,6 +13,8 @@ interface ApiCallOptions extends RequestInit {
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
 }
 
+class HttpApiError extends Error {}
+
 export const API_BASE_URL = '/api';
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
@@ -162,7 +164,7 @@ export async function apiCall(
           localStorage.removeItem('token');
           // window.location.reload(); // Removed aggressive reload, causing loops
         }
-        throw new Error(errorMessage);
+        throw new HttpApiError(errorMessage);
       }
     }
 
@@ -186,6 +188,10 @@ export async function apiCall(
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
   } catch (err: unknown) {
+    if (err instanceof HttpApiError) {
+      throw err;
+    }
+
     const errorMessage = err instanceof Error ? err.message : String(err);
     logging.error(userLoggingLevel, 'API call network error:', err); // Log the raw error object for better debugging
     toast({

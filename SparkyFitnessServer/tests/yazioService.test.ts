@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  YAZIO_OAUTH_CONFIG_ERROR,
   getYazioFoodDetails,
   mapYazioProduct,
   searchYazioFoods,
@@ -9,6 +10,8 @@ import {
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const originalFetch = global.fetch;
+const originalClientId = process.env.YAZIO_CLIENT_ID;
+const originalClientSecret = process.env.YAZIO_CLIENT_SECRET;
 
 const makeFetchResponse = (body: unknown, ok = true, status = 200) =>
   ({
@@ -23,10 +26,22 @@ describe('yazioService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
+    process.env.YAZIO_CLIENT_ID = 'test-client-id';
+    process.env.YAZIO_CLIENT_SECRET = 'test-client-secret';
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    if (originalClientId === undefined) {
+      delete process.env.YAZIO_CLIENT_ID;
+    } else {
+      process.env.YAZIO_CLIENT_ID = originalClientId;
+    }
+    if (originalClientSecret === undefined) {
+      delete process.env.YAZIO_CLIENT_SECRET;
+    } else {
+      process.env.YAZIO_CLIENT_SECRET = originalClientSecret;
+    }
   });
 
   it('maps YAZIO product nutrition into Sparky food shape', () => {
@@ -108,7 +123,10 @@ describe('yazioService', () => {
     expect(global.fetch).toHaveBeenNthCalledWith(
       1,
       'https://yzapi.yazio.com/v15/oauth/token',
-      expect.objectContaining({ method: 'POST' })
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"client_id":"test-client-id"'),
+      })
     );
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
@@ -194,5 +212,23 @@ describe('yazioService', () => {
     expect(result?.provider_external_id).toBe(
       '7c91b431-a2b5-4f11-8f52-f346dc941f2a'
     );
+  });
+
+  it('fails gracefully when server OAuth client credentials are missing', async () => {
+    delete process.env.YAZIO_CLIENT_ID;
+    delete process.env.YAZIO_CLIENT_SECRET;
+
+    await expect(
+      searchYazioFoods('skyr', {
+        username: 'missing-config@example.com',
+        password: 'secret',
+      })
+    ).rejects.toMatchObject({
+      message: YAZIO_OAUTH_CONFIG_ERROR,
+      status: 503,
+      statusCode: 503,
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

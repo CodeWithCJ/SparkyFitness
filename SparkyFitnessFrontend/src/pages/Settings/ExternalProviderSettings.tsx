@@ -41,6 +41,7 @@ export interface ExternalDataProvider {
   app_id: string | null;
   app_key: string | null;
   is_active: boolean;
+  availability_error?: string;
   base_url: string | null;
   user_id?: string;
   visibility: 'private' | 'public' | 'family';

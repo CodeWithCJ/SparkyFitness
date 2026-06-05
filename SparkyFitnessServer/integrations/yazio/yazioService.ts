@@ -3,17 +3,27 @@ import { normalizeBarcode } from '../../utils/foodUtils.js';
 
 const DEFAULT_YAZIO_API_BASE_URL = 'https://yzapi.yazio.com/v15';
 const TOKEN_CACHE_SKEW_MS = 60_000;
+const YAZIO_OAUTH_CONFIG_ERROR =
+  'YAZIO is not available because the server is missing YAZIO_CLIENT_ID and/or YAZIO_CLIENT_SECRET. Configure the YAZIO OAuth client credentials on the server, then restart it.';
+
+function hasYazioOAuthConfig(): boolean {
+  return !!process.env.YAZIO_CLIENT_ID && !!process.env.YAZIO_CLIENT_SECRET;
+}
+
+function yazioUnavailableError(): Error & {
+  status: number;
+  statusCode: number;
+} {
+  return Object.assign(new Error(YAZIO_OAUTH_CONFIG_ERROR), {
+    status: 503,
+    statusCode: 503,
+  });
+}
 
 function getYazioClientId(): string {
   const clientId = process.env.YAZIO_CLIENT_ID;
   if (!clientId) {
-    throw Object.assign(
-      new Error(
-        'YAZIO_CLIENT_ID environment variable is not set. ' +
-          'YAZIO integration requires OAuth client credentials.'
-      ),
-      { status: 500, statusCode: 500 }
-    );
+    throw yazioUnavailableError();
   }
   return clientId;
 }
@@ -21,13 +31,7 @@ function getYazioClientId(): string {
 function getYazioClientSecret(): string {
   const clientSecret = process.env.YAZIO_CLIENT_SECRET;
   if (!clientSecret) {
-    throw Object.assign(
-      new Error(
-        'YAZIO_CLIENT_SECRET environment variable is not set. ' +
-          'YAZIO integration requires OAuth client credentials.'
-      ),
-      { status: 500, statusCode: 500 }
-    );
+    throw yazioUnavailableError();
   }
   return clientSecret;
 }
@@ -295,6 +299,8 @@ async function searchYazioByBarcode(
 }
 
 export {
+  YAZIO_OAUTH_CONFIG_ERROR,
+  hasYazioOAuthConfig,
   getYazioAccessToken,
   searchYazioFoods,
   getYazioFoodDetails,
@@ -303,6 +309,8 @@ export {
 };
 
 export default {
+  YAZIO_OAUTH_CONFIG_ERROR,
+  hasYazioOAuthConfig,
   getYazioAccessToken,
   searchYazioFoods,
   getYazioFoodDetails,

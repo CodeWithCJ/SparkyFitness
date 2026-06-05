@@ -12,9 +12,21 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 const OWNER = 'owner-1';
 const VIEWER = 'viewer-2';
 const PROVIDER_ID = 'prov-off-1';
+const originalYazioClientId = process.env.YAZIO_CLIENT_ID;
+const originalYazioClientSecret = process.env.YAZIO_CLIENT_SECRET;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  if (originalYazioClientId === undefined) {
+    delete process.env.YAZIO_CLIENT_ID;
+  } else {
+    process.env.YAZIO_CLIENT_ID = originalYazioClientId;
+  }
+  if (originalYazioClientSecret === undefined) {
+    delete process.env.YAZIO_CLIENT_SECRET;
+  } else {
+    process.env.YAZIO_CLIENT_SECRET = originalYazioClientSecret;
+  }
 });
 
 describe('getExternalDataProvidersForUser - non-owner credential redaction', () => {
@@ -87,6 +99,60 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
     expect(result[0].app_id).toBe('username');
     expect(result[0].app_key).toBe('secretpw');
     expect(result[0].visibility).toBe('private');
+  });
+});
+
+describe('getExternalDataProviders - runtime availability', () => {
+  it('marks YAZIO inactive when server OAuth credentials are missing', async () => {
+    delete process.env.YAZIO_CLIENT_ID;
+    delete process.env.YAZIO_CLIENT_SECRET;
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviders.mockResolvedValue([
+      {
+        id: 'prov-yazio-1',
+        user_id: OWNER,
+        provider_type: 'yazio',
+        provider_name: 'YAZIO',
+        shared_with_public: false,
+        is_active: true,
+        encrypted_access_token: null,
+      },
+    ]);
+
+    const result =
+      await externalProviderService.getExternalDataProviders(OWNER);
+
+    expect(result[0]).toMatchObject({
+      provider_type: 'yazio',
+      is_active: false,
+      availability_error: expect.stringContaining('YAZIO_CLIENT_ID'),
+    });
+  });
+
+  it('keeps YAZIO active when server OAuth credentials are configured', async () => {
+    process.env.YAZIO_CLIENT_ID = 'client-id';
+    process.env.YAZIO_CLIENT_SECRET = 'client-secret';
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviders.mockResolvedValue([
+      {
+        id: 'prov-yazio-1',
+        user_id: OWNER,
+        provider_type: 'yazio',
+        provider_name: 'YAZIO',
+        shared_with_public: false,
+        is_active: true,
+        encrypted_access_token: null,
+      },
+    ]);
+
+    const result =
+      await externalProviderService.getExternalDataProviders(OWNER);
+
+    expect(result[0]).toMatchObject({
+      provider_type: 'yazio',
+      is_active: true,
+    });
+    expect(result[0].availability_error).toBeUndefined();
   });
 });
 
