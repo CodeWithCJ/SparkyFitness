@@ -8,6 +8,15 @@ vi.mock('../db/poolManager', () => ({
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
+// Prevent Better Auth from initialising a real DB connection when
+// createOidcProvider/updateOidcProvider call `import('../auth.js')`
+vi.mock('../auth.js', () => ({
+  syncTrustedProviders: vi.fn().mockResolvedValue(undefined),
+  default: {
+    auth: {},
+    syncTrustedProviders: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 global.fetch = vi.fn();
 describe('oidcProviderRepository', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
