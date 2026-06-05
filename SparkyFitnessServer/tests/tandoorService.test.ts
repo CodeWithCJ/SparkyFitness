@@ -162,4 +162,131 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
     expect(result.variant.calories).toBe(0); // Should NOT match 'ca'
     expect(result.variant.calcium).toBe(50); // Should match 'calcium'
   });
+  it('should handle invalid or relative source_url without throwing', () => {
+    const mockRecipe = {
+      id: 20,
+      name: 'Invalid URL Test',
+      source_url: 'not-a-valid-url-relative/path',
+      nutrition: null,
+      properties: [],
+    };
+    const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
+    expect(result.food.brand).toBeNull();
+    expect(result.food.name).toBe('Invalid URL Test');
+  });
+});
+
+describe('TandoorService.getRecipeDetails enrichment', () => {
+  const service = new TandoorService(
+    'http://tandoor.example.com',
+    'fake-api-key'
+  );
+
+  it('should fetch property types and enrich food_properties with open_data_slug and fdc_id', async () => {
+    const originalFetch = global.fetch;
+    const fetchSpy = vi.fn().mockImplementation((url) => {
+      if (url.toString().includes('/api/property-type/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              results: [
+                {
+                  id: 1,
+                  name: 'Kalorien',
+                  open_data_slug: 'property-calories',
+                  fdc_id: 1008,
+                },
+                {
+                  id: 2,
+                  name: 'Proteine',
+                  open_data_slug: 'property-proteins',
+                  fdc_id: 1003,
+                },
+              ],
+            }),
+        });
+      }
+      if (url.toString().includes('/api/recipe/2/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              id: 2,
+              name: 'German Spinach Recipe',
+              food_properties: {
+                1: { id: 1, name: 'Kalorien', total_value: 309.1 },
+                2: { id: 2, name: 'Proteine', total_value: 34.6 },
+              },
+            }),
+        });
+      }
+      return Promise.reject(new Error(`unexpected fetch to ${url}`));
+    });
+
+    global.fetch = fetchSpy as any;
+
+    try {
+      const details = await service.getRecipeDetails(2);
+      expect(details).not.toBeNull();
+      expect(details!.food_properties).toBeDefined();
+
+      // Verify that food_properties entries have been enriched
+      expect(details!.food_properties!['1'].open_data_slug).toBe(
+        'property-calories'
+      );
+      expect(details!.food_properties!['1'].fdc_id).toBe(1008);
+      expect(details!.food_properties!['2'].open_data_slug).toBe(
+        'property-proteins'
+      );
+      expect(details!.food_properties!['2'].fdc_id).toBe(1003);
+
+      // Verify fetch calls
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0].toString()).toContain('/api/recipe/2/');
+      expect(fetchSpy.mock.calls[1][0].toString()).toContain(
+        '/api/property-type/'
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+});
+
+describe('TandoorService.getPropertyTypes deduplication', () => {
+  it('should only fetch once when getPropertyTypes is called concurrently', async () => {
+    const service = new TandoorService(
+      'http://tandoor.example.com',
+      'fake-api-key'
+    );
+    const originalFetch = global.fetch;
+    let fetchCount = 0;
+    const fetchSpy = vi.fn().mockImplementation((url) => {
+      fetchCount++;
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: () => Promise.resolve({ results: [] }),
+          });
+        }, 50);
+      });
+    });
+
+    global.fetch = fetchSpy as any;
+
+    try {
+      // Trigger concurrent calls
+      const [res1, res2] = await Promise.all([
+        service.getPropertyTypes(),
+        service.getPropertyTypes(),
+      ]);
+
+      expect(fetchCount).toBe(1);
+      expect(res1).toBeInstanceOf(Map);
+      expect(res2).toBeInstanceOf(Map);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
