@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
 import measurementService from '../services/measurementService.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn(),
+}));
 vi.mock('../models/measurementRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/exerciseRepository');
@@ -13,6 +17,7 @@ describe('processHealthData default units (#567)', () => {
   const actingUserId = 'user-123';
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
     measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
     measurementRepository.createCustomCategory = vi
       .fn()
@@ -206,6 +211,7 @@ describe('Aggregated health metric default units', () => {
   const actingUserId = 'user-123';
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
     measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
     measurementRepository.createCustomCategory = vi
       .fn()
@@ -271,6 +277,7 @@ describe('processMobileHealthData aggregated types', () => {
   const actingUserId = 'user-123';
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
     measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
     measurementRepository.createCustomCategory = vi
       .fn()

@@ -347,17 +347,24 @@ app.get(
     }
   }
 );
+// Computed once at startup — these are static for the lifetime of the process
+const isPublicApiDocsEnabled =
+  process.env.SPARKY_FITNESS_PUBLIC_API_DOCS === 'true';
+const publicRoutes = [
+  '/api/auth/settings',
+  '/api/auth/mfa-factors',
+  '/api/health',
+  '/api/version',
+  '/api/uploads',
+  '/uploads',
+  '/api/ping',
+];
+if (isPublicApiDocsEnabled) {
+  publicRoutes.push('/api/api-docs');
+}
+
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
-  const publicRoutes = [
-    '/api/auth/settings',
-    '/api/auth/mfa-factors',
-    '/api/health',
-    '/api/version',
-    '/api/uploads',
-    '/uploads',
-    '/api/ping',
-  ];
   const isPublic = publicRoutes.some((route) => {
     // Exact match or subpath match with trailing slash to prevent partial matches
     // e.g. "/api/health" matches "/api/health" and "/api/health/" but NOT "/api/health-data"

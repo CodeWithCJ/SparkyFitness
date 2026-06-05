@@ -40,6 +40,12 @@ const options = {
           description:
             'Authentication token is stored in a secure, HTTP-only cookie named "token". Most endpoints require this for access.',
         },
+        apiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-api-key',
+          description: 'API key authentication via x-api-key header.',
+        },
       },
       schemas: {
         Exercise: {
@@ -1425,6 +1431,9 @@ const options = {
       {
         cookieAuth: [],
       },
+      {
+        apiKeyAuth: [],
+      },
     ],
     tags: [
       {
@@ -1472,4 +1481,62 @@ const options = {
   apis: swaggerScanPaths, // Paths to files containing OpenAPI definitions
 };
 const specs = swaggerJsdoc(options);
+
+// Post-process OpenAPI spec to clean up UI:
+// Replace 'cookieAuth' with 'apiKeyAuth' in all route operations and clean up security definitions.
+if (specs) {
+  // 1. Rewrite path security requirements
+  if (specs.paths) {
+    for (const pathKey of Object.keys(specs.paths)) {
+      const pathItem = specs.paths[pathKey];
+      if (pathItem && typeof pathItem === 'object') {
+        for (const method of Object.keys(pathItem)) {
+          const operation = pathItem[method];
+          if (
+            operation &&
+            typeof operation === 'object' &&
+            Array.isArray(operation.security)
+          ) {
+            const hasCookieAuth = operation.security.some(
+              (s: any) =>
+                s && typeof s === 'object' && s.cookieAuth !== undefined
+            );
+            if (hasCookieAuth) {
+              operation.security = operation.security.filter(
+                (s: any) =>
+                  !s || typeof s !== 'object' || s.cookieAuth === undefined
+              );
+              const hasApiKeyAuth = operation.security.some(
+                (s: any) =>
+                  s && typeof s === 'object' && s.apiKeyAuth !== undefined
+              );
+              if (!hasApiKeyAuth) {
+                operation.security.push({ apiKeyAuth: [] });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Remove cookieAuth from global security defaults
+  if (Array.isArray(specs.security)) {
+    specs.security = specs.security.filter(
+      (s: any) => !s || typeof s !== 'object' || s.cookieAuth === undefined
+    );
+    const hasApiKeyAuth = specs.security.some(
+      (s: any) => s && typeof s === 'object' && s.apiKeyAuth !== undefined
+    );
+    if (!hasApiKeyAuth) {
+      specs.security.push({ apiKeyAuth: [] });
+    }
+  }
+
+  // 3. Remove cookieAuth from components.securitySchemes
+  if (specs.components && specs.components.securitySchemes) {
+    delete specs.components.securitySchemes.cookieAuth;
+  }
+}
+
 export default specs;
