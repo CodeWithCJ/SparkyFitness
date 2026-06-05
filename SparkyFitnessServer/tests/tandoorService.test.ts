@@ -261,7 +261,7 @@ describe('TandoorService.getPropertyTypes deduplication', () => {
     );
     const originalFetch = global.fetch;
     let fetchCount = 0;
-    const fetchSpy = vi.fn().mockImplementation((url) => {
+    const fetchSpy = vi.fn().mockImplementation(() => {
       fetchCount++;
       return new Promise((resolve) => {
         setTimeout(() => {
