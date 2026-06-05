@@ -721,4 +721,4 @@ router.patch('/water-intake/log/:id', updateWaterIntakeLogTimeHandler);
 router.delete('/water-intake/log/:id', deleteWaterIntakeLogHandler);
 router.delete('/water-intake/:id', deleteWaterIntakeHandler);
 
-module.exports = router;
+export default router;
