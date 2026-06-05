@@ -49,19 +49,24 @@ describe('yazioService', () => {
       id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
       name: 'Protein Joghurt',
       producer: 'Test Brand',
-      serving_quantity: 150,
+      serving_quantity: 1,
+      amount: 20,
       base_unit: 'GRAM',
       eans: ['4001234567890'],
       nutrients: {
-        'energy.energy': 120,
-        'nutrient.protein': 15.2,
-        'nutrient.carb': 8.4,
-        'nutrient.fat': 2.1,
-        'nutrient.dietaryfiber': 0.4,
-        'nutrient.sugar': 7.9,
-        'mineral.potassium': 180,
-        'mineral.calcium': 120,
-        'mineral.iron': 0.2,
+        'energy.energy': 0.64,
+        'nutrient.protein': 0.152,
+        'nutrient.carb': 0.084,
+        'nutrient.fat': 0.021,
+        'nutrient.dietaryfiber': 0.004,
+        'nutrient.sugar': 0.079,
+        'nutrient.saturated': 0.01,
+        'nutrient.sodium': 0.0004,
+        'mineral.potassium': 0.0018,
+        'mineral.calcium': 0.0012,
+        'mineral.iron': 0.000002,
+        'vitamin.a': 0.0000002,
+        'vitamin.c': 0.000001,
       },
     });
 
@@ -71,24 +76,58 @@ describe('yazioService', () => {
       barcode: '4001234567890',
       provider_external_id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
       provider_type: 'yazio',
+      provider_verified: false,
       is_custom: false,
       default_variant: {
-        serving_size: 150,
+        serving_size: 100,
         serving_unit: 'g',
-        calories: 120,
+        calories: 64,
         protein: 15.2,
         carbs: 8.4,
         fat: 2.1,
+        saturated_fat: 1,
+        polyunsaturated_fat: 0,
+        monounsaturated_fat: 0,
+        trans_fat: 0,
+        cholesterol: 0,
         dietary_fiber: 0.4,
         sugars: 7.9,
-        sodium: 0,
+        sodium: 40,
         potassium: 180,
         calcium: 120,
         iron: 0.2,
-        vitamin_a: 0,
-        vitamin_c: 0,
+        vitamin_a: 20,
+        vitamin_c: 0.1,
         is_default: true,
       },
+    });
+  });
+
+  it('scales live YAZIO nutrient densities to per-100g nutrition', () => {
+    const result = mapYazioProduct({
+      id: '92c33e76-8d5c-4da0-8283-828f9a79667a',
+      name: 'Skyr Natur',
+      is_verified: true,
+      serving: 'tablespoon',
+      serving_quantity: 1,
+      amount: 20,
+      base_unit: 'g',
+      nutrients: {
+        'energy.energy': 0.63,
+        'nutrient.carb': 0.04,
+        'nutrient.fat': 0.002,
+        'nutrient.protein': 0.106,
+      },
+    });
+
+    expect(result?.provider_verified).toBe(true);
+    expect(result?.default_variant).toMatchObject({
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 63,
+      protein: 10.6,
+      carbs: 4,
+      fat: 0.2,
     });
   });
 
@@ -100,10 +139,10 @@ describe('yazioService', () => {
       serving_quantity: 100,
       base_unit: 'g',
       nutrients: {
-        'energy.energy': 64,
-        'nutrient.protein': 11,
-        'nutrient.carb': 4,
-        'nutrient.fat': 0.2,
+        'energy.energy': 0.64,
+        'nutrient.protein': 0.11,
+        'nutrient.carb': 0.04,
+        'nutrient.fat': 0.002,
       },
     };
 
@@ -122,7 +161,7 @@ describe('yazioService', () => {
 
     expect(global.fetch).toHaveBeenNthCalledWith(
       1,
-      'https://yzapi.yazio.com/v15/oauth/token',
+      'https://yzapi.yazio.com/v18/oauth/token',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"client_id":"test-client-id"'),
@@ -130,7 +169,7 @@ describe('yazioService', () => {
     );
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('https://yzapi.yazio.com/v15/products/search?'),
+      expect.stringContaining('https://yzapi.yazio.com/v18/products/search?'),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer token-1',
@@ -153,15 +192,16 @@ describe('yazioService', () => {
       )
       .mockResolvedValueOnce(
         makeFetchResponse({
-          id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
           name: 'Hafer Drink',
+          is_verified: true,
           producer: null,
+          base_unit: 'ml',
           servings: [{ serving: 'ml', amount: 100 }],
           nutrients: {
-            'energy.energy': 46,
-            'nutrient.protein': 1,
-            'nutrient.carb': 6.6,
-            'nutrient.fat': 1.5,
+            'energy.energy': 0.46,
+            'nutrient.protein': 0.01,
+            'nutrient.carb': 0.066,
+            'nutrient.fat': 0.015,
           },
           eans: ['4311501683902'],
         })
@@ -176,6 +216,18 @@ describe('yazioService', () => {
     );
 
     expect(result?.name).toBe('Hafer Drink');
+    expect(result?.provider_external_id).toBe(
+      '7c91b431-a2b5-4f11-8f52-f346dc941f2a'
+    );
+    expect(result?.provider_verified).toBe(true);
+    expect(result?.default_variant).toMatchObject({
+      serving_size: 100,
+      serving_unit: 'ml',
+      calories: 46,
+      protein: 1,
+      carbs: 6.6,
+      fat: 1.5,
+    });
     expect(result?.default_variant.serving_unit).toBe('ml');
     expect(result?.barcode).toBe('4311501683902');
   });
@@ -195,10 +247,10 @@ describe('yazioService', () => {
             base_unit: 'g',
             eans: ['0094395000172'],
             nutrients: {
-              'energy.energy': 100,
-              'nutrient.protein': 1,
-              'nutrient.carb': 2,
-              'nutrient.fat': 3,
+              'energy.energy': 1,
+              'nutrient.protein': 0.01,
+              'nutrient.carb': 0.02,
+              'nutrient.fat': 0.03,
             },
           },
         ])

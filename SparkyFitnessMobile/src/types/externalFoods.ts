@@ -53,5 +53,6 @@ export interface ExternalFoodItem {
   serving_size: number;
   serving_unit: string;
   source: string;
+  provider_verified?: boolean;
   variants?: ExternalFoodVariant[];
 }

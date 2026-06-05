@@ -42,6 +42,7 @@ export const NormalizedFoodSchema = z.object({
   barcode: z.string().optional(),
   provider_external_id: z.string().optional(),
   provider_type: z.string().optional(),
+  provider_verified: z.boolean().optional(),
   is_custom: z.boolean(),
   default_variant: FoodVariantSchema,
   variants: z.array(FoodVariantSchema).optional(),

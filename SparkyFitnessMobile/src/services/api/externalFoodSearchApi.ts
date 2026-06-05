@@ -467,6 +467,7 @@ interface NormalizedFood {
   barcode?: string;
   provider_external_id?: string;
   provider_type?: string;
+  provider_verified?: boolean;
   is_custom: boolean;
   default_variant: NormalizedFoodVariant;
   variants?: NormalizedFoodVariant[];
@@ -509,6 +510,7 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
     brand: food.brand,
     ...mapVariant(dv),
     source: food.provider_type ?? providerType,
+    provider_verified: food.provider_verified,
     variants: variants && variants.length > 0 ? variants : undefined,
   };
 }

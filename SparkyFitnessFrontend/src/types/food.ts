@@ -56,6 +56,7 @@ export interface Food {
     | 'tandoor'
     | 'usda'
     | 'yazio';
+  provider_verified?: boolean;
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
   is_quick_food?: boolean;
