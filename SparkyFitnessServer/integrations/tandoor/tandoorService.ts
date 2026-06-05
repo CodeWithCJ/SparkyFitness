@@ -78,6 +78,12 @@ class TandoorService {
     number,
     { open_data_slug: string | null; fdc_id: number | null; name: string }
   > | null;
+  propertyTypesPromise: Promise<
+    Map<
+      number,
+      { open_data_slug: string | null; fdc_id: number | null; name: string }
+    >
+  > | null;
 
   constructor(baseUrl: string, apiKey: string) {
     if (!baseUrl) {
@@ -90,6 +96,7 @@ class TandoorService {
     }
     this.accessToken = apiKey; // Tandoor API uses token for authentication
     this.propertyTypesCache = null;
+    this.propertyTypesPromise = null;
   }
 
   async searchRecipes(
@@ -207,61 +214,68 @@ class TandoorService {
     if (this.propertyTypesCache) {
       return this.propertyTypesCache;
     }
+    if (this.propertyTypesPromise) {
+      return this.propertyTypesPromise;
+    }
     if (!this.accessToken) {
       return new Map();
     }
     const url = new URL(`${this.baseUrl}/api/property-type/`);
     url.searchParams.append('page_size', '250');
-    try {
-      const authHeader =
-        typeof this.accessToken === 'string' &&
-        (this.accessToken.startsWith('Bearer ') ||
-          this.accessToken.startsWith('Token '))
-          ? this.accessToken
-          : `Bearer ${this.accessToken}`;
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          Authorization: authHeader,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          ...options.headers,
-        } as HeadersInit,
-      });
-      if (!response.ok) {
-        log(
-          'warn',
-          `[Tandoor] Failed to fetch property types: ${response.status} ${response.statusText}`
-        );
+    this.propertyTypesPromise = (async () => {
+      try {
+        const authHeader =
+          typeof this.accessToken === 'string' &&
+          (this.accessToken.startsWith('Bearer ') ||
+            this.accessToken.startsWith('Token '))
+            ? this.accessToken
+            : `Bearer ${this.accessToken}`;
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            Authorization: authHeader,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers,
+          } as HeadersInit,
+        });
+        if (!response.ok) {
+          log(
+            'warn',
+            `[Tandoor] Failed to fetch property types: ${response.status} ${response.statusText}`
+          );
+          return new Map();
+        }
+        const data = await response.json();
+        let results: TandoorPropertyType[] = [];
+        if (Array.isArray(data)) {
+          results = data;
+        } else if (data && Array.isArray(data.results)) {
+          results = data.results;
+        }
+        const cache = new Map<
+          number,
+          { open_data_slug: string | null; fdc_id: number | null; name: string }
+        >();
+        for (const pt of results) {
+          if (pt && pt.id) {
+            cache.set(pt.id, {
+              open_data_slug: pt.open_data_slug ?? null,
+              fdc_id: pt.fdc_id ?? null,
+              name: pt.name,
+            });
+          }
+        }
+        this.propertyTypesCache = cache;
+        return cache;
+      } catch (error) {
+        this.propertyTypesPromise = null; // Reset on error to allow retry
+        const msg = error instanceof Error ? error.message : String(error);
+        log('error', `[Tandoor] Error fetching property types: ${msg}`);
         return new Map();
       }
-      const data = await response.json();
-      let results: TandoorPropertyType[] = [];
-      if (Array.isArray(data)) {
-        results = data;
-      } else if (data && Array.isArray(data.results)) {
-        results = data.results;
-      }
-      const cache = new Map<
-        number,
-        { open_data_slug: string | null; fdc_id: number | null; name: string }
-      >();
-      for (const pt of results) {
-        if (pt && pt.id) {
-          cache.set(pt.id, {
-            open_data_slug: pt.open_data_slug ?? null,
-            fdc_id: pt.fdc_id ?? null,
-            name: pt.name,
-          });
-        }
-      }
-      this.propertyTypesCache = cache;
-      return cache;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      log('error', `[Tandoor] Error fetching property types: ${msg}`);
-      return new Map();
-    }
+    })();
+    return this.propertyTypesPromise;
   }
 
   async getRecipeDetails(
@@ -668,9 +682,14 @@ class TandoorService {
     return {
       food: {
         name: tandoorRecipe.name,
-        brand: tandoorRecipe.source_url
-          ? new URL(tandoorRecipe.source_url).hostname
-          : null,
+        brand: (() => {
+          if (!tandoorRecipe.source_url) return null;
+          try {
+            return new URL(tandoorRecipe.source_url).hostname;
+          } catch {
+            return null;
+          }
+        })(),
         is_custom: true, // Assuming recipes from Tandoor are custom to the user's instance
         user_id: userId,
         shared_with_public: false, // Default to private, can be changed later

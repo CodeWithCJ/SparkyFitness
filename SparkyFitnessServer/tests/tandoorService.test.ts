@@ -162,6 +162,18 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
     expect(result.variant.calories).toBe(0); // Should NOT match 'ca'
     expect(result.variant.calcium).toBe(50); // Should match 'calcium'
   });
+  it('should handle invalid or relative source_url without throwing', () => {
+    const mockRecipe = {
+      id: 20,
+      name: 'Invalid URL Test',
+      source_url: 'not-a-valid-url-relative/path',
+      nutrition: null,
+      properties: [],
+    };
+    const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
+    expect(result.food.brand).toBeNull();
+    expect(result.food.name).toBe('Invalid URL Test');
+  });
 });
 
 describe('TandoorService.getRecipeDetails enrichment', () => {
@@ -235,6 +247,44 @@ describe('TandoorService.getRecipeDetails enrichment', () => {
       expect(fetchSpy.mock.calls[1][0].toString()).toContain(
         '/api/property-type/'
       );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+});
+
+describe('TandoorService.getPropertyTypes deduplication', () => {
+  it('should only fetch once when getPropertyTypes is called concurrently', async () => {
+    const service = new TandoorService(
+      'http://tandoor.example.com',
+      'fake-api-key'
+    );
+    const originalFetch = global.fetch;
+    let fetchCount = 0;
+    const fetchSpy = vi.fn().mockImplementation((url) => {
+      fetchCount++;
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: () => Promise.resolve({ results: [] }),
+          });
+        }, 50);
+      });
+    });
+
+    global.fetch = fetchSpy as any;
+
+    try {
+      // Trigger concurrent calls
+      const [res1, res2] = await Promise.all([
+        service.getPropertyTypes(),
+        service.getPropertyTypes(),
+      ]);
+
+      expect(fetchCount).toBe(1);
+      expect(res1).toBeInstanceOf(Map);
+      expect(res2).toBeInstanceOf(Map);
     } finally {
       global.fetch = originalFetch;
     }
