@@ -1498,14 +1498,17 @@ if (specs) {
             Array.isArray(operation.security)
           ) {
             const hasCookieAuth = operation.security.some(
-              (s: any) => s.cookieAuth !== undefined
+              (s: any) =>
+                s && typeof s === 'object' && s.cookieAuth !== undefined
             );
             if (hasCookieAuth) {
               operation.security = operation.security.filter(
-                (s: any) => s.cookieAuth === undefined
+                (s: any) =>
+                  !s || typeof s !== 'object' || s.cookieAuth === undefined
               );
               const hasApiKeyAuth = operation.security.some(
-                (s: any) => s.apiKeyAuth !== undefined
+                (s: any) =>
+                  s && typeof s === 'object' && s.apiKeyAuth !== undefined
               );
               if (!hasApiKeyAuth) {
                 operation.security.push({ apiKeyAuth: [] });
@@ -1520,10 +1523,10 @@ if (specs) {
   // 2. Remove cookieAuth from global security defaults
   if (Array.isArray(specs.security)) {
     specs.security = specs.security.filter(
-      (s: any) => s.cookieAuth === undefined
+      (s: any) => !s || typeof s !== 'object' || s.cookieAuth === undefined
     );
     const hasApiKeyAuth = specs.security.some(
-      (s: any) => s.apiKeyAuth !== undefined
+      (s: any) => s && typeof s === 'object' && s.apiKeyAuth !== undefined
     );
     if (!hasApiKeyAuth) {
       specs.security.push({ apiKeyAuth: [] });
