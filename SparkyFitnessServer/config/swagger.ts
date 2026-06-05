@@ -1423,9 +1423,11 @@ const options = {
     ],
   },
   apis: [
-    './routes/*.js',
-    './routes/auth/*.js',
-    './models/*.js',
+    './routes/**/*.ts',
+    './models/**/*.ts',
+    './SparkyFitnessServer.ts',
+    './routes/**/*.js',
+    './models/**/*.js',
     './SparkyFitnessServer.js',
   ], // Paths to files containing OpenAPI definitions
 };

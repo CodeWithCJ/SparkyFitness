@@ -353,6 +353,7 @@ app.use((req, res, next) => {
   const publicRoutes = [
     '/api/auth/settings',
     '/api/auth/mfa-factors',
+    '/api/api-docs',
     '/api/health',
     '/api/version',
     '/api/uploads',
