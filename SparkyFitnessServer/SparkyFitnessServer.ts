@@ -358,7 +358,6 @@ app.use((req, res, next) => {
     '/api/uploads',
     '/uploads',
     '/api/ping',
-    '/api/api-docs',
   ];
   const isPublic = publicRoutes.some((route) => {
     // Exact match or subpath match with trailing slash to prevent partial matches
