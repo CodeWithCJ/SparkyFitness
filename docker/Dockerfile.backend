@@ -47,4 +47,5 @@ EXPOSE 3010
 HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "-f", "http://127.0.0.1:3010/api/health"]
 
 # Command to run the backend server (tsx handles .ts imports transparently)
-CMD ["./node_modules/.bin/tsx", "SparkyFitnessServer.js"]
+CMD ["./node_modules/.bin/tsx", "index.js"]
+
