@@ -1,12 +1,85 @@
 import { log } from '../../config/logging.js';
-// Using native fetch (standard in Node 22+)
+
+export interface TandoorPropertyType {
+  id?: number;
+  name: string;
+  unit?: string | null;
+  description?: string | null;
+  order?: number;
+  open_data_slug?: string | null;
+  fdc_id?: number | null;
+}
+
+export interface TandoorRecipe {
+  id: number;
+  name: string;
+  source_url?: string | null;
+  servings?: number | string | null;
+  servings_text?: string[] | null;
+  nutrition?:
+    | Record<string, number | null>
+    | Array<{ name: string; value: number | string | null }>
+    | null;
+  properties?: Array<{
+    property_type?: TandoorPropertyType;
+    property_amount?: number | string | null;
+  }>;
+  food_properties?: Record<
+    string,
+    {
+      id?: number;
+      name?: string;
+      open_data_slug?: string | null;
+      fdc_id?: number | null;
+      total_value?: number | string | null;
+    }
+  >;
+}
+
+export interface SparkyFoodMapping {
+  food: {
+    name: string;
+    brand: string | null;
+    is_custom: boolean;
+    user_id: string;
+    shared_with_public: boolean;
+    provider_external_id: string;
+    provider_type: string;
+    is_quick_food: boolean;
+  };
+  variant: {
+    serving_size: number;
+    serving_unit: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    saturated_fat: number;
+    polyunsaturated_fat: number;
+    monounsaturated_fat: number;
+    trans_fat: number;
+    cholesterol: number;
+    sodium: number;
+    potassium: number;
+    dietary_fiber: number;
+    sugars: number;
+    vitamin_a: number;
+    vitamin_c: number;
+    calcium: number;
+    iron: number;
+    is_default: boolean;
+  };
+}
+
 class TandoorService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessToken: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(baseUrl: any, apiKey: any) {
+  accessToken: string;
+  baseUrl: string;
+  propertyTypesCache: Map<
+    number,
+    { open_data_slug: string | null; fdc_id: number | null; name: string }
+  > | null;
+
+  constructor(baseUrl: string, apiKey: string) {
     if (!baseUrl) {
       throw new Error('Tandoor baseUrl not provided.');
     }
@@ -16,17 +89,19 @@ class TandoorService {
       this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     }
     this.accessToken = apiKey; // Tandoor API uses token for authentication
+    this.propertyTypesCache = null;
   }
-  // Placeholder for searchRecipes
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async searchRecipes(query: any, options = {}) {
+
+  async searchRecipes(
+    query: string,
+    options: RequestInit = {}
+  ): Promise<TandoorRecipe[]> {
     if (!this.accessToken) {
       throw new Error('Tandoor API key not provided.');
     }
     const url = new URL(`${this.baseUrl}/api/recipe/`);
     url.searchParams.append('query', query);
-    // @ts-expect-error TS(2345): Argument of type 'number' is not assignable to par... Remove this comment to see the full error message
-    url.searchParams.append('page_size', 10); // Limit results to 10
+    url.searchParams.append('page_size', '10'); // Limit results to 10
     try {
       const authHeader =
         typeof this.accessToken === 'string' &&
@@ -40,9 +115,8 @@ class TandoorService {
           Authorization: authHeader,
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          // @ts-expect-error TS(2339): Property 'headers' does not exist on type '{}'.
           ...options.headers,
-        },
+        } as HeadersInit,
       });
       log(
         'debug',
@@ -93,7 +167,7 @@ class TandoorService {
       // - paginated: { results: [...] }
       // - direct array: [ {...}, ... ]
       // - possible alternate keys: { recipes: [...] }
-      let results = [];
+      let results: TandoorRecipe[] = [];
       if (Array.isArray(data)) {
         results = data;
       } else if (data && Array.isArray(data.results)) {
@@ -116,13 +190,84 @@ class TandoorService {
       log('debug', `Found ${results.length} recipes for query: ${query}`);
       return results;
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      log('error', 'Error during Tandoor recipe search:', error.message);
+      const msg = error instanceof Error ? error.message : String(error);
+      log('error', `Error during Tandoor recipe search: ${msg}`);
       return [];
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getRecipeDetails(id: any, options = {}) {
+
+  async getPropertyTypes(
+    options: RequestInit = {}
+  ): Promise<
+    Map<
+      number,
+      { open_data_slug: string | null; fdc_id: number | null; name: string }
+    >
+  > {
+    if (this.propertyTypesCache) {
+      return this.propertyTypesCache;
+    }
+    if (!this.accessToken) {
+      return new Map();
+    }
+    const url = new URL(`${this.baseUrl}/api/property-type/`);
+    url.searchParams.append('page_size', '250');
+    try {
+      const authHeader =
+        typeof this.accessToken === 'string' &&
+        (this.accessToken.startsWith('Bearer ') ||
+          this.accessToken.startsWith('Token '))
+          ? this.accessToken
+          : `Bearer ${this.accessToken}`;
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          Authorization: authHeader,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...options.headers,
+        } as HeadersInit,
+      });
+      if (!response.ok) {
+        log(
+          'warn',
+          `[Tandoor] Failed to fetch property types: ${response.status} ${response.statusText}`
+        );
+        return new Map();
+      }
+      const data = await response.json();
+      let results: TandoorPropertyType[] = [];
+      if (Array.isArray(data)) {
+        results = data;
+      } else if (data && Array.isArray(data.results)) {
+        results = data.results;
+      }
+      const cache = new Map<
+        number,
+        { open_data_slug: string | null; fdc_id: number | null; name: string }
+      >();
+      for (const pt of results) {
+        if (pt && pt.id) {
+          cache.set(pt.id, {
+            open_data_slug: pt.open_data_slug ?? null,
+            fdc_id: pt.fdc_id ?? null,
+            name: pt.name,
+          });
+        }
+      }
+      this.propertyTypesCache = cache;
+      return cache;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log('error', `[Tandoor] Error fetching property types: ${msg}`);
+      return new Map();
+    }
+  }
+
+  async getRecipeDetails(
+    id: string | number,
+    options: RequestInit = {}
+  ): Promise<TandoorRecipe | null> {
     if (!this.accessToken) {
       throw new Error('Tandoor API key not provided.');
     }
@@ -139,9 +284,8 @@ class TandoorService {
         headers: {
           Authorization: authHeader,
           Accept: 'application/json',
-          // @ts-expect-error TS(2339): Property 'headers' does not exist on type '{}'.
           ...options.headers,
-        },
+        } as HeadersInit,
       });
       if (!response.ok) {
         const errorData = await response.text();
@@ -149,27 +293,71 @@ class TandoorService {
           `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData}`
         );
       }
-      const data = await response.json();
+      const data: TandoorRecipe = await response.json();
       log('debug', `Successfully retrieved details for recipe: ${id}`);
+
+      // Enrich food_properties with open_data_slug and fdc_id from property-type details
+      try {
+        const ptMap = await this.getPropertyTypes(options);
+        if (
+          ptMap &&
+          ptMap.size > 0 &&
+          data &&
+          data.food_properties &&
+          typeof data.food_properties === 'object'
+        ) {
+          for (const key of Object.keys(data.food_properties)) {
+            const prop = data.food_properties[key];
+            if (prop) {
+              const ptId = prop.id || Number(key);
+              if (ptId) {
+                const cachedPt = ptMap.get(ptId);
+                if (cachedPt) {
+                  if (cachedPt.open_data_slug) {
+                    prop.open_data_slug = cachedPt.open_data_slug;
+                  }
+                  if (cachedPt.fdc_id) {
+                    prop.fdc_id = cachedPt.fdc_id;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (enrichError) {
+        const msg =
+          enrichError instanceof Error
+            ? enrichError.message
+            : String(enrichError);
+        log(
+          'warn',
+          `[Tandoor] Failed to enrich recipe food properties: ${msg}`
+        );
+      }
+
       return data;
     } catch (error) {
-      log(
-        'error',
-        'Error during Tandoor recipe details retrieval:',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error.message
-      );
+      const msg = error instanceof Error ? error.message : String(error);
+      log('error', `Error during Tandoor recipe details retrieval: ${msg}`);
       return null;
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mapTandoorRecipeToSparkyFood(tandoorRecipe: any, userId: any) {
+
+  mapTandoorRecipeToSparkyFood(
+    tandoorRecipe: TandoorRecipe,
+    userId: string
+  ): SparkyFoodMapping {
     log(
       'debug',
       `[Tandoor Mapping] Starting mapping for recipe ID: ${tandoorRecipe.id} ("${tandoorRecipe.name}")`
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const extractFromProperties = (props: any, candidates: any) => {
+    const extractFromProperties = (
+      props: Array<{
+        property_type?: TandoorPropertyType;
+        property_amount?: number | string | null;
+      }>,
+      candidates: string[]
+    ): number | null => {
       if (!Array.isArray(props)) return null;
       for (const cand of candidates) {
         const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -213,16 +401,18 @@ class TandoorService {
     // 1. nutrition object (explicit structured data)
     // 2. food_properties (auto-calculated data)
     // 3. properties (generic attributes)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const getNutritionValue = (candidates: any, label: any) => {
+    const getNutritionValue = (
+      candidates: string[],
+      label: string
+    ): number | null => {
       log(
         'debug',
         `[Tandoor Mapping] Searching for "${label}" (Candidates: ${candidates.join(', ')})`
       );
-      let bestValue = null;
+      let bestValue: number | null = null;
       // 1. Check nutrition (Explicit structured data)
       if (nutritionData) {
-        const nutritionKeys = {
+        const nutritionKeys: Record<string, string[]> = {
           calories: ['calories', 'cal', 'kcal'],
           protein: ['proteins', 'protein'],
           carbs: ['carbohydrates', 'carbohydrate', 'carbs'],
@@ -232,11 +422,13 @@ class TandoorService {
           typeof nutritionData === 'object' &&
           !Array.isArray(nutritionData)
         ) {
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const lookupKeys = nutritionKeys[label] || [label];
           for (const k of lookupKeys) {
-            if (nutritionData[k] !== undefined && nutritionData[k] !== null) {
-              const num = Number(nutritionData[k]);
+            const val = (
+              nutritionData as Record<string, number | string | null>
+            )[k];
+            if (val !== undefined && val !== null) {
+              const num = Number(val);
               if (!Number.isNaN(num)) {
                 log(
                   'debug',
@@ -476,8 +668,6 @@ class TandoorService {
     return {
       food: {
         name: tandoorRecipe.name,
-        // Tandoor doesn't seem to have a direct 'brand' equivalent for recipes,
-        // so we can leave it null or derive from source_url if appropriate.
         brand: tandoorRecipe.source_url
           ? new URL(tandoorRecipe.source_url).hostname
           : null,
