@@ -36,6 +36,7 @@ export interface ExternalDataProvider {
     | 'fitbit'
     | 'polar'
     | 'hevy'
+    | 'yazio'
     | 'strava';
   app_id: string | null;
   app_key: string | null;
@@ -64,7 +65,7 @@ export interface ExternalDataProvider {
   sort_order?: number;
 }
 
-const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda', 'fatsecret'];
+const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda', 'fatsecret', 'yazio'];
 
 const ExternalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);

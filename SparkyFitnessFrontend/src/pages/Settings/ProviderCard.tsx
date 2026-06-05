@@ -171,7 +171,8 @@ export const ProviderCard = ({
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
-          data.provider_type === 'usda')
+          data.provider_type === 'usda' ||
+          data.provider_type === 'yazio')
       ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {

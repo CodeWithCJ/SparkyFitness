@@ -138,10 +138,10 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     const providerUpdateData: Partial<ExternalDataProvider> = {
       provider_name: editData.provider_name,
       provider_type: editData.provider_type,
-      // OFF: GET /external-providers does not return decrypted app_id/app_key,
+      // OFF/YAZIO: GET /external-providers does not return decrypted credentials,
       // and startEditing seeds app_key to '' (we never echo passwords back to
       // the DOM). For both fields we cannot distinguish "untouched" from
-      // "user cleared", so blank means "leave existing". To remove stored OFF
+      // "user cleared", so blank means "leave existing". To remove stored
       // credentials, users must delete and re-add the provider.
       app_id:
         editData.provider_type === 'mealie' ||
@@ -149,11 +149,13 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         editData.provider_type === 'free-exercise-db' ||
         editData.provider_type === 'wger'
           ? null
-          : editData.provider_type === 'openfoodfacts'
+          : editData.provider_type === 'openfoodfacts' ||
+              editData.provider_type === 'yazio'
             ? editData.app_id || undefined
             : editData.app_id || null,
       app_key:
-        editData.provider_type === 'openfoodfacts'
+        editData.provider_type === 'openfoodfacts' ||
+        editData.provider_type === 'yazio'
           ? editData.app_key || undefined
           : editData.app_key || null,
       is_active: editData.is_active,
@@ -221,7 +223,8 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
-          data.provider_type === 'usda')
+          data.provider_type === 'usda' ||
+          data.provider_type === 'yazio')
       ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {

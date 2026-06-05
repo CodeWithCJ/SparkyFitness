@@ -55,7 +55,7 @@ export const createExternalProvider = async (
         : payload.app_id || null,
       app_key: payload.app_key || null,
       is_active: payload.is_active,
-      base_url: ['mealie', 'tandoor', 'free-exercise-db'].includes(
+      base_url: ['mealie', 'tandoor', 'free-exercise-db', 'yazio'].includes(
         payload.provider_type
       )
         ? payload.base_url || null

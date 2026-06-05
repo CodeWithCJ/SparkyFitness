@@ -70,6 +70,10 @@ export type ExternalResultWrapper =
   | {
       provider_type: 'tandoor';
       food: Food;
+    }
+  | {
+      provider_type: 'yazio';
+      food: Food;
     };
 
 interface EnhancedFoodSearchProps {
@@ -166,7 +170,7 @@ const EnhancedFoodSearch = ({
     barcodeProviderId ||
     defaultBarcodeProviderId ||
     foodDataProviders.find((p) =>
-      ['openfoodfacts', 'usda', 'fatsecret'].includes(p.provider_type)
+      ['openfoodfacts', 'usda', 'fatsecret', 'yazio'].includes(p.provider_type)
     )?.id ||
     null;
 
@@ -223,7 +227,8 @@ const EnhancedFoodSearch = ({
           | 'usda'
           | 'fatsecret'
           | 'mealie'
-          | 'tandoor';
+          | 'tandoor'
+          | 'yazio';
         const mapped: ExternalResultWrapper = {
           provider_type: data.source as BarcodeProviderType,
           food: data.food,
@@ -358,6 +363,17 @@ const EnhancedFoodSearch = ({
         }))
       );
     },
+    yazio: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('yazio', term, id, foodDisplayLimit)
+      );
+      setExternalResults(
+        data.foods.map((food: Food) => ({
+          provider_type: 'yazio' as const,
+          food,
+        }))
+      );
+    },
   };
 
   const handleSearch = async () => {
@@ -422,7 +438,9 @@ const EnhancedFoodSearch = ({
 
   const handleExternalFoodEdit = async (food: Food) => {
     const needsDetailFetch =
-      (food.provider_type === 'fatsecret' || food.provider_type === 'usda') &&
+      (food.provider_type === 'fatsecret' ||
+        food.provider_type === 'usda' ||
+        food.provider_type === 'yazio') &&
       food.provider_external_id;
 
     if (needsDetailFetch) {

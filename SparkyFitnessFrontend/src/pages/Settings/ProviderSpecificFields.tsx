@@ -32,6 +32,7 @@ export const ProviderSpecificFields = ({
     'fitbit',
     'strava',
     'polar',
+    'yazio',
   ].includes(provider.provider_type || '');
   const needsAppKey = [
     'mealie',
@@ -44,6 +45,7 @@ export const ProviderSpecificFields = ({
     'strava',
     'polar',
     'hevy',
+    'yazio',
   ].includes(provider.provider_type || '');
 
   const getCallbackUrl = () => {
@@ -78,7 +80,9 @@ export const ProviderSpecificFields = ({
               provider.provider_type || ''
             )
               ? 'Client ID'
-              : 'App ID'}
+              : provider.provider_type === 'yazio'
+                ? 'YAZIO Email / Username'
+                : 'App ID'}
           </Label>
           <Input
             id="new_app_id"
@@ -100,7 +104,9 @@ export const ProviderSpecificFields = ({
               provider.provider_type || ''
             )
               ? 'Client Secret'
-              : 'API Key / App Key'}
+              : provider.provider_type === 'yazio'
+                ? 'YAZIO Password'
+                : 'API Key / App Key'}
           </Label>
           <Input
             id="new_app_key"
@@ -156,6 +162,13 @@ export const ProviderSpecificFields = ({
             with publicly sharing this provider row.
           </p>
         </>
+      )}
+
+      {provider.provider_type === 'yazio' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          YAZIO does not provide an official public API. This experimental
+          provider uses a private API and may stop working if YAZIO changes it.
+        </p>
       )}
 
       {provider.provider_type === 'garmin' && (

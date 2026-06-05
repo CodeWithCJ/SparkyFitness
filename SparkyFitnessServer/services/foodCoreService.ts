@@ -18,6 +18,7 @@ import {
   searchFatSecretByBarcode,
   mapFatSecretFood,
 } from '../integrations/fatsecret/fatsecretService.js';
+import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
 async function searchFoods(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -860,6 +861,31 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
       } catch (usdaError) {
         log('warn', `USDA barcode lookup failed for ${barcode}:`, usdaError);
         captureSurfaceable(usdaError);
+      }
+    }
+    // Try YAZIO if provider is configured. This uses YAZIO's private product
+    // search API and is experimental; failures should not block other providers.
+    if (
+      provider?.provider_type === 'yazio' &&
+      provider.app_id &&
+      provider.app_key
+    ) {
+      try {
+        const yazioFood = await searchYazioByBarcode(barcode, {
+          username: provider.app_id,
+          password: provider.app_key,
+          baseUrl: provider.base_url,
+        });
+        if (yazioFood) {
+          return {
+            source: 'yazio',
+            food: yazioFood,
+            barcode_raw: yazioFood,
+          };
+        }
+      } catch (yazioError) {
+        log('warn', `YAZIO barcode lookup failed for ${barcode}:`, yazioError);
+        captureSurfaceable(yazioError);
       }
     }
     // Try OpenFoodFacts if it is the configured primary provider

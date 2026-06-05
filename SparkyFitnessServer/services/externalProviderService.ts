@@ -138,6 +138,14 @@ async function createExternalDataProvider(
         );
       }
     }
+    if (
+      providerData.provider_type === 'yazio' &&
+      (!providerData.app_id || !providerData.app_key)
+    ) {
+      throw badRequest(
+        'YAZIO credentials must include both a username and a password.'
+      );
+    }
     const newProvider =
       await externalProviderRepository.createExternalDataProvider(providerData);
     if (
@@ -234,6 +242,30 @@ async function updateExternalDataProvider(
       if (nextSharedWithPublic === true && willHaveCredentials) {
         throw badRequest(
           'Open Food Facts credentials cannot be stored on a provider row that is shared publicly. Remove credentials or disable public sharing first.'
+        );
+      }
+    }
+    const isYazio =
+      existingProvider?.provider_type === 'yazio' ||
+      updateData.provider_type === 'yazio';
+    if (isYazio) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resolveField = (nextVal: any, currentVal: any) => {
+        if (nextVal === null) return null;
+        if (nextVal === undefined) return currentVal;
+        return nextVal;
+      };
+      const nextAppId = resolveField(
+        updateData.app_id,
+        existingProvider?.app_id
+      );
+      const nextAppKey = resolveField(
+        updateData.app_key,
+        existingProvider?.app_key
+      );
+      if (!nextAppId || !nextAppKey) {
+        throw badRequest(
+          'YAZIO credentials must include both a username and a password.'
         );
       }
     }

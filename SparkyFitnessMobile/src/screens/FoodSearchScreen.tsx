@@ -209,10 +209,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
-    if (item.source === 'fatsecret' && selectedProvider) {
+    if (
+      (item.source === 'fatsecret' || item.source === 'yazio') &&
+      selectedProvider
+    ) {
       setLoadingFoodId(item.id);
       try {
-        const detailed = await fetchExternalFoodDetails('fatsecret', item.id, selectedProvider);
+        const detailed = await fetchExternalFoodDetails(
+          item.source,
+          item.id,
+          selectedProvider,
+        );
         showFoodInfo(externalFoodItemToFoodInfo(detailed));
       } catch (error) {
         const message = getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";

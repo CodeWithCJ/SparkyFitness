@@ -171,10 +171,15 @@ export const EditProviderForm = ({
         </>
       )}
       {(editData.provider_type === 'nutritionix' ||
-        editData.provider_type === 'fatsecret') && (
+        editData.provider_type === 'fatsecret' ||
+        editData.provider_type === 'yazio') && (
         <>
           <div>
-            <Label>App ID</Label>
+            <Label>
+              {editData.provider_type === 'yazio'
+                ? 'YAZIO Email / Username'
+                : 'App ID'}
+            </Label>
             <Input
               type="text"
               value={editData.app_id || ''}
@@ -184,12 +189,22 @@ export const EditProviderForm = ({
                   app_id: e.target.value,
                 }))
               }
-              placeholder="Enter App ID"
-              autoComplete="off"
+              placeholder={
+                editData.provider_type === 'yazio'
+                  ? 'Enter YAZIO email or username'
+                  : 'Enter App ID'
+              }
+              autoComplete={
+                editData.provider_type === 'yazio' ? 'username' : 'off'
+              }
             />
           </div>
           <div>
-            <Label>App Key</Label>
+            <Label>
+              {editData.provider_type === 'yazio'
+                ? 'YAZIO Password'
+                : 'App Key'}
+            </Label>
             <Input
               type="password"
               value={editData.app_key || ''}
@@ -199,8 +214,14 @@ export const EditProviderForm = ({
                   app_key: e.target.value,
                 }))
               }
-              placeholder="Enter App Key"
-              autoComplete="off"
+              placeholder={
+                editData.provider_type === 'yazio'
+                  ? 'Enter YAZIO password'
+                  : 'Enter App Key'
+              }
+              autoComplete={
+                editData.provider_type === 'yazio' ? 'current-password' : 'off'
+              }
             />
           </div>
           {editData.provider_type === 'fatsecret' && (
@@ -208,6 +229,13 @@ export const EditProviderForm = ({
               Note: For Fatsecret, you need to set up **your public IP**
               whitelisting in your Fatsecret developer account. This process can
               take up to 24 hours.
+            </p>
+          )}
+          {editData.provider_type === 'yazio' && (
+            <p className="text-sm text-muted-foreground col-span-2">
+              YAZIO does not provide an official public API. This experimental
+              provider uses a private API and may stop working if YAZIO changes
+              it.
             </p>
           )}
         </>
