@@ -350,8 +350,6 @@ app.get(
 );
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
-  const isPublicApiDocsEnabled =
-    process.env.SPARKY_FITNESS_PUBLIC_API_DOCS === 'true';
   const publicRoutes = [
     '/api/auth/settings',
     '/api/auth/mfa-factors',
@@ -360,10 +358,8 @@ app.use((req, res, next) => {
     '/api/uploads',
     '/uploads',
     '/api/ping',
+    '/api/api-docs',
   ];
-  if (isPublicApiDocsEnabled) {
-    publicRoutes.push('/api/api-docs');
-  }
   const isPublic = publicRoutes.some((route) => {
     // Exact match or subpath match with trailing slash to prevent partial matches
     // e.g. "/api/health" matches "/api/health" and "/api/health/" but NOT "/api/health-data"
