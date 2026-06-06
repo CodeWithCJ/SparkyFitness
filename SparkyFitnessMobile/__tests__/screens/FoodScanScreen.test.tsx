@@ -241,38 +241,6 @@ describe('FoodScanScreen', () => {
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
   });
 
-  it('passes the route barcodeProviderId to scanned barcode lookups', async () => {
-    mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
-    const screen = renderScreenWithRoute({ barcodeProviderId: 'provider-1' });
-
-    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
-      data: '012345678905',
-    });
-
-    await waitFor(() => {
-      expect(mockLookupBarcodeV2).toHaveBeenCalledWith(
-        '012345678905',
-        'provider-1',
-      );
-    });
-  });
-
-  it('passes the route barcodeProviderId to manual barcode lookups', async () => {
-    mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
-    const screen = renderScreenWithRoute({ barcodeProviderId: 'provider-1' });
-
-    fireEvent.press(screen.getByText('Type Barcode Instead'));
-    fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
-    fireEvent.press(screen.getByText('Look Up'));
-
-    await waitFor(() => {
-      expect(mockLookupBarcodeV2).toHaveBeenCalledWith(
-        '012345678905',
-        'provider-1',
-      );
-    });
-  });
-
   describe('Photo segment gating', () => {
     it('shows the setup gate when AI is unconfigured (after switching to Photo)', async () => {
       mockUseActiveAiServiceSetting.mockReturnValue({

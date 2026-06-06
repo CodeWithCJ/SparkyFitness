@@ -105,28 +105,6 @@ describe('useExternalProviders', () => {
 
       expect(result.current.providers).toHaveLength(foodTypes.length);
     });
-
-    test('keeps active yazio providers in the food provider list', async () => {
-      mockFetchExternalProviders.mockResolvedValue([
-        makeProvider({ id: '1', provider_name: 'Yazio', provider_type: 'yazio' }),
-      ]);
-
-      const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createQueryWrapper(queryClient),
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.providers).toEqual([
-        expect.objectContaining({
-          id: '1',
-          provider_name: 'Yazio',
-          provider_type: 'yazio',
-        }),
-      ]);
-    });
   });
 
   describe('query behavior', () => {

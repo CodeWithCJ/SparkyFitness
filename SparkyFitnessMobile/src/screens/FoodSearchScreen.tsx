@@ -192,13 +192,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const openFoodScan = () => {
-    const barcodeProviderId =
-      activeTab === 'online' && selectedProvider ? selectedProvider : undefined;
     navigation.navigate('FoodScan', {
       date,
       pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
       returnDepth: isMealBuilderMode ? 2 : undefined,
-      barcodeProviderId,
     });
   };
 
@@ -212,17 +209,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
-    if (
-      (item.source === 'fatsecret' || item.source === 'yazio') &&
-      selectedProvider
-    ) {
+    if (item.source === 'fatsecret' && selectedProvider) {
       setLoadingFoodId(item.id);
       try {
-        const detailed = await fetchExternalFoodDetails(
-          item.source,
-          item.id,
-          selectedProvider,
-        );
+        const detailed = await fetchExternalFoodDetails('fatsecret', item.id, selectedProvider);
         showFoodInfo(externalFoodItemToFoodInfo(detailed));
       } catch (error) {
         const message = getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
@@ -661,15 +651,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
-          <View className="flex-row items-center flex-wrap gap-x-2">
-            <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-            {item.provider_verified ? (
-              <View className="flex-row items-center rounded px-1.5 py-0.5 bg-green-50">
-                <Icon name="shield-checkmark" size={12} color="#047857" />
-                <Text className="text-[11px] font-semibold text-green-700 ml-1">Verified</Text>
-              </View>
-            ) : null}
-          </View>
+          <Text className="text-text-primary text-base font-medium">{item.name}</Text>
           {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
           ) : null}

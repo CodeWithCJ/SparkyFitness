@@ -1785,21 +1785,6 @@ describe('externalFoodSearchApi', () => {
         );
       });
 
-      test('includes providerId in query params when provided', async () => {
-        mockGetActiveServerConfig.mockResolvedValue(testConfig);
-        mockFetch.mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ source: 'not_found', food: null }),
-        });
-
-        await lookupBarcodeV2('123', 'provider-1');
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/v2/foods/barcode/123?providerId=provider-1'),
-          expect.anything(),
-        );
-      });
-
       test('returns not_found when food is null', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({

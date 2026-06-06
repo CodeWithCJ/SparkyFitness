@@ -98,7 +98,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const date = lookupParams?.date;
   const pickerMode = lookupParams?.pickerMode ?? 'log-entry';
   const returnDepth = lookupParams?.returnDepth;
-  const barcodeProviderId = lookupParams?.barcodeProviderId;
   const isMealBuilderMode = pickerMode === 'meal-builder';
 
   // Photo estimation always logs to the diary; hide it for meal-builder
@@ -142,7 +141,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setNotFoundBarcode(null);
     setLookupError(null);
     try {
-      const result = await lookupBarcodeV2(barcode, barcodeProviderId);
+      const result = await lookupBarcodeV2(barcode);
 
       if (!result.food) {
         setNotFoundBarcode(barcode);

@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 import { useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { searchExternalFoods } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
-import { FOOD_PROVIDER_TYPES } from '../types/externalProviders';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { RateLimiter } from '../utils/rateLimiter';
+
+const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie', 'tandoor']);
 
 // Open Food Facts allows 10 req/min; use 8 for headroom
 const offRateLimiter = new RateLimiter(8, 60_000);
@@ -18,7 +19,7 @@ export function useExternalFoodSearch(
   const { enabled = true, providerId, autoScale } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 600);
   const isSearchActive = debouncedSearch.length >= 3;
-  const isProviderSupported = FOOD_PROVIDER_TYPES.has(providerType);
+  const isProviderSupported = SUPPORTED_PROVIDERS.has(providerType);
 
   const query = useInfiniteQuery({
     queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId, autoScale),

@@ -2,8 +2,6 @@ export interface ExternalFoodVariant {
   serving_size: number;
   serving_unit: string;
   serving_description: string;
-  serving_weight?: number;
-  serving_weight_unit?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -55,6 +53,5 @@ export interface ExternalFoodItem {
   serving_size: number;
   serving_unit: string;
   source: string;
-  provider_verified?: boolean;
   variants?: ExternalFoodVariant[];
 }
