@@ -5,6 +5,7 @@ import {
   fetchWithTimeout,
   fetchWithRetry,
   CHUNK_SIZE,
+  SESSION_CHUNK_SIZE,
 } from '../../src/services/api/healthDataApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import { notifySessionExpired } from '../../src/services/api/authService';
@@ -558,15 +559,13 @@ describe('healthDataApi', () => {
         expect(secondBody).toHaveLength(100);
       });
 
-      test('keeps all session records for same source in one chunk', async () => {
+      test('separates exercise/workout, sleep, and simple records into distinct chunks', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
           json: () => Promise.resolve({ success: true }),
         });
 
-        // Session records (SleepSession + ExerciseSession) from same source
-        // must stay together even when mixed with simple records
         const data = [
           { type: 'SleepSession', date: '2024-01-01', value: 1, source: 'healthkit' },
           { type: 'steps', date: '2024-01-01', value: 100 },
@@ -577,27 +576,23 @@ describe('healthDataApi', () => {
 
         await syncHealthData(data);
 
-        // Session records sent as one chunk, simple records as another
-        expect(mockFetch).toHaveBeenCalledTimes(2);
+        // Three chunks: exercise/workout (per source), sleep, simple
+        expect(mockFetch).toHaveBeenCalledTimes(3);
 
-        const firstBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-        const secondBody = JSON.parse(mockFetch.mock.calls[1][1].body);
+        const bodies = mockFetch.mock.calls.map((c) => JSON.parse(c[1].body));
 
-        // First chunk: all session records from 'healthkit' source
-        expect(firstBody.map((r: any) => r.type)).toEqual([
-          'SleepSession',
+        // Range-delete chunk first: exercise + workout for the source, together.
+        expect(bodies[0].map((r: any) => r.type)).toEqual([
           'ExerciseSession',
           'Workout',
         ]);
-
-        // Second chunk: simple records
-        expect(secondBody.map((r: any) => r.type)).toEqual([
-          'steps',
-          'calories',
-        ]);
+        // Sleep is split out from exercise/workout.
+        expect(bodies[1].map((r: any) => r.type)).toEqual(['SleepSession']);
+        // Simple records last.
+        expect(bodies[2].map((r: any) => r.type)).toEqual(['steps', 'calories']);
       });
 
-      test('separates session records by source into different chunks', async () => {
+      test('separates exercise/workout by source but pools sleep across sources', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
@@ -605,31 +600,72 @@ describe('healthDataApi', () => {
         });
 
         const data = [
-          { type: 'SleepSession', date: '2024-01-01', value: 1, source: 'healthkit' },
-          { type: 'ExerciseSession', date: '2024-01-01', value: 2, source: 'garmin' },
-          { type: 'SleepSession', date: '2024-01-02', value: 3, source: 'garmin' },
+          { type: 'ExerciseSession', date: '2024-01-01', value: 1, source: 'healthkit' },
+          { type: 'Workout', date: '2024-01-01', value: 2, source: 'garmin' },
+          { type: 'SleepSession', date: '2024-01-01', value: 3, source: 'healthkit' },
+          { type: 'SleepSession', date: '2024-01-02', value: 4, source: 'garmin' },
         ] as HealthDataPayload;
 
         await syncHealthData(data);
 
-        expect(mockFetch).toHaveBeenCalledTimes(2);
+        // 2 range-delete chunks (one per source) + 1 pooled sleep chunk
+        expect(mockFetch).toHaveBeenCalledTimes(3);
 
-        const firstBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-        const secondBody = JSON.parse(mockFetch.mock.calls[1][1].body);
+        const bodies = mockFetch.mock.calls.map((c) => JSON.parse(c[1].body));
 
-        // Each source gets its own chunk
-        expect(firstBody.every((r: any) => r.source === 'healthkit')).toBe(true);
-        expect(secondBody.every((r: any) => r.source === 'garmin')).toBe(true);
+        // Each exercise/workout source isolated in its own chunk.
+        expect(bodies[0]).toHaveLength(1);
+        expect(bodies[0][0].source).toBe('healthkit');
+        expect(bodies[1]).toHaveLength(1);
+        expect(bodies[1][0].source).toBe('garmin');
+
+        // Sleep from both sources shares a single chunk (no per-source constraint).
+        expect(bodies[2].map((r: any) => r.type)).toEqual([
+          'SleepSession',
+          'SleepSession',
+        ]);
+        expect(bodies[2].map((r: any) => r.source)).toEqual([
+          'healthkit',
+          'garmin',
+        ]);
       });
 
-      test('never splits session records for same source across chunks', async () => {
+      test('splits sleep sessions into multiple chunks by SESSION_CHUNK_SIZE', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
           json: () => Promise.resolve({ success: true }),
         });
 
-        // More session records than CHUNK_SIZE — must still be a single request
+        const overflow = 10;
+        const data = Array.from(
+          { length: SESSION_CHUNK_SIZE + overflow },
+          (_, i) => ({
+            type: 'SleepSession',
+            date: `2024-01-${String((i % 28) + 1).padStart(2, '0')}`,
+            value: i,
+            source: 'healthkit',
+          }),
+        ) as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+        expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toHaveLength(
+          SESSION_CHUNK_SIZE,
+        );
+        expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toHaveLength(overflow);
+      });
+
+      test('never splits exercise/workout for same source across chunks', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        // More records than CHUNK_SIZE — must still be a single request, because
+        // the server range-deletes per source before inserting.
         const data = Array.from({ length: CHUNK_SIZE + 500 }, (_, i) => ({
           type: 'ExerciseSession',
           date: `2024-01-${String((i % 28) + 1).padStart(2, '0')}`,

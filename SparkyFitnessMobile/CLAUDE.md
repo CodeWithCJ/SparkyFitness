@@ -59,7 +59,7 @@ Both orchestrators use batched concurrent metric fetching via `runTasksInBatches
 ### Health Data Upload
 
 `healthDataApi.ts` handles chunked upload with retry:
-- `CHUNK_SIZE = 5_000` records per request; session-type records (sleep, exercise, workout) are grouped by source and sent unsplit
+- `CHUNK_SIZE = 5_000` simple measurements per request. Exercise/Workout sessions are grouped by source and sent unsplit (the server range-deletes per source before inserting, so a source's sessions must stay in one request). Sleep sessions are chunked by `SESSION_CHUNK_SIZE = 50` — safe to split since the server merges sleep by natural key with no range-delete (issue #1180), and they are the expensive type to process server-side (issue #1263)
 - `fetchWithTimeout` wraps fetch with `AbortController` (`FETCH_TIMEOUT_MS = 30_000`)
 - `fetchWithRetry` adds exponential backoff (up to `MAX_RETRIES = 3`, skips 4xx); triggers `notifySessionExpired` on 401 for session auth
 

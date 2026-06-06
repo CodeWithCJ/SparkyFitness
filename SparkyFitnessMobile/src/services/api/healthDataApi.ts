@@ -50,6 +50,11 @@ export type HealthDataPayload = HealthDataPayloadItem[];
 // --- Chunking, timeout, and retry constants ---
 
 export const CHUNK_SIZE = 5_000;
+// Sleep sessions are far more expensive to process server-side than simple
+// measurements (each is many DB round-trips: upsert + per-stage merge + aggregate
+// recompute), so they get a much smaller per-request cap to stay well under
+// FETCH_TIMEOUT_MS. See issue #1263.
+export const SESSION_CHUNK_SIZE = 50;
 export const FETCH_TIMEOUT_MS = 30_000;
 export const MAX_RETRIES = 3;
 export const RETRY_BASE_DELAY_MS = 1_000;
@@ -141,17 +146,26 @@ export const fetchWithRetry = async (
   throw lastError ?? new Error('All retry attempts failed');
 };
 
-// Types that trigger the server's delete-then-insert pre-cleanup.
-// All records of these types sharing the same source must stay in a single
-// request — the server computes a date range across all three types per source
-// and deletes both sleep and exercise rows for that entire range.
-const SESSION_TYPES = new Set(['SleepSession', 'ExerciseSession', 'Workout']);
+// ExerciseSession/Workout trigger the server's delete-then-insert pre-cleanup:
+// per source it deletes every entry in [min(date)..max(date)] then re-inserts.
+// So a source's sessions must stay in one request — splitting them across
+// requests with overlapping date ranges would let a later request's range-delete
+// wipe an earlier request's inserts. (The server resolves each session's day from
+// its instant + per-record timezone, so client-side date windowing isn't safe
+// without replicating that bucketing.)
+//
+// SleepSession is intentionally NOT here: since issue #1180 the server merges
+// sleep by natural key (no range-delete), so sleep sessions are independent and
+// can be chunked freely — which we do, because they are the expensive type.
+const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 
 /**
  * Builds chunks that are safe against the server's delete-then-insert logic.
- * Session records (SleepSession/ExerciseSession/Workout) are grouped by source
- * and kept in a single chunk per source (never split, even if > CHUNK_SIZE).
- * Simple records (steps, calories, etc.) are chunked normally by CHUNK_SIZE.
+ * Exercise/Workout records are grouped by source and kept in a single chunk per
+ * source (never split, even if > CHUNK_SIZE) so the server's per-source range
+ * delete can't clobber inserts. Sleep sessions are chunked by SESSION_CHUNK_SIZE
+ * (safe to split — merge-based, no range delete). Simple records (steps,
+ * calories, etc.) are chunked by CHUNK_SIZE.
  */
 const sendHealthDataChunked = async (
   url: string,
@@ -160,30 +174,38 @@ const sendHealthDataChunked = async (
   serverConfig: ServerConfig,
 ): Promise<unknown> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
-  const sessionsBySource = new Map<string, HealthDataPayloadItem[]>();
+  const sleepRecords: HealthDataPayloadItem[] = [];
+  const rangeDeleteBySource = new Map<string, HealthDataPayloadItem[]>();
 
   for (const record of data) {
-    if (SESSION_TYPES.has(record.type)) {
+    if (record.type === 'SleepSession') {
+      sleepRecords.push(record);
+    } else if (RANGE_DELETE_TYPES.has(record.type)) {
       const source = (record as unknown as Record<string, unknown>).source as string ?? 'manual';
-      const group = sessionsBySource.get(source);
+      const group = rangeDeleteBySource.get(source);
       if (group) {
         group.push(record);
       } else {
-        sessionsBySource.set(source, [record]);
+        rangeDeleteBySource.set(source, [record]);
       }
     } else {
       simpleRecords.push(record);
     }
   }
 
-  // Each source's session records go in a single chunk (never split).
-  // Simple records are chunked normally.
   const chunks: HealthDataPayloadItem[][] = [];
 
-  for (const sessionRecords of sessionsBySource.values()) {
+  // Exercise/Workout: one chunk per source, never split (see RANGE_DELETE_TYPES).
+  for (const sessionRecords of rangeDeleteBySource.values()) {
     chunks.push(sessionRecords);
   }
 
+  // Sleep: safe to split — bounded by the smaller SESSION_CHUNK_SIZE.
+  for (let i = 0; i < sleepRecords.length; i += SESSION_CHUNK_SIZE) {
+    chunks.push(sleepRecords.slice(i, i + SESSION_CHUNK_SIZE));
+  }
+
+  // Simple measurements: chunked by the larger CHUNK_SIZE.
   for (let i = 0; i < simpleRecords.length; i += CHUNK_SIZE) {
     chunks.push(simpleRecords.slice(i, i + CHUNK_SIZE));
   }
