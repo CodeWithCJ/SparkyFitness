@@ -341,7 +341,15 @@ const EditGoalsForm = ({
 
       <DialogFooter>
         <Button
-          onClick={() => onSave(goals)}
+          onClick={() => {
+            const finalGoals = { ...goals };
+            if (macroInputType === 'grams') {
+              finalGoals.protein_percentage = null;
+              finalGoals.carbs_percentage = null;
+              finalGoals.fat_percentage = null;
+            }
+            onSave(finalGoals);
+          }}
           disabled={isSaving || !isMacroValid || !isTotalPercentageValid}
           className="w-full"
         >
