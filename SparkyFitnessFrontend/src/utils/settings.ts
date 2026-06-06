@@ -13,6 +13,65 @@ export const providerRequirements: Record<string, string[]> = {
   strava: ['app_id', 'app_key'],
   usda: ['app_key'],
   hevy: ['app_key'],
+  yazio: ['app_id', 'app_key', 'yazio_client_id', 'yazio_client_secret'],
+};
+
+const providerFieldLabels: Record<string, Record<string, string>> = {
+  yazio: {
+    app_id: 'YAZIO email / username',
+    app_key: 'YAZIO password',
+    yazio_client_id: 'YAZIO Client ID',
+    yazio_client_secret: 'YAZIO Client Secret',
+  },
+};
+
+export const encodeYazioAppId = (
+  username?: string | null,
+  clientId?: string | null
+) =>
+  JSON.stringify({
+    username: username || '',
+    clientId: clientId || '',
+  });
+
+export const encodeYazioAppKey = (
+  password?: string | null,
+  clientSecret?: string | null
+) =>
+  JSON.stringify({
+    password: password || '',
+    clientSecret: clientSecret || '',
+  });
+
+export const decodeYazioAppId = (value?: string | null) => {
+  if (!value) {
+    return { username: '', clientId: '' };
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      return {
+        username:
+          typeof record['username'] === 'string'
+            ? record['username']
+            : typeof record['email'] === 'string'
+              ? record['email']
+              : '',
+        clientId:
+          typeof record['clientId'] === 'string'
+            ? record['clientId']
+            : typeof record['client_id'] === 'string'
+              ? record['client_id']
+              : '',
+      };
+    }
+  } catch {
+    // Legacy rows stored the YAZIO username directly in app_id.
+  }
+
+  return { username: value, clientId: '' };
 };
 
 export const validateProvider = (
@@ -25,7 +84,9 @@ export const validateProvider = (
 
   for (const field of requiredFields) {
     if (!provider[field as keyof ExternalDataProvider]) {
-      return `Please provide ${field} for ${provider.provider_type}`;
+      const label =
+        providerFieldLabels[provider.provider_type || '']?.[field] || field;
+      return `Please provide ${label} for ${provider.provider_type}`;
     }
   }
 
@@ -47,6 +108,7 @@ export const getProviderTypes = () => [
   { value: 'strava', label: 'Strava' },
   { value: 'hevy', label: 'Hevy' },
   { value: 'usda', label: 'USDA' },
+  { value: 'yazio', label: 'YAZIO' },
 ];
 
 export const getInitials = (name: string | null) => {
@@ -71,6 +133,7 @@ export const getProviderCategory = (
     case 'mealie':
     case 'tandoor':
     case 'usda':
+    case 'yazio':
       return ['food'];
     case 'nutritionix':
       return ['food', 'exercise'];

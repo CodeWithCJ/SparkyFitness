@@ -12,6 +12,9 @@ export interface FoodVariant {
   id?: string;
   serving_size: number;
   serving_unit: string;
+  serving_description?: string;
+  serving_weight?: number;
+  serving_weight_unit?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -54,7 +57,9 @@ export interface Food {
     | 'fatsecret'
     | 'mealie'
     | 'tandoor'
-    | 'usda';
+    | 'usda'
+    | 'yazio';
+  provider_verified?: boolean;
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
   is_quick_food?: boolean;
@@ -191,6 +196,8 @@ export type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,
   | 'id'
   | 'serving_unit'
+  | 'serving_description'
+  | 'serving_weight_unit'
   | 'is_default'
   | 'is_locked'
   | 'glycemic_index'

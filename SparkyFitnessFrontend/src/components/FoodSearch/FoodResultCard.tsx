@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Share2, Sparkles } from 'lucide-react';
+import { CheckCircle, Edit, Share2, Sparkles } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
 import AllergenBadges from '@/components/AllergenBadges';
 import type { Food } from '@/types/food';
@@ -82,6 +82,15 @@ const FoodResultCard = ({
               {providerLabel && (
                 <Badge variant="outline" className="text-xs">
                   {providerLabel}
+                </Badge>
+              )}
+              {isFood && foodItem.provider_verified && (
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  {t('enhancedFoodSearch.verified', 'Verified')}
                 </Badge>
               )}
               {isFood &&

@@ -43,8 +43,9 @@ export const BarcodeScannerDialog = ({
 
   const barcodeProviders = providers.filter(
     (provider) =>
-      ['openfoodfacts', 'usda', 'fatsecret'].includes(provider.provider_type) &&
-      provider.is_active
+      ['openfoodfacts', 'usda', 'fatsecret', 'yazio'].includes(
+        provider.provider_type
+      ) && provider.is_active
   );
 
   return (

@@ -25,6 +25,10 @@ import {
   mapFatSecretSearchItem,
 } from '../../integrations/fatsecret/fatsecretService.js';
 import {
+  searchYazioFoods,
+  getYazioFoodDetails,
+} from '../../integrations/yazio/yazioService.js';
+import {
   searchFatSecretFoods,
   getFatSecretNutrients,
   searchMealieFoods,
@@ -43,6 +47,7 @@ const VALID_PROVIDER_TYPES = [
   'fatsecret',
   'mealie',
   'tandoor',
+  'yazio',
 ] as const;
 
 type ProviderType = (typeof VALID_PROVIDER_TYPES)[number];
@@ -165,6 +170,15 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
     ...record,
     id: nullToUndefined(record.id as string | null | undefined),
     user_id: nullToUndefined(record.user_id as string | null | undefined),
+    serving_description: nullToUndefined(
+      record.serving_description as string | null | undefined
+    ),
+    serving_weight: nullToUndefined(
+      record.serving_weight as number | null | undefined
+    ),
+    serving_weight_unit: nullToUndefined(
+      record.serving_weight_unit as string | null | undefined
+    ),
     saturated_fat: nullToUndefined(
       record.saturated_fat as number | null | undefined
     ),
@@ -418,6 +432,19 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
         };
         break;
       }
+
+      case 'yazio': {
+        const result = await searchYazioFoods(query, {
+          username: credentials.app_id,
+          password: credentials.app_key,
+          baseUrl: credentials.base_url,
+          page,
+          pageSize,
+        });
+        foods = result.foods || [];
+        pagination = result.pagination;
+        break;
+      }
     }
 
     const normalizedFoods = foods.map((food) => normalizeFoodForResponse(food));
@@ -553,6 +580,15 @@ const detailHandler: RequestHandler<{
             variants: [variant],
           };
         }
+        break;
+      }
+
+      case 'yazio': {
+        food = await getYazioFoodDetails(externalId, {
+          username: credentials.app_id,
+          password: credentials.app_key,
+          baseUrl: credentials.base_url,
+        });
         break;
       }
     }

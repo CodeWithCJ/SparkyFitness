@@ -39,4 +39,51 @@ describe('validateProvider', () => {
     const result = validateProvider(input);
     expect(result).toBeNull();
   });
+
+  it('requires all four YAZIO credential fields', () => {
+    const baseInput: Partial<ExternalDataProvider> = {
+      provider_name: 'YAZIO',
+      provider_type: 'yazio',
+    };
+
+    // Missing app_id
+    expect(validateProvider(baseInput)).toBe(
+      'Please provide YAZIO email / username for yazio'
+    );
+
+    // Missing app_key
+    expect(validateProvider({ ...baseInput, app_id: 'user@example.com' })).toBe(
+      'Please provide YAZIO password for yazio'
+    );
+
+    // Missing yazio_client_id
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+      })
+    ).toBe('Please provide YAZIO Client ID for yazio');
+
+    // Missing yazio_client_secret
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+        yazio_client_id: 'client-id',
+      })
+    ).toBe('Please provide YAZIO Client Secret for yazio');
+
+    // All fields present
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+        yazio_client_id: 'client-id',
+        yazio_client_secret: 'client-secret',
+      })
+    ).toBeNull();
+  });
 });

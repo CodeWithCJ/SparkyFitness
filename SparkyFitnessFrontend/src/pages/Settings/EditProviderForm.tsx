@@ -212,6 +212,101 @@ export const EditProviderForm = ({
           )}
         </>
       )}
+      {editData.provider_type === 'yazio' && (
+        <>
+          <div className="col-span-2">
+            <div className="rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 space-y-1.5">
+              <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                ⚠️ Unofficial API — Use at your own risk
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                YAZIO integration uses an{' '}
+                <strong>unofficial, undocumented API</strong> that is not
+                provided or endorsed by YAZIO. Using it may{' '}
+                <strong>risk getting your YAZIO account banned</strong>. The API
+                could also <strong>stop working at any time</strong> without
+                notice if YAZIO changes their backend.
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                For more information & client credentials, see{' '}
+                <a
+                  href="https://github.com/saganos/yazio_public_api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-800 dark:text-red-200 underline font-medium"
+                >
+                  saganos/yazio_public_api
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label>YAZIO Email / Username (Optional)</Label>
+            <Input
+              type="text"
+              value={editData.app_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_id: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO email or username"
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <Label>YAZIO Password (Optional)</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder="Leave blank to keep existing password"
+              autoComplete="current-password"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Email and password are optional. Only Client ID and Client Secret
+            are required.
+          </p>
+          <div>
+            <Label>YAZIO Client ID</Label>
+            <Input
+              type="text"
+              value={editData.yazio_client_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  yazio_client_id: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO Client ID"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label>YAZIO Client Secret</Label>
+            <Input
+              type="password"
+              value={editData.yazio_client_secret || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  yazio_client_secret: e.target.value,
+                }))
+              }
+              placeholder="Leave blank to keep existing client secret"
+              autoComplete="off"
+            />
+          </div>
+        </>
+      )}
       {editData.provider_type === 'nutritionix' && (
         <p className="text-sm text-muted-foreground col-span-2">
           Get your App ID and App Key from the{' '}

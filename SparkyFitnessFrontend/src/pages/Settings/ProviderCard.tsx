@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off } from 'lucide-react';
-import { getProviderTypes } from '@/utils/settings';
+import { decodeYazioAppId, getProviderTypes } from '@/utils/settings';
 import SyncRangeDialog from './SyncRangeDialog';
 
 import {
@@ -49,6 +49,7 @@ export const ProviderCard = ({
   startEditing,
 }: ProviderCardProps) => {
   const { user } = useAuth();
+  const yazioDisplay = decodeYazioAppId(provider.app_id);
   const {
     defaultFoodDataProviderId,
     setDefaultFoodDataProviderId,
@@ -171,7 +172,8 @@ export const ProviderCard = ({
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
-          data.provider_type === 'usda')
+          data.provider_type === 'usda' ||
+          data.provider_type === 'yazio')
       ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
@@ -372,7 +374,14 @@ export const ProviderCard = ({
             !['mealie', 'tandoor', 'free-exercise-db', 'wger'].includes(
               provider.provider_type
             ) &&
-            ` - App ID: ${provider.app_id.substring(0, 4)}...`}
+            ` - App ID: ${
+              provider.provider_type === 'yazio'
+                ? (yazioDisplay.username || yazioDisplay.clientId).substring(
+                    0,
+                    4
+                  )
+                : provider.app_id.substring(0, 4)
+            }...`}
           {provider.app_key &&
             [
               'mealie',
@@ -399,6 +408,12 @@ export const ProviderCard = ({
               </span>
             )}
           </div>
+        )}
+
+        {provider.availability_error && (
+          <p className="text-sm text-destructive mt-2">
+            {provider.availability_error}
+          </p>
         )}
       </div>
 

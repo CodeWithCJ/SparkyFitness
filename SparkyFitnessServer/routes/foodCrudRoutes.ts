@@ -591,7 +591,7 @@ router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Look up a food by barcode
  *     tags: [Nutrition & Meals]
- *     description: Checks the local database first, then queries an external barcode provider (USDA or OpenFoodFacts). The provider can be specified via the providerId query parameter or the user's default_barcode_provider_id preference. If the chosen provider returns no results, OpenFoodFacts is tried as a fallback.
+ *     description: Checks the local database first, then queries an external barcode provider (USDA, FatSecret, YAZIO, or OpenFoodFacts). The provider can be specified via the providerId query parameter or the user's default_barcode_provider_id preference. If the chosen provider returns no results, OpenFoodFacts is tried as a fallback.
  *     parameters:
  *       - in: path
  *         name: barcode
@@ -615,7 +615,7 @@ router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
  *               properties:
  *                 source:
  *                   type: string
- *                   enum: [local, openfoodfacts, usda, fatsecret, not_found]
+ *                   enum: [local, openfoodfacts, usda, fatsecret, yazio, not_found]
  *                 food:
  *                   $ref: '#/components/schemas/Food'
  *       400:

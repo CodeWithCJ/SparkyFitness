@@ -78,7 +78,9 @@ export const ProviderSpecificFields = ({
               provider.provider_type || ''
             )
               ? 'Client ID'
-              : 'App ID'}
+              : provider.provider_type === 'yazio'
+                ? 'YAZIO Email / Username'
+                : 'App ID'}
           </Label>
           <Input
             id="new_app_id"
@@ -100,7 +102,9 @@ export const ProviderSpecificFields = ({
               provider.provider_type || ''
             )
               ? 'Client Secret'
-              : 'API Key / App Key'}
+              : provider.provider_type === 'yazio'
+                ? 'YAZIO Password'
+                : 'API Key / App Key'}
           </Label>
           <Input
             id="new_app_key"
@@ -158,6 +162,99 @@ export const ProviderSpecificFields = ({
         </>
       )}
 
+      {provider.provider_type === 'yazio' && (
+        <>
+          <div className="col-span-2">
+            <div className="rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 space-y-1.5">
+              <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                ⚠️ Unofficial API — Use at your own risk
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                YAZIO integration uses an{' '}
+                <strong>unofficial, undocumented API</strong> that is not
+                provided or endorsed by YAZIO. Using it may{' '}
+                <strong>risk getting your YAZIO account banned</strong>. The API
+                could also <strong>stop working at any time</strong> without
+                notice if YAZIO changes their backend.
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                For more information & client credentials, see{' '}
+                <a
+                  href="https://github.com/saganos/yazio_public_api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-800 dark:text-red-200 underline font-medium"
+                >
+                  saganos/yazio_public_api
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-username">YAZIO Email / Username</Label>
+            <Input
+              id="add-yazio-username"
+              type="text"
+              value={provider.app_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_id: e.target.value }))
+              }
+              placeholder="Enter YAZIO email or username"
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-password">YAZIO Password</Label>
+            <Input
+              id="add-yazio-password"
+              type="password"
+              value={provider.app_key || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_key: e.target.value }))
+              }
+              placeholder="Enter YAZIO password"
+              autoComplete="current-password"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            All fields (Email/Username, Password, Client ID, and Client Secret)
+            are required.
+          </p>
+          <div>
+            <Label htmlFor="add-yazio-client-id">YAZIO Client ID</Label>
+            <Input
+              id="add-yazio-client-id"
+              type="text"
+              value={provider.yazio_client_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({
+                  ...prev,
+                  yazio_client_id: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO Client ID"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-client-secret">YAZIO Client Secret</Label>
+            <Input
+              id="add-yazio-client-secret"
+              type="password"
+              value={provider.yazio_client_secret || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({
+                  ...prev,
+                  yazio_client_secret: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO Client Secret"
+              autoComplete="off"
+            />
+          </div>
+        </>
+      )}
       {provider.provider_type === 'garmin' && (
         <>
           <div>

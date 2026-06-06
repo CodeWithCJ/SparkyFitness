@@ -32,7 +32,7 @@ export const NutrientGrid = ({
     carbs: { color: 'text-orange-600', label: 'carbs', unit: 'g' },
     fat: { color: 'text-yellow-600', label: 'fat', unit: 'g' },
     dietary_fiber: { color: 'text-green-600', label: 'fiber', unit: 'g' },
-    sugar: { color: 'text-pink-500', label: 'sugar', unit: 'g' },
+    sugars: { color: 'text-pink-500', label: 'sugar', unit: 'g' },
     sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
     cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
     saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
