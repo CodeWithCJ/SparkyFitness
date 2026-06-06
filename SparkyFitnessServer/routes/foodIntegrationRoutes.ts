@@ -830,7 +830,7 @@ router.get('/norish/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
   const { norishBaseUrl, norishApiKey, userId, providerId } = req;
-  if (!query) {
+  if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Missing search query' });
   }
   try {
@@ -876,7 +876,7 @@ router.get('/norish/details', authenticate, async (req, res, next) => {
   const { id } = req.query;
   // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
   const { norishBaseUrl, norishApiKey, userId, providerId } = req;
-  if (!id) {
+  if (!id || typeof id !== 'string') {
     return res.status(400).json({ error: 'Missing food id' });
   }
   try {
