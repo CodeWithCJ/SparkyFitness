@@ -10,7 +10,7 @@
   },
   "aboutDialog": {
     "title": "Par SparkyFitness",
-    "description1": "SparkyFitness: Radīts ģimenēm. Darbojas, izmantojot mākslīgo intelektu. Kopā sekojiet līdzi ēdienam, fiziskajai aktivitātei, ūdens patēriņam un veselībai.",
+    "description1": "SparkyFitness: Radīts ģimenēm. Darbojas, izmantojot MI. Kopā sekojiet līdzi ēdienam, fiziskajai aktivitātei, ūdens patēriņam un veselībai.",
     "applicationVersion": "Lietotnes versija: ",
     "joinDiscord": "Pievienojieties mūsu kopienai Discord platformā: ",
     "discordLink": "discord.gg/vcnMT5cPEA",
@@ -1854,5 +1854,26 @@
     "liveAiContextTitle": "Reāllaika mākslīgā intelekta analīze",
     "liveAiContextDescription": "Šis ir pašreizējais konteksts, kas tiks nodots AI asistentam.",
     "loadingAiContext": "Ielādē mākslīgā intelekta kontekstu..."
+  },
+  "nutrition": {
+    "calories": "Kalorijas",
+    "protein": "Olbaltumvielas",
+    "carbohydrates": "Ogļhidrāti",
+    "carbs": "Ogļh.",
+    "fat": "Tauki",
+    "saturatedFat": "Piesātinātās taukskābes",
+    "polyunsaturatedFat": "Polinepiesātinātās taukskābes",
+    "monounsaturatedFat": "Mononepiesātinātās taukskābes",
+    "transFat": "Transtaukskābes",
+    "cholesterol": "Holesterīns",
+    "sodium": "Nātrijs",
+    "potassium": "Kālijs",
+    "dietaryFiber": "Uztura šķiedrvielas",
+    "fiber": "Šķiedrvielas",
+    "sugars": "Cukuri",
+    "vitaminA": "A vitamīns",
+    "vitaminC": "C vitamīns",
+    "calcium": "Kalcijs",
+    "iron": "Dzelzs"
   }
 }

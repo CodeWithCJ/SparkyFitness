@@ -195,8 +195,8 @@
       "makePrivateTooltip": "Зробити приватною",
       "shareWithPublicTooltip": "Зробити публічною",
       "notEditableTooltip": "Не редагується",
-      "editExerciseTooltip": "Редагувати",
-      "deleteExerciseTooltip": "Видалити",
+      "editExerciseTooltip": "Редагувати вправу",
+      "deleteExerciseTooltip": "Видалити вправу",
       "workoutPresetsCardTitle": "Пресети тренувань",
       "workoutPlansCardTitle": "Плани тренувань",
       "editExerciseDialogTitle": "Редагувати вправу",
@@ -476,7 +476,16 @@
     "aiService": {
       "title": "Сервіс штучного інтелекту",
       "description": "Керування налаштуваннями функцій на базі штучного інтелекту",
-      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою «Недійсна довжина ключа», переконайтеся, що ваші ключі шифрування та автентифікації JWT у змінних env сервера мають шістнадцятковий формат 64."
+      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою «Недійсна довжина ключа», переконайтеся, що ваші ключі шифрування та автентифікації JWT у змінних env сервера мають шістнадцятковий формат 64.",
+      "globalSettings": {
+        "addService": "Додати сервіс",
+        "saveChanges": "Зберегти зміни",
+        "cancel": "Відмінити",
+        "edit": "Редагувати",
+        "delete": "Видалити",
+        "activeService": "Активувати сервіс",
+        "error": "Помилка"
+      }
     },
     "apiKeyManagement": {
       "title": "Керування ключами API",
@@ -510,6 +519,17 @@
       "newPasswordsDoNotMatch": "Нові паролі не збігаються",
       "passwordLengthError": "Пароль має містити щонайменше 6 символів",
       "enterNewEmailAddress": "Будь ласка, введіть нову адресу електронної пошти"
+    },
+    "dataManagement": {
+      "sectionTitle": "Управління даними",
+      "subtitle": "Експортувати або керувати даними",
+      "title": "Експорт даних",
+      "description": "Завантажити весь щоденник їжі в форматі CSV. Файл буде містити всі ваші прийоми їжі з харчовими деталями, порціями та макросами (калорій, білок, карбів, жирів).",
+      "exportButton": "Експортувати щоденник (CSV)",
+      "exporting": "Підготовка...",
+      "exportSuccessDescription": "Ваш щоденник успішно експортовано.",
+      "exportError": "Помилка експорту",
+      "exportErrorDescription": "Неможливо завантажити ваш щоденник. Будь ласка, спробуйте ще раз."
     }
   },
   "admin": {
@@ -851,7 +871,7 @@
     "howAreYouFeelingToday": "Як ви себе почуваєте сьогодні?",
     "neutral": "Нормально",
     "anyThoughtsOrFeelings": "Хочете додати думки або відчуття?",
-    "sleepTracking": "Сон",
+    "sleepTracking": "Відстеження Сну",
     "sleepSession1": "Сеанс сну 1",
     "bedtime": "Час сну",
     "wakeTime": "Час пробудження",
@@ -925,7 +945,7 @@
     "excited": "Захоплений"
   },
   "sleepEntrySection": {
-    "sleepTracking": "Сон",
+    "sleepTracking": "Відстеження Сну",
     "sleepSession": "Сеанс сну {{sessionNumber}}",
     "bedtime": "Час сну",
     "wakeTime": "Час пробудження",
@@ -1053,6 +1073,51 @@
   },
   "mealBuilder": {
     "errorTitle": "Помилка",
-    "loadMealError": "Не вдалося завантажити страву для редагування."
+    "loadMealError": "Не вдалося завантажити страву для редагування.",
+    "noFoodInMealError": "Прийом їжі має містити хоча б одну страву.",
+    "mealUpdatedSuccess": "Прийом їжі оновлено успішно!",
+    "mealCreatedSuccess": "Прийом їжі створено успішно!",
+    "mealDescription": "Опис (не обов'язково)",
+    "addFoodToMealTitle": "Додати страву до прийому їжі",
+    "addFoodButton": "Додати страву",
+    "addFoodToMealDialogTitle": "Додати страву до прийому їжі",
+    "saveMealButton": "Зберегти прийом їжі",
+    "successTitle": "Успіх",
+    "foodAddedToMeal": "{{foodName}} додано до прийому їжі.",
+    "foodRemovedFromMeal": "Страва видалена з прийому їжі.",
+    "mealNameEmptyError": "Назва прийому їжі не може бути порожня."
+  },
+  "nutrition": {
+    "calories": "Калорії",
+    "protein": "Білок",
+    "carbohydrates": "Вуглеводи",
+    "carbs": "Вуглеводи",
+    "cholesterol": "Холестерин",
+    "fat": "Жири",
+    "potassium": "Калій",
+    "vitaminA": "Вітамін А",
+    "vitaminC": "Вітамін С",
+    "calcium": "Кальцій",
+    "iron": "Залізо"
+  },
+  "reports": {
+    "loadingReports": "Завантажуємо звіти...",
+    "chartsTab": "Графіки",
+    "sleepTab": "Сон"
+  },
+  "mealPlanCalendar": {
+    "loadingTemplates": "Завантажуємо шаблони...",
+    "deleteTemplateConfirmation": "Ви впевнені, що хочете видалити цей шаблон?",
+    "saveTemplateError": "Помилка при збереженні шаблону.",
+    "deleteSuccess": "Шаблон видалено успішно.",
+    "deleteTemplateError": "Помилка при видаленні шаблону."
+  },
+  "mealPlanTemplateForm": {
+    "planNameLabel": "Назва плану",
+    "descriptionLabel": "Опис",
+    "startDateLabel": "Дата початку",
+    "endDateLabel": "Дата закінчення",
+    "setActiveLabel": "Встановити як активний план",
+    "endDateError": "Дата закінчення не може бути до дати початку."
   }
 }

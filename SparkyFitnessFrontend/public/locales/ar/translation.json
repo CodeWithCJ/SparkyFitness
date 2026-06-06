@@ -23,7 +23,8 @@
     "fatsecretApi": "واجهة برمجة تطبيقات FatSecret",
     "openFoodFactsApi": "واجهة برمجة تطبيقات بيانات الأطعمة المفتوحة",
     "gotIt": "فهمت",
-    "close": "أغلق"
+    "close": "أغلق",
+    "title": "عن SparkyFitness"
   },
   "exercise": {
     "title": "التمارين",
@@ -505,5 +506,26 @@
       "passwordLengthError": "يجب أن يكون طول كلمة المرور 6 أحرف على الأقل",
       "enterNewEmailAddress": "الرجاء إدخال عنوان بريد إلكتروني جديد"
     }
+  },
+  "nutrition": {
+    "calories": "السعرات",
+    "protein": "البروتين",
+    "carbohydrates": "الكاربوهايدرات",
+    "carbs": "كارب",
+    "fat": "الدهون",
+    "saturatedFat": "الدهون المشبعة",
+    "polyunsaturatedFat": "الدهون المتعددة غير المشبعة",
+    "monounsaturatedFat": "الدهون الأحادية غير المشبعة",
+    "transFat": "الدهون المتحولة",
+    "cholesterol": "الكوليسترول",
+    "sodium": "صوديوم",
+    "potassium": "بوتاسيوم",
+    "dietaryFiber": "الألياف الغذائية",
+    "fiber": "الألياف",
+    "sugars": "سكر",
+    "vitaminA": "فيتامين أ",
+    "vitaminC": "فيتامين ج",
+    "calcium": "الكالسيوم",
+    "iron": "حديد"
   }
 }

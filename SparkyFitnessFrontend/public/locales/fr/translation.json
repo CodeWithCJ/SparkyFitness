@@ -33,7 +33,7 @@
     },
     "preferences": {
       "title": "Préférences",
-      "description": "Customise les paramètres d'application et les préférences d'affichage",
+      "description": "Personnalise les paramètres de l'application et les préférences d'affichage",
       "dateFormat": "Format de date",
       "weightUnit": "Unité de poids",
       "kilograms": "Kilogramme (kg)",
@@ -85,12 +85,67 @@
     "foodExerciseDataProviders": {
       "title": "Fournisseurs de données pour la Nourriture et les Exercices",
       "description": "Configurer les sources de données externes relatives à l'alimentation et à l'exercice physique et synchronisez les données avec Garmin Connect",
-      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que vos clés de chiffrement et d'authentification JWT dans les variables d'environnement du serveur sont de 64 octets hexadécimaux."
+      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que votre clé de chiffrement dans les variables d'environnement du serveur sont de 64 octets hexadécimaux."
     },
     "aiService": {
       "title": "Service d'IA",
       "description": "Gérer les paramètres des fonctionnalités basées sur l'IA",
-      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que vos clés de chiffrement et d'authentification JWT dans les variables d'environnement du serveur sont de 64 octets hexadécimaux."
+      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que votre clé de chiffrement dans les variables d'environnement du serveur sont de 64 octets hexadécimaux.",
+      "globalSettings": {
+        "title": "Paramètres globaux des services d'IA",
+        "description": "Les paramètres généraux du service d'IA sont partagés entre tous les utilisateurs. Les utilisateurs peuvent les remplacer par leurs propres paramètres.",
+        "allowUserConfig": "Autoriser les utilisateurs à configurer les services d'IA",
+        "allowUserConfigDescription": "Lorsqu'elle est activée, cette option permet aux utilisateurs d'ajouter et de gérer leurs propres configurations de service d'IA. Lorsqu'elle est désactivée, ils peuvent uniquement utiliser les paramètres généraux.",
+        "syncFromEnv": "Synchroniser depuis l'environnement",
+        "addNewService": "Ajouter une nouveau service d'IA global",
+        "addService": "Ajouter un service",
+        "saveChanges": "Sauvegarder les modifications",
+        "cancel": "Annuler",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "globalServices": "Services globaux",
+        "noServices": "Aucun service d'IA global n'a encore été configuré.",
+        "noServicesDescription": "Ajouter un service d'IA global pour fournir des paramètres par défaut à tous les utilisateurs.",
+        "serviceName": "Nom du service",
+        "serviceNamePlaceholder": "Service OpenIA",
+        "serviceType": "Type de service",
+        "apiKey": "Clé d'API",
+        "apiKeyOptional": "Clé d'API (facultatif)",
+        "apiKeyPlaceholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "apiKeyPlaceholderOllama": "Facultatif pour Ollama",
+        "customUrl": "URL personnalisée",
+        "customUrlPlaceholderOllama": "http://localhost:11434",
+        "customUrlPlaceholder": "https://api.example.com/v1",
+        "useCustomModel": "Utiliser un nom de modèle personnalisé",
+        "model": "Modèle",
+        "selectModel": "Sélectionner un modèle",
+        "customModelName": "Nom de modèle personnalisé",
+        "customModelNamePlaceholder": "Entre le nom de modèle personnalisé",
+        "systemPrompt": "Invite système (instructions complémentaires)",
+        "systemPromptPlaceholder": "Instructions complémentaires pour l'assistant IA...",
+        "setAsActive": "Définir comme un service actif",
+        "activeService": "Service actif",
+        "global": "Global",
+        "error": "Erreur",
+        "success": "Succès",
+        "errorLoading": "Échec du chargement des services d'IA globaux",
+        "errorAdding": "Échec de l'ajout du service d'IA global",
+        "successAdding": "Service d'IA global ajouté avec succès",
+        "errorUpdating": "Échec de la mise à jour du service d'IA global",
+        "successUpdating": "Service d'IA global mise à jour avec succès",
+        "errorDeleting": "Échec de la suppression du service d'IA global",
+        "successDeleting": "Service d'IA global supprimé avec succès",
+        "errorSyncing": "Échec de la synchronisation des variables d'environnement",
+        "successSyncing": "Variables d'environnement synchronisées avec succès",
+        "errorUpdatingConfig": "Échec de la mise à jour du paramètre de configuration IA utilisateur",
+        "errorOriginalNotFound": "Service original introuvable.",
+        "deleteConfirm": "Es-tu sûr de vouloir supprimer ce service d'IA global ?",
+        "fillRequiredFields": "Merci de remplir tous les champs obligatoires",
+        "enterNewApiKey": "Entre la nouvelle clé d'API pour mettre à jour"
+      },
+      "userSettings": {
+        "title": "Services IA"
+      }
     },
     "apiKeyManagement": {
       "title": "Gestion des clés API",
@@ -110,11 +165,11 @@
     },
     "accountSecurity": {
       "title": "Sécurité du compte",
-      "description": "Changez votre adresse e-mail ou votre mot de passe",
-      "currentEmail": "Email actuel",
-      "enterNewEmail": "Saisissez votre nouvelle adresse e-mail",
-      "updateEmail": "Mettre à jour l'email",
-      "verifyNewEmail": "Vous devrez vérifier votre nouvelle adresse e-mail",
+      "description": "Changez votre courriel ou votre mot de passe",
+      "currentEmail": "Courriel actuel",
+      "enterNewEmail": "Saisissez votre nouveau courriel",
+      "updateEmail": "Mettre à jour le courriel",
+      "verifyNewEmail": "Vous devrez vérifier votre nouveau courriel",
       "changePassword": "Changer le mot de passe",
       "newPassword": "Nouveau mot de passe",
       "enterNewPassword": "Saisissez le nouveau mot de passe",
@@ -123,7 +178,33 @@
       "updating": "Mise à jour...",
       "newPasswordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas",
       "passwordLengthError": "Le mot de passe doit comporter au moins 6 caractères",
-      "enterNewEmailAddress": "Veuillez saisir une nouvelle adresse e-mail"
+      "enterNewEmailAddress": "Veuillez saisir un nouveau courriel",
+      "currentPassword": "Mot de passe actuel",
+      "enterCurrentPassword": "Entre le mot de passe actuel"
+    },
+    "customNutrients": {
+      "title": "Nutriments personnalisés",
+      "subtitle": "Gère vos définitions de nutriments personnalisés"
+    },
+    "customMeals": {
+      "title": "Repas personnalisés",
+      "subtitle": "Crée et gère des types de repas personnalisés"
+    },
+    "dataManagement": {
+      "sectionTitle": "Gestion des données",
+      "subtitle": "Exporte ou gère tes données",
+      "title": "Exportation des données",
+      "description": "Télécharge l'intégralité de votre journal alimentaire au format CSV. Le fichier contiendra tous vos repas avec le détail des aliments, les portions et les macros (calories, protéines, glucides, lipides...).",
+      "delimiterLabel": "Format du délimiteur CSV",
+      "delimiterPlaceholder": "Délimiteur",
+      "semicolon": "Point virgule (;)",
+      "comma": "Virgule (,)",
+      "exportButton": "Exporter mon journal (CSV)",
+      "exporting": "Préparation...",
+      "exportSuccess": "Export réussi",
+      "exportSuccessDescription": "Ton journal a correctement été exporté.",
+      "exportError": "Erreur d'exportation",
+      "exportErrorDescription": "Impossible de télécharger votre journal. Réessaie plus tard."
     }
   },
   "aboutDialog": {
@@ -138,7 +219,7 @@
     "frontend": "Frontend :",
     "backend": "Backend :",
     "externalApis": "APIs externes :",
-    "wgerApi": "Wger API (données d'exercices)",
+    "wgerApi": "API Wger (données d'exercices)",
     "foodDataApis": "APIs pour les données alimentaires :",
     "nutritionixApi": "Nutritionix API",
     "fatsecretApi": "FatSecret API",
@@ -155,7 +236,7 @@
       "workoutPresetTab": "Modèles de Séances",
       "onlineTab": "En ligne",
       "addCustomTab": "Personnalisé",
-      "importCSVTab": "Importer un CSV",
+      "importCSVTab": "Importer des exercices",
       "nameLabel": "Nom",
       "categoryLabel": "Catégorie",
       "selectCategoryPlaceholder": "Sélectionner une catégorie",
@@ -458,7 +539,7 @@
     "nutritionixSource": "Nutritionix",
     "customSource": "Personnalisé",
     "activeCalories": "Calories actives",
-    "minutesUnit": "minutes",
+    "minutesUnit": "m",
     "caloriesUnit": "calories",
     "setsLabel": "Séries",
     "repsLabel": "Reps",
@@ -526,10 +607,10 @@
       "loginManagement": {
         "title": "Gestion de l'authentification",
         "description": "Activer ou désactiver les différentes méthodes pour que les utilisateurs se connectent.",
-        "enableEmailPasswordLogin": "Activer la connexion par email et mot de passe",
+        "enableEmailPasswordLogin": "Activer la connexion par courriel et mot de passe",
         "enableOidcLoginGlobal": "Activer la connexion OIDC (Global)",
         "emergencyFailSafe": "Sécurité d'urgence :",
-        "emergencyFailSafeDescription": "Si vous êtes bloqué hors de votre compte, vous pouvez forcer l'activation de la connexion par email/mot de passe en définissant la variable d'environnement suivante sur votre serveur et en le redémarrant :",
+        "emergencyFailSafeDescription": "Si vous êtes bloqué hors de votre compte, vous pouvez forcer l'activation de la connexion par courriel/mot de passe en définissant la variable d'environnement suivante sur votre serveur et en le redémarrant :",
         "envVarCopied": "Variable d'environnement copiée dans le presse-papiers."
       },
       "oidcProviderManagement": {
@@ -620,7 +701,7 @@
       "noUsersFound": "Aucun utilisateur trouvé.",
       "searchUsers": "Rechercher des utilisateurs...",
       "fullName": "Nom complet",
-      "email": "Email",
+      "email": "Courriel",
       "admin": "Admin",
       "active": "Actif",
       "createdAt": "Créé le",
@@ -1948,5 +2029,36 @@
     "liveAiContextTitle": "Contexte IA en temps réel",
     "liveAiContextDescription": "Voici le contexte actuel qui serait fourni à l'assistant IA",
     "loadingAiContext": "Chargement du contexte IA..."
+  },
+  "nutrition": {
+    "calories": "Calories",
+    "protein": "Protéines",
+    "carbohydrates": "Glucides",
+    "carbs": "Glucides",
+    "saturatedFat": "Graisse saturée",
+    "polyunsaturatedFat": "Graisse polyinsaturée",
+    "monounsaturatedFat": "Graisse mono-insaturée",
+    "transFat": "Acides gras trans",
+    "cholesterol": "Cholestérol",
+    "sodium": "Sodium",
+    "potassium": "Potassium",
+    "dietaryFiber": "Fibres alimentaires",
+    "fiber": "Fibres",
+    "sugars": "Sucres",
+    "vitaminA": "Vitamine A",
+    "vitaminC": "Vitamine C",
+    "calcium": "Calcium",
+    "iron": "Fer"
+  },
+  "sync": {
+    "syncAll": "Synchroniser tous les fournisseurs actifs",
+    "syncingAll": "Synchronisation de tous les fournisseurs...",
+    "noActiveProviders": "Aucun fournisseur actif trouvé à synchroniser.",
+    "syncCompleted_one": "{{count}} fournisseur synchronisé avec succès.",
+    "syncCompleted_many": "{{count}} fournisseurs synchronisés avec succès.",
+    "syncCompleted_other": "{{count}} fournisseurs synchronisés avec succès.",
+    "syncFailed_one": "Échec de la synchronisation de {{count}} fournisseur.",
+    "syncFailed_many": "Échec de la synchronisation de {{count}} fournisseurs.",
+    "syncFailed_other": "Échec de la synchronisation de {{count}} fournisseurs."
   }
 }

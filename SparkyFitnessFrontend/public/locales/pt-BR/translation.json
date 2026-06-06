@@ -155,7 +155,7 @@
       "workoutPresetTab": "Treinos predefinidos",
       "onlineTab": "Online",
       "addCustomTab": "Adicionar Personalização",
-      "importCSVTab": "Importar CSV",
+      "importCSVTab": "Importar Exercícios",
       "nameLabel": "Nome",
       "categoryLabel": "Categoria",
       "selectCategoryPlaceholder": "Selecione uma categoria",
@@ -484,7 +484,7 @@
     "unknownExercise": "Exercício desconhecido",
     "customSource": "Personalizado",
     "activeCalories": "calorias ativas",
-    "minutesUnit": "minutos",
+    "minutesUnit": "Mins",
     "setsLabel": "Séries",
     "forceLabel": "Força",
     "instructionsLabel": "Instruções",
@@ -1855,5 +1855,34 @@
     "sleepEfficiency": "Eficiência do sono",
     "hoursShort": "h ",
     "minutesShort": "m"
+  },
+  "nutrition": {
+    "calories": "Calorias",
+    "protein": "Proteína",
+    "carbohydrates": "Carboidratos",
+    "carbs": "Carb",
+    "fat": "Gordura",
+    "saturatedFat": "Gordura Saturada",
+    "polyunsaturatedFat": "Gordura Poliinsaturada",
+    "monounsaturatedFat": "Gordura Monosaturada",
+    "transFat": "Gordura Transgênica",
+    "cholesterol": "Colesterol",
+    "sodium": "Sódio",
+    "potassium": "Potássio",
+    "dietaryFiber": "Fibra Alimentar",
+    "fiber": "Fibra",
+    "sugars": "Açúcares",
+    "vitaminA": "Vitamina A",
+    "vitaminC": "Vitamina C",
+    "calcium": "Cálcio",
+    "iron": "Ferro"
+  },
+  "sync": {
+    "syncAll": "Sincronizar todas as fontes ativas",
+    "syncingAll": "Sincronizando fontes...",
+    "noActiveProviders": "Sem fontes ativas pra sincronizar.",
+    "syncCompleted_one": "Sincronizada {{count}} fonte com sucesso.",
+    "syncCompleted_many": "Sincronizadas {{count}} fontes com sucesso.",
+    "syncCompleted_other": "Sincronizadas {{count}} fontes com sucesso."
   }
 }

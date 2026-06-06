@@ -1,5 +1,71 @@
 {
   "nav": {
-    "diary": "Napló"
+    "diary": "Napló",
+    "reports": "Jelentések",
+    "foods": "Ételek",
+    "goals": "Célok",
+    "settings": "Beállítások",
+    "admin": "Administrátor"
+  },
+  "nutrition": {
+    "calories": "Kalóriák",
+    "protein": "Protein",
+    "carbohydrates": "Szénhidrátok",
+    "carbs": "Szénhidrátok",
+    "fat": "Zsír",
+    "saturatedFat": "Telített zsírsavak",
+    "polyunsaturatedFat": "Többszörösen telítettlen zsírsavak",
+    "monounsaturatedFat": "Egyszeresen telített zsírsavak",
+    "transFat": "Transzzsírsav",
+    "cholesterol": "Koleszterin",
+    "sodium": "Só",
+    "potassium": "Kálium",
+    "dietaryFiber": "Élelmi rost",
+    "fiber": "Rost",
+    "sugars": "Cukor",
+    "vitaminA": "A vitamin",
+    "vitaminC": "C vitamin",
+    "calcium": "Kálcium",
+    "iron": "Vas"
+  },
+  "aboutDialog": {
+    "title": "SparkyFitness-ről",
+    "description1": "SparkyFittness: Családokank készült. AI vezérelt. Monitoroza az ételeket, mozgást, vizet és egészséget együtt.",
+    "applicationVersion": "Aplikáció verzió: ",
+    "joinDiscord": "Catlakozz a közösségünkhöz Discord-on: ",
+    "discordLink": "discord.gg/vcnMT5cPEA",
+    "moreInfoVisit": "Több információért látogasson el a ",
+    "githubRepo": "GitHub repository",
+    "technologiesUsed": "Felhasznált technológiák:",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "externalApis": "Külső API-ok:",
+    "wgerApi": "Wger API (Sport Adatok)",
+    "foodDataApis": "Étel adat API-ok:",
+    "nutritionixApi": "Nutritionix API",
+    "fatsecretApi": "FatSecret API",
+    "openFoodFactsApi": "Open Food Facts API",
+    "gotIt": "Rendben",
+    "close": "Bezárás"
+  },
+  "exercise": {
+    "title": "Gyakorlatok",
+    "addExerciseDialog": {
+      "title": "Gyakorlat hozzáadása",
+      "description": "Adjon hozzá új gyakorlatot az adatbázishoz, egy gyakorlat létrehozásáva vagy egy külső forrásból való betöltéssel.",
+      "myExercisesTab": "Saját gyakorlataim",
+      "workoutPresetTab": "Edzés beállítások",
+      "onlineTab": "Online",
+      "addCustomTab": "Egyéni hozzáadása",
+      "importCSVTab": "Gyakorlat betöltése",
+      "nameLabel": "Név",
+      "categoryLabel": "Kategória",
+      "selectCategoryPlaceholder": "Válasszon kategóriát",
+      "categoryGeneral": "Általános",
+      "categoryStrength": "Erősítés",
+      "categoryCardio": "Kardió",
+      "categoryYoga": "Jóga",
+      "caloriesPerHourLabel": "Kalóriák/Óra"
+    }
   }
 }

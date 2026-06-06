@@ -10,7 +10,7 @@
   },
   "aboutDialog": {
     "title": "O SparkyFitness",
-    "description1": "SparkyFitness: Vytvořeno pro rodiny. Poháněno AI. Sleduj jídlo, fitness, vodu a zdraví - najednou.",
+    "description1": "SparkyFitness: Vytvořeno pro rodiny. S podporou AI. Sleduj jídlo, fitness, vodu a zdraví - společně.",
     "applicationVersion": "Verze aplikace: ",
     "joinDiscord": "Přidej se k nám na Discordu: ",
     "discordLink": "discord.gg/vcnMT5cPEA",
@@ -20,7 +20,7 @@
     "frontend": "Frontend:",
     "backend": "Backend:",
     "externalApis": "Externí API:",
-    "wgerApi": "Wget API (Data pro cvičení)",
+    "wgerApi": "Wger API (Data pro cvičení)",
     "foodDataApis": "API pro údaje o potravinách:",
     "nutritionixApi": "Nutritionix API",
     "fatsecretApi": "FatSecret API",
@@ -218,20 +218,24 @@
     }
   },
   "nutrition": {
-    "protein": "Proteiny",
+    "protein": "Bílkoviny",
     "calories": "Kalorie",
     "carbohydrates": "Sacharidy",
     "carbs": "Sacharidy",
     "fat": "Tuky",
-    "saturatedFat": "Nasycené tuky",
+    "saturatedFat": "Nasycené Tuky",
     "cholesterol": "Cholesterol",
     "sodium": "Sodík",
     "potassium": "Draslík",
     "fiber": "Vláknina",
     "sugars": "Cukry",
-    "vitaminA": "Vitamin A",
-    "vitaminC": "Vitamin C",
+    "vitaminA": "Vitamín A",
+    "vitaminC": "Vitamín C",
     "calcium": "Vápník",
-    "iron": "Železo"
+    "iron": "Železo",
+    "polyunsaturatedFat": "Polynenasycený Tuk",
+    "monounsaturatedFat": "Mononenasycený Tuk",
+    "transFat": "Transmastné Kyseliny",
+    "dietaryFiber": "Dietní Vláknina"
   }
 }

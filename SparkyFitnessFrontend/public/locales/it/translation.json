@@ -1854,5 +1854,15 @@
     "savingButton": "Salvataggio in corso...",
     "updateSuccessToast": "Voce relativa agli alimenti aggiornata con successo",
     "updateErrorToast": "Impossibile aggiornare la voce relativa agli alimenti"
+  },
+  "nutrition": {
+    "calories": "Calorie",
+    "protein": "Proteine",
+    "carbohydrates": "Carboidrati",
+    "carbs": "Carboidrati",
+    "fat": "Grasso",
+    "saturatedFat": "Grassi saturi",
+    "polyunsaturatedFat": "Grassi polinsaturi",
+    "monounsaturatedFat": "Grassi monoinsaturi"
   }
 }

@@ -90,7 +90,35 @@
     "aiService": {
       "title": "KI-Dienste",
       "description": "Einstellungen für KI-gestützte Funktionalitäten verwalten",
-      "invalidKeyLengthWarning": "Wenn ein „Invalid key length“-Fehler auftritt, stelle sicher, dass die Encryption- und JWT-Authentication-Schlüssel in den ENV-Variablen des Servers im 64-HEX-Format sind."
+      "invalidKeyLengthWarning": "Wenn ein „Invalid key length“-Fehler auftritt, stelle sicher, dass die Encryption- und JWT-Authentication-Schlüssel in den ENV-Variablen des Servers im 64-HEX-Format sind.",
+      "globalSettings": {
+        "saveChanges": "Änderungen speichern",
+        "cancel": "Abbrechen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "apiKey": "API-Key",
+        "apiKeyOptional": "API-Key (optional)",
+        "apiKeyPlaceholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "apiKeyPlaceholderOllama": "für Ollama nicht benötigt",
+        "customUrl": "eigener URL",
+        "customUrlPlaceholderOllama": "http://localhost:11434",
+        "customUrlPlaceholder": "https://api.example.com/v1",
+        "model": "Modell",
+        "selectModel": "Modell wählen",
+        "activeService": "Aktiver Service",
+        "error": "Fehler",
+        "success": "Erfolgreich",
+        "fillRequiredFields": "Bitte fülle alle benötigten Felder aus"
+      },
+      "userSettings": {
+        "title": "AI-Dienste",
+        "neverClear": "Nie löschen",
+        "clearAfter7Days": "nach 7 Tagen löschen",
+        "clearAllHistory": "ganzen Verlauf löschen",
+        "cancel": "Abbrechen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
+      }
     },
     "apiKeyManagement": {
       "title": "API-Schlüssel-Verwaltung",
@@ -124,6 +152,17 @@
       "newPasswordsDoNotMatch": "Neue Passwörter stimmen nicht überein.",
       "passwordLengthError": "Passwort muss mindestens 6 Zeichen lang sein.",
       "enterNewEmailAddress": "Bitte neue E-Mail-Adresse eingeben"
+    },
+    "customNutrients": {
+      "title": "benutzerdefinierte Nährwerte"
+    },
+    "dataManagement": {
+      "title": "Datenexport",
+      "semicolon": "Semikolon (;)",
+      "comma": "Komma (,)",
+      "exporting": "Vorbereiten …",
+      "exportSuccess": "Export erfolgreich",
+      "exportError": "Exportfehler"
     }
   },
   "aboutDialog": {
@@ -155,14 +194,14 @@
       "workoutPresetTab": "Trainingsvorlagen",
       "onlineTab": "Online",
       "addCustomTab": "Benutzerdefinierte Übung erstellen",
-      "importCSVTab": "CSV importieren",
+      "importCSVTab": "Übungen importieren",
       "nameLabel": "Name",
       "categoryLabel": "Kategorie",
       "selectCategoryPlaceholder": "Wähle eine Kategorie",
       "categoryGeneral": "Allgemein",
       "categoryStrength": "Kraft",
       "categoryYoga": "Yoga",
-      "caloriesPerHourLabel": "Kalorien/ Stunde",
+      "caloriesPerHourLabel": "Kalorien / Stunde",
       "caloriesPerHourHint": "Lasse das Feld leer um die berechneten Kalorien pro Stunde zu nutzen ({{newExerciseCalories}} kcal/Stunde).",
       "descriptionLabel": "Beschreibung",
       "sourceLabel": "Quelle",
@@ -1415,7 +1454,7 @@
       "avgPace": "Ø Pace",
       "totalAscent": "Gesamtanstieg",
       "calories": "Kalorien",
-      "heartRate": "Herzfrequen",
+      "heartRate": "Herzfrequenz",
       "runningDynamics": "Laufdynamik",
       "xAxis": "X-Achse:",
       "timeOfDay": "Tageszeit",
@@ -1449,7 +1488,8 @@
       "lapTableMaxHRBpmHeader": "Max HF (S/min)",
       "lapTableCaloriesHeader": "Kalorien",
       "heartRateTimeInZonesTitle": "Herzfrequenzzeit in Zonen",
-      "timeInZoneSLabel": "Zeit in Zone (s)"
+      "timeInZoneSLabel": "Zeit in Zone (s)",
+      "cadence": "Frequenz"
     }
   },
   "reportsTables": {
@@ -1534,7 +1574,7 @@
     "biceps": "Bizeps",
     "triceps": "Trizeps",
     "legs": "Beine",
-    "abs": "Abs",
+    "abs": "Bauchmuskeln",
     "calves": "Waden",
     "forearms": "Unterarme"
   },
@@ -1858,6 +1898,23 @@
   },
   "nutrition": {
     "calories": "Kalorien",
-    "protein": "Protein"
+    "protein": "Protein",
+    "carbohydrates": "Kohlenhydrate",
+    "carbs": "Kohlenhydrate",
+    "fat": "Fett",
+    "saturatedFat": "Gesättigte Fettsäuren",
+    "polyunsaturatedFat": "Mehrfach ungesättigte Fettsäuren",
+    "monounsaturatedFat": "Einfach ungesättigte Fettsäuren",
+    "transFat": "Transfette",
+    "cholesterol": "Cholesterin",
+    "iron": "Eisen",
+    "calcium": "Kalzium",
+    "sodium": "Natrium",
+    "potassium": "Kalium",
+    "dietaryFiber": "Ballaststoffe",
+    "vitaminA": "Vitamin A",
+    "vitaminC": "Vitamin C",
+    "sugars": "Zucker",
+    "fiber": "Ballaststoffe"
   }
 }
