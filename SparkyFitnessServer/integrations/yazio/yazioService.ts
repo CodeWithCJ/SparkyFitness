@@ -579,8 +579,30 @@ async function searchYazioFoods(query: string, options: YazioSearchOptions) {
   const offset = Math.max(page - 1, 0) * pageSize;
   const pageItems = products.slice(offset, offset + pageSize);
 
+  const foods = await Promise.all(
+    pageItems.map(async (product) => {
+      const productId = product.id ?? product.product_id;
+      if (!productId) {
+        return mapYazioProduct(product);
+      }
+      try {
+        const detailed = await getRawYazioFoodDetails(productId, options);
+        return detailed
+          ? mapYazioProduct(detailed, { productId })
+          : mapYazioProduct(product);
+      } catch (error) {
+        log(
+          'debug',
+          `YAZIO search detail enrichment failed for candidate ${productId}:`,
+          error
+        );
+        return mapYazioProduct(product);
+      }
+    })
+  );
+
   return {
-    foods: pageItems.map((product) => mapYazioProduct(product)).filter(Boolean),
+    foods: foods.filter(Boolean),
     pagination: {
       page,
       pageSize,

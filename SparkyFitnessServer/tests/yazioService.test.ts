@@ -281,7 +281,13 @@ describe('yazioService', () => {
       .mockResolvedValueOnce(
         makeFetchResponse({ access_token: 'token-1', expires_in: 3600 })
       )
-      .mockResolvedValueOnce(makeFetchResponse([product, product]));
+      .mockResolvedValueOnce(makeFetchResponse([product, product]))
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          ...product,
+          nutrients: { ...product.nutrients, 'nutrient.dietaryfiber': 0.004 },
+        })
+      );
 
     const result = await searchYazioFoods('skyr', {
       username: 'user@example.com',
@@ -331,7 +337,9 @@ describe('yazioService', () => {
         makeFetchResponse({ access_token: 'shared-token', expires_in: 3600 })
       )
       .mockResolvedValueOnce(makeFetchResponse([product]))
-      .mockResolvedValueOnce(makeFetchResponse([product]));
+      .mockResolvedValueOnce(makeFetchResponse([product]))
+      .mockResolvedValueOnce(makeFetchResponse(product))
+      .mockResolvedValueOnce(makeFetchResponse(product));
 
     await Promise.all([
       searchYazioFoods('apple', {
