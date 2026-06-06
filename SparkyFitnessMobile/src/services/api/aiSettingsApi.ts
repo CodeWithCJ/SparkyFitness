@@ -25,6 +25,7 @@ export async function fetchUserAiConfigAllowed(): Promise<boolean> {
   try {
     const response = await fetch(`${baseUrl}/api/global-settings/allow-user-ai-config`, {
       method: 'GET',
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
@@ -67,6 +68,7 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   try {
     const response = await fetch(`${baseUrl}/api/chat/ai-service-settings/active`, {
       method: 'GET',
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),

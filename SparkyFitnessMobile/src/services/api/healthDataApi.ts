@@ -303,6 +303,7 @@ export const checkServerConnection = async (): Promise<boolean> => {
   try {
     const response = await fetch(`${url}/api/identity/user`, {
       method: 'GET',
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),

@@ -13,6 +13,9 @@ export const exerciseHistoryQuerySchema = z
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
     userId: z.string().uuid().optional(),
+    // RN's fetch (whatwg-fetch) appends `_=<timestamp>` to GET URLs when a
+    // caller passes `cache: 'no-store'`, so the strict schema must tolerate it.
+    _: z.string().optional(),
   })
   .strict();
 

@@ -311,6 +311,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     try {
       const response = await fetch(`${url}/api/identity/user`, {
         method: 'GET',
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
         headers: {
           ...proxyHeadersToRecord(cleanedHeaders()),
           Authorization: `Bearer ${apiKey.trim()}`,

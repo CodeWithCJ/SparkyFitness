@@ -51,6 +51,7 @@ const checkReachability = async (url: string): Promise<boolean> => {
     const timeout = setTimeout(() => controller.abort(), 5000);
     const response = await fetch(`${normalizeUrl(url)}/api/auth/settings`, {
       signal: controller.signal,
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
     });
     clearTimeout(timeout);
     return response.ok;
@@ -239,6 +240,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     try {
       const response = await fetch(`${url}/api/identity/user`, {
         method: 'GET',
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
         },

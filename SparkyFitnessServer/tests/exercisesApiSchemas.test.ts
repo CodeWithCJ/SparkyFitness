@@ -58,6 +58,23 @@ describe('Exercises API schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  // #1353: RN's whatwg-fetch appends `_=<timestamp>` to GET URLs when callers
+  // pass `cache: 'no-store'`. The strict schema must tolerate that one key.
+  it('accepts the whatwg-fetch `_` cache-buster param', () => {
+    const result = runSchema('exerciseSearchQuerySchema', {
+      searchTerm: 'squat',
+      _: '1733419200000',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // Keeping `.strict()` (rather than `.loose()`) so genuine client typos still
+  // fail loudly instead of being silently dropped.
+  it('still rejects unknown keys like a misspelled param', () => {
+    const result = runSchema('exerciseSearchQuerySchema', { pageSzie: '50' });
+    expect(result.success).toBe(false);
+  });
+
   it('round-trips a fully populated library item', () => {
     const item = {
       id: 'ex-1',

@@ -33,6 +33,18 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method,
+      // Defeat the native HTTP cache (iOS NSURLCache/CFNetwork, Android OkHttp).
+      // Left cacheable, it stores GET responses and silently replays
+      // If-None-Match/If-Modified-Since on the next request, so the server (or a
+      // reverse proxy in front of it) answers 304 with an empty body — which
+      // surfaces in the app as "Failed to Load" (#1353). The native bridge does
+      // not forward a fetch cache policy; instead RN's whatwg-fetch polyfill
+      // rewrites the GET URL with a `_=<timestamp>` cache-buster when this is
+      // set, so every request misses the native cache. React Query owns all
+      // caching here, so the HTTP layer should never revalidate. Only GET is
+      // cacheable, and the polyfill appends the cache-buster regardless of
+      // method, so we scope this to GET to avoid pinning `_` onto mutating URLs.
+      ...(method === 'GET' ? { cache: 'no-store' as const } : {}),
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),

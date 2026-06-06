@@ -141,6 +141,7 @@ const getTrustedAuthOrigin = async (serverUrl: string): Promise<string | undefin
     const response = await fetch(`${baseUrl}/api/auth/settings`, {
       method: 'GET',
       credentials: 'omit',
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: { ...pendingProxyHeaders },
     });
 
@@ -279,6 +280,7 @@ export const fetchMfaFactors = async (
     `${baseUrl}/api/auth/mfa-factors?email=${encodeURIComponent(email)}`,
     {
       credentials: 'omit',
+      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: { ...pendingProxyHeaders },
     },
   );
