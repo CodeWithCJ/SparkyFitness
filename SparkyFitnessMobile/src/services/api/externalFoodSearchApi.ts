@@ -636,9 +636,14 @@ interface V2BarcodeResponse {
 
 export async function lookupBarcodeV2(
   barcode: string,
+  providerId?: string,
 ): Promise<BarcodeLookupResult> {
+  const params = new URLSearchParams();
+  if (providerId) params.set('providerId', providerId);
+  const qs = params.toString();
+
   const response = await apiFetch<V2BarcodeResponse>({
-    endpoint: `/api/v2/foods/barcode/${barcode}`,
+    endpoint: `/api/v2/foods/barcode/${barcode}${qs ? `?${qs}` : ''}`,
     serviceName: 'External Food Search',
     operation: 'barcode lookup (v2)',
   });

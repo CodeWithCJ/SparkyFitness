@@ -177,6 +177,45 @@ describe('FoodSearchScreen', () => {
     );
   });
 
+  it('passes the selected online provider to FoodScan barcode lookups', async () => {
+    mockUsePreferences.mockReturnValue({
+      preferences: { default_food_data_provider_id: 'yazio-provider' },
+    } as any);
+    mockUseExternalProviders.mockReturnValue({
+      providers: [
+        { id: 'off-provider', provider_type: 'openfoodfacts', provider_name: 'OpenFoodFacts' },
+        { id: 'yazio-provider', provider_type: 'yazio', provider_name: 'YAZIO' },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    const dateRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { date: '2026-05-18' },
+    };
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={dateRoute} />
+      </SafeAreaProvider>,
+    );
+
+    fireEvent.press(screen.getByText('Online'));
+    await waitFor(() => {
+      expect(screen.getByText('Search YAZIO for foods')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('Scan Food'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
+      date: '2026-05-18',
+      pickerMode: undefined,
+      returnDepth: undefined,
+      barcodeProviderId: 'yazio-provider',
+    });
+  });
+
   describe('empty-results CTA', () => {
     beforeEach(() => {
       mockUseFoodSearch.mockReturnValue({
