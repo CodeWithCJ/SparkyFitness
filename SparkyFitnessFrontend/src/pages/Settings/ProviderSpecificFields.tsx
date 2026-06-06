@@ -178,7 +178,7 @@ export const ProviderSpecificFields = ({
                 notice if YAZIO changes their backend.
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
-                For more information, see{' '}
+                For more information & client credentials, see{' '}
                 <a
                   href="https://github.com/saganos/yazio_public_api"
                   target="_blank"
