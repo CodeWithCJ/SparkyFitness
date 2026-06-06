@@ -113,6 +113,7 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         returnDepth?: number;
         initialMode?: 'barcode' | 'label' | 'photo';
+        barcodeProviderId?: string;
       }
     | {
         mode: 'capture-barcode';

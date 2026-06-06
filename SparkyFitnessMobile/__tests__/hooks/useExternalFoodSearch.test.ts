@@ -312,6 +312,36 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('fetches for yazio provider type with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'yazio-1',
+          name: 'Protein Yogurt',
+          brand: 'Yazio Brand',
+          calories: 92,
+          protein: 10,
+          carbs: 8,
+          fat: 2,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'yazio',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('yogurt', 'yazio', { providerId: 'provider-yazio' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('yazio', 'yogurt', 1, 'provider-yazio', undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('yazio');
+    });
+  });
+
   test('fatsecret returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'fatsecret'),
@@ -328,6 +358,19 @@ describe('useExternalFoodSearch', () => {
   test('mealie returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('yazio returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('yogurt', 'yazio'),
       { wrapper: createQueryWrapper(queryClient) },
     );
 
@@ -372,6 +415,15 @@ describe('useExternalFoodSearch', () => {
   test('reports mealie as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('reports yazio as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('yogurt', 'yazio'),
       { wrapper: createQueryWrapper(queryClient) },
     );
 
