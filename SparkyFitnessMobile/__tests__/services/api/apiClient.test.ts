@@ -72,7 +72,7 @@ describe('apiFetch error handling', () => {
   // `cache: 'no-store'` makes RN's whatwg-fetch rewrite the GET URL with a
   // cache-buster so the request misses the native cache. We assert only that
   // the fetch option is passed — whatwg-fetch owns the actual URL rewrite.
-  test('passes cache: no-store so whatwg-fetch busts the native cache', async () => {
+  test('passes cache: no-store on GET so whatwg-fetch busts the native cache', async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -86,6 +86,32 @@ describe('apiFetch error handling', () => {
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.invalid/api/x',
       expect.objectContaining({ cache: 'no-store' })
+    );
+  });
+
+  // whatwg-fetch appends the `_=<timestamp>` cache-buster for *any* method when
+  // `cache: 'no-store'` is set, so we scope it to GET — mutating requests are
+  // not cacheable and should not carry the buster onto their URLs (#1353).
+  test('omits cache: no-store on non-GET requests', async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      headers: new Headers(),
+    });
+    global.fetch = mockFetch as never;
+
+    await apiFetch({
+      endpoint: '/api/y',
+      serviceName: 's',
+      operation: 'post',
+      method: 'POST',
+      body: {},
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://example.invalid/api/y',
+      expect.not.objectContaining({ cache: 'no-store' })
     );
   });
 });
