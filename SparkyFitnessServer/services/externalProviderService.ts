@@ -37,13 +37,16 @@ function hasYazioClientCredentials(appId: any, appKey: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function validateYazioProviderCredentials(appId: any, appKey: any) {
-  if (!hasYazioLoginCredentials(appId, appKey)) {
+  const hasLogin = hasYazioLoginCredentials(appId, appKey);
+  const hasClient = hasYazioClientCredentials(appId, appKey);
+
+  if (!hasLogin && !hasClient) {
     throw badRequest(
-      'YAZIO credentials must include both a username and a password.'
+      'YAZIO credentials must include either a username and password, or a Client ID and Client Secret.'
     );
   }
 
-  if (!hasYazioClientCredentials(appId, appKey)) {
+  if (!hasClient) {
     throw badRequest(YAZIO_OAUTH_CONFIG_ERROR);
   }
 }

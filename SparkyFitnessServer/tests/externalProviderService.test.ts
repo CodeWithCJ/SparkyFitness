@@ -239,6 +239,46 @@ describe('createExternalDataProvider - mutual exclusion', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('allows a YAZIO row with only provider client credentials (no login)', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.createExternalDataProvider.mockResolvedValue({
+      id: 'prov-yazio-1',
+    });
+
+    await externalProviderService.createExternalDataProvider(OWNER, {
+      provider_type: 'yazio',
+      provider_name: 'YAZIO',
+      app_id: JSON.stringify({ username: '', clientId: 'client-id' }),
+      app_key: JSON.stringify({ password: '', clientSecret: 'client-secret' }),
+    });
+
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider_type: 'yazio',
+        app_id: JSON.stringify({ username: '', clientId: 'client-id' }),
+        app_key: JSON.stringify({
+          password: '',
+          clientSecret: 'client-secret',
+        }),
+      })
+    );
+  });
+
+  it('rejects a YAZIO row without any credentials', async () => {
+    await expectBadRequest(
+      externalProviderService.createExternalDataProvider(OWNER, {
+        provider_type: 'yazio',
+        provider_name: 'YAZIO',
+      }),
+      /YAZIO credentials must include either/
+    );
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
   it('allows a YAZIO row with login and provider client credentials', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.createExternalDataProvider.mockResolvedValue({

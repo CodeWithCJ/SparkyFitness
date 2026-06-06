@@ -582,6 +582,48 @@ describe('yazioService', () => {
     expect(result?.provider_external_id).toBe('matching-product');
   });
 
+  it('authenticates with only client credentials (no username/password)', async () => {
+    const product = {
+      product_id: 'client-only-product',
+      name: 'Client Only Product',
+      serving_quantity: 100,
+      base_unit: 'g',
+      nutrients: {
+        'energy.energy': 1,
+        'nutrient.protein': 0.01,
+        'nutrient.carb': 0.02,
+        'nutrient.fat': 0.03,
+      },
+    };
+
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          access_token: 'client-only-token',
+          expires_in: 3600,
+        })
+      )
+      .mockResolvedValueOnce(makeFetchResponse([product]));
+
+    const result = await searchYazioFoods('test', {
+      ...yazioClientCredentials,
+    });
+
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      'https://yzapi.yazio.com/v18/oauth/token',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          client_id: 'test-client-id',
+          client_secret: 'test-client-secret',
+          grant_type: 'password',
+        }),
+      })
+    );
+    expect(result.foods).toHaveLength(1);
+  });
+
   it('fails gracefully when provider OAuth client credentials are missing', async () => {
     await expect(
       searchYazioFoods('skyr', {

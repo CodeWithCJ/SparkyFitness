@@ -69,12 +69,6 @@ function resolveBaseUrl(baseUrl?: string | null): string {
 }
 
 function requireCredentials(credentials: YazioCredentials) {
-  if (!credentials.username || !credentials.password) {
-    throw Object.assign(
-      new Error('YAZIO provider requires username and password credentials.'),
-      { status: 400, statusCode: 400 }
-    );
-  }
   if (!credentials.clientId || !credentials.clientSecret) {
     throw yazioUnavailableError();
   }
@@ -163,19 +157,23 @@ async function getYazioAccessToken(
     return inflightToken;
   }
 
+  const tokenBody: Record<string, string> = {
+    client_id: resolvedCredentials.clientId,
+    client_secret: resolvedCredentials.clientSecret,
+    grant_type: 'password',
+  };
+  if (resolvedCredentials.username && resolvedCredentials.password) {
+    tokenBody.username = resolvedCredentials.username;
+    tokenBody.password = resolvedCredentials.password;
+  }
+
   const tokenPromise = fetch(`${baseUrl}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({
-      client_id: resolvedCredentials.clientId,
-      client_secret: resolvedCredentials.clientSecret,
-      username: resolvedCredentials.username,
-      password: resolvedCredentials.password,
-      grant_type: 'password',
-    }),
+    body: JSON.stringify(tokenBody),
   })
     .then((response) =>
       parseJsonResponse<{

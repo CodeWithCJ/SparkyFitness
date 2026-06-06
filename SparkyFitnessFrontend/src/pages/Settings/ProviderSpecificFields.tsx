@@ -192,7 +192,9 @@ export const ProviderSpecificFields = ({
             </div>
           </div>
           <div>
-            <Label htmlFor="add-yazio-username">YAZIO Email / Username</Label>
+            <Label htmlFor="add-yazio-username">
+              YAZIO Email / Username (Optional)
+            </Label>
             <Input
               id="add-yazio-username"
               type="text"
@@ -205,7 +207,9 @@ export const ProviderSpecificFields = ({
             />
           </div>
           <div>
-            <Label htmlFor="add-yazio-password">YAZIO Password</Label>
+            <Label htmlFor="add-yazio-password">
+              YAZIO Password (Optional)
+            </Label>
             <Input
               id="add-yazio-password"
               type="password"
@@ -217,6 +221,10 @@ export const ProviderSpecificFields = ({
               autoComplete="current-password"
             />
           </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Email and password are optional. Only Client ID and Client Secret
+            are required.
+          </p>
           <div>
             <Label htmlFor="add-yazio-client-id">YAZIO Client ID</Label>
             <Input

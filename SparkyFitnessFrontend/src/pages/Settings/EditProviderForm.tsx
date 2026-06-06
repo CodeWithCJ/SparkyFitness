@@ -242,7 +242,7 @@ export const EditProviderForm = ({
             </div>
           </div>
           <div>
-            <Label>YAZIO Email / Username</Label>
+            <Label>YAZIO Email / Username (Optional)</Label>
             <Input
               type="text"
               value={editData.app_id || ''}
@@ -257,7 +257,7 @@ export const EditProviderForm = ({
             />
           </div>
           <div>
-            <Label>YAZIO Password</Label>
+            <Label>YAZIO Password (Optional)</Label>
             <Input
               type="password"
               value={editData.app_key || ''}
@@ -271,6 +271,10 @@ export const EditProviderForm = ({
               autoComplete="current-password"
             />
           </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Email and password are optional. Only Client ID and Client Secret
+            are required.
+          </p>
           <div>
             <Label>YAZIO Client ID</Label>
             <Input
