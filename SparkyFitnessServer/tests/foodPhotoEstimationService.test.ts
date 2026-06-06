@@ -514,6 +514,39 @@ describe('estimateFoodPhotoNutrition', () => {
       expect(typeof parts[parts.length - 1].text).toBe('string');
     });
 
+    it('tells the model multiple images are one meal when given several', async () => {
+      await estimateFoodPhotoNutrition({
+        images: [
+          { base64: 'aW1nMQ==', mimeType: 'image/jpeg' },
+          { base64: 'aW1nMg==', mimeType: 'image/jpeg' },
+        ],
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const promptPart = body.contents[0].parts.find(
+        (p: { text?: string }) => typeof p.text === 'string'
+      );
+      expect(promptPart.text).toContain('2 provided photos');
+      expect(promptPart.text).toContain('ONE meal');
+    });
+
+    it('keeps the singular prompt for a single image', async () => {
+      await estimateFoodPhotoNutrition({
+        images: [{ base64: 'aW1n', mimeType: 'image/jpeg' }],
+        userId: TEST_USER_ID,
+      });
+      // @ts-expect-error mock typing
+      const [, options] = global.fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      const promptPart = body.contents[0].parts.find(
+        (p: { text?: string }) => typeof p.text === 'string'
+      );
+      expect(promptPart.text).toContain('Analyze the meal photo');
+      expect(promptPart.text).not.toContain('ONE meal');
+    });
+
     it('returns INVALID_REQUEST when no image is supplied', async () => {
       const result = await estimateFoodPhotoNutrition({
         images: [],

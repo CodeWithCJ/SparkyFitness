@@ -234,9 +234,23 @@ function toStrictJsonSchema(input: unknown): JsonSchemaNode {
   return clone;
 }
 
-function buildPrompt(description: string, weight: string): string {
-  return `You are a nutrition estimation assistant. Analyze the meal photo and return
-structured nutrition data.
+function buildPrompt(
+  description: string,
+  weight: string,
+  imageCount: number
+): string {
+  const multiImage = imageCount > 1;
+  const intro = multiImage
+    ? `You are a nutrition estimation assistant. Analyze the ${imageCount} provided photos and return
+structured nutrition data. The photos all show ONE meal, not separate meals. They may include
+several angles of the same dish plus supporting context such as a menu or item description, or the
+packaging or nutrition label of an ingredient. Use every photo together to identify items and
+portions, prefer label or menu text when it is more specific than the plate, and do not count the
+same item twice when it appears in more than one photo.`
+    : `You are a nutrition estimation assistant. Analyze the meal photo and return
+structured nutrition data.`;
+  const visualSource = multiImage ? 'photos' : 'image';
+  return `${intro}
 
 User description (optional): "${description}"
 
@@ -245,7 +259,7 @@ User-provided total weight (optional): "${weight}"
 Rules:
 
   - If the user provided a description, treat it as authoritative over what you
-    see in the image when they conflict.
+    see in the ${visualSource} when they conflict.
   - If the user provided a total weight, distribute it across items
     proportionally to your visual estimate, then recalculate nutrition.
   - Break mixed dishes into component ingredients when reasonable (e.g. a
@@ -603,7 +617,7 @@ async function estimateFoodPhotoNutrition(
     };
   }
   const apiKey = aiService.api_key;
-  const prompt = buildPrompt(description, weightSlot);
+  const prompt = buildPrompt(description, weightSlot, images.length);
   const providerType = aiService.service_type;
   const model = aiService.model_name || getDefaultVisionModel(providerType);
 
