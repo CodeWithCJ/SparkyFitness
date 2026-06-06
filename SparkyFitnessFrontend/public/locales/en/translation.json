@@ -862,7 +862,7 @@
       "title": "Goals Settings",
       "cascadingGoals": "Cascading Goals",
       "dailyNutritionGoals": "Daily Nutrition Goals",
-      "changesCascadeInfo": "(Changes cascade for 6 months from today or until your next future goal)",
+      "changesCascadeInfo": "(Updates your daily goals for the next 6 months or until your next scheduled goal change)",
       "calories": "Calories",
       "protein": "Protein (g)",
       "carbohydrates": "Carbohydrates (g)",

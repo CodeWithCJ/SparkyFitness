@@ -103,9 +103,13 @@ export const GoalPresetDialog = ({
 
     if (macroInputType === 'percentages') {
       const cal = toSave.calories;
-      toSave.protein = (cal * (toSave.protein_percentage || 0)) / 100 / 4;
-      toSave.carbs = (cal * (toSave.carbs_percentage || 0)) / 100 / 4;
-      toSave.fat = (cal * (toSave.fat_percentage || 0)) / 100 / 9;
+      toSave.protein = Math.round(
+        (cal * (toSave.protein_percentage || 0)) / 100 / 4
+      );
+      toSave.carbs = Math.round(
+        (cal * (toSave.carbs_percentage || 0)) / 100 / 4
+      );
+      toSave.fat = Math.round((cal * (toSave.fat_percentage || 0)) / 100 / 9);
     } else {
       toSave.protein_percentage = null;
       toSave.carbs_percentage = null;
