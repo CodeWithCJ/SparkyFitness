@@ -2003,8 +2003,7 @@ describe('externalFoodSearchApi', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
-            image: 'AAAA',
-            mime_type: 'image/jpeg',
+            images: [{ image: 'AAAA', mime_type: 'image/jpeg' }],
             description: 'yogurt and berries',
             total_weight: 250,
             weight_unit: 'g',
@@ -2026,7 +2025,37 @@ describe('externalFoodSearchApi', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          body: JSON.stringify({ image: 'AAAA', mime_type: 'image/jpeg' }),
+          body: JSON.stringify({
+            images: [{ image: 'AAAA', mime_type: 'image/jpeg' }],
+          }),
+        }),
+      );
+    });
+
+    test('serializes a multi-image images[] payload in request order', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(happyResponse),
+      });
+
+      await estimateFoodPhoto({
+        images: [
+          { base64Image: 'AAAA', mimeType: 'image/jpeg' },
+          { base64Image: 'BBBB', mimeType: 'image/png' },
+        ],
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({
+            images: [
+              { image: 'AAAA', mime_type: 'image/jpeg' },
+              { image: 'BBBB', mime_type: 'image/png' },
+            ],
+          }),
         }),
       );
     });

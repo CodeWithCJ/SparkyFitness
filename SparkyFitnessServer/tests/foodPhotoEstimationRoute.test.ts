@@ -222,8 +222,7 @@ describe('POST /food-crud/estimate-food-photo', () => {
     ).toHaveBeenCalledWith(
       expect.objectContaining({
         weightSlot: '16 oz (approximately 454 g)',
-        base64Image: 'aGVsbG8=',
-        mimeType: 'image/jpeg',
+        images: [{ base64: 'aGVsbG8=', mimeType: 'image/jpeg' }],
         userId: 'user-123',
       })
     );
@@ -266,6 +265,107 @@ describe('POST /food-crud/estimate-food-photo', () => {
       .post('/food-crud/estimate-food-photo')
       .send({ image: 'aGVsbG8=', mime_type: 'image/jpeg' });
     expect(res.statusCode).toBe(401);
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).not.toHaveBeenCalled();
+  });
+
+  it('accepts a multi-image images[] payload and passes it through', async () => {
+    // @ts-expect-error mocked
+    foodPhotoEstimationService.estimateFoodPhotoNutrition.mockResolvedValue({
+      success: true,
+      estimate: sampleEstimate,
+    });
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({
+        images: [
+          { image: 'aGVsbG8=', mime_type: 'image/jpeg' },
+          { image: 'd29ybGQ=', mime_type: 'image/png' },
+        ],
+      });
+    expect(res.statusCode).toBe(200);
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        images: [
+          { base64: 'aGVsbG8=', mimeType: 'image/jpeg' },
+          { base64: 'd29ybGQ=', mimeType: 'image/png' },
+        ],
+      })
+    );
+  });
+
+  it('returns 400 INVALID_REQUEST when images is an empty array', async () => {
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({ images: [] });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('INVALID_REQUEST');
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 INVALID_REQUEST when images exceeds the cap', async () => {
+    const images = Array.from({ length: 7 }, () => ({
+      image: 'aGVsbG8=',
+      mime_type: 'image/jpeg',
+    }));
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({ images });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('INVALID_REQUEST');
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 UNSUPPORTED_MIME_TYPE when one image in the set is invalid', async () => {
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({
+        images: [
+          { image: 'aGVsbG8=', mime_type: 'image/jpeg' },
+          { image: 'aGVsbG8=', mime_type: 'application/pdf' },
+        ],
+      });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('UNSUPPORTED_MIME_TYPE');
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 IMAGE_TOO_LARGE when one image in the set is too large', async () => {
+    const huge = 'a'.repeat(8 * 1024 * 1024 + 1);
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({
+        images: [
+          { image: 'aGVsbG8=', mime_type: 'image/jpeg' },
+          { image: huge, mime_type: 'image/jpeg' },
+        ],
+      });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('IMAGE_TOO_LARGE');
+  });
+
+  it('returns 400 IMAGE_TOO_LARGE when the combined image size exceeds the cap', async () => {
+    // Each image is within the 8MB per-image limit, but four of them together
+    // exceed the 24MB cumulative cap.
+    const sevenMb = 'a'.repeat(7 * 1024 * 1024);
+    const images = Array.from({ length: 4 }, () => ({
+      image: sevenMb,
+      mime_type: 'image/jpeg',
+    }));
+    const res = await request(app)
+      .post('/food-crud/estimate-food-photo')
+      .send({ images });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('IMAGE_TOO_LARGE');
     expect(
       foodPhotoEstimationService.estimateFoodPhotoNutrition
     ).not.toHaveBeenCalled();

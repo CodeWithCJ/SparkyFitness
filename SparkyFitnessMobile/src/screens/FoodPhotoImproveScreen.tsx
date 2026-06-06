@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, Image, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  Modal,
+} from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { File } from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -32,6 +42,52 @@ const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
 
 const DESCRIPTION_MAX = 500;
 
+// Client-side cap on images per estimate. Mirrors the server default
+// (AI_PHOTO_ESTIMATE_MAX_IMAGES); the server is the source of truth and will
+// reject anything above its own configured limit.
+const MAX_IMAGES = 6;
+
+type StagedImage = { uri: string; mimeType?: string };
+
+const SUPPORTED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+
+// Prefer the mime type the picker reports; fall back to the URI extension, then
+// JPEG. Avoids mislabelling PNG/WebP/HEIC library picks as JPEG.
+function resolveMimeType(img: StagedImage): string {
+  // Normalize the non-standard image/jpg up front so it is never emitted: the
+  // server allow-list only has image/jpeg and would reject image/jpg at the
+  // route before the service's normalization runs.
+  const mime = img.mimeType === 'image/jpg' ? 'image/jpeg' : img.mimeType;
+  if (mime && SUPPORTED_MIME_TYPES.has(mime)) {
+    return mime;
+  }
+  const ext = img.uri.split('?')[0].split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'heic':
+      return 'image/heic';
+    case 'heif':
+      return 'image/heif';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    default:
+      // Unknown extension: prefer the picker's reported type so an unsupported
+      // format (e.g. image/gif) reaches the server and gets a clean
+      // UNSUPPORTED_MIME_TYPE rejection instead of being mislabelled as JPEG.
+      return mime || 'image/jpeg';
+  }
+}
+
 const FADE_IN_MS = 200;
 const FADE_OUT_MS = 150;
 
@@ -43,10 +99,14 @@ const PENDING_MESSAGES: { startsAt: number; text: string }[] = [
   { startsAt: 45, text: 'Almost there…' },
 ];
 
-function pendingMessageFor(elapsedSec: number): string {
+function pendingMessageFor(elapsedSec: number, imageCount: number): string {
   let current = PENDING_MESSAGES[0].text;
   for (const m of PENDING_MESSAGES) {
     if (elapsedSec >= m.startsAt) current = m.text;
+  }
+  // Pluralize the first ("Reading your photo…") message for multi-image sets.
+  if (imageCount > 1 && current === PENDING_MESSAGES[0].text) {
+    return 'Reading your photos…';
   }
   return current;
 }
@@ -61,6 +121,14 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   ]) as [string, string, string];
 
   const { date, photo } = route.params;
+
+  // The scan screen hands off a single photo; the user composes the rest of the
+  // image set here. Seeded from the handoff photo.
+  // `photo` is a required nav param, but guard against a restored/deep-linked
+  // route that arrives without it so the thumbnail map can't hit undefined.
+  const [images, setImages] = useState<StagedImage[]>(photo ? [photo] : []);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const pickerLock = useRef(false);
 
   const [totalWeight, setTotalWeight] = useState<string>(
     route.params.initialTotalWeight ?? '',
@@ -99,6 +167,97 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleWeightChange = (text: string) => {
     if (text === '' || DECIMAL_INPUT_REGEX.test(text)) {
       setTotalWeight(text);
+    }
+  };
+
+  const atImageCap = images.length >= MAX_IMAGES;
+
+  const appendImage = (uri: string, mimeType?: string) => {
+    // Fail fast on the client when the active provider can't read HEIC/HEIF,
+    // rather than reading base64 and round-tripping to a guaranteed server
+    // rejection. The service-side guard remains the backstop.
+    const provider = aiSetting?.service_type;
+    const resolved = resolveMimeType({ uri, mimeType });
+    if (
+      (provider === 'openai' || provider === 'anthropic') &&
+      (resolved === 'image/heic' || resolved === 'image/heif')
+    ) {
+      Toast.show({
+        type: 'error',
+        text1: 'Unsupported format',
+        text2: `${provider === 'openai' ? 'OpenAI' : 'Anthropic'} can't read HEIC/HEIF images. Please pick a JPEG or PNG.`,
+      });
+      return;
+    }
+    setImages((prev) =>
+      prev.length >= MAX_IMAGES ? prev : [...prev, { uri, mimeType }],
+    );
+  };
+
+  const removeImage = (index: number) => {
+    const next = images.filter((_, i) => i !== index);
+    setImages(next);
+    // Removing the last image is equivalent to abandoning the flow. Kept out of
+    // the state updater so the updater stays pure (no navigation side-effects).
+    if (next.length === 0) {
+      navigation
+        .getParent<NativeStackNavigationProp<RootStackParamList>>()
+        ?.replace('FoodScan', { date, initialMode: 'photo' });
+    }
+  };
+
+  const addFromCamera = async () => {
+    setSheetVisible(false);
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Camera permission needed',
+          text2: 'Enable camera access to add a photo.',
+        });
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
+        quality: 0.7,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (asset?.uri) appendImage(asset.uri, asset.mimeType);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Food Photo Improve] Camera capture failed: ${message}`, 'ERROR');
+      Toast.show({ type: 'error', text1: 'Could not take photo' });
+    } finally {
+      pickerLock.current = false;
+    }
+  };
+
+  const addFromLibrary = async () => {
+    setSheetVisible(false);
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      const remaining = MAX_IMAGES - images.length;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        quality: 0.7,
+        allowsMultipleSelection: true,
+        selectionLimit: Math.max(1, remaining),
+      });
+      if (result.canceled) return;
+      for (const asset of result.assets ?? []) {
+        if (asset?.uri) appendImage(asset.uri, asset.mimeType);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Food Photo Improve] Library pick failed: ${message}`, 'ERROR');
+      Toast.show({ type: 'error', text1: 'Could not load photo' });
+    } finally {
+      pickerLock.current = false;
     }
   };
 
@@ -148,9 +307,46 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       payloadDescription = trimmedDescription;
     }
 
-    let base64: string;
+    if (images.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'No images',
+        text2: 'Add at least one photo to generate an estimate.',
+      });
+      return;
+    }
+
+    // Fail fast before the memory-intensive base64 reads if any staged image is
+    // HEIC/HEIF and the active provider can't read it. Catches the seed image
+    // from the scan screen, which never passes through appendImage.
+    const provider = aiSetting?.service_type;
+    if (provider === 'openai' || provider === 'anthropic') {
+      const hasUnsupported = images.some((img) => {
+        const resolved = resolveMimeType(img);
+        return resolved === 'image/heic' || resolved === 'image/heif';
+      });
+      if (hasUnsupported) {
+        Toast.show({
+          type: 'error',
+          text1: 'Unsupported format',
+          text2: `${provider === 'openai' ? 'OpenAI' : 'Anthropic'} can't read HEIC/HEIF images. Please remove them or switch to JPEG/PNG.`,
+        });
+        return;
+      }
+    }
+
+    const imagePayloads: { base64Image: string; mimeType: string }[] = [];
     try {
-      base64 = await new File(photo.uri).base64();
+      // Sequential rather than Promise.all: converting several images to base64
+      // concurrently spikes peak memory on the RN bridge and can OOM low-end
+      // devices. Local-file reads are fast, so the cost of going one at a time
+      // is negligible.
+      for (const img of images) {
+        imagePayloads.push({
+          base64Image: await new File(img.uri).base64(),
+          mimeType: resolveMimeType(img),
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Failed to read photo: ${message}`, 'ERROR');
@@ -168,8 +364,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
 
     mutation.mutate(
       {
-        base64Image: base64,
-        mimeType: 'image/jpeg',
+        images: imagePayloads,
         description: payloadDescription,
         totalWeight: payloadWeight,
         weightUnit: payloadWeight !== undefined ? weightUnit : undefined,
@@ -216,7 +411,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const isPending = mutation.isPending;
-  const pendingMessage = pendingMessageFor(elapsedSec);
+  const pendingMessage = pendingMessageFor(elapsedSec, images.length);
 
   return (
     <View
@@ -248,12 +443,48 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         bottomOffset={80}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-xl overflow-hidden bg-raised mb-4">
-          <Image
-            source={{ uri: photo.uri }}
-            style={{ width: '100%', aspectRatio: 4 / (3 * 0.85) }}
-            resizeMode="cover"
-          />
+        <View className="mb-4">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {images.map((img, index) => (
+              <View
+                key={`${img.uri}-${index}`}
+                className="rounded-xl overflow-hidden bg-raised"
+                style={{ width: 96, height: 96 }}
+              >
+                <Image
+                  source={{ uri: img.uri }}
+                  style={{ width: 96, height: 96 }}
+                  resizeMode="cover"
+                />
+                {!isPending ? (
+                  <Pressable
+                    onPress={() => removeImage(index)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel={`Remove image ${index + 1}`}
+                    className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5"
+                  >
+                    <Icon name="close" size={16} color={textPrimary} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
+            {!isPending && !atImageCap ? (
+              <Pressable
+                onPress={() => setSheetVisible(true)}
+                accessibilityLabel="Add another image"
+                className="rounded-xl items-center justify-center border border-dashed border-border-subtle"
+                style={{ width: 96, height: 96 }}
+              >
+                <Icon name="add" size={28} color={accentPrimary} />
+                <Text className="text-text-secondary text-xs mt-1">Add</Text>
+              </Pressable>
+            ) : null}
+          </ScrollView>
         </View>
 
         {isPending ? (
@@ -283,7 +514,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             exiting={FadeOut.duration(FADE_OUT_MS)}
           >
             <Text className="text-text-secondary text-sm mb-4 leading-5">
-              Add anything the photo might not make obvious.
+              Add anything the {images.length > 1 ? 'photos' : 'photo'} might not
+              make obvious.
             </Text>
 
             <Text className="text-text-primary text-base font-semibold mb-2">
@@ -379,6 +611,60 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
       </KeyboardStickyView>
+
+      <Modal
+        visible={sheetVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSheetVisible(false)}
+      >
+        <Pressable
+          className="flex-1 justify-end bg-black/50"
+          onPress={() => setSheetVisible(false)}
+          accessibilityLabel="Dismiss"
+        >
+          <Pressable
+            // Tap-absorbing wrapper only; hide it from screen readers so they
+            // focus the real buttons inside instead of an empty container button.
+            accessible={false}
+            className="bg-surface rounded-t-2xl px-4 pt-3"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+            // Absorb the tap so it doesn't fall through to the backdrop. RN
+            // press events have no stopPropagation(); a nested Pressable with a
+            // no-op onPress already prevents the backdrop's onPress from firing.
+            onPress={() => {}}
+          >
+            <View className="items-center mb-3">
+              <View className="h-1 w-10 rounded-full bg-border-subtle" />
+            </View>
+            <Text className="text-text-primary text-base font-semibold mb-2 px-1">
+              Add another image
+            </Text>
+            <Button
+              variant="outline"
+              className="flex-row items-center justify-start gap-3 mb-2"
+              onPress={() => {
+                void addFromCamera();
+              }}
+            >
+              <Icon name="camera" size={22} color={accentPrimary} />
+              <Text className="text-text-primary text-base">Take photo</Text>
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-row items-center justify-start gap-3"
+              onPress={() => {
+                void addFromLibrary();
+              }}
+            >
+              <Icon name="photo-library" size={22} color={accentPrimary} />
+              <Text className="text-text-primary text-base">
+                Choose from library
+              </Text>
+            </Button>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
