@@ -65,4 +65,27 @@ describe('apiFetch error handling', () => {
     await expect(promise).rejects.toBeInstanceOf(ApiError);
     await expect(promise).rejects.toMatchObject({ statusCode: 503 });
   });
+
+  // Regression (#1353): the native HTTP cache (iOS CFNetwork / Android OkHttp)
+  // silently replays If-None-Match/If-Modified-Since and the server answers 304
+  // with an empty body, which the app reports as "Failed to Load". Passing
+  // `cache: 'no-store'` makes RN's whatwg-fetch rewrite the GET URL with a
+  // cache-buster so the request misses the native cache. We assert only that
+  // the fetch option is passed — whatwg-fetch owns the actual URL rewrite.
+  test('passes cache: no-store so whatwg-fetch busts the native cache', async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      headers: new Headers(),
+    });
+    global.fetch = mockFetch as never;
+
+    await apiFetch({ endpoint: '/api/x', serviceName: 's', operation: 'get' });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://example.invalid/api/x',
+      expect.objectContaining({ cache: 'no-store' })
+    );
+  });
 });
