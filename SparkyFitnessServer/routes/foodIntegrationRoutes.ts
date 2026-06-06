@@ -52,9 +52,7 @@ router.use('/fatsecret', authenticate, async (req, res, next) => {
     req.clientSecret = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -88,9 +86,7 @@ router.use('/mealie', authenticate, async (req, res, next) => {
     req.mealieApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -149,9 +145,7 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
     req.tandoorApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -190,9 +184,7 @@ router.use('/norish', authenticate, async (req, res, next) => {
     req.norishApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -220,9 +212,7 @@ router.use('/usda', authenticate, async (req, res, next) => {
     req.usdaApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);

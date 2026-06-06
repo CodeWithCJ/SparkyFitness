@@ -1,5 +1,11 @@
 import { log } from '../../config/logging.js';
 
+const norishRecipeCache = new Map<
+  string,
+  { data: NorishRecipe; expiry: number }
+>();
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
 export interface NorishRecipeIngredient {
   id: string;
   ingredientId: string | null;
@@ -165,6 +171,12 @@ class NorishService {
     if (!this.accessToken) {
       throw new Error('Norish API key not provided.');
     }
+    const cacheKey = `${this.accessToken}:${id}`;
+    const cached = norishRecipeCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiry) {
+      log('debug', `Returning cached details for Norish recipe: ${id}`);
+      return cached.data;
+    }
     const url = `${this.baseUrl}/recipes/${encodeURIComponent(id)}`;
     try {
       const authHeaders: Record<string, string> = {
@@ -194,6 +206,10 @@ class NorishService {
 
       const data: NorishRecipe = await response.json();
       log('debug', `Successfully retrieved details for Norish recipe: ${id}`);
+      norishRecipeCache.set(cacheKey, {
+        data,
+        expiry: Date.now() + CACHE_DURATION_MS,
+      });
       return data;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
