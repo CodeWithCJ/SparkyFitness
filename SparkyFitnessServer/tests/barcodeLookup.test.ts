@@ -69,6 +69,21 @@ vi.mock(
     };
   }
 );
+
+vi.mock('../integrations/yazio/yazioService.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  const mockSearch = vi.fn();
+  return {
+    // @ts-expect-error TS(2698): Spread types may only be created from object types... Remove this comment to see the full error message
+    ...actual,
+    searchYazioByBarcode: mockSearch,
+    default: {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      ...actual.default,
+      searchYazioByBarcode: mockSearch,
+    },
+  };
+});
 describe('normalizeBarcode', () => {
   it('should pad a 12-digit UPC-A to 13-digit EAN-13', () => {
     expect(normalizeBarcode('094395000172')).toBe('0094395000172');

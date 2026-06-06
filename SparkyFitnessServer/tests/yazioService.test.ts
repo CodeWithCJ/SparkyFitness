@@ -416,7 +416,7 @@ describe('yazioService', () => {
     expect(result?.barcode).toBe('4311501683902');
   });
 
-  it('returns a barcode match only when the normalized EAN matches', async () => {
+  it('hydrates barcode search candidates and returns a detail EAN match', async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
         makeFetchResponse({ access_token: 'token-3', expires_in: 3600 })
@@ -429,25 +429,144 @@ describe('yazioService', () => {
             producer: 'Brand',
             serving_quantity: 100,
             base_unit: 'g',
-            eans: ['0094395000172'],
-            nutrients: {
-              'energy.energy': 1,
-              'nutrient.protein': 0.01,
-              'nutrient.carb': 0.02,
-              'nutrient.fat': 0.03,
-            },
           },
         ])
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          name: 'Barcode Product',
+          producer: 'Brand',
+          serving_quantity: 100,
+          base_unit: 'g',
+          servings: [{ serving: 'g', amount: 100 }],
+          eans: ['0094395000172'],
+          nutrients: {
+            'energy.energy': 1,
+            'nutrient.protein': 0.01,
+            'nutrient.carb': 0.02,
+            'nutrient.fat': 0.03,
+          },
+        })
       );
 
     const result = await searchYazioByBarcode('094395000172', {
-      username: 'barcode@example.com',
+      username: 'barcode-detail@example.com',
       password: 'secret',
     });
 
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      3,
+      'https://yzapi.yazio.com/v18/products/7c91b431-a2b5-4f11-8f52-f346dc941f2a',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token-3',
+        }),
+      })
+    );
     expect(result?.provider_external_id).toBe(
       '7c91b431-a2b5-4f11-8f52-f346dc941f2a'
     );
+    expect(result?.barcode).toBe('0094395000172');
+  });
+
+  it('skips non-matching detail EANs and returns null when no candidate matches', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-4', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse([
+          {
+            product_id: 'non-matching-product',
+            name: 'Wrong Product',
+            serving_quantity: 100,
+            base_unit: 'g',
+          },
+          {
+            product_id: 'missing-ean-product',
+            name: 'Missing EAN Product',
+            serving_quantity: 100,
+            base_unit: 'g',
+          },
+        ])
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          name: 'Wrong Product',
+          serving_quantity: 100,
+          base_unit: 'g',
+          eans: ['1234567890123'],
+          nutrients: {
+            'energy.energy': 1,
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          name: 'Missing EAN Product',
+          serving_quantity: 100,
+          base_unit: 'g',
+          eans: [],
+          nutrients: {
+            'energy.energy': 1,
+          },
+        })
+      );
+
+    const result = await searchYazioByBarcode('4008400401621', {
+      username: 'barcode-no-match@example.com',
+      password: 'secret',
+    });
+
+    expect(result).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('continues hydrating barcode candidates when a detail fetch fails', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-5', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse([
+          {
+            product_id: 'failing-product',
+            name: 'Failing Product',
+            serving_quantity: 100,
+            base_unit: 'g',
+          },
+          {
+            product_id: 'matching-product',
+            name: 'Matching Product',
+            serving_quantity: 100,
+            base_unit: 'g',
+          },
+        ])
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({ error: 'upstream' }, false, 500)
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          name: 'Matching Product',
+          serving_quantity: 100,
+          base_unit: 'g',
+          eans: ['0094395000172'],
+          nutrients: {
+            'energy.energy': 1,
+            'nutrient.protein': 0.01,
+            'nutrient.carb': 0.02,
+            'nutrient.fat': 0.03,
+          },
+        })
+      );
+
+    const result = await searchYazioByBarcode('094395000172', {
+      username: 'barcode-detail-failure@example.com',
+      password: 'secret',
+    });
+
+    expect(result?.provider_external_id).toBe('matching-product');
   });
 
   it('fails gracefully when server OAuth client credentials are missing', async () => {

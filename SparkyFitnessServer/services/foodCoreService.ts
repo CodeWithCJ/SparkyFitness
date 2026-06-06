@@ -886,6 +886,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
       } catch (yazioError) {
         log('warn', `YAZIO barcode lookup failed for ${barcode}:`, yazioError);
         captureSurfaceable(yazioError);
+        throw yazioError;
       }
     }
     // Try OpenFoodFacts if it is the configured primary provider

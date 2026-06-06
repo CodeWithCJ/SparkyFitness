@@ -517,9 +517,10 @@ async function yazioFetch<T>(path: string, credentials: YazioCredentials) {
   }).then((response) => parseJsonResponse<T>(response, path));
 }
 
-async function searchYazioFoods(query: string, options: YazioSearchOptions) {
-  const page = options.page ?? 1;
-  const pageSize = options.pageSize ?? 20;
+async function searchRawYazioProducts(
+  query: string,
+  options: YazioSearchOptions
+) {
   const params = new URLSearchParams({
     query,
     sex: 'male',
@@ -531,7 +532,14 @@ async function searchYazioFoods(query: string, options: YazioSearchOptions) {
     `/products/search?${params.toString()}`,
     options
   );
-  const products = Array.isArray(data) ? data : [];
+
+  return Array.isArray(data) ? data : [];
+}
+
+async function searchYazioFoods(query: string, options: YazioSearchOptions) {
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 20;
+  const products = await searchRawYazioProducts(query, options);
   const offset = Math.max(page - 1, 0) * pageSize;
   const pageItems = products.slice(offset, offset + pageSize);
 
@@ -546,14 +554,39 @@ async function searchYazioFoods(query: string, options: YazioSearchOptions) {
   };
 }
 
+function hasMatchingYazioEan(
+  product: Pick<YazioProduct, 'eans'>,
+  normalizedBarcode: string
+): boolean {
+  return (
+    product.eans?.some((ean) => normalizeBarcode(ean) === normalizedBarcode) ??
+    false
+  );
+}
+
+function shouldSkipYazioDetailError(error: unknown): boolean {
+  const status = (error as { status?: number; statusCode?: number } | null)
+    ?.status;
+  const statusCode = (error as { status?: number; statusCode?: number } | null)
+    ?.statusCode;
+  return status === 502 || statusCode === 502;
+}
+
+async function getRawYazioFoodDetails(
+  productId: string,
+  credentials: YazioCredentials
+) {
+  return yazioFetch<YazioProduct | null>(
+    `/products/${encodeURIComponent(productId)}`,
+    credentials
+  );
+}
+
 async function getYazioFoodDetails(
   productId: string,
   credentials: YazioCredentials
 ) {
-  const product = await yazioFetch<YazioProduct | null>(
-    `/products/${encodeURIComponent(productId)}`,
-    credentials
-  );
+  const product = await getRawYazioFoodDetails(productId, credentials);
 
   return product ? mapYazioProduct(product, { productId }) : null;
 }
@@ -563,15 +596,57 @@ async function searchYazioByBarcode(
   credentials: YazioCredentials
 ) {
   const normalizedBarcode = normalizeBarcode(barcode);
-  const result = await searchYazioFoods(barcode, {
-    ...credentials,
-    page: 1,
-    pageSize: 20,
-  });
+  if (!normalizedBarcode) {
+    return null;
+  }
 
-  return (
-    result.foods.find((food) => food?.barcode === normalizedBarcode) ?? null
-  );
+  const candidates = (
+    await searchRawYazioProducts(barcode, {
+      ...credentials,
+      page: 1,
+      pageSize: 20,
+    })
+  ).slice(0, 20);
+
+  for (const candidate of candidates) {
+    const productId = candidate.id ?? candidate.product_id;
+    if (!productId) {
+      continue;
+    }
+
+    let detailedProduct: YazioProduct | null = null;
+    try {
+      detailedProduct = await getRawYazioFoodDetails(productId, credentials);
+    } catch (error) {
+      if (!shouldSkipYazioDetailError(error)) {
+        throw error;
+      }
+
+      log(
+        'debug',
+        `YAZIO product detail lookup failed for candidate ${productId}:`,
+        error
+      );
+      continue;
+    }
+
+    if (
+      !detailedProduct ||
+      !hasMatchingYazioEan(detailedProduct, normalizedBarcode)
+    ) {
+      continue;
+    }
+
+    const food = mapYazioProduct(detailedProduct, { productId });
+    if (food) {
+      return {
+        ...food,
+        barcode: normalizedBarcode,
+      };
+    }
+  }
+
+  return null;
 }
 
 export {
