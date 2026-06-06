@@ -12,21 +12,17 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 const OWNER = 'owner-1';
 const VIEWER = 'viewer-2';
 const PROVIDER_ID = 'prov-off-1';
-const originalYazioClientId = process.env.YAZIO_CLIENT_ID;
-const originalYazioClientSecret = process.env.YAZIO_CLIENT_SECRET;
+const yazioAppId = JSON.stringify({
+  username: 'user@example.com',
+  clientId: 'client-id',
+});
+const yazioAppKey = JSON.stringify({
+  password: 'password',
+  clientSecret: 'client-secret',
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
-  if (originalYazioClientId === undefined) {
-    delete process.env.YAZIO_CLIENT_ID;
-  } else {
-    process.env.YAZIO_CLIENT_ID = originalYazioClientId;
-  }
-  if (originalYazioClientSecret === undefined) {
-    delete process.env.YAZIO_CLIENT_SECRET;
-  } else {
-    process.env.YAZIO_CLIENT_SECRET = originalYazioClientSecret;
-  }
 });
 
 describe('getExternalDataProvidersForUser - non-owner credential redaction', () => {
@@ -103,9 +99,7 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
 });
 
 describe('getExternalDataProviders - runtime availability', () => {
-  it('marks YAZIO inactive when server OAuth credentials are missing', async () => {
-    delete process.env.YAZIO_CLIENT_ID;
-    delete process.env.YAZIO_CLIENT_SECRET;
+  it('marks YAZIO inactive when provider OAuth credentials are missing', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviders.mockResolvedValue([
       {
@@ -113,6 +107,8 @@ describe('getExternalDataProviders - runtime availability', () => {
         user_id: OWNER,
         provider_type: 'yazio',
         provider_name: 'YAZIO',
+        app_id: 'user@example.com',
+        app_key: 'password',
         shared_with_public: false,
         is_active: true,
         encrypted_access_token: null,
@@ -125,13 +121,11 @@ describe('getExternalDataProviders - runtime availability', () => {
     expect(result[0]).toMatchObject({
       provider_type: 'yazio',
       is_active: false,
-      availability_error: expect.stringContaining('YAZIO_CLIENT_ID'),
+      availability_error: expect.stringContaining('YAZIO Client ID'),
     });
   });
 
-  it('keeps YAZIO active when server OAuth credentials are configured', async () => {
-    process.env.YAZIO_CLIENT_ID = 'client-id';
-    process.env.YAZIO_CLIENT_SECRET = 'client-secret';
+  it('keeps YAZIO active when provider OAuth credentials are configured', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviders.mockResolvedValue([
       {
@@ -139,6 +133,8 @@ describe('getExternalDataProviders - runtime availability', () => {
         user_id: OWNER,
         provider_type: 'yazio',
         provider_name: 'YAZIO',
+        app_id: yazioAppId,
+        app_key: yazioAppKey,
         shared_with_public: false,
         is_active: true,
         encrypted_access_token: null,
@@ -151,7 +147,9 @@ describe('getExternalDataProviders - runtime availability', () => {
     expect(result[0]).toMatchObject({
       provider_type: 'yazio',
       is_active: true,
+      app_id: yazioAppId,
     });
+    expect(result[0].app_key).toBeUndefined();
     expect(result[0].availability_error).toBeUndefined();
   });
 });
@@ -225,6 +223,45 @@ describe('createExternalDataProvider - mutual exclusion', () => {
       PROVIDER_ID
     );
   });
+
+  it('rejects a YAZIO row without provider client credentials', async () => {
+    await expectBadRequest(
+      externalProviderService.createExternalDataProvider(OWNER, {
+        provider_type: 'yazio',
+        provider_name: 'YAZIO',
+        app_id: 'user@example.com',
+        app_key: 'password',
+      }),
+      /YAZIO Client ID/
+    );
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('allows a YAZIO row with login and provider client credentials', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.createExternalDataProvider.mockResolvedValue({
+      id: 'prov-yazio-1',
+    });
+
+    await externalProviderService.createExternalDataProvider(OWNER, {
+      provider_type: 'yazio',
+      provider_name: 'YAZIO',
+      app_id: yazioAppId,
+      app_key: yazioAppKey,
+    });
+
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider_type: 'yazio',
+        app_id: yazioAppId,
+        app_key: yazioAppKey,
+      })
+    );
+  });
 });
 
 describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
@@ -279,6 +316,89 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
         shared_with_public: true,
       }),
       /cannot be stored on a provider row that is shared/
+    );
+  });
+
+  it('merges newly entered YAZIO client credentials with existing stored login credentials', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'yazio',
+      shared_with_public: false,
+      app_id: 'user@example.com',
+      app_key: 'password',
+    });
+
+    await externalProviderService.updateExternalDataProvider(
+      OWNER,
+      PROVIDER_ID,
+      {
+        app_id: JSON.stringify({ username: '', clientId: 'new-client-id' }),
+        app_key: JSON.stringify({ password: '', clientSecret: 'new-secret' }),
+      }
+    );
+
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).toHaveBeenCalledWith(
+      PROVIDER_ID,
+      OWNER,
+      expect.objectContaining({
+        app_id: JSON.stringify({
+          username: 'user@example.com',
+          clientId: 'new-client-id',
+        }),
+        app_key: JSON.stringify({
+          password: 'password',
+          clientSecret: 'new-secret',
+        }),
+      })
+    );
+  });
+
+  it('merges partial YAZIO client edits without nesting packed JSON as the username or password', async () => {
+    const existingAppId = JSON.stringify({
+      username: 'packed-user@example.com',
+      clientId: '',
+    });
+    const existingAppKey = JSON.stringify({
+      password: 'packed-password',
+      clientSecret: '',
+    });
+
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'yazio',
+      shared_with_public: false,
+      app_id: existingAppId,
+      app_key: existingAppKey,
+    });
+
+    await externalProviderService.updateExternalDataProvider(
+      OWNER,
+      PROVIDER_ID,
+      {
+        app_id: JSON.stringify({ username: '', clientId: 'new-client-id' }),
+        app_key: JSON.stringify({ password: '', clientSecret: 'new-secret' }),
+      }
+    );
+
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).toHaveBeenCalledWith(
+      PROVIDER_ID,
+      OWNER,
+      expect.objectContaining({
+        app_id: JSON.stringify({
+          username: 'packed-user@example.com',
+          clientId: 'new-client-id',
+        }),
+        app_key: JSON.stringify({
+          password: 'packed-password',
+          clientSecret: 'new-secret',
+        }),
+      })
     );
   });
 

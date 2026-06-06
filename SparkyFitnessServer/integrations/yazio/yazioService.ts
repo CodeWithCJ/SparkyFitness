@@ -4,11 +4,7 @@ import { normalizeBarcode } from '../../utils/foodUtils.js';
 const DEFAULT_YAZIO_API_BASE_URL = 'https://yzapi.yazio.com/v18';
 const TOKEN_CACHE_SKEW_MS = 60_000;
 const YAZIO_OAUTH_CONFIG_ERROR =
-  'YAZIO is not available because the server is missing YAZIO_CLIENT_ID and/or YAZIO_CLIENT_SECRET. Configure the YAZIO OAuth client credentials on the server, then restart it.';
-
-function hasYazioOAuthConfig(): boolean {
-  return !!process.env.YAZIO_CLIENT_ID && !!process.env.YAZIO_CLIENT_SECRET;
-}
+  'YAZIO is not available because this provider is missing YAZIO Client ID and/or Client Secret. Configure the YAZIO Client ID and Client Secret in the provider settings.';
 
 function yazioUnavailableError(): Error & {
   status: number;
@@ -20,22 +16,6 @@ function yazioUnavailableError(): Error & {
   });
 }
 
-function getYazioClientId(): string {
-  const clientId = process.env.YAZIO_CLIENT_ID;
-  if (!clientId) {
-    throw yazioUnavailableError();
-  }
-  return clientId;
-}
-
-function getYazioClientSecret(): string {
-  const clientSecret = process.env.YAZIO_CLIENT_SECRET;
-  if (!clientSecret) {
-    throw yazioUnavailableError();
-  }
-  return clientSecret;
-}
-
 interface YazioToken {
   access_token: string;
   expires_at: number;
@@ -44,6 +24,8 @@ interface YazioToken {
 interface YazioCredentials {
   username?: string;
   password?: string;
+  clientId?: string;
+  clientSecret?: string;
   baseUrl?: string | null;
 }
 
@@ -93,6 +75,61 @@ function requireCredentials(credentials: YazioCredentials) {
       { status: 400, statusCode: 400 }
     );
   }
+  if (!credentials.clientId || !credentials.clientSecret) {
+    throw yazioUnavailableError();
+  }
+}
+
+function parseYazioCredentialField(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'string') {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function stringField(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function resolveYazioCredentials(
+  credentials: YazioCredentials
+): YazioCredentials {
+  const appId = parseYazioCredentialField(credentials.username);
+  const appKey = parseYazioCredentialField(credentials.password);
+  const appIdIsPacked = Object.keys(appId).length > 0;
+  const appKeyIsPacked = Object.keys(appKey).length > 0;
+
+  return {
+    ...credentials,
+    username:
+      stringField(appId.username) ??
+      stringField(appId.email) ??
+      (appIdIsPacked ? undefined : credentials.username),
+    password:
+      stringField(appKey.password) ??
+      (appKeyIsPacked ? undefined : credentials.password),
+    clientId:
+      credentials.clientId ??
+      stringField(appId.clientId) ??
+      stringField(appId.client_id),
+    clientSecret:
+      credentials.clientSecret ??
+      stringField(appKey.clientSecret) ??
+      stringField(appKey.client_secret),
+  };
+}
+
+function hasYazioProviderOAuthConfig(credentials: YazioCredentials): boolean {
+  const resolved = resolveYazioCredentials(credentials);
+  return !!resolved.clientId && !!resolved.clientSecret;
 }
 
 async function parseJsonResponse<T>(response: Response, context: string) {
@@ -111,10 +148,11 @@ async function parseJsonResponse<T>(response: Response, context: string) {
 async function getYazioAccessToken(
   credentials: YazioCredentials
 ): Promise<string> {
-  requireCredentials(credentials);
+  const resolvedCredentials = resolveYazioCredentials(credentials);
+  requireCredentials(resolvedCredentials);
 
-  const baseUrl = resolveBaseUrl(credentials.baseUrl);
-  const cacheKey = `${baseUrl}:${credentials.username}`;
+  const baseUrl = resolveBaseUrl(resolvedCredentials.baseUrl);
+  const cacheKey = `${baseUrl}:${resolvedCredentials.clientId}:${resolvedCredentials.username}`;
   const cached = tokenCache.get(cacheKey);
   if (cached && Date.now() < cached.expires_at - TOKEN_CACHE_SKEW_MS) {
     return cached.access_token;
@@ -132,10 +170,10 @@ async function getYazioAccessToken(
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      client_id: getYazioClientId(),
-      client_secret: getYazioClientSecret(),
-      username: credentials.username,
-      password: credentials.password,
+      client_id: resolvedCredentials.clientId,
+      client_secret: resolvedCredentials.clientSecret,
+      username: resolvedCredentials.username,
+      password: resolvedCredentials.password,
       grant_type: 'password',
     }),
   })
@@ -651,8 +689,9 @@ async function searchYazioByBarcode(
 
 export {
   YAZIO_OAUTH_CONFIG_ERROR,
-  hasYazioOAuthConfig,
+  hasYazioProviderOAuthConfig,
   getYazioAccessToken,
+  resolveYazioCredentials,
   searchYazioFoods,
   getYazioFoodDetails,
   searchYazioByBarcode,
@@ -661,8 +700,9 @@ export {
 
 export default {
   YAZIO_OAUTH_CONFIG_ERROR,
-  hasYazioOAuthConfig,
+  hasYazioProviderOAuthConfig,
   getYazioAccessToken,
+  resolveYazioCredentials,
   searchYazioFoods,
   getYazioFoodDetails,
   searchYazioByBarcode,

@@ -40,6 +40,8 @@ export interface ExternalDataProvider {
     | 'strava';
   app_id: string | null;
   app_key: string | null;
+  yazio_client_id?: string | null;
+  yazio_client_secret?: string | null;
   is_active: boolean;
   availability_error?: string;
   base_url: string | null;

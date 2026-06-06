@@ -49,4 +49,16 @@ describe('validateProvider', () => {
     const result = validateProvider(input);
     expect(result).toBe('Please provide YAZIO password for yazio');
   });
+
+  it('requires YAZIO OAuth client credentials', () => {
+    const input: Partial<ExternalDataProvider> = {
+      provider_name: 'YAZIO',
+      provider_type: 'yazio',
+      app_id: 'user@example.com',
+      app_key: 'password',
+      yazio_client_id: 'client-id',
+    };
+    const result = validateProvider(input);
+    expect(result).toBe('Please provide YAZIO Client Secret for yazio');
+  });
 });

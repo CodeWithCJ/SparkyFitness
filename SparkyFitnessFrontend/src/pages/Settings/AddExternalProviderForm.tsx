@@ -22,7 +22,12 @@ import {
   useSyncHevyMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import { useCreateExternalProviderMutation } from '@/hooks/Settings/useExternalProviderSettings';
-import { getProviderTypes, validateProvider } from '@/utils/settings';
+import {
+  encodeYazioAppId,
+  encodeYazioAppKey,
+  getProviderTypes,
+  validateProvider,
+} from '@/utils/settings';
 import { ProviderSpecificFields } from './ProviderSpecificFields';
 import { useToast } from '@/hooks/use-toast';
 
@@ -143,12 +148,24 @@ const AddExternalProviderForm = ({
 
         createdProvider = garminData.provider as CreatedProvider;
       } else {
+        const appId =
+          newProvider.provider_type === 'yazio'
+            ? encodeYazioAppId(newProvider.app_id, newProvider.yazio_client_id)
+            : newProvider.app_id || null;
+        const appKey =
+          newProvider.provider_type === 'yazio'
+            ? encodeYazioAppKey(
+                newProvider.app_key,
+                newProvider.yazio_client_secret
+              )
+            : newProvider.app_key || null;
+
         createdProvider = await createExternalProvider({
           user_id: user.id,
           provider_name: newProvider.provider_name || '',
           provider_type: newProvider.provider_type || '',
-          app_id: newProvider.app_id || null,
-          app_key: newProvider.app_key || null,
+          app_id: appId,
+          app_key: appKey,
           is_active: newProvider.is_active || false,
           base_url: newProvider.base_url || null,
           sync_frequency: newProvider.sync_frequency || null,

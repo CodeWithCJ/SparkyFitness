@@ -9,6 +9,11 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { EditProviderForm } from './EditProviderForm';
 import { ProviderCard } from './ProviderCard';
+import {
+  decodeYazioAppId,
+  encodeYazioAppId,
+  encodeYazioAppKey,
+} from '@/utils/settings';
 
 import {
   DndContext,
@@ -135,14 +140,64 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
   );
 
   const handleUpdateProvider = async (providerId: string) => {
+    const existingProvider = providers.find((p) => p.id === providerId);
+
+    // For YAZIO, we need to carefully merge the user's edits with existing
+    // stored credentials. The edit form shows decoded values (username, clientId)
+    // but never echoes back the password or clientSecret for security.
+    // When the user only fills in Client ID/Secret without re-typing
+    // username/password, we must preserve the existing stored values.
+    let yazioAppId: string | undefined;
+    let yazioAppKey: string | undefined;
+
+    if (editData.provider_type === 'yazio' && existingProvider) {
+      // Decode existing stored credentials
+      const existingAppId = decodeYazioAppId(existingProvider.app_id);
+      const existingAppKey = (() => {
+        // We don't have decodeYazioAppKey exposed, so we parse manually
+        if (!existingProvider.app_key)
+          return { password: '', clientSecret: '' };
+        try {
+          const parsed = JSON.parse(existingProvider.app_key);
+          if (parsed && typeof parsed === 'object') {
+            return {
+              password:
+                typeof parsed.password === 'string' ? parsed.password : '',
+              clientSecret:
+                typeof parsed.clientSecret === 'string'
+                  ? parsed.clientSecret
+                  : '',
+            };
+          }
+        } catch {
+          /* legacy plain password */
+        }
+        return { password: existingProvider.app_key, clientSecret: '' };
+      })();
+
+      // Merge: use edited value if non-empty, otherwise keep existing
+      const mergedUsername = editData.app_id?.trim() || existingAppId.username;
+      const mergedClientId =
+        editData.yazio_client_id?.trim() || existingAppId.clientId;
+      const mergedPassword =
+        editData.app_key?.trim() || existingAppKey.password;
+      const mergedClientSecret =
+        editData.yazio_client_secret?.trim() || existingAppKey.clientSecret;
+
+      yazioAppId = encodeYazioAppId(mergedUsername, mergedClientId);
+      yazioAppKey = encodeYazioAppKey(mergedPassword, mergedClientSecret);
+    } else if (editData.provider_type === 'yazio') {
+      // Fallback for new provider (shouldn't happen in update path, but safe)
+      yazioAppId = encodeYazioAppId(editData.app_id, editData.yazio_client_id);
+      yazioAppKey = encodeYazioAppKey(
+        editData.app_key,
+        editData.yazio_client_secret
+      );
+    }
+
     const providerUpdateData: Partial<ExternalDataProvider> = {
       provider_name: editData.provider_name,
       provider_type: editData.provider_type,
-      // OFF/YAZIO: GET /external-providers does not return decrypted credentials,
-      // and startEditing seeds app_key to '' (we never echo passwords back to
-      // the DOM). For both fields we cannot distinguish "untouched" from
-      // "user cleared", so blank means "leave existing". To remove stored
-      // credentials, users must delete and re-add the provider.
       app_id:
         editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
@@ -151,13 +206,16 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           ? null
           : editData.provider_type === 'openfoodfacts' ||
               editData.provider_type === 'yazio'
-            ? editData.app_id || undefined
+            ? editData.provider_type === 'yazio'
+              ? yazioAppId
+              : editData.app_id || undefined
             : editData.app_id || null,
       app_key:
-        editData.provider_type === 'openfoodfacts' ||
         editData.provider_type === 'yazio'
-          ? editData.app_key || undefined
-          : editData.app_key || null,
+          ? yazioAppKey
+          : editData.provider_type === 'openfoodfacts'
+            ? editData.app_key || undefined
+            : editData.app_key || null,
       is_active: editData.is_active,
       base_url:
         editData.provider_type === 'mealie' ||
@@ -271,13 +329,20 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
   };
 
   const startEditing = (provider: ExternalDataProvider) => {
+    const yazioAppId = decodeYazioAppId(provider.app_id);
     setEditingProvider(provider.id);
     setEditData({
       provider_name: provider.provider_name,
       provider_type: provider.provider_type,
-      app_id: provider.app_id || null,
+      app_id:
+        provider.provider_type === 'yazio'
+          ? yazioAppId.username
+          : provider.app_id || null,
       // Never pre-fill API keys when editing for security/privacy
       app_key: '',
+      yazio_client_id:
+        provider.provider_type === 'yazio' ? yazioAppId.clientId : '',
+      yazio_client_secret: '',
       is_active: provider.is_active,
       base_url: provider.base_url || '',
       last_sync_at: provider.last_sync_at || '',

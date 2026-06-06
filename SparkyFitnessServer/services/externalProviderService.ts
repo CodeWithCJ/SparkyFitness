@@ -3,7 +3,8 @@ import { log } from '../config/logging.js';
 import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
   YAZIO_OAUTH_CONFIG_ERROR,
-  hasYazioOAuthConfig,
+  hasYazioProviderOAuthConfig,
+  resolveYazioCredentials,
 } from '../integrations/yazio/yazioService.js';
 
 // Build a 400-tagged Error for user-input validation failures so the
@@ -15,6 +16,36 @@ function badRequest(message: any) {
   // @ts-expect-error TS(2339): Property 'statusCode' does not exist on type 'Erro... Remove this comment to see the full error message
   err.statusCode = 400;
   return err;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasYazioLoginCredentials(appId: any, appKey: any) {
+  const credentials = resolveYazioCredentials({
+    username: appId,
+    password: appKey,
+  });
+  return !!credentials.username && !!credentials.password;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasYazioClientCredentials(appId: any, appKey: any) {
+  return hasYazioProviderOAuthConfig({
+    username: appId,
+    password: appKey,
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function validateYazioProviderCredentials(appId: any, appKey: any) {
+  if (!hasYazioLoginCredentials(appId, appKey)) {
+    throw badRequest(
+      'YAZIO credentials must include both a username and a password.'
+    );
+  }
+
+  if (!hasYazioClientCredentials(appId, appKey)) {
+    throw badRequest(YAZIO_OAUTH_CONFIG_ERROR);
+  }
 }
 
 // Strip decrypted credentials and their encrypted backing columns from any
@@ -39,13 +70,17 @@ function redactCredentialsForNonOwner(provider: any, authenticatedUserId: any) {
   return rest;
 }
 
-// YAZIO uses per-provider username/password credentials, but the private API
-// token exchange also needs server-level OAuth client credentials. Keep
-// misconfigured rows visible in Settings while preventing clients from
-// offering them as usable search providers.
+// Keep misconfigured YAZIO rows visible in Settings while preventing clients
+// from offering them as usable search providers.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyRuntimeAvailability(provider: any) {
-  if (provider.provider_type === 'yazio' && !hasYazioOAuthConfig()) {
+  if (
+    provider.provider_type === 'yazio' &&
+    !hasYazioProviderOAuthConfig({
+      username: provider.app_id,
+      password: provider.app_key,
+    })
+  ) {
     return {
       ...provider,
       is_active: false,
@@ -57,28 +92,45 @@ function applyRuntimeAvailability(provider: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripCredentialSecret(provider: any) {
+  const {
+    app_key: _appKey,
+    encrypted_app_id: _eAppId,
+    app_id_iv: _iAppId,
+    app_id_tag: _tAppId,
+    encrypted_app_key: _eAppKey,
+    app_key_iv: _iAppKey,
+    app_key_tag: _tAppKey,
+    ...rest
+  } = provider;
+  return rest;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExternalDataProviders(userId: any) {
   try {
     const providers =
       await externalProviderRepository.getExternalDataProviders(userId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const providersWithVisibility = providers.map((p: any) =>
-      applyRuntimeAvailability({
-        ...redactCredentialsForNonOwner(p, userId),
+      stripCredentialSecret(
+        applyRuntimeAvailability({
+          ...redactCredentialsForNonOwner(p, userId),
 
-        visibility:
-          p.user_id === userId
-            ? 'private'
-            : p.shared_with_public
-              ? 'public'
-              : 'family',
+          visibility:
+            p.user_id === userId
+              ? 'private'
+              : p.shared_with_public
+                ? 'public'
+                : 'family',
 
-        shared_with_public: !!p.shared_with_public,
+          shared_with_public: !!p.shared_with_public,
 
-        has_token:
-          p.encrypted_access_token !== null &&
-          p.encrypted_access_token !== undefined,
-      })
+          has_token:
+            p.encrypted_access_token !== null &&
+            p.encrypted_access_token !== undefined,
+        })
+      )
     );
     // log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
     return providersWithVisibility;
@@ -111,19 +163,22 @@ async function getExternalDataProvidersForUser(
         ? providers
         : providers.filter((p) => !p.is_strictly_private);
     const providersWithVisibility = filteredProviders.map((p) =>
-      applyRuntimeAvailability({
-        ...redactCredentialsForNonOwner(p, authenticatedUserId),
-        visibility:
-          p.user_id === authenticatedUserId
-            ? 'private'
-            : p.shared_with_public
-              ? 'public'
-              : 'family',
-        shared_with_public: !!p.shared_with_public,
-        has_token:
-          p.encrypted_access_token !== null &&
-          p.encrypted_access_token !== undefined,
-      })
+      redactCredentialsForNonOwner(
+        applyRuntimeAvailability({
+          ...p,
+          visibility:
+            p.user_id === authenticatedUserId
+              ? 'private'
+              : p.shared_with_public
+                ? 'public'
+                : 'family',
+          shared_with_public: !!p.shared_with_public,
+          has_token:
+            p.encrypted_access_token !== null &&
+            p.encrypted_access_token !== undefined,
+        }),
+        authenticatedUserId
+      )
     );
     return providersWithVisibility;
   } catch (error) {
@@ -163,12 +218,10 @@ async function createExternalDataProvider(
         );
       }
     }
-    if (
-      providerData.provider_type === 'yazio' &&
-      (!providerData.app_id || !providerData.app_key)
-    ) {
-      throw badRequest(
-        'YAZIO credentials must include both a username and a password.'
+    if (providerData.provider_type === 'yazio') {
+      validateYazioProviderCredentials(
+        providerData.app_id,
+        providerData.app_key
       );
     }
     const newProvider =
@@ -288,10 +341,44 @@ async function updateExternalDataProvider(
         updateData.app_key,
         existingProvider?.app_key
       );
-      if (!nextAppId || !nextAppKey) {
-        throw badRequest(
-          'YAZIO credentials must include both a username and a password.'
-        );
+      const currentCredentials = resolveYazioCredentials({
+        username: existingProvider?.app_id ?? undefined,
+        password: existingProvider?.app_key ?? undefined,
+      });
+      const nextCredentials = resolveYazioCredentials({
+        username: nextAppId,
+        password: nextAppKey,
+      });
+      const mergedCredentials = {
+        username: nextCredentials.username || currentCredentials.username,
+        password: nextCredentials.password || currentCredentials.password,
+        clientId: nextCredentials.clientId || currentCredentials.clientId,
+        clientSecret:
+          nextCredentials.clientSecret || currentCredentials.clientSecret,
+      };
+      validateYazioProviderCredentials(
+        JSON.stringify({
+          username: mergedCredentials.username || '',
+          clientId: mergedCredentials.clientId || '',
+        }),
+        JSON.stringify({
+          password: mergedCredentials.password || '',
+          clientSecret: mergedCredentials.clientSecret || '',
+        })
+      );
+
+      // Normalize partial YAZIO credential edits into the packed storage format.
+      // This lets users update only Client ID or Client Secret without needing
+      // to re-enter every existing value.
+      if (updateData.app_id !== undefined || updateData.app_key !== undefined) {
+        updateData.app_id = JSON.stringify({
+          username: mergedCredentials.username || '',
+          clientId: mergedCredentials.clientId || '',
+        });
+        updateData.app_key = JSON.stringify({
+          password: mergedCredentials.password || '',
+          clientSecret: mergedCredentials.clientSecret || '',
+        });
       }
     }
 

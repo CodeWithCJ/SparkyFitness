@@ -32,7 +32,6 @@ export const ProviderSpecificFields = ({
     'fitbit',
     'strava',
     'polar',
-    'yazio',
   ].includes(provider.provider_type || '');
   const needsAppKey = [
     'mealie',
@@ -45,7 +44,6 @@ export const ProviderSpecificFields = ({
     'strava',
     'polar',
     'hevy',
-    'yazio',
   ].includes(provider.provider_type || '');
 
   const getCallbackUrl = () => {
@@ -165,14 +163,94 @@ export const ProviderSpecificFields = ({
       )}
 
       {provider.provider_type === 'yazio' && (
-        <p className="text-sm text-muted-foreground col-span-2">
-          YAZIO does not provide an official public API. This experimental
-          provider uses a private API and may stop working if YAZIO changes it.
-          The server must also be configured with YAZIO_CLIENT_ID and
-          YAZIO_CLIENT_SECRET before YAZIO searches are available.
-        </p>
+        <>
+          <div className="col-span-2">
+            <div className="rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 space-y-1.5">
+              <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                ⚠️ Unofficial API — Use at your own risk
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                YAZIO integration uses an{' '}
+                <strong>unofficial, undocumented API</strong> that is not
+                provided or endorsed by YAZIO. Using it may{' '}
+                <strong>risk getting your YAZIO account banned</strong>. The API
+                could also <strong>stop working at any time</strong> without
+                notice if YAZIO changes their backend.
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                For more information, see{' '}
+                <a
+                  href="https://github.com/saganos/yazio_public_api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-800 dark:text-red-200 underline font-medium"
+                >
+                  saganos/yazio_public_api
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-username">YAZIO Email / Username</Label>
+            <Input
+              id="add-yazio-username"
+              type="text"
+              value={provider.app_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_id: e.target.value }))
+              }
+              placeholder="Enter YAZIO email or username"
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-password">YAZIO Password</Label>
+            <Input
+              id="add-yazio-password"
+              type="password"
+              value={provider.app_key || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_key: e.target.value }))
+              }
+              placeholder="Enter YAZIO password"
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-client-id">YAZIO Client ID</Label>
+            <Input
+              id="add-yazio-client-id"
+              type="text"
+              value={provider.yazio_client_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({
+                  ...prev,
+                  yazio_client_id: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO Client ID"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-yazio-client-secret">YAZIO Client Secret</Label>
+            <Input
+              id="add-yazio-client-secret"
+              type="password"
+              value={provider.yazio_client_secret || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({
+                  ...prev,
+                  yazio_client_secret: e.target.value,
+                }))
+              }
+              placeholder="Enter YAZIO Client Secret"
+              autoComplete="off"
+            />
+          </div>
+        </>
       )}
-
       {provider.provider_type === 'garmin' && (
         <>
           <div>

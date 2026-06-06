@@ -3,6 +3,7 @@ import {
   YAZIO_OAUTH_CONFIG_ERROR,
   getYazioFoodDetails,
   mapYazioProduct,
+  resolveYazioCredentials,
   searchYazioFoods,
   searchYazioByBarcode,
 } from '../integrations/yazio/yazioService.js';
@@ -10,8 +11,10 @@ import {
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const originalFetch = global.fetch;
-const originalClientId = process.env.YAZIO_CLIENT_ID;
-const originalClientSecret = process.env.YAZIO_CLIENT_SECRET;
+const yazioClientCredentials = {
+  clientId: 'test-client-id',
+  clientSecret: 'test-client-secret',
+};
 
 const makeFetchResponse = (body: unknown, ok = true, status = 200) =>
   ({
@@ -26,22 +29,24 @@ describe('yazioService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
-    process.env.YAZIO_CLIENT_ID = 'test-client-id';
-    process.env.YAZIO_CLIENT_SECRET = 'test-client-secret';
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    if (originalClientId === undefined) {
-      delete process.env.YAZIO_CLIENT_ID;
-    } else {
-      process.env.YAZIO_CLIENT_ID = originalClientId;
-    }
-    if (originalClientSecret === undefined) {
-      delete process.env.YAZIO_CLIENT_SECRET;
-    } else {
-      process.env.YAZIO_CLIENT_SECRET = originalClientSecret;
-    }
+  });
+
+  it('does not treat packed YAZIO JSON with blank login fields as raw credentials', () => {
+    const resolved = resolveYazioCredentials({
+      username: JSON.stringify({ username: '', clientId: 'client-id' }),
+      password: JSON.stringify({ password: '', clientSecret: 'client-secret' }),
+    });
+
+    expect(resolved).toMatchObject({
+      username: undefined,
+      password: undefined,
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+    });
   });
 
   it('maps YAZIO product nutrition into Sparky food shape', () => {
@@ -281,6 +286,7 @@ describe('yazioService', () => {
     const result = await searchYazioFoods('skyr', {
       username: 'user@example.com',
       password: 'secret',
+      ...yazioClientCredentials,
       page: 1,
       pageSize: 1,
     });
@@ -331,10 +337,12 @@ describe('yazioService', () => {
       searchYazioFoods('apple', {
         username: 'concurrent@example.com',
         password: 'secret',
+        ...yazioClientCredentials,
       }),
       searchYazioFoods('banana', {
         username: 'concurrent@example.com',
         password: 'secret',
+        ...yazioClientCredentials,
       }),
     ]);
 
@@ -356,6 +364,7 @@ describe('yazioService', () => {
     const result = await searchYazioFoods('skyr', {
       username: 'non-array@example.com',
       password: 'secret',
+      ...yazioClientCredentials,
     });
 
     expect(result).toEqual({
@@ -396,6 +405,7 @@ describe('yazioService', () => {
       {
         username: 'other@example.com',
         password: 'secret',
+        ...yazioClientCredentials,
       }
     );
 
@@ -452,6 +462,7 @@ describe('yazioService', () => {
     const result = await searchYazioByBarcode('094395000172', {
       username: 'barcode-detail@example.com',
       password: 'secret',
+      ...yazioClientCredentials,
     });
 
     expect(global.fetch).toHaveBeenNthCalledWith(
@@ -516,6 +527,7 @@ describe('yazioService', () => {
     const result = await searchYazioByBarcode('4008400401621', {
       username: 'barcode-no-match@example.com',
       password: 'secret',
+      ...yazioClientCredentials,
     });
 
     expect(result).toBeNull();
@@ -564,15 +576,13 @@ describe('yazioService', () => {
     const result = await searchYazioByBarcode('094395000172', {
       username: 'barcode-detail-failure@example.com',
       password: 'secret',
+      ...yazioClientCredentials,
     });
 
     expect(result?.provider_external_id).toBe('matching-product');
   });
 
-  it('fails gracefully when server OAuth client credentials are missing', async () => {
-    delete process.env.YAZIO_CLIENT_ID;
-    delete process.env.YAZIO_CLIENT_SECRET;
-
+  it('fails gracefully when provider OAuth client credentials are missing', async () => {
     await expect(
       searchYazioFoods('skyr', {
         username: 'missing-config@example.com',

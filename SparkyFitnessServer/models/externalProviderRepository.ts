@@ -8,6 +8,8 @@ async function getExternalDataProviders(userId: any) {
     const result = await client.query(
       `SELECT edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, 
               edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency, edp.sort_order,
+              edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
+              edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
               ept.is_strictly_private
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
@@ -15,13 +17,45 @@ async function getExternalDataProviders(userId: any) {
       []
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return result.rows.map((row: any) => ({
-      ...row,
+    const providers = await Promise.all(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.rows.map(async (row: any) => {
+        let decryptedAppId = null;
+        let decryptedAppKey = null;
+        if (row.encrypted_app_id && row.app_id_iv && row.app_id_tag) {
+          try {
+            decryptedAppId = await decrypt(
+              row.encrypted_app_id,
+              row.app_id_iv,
+              row.app_id_tag,
+              ENCRYPTION_KEY
+            );
+          } catch (e) {
+            log('error', 'Error decrypting app_id for provider:', row.id, e);
+          }
+        }
+        if (row.encrypted_app_key && row.app_key_iv && row.app_key_tag) {
+          try {
+            decryptedAppKey = await decrypt(
+              row.encrypted_app_key,
+              row.app_key_iv,
+              row.app_key_tag,
+              ENCRYPTION_KEY
+            );
+          } catch (e) {
+            log('error', 'Error decrypting app_key for provider:', row.id, e);
+          }
+        }
 
-      // Add has_token property
-      has_token: !!row.encrypted_access_token,
-    }));
+        return {
+          ...row,
+          app_id: decryptedAppId,
+          app_key: decryptedAppKey,
+          has_token: !!row.encrypted_access_token,
+        };
+      })
+    );
+    return providers;
   } finally {
     client.release();
   }
