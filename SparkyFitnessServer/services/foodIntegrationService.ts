@@ -279,16 +279,11 @@ async function getTandoorFoodDetails(
 }
 
 async function searchNorishFoods(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiKey: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  query: string,
+  baseUrl: string | null | undefined,
+  apiKey: string | null | undefined,
+  userId: string,
+  providerId: string | null | undefined
 ) {
   log(
     'debug',
@@ -298,9 +293,7 @@ async function searchNorishFoods(
     const norishService = new NorishService(baseUrl, apiKey);
     const searchResults = await norishService.searchRecipes(query);
     const detailedRecipes = await Promise.all(
-      searchResults.map((recipe: any) =>
-        norishService.getRecipeDetails(recipe.id)
-      )
+      searchResults.map((recipe) => norishService.getRecipeDetails(recipe.id))
     );
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
     return validRecipes.map((recipe) => {
@@ -321,16 +314,11 @@ async function searchNorishFoods(
 }
 
 async function getNorishFoodDetails(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiKey: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  id: string,
+  baseUrl: string | null | undefined,
+  apiKey: string | null | undefined,
+  userId: string,
+  providerId: string | null | undefined
 ) {
   log(
     'debug',
