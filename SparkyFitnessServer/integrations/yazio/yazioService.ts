@@ -158,8 +158,8 @@ async function getYazioAccessToken(
   }
 
   const tokenBody: Record<string, string> = {
-    client_id: resolvedCredentials.clientId,
-    client_secret: resolvedCredentials.clientSecret,
+    client_id: resolvedCredentials.clientId!,
+    client_secret: resolvedCredentials.clientSecret!,
     grant_type: 'password',
   };
   if (resolvedCredentials.username && resolvedCredentials.password) {
@@ -650,7 +650,7 @@ async function searchYazioByBarcode(
       continue;
     }
 
-    let detailedProduct: YazioProduct | null = null;
+    let detailedProduct: YazioProduct | null;
     try {
       detailedProduct = await getRawYazioFoodDetails(productId, credentials);
     } catch (error) {
