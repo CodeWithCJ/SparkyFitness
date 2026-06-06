@@ -81,6 +81,9 @@ describe('yazioService', () => {
       default_variant: {
         serving_size: 100,
         serving_unit: 'g',
+        serving_description: '100 g',
+        serving_weight: 100,
+        serving_weight_unit: 'g',
         calories: 64,
         protein: 15.2,
         carbs: 8.4,
@@ -100,6 +103,33 @@ describe('yazioService', () => {
         vitamin_c: 0.1,
         is_default: true,
       },
+      variants: [
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          serving_weight: 100,
+          serving_weight_unit: 'g',
+          calories: 64,
+          protein: 15.2,
+          carbs: 8.4,
+          fat: 2.1,
+          saturated_fat: 1,
+          polyunsaturated_fat: 0,
+          monounsaturated_fat: 0,
+          trans_fat: 0,
+          cholesterol: 0,
+          dietary_fiber: 0.4,
+          sugars: 7.9,
+          sodium: 40,
+          potassium: 180,
+          calcium: 120,
+          iron: 0.2,
+          vitamin_a: 20,
+          vitamin_c: 0.1,
+          is_default: true,
+        },
+      ],
     });
   });
 
@@ -129,6 +159,69 @@ describe('yazioService', () => {
       carbs: 4,
       fat: 0.2,
     });
+  });
+
+  it('maps YAZIO kiwi portion servings while preserving the per-100g default', () => {
+    const result = mapYazioProduct({
+      id: 'kiwi-frisch',
+      name: 'Kiwi, frisch',
+      is_verified: true,
+      base_unit: 'g',
+      servings: [
+        { serving: 'Frucht, halb', amount: 45 },
+        { serving: 'Frucht, klein', amount: 70 },
+        { serving: 'Frucht, mittel', amount: 90 },
+        { serving: 'Frucht, groß', amount: 115 },
+        { serving: 'Gramm', amount: 1 },
+      ],
+      nutrients: {
+        'energy.energy': 0.62,
+        'nutrient.carb': 0.091,
+        'nutrient.protein': 0.01,
+        'nutrient.fat': 0.006,
+      },
+    });
+
+    expect(result?.provider_verified).toBe(true);
+    expect(result?.default_variant).toMatchObject({
+      serving_size: 100,
+      serving_unit: 'g',
+      serving_description: '100 g',
+      serving_weight: 100,
+      serving_weight_unit: 'g',
+      calories: 62,
+      carbs: 9.1,
+      protein: 1,
+      fat: 0.6,
+      is_default: true,
+    });
+
+    const smallKiwi = result?.variants?.find(
+      (variant) => variant.serving_unit === 'Frucht, klein'
+    );
+    expect(smallKiwi).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'Frucht, klein',
+      serving_description: 'Frucht, klein (70 g)',
+      serving_weight: 70,
+      serving_weight_unit: 'g',
+      calories: 43,
+      carbs: 6.4,
+      protein: 0.7,
+      fat: 0.4,
+      is_default: false,
+    });
+
+    expect(
+      result?.variants?.map((variant) => variant.serving_description)
+    ).toEqual([
+      '100 g',
+      'Frucht, halb (45 g)',
+      'Frucht, klein (70 g)',
+      'Frucht, mittel (90 g)',
+      'Frucht, groß (115 g)',
+      '1 g',
+    ]);
   });
 
   it('authenticates and searches products with pagination', async () => {

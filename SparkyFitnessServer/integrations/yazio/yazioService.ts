@@ -70,7 +70,13 @@ interface YazioProductSearchResult {
 
 interface YazioProduct extends YazioProductSearchResult {
   is_deleted?: boolean;
-  servings?: Array<{ serving?: string; amount?: number }>;
+  servings?: Array<{
+    serving?: string;
+    amount?: number;
+    serving_quantity?: number;
+    unit?: string;
+    base_unit?: string;
+  }>;
 }
 
 const tokenCache = new Map<string, YazioToken>();
@@ -209,6 +215,64 @@ function defaultServing(product: YazioProduct): {
   };
 }
 
+function formatAmount(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(round(value, 2));
+}
+
+function metricServingDescription(size: number, unit: string): string {
+  return `${formatAmount(size)} ${unit}`;
+}
+
+function normalizeYazioServingName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const lower = normalized.toLowerCase();
+  if (
+    lower === 'gram' ||
+    lower === 'grams' ||
+    lower === 'gramm' ||
+    lower === 'gramme' ||
+    lower === 'g'
+  ) {
+    return 'g';
+  }
+  if (
+    lower === 'milliliter' ||
+    lower === 'milliliters' ||
+    lower === 'millilitre' ||
+    lower === 'millilitres' ||
+    lower === 'ml'
+  ) {
+    return 'ml';
+  }
+
+  return normalized;
+}
+
+function isMetricServingName(value: string, metricUnit: string): boolean {
+  const lower = value.toLowerCase();
+  return lower === metricUnit || lower === `${metricUnit}.`;
+}
+
+function buildYazioServingDescription(
+  servingName: string,
+  amount: number,
+  metricUnit: string
+): string {
+  if (isMetricServingName(servingName, metricUnit)) {
+    return metricServingDescription(amount, metricUnit);
+  }
+
+  return `${servingName} (${metricServingDescription(amount, metricUnit)})`;
+}
+
 function isYazioDensityPayload(nutrients: Record<string, unknown>): boolean {
   const energy = getNutrient(nutrients, 'energy.energy');
   const protein = getNutrient(nutrients, 'nutrient.protein');
@@ -266,6 +330,121 @@ function scaledMicrogramNutrient(
   return Math.round(scaledNutrient(nutrients, key, scale) * 1_000_000);
 }
 
+function mapYazioVariantNutrition(
+  nutrients: Record<string, unknown>,
+  scale: number
+) {
+  return {
+    calories: Math.round(scaledNutrient(nutrients, 'energy.energy', scale)),
+    protein: scaledGramNutrient(nutrients, 'nutrient.protein', scale),
+    carbs: scaledGramNutrient(nutrients, 'nutrient.carb', scale),
+    fat: scaledGramNutrient(nutrients, 'nutrient.fat', scale),
+    saturated_fat: scaledGramNutrient(nutrients, 'nutrient.saturated', scale),
+    polyunsaturated_fat: scaledGramNutrient(
+      nutrients,
+      'nutrient.polyunsaturated',
+      scale
+    ),
+    monounsaturated_fat: scaledGramNutrient(
+      nutrients,
+      'nutrient.monounsaturated',
+      scale
+    ),
+    trans_fat: scaledGramNutrient(nutrients, 'nutrient.transfat', scale),
+    cholesterol: scaledMilligramNutrient(
+      nutrients,
+      'nutrient.cholesterol',
+      scale
+    ),
+    dietary_fiber: scaledGramNutrient(
+      nutrients,
+      'nutrient.dietaryfiber',
+      scale
+    ),
+    sugars: scaledGramNutrient(nutrients, 'nutrient.sugar', scale),
+    sodium: scaledMilligramNutrient(
+      nutrients,
+      ['nutrient.sodium', 'mineral.sodium'],
+      scale
+    ),
+    potassium: scaledMilligramNutrient(nutrients, 'mineral.potassium', scale),
+    calcium: scaledMilligramNutrient(nutrients, 'mineral.calcium', scale),
+    iron: round(scaledNutrient(nutrients, 'mineral.iron', scale) * 1000),
+    vitamin_a: scaledMicrogramNutrient(nutrients, 'vitamin.a', scale),
+    vitamin_c: round(scaledNutrient(nutrients, 'vitamin.c', scale) * 1000),
+  };
+}
+
+function mapYazioServingVariants(
+  product: YazioProduct,
+  nutrients: Record<string, unknown>,
+  defaultVariant: ReturnType<typeof mapYazioVariantNutrition> & {
+    serving_size: number;
+    serving_unit: string;
+    serving_description: string;
+    serving_weight: number;
+    serving_weight_unit: string;
+    is_default: boolean;
+  }
+) {
+  const metricUnit = defaultVariant.serving_unit;
+  const variants = [defaultVariant];
+  const seen = new Set([
+    `${defaultVariant.serving_size}:${metricUnit}:default`,
+  ]);
+
+  for (const serving of product.servings ?? []) {
+    const amount = numberValue(serving.amount ?? serving.serving_quantity);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      continue;
+    }
+
+    const servingName = normalizeYazioServingName(serving.serving);
+    if (!servingName) {
+      continue;
+    }
+
+    const servingUnit = normalizeServingUnit(
+      serving.unit ?? serving.base_unit ?? product.base_unit
+    );
+    const servingMetricUnit =
+      servingUnit === 'g' || servingUnit === 'ml' ? servingUnit : metricUnit;
+    if (servingMetricUnit !== metricUnit) {
+      continue;
+    }
+
+    const isMetric = isMetricServingName(servingName, metricUnit);
+    const servingSize = isMetric ? amount : 1;
+    const servingUnitLabel = isMetric ? metricUnit : servingName;
+    const key = `${servingSize}:${servingUnitLabel}:${amount}:${metricUnit}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+
+    variants.push({
+      serving_size: servingSize,
+      serving_unit: servingUnitLabel,
+      serving_description: buildYazioServingDescription(
+        servingName,
+        amount,
+        metricUnit
+      ),
+      serving_weight: amount,
+      serving_weight_unit: metricUnit,
+      ...mapYazioVariantNutrition(
+        nutrients,
+        isYazioDensityPayload(nutrients)
+          ? amount
+          : amount / defaultVariant.serving_weight
+      ),
+      is_default: false,
+    });
+  }
+
+  return variants;
+}
+
 function mapYazioProduct(
   product: YazioProduct,
   options?: { productId?: string }
@@ -281,6 +460,18 @@ function mapYazioProduct(
   const nutrients = product.nutrients ?? {};
   const scale = nutrientScale(nutrients, serving);
   const barcode = normalizeBarcode(product.eans?.[0]);
+  const defaultVariant = {
+    ...serving,
+    serving_description: metricServingDescription(
+      serving.serving_size,
+      serving.serving_unit
+    ),
+    serving_weight: serving.serving_size,
+    serving_weight_unit: serving.serving_unit,
+    ...mapYazioVariantNutrition(nutrients, scale),
+    is_default: true,
+  };
+  const variants = mapYazioServingVariants(product, nutrients, defaultVariant);
 
   return {
     name,
@@ -290,47 +481,8 @@ function mapYazioProduct(
     provider_type: 'yazio',
     provider_verified: product.is_verified === true,
     is_custom: false,
-    default_variant: {
-      ...serving,
-      calories: Math.round(scaledNutrient(nutrients, 'energy.energy', scale)),
-      protein: scaledGramNutrient(nutrients, 'nutrient.protein', scale),
-      carbs: scaledGramNutrient(nutrients, 'nutrient.carb', scale),
-      fat: scaledGramNutrient(nutrients, 'nutrient.fat', scale),
-      saturated_fat: scaledGramNutrient(nutrients, 'nutrient.saturated', scale),
-      polyunsaturated_fat: scaledGramNutrient(
-        nutrients,
-        'nutrient.polyunsaturated',
-        scale
-      ),
-      monounsaturated_fat: scaledGramNutrient(
-        nutrients,
-        'nutrient.monounsaturated',
-        scale
-      ),
-      trans_fat: scaledGramNutrient(nutrients, 'nutrient.transfat', scale),
-      cholesterol: scaledMilligramNutrient(
-        nutrients,
-        'nutrient.cholesterol',
-        scale
-      ),
-      dietary_fiber: scaledGramNutrient(
-        nutrients,
-        'nutrient.dietaryfiber',
-        scale
-      ),
-      sugars: scaledGramNutrient(nutrients, 'nutrient.sugar', scale),
-      sodium: scaledMilligramNutrient(
-        nutrients,
-        ['nutrient.sodium', 'mineral.sodium'],
-        scale
-      ),
-      potassium: scaledMilligramNutrient(nutrients, 'mineral.potassium', scale),
-      calcium: scaledMilligramNutrient(nutrients, 'mineral.calcium', scale),
-      iron: round(scaledNutrient(nutrients, 'mineral.iron', scale) * 1000),
-      vitamin_a: scaledMicrogramNutrient(nutrients, 'vitamin.a', scale),
-      vitamin_c: round(scaledNutrient(nutrients, 'vitamin.c', scale) * 1000),
-      is_default: true,
-    },
+    default_variant: defaultVariant,
+    variants,
   };
 }
 

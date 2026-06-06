@@ -293,6 +293,125 @@ describe('FoodSearchScreen', () => {
       expect(screen.getByText('Failed to search FatSecret')).toBeTruthy();
     });
 
+    it('renders Yazio as an online provider and searches with its provider id', async () => {
+      mockUseExternalProviders.mockReturnValue({
+        providers: [
+          { id: 'p-mealie', provider_type: 'mealie', provider_name: 'Mealie' },
+          { id: 'p-off', provider_type: 'openfoodfacts', provider_name: 'Open Food Facts' },
+          { id: 'p-yazio', provider_type: 'yazio', provider_name: 'Yazio' },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const screen = render(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodSearchScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>,
+      );
+
+      fireEvent.press(screen.getByText('Online'));
+      expect(screen.getByText('Yazio')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Yazio'));
+
+      await waitFor(() => {
+        expect(mockUseExternalFoodSearch).toHaveBeenCalledWith(
+          '',
+          'yazio',
+          expect.objectContaining({
+            enabled: true,
+            providerId: 'p-yazio',
+          }),
+        );
+      });
+    });
+
+    it('fetches full Yazio details before opening the selected food', async () => {
+      const yazioItem = {
+        id: 'yz-1',
+        name: 'Protein Yogurt',
+        brand: 'Yazio Brand',
+        source: 'yazio',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 92,
+        protein: 10,
+        carbs: 8,
+        fat: 2,
+      } as any;
+      mockUseExternalProviders.mockReturnValue({
+        providers: [{ id: 'p-yazio', provider_type: 'yazio', provider_name: 'Yazio' }],
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+      mockUseExternalFoodSearch.mockReturnValue({
+        searchResults: [yazioItem],
+        isSearching: false,
+        isSearchActive: true,
+        isSearchError: false,
+        searchErrorMessage: null,
+        isProviderSupported: true,
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isFetchNextPageError: false,
+      } as any);
+      mockFetchExternalFoodDetails.mockResolvedValue({
+        ...yazioItem,
+        calories: 95,
+        variants: [
+          {
+            serving_size: 100,
+            serving_unit: 'g',
+            serving_description: '100 g',
+            calories: 95,
+            protein: 11,
+            carbs: 8,
+            fat: 2,
+          },
+        ],
+      });
+
+      const screen = render(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodSearchScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>,
+      );
+
+      fireEvent.press(screen.getByText('Online'));
+
+      await waitFor(() => {
+        expect(mockUseExternalFoodSearch).toHaveBeenCalledWith(
+          '',
+          'yazio',
+          expect.objectContaining({ providerId: 'p-yazio' }),
+        );
+      });
+
+      fireEvent.press(screen.getByText('Protein Yogurt'));
+
+      await waitFor(() => {
+        expect(mockFetchExternalFoodDetails).toHaveBeenCalledWith(
+          'yazio',
+          'yz-1',
+          'p-yazio',
+        );
+      });
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        'FoodEntryAdd',
+        expect.objectContaining({
+          item: expect.objectContaining({
+            id: 'yz-1',
+            source: 'external',
+            calories: 95,
+          }),
+        }),
+      );
+    });
+
     it('toasts the error but still opens partial info when a detail fetch fails', async () => {
       mockUseExternalFoodSearch.mockReturnValue({
         searchResults: [externalItem],

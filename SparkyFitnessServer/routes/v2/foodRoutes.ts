@@ -170,6 +170,15 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
     ...record,
     id: nullToUndefined(record.id as string | null | undefined),
     user_id: nullToUndefined(record.user_id as string | null | undefined),
+    serving_description: nullToUndefined(
+      record.serving_description as string | null | undefined
+    ),
+    serving_weight: nullToUndefined(
+      record.serving_weight as number | null | undefined
+    ),
+    serving_weight_unit: nullToUndefined(
+      record.serving_weight_unit as string | null | undefined
+    ),
     saturated_fat: nullToUndefined(
       record.saturated_fat as number | null | undefined
     ),
