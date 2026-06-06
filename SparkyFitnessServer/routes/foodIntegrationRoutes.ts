@@ -157,6 +157,47 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+// Middleware to get Norish API keys and base URL
+router.use('/norish', authenticate, async (req, res, next) => {
+  // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
+  req.providerId = req.headers['x-provider-id']; // Attach to req object
+  log(
+    'debug',
+    // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
+    `foodRoutes: /norish middleware: x-provider-id: ${req.providerId}`
+  );
+  // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
+  if (!req.providerId) {
+    return res.status(400).json({ error: 'Missing x-provider-id header' });
+  }
+  try {
+    const providerDetails = await foodService.getFoodDataProviderDetails(
+      req.userId,
+      // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
+      req.providerId
+    );
+    if (!providerDetails || !providerDetails.app_key) {
+      return next(
+        new Error(
+          'Failed to retrieve Norish API keys. Please check provider configuration.'
+        )
+      );
+    }
+    // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type 'Requ... Remove this comment to see the full error message
+    req.norishBaseUrl =
+      providerDetails.base_url || 'https://norish.example.com/api/v1';
+    // @ts-expect-error TS(2339): Property 'norishApiKey' does not exist on type 'Requ... Remove this comment to see the full error message
+    req.norishApiKey = providerDetails.app_key;
+    next();
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 router.use('/usda', authenticate, async (req, res, next) => {
   const providerId = req.headers['x-provider-id'];
   log('debug', `foodRoutes: /usda middleware: x-provider-id: ${providerId}`);
@@ -761,6 +802,98 @@ router.get('/tandoor/details', authenticate, async (req, res, next) => {
       id,
       tandoorBaseUrl,
       tandoorApiKey,
+      userId,
+      providerId
+    );
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/norish/search:
+ *   get:
+ *     summary: Search for foods on Norish
+ *     tags: [External Integrations]
+ *     description: Searches for foods using the Norish API.
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The search query.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Norish data provider.
+ *     responses:
+ *       200:
+ *         description: A list of foods from Norish.
+ *       400:
+ *         description: Missing search query or x-provider-id header.
+ */
+router.get('/norish/search', authenticate, async (req, res, next) => {
+  const { query } = req.query;
+  // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
+  const { norishBaseUrl, norishApiKey, userId, providerId } = req;
+  if (!query) {
+    return res.status(400).json({ error: 'Missing search query' });
+  }
+  try {
+    const data = await foodService.searchNorishFoods(
+      query,
+      norishBaseUrl,
+      norishApiKey,
+      userId,
+      providerId
+    );
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/norish/details:
+ *   get:
+ *     summary: Get food details from Norish
+ *     tags: [External Integrations]
+ *     description: Retrieves details for a specific food from the Norish API.
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the food to retrieve details for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the Norish data provider.
+ *     responses:
+ *       200:
+ *         description: Details for the specified food.
+ *       400:
+ *         description: Missing food id or x-provider-id header.
+ */
+router.get('/norish/details', authenticate, async (req, res, next) => {
+  const { id } = req.query;
+  // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
+  const { norishBaseUrl, norishApiKey, userId, providerId } = req;
+  if (!id) {
+    return res.status(400).json({ error: 'Missing food id' });
+  }
+  try {
+    const data = await foodService.getNorishFoodDetails(
+      id,
+      norishBaseUrl,
+      norishApiKey,
       userId,
       providerId
     );

@@ -7,7 +7,7 @@ export interface ExternalProvider {
 
 // Allowlist of provider_type values relevant to food search
 export const FOOD_PROVIDER_TYPES = new Set([
-  'openfoodfacts', 'fatsecret', 'usda', 'mealie', 'tandoor',
+  'openfoodfacts', 'fatsecret', 'usda', 'mealie', 'tandoor', 'norish',
 ]);
 
 // Allowlist of provider_type values that support barcode lookup

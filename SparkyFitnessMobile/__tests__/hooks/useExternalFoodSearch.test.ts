@@ -360,6 +360,28 @@ describe('useExternalFoodSearch', () => {
     expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
+  test('reports norish as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'norish'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('norish returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'norish'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
   test('reports fatsecret as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'fatsecret'),

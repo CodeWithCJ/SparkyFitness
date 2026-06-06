@@ -172,6 +172,7 @@ export const ProviderCard = ({
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
+          data.provider_type === 'norish' ||
           data.provider_type === 'usda' ||
           data.provider_type === 'yazio')
       ) {
@@ -371,9 +372,13 @@ export const ProviderCard = ({
             ?.label || provider.provider_type}
           {provider.base_url && ` - URL: ${provider.base_url}`}
           {provider.app_id &&
-            !['mealie', 'tandoor', 'free-exercise-db', 'wger'].includes(
-              provider.provider_type
-            ) &&
+            ![
+              'mealie',
+              'tandoor',
+              'norish',
+              'free-exercise-db',
+              'wger',
+            ].includes(provider.provider_type) &&
             ` - App ID: ${
               provider.provider_type === 'yazio'
                 ? (yazioDisplay.username || yazioDisplay.clientId).substring(
@@ -386,6 +391,7 @@ export const ProviderCard = ({
             [
               'mealie',
               'tandoor',
+              'norish',
               'nutritionix',
               'fatsecret',
               'withings',

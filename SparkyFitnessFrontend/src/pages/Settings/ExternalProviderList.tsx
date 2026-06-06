@@ -201,6 +201,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       app_id:
         editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'norish' ||
         editData.provider_type === 'free-exercise-db' ||
         editData.provider_type === 'wger'
           ? null
@@ -220,6 +221,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       base_url:
         editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'norish' ||
         editData.provider_type === 'free-exercise-db'
           ? editData.base_url || null
           : null,
@@ -281,6 +283,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
+          data.provider_type === 'norish' ||
           data.provider_type === 'usda' ||
           data.provider_type === 'yazio')
       ) {

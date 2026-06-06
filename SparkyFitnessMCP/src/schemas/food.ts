@@ -78,6 +78,8 @@ const lookupFoodNutritionSchema = z
         "fatsecret",
         "mealie",
         "tandoor",
+        "yazio",
+        "norish",
       ])
       .optional()
       .describe(
@@ -628,6 +630,7 @@ export const manageFoodInput = z.object({
       "fatsecret",
       "mealie",
       "tandoor",
+      "norish",
     ])
     .optional()
     .describe("Optional: Force a specific provider search (e.g. USDA)"),

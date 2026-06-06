@@ -8,6 +8,7 @@ They're all mounted under `/api/foods/` (since `foodIntegrationRoutes` is mounte
 | Nutritionix               | `GET`  | `/api/foods/nutritionix/search?query=...`   | `x-provider-id`  |
 | Mealie                    | `GET`  | `/api/foods/mealie/search?query=...`        | `x-provider-id`  |
 | Tandoor                   | `GET`  | `/api/foods/tandoor/search?query=...`       | `x-provider-id`  |
+| Norish                    | `GET`  | `/api/foods/norish/search?query=...`        | `x-provider-id`  |
 | USDA                      | `GET`  | `/api/foods/usda/search?query=...`          | `x-provider-id`  |
 
 Most providers require an `x-provider-id` header — that's the ID of the user's configured external provider record (from `/api/external-providers/user/:userId`). The middleware uses it to look up the stored API keys/credentials for that provider. Open Food Facts is the exception since it's a free public API.
@@ -260,6 +261,8 @@ curl -X GET 'http://10.0.0.75:8080/api/foods/fatsecret/nutrients?foodId=4162' \
 ## Mealie
 
 ## Tandoor
+
+## Norish
 
 ## USDA
 

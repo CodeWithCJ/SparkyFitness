@@ -8,6 +8,7 @@ import {
 } from '../integrations/fatsecret/fatsecretService.js';
 import MealieService from '../integrations/mealie/mealieService.js';
 import TandoorService from '../integrations/tandoor/tandoorService.js';
+import NorishService from '../integrations/norish/norishService.js';
 
 async function searchFatSecretFoods(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,7 +134,7 @@ async function searchMealieFoods(
 ) {
   log(
     'debug',
-    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}, page: ${page}`
+    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}, page: ${page}`
   );
   try {
     // @ts-expect-error TS(2554): Expected 2 arguments, but got 3.
@@ -181,7 +182,7 @@ async function getMealieFoodDetails(
 ) {
   log(
     'debug',
-    `getMealieFoodDetails: slug: ${slug}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+    `getMealieFoodDetails: slug: ${slug}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`
   );
   try {
     // @ts-expect-error TS(2554): Expected 2 arguments, but got 3.
@@ -215,7 +216,7 @@ async function searchTandoorFoods(
 ) {
   log(
     'debug',
-    `searchTandoorFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+    `searchTandoorFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`
   );
   try {
     const tandoorService = new TandoorService(baseUrl, apiKey);
@@ -258,7 +259,7 @@ async function getTandoorFoodDetails(
 ) {
   log(
     'debug',
-    `getTandoorFoodDetails: id: ${id}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+    `getTandoorFoodDetails: id: ${id}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`
   );
   try {
     const tandoorService = new TandoorService(baseUrl, apiKey);
@@ -276,12 +277,89 @@ async function getTandoorFoodDetails(
     throw error;
   }
 }
+
+async function searchNorishFoods(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  baseUrl: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apiKey: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerId: any
+) {
+  log(
+    'debug',
+    `searchNorishFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`
+  );
+  try {
+    const norishService = new NorishService(baseUrl, apiKey);
+    const searchResults = await norishService.searchRecipes(query);
+    const detailedRecipes = await Promise.all(
+      searchResults.map((recipe: any) =>
+        norishService.getRecipeDetails(recipe.id)
+      )
+    );
+    const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
+    return validRecipes.map((recipe) => {
+      const { food, variant } = norishService.mapNorishRecipeToSparkyFood(
+        recipe!,
+        userId
+      );
+      return {
+        ...food,
+        default_variant: variant,
+        variants: [variant],
+      };
+    });
+  } catch (error) {
+    log('error', `Error searching Norish foods for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+async function getNorishFoodDetails(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  id: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  baseUrl: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apiKey: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerId: any
+) {
+  log(
+    'debug',
+    `getNorishFoodDetails: id: ${id}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`
+  );
+  try {
+    const norishService = new NorishService(baseUrl, apiKey);
+    const norishRecipe = await norishService.getRecipeDetails(id);
+    if (!norishRecipe) {
+      return null;
+    }
+    return norishService.mapNorishRecipeToSparkyFood(norishRecipe, userId);
+  } catch (error) {
+    log(
+      'error',
+      `Error getting Norish food details for id ${id} for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+}
 export { searchFatSecretFoods };
 export { getFatSecretNutrients };
 export { searchMealieFoods };
 export { getMealieFoodDetails };
 export { searchTandoorFoods };
 export { getTandoorFoodDetails };
+export { searchNorishFoods };
+export { getNorishFoodDetails };
 export default {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -289,4 +367,6 @@ export default {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchNorishFoods,
+  getNorishFoodDetails,
 };

@@ -128,6 +128,7 @@ export const EditProviderForm = ({
       )}
       {(editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
+        editData.provider_type === 'norish' ||
         editData.provider_type === 'free-exercise-db') && (
         <>
           <div>
@@ -142,9 +143,11 @@ export const EditProviderForm = ({
                 }))
               }
               placeholder={
-                editData.provider_type === 'tandoor'
-                  ? 'e.g., http://your-tandoor-instance.com'
-                  : 'e.g., http://your-mealie-instance.com'
+                editData.provider_type === 'norish'
+                  ? 'e.g., https://norish.your-domain.com'
+                  : editData.provider_type === 'tandoor'
+                    ? 'e.g., http://your-tandoor-instance.com'
+                    : 'e.g., http://your-mealie-instance.com'
               }
               autoComplete="off"
             />
@@ -161,9 +164,11 @@ export const EditProviderForm = ({
                 }))
               }
               placeholder={
-                editData.provider_type === 'tandoor'
-                  ? 'Enter Tandoor API Key'
-                  : 'Enter Mealie API Key'
+                editData.provider_type === 'norish'
+                  ? 'Enter Norish API Key'
+                  : editData.provider_type === 'tandoor'
+                    ? 'Enter Tandoor API Key'
+                    : 'Enter Mealie API Key'
               }
               autoComplete="off"
             />
