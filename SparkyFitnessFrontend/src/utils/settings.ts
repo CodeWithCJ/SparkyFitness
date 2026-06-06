@@ -4,6 +4,7 @@ import { DataProvider } from '@/types/settings';
 export const providerRequirements: Record<string, string[]> = {
   mealie: ['base_url', 'app_key'],
   tandoor: ['base_url', 'app_key'],
+  norish: ['base_url', 'app_key'],
   nutritionix: ['app_id', 'app_key'],
   fatsecret: ['app_id', 'app_key'],
   withings: ['app_id', 'app_key'],
@@ -101,6 +102,7 @@ export const getProviderTypes = () => [
   { value: 'free-exercise-db', label: 'Free Exercise DB' },
   { value: 'mealie', label: 'Mealie' },
   { value: 'tandoor', label: 'Tandoor' },
+  { value: 'norish', label: 'Norish' },
   { value: 'withings', label: 'Withings' },
   { value: 'garmin', label: 'Garmin' },
   { value: 'fitbit', label: 'Fitbit' },
@@ -132,6 +134,7 @@ export const getProviderCategory = (
     case 'openfoodfacts':
     case 'mealie':
     case 'tandoor':
+    case 'norish':
     case 'usda':
     case 'yazio':
       return ['food'];

@@ -30,6 +30,8 @@ const FOOD_PROVIDER_TYPES_BEYOND_OFF = new Set([
   'usda',
   'mealie',
   'tandoor',
+  'norish',
+  'yazio',
 ]);
 
 export const OnBoardingForm = ({

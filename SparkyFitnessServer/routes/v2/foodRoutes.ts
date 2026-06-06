@@ -35,6 +35,8 @@ import {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchNorishFoods,
+  getNorishFoodDetails,
 } from '../../services/foodIntegrationService.js';
 
 const router = express.Router();
@@ -48,6 +50,7 @@ const VALID_PROVIDER_TYPES = [
   'mealie',
   'tandoor',
   'yazio',
+  'norish',
 ] as const;
 
 type ProviderType = (typeof VALID_PROVIDER_TYPES)[number];
@@ -433,6 +436,25 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
         break;
       }
 
+      case 'norish': {
+        const results = await searchNorishFoods(
+          query,
+          credentials.base_url,
+          credentials.app_key,
+
+          req.userId,
+          providerId
+        );
+        foods = results || [];
+        pagination = {
+          page: 1,
+          pageSize: foods.length,
+          totalCount: foods.length,
+          hasMore: false,
+        };
+        break;
+      }
+
       case 'yazio': {
         const result = await searchYazioFoods(query, {
           username: credentials.app_id,
@@ -576,6 +598,26 @@ const detailHandler: RequestHandler<{
           const { food: tandoorFood, variant } = result;
           food = {
             ...tandoorFood,
+            default_variant: variant,
+            variants: [variant],
+          };
+        }
+        break;
+      }
+
+      case 'norish': {
+        const result = await getNorishFoodDetails(
+          externalId,
+          credentials.base_url,
+          credentials.app_key,
+
+          req.userId,
+          providerId
+        );
+        if (result) {
+          const { food: norishFood, variant } = result;
+          food = {
+            ...norishFood,
             default_variant: variant,
             variants: [variant],
           };

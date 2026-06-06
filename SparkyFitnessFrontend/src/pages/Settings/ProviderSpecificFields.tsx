@@ -22,7 +22,7 @@ export const ProviderSpecificFields = ({
   setFullSyncOnConnect,
   onCopy,
 }: ProviderSpecificFieldsProps) => {
-  const needsBaseUrl = ['mealie', 'tandoor'].includes(
+  const needsBaseUrl = ['mealie', 'tandoor', 'norish'].includes(
     provider.provider_type || ''
   );
   const needsAppId = [
@@ -36,6 +36,7 @@ export const ProviderSpecificFields = ({
   const needsAppKey = [
     'mealie',
     'tandoor',
+    'norish',
     'nutritionix',
     'fatsecret',
     'usda',

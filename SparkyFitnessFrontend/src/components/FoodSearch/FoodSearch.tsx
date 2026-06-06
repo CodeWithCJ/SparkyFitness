@@ -74,6 +74,10 @@ export type ExternalResultWrapper =
   | {
       provider_type: 'yazio';
       food: Food;
+    }
+  | {
+      provider_type: 'norish';
+      food: Food;
     };
 
 interface EnhancedFoodSearchProps {
@@ -228,7 +232,8 @@ const EnhancedFoodSearch = ({
           | 'fatsecret'
           | 'mealie'
           | 'tandoor'
-          | 'yazio';
+          | 'yazio'
+          | 'norish';
         const mapped: ExternalResultWrapper = {
           provider_type: data.source as BarcodeProviderType,
           food: data.food,
@@ -370,6 +375,17 @@ const EnhancedFoodSearch = ({
       setExternalResults(
         data.foods.map((food: Food) => ({
           provider_type: 'yazio' as const,
+          food,
+        }))
+      );
+    },
+    norish: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('norish', term, id)
+      );
+      setExternalResults(
+        data.foods.map((food: Food) => ({
+          provider_type: 'norish' as const,
           food,
         }))
       );

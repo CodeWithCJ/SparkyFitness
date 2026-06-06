@@ -32,6 +32,7 @@ export interface ExternalDataProvider {
     | 'withings'
     | 'garmin'
     | 'tandoor'
+    | 'norish'
     | 'usda'
     | 'fitbit'
     | 'polar'

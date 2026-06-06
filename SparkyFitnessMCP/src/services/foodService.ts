@@ -52,7 +52,7 @@ function getYesterdayDate(): string {
  * Valid food-related external data provider types.
  * These are used to filter the lookup cascade so we don't query exercise or health providers.
  */
-const FOOD_PROVIDER_TYPES = ["fatsecret", "mealie", "tandoor", "usda", "openfoodfacts"];
+const FOOD_PROVIDER_TYPES = ["fatsecret", "mealie", "tandoor", "norish", "usda", "openfoodfacts"];
 
 export async function searchFood(
   userId: string,
@@ -990,14 +990,14 @@ export async function saveAsMealTemplate(
 /**
  * Perform a cascade search lookup for food nutrition:
  * 1. Internal DB
- * 2. User's active configured external providers (USDA, FatSecret, Mealie, Tandoor)
+ * 2. User's active configured external providers (USDA, FatSecret, Mealie, Tandoor, Norish)
  * 3. Free OpenFoodFacts provider
  * Returns the matched food details or null if not found (indicating AI estimation fallback).
  */
 export async function lookupFoodNutrition(
   userId: string,
   foodName: string,
-  providerType?: "internal" | "openfoodfacts" | "usda" | "fatsecret" | "mealie" | "tandoor"
+  providerType?: "internal" | "openfoodfacts" | "usda" | "fatsecret" | "mealie" | "tandoor" | "norish"
 ): Promise<{
   source: string;
   food: any | null;

@@ -58,7 +58,8 @@ export interface Food {
     | 'mealie'
     | 'tandoor'
     | 'usda'
-    | 'yazio';
+    | 'yazio'
+    | 'norish';
   provider_verified?: boolean;
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
