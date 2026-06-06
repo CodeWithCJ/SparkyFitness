@@ -48,7 +48,7 @@ export const DailyGoals = ({
   const { data: mealTypes = [] } = useMealTypes();
 
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
-    goals.protein_percentage ? 'percentages' : 'grams'
+    goals.protein_percentage !== null ? 'percentages' : 'grams'
   );
 
   const visibleMeals = useMemo(
@@ -86,10 +86,15 @@ export const DailyGoals = ({
     const finalGoals = { ...goals };
     if (macroInputType === 'percentages') {
       const cal = finalGoals.calories;
-      finalGoals.protein =
-        (cal * (finalGoals.protein_percentage || 0)) / 100 / 4;
-      finalGoals.carbs = (cal * (finalGoals.carbs_percentage || 0)) / 100 / 4;
-      finalGoals.fat = (cal * (finalGoals.fat_percentage || 0)) / 100 / 9;
+      finalGoals.protein = Math.round(
+        (cal * (finalGoals.protein_percentage || 0)) / 100 / 4
+      );
+      finalGoals.carbs = Math.round(
+        (cal * (finalGoals.carbs_percentage || 0)) / 100 / 4
+      );
+      finalGoals.fat = Math.round(
+        (cal * (finalGoals.fat_percentage || 0)) / 100 / 9
+      );
     } else {
       finalGoals.protein_percentage = null;
       finalGoals.carbs_percentage = null;

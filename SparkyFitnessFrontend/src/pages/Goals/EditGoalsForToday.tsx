@@ -82,7 +82,7 @@ const EditGoalsForm = ({
     ...initialData,
   });
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
-    initialData.protein_percentage ? 'percentages' : 'grams'
+    initialData.protein_percentage !== null ? 'percentages' : 'grams'
   );
   const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(
     undefined
@@ -374,12 +374,21 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
 
     // Logic to convert percentages if needed before sending to API
     const finalGoals = { ...goalsToSave };
-    if (!clear && finalGoals.protein_percentage) {
+    if (
+      !clear &&
+      finalGoals.protein_percentage !== null &&
+      finalGoals.protein_percentage !== undefined
+    ) {
       const cal = finalGoals.calories;
-      finalGoals.protein =
-        (cal * (finalGoals.protein_percentage || 0)) / 100 / 4;
-      finalGoals.carbs = (cal * (finalGoals.carbs_percentage || 0)) / 100 / 4;
-      finalGoals.fat = (cal * (finalGoals.fat_percentage || 0)) / 100 / 9;
+      finalGoals.protein = Math.round(
+        (cal * (finalGoals.protein_percentage || 0)) / 100 / 4
+      );
+      finalGoals.carbs = Math.round(
+        (cal * (finalGoals.carbs_percentage || 0)) / 100 / 4
+      );
+      finalGoals.fat = Math.round(
+        (cal * (finalGoals.fat_percentage || 0)) / 100 / 9
+      );
     }
 
     try {
