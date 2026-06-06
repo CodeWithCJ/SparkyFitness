@@ -224,6 +224,39 @@ describe('yazioService', () => {
     ]);
   });
 
+  it('returns null for empty product payloads', () => {
+    expect(mapYazioProduct(null)).toBeNull();
+    expect(mapYazioProduct(undefined)).toBeNull();
+  });
+
+  it('keeps non-density portion variant nutrients finite', () => {
+    const result = mapYazioProduct({
+      id: 'portion-scaling',
+      name: 'Portion Scaling',
+      serving_quantity: 1,
+      base_unit: 'piece',
+      servings: [{ serving: 'piece', amount: 1 }],
+      nutrients: {
+        'energy.energy': 250,
+        'nutrient.carb': 20,
+        'nutrient.protein': 10,
+        'nutrient.fat': 5,
+      },
+    });
+
+    expect(result?.variants[1]).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'piece',
+      calories: 250,
+      carbs: 20,
+      protein: 10,
+      fat: 5,
+    });
+    expect(Number.isFinite(result?.variants[1]?.calories ?? Number.NaN)).toBe(
+      true
+    );
+  });
+
   it('authenticates and searches products with pagination', async () => {
     const product = {
       product_id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
@@ -275,6 +308,64 @@ describe('yazioService', () => {
       pageSize: 1,
       totalCount: 2,
       hasMore: true,
+    });
+  });
+
+  it('deduplicates concurrent token requests for the same YAZIO account', async () => {
+    const product = {
+      product_id: 'concurrent-product',
+      name: 'Concurrent Product',
+      serving_quantity: 100,
+      base_unit: 'g',
+      nutrients: { 'energy.energy': 1 },
+    };
+
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'shared-token', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(makeFetchResponse([product]))
+      .mockResolvedValueOnce(makeFetchResponse([product]));
+
+    await Promise.all([
+      searchYazioFoods('apple', {
+        username: 'concurrent@example.com',
+        password: 'secret',
+      }),
+      searchYazioFoods('banana', {
+        username: 'concurrent@example.com',
+        password: 'secret',
+      }),
+    ]);
+
+    const tokenCalls = vi
+      .mocked(global.fetch)
+      .mock.calls.filter(([url]) => String(url).includes('/oauth/token'));
+    expect(tokenCalls).toHaveLength(1);
+  });
+
+  it('treats unexpected YAZIO search payloads as empty results', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-non-array', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({ error: 'unexpected payload' })
+      );
+
+    const result = await searchYazioFoods('skyr', {
+      username: 'non-array@example.com',
+      password: 'secret',
+    });
+
+    expect(result).toEqual({
+      foods: [],
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        totalCount: 0,
+        hasMore: false,
+      },
     });
   });
 

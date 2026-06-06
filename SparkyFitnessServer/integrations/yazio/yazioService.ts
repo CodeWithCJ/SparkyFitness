@@ -80,6 +80,7 @@ interface YazioProduct extends YazioProductSearchResult {
 }
 
 const tokenCache = new Map<string, YazioToken>();
+const inflightTokens = new Map<string, Promise<string>>();
 
 function resolveBaseUrl(baseUrl?: string | null): string {
   return (baseUrl || DEFAULT_YAZIO_API_BASE_URL).replace(/\/+$/, '');
@@ -119,7 +120,12 @@ async function getYazioAccessToken(
     return cached.access_token;
   }
 
-  const token = await fetch(`${baseUrl}/oauth/token`, {
+  const inflightToken = inflightTokens.get(cacheKey);
+  if (inflightToken) {
+    return inflightToken;
+  }
+
+  const tokenPromise = fetch(`${baseUrl}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -132,20 +138,28 @@ async function getYazioAccessToken(
       password: credentials.password,
       grant_type: 'password',
     }),
-  }).then((response) =>
-    parseJsonResponse<{
-      access_token: string;
-      expires_in?: number;
-    }>(response, 'token')
-  );
+  })
+    .then((response) =>
+      parseJsonResponse<{
+        access_token: string;
+        expires_in?: number;
+      }>(response, 'token')
+    )
+    .then((token) => {
+      const expiresInMs = (token.expires_in ?? 3600) * 1000;
+      tokenCache.set(cacheKey, {
+        access_token: token.access_token,
+        expires_at: Date.now() + expiresInMs,
+      });
 
-  const expiresInMs = (token.expires_in ?? 3600) * 1000;
-  tokenCache.set(cacheKey, {
-    access_token: token.access_token,
-    expires_at: Date.now() + expiresInMs,
-  });
+      return token.access_token;
+    })
+    .finally(() => {
+      inflightTokens.delete(cacheKey);
+    });
 
-  return token.access_token;
+  inflightTokens.set(cacheKey, tokenPromise);
+  return tokenPromise;
 }
 
 function numberValue(value: unknown, fallback = 0): number {
@@ -436,7 +450,9 @@ function mapYazioServingVariants(
         nutrients,
         isYazioDensityPayload(nutrients)
           ? amount
-          : amount / defaultVariant.serving_weight
+          : defaultVariant.serving_weight > 0
+            ? amount / defaultVariant.serving_weight
+            : 0
       ),
       is_default: false,
     });
@@ -446,9 +462,13 @@ function mapYazioServingVariants(
 }
 
 function mapYazioProduct(
-  product: YazioProduct,
+  product: YazioProduct | null | undefined,
   options?: { productId?: string }
 ) {
+  if (!product) {
+    return null;
+  }
+
   const externalId = product.id ?? product.product_id ?? options?.productId;
   const name = product.name?.trim();
 
@@ -511,16 +531,17 @@ async function searchYazioFoods(query: string, options: YazioSearchOptions) {
     `/products/search?${params.toString()}`,
     options
   );
+  const products = Array.isArray(data) ? data : [];
   const offset = Math.max(page - 1, 0) * pageSize;
-  const pageItems = data.slice(offset, offset + pageSize);
+  const pageItems = products.slice(offset, offset + pageSize);
 
   return {
     foods: pageItems.map((product) => mapYazioProduct(product)).filter(Boolean),
     pagination: {
       page,
       pageSize,
-      totalCount: data.length,
-      hasMore: offset + pageSize < data.length,
+      totalCount: products.length,
+      hasMore: offset + pageSize < products.length,
     },
   };
 }
