@@ -52,9 +52,7 @@ router.use('/fatsecret', authenticate, async (req, res, next) => {
     req.clientSecret = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -88,9 +86,7 @@ router.use('/mealie', authenticate, async (req, res, next) => {
     req.mealieApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -149,9 +145,7 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
     req.tandoorApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -190,9 +184,7 @@ router.use('/norish', authenticate, async (req, res, next) => {
     req.norishApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -220,9 +212,7 @@ router.use('/usda', authenticate, async (req, res, next) => {
     req.usdaApiKey = providerDetails.app_key;
     next();
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     next(error);
@@ -840,7 +830,7 @@ router.get('/norish/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
   const { norishBaseUrl, norishApiKey, userId, providerId } = req;
-  if (!query) {
+  if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Missing search query' });
   }
   try {
@@ -886,7 +876,7 @@ router.get('/norish/details', authenticate, async (req, res, next) => {
   const { id } = req.query;
   // @ts-expect-error TS(2339): Property 'norishBaseUrl' does not exist on type '... Remove this comment to see the full error message
   const { norishBaseUrl, norishApiKey, userId, providerId } = req;
-  if (!id) {
+  if (!id || typeof id !== 'string') {
     return res.status(400).json({ error: 'Missing food id' });
   }
   try {
