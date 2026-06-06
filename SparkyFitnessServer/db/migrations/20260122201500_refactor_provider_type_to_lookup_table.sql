@@ -21,12 +21,8 @@ INSERT INTO public.external_provider_types (id, display_name) VALUES
 ('withings', 'Withings'),
 ('tandoor', 'Tandoor Recipes'),
 ('usda', 'USDA Food Database'),
-('fitbit', 'Fitbit'),
-('yazio', 'YAZIO')
+('fitbit', 'Fitbit')
 ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name;
-
--- 2b. Set description for providers that have one
-UPDATE public.external_provider_types SET description = 'Experimental food provider using YAZIO private API credentials. May break if YAZIO changes its API.' WHERE id = 'yazio';
 
 -- 3. Drop the existing CHECK constraint from external_data_providers
 ALTER TABLE public.external_data_providers
