@@ -40,36 +40,50 @@ describe('validateProvider', () => {
     expect(result).toBeNull();
   });
 
-  it('uses YAZIO-specific credential labels', () => {
-    const input: Partial<ExternalDataProvider> = {
+  it('requires all four YAZIO credential fields', () => {
+    const baseInput: Partial<ExternalDataProvider> = {
       provider_name: 'YAZIO',
       provider_type: 'yazio',
-      app_id: 'user@example.com',
     };
-    const result = validateProvider(input);
-    expect(result).toBe('Please provide YAZIO Client ID for yazio');
-  });
 
-  it('requires YAZIO OAuth client credentials', () => {
-    const input: Partial<ExternalDataProvider> = {
-      provider_name: 'YAZIO',
-      provider_type: 'yazio',
-      app_id: 'user@example.com',
-      app_key: 'password',
-      yazio_client_id: 'client-id',
-    };
-    const result = validateProvider(input);
-    expect(result).toBe('Please provide YAZIO Client Secret for yazio');
-  });
+    // Missing app_id
+    expect(validateProvider(baseInput)).toBe(
+      'Please provide YAZIO email / username for yazio'
+    );
 
-  it('allows YAZIO with only client credentials (no email/password)', () => {
-    const input: Partial<ExternalDataProvider> = {
-      provider_name: 'YAZIO',
-      provider_type: 'yazio',
-      yazio_client_id: 'client-id',
-      yazio_client_secret: 'client-secret',
-    };
-    const result = validateProvider(input);
-    expect(result).toBeNull();
+    // Missing app_key
+    expect(validateProvider({ ...baseInput, app_id: 'user@example.com' })).toBe(
+      'Please provide YAZIO password for yazio'
+    );
+
+    // Missing yazio_client_id
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+      })
+    ).toBe('Please provide YAZIO Client ID for yazio');
+
+    // Missing yazio_client_secret
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+        yazio_client_id: 'client-id',
+      })
+    ).toBe('Please provide YAZIO Client Secret for yazio');
+
+    // All fields present
+    expect(
+      validateProvider({
+        ...baseInput,
+        app_id: 'user@example.com',
+        app_key: 'password',
+        yazio_client_id: 'client-id',
+        yazio_client_secret: 'client-secret',
+      })
+    ).toBeNull();
   });
 });

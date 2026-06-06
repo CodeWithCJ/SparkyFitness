@@ -232,38 +232,29 @@ describe('createExternalDataProvider - mutual exclusion', () => {
         app_id: 'user@example.com',
         app_key: 'password',
       }),
-      /YAZIO Client ID/
+      /Email\/Username, Password, Client ID, and Client Secret/
     );
     expect(
       externalProviderRepository.createExternalDataProvider
     ).not.toHaveBeenCalled();
   });
 
-  it('allows a YAZIO row with only provider client credentials (no login)', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    externalProviderRepository.createExternalDataProvider.mockResolvedValue({
-      id: 'prov-yazio-1',
-    });
-
-    await externalProviderService.createExternalDataProvider(OWNER, {
-      provider_type: 'yazio',
-      provider_name: 'YAZIO',
-      app_id: JSON.stringify({ username: '', clientId: 'client-id' }),
-      app_key: JSON.stringify({ password: '', clientSecret: 'client-secret' }),
-    });
-
-    expect(
-      externalProviderRepository.createExternalDataProvider
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
+  it('rejects a YAZIO row with only provider client credentials (no login)', async () => {
+    await expectBadRequest(
+      externalProviderService.createExternalDataProvider(OWNER, {
         provider_type: 'yazio',
+        provider_name: 'YAZIO',
         app_id: JSON.stringify({ username: '', clientId: 'client-id' }),
         app_key: JSON.stringify({
           password: '',
           clientSecret: 'client-secret',
         }),
-      })
+      }),
+      /Email\/Username, Password, Client ID, and Client Secret/
     );
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).not.toHaveBeenCalled();
   });
 
   it('rejects a YAZIO row without any credentials', async () => {
@@ -272,7 +263,7 @@ describe('createExternalDataProvider - mutual exclusion', () => {
         provider_type: 'yazio',
         provider_name: 'YAZIO',
       }),
-      /YAZIO credentials must include either/
+      /Email\/Username, Password, Client ID, and Client Secret/
     );
     expect(
       externalProviderRepository.createExternalDataProvider

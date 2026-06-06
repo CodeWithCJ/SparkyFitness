@@ -40,14 +40,10 @@ function validateYazioProviderCredentials(appId: any, appKey: any) {
   const hasLogin = hasYazioLoginCredentials(appId, appKey);
   const hasClient = hasYazioClientCredentials(appId, appKey);
 
-  if (!hasLogin && !hasClient) {
+  if (!hasLogin || !hasClient) {
     throw badRequest(
-      'YAZIO credentials must include either a username and password, or a Client ID and Client Secret.'
+      'YAZIO credentials must include Email/Username, Password, Client ID, and Client Secret.'
     );
-  }
-
-  if (!hasClient) {
-    throw badRequest(YAZIO_OAUTH_CONFIG_ERROR);
   }
 }
 
@@ -79,10 +75,11 @@ function redactCredentialsForNonOwner(provider: any, authenticatedUserId: any) {
 function applyRuntimeAvailability(provider: any) {
   if (
     provider.provider_type === 'yazio' &&
-    !hasYazioProviderOAuthConfig({
+    (!hasYazioProviderOAuthConfig({
       username: provider.app_id,
       password: provider.app_key,
-    })
+    }) ||
+      !hasYazioLoginCredentials(provider.app_id, provider.app_key))
   ) {
     return {
       ...provider,
