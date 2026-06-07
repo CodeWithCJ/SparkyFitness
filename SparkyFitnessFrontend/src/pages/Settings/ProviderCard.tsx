@@ -43,6 +43,46 @@ interface ProviderCardProps {
   startEditing: (provider: ExternalDataProvider) => void;
 }
 
+const PROVIDER_PORTALS: Record<string, { label: string; url: string }> = {
+  strava: {
+    label: 'Strava API Settings',
+    url: 'https://www.strava.com/settings/api',
+  },
+  fitbit: {
+    label: 'Fitbit Developer Portal',
+    url: 'https://dev.fitbit.com/apps',
+  },
+  withings: {
+    label: 'Withings Partner Dashboard',
+    url: 'https://partner.withings.com/',
+  },
+  polar: {
+    label: 'Polar Flow Applications',
+    url: 'https://flow.polar.com/settings/applications',
+  },
+  garmin: { label: 'Garmin Connect', url: 'https://connect.garmin.com/' },
+  nutritionix: {
+    label: 'Nutritionix Console',
+    url: 'https://developer.nutritionix.com/',
+  },
+  fatsecret: {
+    label: 'FatSecret Platform Dashboard',
+    url: 'https://platform.fatsecret.com/my-account/dashboard',
+  },
+  usda: {
+    label: 'USDA API Guide',
+    url: 'https://fdc.nal.usda.gov/api-guide.html',
+  },
+  yazio: {
+    label: 'Yazio API Docs',
+    url: 'https://github.com/saganos/yazio_public_api',
+  },
+  openfoodfacts: {
+    label: 'Open Food Facts Portal',
+    url: 'https://world.openfoodfacts.org/',
+  },
+};
+
 export const ProviderCard = ({
   provider,
   isLoading,
@@ -370,7 +410,19 @@ export const ProviderCard = ({
         <p className="text-sm text-muted-foreground">
           {getProviderTypes().find((t) => t.value === provider.provider_type)
             ?.label || provider.provider_type}
-          {provider.base_url && ` - URL: ${provider.base_url}`}
+          {provider.base_url && (
+            <>
+              {' - URL: '}
+              <a
+                href={provider.base_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                {provider.base_url}
+              </a>
+            </>
+          )}
           {provider.app_id &&
             ![
               'mealie',
@@ -399,6 +451,73 @@ export const ProviderCard = ({
             ` - App Key: ${provider.app_key.substring(0, 4)}...`}
           {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
         </p>
+
+        {provider.provider_type === 'swissfood' && (
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+            Supported languages: <strong>English (en)</strong>,{' '}
+            <strong>German (de)</strong>, <strong>French (fr)</strong>, and{' '}
+            <strong>Italian (it)</strong>. Defaults to English if your active
+            language is not supported.{' '}
+            <a
+              href="https://naehrwertdaten.ch/en/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium ml-1"
+            >
+              Swiss Food Composition Database
+            </a>
+          </p>
+        )}
+
+        {provider.provider_type === 'free-exercise-db' && (
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+            Fetches exercise data directly from the community repository at{' '}
+            <a
+              href="https://github.com/yuhonas/free-exercise-db"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              yuhonas/free-exercise-db on GitHub
+            </a>
+            .
+          </p>
+        )}
+
+        {provider.provider_type === 'wger' && (
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+            The wger provider is public, free, and requires no credentials. It
+            fetches workout and exercise data directly from the official{' '}
+            <a
+              href="https://wger.de/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              wger Project Website
+            </a>
+            .
+          </p>
+        )}
+
+        {(() => {
+          const portal = PROVIDER_PORTALS[provider.provider_type];
+          if (!portal) return null;
+          return (
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+              For more details or to manage your integration, visit the{' '}
+              <a
+                href={portal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                {portal.label}
+              </a>
+              .
+            </p>
+          );
+        })()}
 
         {config?.hasToken && (config.lastSync || config.tokenExpires) && (
           <div className="text-sm text-muted-foreground">

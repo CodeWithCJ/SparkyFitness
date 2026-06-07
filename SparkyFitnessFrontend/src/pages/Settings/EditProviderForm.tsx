@@ -124,12 +124,34 @@ export const EditProviderForm = ({
             leave the fields blank. Note that credentials cannot be combined
             with publicly sharing this provider row.
           </p>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Open Food Facts is a community-driven database that supports
+            localization. Sparky automatically queries products in your active
+            language setting in SparkyFitness. For more information, visit the{' '}
+            <a
+              href="https://world.openfoodfacts.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Open Food Facts Portal
+            </a>{' '}
+            or learn about language support in the{' '}
+            <a
+              href="https://en.wiki.openfoodfacts.org/Translations"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Open Food Facts Translations Wiki
+            </a>
+            .
+          </p>
         </>
       )}
       {(editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
-        editData.provider_type === 'norish' ||
-        editData.provider_type === 'free-exercise-db') && (
+        editData.provider_type === 'norish') && (
         <>
           <div>
             <Label>App URL</Label>
@@ -688,6 +710,69 @@ export const EditProviderForm = ({
           </Select>
         </div>
       )}
+      {editData.provider_type === 'swissfood' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The Swiss Food Composition Database API is free, public, and
+            requires no credentials. Supported languages for searches and
+            nutritional value labels are <strong>English (en)</strong>,{' '}
+            <strong>German (de)</strong>, <strong>French (fr)</strong>, and{' '}
+            <strong>Italian (it)</strong>.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If your active language in SparkyFitness is not supported, the API
+            queries will default to English. For more details, see the official
+            portal at{' '}
+            <a
+              href="https://naehrwertdaten.ch/en/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Swiss Food Composition Database
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {editData.provider_type === 'free-exercise-db' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The Free Exercise DB provider is public, free, and requires no
+            credentials. It fetches exercise data directly from the community
+            repository at{' '}
+            <a
+              href="https://github.com/yuhonas/free-exercise-db"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              yuhonas/free-exercise-db on GitHub
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {editData.provider_type === 'wger' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The wger provider is public, free, and requires no credentials. It
+            fetches workout and exercise data directly from the official{' '}
+            <a
+              href="https://wger.de/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              wger Project Website
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center space-x-2">
         <Switch
           checked={editData.is_active || false}
