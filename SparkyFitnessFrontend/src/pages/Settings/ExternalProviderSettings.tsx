@@ -38,7 +38,8 @@ export interface ExternalDataProvider {
     | 'polar'
     | 'hevy'
     | 'yazio'
-    | 'strava';
+    | 'strava'
+    | 'swissfood';
   app_id: string | null;
   app_key: string | null;
   yazio_client_id?: string | null;

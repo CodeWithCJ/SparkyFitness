@@ -49,6 +49,7 @@ function NutrientInput({
   label,
   value,
   step = '0.1',
+  decimals,
   disabled,
   onChange,
 }: {
@@ -56,6 +57,7 @@ function NutrientInput({
   label: string;
   value: number | undefined;
   step?: string;
+  decimals?: number;
   disabled: boolean;
   onChange: (val: number | undefined) => void;
 }) {
@@ -66,6 +68,7 @@ function NutrientInput({
         id={id}
         step={step}
         value={value}
+        decimals={decimals}
         onValueChange={(value) => onChange(value)}
         placeholder="0"
         disabled={disabled}
@@ -137,6 +140,7 @@ export function NutrientGrid({
                   : undefined
               }
               step="1"
+              decimals={0}
               disabled={isLocked}
               onChange={update('calories')}
             />
@@ -153,6 +157,7 @@ export function NutrientGrid({
               label={`${t(cfg.label, { defaultValue: cfg.defaultLabel })} (${cfg.unit})`}
               value={variant[key as NumericFoodVariantKeys]}
               step={cfg.decimals === 0 ? '1' : '0.1'}
+              decimals={cfg.decimals}
               disabled={isLocked}
               onChange={update(key)}
             />
@@ -170,6 +175,7 @@ export function NutrientGrid({
             id={gridId(variantIndex, key)}
             label={`${cn.name} (${cn.unit})`}
             value={typeof value === 'number' ? value : undefined}
+            decimals={1}
             disabled={isLocked}
             onChange={update(cn.name)}
           />

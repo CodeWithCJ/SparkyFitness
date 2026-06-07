@@ -321,6 +321,32 @@ export const ProviderSpecificFields = ({
           </Label>
         </div>
       )}
+
+      {provider.provider_type === 'swissfood' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The Swiss Food Composition Database API is free, public, and
+            requires no credentials. Supported languages for searches and
+            nutritional value labels are <strong>English (en)</strong>,{' '}
+            <strong>German (de)</strong>, <strong>French (fr)</strong>, and{' '}
+            <strong>Italian (it)</strong>.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If your active language in SparkyFitness is not supported, the API
+            queries will default to English. For more details, see the official
+            portal at{' '}
+            <a
+              href="https://api.webapp.prod.blv.foodcase-services.com/BLV_WebApp_WS"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Swiss Food Database API Docs
+            </a>
+            .
+          </p>
+        </div>
+      )}
     </>
   );
 };
