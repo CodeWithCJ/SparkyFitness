@@ -14,9 +14,14 @@ async function upsertExerciseEntryData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   caloriesBurned: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  date: any,
+  source = 'Health Data'
 ) {
   log('info', 'upsertExerciseEntryData received date parameter:', date);
+  // HealthKit is shown to users as "Apple Health"; other sources display as-is.
+  // Fall back to 'Health Data' for falsy sources (e.g. an explicit null bypasses the default param).
+  const sourceLabel =
+    (source === 'HealthKit' ? 'Apple Health' : source) || 'Health Data';
   const client = await getClient(userId);
   let existingEntry;
   let exerciseName = 'Unknown Exercise'; // Default value
@@ -69,7 +74,7 @@ async function upsertExerciseEntryData(
         'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4 WHERE id = $5 RETURNING *',
         [
           caloriesBurned,
-          'Active calories logged from Apple Health (updated).',
+          `Active calories logged from ${sourceLabel} (updated).`,
           createdByUserId,
           exerciseName,
           existingEntry.id,
@@ -102,7 +107,7 @@ async function upsertExerciseEntryData(
           date,
           caloriesBurned,
           0,
-          'Active calories logged from Apple Health.',
+          `Active calories logged from ${sourceLabel}.`,
           createdByUserId,
           exerciseName,
         ]

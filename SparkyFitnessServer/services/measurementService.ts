@@ -516,7 +516,8 @@ async function processHealthData(
             actingUserId,
             exerciseId,
             activeCaloriesValue,
-            parsedDate
+            parsedDate,
+            exerciseSource
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
