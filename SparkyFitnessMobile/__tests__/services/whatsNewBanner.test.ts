@@ -1,14 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  WHATS_NEW_CONTENT_VERSION,
   getLastSeenWhatsNewVersion,
   markCurrentVersionSeen,
   markWhatsNewVersionSeen,
 } from '../../src/services/whatsNewBanner';
-
-jest.mock('expo-constants', () => ({
-  __esModule: true,
-  default: { expoConfig: { version: '1.4.0' } },
-}));
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -42,8 +38,10 @@ describe('whatsNewBanner', () => {
     ).resolves.toBe('1.4.0');
   });
 
-  test('markCurrentVersionSeen stamps the Expo config version', async () => {
+  test('markCurrentVersionSeen stamps the current content version', async () => {
     await markCurrentVersionSeen();
-    await expect(getLastSeenWhatsNewVersion()).resolves.toBe('1.4.0');
+    await expect(getLastSeenWhatsNewVersion()).resolves.toBe(
+      String(WHATS_NEW_CONTENT_VERSION),
+    );
   });
 });
