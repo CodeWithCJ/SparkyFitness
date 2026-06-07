@@ -2019,10 +2019,8 @@ async function processSleepEntry(
   actingUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sleepEntryData: any,
-  // When a batch caller (processHealthData/processMobileHealthData) has already
-  // loaded the user's profile + timezone, it passes them here so we don't re-query
-  // the DB once per sleep session. Omitted by single-entry callers, which fall back
-  // to loading them directly.
+  // Batch callers pass an already-loaded profile + timezone to skip a per-session
+  // DB round-trip; single-entry callers omit it and load directly below.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prefetched?: { tz: string; userProfile: any }
 ) {
@@ -2076,8 +2074,7 @@ async function processSleepEntry(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .reduce((sum: any, event: any) => sum + event.duration_in_seconds, 0);
     }
-    // Fetch user profile to get age and gender (reuse prefetched values when a
-    // batch caller already loaded them — avoids a per-session DB round-trip).
+    // User profile (age/gender) + timezone, reusing prefetched values when present.
     const userProfile = prefetched
       ? prefetched.userProfile
       : await userRepository.getUserProfile(userId);
