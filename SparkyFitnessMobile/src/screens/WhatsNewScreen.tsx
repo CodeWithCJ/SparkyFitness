@@ -215,6 +215,8 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
 
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
+  // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
+  // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
     {
       eyebrow: 'HOME SCREEN WIDGET',

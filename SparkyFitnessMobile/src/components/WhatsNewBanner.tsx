@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Constants from 'expo-constants';
 import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import { navigationRef } from './ActiveWorkoutBar';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import {
+  WHATS_NEW_CONTENT_VERSION,
   getLastSeenWhatsNewVersion,
   markWhatsNewVersionSeen,
   subscribeToWhatsNewBannerReset,
@@ -24,7 +24,7 @@ const WhatsNewBanner: React.FC = () => {
   const workoutActive = useActiveWorkoutStore((s) => s.sessionId !== null);
   const [phase, setPhase] = useState<Phase>('evaluating');
   const [resetTick, setResetTick] = useState(0);
-  const currentVersion = Constants.expoConfig?.version ?? null;
+  const contentVersion = String(WHATS_NEW_CONTENT_VERSION);
 
   // Dev Tools can clear `lastSeenVersion` at runtime — bump the tick so the
   // evaluation effect below re-runs and the banner can re-appear without
@@ -40,16 +40,21 @@ const WhatsNewBanner: React.FC = () => {
   ]) as [string, string];
 
   useEffect(() => {
-    if (!currentVersion) {
-      setPhase('ineligible');
-      return;
-    }
     setPhase('evaluating');
     let cancelled = false;
     void (async () => {
       const lastSeen = await getLastSeenWhatsNewVersion();
       if (cancelled) return;
-      if (lastSeen === currentVersion) {
+      if (lastSeen === contentVersion) {
+        setPhase('ineligible');
+        return;
+      }
+      // Pre-marker builds stamped the app version here (e.g. "1.4.0"); markers
+      // are plain integers, so a "." means this user has already seen the
+      // current cards. Migrate their stamp (so future content bumps still reach
+      // them) and suppress this time.
+      if (lastSeen?.includes('.')) {
+        void markWhatsNewVersionSeen(contentVersion);
         setPhase('ineligible');
         return;
       }
@@ -62,7 +67,7 @@ const WhatsNewBanner: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentVersion, resetTick]);
+  }, [contentVersion, resetTick]);
 
   // Mark the version seen as soon as the banner actually renders — a banner
   // the user ignores still consumes the prompt, so we don't re-pester next
@@ -70,10 +75,10 @@ const WhatsNewBanner: React.FC = () => {
   // workout doesn't burn the prompt without ever displaying.
   const shouldRender = phase === 'eligible' && !workoutActive;
   useEffect(() => {
-    if (shouldRender && currentVersion) {
-      void markWhatsNewVersionSeen(currentVersion);
+    if (shouldRender) {
+      void markWhatsNewVersionSeen(contentVersion);
     }
-  }, [shouldRender, currentVersion]);
+  }, [shouldRender, contentVersion]);
 
   if (!shouldRender) return null;
 
