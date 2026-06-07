@@ -5,7 +5,10 @@ const DEFAULT_BASE_URL =
 
 const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'it'];
 
-function resolveLanguage(lang: string) {
+function resolveLanguage(lang: string | null | undefined) {
+  if (!lang || typeof lang !== 'string') {
+    return 'en';
+  }
   const normalized = lang.trim().toLowerCase().slice(0, 2);
   return SUPPORTED_LANGUAGES.includes(normalized) ? normalized : 'en';
 }
@@ -35,6 +38,9 @@ export interface SwissFoodDetail {
 }
 
 export function mapSwissFood(food: SwissFoodDetail) {
+  if (!food) {
+    throw new Error('Food detail is required for mapping');
+  }
   const nutrients: Record<string, number> = {};
   for (const v of food.values || []) {
     const code = v.component?.code;
@@ -85,8 +91,8 @@ export async function searchSwissFoods(
   language = 'en',
   customBaseUrl?: string | null
 ) {
-  const rawBaseUrl = customBaseUrl || DEFAULT_BASE_URL;
-  let baseUrl = rawBaseUrl.trim();
+  const rawBaseUrl = customBaseUrl?.trim() || DEFAULT_BASE_URL;
+  let baseUrl = rawBaseUrl;
   if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
     baseUrl = `https://${baseUrl}`;
   }
@@ -120,6 +126,12 @@ export async function searchSwissFoods(
     }
 
     const items = (await response.json()) as SwissFoodSearchItem[];
+
+    if (!Array.isArray(items)) {
+      throw new Error(
+        'Invalid response format from Swiss Food API: expected an array'
+      );
+    }
 
     const mappedFoods = await Promise.all(
       items.map(async (item) => {
@@ -176,8 +188,8 @@ export async function getSwissFoodDetails(
   language = 'en',
   customBaseUrl?: string | null
 ) {
-  const rawBaseUrl = customBaseUrl || DEFAULT_BASE_URL;
-  let baseUrl = rawBaseUrl.trim();
+  const rawBaseUrl = customBaseUrl?.trim() || DEFAULT_BASE_URL;
+  let baseUrl = rawBaseUrl;
   if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
     baseUrl = `https://${baseUrl}`;
   }

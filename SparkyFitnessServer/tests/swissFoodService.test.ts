@@ -12,7 +12,7 @@ vi.mock('../config/logging', () => ({
 
 // Mock global fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.stubGlobal('fetch', mockFetch);
 
 describe('swissFoodService - mapSwissFood', () => {
   it('should map a Swiss Food Detail object with standard nutrients correctly', () => {

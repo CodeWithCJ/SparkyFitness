@@ -404,9 +404,9 @@ export const ProviderSpecificFields = ({
 
       {provider.provider_type === 'fatsecret' && (
         <p className="text-sm text-muted-foreground col-span-2">
-          Note: For Fatsecret, you need to set up **your public IP**
-          whitelisting in your Fatsecret developer account. This process can
-          take up to 24 hours.
+          Note: For Fatsecret, you need to set up{' '}
+          <strong>your public IP</strong> whitelisting in your Fatsecret
+          developer account. This process can take up to 24 hours.
           <br />
           Get your App ID and App Key from the{' '}
           <a
