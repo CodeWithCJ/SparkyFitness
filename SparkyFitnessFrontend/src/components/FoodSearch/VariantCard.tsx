@@ -233,6 +233,7 @@ export function VariantCard({
                     ? variant.serving_size
                     : undefined
                 }
+                decimals={2}
                 onValueChange={(value) =>
                   onUpdate(index, 'serving_size', value)
                 }

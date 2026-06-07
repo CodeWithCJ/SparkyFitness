@@ -111,6 +111,7 @@ export const getProviderTypes = () => [
   { value: 'hevy', label: 'Hevy' },
   { value: 'usda', label: 'USDA' },
   { value: 'yazio', label: 'YAZIO' },
+  { value: 'swissfood', label: 'Swiss Food Database' },
 ];
 
 export const getInitials = (name: string | null) => {
@@ -137,6 +138,7 @@ export const getProviderCategory = (
     case 'norish':
     case 'usda':
     case 'yazio':
+    case 'swissfood':
       return ['food'];
     case 'nutritionix':
       return ['food', 'exercise'];

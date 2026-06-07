@@ -29,6 +29,10 @@ import {
   getYazioFoodDetails,
 } from '../../integrations/yazio/yazioService.js';
 import {
+  searchSwissFoods,
+  getSwissFoodDetails,
+} from '../../integrations/swissfood/swissFoodService.js';
+import {
   searchFatSecretFoods,
   getFatSecretNutrients,
   searchMealieFoods,
@@ -51,6 +55,7 @@ const VALID_PROVIDER_TYPES = [
   'tandoor',
   'yazio',
   'norish',
+  'swissfood',
 ] as const;
 
 type ProviderType = (typeof VALID_PROVIDER_TYPES)[number];
@@ -105,6 +110,10 @@ async function resolveProviderCredentials(
   providerType: ProviderType
 ): Promise<ProviderCredentials> {
   if (providerType === 'openfoodfacts') {
+    return {};
+  }
+
+  if (providerType === 'swissfood' && !providerId) {
     return {};
   }
 
@@ -467,6 +476,19 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
         pagination = result.pagination;
         break;
       }
+
+      case 'swissfood': {
+        const result = await searchSwissFoods(
+          query,
+          page,
+          pageSize,
+          language,
+          credentials.base_url || undefined
+        );
+        foods = result.foods || [];
+        pagination = result.pagination;
+        break;
+      }
     }
 
     const normalizedFoods = foods.map((food) => normalizeFoodForResponse(food));
@@ -631,6 +653,15 @@ const detailHandler: RequestHandler<{
           password: credentials.app_key,
           baseUrl: credentials.base_url,
         });
+        break;
+      }
+
+      case 'swissfood': {
+        food = await getSwissFoodDetails(
+          externalId,
+          language,
+          credentials.base_url || undefined
+        );
         break;
       }
     }

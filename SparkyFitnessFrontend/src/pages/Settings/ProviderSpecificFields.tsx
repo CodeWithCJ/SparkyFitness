@@ -160,6 +160,29 @@ export const ProviderSpecificFields = ({
             leave the fields blank. Note that credentials cannot be combined
             with publicly sharing this provider row.
           </p>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Open Food Facts is a community-driven database that supports
+            localization. Sparky automatically queries products in your active
+            language setting in SparkyFitness. For more information, visit the{' '}
+            <a
+              href="https://world.openfoodfacts.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Open Food Facts Portal
+            </a>{' '}
+            or learn about language support in the{' '}
+            <a
+              href="https://en.wiki.openfoodfacts.org/Translations"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Open Food Facts Translations Wiki
+            </a>
+            .
+          </p>
         </>
       )}
 
@@ -287,11 +310,15 @@ export const ProviderSpecificFields = ({
         </>
       )}
 
-      {['withings', 'fitbit', 'strava', 'polar'].includes(
+      {['withings', 'fitbit', 'polar'].includes(
         provider.provider_type || ''
       ) && (
         <p className="text-sm text-muted-foreground col-span-2">
-          This integration uses OAuth2. You must set your callback URL to:
+          This integration uses OAuth2. You will be redirected to the provider
+          to authorize access after adding or updating the provider.
+          <br />
+          In your provider's developer dashboard, you must set your callback URL
+          to:
           <strong className="flex items-center mt-1">
             {getCallbackUrl()}
             <Button
@@ -309,6 +336,106 @@ export const ProviderSpecificFields = ({
         </p>
       )}
 
+      {provider.provider_type === 'strava' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Strava integration uses OAuth2. You will be redirected to Strava to
+          authorize access after adding or updating the provider.
+          <br />
+          In your{' '}
+          <a
+            href="https://www.strava.com/settings/api"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            Strava API Dashboard
+          </a>
+          , you must set your "Authorization Callback Domain" to:
+          <strong className="flex items-center mt-1">
+            {window.location.hostname}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-2 h-5 w-5"
+              onClick={(e) => {
+                e.preventDefault();
+                onCopy(window.location.hostname);
+              }}
+            >
+              <Clipboard className="h-4 w-4" />
+            </Button>
+          </strong>
+          and ensure your local URL is correct if testing locally. Note: Strava
+          callback URL on the server is configured to:
+          <strong>{` ${window.location.origin}/strava/callback`}</strong>
+        </p>
+      )}
+
+      {provider.provider_type === 'garmin' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Note: Garmin Connect integration is tested with few metrics only.
+          Ensure your Docker Compose is updated to include Garmin section.
+          <br />
+          Sparky Fitness does not store your Garmin email or password. They are
+          used only during login to obtain secure tokens.
+        </p>
+      )}
+
+      {provider.provider_type === 'hevy' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Get your API Key from Hevy Settings &#62; API Key.
+        </p>
+      )}
+
+      {provider.provider_type === 'nutritionix' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Get your App ID and App Key from the{' '}
+          <a
+            href="https://developer.nutritionix.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            Nutritionix Developer Portal
+          </a>
+          .
+        </p>
+      )}
+
+      {provider.provider_type === 'fatsecret' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Note: For Fatsecret, you need to set up{' '}
+          <strong>your public IP</strong> whitelisting in your Fatsecret
+          developer account. This process can take up to 24 hours.
+          <br />
+          Get your App ID and App Key from the{' '}
+          <a
+            href="https://platform.fatsecret.com/my-account/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            Fatsecret Platform Dashboard
+          </a>
+          .
+        </p>
+      )}
+
+      {provider.provider_type === 'usda' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Get your API Key from the{' '}
+          <a
+            href="https://fdc.nal.usda.gov/api-guide.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            USDA FoodData Central API Guide
+          </a>
+          .
+        </p>
+      )}
+
       {['hevy', 'polar'].includes(provider.provider_type || '') && (
         <div className="flex items-center space-x-2 col-span-2">
           <Switch
@@ -319,6 +446,69 @@ export const ProviderSpecificFields = ({
           <Label htmlFor="full_sync_on_connect">
             Sync entire history on connect
           </Label>
+        </div>
+      )}
+
+      {provider.provider_type === 'swissfood' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The Swiss Food Composition Database API is free, public, and
+            requires no credentials. Supported languages for searches and
+            nutritional value labels are <strong>English (en)</strong>,{' '}
+            <strong>German (de)</strong>, <strong>French (fr)</strong>, and{' '}
+            <strong>Italian (it)</strong>.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If your active language in SparkyFitness is not supported, the API
+            queries will default to English. For more details, see the official
+            portal at{' '}
+            <a
+              href="https://naehrwertdaten.ch/en/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Swiss Food Composition Database
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {provider.provider_type === 'free-exercise-db' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The Free Exercise DB provider is public, free, and requires no
+            credentials. It fetches exercise data directly from the community
+            repository at{' '}
+            <a
+              href="https://github.com/yuhonas/free-exercise-db"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              yuhonas/free-exercise-db on GitHub
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {provider.provider_type === 'wger' && (
+        <div className="col-span-2 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The wger provider is public, free, and requires no credentials. It
+            fetches workout and exercise data directly from the official{' '}
+            <a
+              href="https://wger.de/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              wger Project Website
+            </a>
+            .
+          </p>
         </div>
       )}
     </>
