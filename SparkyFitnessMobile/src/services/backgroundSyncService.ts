@@ -163,7 +163,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   const now = new Date();
   const lastSyncedTimeStr = await loadLastSyncedTime();
   const lastSyncedDate = lastSyncedTimeStr ? new Date(lastSyncedTimeStr) : new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'DEBUG');
+  addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'INFO');
   const endDate = now;
 
   // Session metrics use an overlap window to catch late-arriving records whose
@@ -174,7 +174,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   // so we always send complete daily values rather than partial-window slices.
   const aggregatedStartDate = alignToLocalDayStart(sessionStartDate);
 
-  addLog(`[Background Sync] Syncing sessions from ${sessionStartDate.toISOString()}, aggregated from ${aggregatedStartDate.toISOString()} to ${endDate.toISOString()}`, 'DEBUG');
+  addLog(`[Background Sync] Syncing sessions from ${sessionStartDate.toISOString()}, aggregated from ${aggregatedStartDate.toISOString()} to ${endDate.toISOString()}`, 'INFO');
 
   const allData: HealthDataPayload = [];
   const collectedCounts: string[] = [];
@@ -261,7 +261,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   }
 
   if (allData.length > 0) {
-    addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
+    addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'INFO');
     addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
     await syncHealthData(allData);
     await refreshHealthSyncCacheWhenActive();

@@ -349,6 +349,19 @@ async function processHealthData(
   const errors = [];
   const tzMetadataByType = {};
   const tzFallbackByType = {};
+  // Loaded at most once per batch and shared across every sleep session so we don't
+  // re-query the user profile per record. Lazy so non-sleep syncs pay nothing.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let sleepContext: { tz: string; userProfile: any } | undefined;
+  const getSleepContext = async () => {
+    if (!sleepContext) {
+      sleepContext = {
+        tz,
+        userProfile: await userRepository.getUserProfile(userId),
+      };
+    }
+    return sleepContext;
+  };
   // 0. Pre-Cleanup: Delete existing Exercise entries for the date range to prevent duplicates
   // (delete-then-insert idempotency for exercise/workout sessions).
   // Sleep is intentionally excluded: a partial-window re-sync (e.g. only post-midnight stages)
@@ -613,7 +626,8 @@ async function processHealthData(
             const sleepEntryResult = await processSleepEntry(
               userId,
               actingUserId,
-              sleepEntryData
+              sleepEntryData,
+              await getSleepContext()
             );
             processedResults.push({
               type,
@@ -757,7 +771,8 @@ async function processHealthData(
             const sleepEntryResult = await processSleepEntry(
               userId,
               actingUserId,
-              dataEntry
+              dataEntry,
+              await getSleepContext()
             );
             processedResults.push({
               type,
@@ -901,6 +916,19 @@ async function processMobileHealthData(
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
+  // Loaded at most once per batch and shared across every sleep session (see
+  // processHealthData for rationale).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let sleepContext: { tz: string; userProfile: any } | undefined;
+  const getSleepContext = async () => {
+    if (!sleepContext) {
+      sleepContext = {
+        tz,
+        userProfile: await userRepository.getUserProfile(userId),
+      };
+    }
+    return sleepContext;
+  };
   for (const dataEntry of mobileHealthDataArray) {
     const {
       type,
@@ -1025,7 +1053,8 @@ async function processMobileHealthData(
           result = await processSleepEntry(
             userId,
             actingUserId,
-            sleepEntryData
+            sleepEntryData,
+            await getSleepContext()
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
@@ -1989,7 +2018,11 @@ async function processSleepEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sleepEntryData: any
+  sleepEntryData: any,
+  // Batch callers pass an already-loaded profile + timezone to skip a per-session
+  // DB round-trip; single-entry callers omit it and load directly below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  prefetched?: { tz: string; userProfile: any }
 ) {
   log(
     'debug',
@@ -2041,9 +2074,11 @@ async function processSleepEntry(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .reduce((sum: any, event: any) => sum + event.duration_in_seconds, 0);
     }
-    // Fetch user profile to get age and gender
-    const userProfile = await userRepository.getUserProfile(userId);
-    const tz = await loadUserTimezone(userId);
+    // User profile (age/gender) + timezone, reusing prefetched values when present.
+    const userProfile = prefetched
+      ? prefetched.userProfile
+      : await userRepository.getUserProfile(userId);
+    const tz = prefetched ? prefetched.tz : await loadUserTimezone(userId);
     const age = userProfile?.date_of_birth
       ? userAge(userProfile.date_of_birth, tz)
       : null;

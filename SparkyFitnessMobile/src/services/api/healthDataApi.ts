@@ -50,6 +50,9 @@ export type HealthDataPayload = HealthDataPayloadItem[];
 // --- Chunking, timeout, and retry constants ---
 
 export const CHUNK_SIZE = 5_000;
+// Sleep sessions are expensive server-side (per-session upsert + per-stage merge
+// + aggregate recompute), so they get a smaller cap than simple measurements. #1263
+export const SESSION_CHUNK_SIZE = 50;
 export const FETCH_TIMEOUT_MS = 30_000;
 export const MAX_RETRIES = 3;
 export const RETRY_BASE_DELAY_MS = 1_000;
@@ -141,18 +144,14 @@ export const fetchWithRetry = async (
   throw lastError ?? new Error('All retry attempts failed');
 };
 
-// Types that trigger the server's delete-then-insert pre-cleanup.
-// All records of these types sharing the same source must stay in a single
-// request — the server computes a date range across all three types per source
-// and deletes both sleep and exercise rows for that entire range.
-const SESSION_TYPES = new Set(['SleepSession', 'ExerciseSession', 'Workout']);
+// Exercise/Workout use server-side delete-then-insert per source (range-delete
+// [min..max], then re-insert), so a source's sessions must stay in one request:
+// splitting across overlapping date ranges lets a later range-delete wipe an
+// earlier insert. Sleep is excluded — since #1180 the server merges it by natural
+// key (no range delete), so it can be chunked freely.
+const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 
-/**
- * Builds chunks that are safe against the server's delete-then-insert logic.
- * Session records (SleepSession/ExerciseSession/Workout) are grouped by source
- * and kept in a single chunk per source (never split, even if > CHUNK_SIZE).
- * Simple records (steps, calories, etc.) are chunked normally by CHUNK_SIZE.
- */
+/** Splits the payload into request-sized chunks (see RANGE_DELETE_TYPES). */
 const sendHealthDataChunked = async (
   url: string,
   headers: Record<string, string>,
@@ -160,30 +159,38 @@ const sendHealthDataChunked = async (
   serverConfig: ServerConfig,
 ): Promise<unknown> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
-  const sessionsBySource = new Map<string, HealthDataPayloadItem[]>();
+  const sleepRecords: HealthDataPayloadItem[] = [];
+  const rangeDeleteBySource = new Map<string, HealthDataPayloadItem[]>();
 
   for (const record of data) {
-    if (SESSION_TYPES.has(record.type)) {
+    if (record.type === 'SleepSession') {
+      sleepRecords.push(record);
+    } else if (RANGE_DELETE_TYPES.has(record.type)) {
       const source = (record as unknown as Record<string, unknown>).source as string ?? 'manual';
-      const group = sessionsBySource.get(source);
+      const group = rangeDeleteBySource.get(source);
       if (group) {
         group.push(record);
       } else {
-        sessionsBySource.set(source, [record]);
+        rangeDeleteBySource.set(source, [record]);
       }
     } else {
       simpleRecords.push(record);
     }
   }
 
-  // Each source's session records go in a single chunk (never split).
-  // Simple records are chunked normally.
   const chunks: HealthDataPayloadItem[][] = [];
 
-  for (const sessionRecords of sessionsBySource.values()) {
+  // Exercise/Workout: one chunk per source, never split.
+  for (const sessionRecords of rangeDeleteBySource.values()) {
     chunks.push(sessionRecords);
   }
 
+  // Sleep: chunked by SESSION_CHUNK_SIZE.
+  for (let i = 0; i < sleepRecords.length; i += SESSION_CHUNK_SIZE) {
+    chunks.push(sleepRecords.slice(i, i + SESSION_CHUNK_SIZE));
+  }
+
+  // Simple measurements: chunked by CHUNK_SIZE.
   for (let i = 0; i < simpleRecords.length; i += CHUNK_SIZE) {
     chunks.push(simpleRecords.slice(i, i + CHUNK_SIZE));
   }
@@ -200,7 +207,7 @@ const sendHealthDataChunked = async (
     if (totalChunks > 1) {
       addLog(
         `[API] Sending chunk ${i + 1}/${totalChunks} (records ${chunkStart}-${chunkEnd} of ${data.length})`,
-        'DEBUG',
+        'INFO',
       );
     }
 
@@ -252,7 +259,7 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   }
 
   if (data.length === 0) {
-    addLog('[API] No health data to sync', 'DEBUG');
+    addLog('[API] No health data to sync', 'INFO');
     return undefined;
   }
 
@@ -260,7 +267,7 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
 
   console.log(`[API Service] Attempting to sync to URL: ${url}/api/health-data`);
 
-  addLog(`[API] Starting sync of ${data.length} records to server`, 'DEBUG');
+  addLog(`[API] Starting sync of ${data.length} records to server`, 'INFO');
 
   try {
     const result = await sendHealthDataChunked(
