@@ -358,6 +358,12 @@ async function getMcpClient(reqHeaders?: IncomingHttpHeaders) {
     if (resolvedHost) {
       headers['x-forwarded-host'] = resolvedHost;
     }
+    // If a server-level API key is configured, prefer it over session forwarding
+    // for the server→MCP internal call (useful when cookie auth fails over plain
+    // internal Docker HTTP). Mirrors the same priority logic in the stdio path.
+    if (process.env.SPARKY_FITNESS_API_KEY) {
+      headers['x-api-key'] = process.env.SPARKY_FITNESS_API_KEY;
+    }
     log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
     return await createMCPClient({
       transport: {
