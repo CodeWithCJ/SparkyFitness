@@ -11,6 +11,7 @@ import { registerProfileTools } from "./profile.js";
 import { registerHabitTools } from "./habits.js";
 import { registerWizardTools } from "./wizard.js";
 import { registerReportTools } from "./report.js";
+import { registerRawTools } from "./raw.js";
 
 /**
  * Registers all MCP tools for the authenticated user.
@@ -30,4 +31,5 @@ export function registerAllTools(server: McpServer, userId: string): void {
   registerHabitTools(server, userId);
   registerWizardTools(server, userId);
   registerReportTools(server, userId);
+  registerRawTools(server, userId);
 }
