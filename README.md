@@ -60,7 +60,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Fitbit**
 - **Garmin Connect**
 - **Withings**
-- **Polar Flow** (partially tested)
+- **Polar Flow** 
 - **Hevy** (not tested)
 - **OpenFoodFacts**
 - **USDA**
@@ -69,6 +69,8 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Mealie**
 - **Tandoor**
 - **Strava** (partially tested)
+- **Norish**
+- **Yazio** (uses unofficial API)
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
 
