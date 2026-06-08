@@ -518,10 +518,9 @@ Actions:
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async (args): Promise<ToolResponse> => {
     try {
-      const query = args.date ? { start_date: args.date, end_date: args.date } : args;
       const today = new Date().toISOString().slice(0, 10);
-      const start_date = query.date || query.start_date || today;
-      const end_date = query.date || query.end_date || start_date;
+      const start_date = args.date || args.start_date || today;
+      const end_date = args.date || args.end_date || start_date;
       const data = await foodService.getNutritionalSummary(userId, { start_date, end_date });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
