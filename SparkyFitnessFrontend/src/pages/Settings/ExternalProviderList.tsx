@@ -210,12 +210,16 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
             ? editData.provider_type === 'yazio'
               ? yazioAppId
               : editData.app_id || undefined
-            // OAuth providers store credentials encrypted server-side and never echo them back.
-            // Send undefined (not null) when empty so COALESCE preserves the existing value.
-            // null would trigger clearAppId=true and wipe the encrypted credential.
-            : ['googlehealth', 'fitbit', 'withings', 'strava', 'polar'].includes(
-                  editData.provider_type || ''
-                )
+            : // OAuth providers store credentials encrypted server-side and never echo them back.
+              // Send undefined (not null) when empty so COALESCE preserves the existing value.
+              // null would trigger clearAppId=true and wipe the encrypted credential.
+              [
+                  'googlehealth',
+                  'fitbit',
+                  'withings',
+                  'strava',
+                  'polar',
+                ].includes(editData.provider_type || '')
               ? editData.app_id?.trim() || undefined
               : editData.app_id || null,
       app_key:
@@ -223,10 +227,14 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           ? yazioAppKey
           : editData.provider_type === 'openfoodfacts'
             ? editData.app_key || undefined
-            // Same reasoning as app_id above: undefined preserves, null wipes.
-            : ['googlehealth', 'fitbit', 'withings', 'strava', 'polar'].includes(
-                  editData.provider_type || ''
-                )
+            : // Same reasoning as app_id above: undefined preserves, null wipes.
+              [
+                  'googlehealth',
+                  'fitbit',
+                  'withings',
+                  'strava',
+                  'polar',
+                ].includes(editData.provider_type || '')
               ? editData.app_key?.trim() || undefined
               : editData.app_key || null,
       is_active: editData.is_active,

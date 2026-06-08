@@ -725,7 +725,8 @@ export const EditProviderForm = ({
                   } else {
                     toast({
                       title: 'Copy Failed',
-                      description: 'Clipboard access requires a secure context (HTTPS).',
+                      description:
+                        'Clipboard access requires a secure context (HTTPS).',
                       variant: 'destructive',
                     });
                   }

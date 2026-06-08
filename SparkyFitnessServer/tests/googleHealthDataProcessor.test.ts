@@ -63,12 +63,6 @@ function rollupPoints(...points: object[]) {
   return { rollupDataPoints: points };
 }
 
-// Helper: a minimal daily-aggregate data point for a given date
-function dailyPoint(date: string, payload: object) {
-  const [year, month, day] = date.split('-').map(Number);
-  const key = Object.keys(payload)[0];
-  return { [key]: { date: { year, month, day }, ...((payload as any)[key] || {}) } };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
