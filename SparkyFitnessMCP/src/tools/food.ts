@@ -4,6 +4,7 @@ import * as foodService from "../services/foodService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
 import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.js";
+import { z } from "zod";
 
 const VALID_ACTIONS = [
   "search_food", "lookup_food_nutrition", "log_food", "create_food", "search_meal", "log_meal",
@@ -447,4 +448,115 @@ Actions:
       }
     }
   );
+
+
+  // Standalone domain tools.
+  server.registerTool("sparky_list_foods", {
+    title: "List Foods",
+    description: "Returns a paginated food catalog for the authenticated user, including variants.",
+    inputSchema: { limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional(), search: z.string().optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.listFoods(userId, args);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_list_foods error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_details", {
+    title: "Get Food Details",
+    description: "Returns full details for one food by food_id, including available variants.",
+    inputSchema: { food_id: z.string().min(1) },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ food_id }): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.getFoodDetails(userId, food_id);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_details error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_search_foods", {
+    title: "Search Foods",
+    description: "Searches foods by name for the authenticated user.",
+    inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.searchFoods(userId, args);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_search_foods error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_diary", {
+    title: "Get Food Diary",
+    description: "Returns entry-level food diary data for a specific date or date range.",
+    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.getFoodDiary(userId, args);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_diary error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_nutrition_summary", {
+    title: "Get Nutrition Summary",
+    description: "Returns nutrition summary rows for a specific date or date range.",
+    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const query = args.date ? { start_date: args.date, end_date: args.date } : args;
+      const today = new Date().toISOString().slice(0, 10);
+      const start_date = query.date || query.start_date || today;
+      const end_date = query.date || query.end_date || start_date;
+      const data = await foodService.getNutritionalSummary(userId, { start_date, end_date });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_nutrition_summary error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_recent_food_entries", {
+    title: "Get Recent Food Entries",
+    description: "Returns recent entry-level food diary rows for the authenticated user.",
+    inputSchema: { limit: z.number().int().min(1).max(200).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.getRecentFoodEntries(userId, args);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_recent_food_entries error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_usage", {
+    title: "Get Food Usage",
+    description: "Shows where a specific food_id was used in the diary.",
+    inputSchema: { food_id: z.string().min(1), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ food_id, ...query }): Promise<ToolResponse> => {
+    try {
+      const data = await foodService.getFoodUsage(userId, food_id, query);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_usage error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
 }

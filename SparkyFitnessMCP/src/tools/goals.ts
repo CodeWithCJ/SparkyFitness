@@ -4,6 +4,7 @@ import * as goalService from "../services/goalService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
 import type { ToolResponse } from "../types.js";
+import { z } from "zod";
 
 const VALID_ACTIONS = ["get_goals", "set_goals", "list_goal_timeline"];
 
@@ -73,4 +74,20 @@ Actions:
       }
     }
   );
+
+
+  server.registerTool("sparky_get_goal_snapshot", {
+    title: "Get Goal Snapshot",
+    description: "Returns the goals active on a specific date.",
+    inputSchema: { target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ target_date }): Promise<ToolResponse> => {
+    try {
+      const data = await goalService.getGoals(userId, target_date);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Goal Tool] sparky_get_goal_snapshot error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
 }

@@ -52,4 +52,20 @@ export function registerReportTools(server: McpServer, userId: string): void {
       }
     }
   );
+
+
+  server.registerTool("sparky_get_daily_report", {
+    title: "Get Daily Report",
+    description: "Returns daily report data across nutrition, exercise, and water for a specific date or range.",
+    inputSchema: { date: optionalDateSchema.optional(), start_date: optionalDateSchema.optional(), end_date: optionalDateSchema.optional() },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args): Promise<ToolResponse> => {
+    try {
+      const data = await reportService.getDailyReport(userId, args);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Report Tool] sparky_get_daily_report error:", error);
+      return ERRORS.DB_ERROR();
+    }
+  });
 }

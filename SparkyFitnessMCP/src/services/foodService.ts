@@ -1334,3 +1334,168 @@ export async function lookupFoodNutrition(
   });
 }
 
+// Domain catalog/diary helpers used by standalone MCP tools.
+type McpQueryValue = string | number | boolean | undefined | null;
+type McpDateQuery = { date?: string; start_date?: string; end_date?: string };
+type McpPaginationQuery = { limit?: number; offset?: number };
+
+function mcpDateRange(query: McpDateQuery = {}): { startDate: string; endDate: string } {
+  const today = new Date().toISOString().slice(0, 10);
+  const date = query.date || undefined;
+  const startDate = date || query.start_date || today;
+  const endDate = date || query.end_date || startDate;
+  return { startDate, endDate };
+}
+
+function mcpFoodSearch(search?: string): { clause: string; params: McpQueryValue[] } {
+  const trimmed = search?.trim();
+  if (!trimmed) return { clause: "", params: [] };
+  return {
+    clause: "WHERE f.name ILIKE $1 OR COALESCE(f.brand, '') ILIKE $1",
+    params: [`%${trimmed}%`],
+  };
+}
+
+export async function listFoods(
+  userId: string,
+  params: McpPaginationQuery & { search?: string } = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+  const { clause, params: searchParams } = mcpFoodSearch(params.search);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count FROM foods f ${clause}`,
+      searchParams,
+    );
+
+    const dataResult = await client.query(
+      `SELECT f.id, f.name, f.brand, f.is_custom, f.shared_with_public, f.created_at, f.updated_at,
+              COALESCE(
+                json_agg(fv.* ORDER BY fv.is_default DESC, fv.created_at ASC)
+                  FILTER (WHERE fv.id IS NOT NULL),
+                '[]'::json
+              ) AS variants
+       FROM foods f
+       LEFT JOIN food_variants fv ON fv.food_id = f.id
+       ${clause}
+       GROUP BY f.id
+       ORDER BY LOWER(f.name) ASC
+       LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}`,
+      [...searchParams, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}
+
+export async function getFoodDetails(userId: string, foodId: string): Promise<Record<string, unknown>> {
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT f.*,
+              COALESCE(
+                json_agg(fv.* ORDER BY fv.is_default DESC, fv.created_at ASC)
+                  FILTER (WHERE fv.id IS NOT NULL),
+                '[]'::json
+              ) AS variants
+       FROM foods f
+       LEFT JOIN food_variants fv ON fv.food_id = f.id
+       WHERE f.id = $1
+       GROUP BY f.id`,
+      [foodId],
+    );
+
+    if (!result.rows[0]) {
+      throw new Error(`Food not found: ${foodId}`);
+    }
+
+    return result.rows[0];
+  });
+}
+
+export async function searchFoods(
+  userId: string,
+  params: McpPaginationQuery & { query: string },
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  if (!params.query?.trim()) throw new Error("query is required");
+  return listFoods(userId, { ...params, search: params.query });
+}
+
+export async function getFoodDiary(userId: string, params: McpDateQuery = {}): Promise<Record<string, unknown>> {
+  const { startDate, endDate } = mcpDateRange(params);
+
+  return withClient(userId, async (client) => {
+    const foodEntries = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       WHERE fe.entry_date BETWEEN $1 AND $2
+       ORDER BY fe.entry_date ASC, fe.created_at ASC`,
+      [startDate, endDate],
+    );
+
+    const mealEntries = await client.query(
+      `SELECT fem.*, mt.name AS meal_type
+       FROM food_entry_meals fem
+       LEFT JOIN meal_types mt ON mt.id = fem.meal_type_id
+       WHERE fem.entry_date BETWEEN $1 AND $2
+       ORDER BY fem.entry_date ASC, fem.created_at ASC`,
+      [startDate, endDate],
+    ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+    return {
+      start_date: startDate,
+      end_date: endDate,
+      food_entries: foodEntries.rows,
+      meal_entries: mealEntries.rows,
+    };
+  });
+}
+
+export async function getRecentFoodEntries(userId: string, params: { limit?: number } = {}): Promise<Record<string, unknown>[]> {
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows;
+  });
+}
+
+export async function getFoodUsage(
+  userId: string,
+  foodId: string,
+  params: McpDateQuery & McpPaginationQuery = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { startDate, endDate } = mcpDateRange(params);
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM food_entries
+       WHERE food_id = $1 AND entry_date BETWEEN $2 AND $3`,
+      [foodId, startDate, endDate],
+    );
+
+    const dataResult = await client.query(
+      `SELECT fe.*, mt.name AS meal_type
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       WHERE fe.food_id = $1 AND fe.entry_date BETWEEN $2 AND $3
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $4 OFFSET $5`,
+      [foodId, startDate, endDate, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}
