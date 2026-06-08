@@ -4,7 +4,11 @@ import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
-import { todayInZone, instantToDay, instantHourMinute } from '@workspace/shared';
+import {
+  todayInZone,
+  instantToDay,
+  instantHourMinute,
+} from '@workspace/shared';
 import {
   parseDurationToSeconds,
   googleTimeToIso,
@@ -24,6 +28,19 @@ interface GoogleRollupResult {
   rollupDataPoints: Record<string, unknown>[];
 }
 
+interface CustomMeasurementInput {
+  categoryName: string;
+  value: number | string;
+  unit: string;
+  entryDate: string;
+  entryHour: number;
+  entryTimestamp: string;
+  frequency: string;
+}
+
+type DateObj = { year?: number; month?: number; day?: number };
+type CivilStartTimePoint = { date?: DateObj };
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared helper
 // ──────────────────────────────────────────────────────────────────────────────
@@ -33,8 +50,7 @@ interface GoogleRollupResult {
 async function upsertCustomMeasurementLogic(
   userId: UserId,
   createdByUserId: UserId,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  customMeasurement: any
+  customMeasurement: CustomMeasurementInput
 ) {
   const {
     categoryName,
@@ -46,8 +62,9 @@ async function upsertCustomMeasurementLogic(
     frequency,
   } = customMeasurement;
   const categories = await measurementRepository.getCustomCategories(userId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const category = categories.find((cat: any) => cat.name === categoryName);
+  const category = categories.find(
+    (cat: { name: string; id: string }) => cat.name === categoryName
+  );
   let categoryId;
   if (!category) {
     const newCategory = await measurementRepository.createCustomCategory({
@@ -84,11 +101,18 @@ async function upsertCustomMeasurementLogic(
 //   - Daily types: payload.date = { year, month, day }
 //   - Sample types: payload.sampleTime.physicalTime = ISO string
 //   - Interval/session types: top-level startTime or payload.interval.civilStartTime.date
-function extractDate(dataPoint: Record<string, unknown>, tz: string): string | null {
+function extractDate(
+  dataPoint: Record<string, unknown>,
+  tz: string
+): string | null {
   // Interval/session types (exercise, some custom types) carry top-level startTime
   const st = dataPoint.startTime;
   if (st) {
-    if (typeof st === 'object' && st !== null && (st as Record<string, unknown>).date) {
+    if (
+      typeof st === 'object' &&
+      st !== null &&
+      (st as Record<string, unknown>).date
+    ) {
       const d = (st as Record<string, unknown>).date as Record<string, unknown>;
       if (d?.year) {
         return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
@@ -114,23 +138,30 @@ function extractDate(dataPoint: Record<string, unknown>, tz: string): string | n
     const p = payload as Record<string, unknown>;
 
     // Daily aggregate: payload.date = { year, month, day }
-    if (p.date && typeof p.date === 'object' && (p.date as Record<string, unknown>).year) {
+    if (
+      p.date &&
+      typeof p.date === 'object' &&
+      (p.date as Record<string, unknown>).year
+    ) {
       const d = p.date as Record<string, unknown>;
       return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
     }
 
     // Sample types: payload.sampleTime.physicalTime = "2026-06-07T..."
     const sampleTime = p.sampleTime as Record<string, unknown> | undefined;
-    const physTime =
-      sampleTime?.physicalTime ?? sampleTime?.physical_time;
-    if (typeof physTime === 'string') return instantToDay(new Date(physTime), tz);
+    const physTime = sampleTime?.physicalTime ?? sampleTime?.physical_time;
+    if (typeof physTime === 'string')
+      return instantToDay(new Date(physTime), tz);
 
     // Session types inside payload: payload.interval.civilStartTime.date
     const interval = p.interval as Record<string, unknown> | undefined;
     const civilStart = interval?.civilStartTime ?? interval?.civil_start_time;
-    const csd = civilStart && typeof civilStart === 'object'
-      ? (civilStart as Record<string, unknown>).date as Record<string, unknown> | undefined
-      : undefined;
+    const csd =
+      civilStart && typeof civilStart === 'object'
+        ? ((civilStart as Record<string, unknown>).date as
+            | Record<string, unknown>
+            | undefined)
+        : undefined;
     if (csd?.year) {
       return `${csd.year}-${String(csd.month).padStart(2, '0')}-${String(csd.day).padStart(2, '0')}`;
     }
@@ -161,11 +192,14 @@ async function processGoogleHeartRate(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const bpm = (point as any).dailyRestingHeartRate?.beatsPerMinute;
+    const hr = point.dailyRestingHeartRate as
+      | { beatsPerMinute?: unknown }
+      | undefined;
+    const bpm = hr?.beatsPerMinute;
     if (bpm === null || bpm === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Resting Heart Rate',
-      value: bpm,
+      value: bpm as number,
       unit: 'bpm',
       entryDate,
       entryHour: 0,
@@ -187,7 +221,7 @@ async function processGoogleSteps(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -195,13 +229,14 @@ async function processGoogleSteps(
     return;
   }
   for (const point of points) {
-    const countSum = (point as any).steps?.countSum;
+    const stepsPayload = point.steps as { countSum?: unknown } | undefined;
+    const countSum = stepsPayload?.countSum;
     if (countSum === null || countSum === undefined) continue;
-    const steps = parseInt(countSum, 10);
+    const steps = parseInt(countSum as string, 10);
     if (isNaN(steps)) continue;
 
     // Timestamp from civilStartTime
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -242,8 +277,9 @@ async function processGoogleWeight(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const grams = (point as any).weight?.weightGrams;
-    const weight = parseFloat(grams);
+    const grams = (point.weight as { weightGrams?: unknown } | undefined)
+      ?.weightGrams;
+    const weight = parseFloat(grams as string);
     if (isNaN(weight)) continue;
     const weightKg = weight / 1000;
     await measurementRepository.upsertCheckInMeasurements(
@@ -278,8 +314,9 @@ async function processGoogleSpO2(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const pct = (point as any).oxygenSaturation?.percentage;
-    const pctVal = parseFloat(pct);
+    const pct = (point.oxygenSaturation as { percentage?: unknown } | undefined)
+      ?.percentage;
+    const pctVal = parseFloat(pct as string);
     if (isNaN(pctVal)) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'SpO2',
@@ -317,7 +354,12 @@ async function processGoogleTemperature(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const fields = (point as any).dailySleepTemperatureDerivations;
+    const fields = point.dailySleepTemperatureDerivations as
+      | {
+          nightlyTemperatureCelsius?: unknown;
+          baselineTemperatureCelsius?: unknown;
+        }
+      | undefined;
     if (!fields) continue;
     const nightly = fields.nightlyTemperatureCelsius;
     const baseline = fields.baselineTemperatureCelsius;
@@ -329,7 +371,9 @@ async function processGoogleTemperature(
     )
       continue;
     const relative =
-      Math.round((parseFloat(nightly) - parseFloat(baseline)) * 1000) / 1000;
+      Math.round(
+        (parseFloat(nightly as string) - parseFloat(baseline as string)) * 1000
+      ) / 1000;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Skin Temperature Variation',
       value: relative,
@@ -363,9 +407,14 @@ async function processGoogleProfile(
   // Use the most recent height entry
   let latestMm: number | null = null;
   for (const point of points) {
-    const mm = (point as any).height?.heightMillimeters;
-    if (mm !== null && (latestMm === null || parseFloat(mm) > latestMm)) {
-      latestMm = parseFloat(mm);
+    const mm = (point.height as { heightMillimeters?: unknown } | undefined)
+      ?.heightMillimeters;
+    if (
+      mm !== null &&
+      mm !== undefined &&
+      (latestMm === null || parseFloat(mm as string) > latestMm)
+    ) {
+      latestMm = parseFloat(mm as string);
     }
   }
   if (latestMm === null) return;
@@ -402,12 +451,15 @@ async function processGoogleHRV(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const rmssd =
-      (point as any).dailyHeartRateVariability?.averageHeartRateVariabilityMilliseconds;
+    const rmssd = (
+      point.dailyHeartRateVariability as
+        | { averageHeartRateVariabilityMilliseconds?: unknown }
+        | undefined
+    )?.averageHeartRateVariabilityMilliseconds;
     if (rmssd === null || rmssd === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'HRV',
-      value: parseFloat(rmssd),
+      value: parseFloat(rmssd as string),
       unit: 'ms',
       entryDate,
       entryHour: 0,
@@ -440,11 +492,13 @@ async function processGoogleRespiratoryRate(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const br = (point as any).dailyRespiratoryRate?.breathsPerMinute;
+    const br = (
+      point.dailyRespiratoryRate as { breathsPerMinute?: unknown } | undefined
+    )?.breathsPerMinute;
     if (br === null || br === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Respiratory Rate',
-      value: parseFloat(br),
+      value: parseFloat(br as string),
       unit: 'brpm',
       entryDate,
       entryHour: 0,
@@ -467,7 +521,7 @@ async function processGoogleActiveZoneMinutes(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -475,10 +529,16 @@ async function processGoogleActiveZoneMinutes(
     return;
   }
   for (const point of points) {
-    const azm = (point as any).activeZoneMinutes;
+    const azm = point.activeZoneMinutes as
+      | {
+          sumInFatBurnHeartZone?: unknown;
+          sumInCardioHeartZone?: unknown;
+          sumInPeakHeartZone?: unknown;
+        }
+      | undefined;
     if (!azm) continue;
 
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -486,9 +546,9 @@ async function processGoogleActiveZoneMinutes(
     }
     if (!entryDate) continue;
 
-    const fatBurn = parseInt(azm.sumInFatBurnHeartZone, 10) || 0;
-    const cardio = parseInt(azm.sumInCardioHeartZone, 10) || 0;
-    const peak = parseInt(azm.sumInPeakHeartZone, 10) || 0;
+    const fatBurn = parseInt(azm.sumInFatBurnHeartZone as string, 10) || 0;
+    const cardio = parseInt(azm.sumInCardioHeartZone as string, 10) || 0;
+    const peak = parseInt(azm.sumInPeakHeartZone as string, 10) || 0;
     const total = fatBurn + cardio + peak;
     if (total === 0) continue;
 
@@ -528,22 +588,50 @@ async function processGoogleSleep(
   // Collect the longest session per anchor date (last-writer-wins produces wrong results
   // when a short false-positive doze has a later civil_start_time than the real main sleep).
   type SleepCandidate = {
-    entryData: any;
-    stages: any[];
+    entryData: {
+      entry_date: string;
+      bedtime: string | null;
+      wake_time: string | null;
+      duration_in_seconds: number;
+      time_asleep_in_seconds: number;
+      sleep_score: number;
+      source: string;
+      deep_sleep_seconds: number;
+      light_sleep_seconds: number;
+      rem_sleep_seconds: number;
+      awake_sleep_seconds: number;
+    };
+    stages: Record<string, unknown>[];
     minutesAsleep: number;
   };
   const bestPerDate = new Map<string, SleepCandidate>();
 
   for (const point of points) {
-    const sleepPayload = (point as any).sleep;
+    const sleepPayload = point.sleep as
+      | {
+          summary?: Record<string, unknown>;
+          interval?: Record<string, unknown>;
+          stages?: Record<string, unknown>[];
+        }
+      | undefined;
     if (!sleepPayload) continue;
 
     const summary = sleepPayload.summary || {};
     const interval = sleepPayload.interval || {};
     const stages = sleepPayload.stages || [];
 
-    const startIso = googleTimeToIso(interval.startTime || (point as any).startTime);
-    const endIso = googleTimeToIso(interval.endTime || (point as any).endTime);
+    const startIso = googleTimeToIso(
+      (interval.startTime ?? point.startTime) as
+        | string
+        | Record<string, unknown>
+        | undefined
+    );
+    const endIso = googleTimeToIso(
+      (interval.endTime ?? point.endTime) as
+        | string
+        | Record<string, unknown>
+        | undefined
+    );
     if (!startIso) continue;
 
     const startDate = instantToDay(startIso, tz);
@@ -554,9 +642,11 @@ async function processGoogleSleep(
         ? instantToDay(new Date(new Date(startDate).getTime() - 86400000), tz)
         : startDate;
 
-    const minutesAsleep = parseInt(summary.minutesAsleep, 10) || 0;
-    const minutesInPeriod = parseInt(summary.minutesInSleepPeriod, 10) || 0;
-    const minutesToFall = parseInt(summary.minutesToFallAsleep, 10) || 0;
+    const minutesAsleep = parseInt(summary.minutesAsleep as string, 10) || 0;
+    const minutesInPeriod =
+      parseInt(summary.minutesInSleepPeriod as string, 10) || 0;
+    const minutesToFall =
+      parseInt(summary.minutesToFallAsleep as string, 10) || 0;
     const efficiency =
       minutesInPeriod > 0
         ? Math.round((minutesAsleep / minutesInPeriod) * 100)
@@ -567,8 +657,12 @@ async function processGoogleSleep(
       remSec = 0,
       awakeSec = 0;
     for (const stage of stages) {
-      const stageStart = googleTimeToIso(stage.startTime);
-      const stageEnd = googleTimeToIso(stage.endTime);
+      const stageStart = googleTimeToIso(
+        stage.startTime as string | Record<string, unknown> | undefined
+      );
+      const stageEnd = googleTimeToIso(
+        stage.endTime as string | Record<string, unknown> | undefined
+      );
       if (!stageStart || !stageEnd) continue;
       const durationSec = Math.round(
         (new Date(stageEnd).getTime() - new Date(stageStart).getTime()) / 1000
@@ -625,8 +719,12 @@ async function processGoogleSleep(
     if (result?.id && stages.length > 0) {
       await sleepRepository.deleteSleepStageEventsByEntryId(userId, result.id);
       for (const stage of stages) {
-        const stageStart = googleTimeToIso(stage.startTime);
-        const stageEnd = googleTimeToIso(stage.endTime);
+        const stageStart = googleTimeToIso(
+          stage.startTime as string | Record<string, unknown> | undefined
+        );
+        const stageEnd = googleTimeToIso(
+          stage.endTime as string | Record<string, unknown> | undefined
+        );
         if (!stageStart || !stageEnd) continue;
         const durationSec = Math.round(
           (new Date(stageEnd).getTime() - new Date(stageStart).getTime()) / 1000
@@ -638,7 +736,7 @@ async function processGoogleSleep(
           REM: 'rem',
           UNKNOWN: 'light',
         };
-        const stageType = stageTypeMap[stage.type] || 'light';
+        const stageType = stageTypeMap[stage.type as string] || 'light';
         await sleepRepository.upsertSleepStageEvent(
           userId,
           result.id,
@@ -674,7 +772,14 @@ async function processGoogleActivities(
   const points = data?.dataPoints;
   if (!points || points.length === 0) return;
   for (const point of points) {
-    const exercise = (point as any).exercise;
+    const exercise = point.exercise as
+      | {
+          displayName?: string;
+          activeDuration?: string;
+          exerciseType?: string;
+          metricsSummary?: Record<string, unknown>;
+        }
+      | undefined;
     if (!exercise) continue;
 
     const entryDate = extractDate(point as Record<string, unknown>, tz);
@@ -711,23 +816,24 @@ async function processGoogleActivities(
     }
 
     const avgHR = metrics.averageHeartRateBeatsPerMinute
-      ? parseInt(metrics.averageHeartRateBeatsPerMinute, 10)
+      ? parseInt(metrics.averageHeartRateBeatsPerMinute as string, 10)
       : null;
     const calories = metrics.caloriesKcal
-      ? Math.round(parseFloat(metrics.caloriesKcal))
+      ? Math.round(parseFloat(metrics.caloriesKcal as string))
       : 0;
     // API returns distanceMillimeters; fall back to distanceMeters for forward-compat
     const distanceKm = metrics.distanceMillimeters
-      ? parseFloat(metrics.distanceMillimeters) / 1_000_000
+      ? parseFloat(metrics.distanceMillimeters as string) / 1_000_000
       : metrics.distanceMeters
-        ? parseFloat(metrics.distanceMeters) / 1000
+        ? parseFloat(metrics.distanceMeters as string) / 1000
         : undefined;
-    const steps = metrics.steps ? parseInt(metrics.steps, 10) : 0;
+    const steps = metrics.steps ? parseInt(metrics.steps as string, 10) : 0;
 
     // Extract the numeric ID from the data point name ("users/.../dataPoints/<id>")
-    const nameId =
-      typeof (point as any).name === 'string' ? (point as any).name.split('/').pop() : null;
-    const sourceId = (point as any).dataPointId || nameId || null;
+    const pointName = typeof point.name === 'string' ? point.name : null;
+    const nameId = pointName?.split('/').pop() ?? null;
+    const sourceId =
+      (point.dataPointId as string | undefined) ?? nameId ?? null;
 
     const entryData = {
       exercise_id: exerciseRecord.id,
@@ -787,8 +893,9 @@ async function processGoogleBodyFat(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const pct = (point as any).bodyFat?.percentage;
-    const bodyFatPct = parseFloat(pct);
+    const pct = (point.bodyFat as { percentage?: unknown } | undefined)
+      ?.percentage;
+    const bodyFatPct = parseFloat(pct as string);
     if (isNaN(bodyFatPct)) continue;
     await measurementRepository.upsertCheckInMeasurements(
       userId,
@@ -812,7 +919,7 @@ async function processGoogleWater(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -820,12 +927,14 @@ async function processGoogleWater(
     return;
   }
   for (const point of points) {
-    const ml = (point as any).amountConsumed?.millilitersSum;
+    const ml = (
+      point.amountConsumed as { millilitersSum?: unknown } | undefined
+    )?.millilitersSum;
     if (ml === null || ml === undefined) continue;
-    const water = Math.round(parseFloat(ml));
+    const water = Math.round(parseFloat(ml as string));
     if (water <= 0) continue;
 
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -869,11 +978,13 @@ async function processGoogleCoreTemperature(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const temp = (point as any).coreBodyTemperature?.temperature;
+    const temp = (
+      point.coreBodyTemperature as { temperature?: unknown } | undefined
+    )?.temperature;
     if (temp === null || temp === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Core Temperature',
-      value: parseFloat(temp),
+      value: parseFloat(temp as string),
       unit: 'C',
       entryDate,
       entryHour: 0,
@@ -906,7 +1017,9 @@ async function processGoogleVO2Max(
   for (const point of points) {
     const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const payload = (point as any).dailyVo2Max;
+    const payload = point.dailyVo2Max as
+      | { vo2MaxMillilitersPerKilogramPerMinute?: unknown; vo2Max?: unknown }
+      | undefined;
     if (!payload) continue;
     // Field name varies; try the documented long form then a short alias
     const vo2 =
@@ -914,7 +1027,7 @@ async function processGoogleVO2Max(
     if (vo2 === null || vo2 === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'VO2 Max',
-      value: parseFloat(vo2),
+      value: parseFloat(vo2 as string),
       unit: 'ml/kg/min',
       entryDate,
       entryHour: 0,
@@ -956,7 +1069,13 @@ async function processGoogleActivityMinutes(
   const byDate = new Map<string, DayBuckets>();
 
   for (const point of points) {
-    const payload = (point as any).activityLevel;
+    const payload = point.activityLevel as
+      | {
+          type?: string;
+          duration?: unknown;
+          interval?: Record<string, unknown>;
+        }
+      | undefined;
     if (!payload) continue;
 
     // Determine which date this segment belongs to
@@ -1035,7 +1154,7 @@ async function processGoogleDistance(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1043,15 +1162,18 @@ async function processGoogleDistance(
     return;
   }
   for (const point of points) {
-    const payload = (point as any).distance;
+    const payload = point.distance as
+      | { millimetersSum?: unknown; distanceMillimeters?: unknown }
+      | undefined;
     if (!payload) continue;
     // Confirmed field name from Fitbit_Fetch.py: millimetersSum (mm → km = /1,000,000)
     const mm = payload.millimetersSum ?? payload.distanceMillimeters ?? null;
     if (mm === null) continue;
-    const distanceKm = Math.round((parseFloat(mm) / 1_000_000) * 100) / 100;
+    const distanceKm =
+      Math.round((parseFloat(mm as string) / 1_000_000) * 100) / 100;
     if (distanceKm <= 0) continue;
 
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -1084,7 +1206,7 @@ async function processGoogleFloors(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1092,7 +1214,9 @@ async function processGoogleFloors(
     return;
   }
   for (const point of points) {
-    const payload = (point as any).floors;
+    const payload = point.floors as
+      | { countSum?: unknown; floorCountSum?: unknown; floorsSum?: unknown }
+      | undefined;
     if (!payload) {
       log(
         'warn',
@@ -1110,10 +1234,10 @@ async function processGoogleFloors(
       );
       continue;
     }
-    const floors = Math.round(parseFloat(raw));
+    const floors = Math.round(parseFloat(raw as string));
     if (floors <= 0) continue;
 
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -1146,7 +1270,7 @@ async function processGoogleCalories(
   userId: UserId,
   createdByUserId: UserId,
   data: GoogleRollupResult,
-  tz = 'UTC'
+  _tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1154,7 +1278,13 @@ async function processGoogleCalories(
     return;
   }
   for (const point of points) {
-    const payload = (point as any).totalCalories;
+    const payload = point.totalCalories as
+      | {
+          kcalSum?: unknown;
+          kilocaloriesSum?: unknown;
+          energyKilocaloriesSum?: unknown;
+        }
+      | undefined;
     if (!payload) continue;
     // Confirmed field name from Fitbit_Fetch.py: kcalSum
     const raw =
@@ -1163,10 +1293,10 @@ async function processGoogleCalories(
       payload.energyKilocaloriesSum ??
       null;
     if (raw === null) continue;
-    const kcal = Math.round(parseFloat(raw));
+    const kcal = Math.round(parseFloat(raw as string));
     if (kcal <= 0) continue;
 
-    const cs = (point as any).civilStartTime;
+    const cs = point.civilStartTime as CivilStartTimePoint | undefined;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;

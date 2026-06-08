@@ -4,6 +4,24 @@ import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 
+function anonymizeGoogleHealthData(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(anonymizeGoogleHealthData);
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+      if (k === 'name' && typeof v === 'string' && v.includes('users/')) {
+        result[k] = v.replace(/users\/[^/]+/, 'users/REDACTED');
+      } else if (k === 'dataPointId') {
+        result[k] = 'REDACTED';
+      } else {
+        result[k] = anonymizeGoogleHealthData(v);
+      }
+    }
+    return result;
+  }
+  return data;
+}
+
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 // v4 is the current production version of the Google Health API
@@ -40,14 +58,14 @@ function parseDurationToSeconds(
 }
 
 // Converts a Google Health date+time object to an ISO string
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function googleTimeToIso(t: any): string | null {
+function googleTimeToIso(t: unknown): string | null {
   if (!t) return null;
   try {
     // Handle { date: { year, month, day }, time: { hours, minutes, seconds } }
-    if (t.date) {
-      const d = t.date;
-      const ti = t.time || {};
+    const obj = t as Record<string, unknown>;
+    if (obj.date) {
+      const d = obj.date as Record<string, number>;
+      const ti = (obj.time as Record<string, number>) || {};
       const date = new Date(
         Date.UTC(
           d.year,
@@ -71,12 +89,7 @@ function googleTimeToIso(t: any): string | null {
   return null;
 }
 
-async function getAuthorizationUrl(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  redirectUri: any
-) {
+async function getAuthorizationUrl(userId: string, redirectUri: string) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -111,12 +124,9 @@ async function getAuthorizationUrl(
 }
 
 async function exchangeCodeForTokens(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  code: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  redirectUri: any
+  userId: string,
+  code: string,
+  redirectUri: string
 ) {
   const client = await getSystemClient();
   try {
@@ -205,8 +215,7 @@ async function exchangeCodeForTokens(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function refreshAccessToken(userId: any) {
+async function refreshAccessToken(userId: string) {
   const client = await getSystemClient();
   try {
     const providerResult = await client.query(
@@ -314,8 +323,8 @@ async function refreshAccessToken(userId: any) {
     }
     return access_token;
   } catch (error) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const googleError = (error as any)?.response?.data;
+    const googleError = (error as { response?: { data?: unknown } })?.response
+      ?.data;
     const detail = googleError
       ? ` — Google: ${JSON.stringify(googleError)}`
       : '';
@@ -329,8 +338,7 @@ async function refreshAccessToken(userId: any) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getValidAccessToken(userId: any) {
+async function getValidAccessToken(userId: string) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -365,8 +373,7 @@ async function getValidAccessToken(userId: any) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getStatus(userId: any) {
+async function getStatus(userId: string) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -390,8 +397,7 @@ async function getStatus(userId: any) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function disconnectGoogleHealth(userId: any) {
+async function disconnectGoogleHealth(userId: string) {
   const client = await getSystemClient();
   try {
     // Attempt to revoke the access token with Google before clearing DB tokens.
@@ -460,26 +466,29 @@ function toCamelCaseKey(dataType: string): string {
 
 // Client-side date filter for daily-aggregate types that don't support server-side filter.
 // Each data point carries its date in payload.date = { year, month, day }.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function filterByDateRange(
-  points: any[],
+  points: Record<string, unknown>[],
   dataType: string,
   startDate: string,
   endDate: string
-): any[] {
+): Record<string, unknown>[] {
   const payloadKey = toCamelCaseKey(dataType);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return points.filter((point: any) => {
-    const payload = point[payloadKey];
-    if (!payload) return true;
+  return points.filter((point) => {
+    const raw = point[payloadKey];
+    if (!raw) return true;
+    const payload = raw as Record<string, unknown>;
 
-    const d = payload.date;
+    const d = payload.date as Record<string, number> | undefined;
     if (d?.year) {
       const s = `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
       return s >= startDate && s <= endDate;
     }
     // Interval-based payloads: use civilStartTime.date
-    const csd = payload.interval?.civilStartTime?.date;
+    const interval = payload.interval as Record<string, unknown> | undefined;
+    const civilStart = interval?.civilStartTime as
+      | Record<string, unknown>
+      | undefined;
+    const csd = civilStart?.date as Record<string, number> | undefined;
     if (csd?.year) {
       const s = `${csd.year}-${String(csd.month).padStart(2, '0')}-${String(csd.day).padStart(2, '0')}`;
       return s >= startDate && s <= endDate;
@@ -495,7 +504,7 @@ async function fetchDataPointsRange(
   dataType: string,
   startDate: string,
   endDate: string
-): Promise<{ dataPoints: object[] }> {
+): Promise<{ dataPoints: Record<string, unknown>[] }> {
   // Session-type data (sleep, exercise, activity-level) is capped to ~30 days per unfiltered
   // fetch by the Google Health API — the civil_start_time filter returns HTTP 400, and the
   // unfiltered fallback only surfaces the most recent ~30 days of sessions regardless of the
@@ -508,7 +517,7 @@ async function fetchDataPointsRange(
       (rangeEnd.getTime() - rangeStart.getTime()) / 86400000
     );
     if (diffDays > 30) {
-      const allPoints: object[] = [];
+      const allPoints: Record<string, unknown>[] = [];
       let chunkStart = new Date(rangeStart);
       while (chunkStart <= rangeEnd) {
         const chunkEnd = new Date(chunkStart);
@@ -518,7 +527,7 @@ async function fetchDataPointsRange(
           accessToken,
           dataType,
           chunkStart.toISOString().split('T')[0],
-          chunkEnd.toISOString().split('T')[0],
+          chunkEnd.toISOString().split('T')[0]
         );
         allPoints.push(...(chunk.dataPoints || []));
         chunkStart = new Date(chunkEnd);
@@ -575,7 +584,7 @@ async function fetchDataPointsRange(
 
       // Paginate through all pages — Google Health may return fewer records than
       // pageSize and include a nextPageToken for subsequent pages.
-      const allPoints: object[] = [];
+      const allPoints: Record<string, unknown>[] = [];
       let nextPageToken: string | undefined;
       do {
         const reqParams: Record<string, string | number> = { ...baseParams };
@@ -592,9 +601,11 @@ async function fetchDataPointsRange(
         nextPageToken = response.data?.nextPageToken || undefined;
       } while (nextPageToken);
 
-      logRawResponse('googlehealth', `raw_${dataType.replace(/-/g, '_')}`, {
-        dataPoints: allPoints,
-      });
+      logRawResponse(
+        'googlehealth',
+        `raw_${dataType.replace(/-/g, '_')}`,
+        anonymizeGoogleHealthData({ dataPoints: allPoints })
+      );
       if (!filter) {
         return {
           dataPoints: filterByDateRange(
@@ -607,8 +618,10 @@ async function fetchDataPointsRange(
       }
       return { dataPoints: allPoints };
     } catch (error: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (filter !== null && (error as any)?.response?.status === 400) {
+      if (
+        filter !== null &&
+        (error as { response?: { status?: number } })?.response?.status === 400
+      ) {
         continue;
       }
       throw error;
@@ -625,7 +638,7 @@ async function fetchDataPointsList(
   dataType: string,
   params: Record<string, string | number> = {}
 ) {
-  const allPoints: object[] = [];
+  const allPoints: Record<string, unknown>[] = [];
   let nextPageToken: string | undefined;
   do {
     const reqParams: Record<string, string | number> = {
@@ -641,9 +654,11 @@ async function fetchDataPointsList(
     allPoints.push(...page);
     nextPageToken = response.data?.nextPageToken || undefined;
   } while (nextPageToken);
-  logRawResponse('googlehealth', `raw_list_${dataType.replace(/-/g, '_')}`, {
-    dataPoints: allPoints,
-  });
+  logRawResponse(
+    'googlehealth',
+    `raw_list_${dataType.replace(/-/g, '_')}`,
+    anonymizeGoogleHealthData({ dataPoints: allPoints })
+  );
   return { dataPoints: allPoints };
 }
 
@@ -689,7 +704,7 @@ async function fetchDailyRollupRange(
 ) {
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const allPoints: object[] = [];
+  const allPoints: Record<string, unknown>[] = [];
   const current = new Date(start);
   while (current <= end) {
     const dateStr = current.toISOString().split('T')[0];
@@ -703,9 +718,11 @@ async function fetchDailyRollupRange(
     }
     current.setUTCDate(current.getUTCDate() + 1);
   }
-  logRawResponse('googlehealth', `raw_rollup_${dataType.replace(/-/g, '_')}`, {
-    rollupDataPoints: allPoints,
-  });
+  logRawResponse(
+    'googlehealth',
+    `raw_rollup_${dataType.replace(/-/g, '_')}`,
+    anonymizeGoogleHealthData({ rollupDataPoints: allPoints })
+  );
   return { rollupDataPoints: allPoints };
 }
 
@@ -714,12 +731,9 @@ async function fetchDailyRollupRange(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function fetchHeartRate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -741,12 +755,9 @@ async function fetchHeartRate(
 }
 
 async function fetchSteps(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -768,12 +779,9 @@ async function fetchSteps(
 }
 
 async function fetchWeight(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -795,12 +803,9 @@ async function fetchWeight(
 }
 
 async function fetchSpO2(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -822,12 +827,9 @@ async function fetchSpO2(
 }
 
 async function fetchTemperature(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -849,8 +851,10 @@ async function fetchTemperature(
 }
 
 // Fetches height (latest entry only — used for BMI computation)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchProfile(userId: any, providedToken: string | null = null) {
+async function fetchProfile(
+  userId: string,
+  providedToken: string | null = null
+) {
   const accessToken =
     providedToken || ((await getValidAccessToken(userId)) as string);
   try {
@@ -865,12 +869,9 @@ async function fetchProfile(userId: any, providedToken: string | null = null) {
 }
 
 async function fetchActivities(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -892,12 +893,9 @@ async function fetchActivities(
 }
 
 async function fetchSleep(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -914,12 +912,9 @@ async function fetchSleep(
 }
 
 async function fetchRespiratoryRate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -941,12 +936,9 @@ async function fetchRespiratoryRate(
 }
 
 async function fetchHRV(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -968,12 +960,9 @@ async function fetchHRV(
 }
 
 async function fetchActiveZoneMinutes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -995,12 +984,9 @@ async function fetchActiveZoneMinutes(
 }
 
 async function fetchBodyFat(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1022,12 +1008,9 @@ async function fetchBodyFat(
 }
 
 async function fetchWater(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1050,12 +1033,9 @@ async function fetchWater(
 }
 
 async function fetchCoreTemperature(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1079,12 +1059,9 @@ async function fetchCoreTemperature(
 // VO2 Max — matches Fitbit's cardioFitnessScore
 // Google data type: daily-vo2-max (daily aggregate)
 async function fetchVO2Max(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1108,12 +1085,9 @@ async function fetchVO2Max(
 // Activity Minutes breakdown — matches Fitbit's minutesSedentary/LightlyActive/FairlyActive/VeryActive
 // Google data type: activity-level (session segments, aggregated per day in processor)
 async function fetchActivityMinutes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1137,12 +1111,9 @@ async function fetchActivityMinutes(
 // Distance — new metric not in Fitbit integration
 // Google data type: distance (dailyRollup, distanceMeters sum)
 async function fetchDistance(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1166,12 +1137,9 @@ async function fetchDistance(
 // Floors — new metric not in Fitbit integration
 // Google data type: floors (dailyRollup, floorCountSum)
 async function fetchFloors(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =
@@ -1195,12 +1163,9 @@ async function fetchFloors(
 // Daily Calories — new metric not in Fitbit integration
 // Google data type: total-calories (dailyRollup, kilocaloriesSum)
 async function fetchCalories(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
+  userId: string,
+  startDate: string,
+  endDate: string,
   providedToken: string | null = null
 ) {
   const accessToken =

@@ -6,7 +6,10 @@ vi.mock('../integrations/googlehealth/googleHealthService.js', async () => {
   const real = await vi.importActual<
     typeof import('../integrations/googlehealth/googleHealthService.js')
   >('../integrations/googlehealth/googleHealthService.js');
-  return { googleTimeToIso: real.googleTimeToIso, parseDurationToSeconds: real.parseDurationToSeconds };
+  return {
+    googleTimeToIso: real.googleTimeToIso,
+    parseDurationToSeconds: real.parseDurationToSeconds,
+  };
 });
 
 vi.mock('../models/measurementRepository.js', () => ({
@@ -20,7 +23,9 @@ vi.mock('../models/measurementRepository.js', () => ({
   },
 }));
 vi.mock('../models/exerciseEntry.js', () => ({
-  default: { createExerciseEntry: vi.fn().mockResolvedValue({ id: 'entry-1' }) },
+  default: {
+    createExerciseEntry: vi.fn().mockResolvedValue({ id: 'entry-1' }),
+  },
 }));
 vi.mock('../models/exercise.js', () => ({
   default: {
@@ -56,13 +61,16 @@ const UID = 'user-1';
 const CID = 'user-1';
 
 // Helper: wrap a data point in the shape fetchDataPointsRange returns
-function dataPoints(...points: object[]) {
-  return { dataPoints: points };
+function dataPoints(...points: object[]): {
+  dataPoints: Record<string, unknown>[];
+} {
+  return { dataPoints: points as Record<string, unknown>[] };
 }
-function rollupPoints(...points: object[]) {
-  return { rollupDataPoints: points };
+function rollupPoints(...points: object[]): {
+  rollupDataPoints: Record<string, unknown>[];
+} {
+  return { rollupDataPoints: points as Record<string, unknown>[] };
 }
-
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -74,21 +82,29 @@ describe('processGoogleWeight', () => {
   it('skips a point with missing weightGrams', async () => {
     const point = { weight: {} };
     await processGoogleWeight(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCheckInMeasurements).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCheckInMeasurements
+    ).not.toHaveBeenCalled();
   });
 
   it('skips a point where weightGrams is not a number', async () => {
-    const point = { weight: { date: { year: 2026, month: 5, day: 1 }, weightGrams: 'bad' } };
+    const point = {
+      weight: { date: { year: 2026, month: 5, day: 1 }, weightGrams: 'bad' },
+    };
     await processGoogleWeight(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCheckInMeasurements).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCheckInMeasurements
+    ).not.toHaveBeenCalled();
   });
 
   it('converts grams to kg and upserts', async () => {
-    const point = { weight: { date: { year: 2026, month: 5, day: 1 }, weightGrams: '70000' } };
+    const point = {
+      weight: { date: { year: 2026, month: 5, day: 1 }, weightGrams: '70000' },
+    };
     await processGoogleWeight(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCheckInMeasurements).toHaveBeenCalledWith(
-      UID, CID, '2026-05-01', { weight: 70 }
-    );
+    expect(
+      measurementRepository.upsertCheckInMeasurements
+    ).toHaveBeenCalledWith(UID, CID, '2026-05-01', { weight: 70 });
   });
 });
 
@@ -96,22 +112,47 @@ describe('processGoogleWeight', () => {
 
 describe('processGoogleSpO2', () => {
   it('skips a point with missing percentage', async () => {
-    const point = { oxygenSaturation: { date: { year: 2026, month: 5, day: 1 } } };
+    const point = {
+      oxygenSaturation: { date: { year: 2026, month: 5, day: 1 } },
+    };
     await processGoogleSpO2(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCustomMeasurement).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
   });
 
   it('skips a point where percentage is not a number', async () => {
-    const point = { oxygenSaturation: { date: { year: 2026, month: 5, day: 1 }, percentage: 'nan' } };
+    const point = {
+      oxygenSaturation: {
+        date: { year: 2026, month: 5, day: 1 },
+        percentage: 'nan',
+      },
+    };
     await processGoogleSpO2(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCustomMeasurement).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
   });
 
   it('upserts a valid percentage', async () => {
-    const point = { oxygenSaturation: { date: { year: 2026, month: 5, day: 1 }, percentage: '97.5' } };
+    const point = {
+      oxygenSaturation: {
+        date: { year: 2026, month: 5, day: 1 },
+        percentage: '97.5',
+      },
+    };
     await processGoogleSpO2(UID, CID, dataPoints(point));
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      UID, CID, 'cat-1', 97.5, '2026-05-01', 0, expect.any(String), expect.any(String), 'Daily', 'Google Health'
+      UID,
+      CID,
+      'cat-1',
+      97.5,
+      '2026-05-01',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
     );
   });
 });
@@ -120,16 +161,34 @@ describe('processGoogleSpO2', () => {
 
 describe('processGoogleHeartRate', () => {
   it('skips a point with undefined beatsPerMinute', async () => {
-    const point = { dailyRestingHeartRate: { date: { year: 2026, month: 5, day: 1 } } };
+    const point = {
+      dailyRestingHeartRate: { date: { year: 2026, month: 5, day: 1 } },
+    };
     await processGoogleHeartRate(UID, CID, dataPoints(point));
-    expect(measurementRepository.upsertCustomMeasurement).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
   });
 
   it('upserts a valid bpm value', async () => {
-    const point = { dailyRestingHeartRate: { date: { year: 2026, month: 5, day: 1 }, beatsPerMinute: 58 } };
+    const point = {
+      dailyRestingHeartRate: {
+        date: { year: 2026, month: 5, day: 1 },
+        beatsPerMinute: 58,
+      },
+    };
     await processGoogleHeartRate(UID, CID, dataPoints(point));
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      UID, CID, 'cat-1', 58, '2026-05-01', 0, expect.any(String), expect.any(String), 'Daily', 'Google Health'
+      UID,
+      CID,
+      'cat-1',
+      58,
+      '2026-05-01',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
     );
   });
 });
@@ -149,17 +208,32 @@ describe('processGoogleActiveZoneMinutes', () => {
     // total = 0 + 0 + 10 = 10; should still upsert
     await processGoogleActiveZoneMinutes(UID, CID, rollupPoints(point));
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      UID, CID, 'cat-1', 10, '2026-05-01', 0, expect.any(String), expect.any(String), 'Daily', 'Google Health'
+      UID,
+      CID,
+      'cat-1',
+      10,
+      '2026-05-01',
+      0,
+      expect.any(String),
+      expect.any(String),
+      'Daily',
+      'Google Health'
     );
   });
 
   it('skips a point where all zones sum to zero', async () => {
     const point = {
       civilStartTime: { date: { year: 2026, month: 5, day: 1 } },
-      activeZoneMinutes: { sumInFatBurnHeartZone: '0', sumInCardioHeartZone: '0', sumInPeakHeartZone: '0' },
+      activeZoneMinutes: {
+        sumInFatBurnHeartZone: '0',
+        sumInCardioHeartZone: '0',
+        sumInPeakHeartZone: '0',
+      },
     };
     await processGoogleActiveZoneMinutes(UID, CID, rollupPoints(point));
-    expect(measurementRepository.upsertCustomMeasurement).not.toHaveBeenCalled();
+    expect(
+      measurementRepository.upsertCustomMeasurement
+    ).not.toHaveBeenCalled();
   });
 });
 
@@ -187,32 +261,60 @@ function sleepPoint(startIso: string, endIso: string, minutesAsleep = 420) {
 describe('processGoogleSleep — date anchoring', () => {
   it('attributes a late-evening session (hour >= 12) to its own date', async () => {
     // 23:30 on May 1 — should land on 2026-05-01
-    await processGoogleSleep(UID, CID, dataPoints(sleepPoint('2026-05-01T23:30:00Z', '2026-05-02T07:00:00Z')));
+    await processGoogleSleep(
+      UID,
+      CID,
+      dataPoints(sleepPoint('2026-05-01T23:30:00Z', '2026-05-02T07:00:00Z'))
+    );
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
-      UID, CID, expect.objectContaining({ entry_date: '2026-05-01' })
+      UID,
+      CID,
+      expect.objectContaining({ entry_date: '2026-05-01' })
     );
   });
 
   it('attributes a past-midnight session (hour < 12) to the previous date', async () => {
     // 00:30 on May 2 — civil-time interpretation means it is still May 1 night
-    await processGoogleSleep(UID, CID, dataPoints(sleepPoint('2026-05-02T00:30:00Z', '2026-05-02T08:00:00Z')));
+    await processGoogleSleep(
+      UID,
+      CID,
+      dataPoints(sleepPoint('2026-05-02T00:30:00Z', '2026-05-02T08:00:00Z'))
+    );
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
-      UID, CID, expect.objectContaining({ entry_date: '2026-05-01' })
+      UID,
+      CID,
+      expect.objectContaining({ entry_date: '2026-05-01' })
     );
   });
 
   it('keeps the longer session when two sessions share the same anchor date', async () => {
-    const shortNap = sleepPoint('2026-05-01T23:00:00Z', '2026-05-01T23:45:00Z', 40);
-    const mainSleep = sleepPoint('2026-05-01T23:30:00Z', '2026-05-02T07:00:00Z', 420);
+    const shortNap = sleepPoint(
+      '2026-05-01T23:00:00Z',
+      '2026-05-01T23:45:00Z',
+      40
+    );
+    const mainSleep = sleepPoint(
+      '2026-05-01T23:30:00Z',
+      '2026-05-02T07:00:00Z',
+      420
+    );
     await processGoogleSleep(UID, CID, dataPoints(shortNap, mainSleep));
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledTimes(1);
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
-      UID, CID, expect.objectContaining({ time_asleep_in_seconds: 420 * 60 })
+      UID,
+      CID,
+      expect.objectContaining({ time_asleep_in_seconds: 420 * 60 })
     );
   });
 
   it('skips a point with no parseable startTime', async () => {
-    const point = { sleep: { summary: {}, interval: { startTime: 'bad', endTime: 'bad' }, stages: [] } };
+    const point = {
+      sleep: {
+        summary: {},
+        interval: { startTime: 'bad', endTime: 'bad' },
+        stages: [],
+      },
+    };
     await processGoogleSleep(UID, CID, dataPoints(point));
     expect(sleepRepository.upsertSleepEntry).not.toHaveBeenCalled();
   });
@@ -236,6 +338,9 @@ describe('processGoogleActivities — exercise record null guard', () => {
     await processGoogleActivities(UID, CID, dataPoints(point));
     // should log an error and continue — no crash, no entry created
     const { log } = await import('../config/logging.js');
-    expect(log).toHaveBeenCalledWith('error', expect.stringContaining('Failed to find or create'));
+    expect(log).toHaveBeenCalledWith(
+      'error',
+      expect.stringContaining('Failed to find or create')
+    );
   });
 });
