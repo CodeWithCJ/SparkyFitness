@@ -491,16 +491,21 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
   const hasDescription = (v: NormalizedFoodVariant) =>
     v.serving_description && v.serving_description.length > 0 && !v.serving_description.match(/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i);
 
+  // Compare by value: the API may return the same variant in both default_variant
+  // and variants array as separate objects — reference equality fails.
+  const isSameVariant = (a: NormalizedFoodVariant, b: NormalizedFoodVariant) =>
+    a.serving_size === b.serving_size && a.serving_unit === b.serving_unit;
+
   const preferredVariant = isReferenceServing(dv) && food.variants
-    ? food.variants.find((v) => v !== dv && hasDescription(v))
+    ? food.variants.find((v) => !isSameVariant(v, dv) && hasDescription(v))
     : undefined;
 
   const displayVariant = preferredVariant ?? dv;
 
   const orderedVariants = food.variants
-    ? preferredVariant
-      ? [preferredVariant, dv, ...food.variants.filter((v) => v !== dv && v !== preferredVariant)]
-      : [dv, ...food.variants.filter((v) => v !== dv)]
+    ? (preferredVariant
+      ? [preferredVariant, dv, ...food.variants.filter((v) => !isSameVariant(v, dv) && !isSameVariant(v, preferredVariant))]
+      : [dv, ...food.variants.filter((v) => !isSameVariant(v, dv))])
     : undefined;
   const variants = orderedVariants?.map(mapVariant);
 

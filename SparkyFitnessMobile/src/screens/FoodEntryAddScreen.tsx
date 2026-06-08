@@ -1008,7 +1008,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 where "X ml per serving" is meaningful info. */}
             {displayValues.servingUnit !== 'serving' &&
               !displayValues.servingDescription?.toLowerCase().includes('serving') &&
-              (variantPickerOptions.length > 0 ? (
+              (variantPickerOptions.length > 1 ? (
               <BottomSheetPicker
                 value={selectedVariantId ?? variantPickerOptions[0]?.id}
                 options={variantPickerOptions.map((variant) => ({

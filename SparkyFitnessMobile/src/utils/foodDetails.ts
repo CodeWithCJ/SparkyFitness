@@ -229,7 +229,8 @@ export function externalVariantToUnitVariant(
   };
 }
 
-export function formatServingUnit(unit: string): string {
+export function formatServingUnit(unit: string | undefined | null): string {
+  if (!unit) return '';
   return /[._]/.test(unit) ? formatServingDescription(unit) : unit;
 }
 
