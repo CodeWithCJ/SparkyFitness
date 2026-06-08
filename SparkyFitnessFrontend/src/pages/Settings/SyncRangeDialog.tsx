@@ -66,6 +66,8 @@ const SyncRangeDialog = ({
         return 'Hevy';
       case 'withings':
         return 'Withings';
+      case 'googlehealth':
+        return 'Google Health';
       default:
         return type;
     }
@@ -143,6 +145,22 @@ const SyncRangeDialog = ({
               className="text-xs"
             >
               {t('syncRangeDialog.last90Days', 'Last 90 Days')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreset(180)}
+              className="text-xs"
+            >
+              {t('syncRangeDialog.last180Days', 'Last 180 Days')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreset(365)}
+              className="text-xs"
+            >
+              {t('syncRangeDialog.last365Days', 'Last 365 Days')}
             </Button>
           </div>
 

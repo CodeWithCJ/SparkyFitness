@@ -463,7 +463,39 @@ async function fetchDataPointsRange(
   dataType: string,
   startDate: string,
   endDate: string
-) {
+): Promise<{ dataPoints: object[] }> {
+  // Session-type data (sleep, exercise, activity-level) is capped to ~30 days per unfiltered
+  // fetch by the Google Health API — the civil_start_time filter returns HTTP 400, and the
+  // unfiltered fallback only surfaces the most recent ~30 days of sessions regardless of the
+  // requested range. Break wide ranges into 30-day chunks so every chunk stays within the
+  // window the API reliably serves, then aggregate all results.
+  if (['exercise', 'sleep', 'activity-level'].includes(dataType)) {
+    const rangeStart = new Date(`${startDate}T00:00:00Z`);
+    const rangeEnd = new Date(`${endDate}T00:00:00Z`);
+    const diffDays = Math.round(
+      (rangeEnd.getTime() - rangeStart.getTime()) / 86400000
+    );
+    if (diffDays > 30) {
+      const allPoints: object[] = [];
+      let chunkStart = new Date(rangeStart);
+      while (chunkStart <= rangeEnd) {
+        const chunkEnd = new Date(chunkStart);
+        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 29); // 30-day inclusive window
+        if (chunkEnd > rangeEnd) chunkEnd.setTime(rangeEnd.getTime());
+        const chunk = await fetchDataPointsRange(
+          accessToken,
+          dataType,
+          chunkStart.toISOString().split('T')[0],
+          chunkEnd.toISOString().split('T')[0],
+        );
+        allPoints.push(...(chunk.dataPoints || []));
+        chunkStart = new Date(chunkEnd);
+        chunkStart.setUTCDate(chunkStart.getUTCDate() + 1);
+      }
+      return { dataPoints: allPoints };
+    }
+  }
+
   // Exclusive upper-bound date string (e.g. "2026-06-08" for endDate "2026-06-07")
   const endExclusive = new Date(`${endDate}T00:00:00Z`);
   endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
