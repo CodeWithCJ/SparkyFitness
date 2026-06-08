@@ -813,6 +813,201 @@ export async function deleteFood(
   });
 }
 
+
+export async function updateFoodVariant(
+  userId: string,
+  params: {
+    food_id?: string;
+    variant_id?: string;
+    serving_size?: number;
+    serving_unit?: string;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    saturated_fat?: number;
+    polyunsaturated_fat?: number;
+    monounsaturated_fat?: number;
+    trans_fat?: number;
+    cholesterol?: number;
+    sodium?: number;
+    potassium?: number;
+    fiber?: number;
+    sugar?: number;
+    vitamin_a?: number;
+    vitamin_c?: number;
+    calcium?: number;
+    iron?: number;
+    gi?: string;
+    update_existing_entries?: boolean;
+  }
+): Promise<Record<string, unknown>> {
+  return withClient(userId, async (client) => {
+    await client.query("BEGIN");
+    try {
+      let variantId = params.variant_id;
+
+      if (!variantId && params.food_id) {
+        const defaultVariant = await client.query(
+          `SELECT fv.id
+           FROM food_variants fv
+           JOIN foods f ON f.id = fv.food_id
+           WHERE fv.food_id = $1 AND fv.is_default = TRUE AND f.user_id = $2
+           LIMIT 1`,
+          [params.food_id, userId]
+        );
+        if (defaultVariant.rows.length === 0) {
+          throw new Error(`Default variant for food_id "${params.food_id}" not found or not editable.`);
+        }
+        variantId = defaultVariant.rows[0].id;
+      }
+
+      if (!variantId) {
+        throw new Error("Either variant_id or food_id must be provided.");
+      }
+
+      const existing = await client.query(
+        `SELECT fv.id, fv.food_id, f.name AS food_name
+         FROM food_variants fv
+         JOIN foods f ON f.id = fv.food_id
+         WHERE fv.id = $1 AND f.user_id = $2
+         LIMIT 1`,
+        [variantId, userId]
+      );
+
+      if (existing.rows.length === 0) {
+        throw new Error(`Food variant "${variantId}" not found or not editable.`);
+      }
+
+      if (params.food_id && existing.rows[0].food_id !== params.food_id) {
+        throw new Error(`Variant "${variantId}" does not belong to food "${params.food_id}".`);
+      }
+
+      const fieldMap: Record<string, string> = {
+        serving_size: "serving_size",
+        serving_unit: "serving_unit",
+        calories: "calories",
+        protein: "protein",
+        carbs: "carbs",
+        fat: "fat",
+        saturated_fat: "saturated_fat",
+        polyunsaturated_fat: "polyunsaturated_fat",
+        monounsaturated_fat: "monounsaturated_fat",
+        trans_fat: "trans_fat",
+        cholesterol: "cholesterol",
+        sodium: "sodium",
+        potassium: "potassium",
+        fiber: "dietary_fiber",
+        sugar: "sugars",
+        vitamin_a: "vitamin_a",
+        vitamin_c: "vitamin_c",
+        calcium: "calcium",
+        iron: "iron",
+        gi: "glycemic_index",
+      };
+
+      const updates: string[] = [];
+      const values: unknown[] = [];
+      for (const [inputField, dbField] of Object.entries(fieldMap)) {
+        const value = (params as Record<string, unknown>)[inputField];
+        if (value !== undefined) {
+          values.push(value);
+          updates.push(`${dbField} = $${values.length}`);
+        }
+      }
+
+      if (updates.length === 0) {
+        throw new Error("At least one nutritional or serving field must be provided for update_food_variant.");
+      }
+
+      values.push(variantId);
+      const variantIdParam = values.length;
+
+      const updatedVariant = await client.query(
+        `UPDATE food_variants
+         SET ${updates.join(", ")}, updated_at = NOW()
+         WHERE id = $${variantIdParam}
+         RETURNING id, food_id, serving_size, serving_unit, calories, protein, carbs, fat,
+                   saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+                   cholesterol, sodium, potassium, dietary_fiber, sugars,
+                   vitamin_a, vitamin_c, calcium, iron, glycemic_index, is_default, updated_at`,
+        values
+      );
+
+      if (updatedVariant.rows.length === 0) {
+        throw new Error(`Food variant "${variantId}" could not be updated.`);
+      }
+
+      let updatedEntriesCount = 0;
+      if (params.update_existing_entries !== false) {
+        const v = updatedVariant.rows[0];
+        const updatedEntries = await client.query(
+          `UPDATE food_entries
+           SET serving_size = $1,
+               serving_unit = $2,
+               calories = $3,
+               protein = $4,
+               carbs = $5,
+               fat = $6,
+               saturated_fat = $7,
+               polyunsaturated_fat = $8,
+               monounsaturated_fat = $9,
+               trans_fat = $10,
+               cholesterol = $11,
+               sodium = $12,
+               potassium = $13,
+               dietary_fiber = $14,
+               sugars = $15,
+               vitamin_a = $16,
+               vitamin_c = $17,
+               calcium = $18,
+               iron = $19,
+               glycemic_index = $20
+           WHERE user_id = $21 AND variant_id = $22`,
+          [
+            v.serving_size,
+            v.serving_unit,
+            v.calories,
+            v.protein,
+            v.carbs,
+            v.fat,
+            v.saturated_fat,
+            v.polyunsaturated_fat,
+            v.monounsaturated_fat,
+            v.trans_fat,
+            v.cholesterol,
+            v.sodium,
+            v.potassium,
+            v.dietary_fiber,
+            v.sugars,
+            v.vitamin_a,
+            v.vitamin_c,
+            v.calcium,
+            v.iron,
+            v.glycemic_index,
+            userId,
+            variantId,
+          ]
+        );
+        updatedEntriesCount = updatedEntries.rowCount ?? 0;
+      }
+
+      await client.query("COMMIT");
+      return {
+        food_id: updatedVariant.rows[0].food_id,
+        food_name: existing.rows[0].food_name,
+        variant: updatedVariant.rows[0],
+        updated_existing_entries: params.update_existing_entries !== false,
+        updated_entries_count: updatedEntriesCount,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+
 export async function updateEntry(
   userId: string,
   entryId: string,

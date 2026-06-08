@@ -7,7 +7,7 @@ import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.j
 
 const VALID_ACTIONS = [
   "search_food", "lookup_food_nutrition", "log_food", "create_food", "search_meal", "log_meal",
-  "list_diary", "delete_entry", "delete_food", "update_entry", "copy_from_yesterday", "save_as_meal_template",
+  "list_diary", "delete_entry", "delete_food", "update_entry", "update_food_variant", "copy_from_yesterday", "save_as_meal_template",
   "log_water", "get_nutritional_summary", "get_water_history",
 ];
 
@@ -29,6 +29,7 @@ Actions:
 - delete_entry(entry_id, entry_type:"food_entry"|"food_entry_meal")
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
 - update_entry(entry_id, entry_type, quantity, unit)
+- update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to updating existing diary entries referencing the variant.
 - copy_from_yesterday(target_date?, source_date?, meal_type?)
 - save_as_meal_template(entry_date, meal_type, meal_name, description?)
 - log_water(amount_ml, entry_date)
@@ -79,7 +80,7 @@ Actions:
             const result = await foodService.lookupFoodNutrition(
               userId, args.food_name!, args.provider_type as any
             );
-            
+
             if (result.source === "ai_estimate") {
               return {
                 content: [{
@@ -94,7 +95,7 @@ Actions:
             let text = `### Found match in **${result.source}**:\n`;
             text += `**${f.name}**`;
             if (f.brand) text += ` (${f.brand})`;
-            
+
             const v = f.default_variant || f.variants?.[0];
             if (v) {
               text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
@@ -311,6 +312,50 @@ Actions:
               { entry_id: args.entry_id, quantity: args.quantity, unit: args.unit }
             );
           }
+
+          case "update_food_variant": {
+            if (!args.food_id && !args.variant_id) {
+                throw new Error("Either food_id or variant_id is required");
+            }
+
+            const result = await foodService.updateFoodVariant(userId, {
+              food_id: args.food_id,
+              variant_id: args.variant_id,
+              serving_size: args.serving_size,
+              serving_unit: args.serving_unit,
+              calories: args.calories,
+              protein: args.protein,
+              carbs: args.carbs,
+              fat: args.fat,
+              saturated_fat: args.saturated_fat,
+              polyunsaturated_fat: args.polyunsaturated_fat,
+              monounsaturated_fat: args.monounsaturated_fat,
+              trans_fat: args.trans_fat,
+              cholesterol: args.cholesterol,
+              sodium: args.sodium,
+              potassium: args.potassium,
+              fiber: args.fiber,
+              sugar: args.sugar,
+              vitamin_a: args.vitamin_a,
+              vitamin_c: args.vitamin_c,
+              calcium: args.calcium,
+              iron: args.iron,
+              gi: args.gi,
+              update_existing_entries: args.update_existing_entries,
+            });
+            const variant = result.variant as any;
+            return formatConfirmation(
+              `Food variant updated for "${result.food_name}" (${variant.calories ?? 0} kcal per ${variant.serving_size ?? "?"}${variant.serving_unit ?? ""}).`,
+              {
+                food_id: result.food_id,
+                food_name: result.food_name,
+                variant_id: variant.id,
+                updated_existing_entries: result.updated_existing_entries,
+                updated_entries_count: result.updated_entries_count,
+              }
+            );
+          }
+
 
           case "copy_from_yesterday": {
             const result = await foodService.copyFromYesterday(userId, {
