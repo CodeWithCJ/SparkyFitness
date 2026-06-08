@@ -112,8 +112,8 @@ describe('buildExternalVariantOptions', () => {
     ]);
 
     expect(options.map((option) => option.id)).toEqual(['ext-0', 'ext-1']);
-    expect(options[0].label).toBe('1 Small (60 cal)');
-    expect(options[1].label).toBe('1 Large (120 cal)');
+    expect(options[0].label).toBe('1 small (60 cal)');
+    expect(options[1].label).toBe('1 large (120 cal)');
   });
 });
 

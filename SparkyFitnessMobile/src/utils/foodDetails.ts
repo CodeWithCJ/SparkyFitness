@@ -89,12 +89,9 @@ export function formatFoodFormNumber(
 
 export function formatServingDescription(desc: string): string {
   return desc
-    .replace(/\./g, ' ')
     .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
@@ -272,12 +269,7 @@ export function buildExternalVariantOptions(
   variants?: ExternalFoodVariant[],
 ): FoodVariantOptionData[] {
   return (variants ?? []).map((variant, index) => {
-    const desc = variant.serving_description || '';
-    const cleanDesc = desc.replace(/\./g, ' ').replace(/_/g, ' ').trim();
-    const formatted = cleanDesc
-      .split(/\s+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+    const formatted = formatServingDescription(variant.serving_description || '');
     return {
       id: `ext-${index}`,
       label: `${formatted} (${variant.calories} cal)`,
