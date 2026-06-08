@@ -4,11 +4,25 @@ import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, instantToDay, instantHourMinute } from '@workspace/shared';
 import {
   parseDurationToSeconds,
   googleTimeToIso,
 } from './googleHealthService.js';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Shared types
+// ──────────────────────────────────────────────────────────────────────────────
+
+type UserId = string;
+
+interface GoogleDataResult {
+  dataPoints: Record<string, unknown>[];
+}
+
+interface GoogleRollupResult {
+  rollupDataPoints: Record<string, unknown>[];
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared helper
@@ -17,10 +31,8 @@ import {
 // Auto-creates a custom measurement category if missing, then upserts the value.
 // Mirrors the Fitbit version but uses 'Google Health' as source label.
 async function upsertCustomMeasurementLogic(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
+  userId: UserId,
+  createdByUserId: UserId,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customMeasurement: any
 ) {
@@ -67,21 +79,22 @@ async function upsertCustomMeasurementLogic(
 
 // Extracts YYYY-MM-DD from the Google Health startTime field of a data point.
 // Tries structured date object first, falls back to ISO string parsing.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // Google Health data point date extraction.
 // The date/time lives INSIDE the payload key (camelCase of data type), not at point.startTime.
 //   - Daily types: payload.date = { year, month, day }
 //   - Sample types: payload.sampleTime.physicalTime = ISO string
 //   - Interval/session types: top-level startTime or payload.interval.civilStartTime.date
-function extractDate(dataPoint: any): string | null {
+function extractDate(dataPoint: Record<string, unknown>, tz: string): string | null {
   // Interval/session types (exercise, some custom types) carry top-level startTime
   const st = dataPoint.startTime;
   if (st) {
-    if (st.date?.year) {
-      const d = st.date;
-      return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+    if (typeof st === 'object' && st !== null && (st as Record<string, unknown>).date) {
+      const d = (st as Record<string, unknown>).date as Record<string, unknown>;
+      if (d?.year) {
+        return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+      }
     }
-    if (typeof st === 'string') return st.split('T')[0];
+    if (typeof st === 'string') return instantToDay(new Date(st), tz);
   }
 
   // For daily and sample types: look inside every non-timestamp top-level key
@@ -98,27 +111,32 @@ function extractDate(dataPoint: any): string | null {
     const payload = dataPoint[key];
     if (!payload || typeof payload !== 'object') continue;
 
+    const p = payload as Record<string, unknown>;
+
     // Daily aggregate: payload.date = { year, month, day }
-    if (payload.date?.year) {
-      const d = payload.date;
+    if (p.date && typeof p.date === 'object' && (p.date as Record<string, unknown>).year) {
+      const d = p.date as Record<string, unknown>;
       return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
     }
 
     // Sample types: payload.sampleTime.physicalTime = "2026-06-07T..."
+    const sampleTime = p.sampleTime as Record<string, unknown> | undefined;
     const physTime =
-      payload.sampleTime?.physicalTime ?? payload.sampleTime?.physical_time;
-    if (typeof physTime === 'string') return physTime.split('T')[0];
+      sampleTime?.physicalTime ?? sampleTime?.physical_time;
+    if (typeof physTime === 'string') return instantToDay(new Date(physTime), tz);
 
     // Session types inside payload: payload.interval.civilStartTime.date
-    const csd =
-      payload.interval?.civilStartTime?.date ??
-      payload.interval?.civil_start_time?.date;
+    const interval = p.interval as Record<string, unknown> | undefined;
+    const civilStart = interval?.civilStartTime ?? interval?.civil_start_time;
+    const csd = civilStart && typeof civilStart === 'object'
+      ? (civilStart as Record<string, unknown>).date as Record<string, unknown> | undefined
+      : undefined;
     if (csd?.year) {
       return `${csd.year}-${String(csd.month).padStart(2, '0')}-${String(csd.day).padStart(2, '0')}`;
     }
     // payload.interval.startTime as string
-    const ist = payload.interval?.startTime ?? payload.interval?.start_time;
-    if (typeof ist === 'string') return ist.split('T')[0];
+    const ist = interval?.startTime ?? interval?.start_time;
+    if (typeof ist === 'string') return instantToDay(new Date(ist), tz);
   }
 
   return null;
@@ -130,12 +148,10 @@ function extractDate(dataPoint: any): string | null {
 // Response: dataPoints[].dailyRestingHeartRate.beatsPerMinute
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleHeartRate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -143,9 +159,9 @@ async function processGoogleHeartRate(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const bpm = point.dailyRestingHeartRate?.beatsPerMinute;
+    const bpm = (point as any).dailyRestingHeartRate?.beatsPerMinute;
     if (bpm === null || bpm === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Resting Heart Rate',
@@ -168,12 +184,10 @@ async function processGoogleHeartRate(
 // Response: rollupDataPoints[].steps.countSum
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleSteps(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -181,13 +195,13 @@ async function processGoogleSteps(
     return;
   }
   for (const point of points) {
-    const countSum = point.steps?.countSum;
+    const countSum = (point as any).steps?.countSum;
     if (countSum === null || countSum === undefined) continue;
     const steps = parseInt(countSum, 10);
     if (isNaN(steps)) continue;
 
     // Timestamp from civilStartTime
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -215,12 +229,10 @@ async function processGoogleSteps(
 // BMI not available from Google Health — skipped (Withings covers this separately)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleWeight(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -228,9 +240,9 @@ async function processGoogleWeight(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const grams = point.weight?.weightGrams;
+    const grams = (point as any).weight?.weightGrams;
     const weight = parseFloat(grams);
     if (isNaN(weight)) continue;
     const weightKg = weight / 1000;
@@ -253,12 +265,10 @@ async function processGoogleWeight(
 // Response: dataPoints[].oxygenSaturation.percentage
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleSpO2(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -266,9 +276,9 @@ async function processGoogleSpO2(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const pct = point.oxygenSaturation?.percentage;
+    const pct = (point as any).oxygenSaturation?.percentage;
     const pctVal = parseFloat(pct);
     if (isNaN(pctVal)) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -294,12 +304,10 @@ async function processGoogleSpO2(
 // Relative value = nightly - baseline (same metric as Fitbit's nightlyRelative)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleTemperature(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -307,9 +315,9 @@ async function processGoogleTemperature(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const fields = point.dailySleepTemperatureDerivations;
+    const fields = (point as any).dailySleepTemperatureDerivations;
     if (!fields) continue;
     const nightly = fields.nightlyTemperatureCelsius;
     const baseline = fields.baselineTemperatureCelsius;
@@ -344,12 +352,9 @@ async function processGoogleTemperature(
 // Response: dataPoints[].height.heightMillimeters (convert to cm)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleProfile(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
   date: string | null = null,
   timezone = 'UTC'
 ) {
@@ -358,7 +363,7 @@ async function processGoogleProfile(
   // Use the most recent height entry
   let latestMm: number | null = null;
   for (const point of points) {
-    const mm = point.height?.heightMillimeters;
+    const mm = (point as any).height?.heightMillimeters;
     if (mm !== null && (latestMm === null || parseFloat(mm) > latestMm)) {
       latestMm = parseFloat(mm);
     }
@@ -384,12 +389,10 @@ async function processGoogleProfile(
 // Response: dataPoints[].dailyHeartRateVariability.averageHeartRateVariabilityMilliseconds
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleHRV(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -397,10 +400,10 @@ async function processGoogleHRV(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
     const rmssd =
-      point.dailyHeartRateVariability?.averageHeartRateVariabilityMilliseconds;
+      (point as any).dailyHeartRateVariability?.averageHeartRateVariabilityMilliseconds;
     if (rmssd === null || rmssd === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'HRV',
@@ -424,12 +427,10 @@ async function processGoogleHRV(
 // Response: dataPoints[].dailyRespiratoryRate.breathsPerMinute
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleRespiratoryRate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -437,9 +438,9 @@ async function processGoogleRespiratoryRate(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const br = point.dailyRespiratoryRate?.breathsPerMinute;
+    const br = (point as any).dailyRespiratoryRate?.breathsPerMinute;
     if (br === null || br === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Respiratory Rate',
@@ -463,12 +464,10 @@ async function processGoogleRespiratoryRate(
 // Stored as total AZM = fat_burn + cardio + peak (matches Fitbit's activeZoneMinutes field)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleActiveZoneMinutes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -476,10 +475,10 @@ async function processGoogleActiveZoneMinutes(
     return;
   }
   for (const point of points) {
-    const azm = point.activeZoneMinutes;
+    const azm = (point as any).activeZoneMinutes;
     if (!azm) continue;
 
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -516,12 +515,10 @@ async function processGoogleActiveZoneMinutes(
 // Stages: AWAKE, LIGHT, DEEP, REM
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleSleep(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -538,26 +535,23 @@ async function processGoogleSleep(
   const bestPerDate = new Map<string, SleepCandidate>();
 
   for (const point of points) {
-    const sleepPayload = point.sleep;
+    const sleepPayload = (point as any).sleep;
     if (!sleepPayload) continue;
 
     const summary = sleepPayload.summary || {};
     const interval = sleepPayload.interval || {};
     const stages = sleepPayload.stages || [];
 
-    const startIso = googleTimeToIso(interval.startTime || point.startTime);
-    const endIso = googleTimeToIso(interval.endTime || point.endTime);
+    const startIso = googleTimeToIso(interval.startTime || (point as any).startTime);
+    const endIso = googleTimeToIso(interval.endTime || (point as any).endTime);
     if (!startIso) continue;
 
-    const startDate = startIso.split('T')[0];
+    const startDate = instantToDay(startIso, tz);
     // Anchor to the "sleep date": if civil start is before noon, attribute to previous day.
-    // civilStartTime is local time stored as-if-UTC, so UTCHours is actually the local hour.
-    const startHour = new Date(startIso).getUTCHours();
+    const startHour = instantHourMinute(startIso, tz).hour;
     const sleepDate =
       startHour < 12
-        ? new Date(new Date(startDate).getTime() - 86400000)
-            .toISOString()
-            .split('T')[0]
+        ? instantToDay(new Date(new Date(startDate).getTime() - 86400000), tz)
         : startDate;
 
     const minutesAsleep = parseInt(summary.minutesAsleep, 10) || 0;
@@ -671,21 +665,19 @@ async function processGoogleSleep(
 // Response: dataPoints[].exercise.{activeDuration, displayName, exerciseType, metricsSummary}
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleActivities(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
-  startDate: string | null = null
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  startDate: string | null = null,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) return;
   for (const point of points) {
-    const exercise = point.exercise;
+    const exercise = (point as any).exercise;
     if (!exercise) continue;
 
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
     if (startDate && entryDate < startDate) continue;
 
@@ -734,8 +726,8 @@ async function processGoogleActivities(
 
     // Extract the numeric ID from the data point name ("users/.../dataPoints/<id>")
     const nameId =
-      typeof point.name === 'string' ? point.name.split('/').pop() : null;
-    const sourceId = point.dataPointId || nameId || null;
+      typeof (point as any).name === 'string' ? (point as any).name.split('/').pop() : null;
+    const sourceId = (point as any).dataPointId || nameId || null;
 
     const entryData = {
       exercise_id: exerciseRecord.id,
@@ -782,12 +774,10 @@ async function processGoogleActivities(
 // Response: dataPoints[].bodyFat.percentage (0-100)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleBodyFat(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -795,9 +785,9 @@ async function processGoogleBodyFat(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const pct = point.bodyFat?.percentage;
+    const pct = (point as any).bodyFat?.percentage;
     const bodyFatPct = parseFloat(pct);
     if (isNaN(bodyFatPct)) continue;
     await measurementRepository.upsertCheckInMeasurements(
@@ -819,12 +809,10 @@ async function processGoogleBodyFat(
 // Response: rollupDataPoints[].amountConsumed.millilitersSum
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleWater(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -832,12 +820,12 @@ async function processGoogleWater(
     return;
   }
   for (const point of points) {
-    const ml = point.amountConsumed?.millilitersSum;
+    const ml = (point as any).amountConsumed?.millilitersSum;
     if (ml === null || ml === undefined) continue;
     const water = Math.round(parseFloat(ml));
     if (water <= 0) continue;
 
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -865,12 +853,10 @@ async function processGoogleWater(
 // Response: dataPoints[].coreBodyTemperature.temperature (Celsius)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleCoreTemperature(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -881,9 +867,9 @@ async function processGoogleCoreTemperature(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const temp = point.coreBodyTemperature?.temperature;
+    const temp = (point as any).coreBodyTemperature?.temperature;
     if (temp === null || temp === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Core Temperature',
@@ -907,12 +893,10 @@ async function processGoogleCoreTemperature(
 // Response: dataPoints[].dailyVo2Max.vo2MaxMillilitersPerKilogramPerMinute
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleVO2Max(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -920,9 +904,9 @@ async function processGoogleVO2Max(
     return;
   }
   for (const point of points) {
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
-    const payload = point.dailyVo2Max;
+    const payload = (point as any).dailyVo2Max;
     if (!payload) continue;
     // Field name varies; try the documented long form then a short alias
     const vo2 =
@@ -952,12 +936,10 @@ async function processGoogleVO2Max(
 // Aggregated per day; stored as 4 separate custom measurements.
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleActivityMinutes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleDataResult,
+  tz = 'UTC'
 ) {
   const points = data?.dataPoints;
   if (!points || points.length === 0) {
@@ -974,11 +956,11 @@ async function processGoogleActivityMinutes(
   const byDate = new Map<string, DayBuckets>();
 
   for (const point of points) {
-    const payload = point.activityLevel;
+    const payload = (point as any).activityLevel;
     if (!payload) continue;
 
     // Determine which date this segment belongs to
-    const entryDate = extractDate(point);
+    const entryDate = extractDate(point as Record<string, unknown>, tz);
     if (!entryDate) continue;
 
     // Duration: may be explicit "duration" field or derivable from interval
@@ -1050,12 +1032,10 @@ async function processGoogleActivityMinutes(
 // Response: rollupDataPoints[].distance.distanceMeters (sum in metres → stored as km)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleDistance(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1063,7 +1043,7 @@ async function processGoogleDistance(
     return;
   }
   for (const point of points) {
-    const payload = point.distance;
+    const payload = (point as any).distance;
     if (!payload) continue;
     // Confirmed field name from Fitbit_Fetch.py: millimetersSum (mm → km = /1,000,000)
     const mm = payload.millimetersSum ?? payload.distanceMillimeters ?? null;
@@ -1071,7 +1051,7 @@ async function processGoogleDistance(
     const distanceKm = Math.round((parseFloat(mm) / 1_000_000) * 100) / 100;
     if (distanceKm <= 0) continue;
 
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -1101,12 +1081,10 @@ async function processGoogleDistance(
 // Response: rollupDataPoints[].floors.countSum (confirmed via diagnostic 2026-06-08)
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleFloors(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1114,7 +1092,7 @@ async function processGoogleFloors(
     return;
   }
   for (const point of points) {
-    const payload = point.floors;
+    const payload = (point as any).floors;
     if (!payload) {
       log(
         'warn',
@@ -1135,7 +1113,7 @@ async function processGoogleFloors(
     const floors = Math.round(parseFloat(raw));
     if (floors <= 0) continue;
 
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;
@@ -1165,12 +1143,10 @@ async function processGoogleFloors(
 // Response: rollupDataPoints[].totalCalories.kilocaloriesSum
 // ──────────────────────────────────────────────────────────────────────────────
 async function processGoogleCalories(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  userId: UserId,
+  createdByUserId: UserId,
+  data: GoogleRollupResult,
+  tz = 'UTC'
 ) {
   const points = data?.rollupDataPoints;
   if (!points || points.length === 0) {
@@ -1178,7 +1154,7 @@ async function processGoogleCalories(
     return;
   }
   for (const point of points) {
-    const payload = point.totalCalories;
+    const payload = (point as any).totalCalories;
     if (!payload) continue;
     // Confirmed field name from Fitbit_Fetch.py: kcalSum
     const raw =
@@ -1190,7 +1166,7 @@ async function processGoogleCalories(
     const kcal = Math.round(parseFloat(raw));
     if (kcal <= 0) continue;
 
-    const cs = point.civilStartTime;
+    const cs = (point as any).civilStartTime;
     let entryDate: string | null = null;
     if (cs?.date) {
       const d = cs.date;

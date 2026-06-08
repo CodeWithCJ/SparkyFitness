@@ -310,31 +310,36 @@ async function syncGoogleHealthData(
       await googleHealthDataProcessor.processGoogleHeartRate(
         userId,
         userId,
-        heartRateData
+        heartRateData,
+        tz
       );
     if (stepsData)
       await googleHealthDataProcessor.processGoogleSteps(
         userId,
         userId,
-        stepsData
+        stepsData,
+        tz
       );
     if (weightData)
       await googleHealthDataProcessor.processGoogleWeight(
         userId,
         userId,
-        weightData
+        weightData,
+        tz
       );
     if (spo2Data)
       await googleHealthDataProcessor.processGoogleSpO2(
         userId,
         userId,
-        spo2Data
+        spo2Data,
+        tz
       );
     if (tempData)
       await googleHealthDataProcessor.processGoogleTemperature(
         userId,
         userId,
-        tempData
+        tempData,
+        tz
       );
     if (profileData)
       await googleHealthDataProcessor.processGoogleProfile(
@@ -345,79 +350,91 @@ async function syncGoogleHealthData(
         tz
       );
     if (hrvData)
-      await googleHealthDataProcessor.processGoogleHRV(userId, userId, hrvData);
+      await googleHealthDataProcessor.processGoogleHRV(userId, userId, hrvData, tz);
     if (respiratoryRateData)
       await googleHealthDataProcessor.processGoogleRespiratoryRate(
         userId,
         userId,
-        respiratoryRateData
+        respiratoryRateData,
+        tz
       );
     if (azmData)
       await googleHealthDataProcessor.processGoogleActiveZoneMinutes(
         userId,
         userId,
-        azmData
+        azmData,
+        tz
       );
     if (sleepData)
       await googleHealthDataProcessor.processGoogleSleep(
         userId,
         userId,
-        sleepData
+        sleepData,
+        tz
       );
     if (activitiesData)
       await googleHealthDataProcessor.processGoogleActivities(
         userId,
         userId,
         activitiesData,
-        startDate
+        startDate,
+        tz
       );
     if (bodyFatData)
       await googleHealthDataProcessor.processGoogleBodyFat(
         userId,
         userId,
-        bodyFatData
+        bodyFatData,
+        tz
       );
     if (waterData)
       await googleHealthDataProcessor.processGoogleWater(
         userId,
         userId,
-        waterData
+        waterData,
+        tz
       );
     if (coreTempData)
       await googleHealthDataProcessor.processGoogleCoreTemperature(
         userId,
         userId,
-        coreTempData
+        coreTempData,
+        tz
       );
     if (vo2MaxData)
       await googleHealthDataProcessor.processGoogleVO2Max(
         userId,
         userId,
-        vo2MaxData
+        vo2MaxData,
+        tz
       );
     if (activityMinutesData)
       await googleHealthDataProcessor.processGoogleActivityMinutes(
         userId,
         userId,
-        activityMinutesData
+        activityMinutesData,
+        tz
       );
     if (distanceData)
       await googleHealthDataProcessor.processGoogleDistance(
         userId,
         userId,
-        distanceData
+        distanceData,
+        tz
       );
     if (floorsData)
       await googleHealthDataProcessor.processGoogleFloors(
         userId,
         userId,
-        floorsData
+        floorsData,
+        tz
       );
     if (caloriesData)
       await googleHealthDataProcessor.processGoogleCalories(
         userId,
         userId,
-        caloriesData
+        caloriesData,
+        tz
       );
 
     const client = await getSystemClient();

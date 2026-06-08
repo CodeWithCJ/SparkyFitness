@@ -394,6 +394,38 @@ async function getStatus(userId: any) {
 async function disconnectGoogleHealth(userId: any) {
   const client = await getSystemClient();
   try {
+    // Attempt to revoke the access token with Google before clearing DB tokens.
+    // Revocation failure is non-fatal — tokens are cleared regardless.
+    try {
+      const tokenResult = await client.query(
+        `SELECT encrypted_access_token, access_token_iv, access_token_tag
+         FROM external_data_providers
+         WHERE user_id = $1 AND provider_type = 'googlehealth'`,
+        [userId]
+      );
+      if (tokenResult.rows.length > 0) {
+        const { encrypted_access_token, access_token_iv, access_token_tag } =
+          tokenResult.rows[0];
+        if (encrypted_access_token) {
+          const accessToken = await decrypt(
+            encrypted_access_token,
+            access_token_iv,
+            access_token_tag,
+            ENCRYPTION_KEY
+          );
+          await axios.post(
+            `https://oauth2.googleapis.com/revoke?token=${accessToken}`
+          );
+          log('info', `Revoked Google Health access token for user ${userId}.`);
+        }
+      }
+    } catch (revokeError) {
+      log(
+        'warn',
+        `Failed to revoke Google Health token for user ${userId} (non-fatal): ${(revokeError as Error).message}`
+      );
+    }
+
     await client.query(
       `UPDATE external_data_providers
        SET encrypted_access_token = NULL, access_token_iv = NULL, access_token_tag = NULL,
