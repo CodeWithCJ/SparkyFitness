@@ -84,7 +84,7 @@ async function searchOpenFoodFacts(
       fieldSet.add(`product_name_${language}`);
     }
     const fields = [...fieldSet];
-    const searchUrl = `https://search.openfoodfacts.org/search?q=${encodeURIComponent(query)}&page_size=20&page=${page}&fields=${fields.join(',')}`;
+    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
@@ -96,12 +96,13 @@ async function searchOpenFoodFacts(
     }
     const data = await response.json();
     return {
-      products: data.hits,
+      products: data?.products || [],
       pagination: {
-        page: data.page || page,
-        pageSize: data.page_size || 20,
-        totalCount: data.count || 0,
-        hasMore: (data.page || page) < (data.page_count || 0),
+        page: data?.page || page,
+        pageSize: data?.page_size || 20,
+        totalCount: data?.count || 0,
+        hasMore:
+          (data?.page || page) * (data?.page_size || 20) < (data?.count || 0),
       },
     };
   } catch (error) {
