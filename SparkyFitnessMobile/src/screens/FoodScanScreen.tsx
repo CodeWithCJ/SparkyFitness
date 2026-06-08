@@ -98,6 +98,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const date = lookupParams?.date;
   const pickerMode = lookupParams?.pickerMode ?? 'log-entry';
   const returnDepth = lookupParams?.returnDepth;
+  const providerId = lookupParams?.providerId;
   const isMealBuilderMode = pickerMode === 'meal-builder';
 
   // Photo estimation always logs to the diary; hide it for meal-builder
@@ -141,17 +142,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setNotFoundBarcode(null);
     setLookupError(null);
     try {
-      const result = await lookupBarcodeV2(barcode);
+      const result = await lookupBarcodeV2(barcode, providerId);
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
-      } else if (result.food.id) {
+      } else if (result.source === 'local') {
         if (shouldFireSuccessHaptic) {
           fireSuccessHaptic();
         }
         const defaultVariant = result.food.default_variant;
         const item: FoodInfoItem = {
-          id: result.food.id,
+          id: result.food.id!,
           name: result.food.name,
           brand: result.food.brand,
           servingSize: defaultVariant.serving_size,
@@ -173,6 +174,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           vitaminC: defaultVariant.vitamin_c,
           variantId: defaultVariant.id,
           source: 'local',
+          provider_verified: result.food.provider_verified,
           originalItem: result.food,
         };
         navigation.replace('FoodEntryAdd', {
@@ -185,35 +187,75 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         if (shouldFireSuccessHaptic) {
           fireSuccessHaptic();
         }
-        const defaultVariant = result.food.default_variant;
-        navigation.replace(
-          'FoodForm',
-          buildFoodFormParams({
-            barcode,
-            providerType: result.source,
-            initialFood: {
-              name: result.food.name,
-              brand: result.food.brand ?? '',
-              servingSize: String(defaultVariant.serving_size),
-              servingUnit: defaultVariant.serving_unit,
-              calories: String(defaultVariant.calories),
-              protein: String(defaultVariant.protein),
-              carbs: String(defaultVariant.carbs),
-              fat: String(defaultVariant.fat),
-              fiber: toFormString(defaultVariant.dietary_fiber),
-              saturatedFat: toFormString(defaultVariant.saturated_fat),
-              sodium: toFormString(defaultVariant.sodium),
-              sugars: toFormString(defaultVariant.sugars),
-              transFat: toFormString(defaultVariant.trans_fat),
-              potassium: toFormString(defaultVariant.potassium),
-              cholesterol: toFormString(defaultVariant.cholesterol),
-              calcium: toFormString(defaultVariant.calcium),
-              iron: toFormString(defaultVariant.iron),
-              vitaminA: toFormString(defaultVariant.vitamin_a),
-              vitaminC: toFormString(defaultVariant.vitamin_c),
-            },
-          }),
-        );
+        const dv = result.food.default_variant;
+        const isReferenceServing = (v: typeof dv) =>
+          v.serving_size === 100 && (v.serving_unit === 'g' || v.serving_unit === 'ml');
+        const hasPortionDescription = (v: typeof dv) =>
+          v.serving_description &&
+          v.serving_description.length > 0 &&
+          !v.serving_description.match(/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i);
+        const preferredVariant = isReferenceServing(dv) && result.food.variants
+          ? result.food.variants.find((v) => v !== dv && hasPortionDescription(v))
+          : undefined;
+        const displayVariant = preferredVariant ?? dv;
+        const orderedVariants = result.food.variants
+          ? preferredVariant
+            ? [preferredVariant, dv, ...result.food.variants.filter((v) => v !== dv && v !== preferredVariant)]
+            : [dv, ...result.food.variants.filter((v) => v !== dv)]
+          : undefined;
+        const item: FoodInfoItem = {
+          id: result.food.provider_external_id ?? result.food.id ?? '',
+          name: result.food.name,
+          brand: result.food.brand,
+          servingSize: displayVariant.serving_size,
+          servingUnit: displayVariant.serving_unit,
+          servingDescription: displayVariant.serving_description ?? `${displayVariant.serving_size} ${displayVariant.serving_unit}`,
+          calories: displayVariant.calories,
+          protein: displayVariant.protein,
+          carbs: displayVariant.carbs,
+          fat: displayVariant.fat,
+          fiber: displayVariant.dietary_fiber,
+          saturatedFat: displayVariant.saturated_fat,
+          sodium: displayVariant.sodium,
+          sugars: displayVariant.sugars,
+          transFat: displayVariant.trans_fat,
+          potassium: displayVariant.potassium,
+          calcium: displayVariant.calcium,
+          iron: displayVariant.iron,
+          cholesterol: displayVariant.cholesterol,
+          vitaminA: displayVariant.vitamin_a,
+          vitaminC: displayVariant.vitamin_c,
+          variantId: displayVariant.id,
+          source: 'external',
+          provider_verified: result.food.provider_verified,
+          externalVariants: orderedVariants?.map((v) => ({
+            serving_size: v.serving_size,
+            serving_unit: v.serving_unit,
+            serving_description: v.serving_description ?? `${v.serving_size} ${v.serving_unit}`,
+            calories: v.calories,
+            protein: v.protein,
+            carbs: v.carbs,
+            fat: v.fat,
+            saturated_fat: v.saturated_fat,
+            sodium: v.sodium,
+            fiber: v.dietary_fiber,
+            sugars: v.sugars,
+            trans_fat: v.trans_fat,
+            cholesterol: v.cholesterol,
+            potassium: v.potassium,
+            calcium: v.calcium,
+            iron: v.iron,
+            vitamin_a: v.vitamin_a,
+            vitamin_c: v.vitamin_c,
+          })),
+          originalItem: result.food,
+        };
+        navigation.replace('FoodEntryAdd', {
+          item,
+          date,
+          pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+          returnDepth,
+        });
       }
     } catch (error) {
       const message =

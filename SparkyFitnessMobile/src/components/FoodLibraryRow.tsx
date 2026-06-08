@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import type { FoodItem } from '../types/foods';
+import { formatServingUnit } from '../utils/foodDetails';
 
 interface FoodLibraryRowProps {
   food: FoodItem;
@@ -36,7 +37,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
             {food.default_variant.calories} cal
           </Text>
           <Text className="text-text-secondary text-xs">
-            {food.default_variant.serving_size} {food.default_variant.serving_unit}
+            {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}
           </Text>
         </View>
       </View>

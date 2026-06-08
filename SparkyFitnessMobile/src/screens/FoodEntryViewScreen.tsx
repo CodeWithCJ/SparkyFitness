@@ -40,6 +40,7 @@ import type {
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   formatVariantLabel,
+  formatServingUnit,
   buildLocalUnitVariants,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
@@ -585,10 +586,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     : entry.quantity;
   const servingsCount =
     servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2));
+  const formattedEntryUnit = formatServingUnit(entry.unit || '');
   const servingsDisplay =
     servings === 1
-      ? `1 serving \u00b7 ${entry.serving_size} ${entry.unit} per serving`
-      : `${servingsCount} servings \u00b7 ${entry.serving_size} ${entry.unit} per serving`;
+      ? `1 serving \u00b7 ${entry.serving_size} ${formattedEntryUnit} per serving`
+      : `${servingsCount} servings \u00b7 ${entry.serving_size} ${formattedEntryUnit} per serving`;
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
   // Use the same per-mode gate the macro bar uses, and pass carbs raw —
@@ -672,7 +674,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     keyboardType="decimal-pad"
                   />
                   <Text className="text-text-primary text-base font-medium ml-2">
-                    {displayValues.servingUnit}
+                    {formatServingUnit(displayValues.servingUnit)}
                   </Text>
                 </View>
                 <View className="flex-row items-center mt-2">
@@ -699,7 +701,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         >
                           <Text className="text-text-secondary text-sm">
                             {' - '}
-                            {displayValues.servingSize} {displayValues.servingUnit} per
+                            {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
                             serving
                           </Text>
                           <Icon
@@ -715,7 +717,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   ) : (
                     <Text className="text-text-secondary text-sm">
                       {' - '}
-                      {displayValues.servingSize} {displayValues.servingUnit} per
+                      {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
                       serving
                     </Text>
                   )}

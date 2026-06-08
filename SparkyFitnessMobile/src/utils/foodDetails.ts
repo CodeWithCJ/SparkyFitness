@@ -8,6 +8,7 @@ import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
 export interface FoodDisplayValues {
   servingSize: number;
   servingUnit: string;
+  servingDescription?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -86,10 +87,21 @@ export function formatFoodFormNumber(
   }
 }
 
+export function formatServingDescription(desc: string): string {
+  return desc
+    .replace(/\./g, ' ')
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
   return {
     servingSize: item.servingSize,
     servingUnit: item.servingUnit,
+    servingDescription: item.servingDescription,
     calories: item.calories,
     protein: item.protein,
     carbs: item.carbs,
@@ -112,6 +124,7 @@ export function unitVariantToDisplayValues(variant: FoodUnitVariant): FoodDispla
   return {
     servingSize: variant.serving_size,
     servingUnit: variant.serving_unit,
+    servingDescription: variant.serving_description,
     calories: variant.calories,
     protein: variant.protein,
     carbs: variant.carbs,
@@ -197,6 +210,7 @@ export function externalVariantToUnitVariant(
     id,
     serving_size: variant.serving_size,
     serving_unit: variant.serving_unit,
+    serving_description: variant.serving_description,
     calories: variant.calories,
     protein: variant.protein,
     carbs: variant.carbs,
@@ -215,8 +229,12 @@ export function externalVariantToUnitVariant(
   };
 }
 
+export function formatServingUnit(unit: string): string {
+  return /[._]/.test(unit) ? formatServingDescription(unit) : unit;
+}
+
 export function formatVariantLabel(values: Pick<FoodDisplayValues, 'servingSize' | 'servingUnit' | 'calories'>): string {
-  return `${formatServingSizeDisplay(values.servingSize)} ${values.servingUnit} (${formatCaloriesDisplay(values.calories)} cal)`;
+  return `${formatServingSizeDisplay(values.servingSize)} ${formatServingUnit(values.servingUnit)} (${formatCaloriesDisplay(values.calories)} cal)`;
 }
 
 export function buildLocalVariantOptions(
@@ -252,27 +270,36 @@ export function buildLocalVariantOptions(
 export function buildExternalVariantOptions(
   variants?: ExternalFoodVariant[],
 ): FoodVariantOptionData[] {
-  return (variants ?? []).map((variant, index) => ({
-    id: `ext-${index}`,
-    label: `${variant.serving_description} (${variant.calories} cal)`,
-    servingSize: variant.serving_size,
-    servingUnit: variant.serving_unit,
-    calories: variant.calories,
-    protein: variant.protein,
-    carbs: variant.carbs,
-    fat: variant.fat,
-    fiber: variant.fiber,
-    saturatedFat: variant.saturated_fat,
-    sodium: variant.sodium,
-    sugars: variant.sugars,
-    transFat: variant.trans_fat,
-    potassium: variant.potassium,
-    calcium: variant.calcium,
-    iron: variant.iron,
-    cholesterol: variant.cholesterol,
-    vitaminA: variant.vitamin_a,
-    vitaminC: variant.vitamin_c,
-  }));
+  return (variants ?? []).map((variant, index) => {
+    const desc = variant.serving_description || '';
+    const cleanDesc = desc.replace(/\./g, ' ').replace(/_/g, ' ').trim();
+    const formatted = cleanDesc
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+    return {
+      id: `ext-${index}`,
+      label: `${formatted} (${variant.calories} cal)`,
+      servingDescription: variant.serving_description,
+      servingSize: variant.serving_size,
+      servingUnit: variant.serving_unit,
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fat: variant.fat,
+      fiber: variant.fiber,
+      saturatedFat: variant.saturated_fat,
+      sodium: variant.sodium,
+      sugars: variant.sugars,
+      transFat: variant.trans_fat,
+      potassium: variant.potassium,
+      calcium: variant.calcium,
+      iron: variant.iron,
+      cholesterol: variant.cholesterol,
+      vitaminA: variant.vitamin_a,
+      vitaminC: variant.vitamin_c,
+    };
+  });
 }
 
 export function buildLocalUnitVariants(

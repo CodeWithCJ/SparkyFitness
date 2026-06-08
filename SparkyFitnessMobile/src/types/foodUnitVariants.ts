@@ -6,6 +6,7 @@ export interface FoodUnitVariant {
   is_default?: boolean;
   serving_size: number;
   serving_unit: string;
+  serving_description?: string;
   calories: number;
   protein: number;
   carbs: number;

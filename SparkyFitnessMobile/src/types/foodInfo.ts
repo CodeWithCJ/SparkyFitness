@@ -113,6 +113,7 @@ export interface FoodInfoItem {
   sharedWithPublic?: boolean;
   servingSize: number;
   servingUnit: string;
+  servingDescription?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -131,6 +132,7 @@ export interface FoodInfoItem {
   customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
+  provider_verified?: boolean;
   // Yield count for meal-source items — surfaces "meal makes N servings"
   // context in the diary-add screen for serving-unit meals where the
   // per-serving size suffix is suppressed.
@@ -181,6 +183,7 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   brand: item.brand,
   servingSize: item.serving_size,
   servingUnit: item.serving_unit,
+  servingDescription: item.serving_description,
   calories: item.calories,
   protein: item.protein,
   carbs: item.carbs,
@@ -197,6 +200,7 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   vitaminA: item.vitamin_a,
   vitaminC: item.vitamin_c,
   externalVariants: item.variants,
+  provider_verified: item.provider_verified,
   source: 'external',
   originalItem: item,
 });

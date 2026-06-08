@@ -52,6 +52,9 @@ export interface ExternalFoodItem {
   vitamin_c?: number;
   serving_size: number;
   serving_unit: string;
+  serving_description?: string;
   source: string;
   variants?: ExternalFoodVariant[];
+  /** Whether the food is verified by the provider (e.g. Yazio verified foods) */
+  provider_verified?: boolean;
 }

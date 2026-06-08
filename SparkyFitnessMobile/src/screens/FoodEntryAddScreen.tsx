@@ -55,6 +55,8 @@ import {
   buildLocalUnitVariants,
   buildLocalVariantOptions,
   foodInfoToUnitVariant,
+  formatServingDescription,
+  formatServingUnit,
   formatVariantLabel,
   resolveFoodDisplayValues,
   unitVariantToDisplayValues,
@@ -178,7 +180,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const isLocalFood = activeItem.source === 'local';
   const hasExternalVariants = !!(
-    activeItem.externalVariants && activeItem.externalVariants.length > 1
+    activeItem.externalVariants && activeItem.externalVariants.length >= 1
   );
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
     hasExternalVariants ? item.variantId ?? 'ext-0' : item.variantId,
@@ -977,6 +979,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           }}
           goalsLoading={isGoalsLoading}
           showNetCarbs={showNetCarbs}
+          provider_verified={activeItem.provider_verified}
         />
 
         <View className="mt-2">
@@ -989,7 +992,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               onIncrement={() => adjustQuantity(1)}
             />
             <Text className="text-text-primary text-base font-medium ml-2">
-              {displayValues.servingUnit}
+              {displayValues.servingDescription
+                ? formatServingDescription(displayValues.servingDescription)
+                : formatServingUnit(displayValues.servingUnit)}
             </Text>
           </View>
           <View className="flex-row items-center mt-2">
@@ -1002,7 +1007,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 "1 serving \u00b7 1 serving per serving". Keep it for ml/g/etc.
                 where "X ml per serving" is meaningful info. */}
             {displayValues.servingUnit !== 'serving' &&
-              (variantPickerOptions.length > 1 ? (
+              !displayValues.servingDescription?.toLowerCase().includes('serving') &&
+              (variantPickerOptions.length > 0 ? (
               <BottomSheetPicker
                 value={selectedVariantId ?? variantPickerOptions[0]?.id}
                 options={variantPickerOptions.map((variant) => ({
@@ -1020,7 +1026,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   >
                     <Text className="text-text-secondary text-sm">
                       {' \u00b7 '}
-                      {displayValues.servingSize} {displayValues.servingUnit} per
+                      {displayValues.servingDescription
+                        ? formatServingDescription(displayValues.servingDescription)
+                        : `${displayValues.servingSize} ${formatServingUnit(displayValues.servingUnit)}`} per
                       serving
                     </Text>
                     {isCreateVariantPending ? (
@@ -1044,7 +1052,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             ) : (
               <Text className="text-text-secondary text-sm">
                 {' \u00b7 '}
-                {displayValues.servingSize} {displayValues.servingUnit} per
+                {displayValues.servingDescription
+                  ? formatServingDescription(displayValues.servingDescription)
+                  : `${displayValues.servingSize} ${formatServingUnit(displayValues.servingUnit)}`} per
                 serving
               </Text>
               ))}
