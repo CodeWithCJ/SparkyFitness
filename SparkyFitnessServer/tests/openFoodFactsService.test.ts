@@ -24,30 +24,30 @@ describe('openFoodFactsService', () => {
   });
 
   describe('searchOpenFoodFacts', () => {
-    it('should append the lc parameter with the specified language to the search URL', async () => {
+    it('should call the Search-a-licious endpoint', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () => Promise.resolve({ hits: [], count: 0, page_count: 0 }),
       });
       // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
-      await searchOpenFoodFacts('pizza', 1, 'fr');
+      await searchOpenFoodFacts('pizza', 1, 'en');
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('&lc=fr'),
+        expect.stringContaining('search.openfoodfacts.org/search'),
         expect.any(Object)
       );
     });
 
-    it("should default to language 'en' when not specified", async () => {
+    it('should add language-specific product_name field when language is not en', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () => Promise.resolve({ hits: [], count: 0, page_count: 0 }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 2.
-      await searchOpenFoodFacts('pizza', 1);
+      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
+      await searchOpenFoodFacts('pizza', 1, 'fr');
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('&lc=en'),
+        expect.stringContaining('product_name_fr'),
         expect.any(Object)
       );
     });
@@ -177,7 +177,7 @@ describe('openFoodFactsService', () => {
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({ products: [], count: 0 }),
+          json: () => Promise.resolve({ hits: [], count: 0, page_count: 0 }),
         });
 
       await searchOpenFoodFacts('pizza', 1, 'en', 'user-A', 'prov-1');
