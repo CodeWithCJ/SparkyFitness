@@ -146,7 +146,7 @@ async function processGoogleHeartRate(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const bpm = point.dailyRestingHeartRate?.beatsPerMinute;
-    if (bpm === null) continue;
+    if (bpm === null || bpm === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Resting Heart Rate',
       value: bpm,
@@ -182,7 +182,7 @@ async function processGoogleSteps(
   }
   for (const point of points) {
     const countSum = point.steps?.countSum;
-    if (countSum === null) continue;
+    if (countSum === null || countSum === undefined) continue;
     const steps = parseInt(countSum, 10);
     if (isNaN(steps)) continue;
 
@@ -231,17 +231,18 @@ async function processGoogleWeight(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const grams = point.weight?.weightGrams;
-    if (grams === null) continue;
-    const weight = parseFloat(grams) / 1000;
+    const weight = parseFloat(grams);
+    if (isNaN(weight)) continue;
+    const weightKg = weight / 1000;
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
       entryDate,
-      { weight }
+      { weight: weightKg }
     );
     log(
       'info',
-      `Upserted Google Health weight for user ${userId} on ${entryDate}: ${weight} kg.`
+      `Upserted Google Health weight for user ${userId} on ${entryDate}: ${weightKg} kg.`
     );
   }
 }
@@ -268,10 +269,11 @@ async function processGoogleSpO2(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const pct = point.oxygenSaturation?.percentage;
-    if (pct === null) continue;
+    const pctVal = parseFloat(pct);
+    if (isNaN(pctVal)) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'SpO2',
-      value: parseFloat(pct),
+      value: pctVal,
       unit: '%',
       entryDate,
       entryHour: 0,
@@ -311,7 +313,13 @@ async function processGoogleTemperature(
     if (!fields) continue;
     const nightly = fields.nightlyTemperatureCelsius;
     const baseline = fields.baselineTemperatureCelsius;
-    if (nightly === null || baseline === null) continue;
+    if (
+      nightly === null ||
+      nightly === undefined ||
+      baseline === null ||
+      baseline === undefined
+    )
+      continue;
     const relative =
       Math.round((parseFloat(nightly) - parseFloat(baseline)) * 1000) / 1000;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -393,7 +401,7 @@ async function processGoogleHRV(
     if (!entryDate) continue;
     const rmssd =
       point.dailyHeartRateVariability?.averageHeartRateVariabilityMilliseconds;
-    if (rmssd === null) continue;
+    if (rmssd === null || rmssd === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'HRV',
       value: parseFloat(rmssd),
@@ -432,7 +440,7 @@ async function processGoogleRespiratoryRate(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const br = point.dailyRespiratoryRate?.breathsPerMinute;
-    if (br === null) continue;
+    if (br === null || br === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Respiratory Rate',
       value: parseFloat(br),
@@ -479,9 +487,9 @@ async function processGoogleActiveZoneMinutes(
     }
     if (!entryDate) continue;
 
-    const fatBurn = parseInt(azm.sumInFatBurnHeartZone || 0, 10);
-    const cardio = parseInt(azm.sumInCardioHeartZone || 0, 10);
-    const peak = parseInt(azm.sumInPeakHeartZone || 0, 10);
+    const fatBurn = parseInt(azm.sumInFatBurnHeartZone, 10) || 0;
+    const cardio = parseInt(azm.sumInCardioHeartZone, 10) || 0;
+    const peak = parseInt(azm.sumInPeakHeartZone, 10) || 0;
     const total = fatBurn + cardio + peak;
     if (total === 0) continue;
 
@@ -552,9 +560,9 @@ async function processGoogleSleep(
             .split('T')[0]
         : startDate;
 
-    const minutesAsleep = parseInt(summary.minutesAsleep || 0, 10);
-    const minutesInPeriod = parseInt(summary.minutesInSleepPeriod || 0, 10);
-    const minutesToFall = parseInt(summary.minutesToFallAsleep || 0, 10);
+    const minutesAsleep = parseInt(summary.minutesAsleep, 10) || 0;
+    const minutesInPeriod = parseInt(summary.minutesInSleepPeriod, 10) || 0;
+    const minutesToFall = parseInt(summary.minutesToFallAsleep, 10) || 0;
     const efficiency =
       minutesInPeriod > 0
         ? Math.round((minutesAsleep / minutesInPeriod) * 100)
@@ -702,6 +710,13 @@ async function processGoogleActivities(
         shared_with_public: false,
       });
     }
+    if (!exerciseRecord) {
+      log(
+        'error',
+        `Failed to find or create exercise record for ${exerciseName}`
+      );
+      continue;
+    }
 
     const avgHR = metrics.averageHeartRateBeatsPerMinute
       ? parseInt(metrics.averageHeartRateBeatsPerMinute, 10)
@@ -783,12 +798,13 @@ async function processGoogleBodyFat(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const pct = point.bodyFat?.percentage;
-    if (pct === null) continue;
+    const bodyFatPct = parseFloat(pct);
+    if (isNaN(bodyFatPct)) continue;
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
       entryDate,
-      { body_fat_percentage: parseFloat(pct) }
+      { body_fat_percentage: bodyFatPct }
     );
     log(
       'info',
@@ -817,7 +833,7 @@ async function processGoogleWater(
   }
   for (const point of points) {
     const ml = point.amountConsumed?.millilitersSum;
-    if (ml === null) continue;
+    if (ml === null || ml === undefined) continue;
     const water = Math.round(parseFloat(ml));
     if (water <= 0) continue;
 
@@ -868,7 +884,7 @@ async function processGoogleCoreTemperature(
     const entryDate = extractDate(point);
     if (!entryDate) continue;
     const temp = point.coreBodyTemperature?.temperature;
-    if (temp === null) continue;
+    if (temp === null || temp === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'Core Temperature',
       value: parseFloat(temp),
@@ -911,7 +927,7 @@ async function processGoogleVO2Max(
     // Field name varies; try the documented long form then a short alias
     const vo2 =
       payload.vo2MaxMillilitersPerKilogramPerMinute ?? payload.vo2Max ?? null;
-    if (vo2 === null) continue;
+    if (vo2 === null || vo2 === undefined) continue;
     await upsertCustomMeasurementLogic(userId, createdByUserId, {
       categoryName: 'VO2 Max',
       value: parseFloat(vo2),

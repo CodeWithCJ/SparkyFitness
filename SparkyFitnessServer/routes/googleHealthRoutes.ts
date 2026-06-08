@@ -37,10 +37,9 @@ router.get(
       );
       res.json({ authUrl });
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       log(
         'error',
-        `Error initiating Google Health authorization: ${error.message}`
+        `Error initiating Google Health authorization: ${(error as Error).message}`
       );
       next(error);
     }
@@ -95,10 +94,9 @@ router.post(
           .json({ message: 'Failed to connect Google Health account.' });
       }
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       log(
         'error',
-        `Error handling Google Health OAuth callback: ${error.message}`
+        `Error handling Google Health OAuth callback: ${(error as Error).message}`
       );
       next(error);
     }
@@ -137,20 +135,19 @@ router.post('/sync', authMiddleware.authenticate, async (req, res, next) => {
       'info',
       `[googleHealthRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
     );
-    await googleHealthService.syncGoogleHealthData(
-      userId,
-      'manual',
-      startDate,
-      endDate
-    );
-    res
-      .status(200)
-      .json({ message: 'Google Health data sync completed successfully.' });
+    googleHealthService
+      .syncGoogleHealthData(userId, 'manual', startDate, endDate)
+      .catch((err: Error) => {
+        log(
+          'error',
+          `Background Google Health sync failed for user ${userId}: ${err.message}`
+        );
+      });
+    res.status(202).json({ message: 'Google Health sync started.' });
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log(
       'error',
-      `Error initiating manual Google Health sync: ${error.message}`
+      `Error initiating manual Google Health sync: ${(error as Error).message}`
     );
     next(error);
   }
@@ -174,10 +171,9 @@ router.post(
         .status(200)
         .json({ message: 'Google Health account disconnected successfully.' });
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       log(
         'error',
-        `Error disconnecting Google Health account: ${error.message}`
+        `Error disconnecting Google Health account: ${(error as Error).message}`
       );
       next(error);
     }
@@ -197,8 +193,10 @@ router.get('/status', authMiddleware.authenticate, async (req, res, next) => {
     const status = await googleHealthService.getStatus(userId);
     res.status(200).json(status);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error getting Google Health status: ${error.message}`);
+    log(
+      'error',
+      `Error getting Google Health status: ${(error as Error).message}`
+    );
     next(error);
   }
 });

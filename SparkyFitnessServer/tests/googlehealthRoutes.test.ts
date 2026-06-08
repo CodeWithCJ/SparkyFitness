@@ -160,7 +160,7 @@ describe('POST /api/integrations/googlehealth/callback', () => {
 });
 
 describe('POST /api/integrations/googlehealth/sync', () => {
-  it('returns 200 on successful sync without dates', async () => {
+  it('returns 202 on successful sync without dates', async () => {
     // @ts-expect-error TS(2339)
     googleHealthService.syncGoogleHealthData.mockResolvedValue(undefined);
 
@@ -168,11 +168,8 @@ describe('POST /api/integrations/googlehealth/sync', () => {
       .post('/api/integrations/googlehealth/sync')
       .send({});
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toHaveProperty(
-      'message',
-      'Google Health data sync completed successfully.'
-    );
+    expect(res.statusCode).toBe(202);
+    expect(res.body).toHaveProperty('message', 'Google Health sync started.');
     expect(googleHealthService.syncGoogleHealthData).toHaveBeenCalledWith(
       'test-user-id',
       'manual',
@@ -189,7 +186,7 @@ describe('POST /api/integrations/googlehealth/sync', () => {
       .post('/api/integrations/googlehealth/sync')
       .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
 
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(202);
     expect(googleHealthService.syncGoogleHealthData).toHaveBeenCalledWith(
       'test-user-id',
       'manual',
@@ -208,7 +205,7 @@ describe('POST /api/integrations/googlehealth/sync', () => {
     expect(googleHealthService.syncGoogleHealthData).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when service throws', async () => {
+  it('returns 202 even when service throws (fire-and-forget)', async () => {
     // @ts-expect-error TS(2339)
     googleHealthService.syncGoogleHealthData.mockRejectedValue(
       new Error('Sync error')
@@ -218,7 +215,8 @@ describe('POST /api/integrations/googlehealth/sync', () => {
       .post('/api/integrations/googlehealth/sync')
       .send({});
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(202);
+    expect(res.body).toHaveProperty('message', 'Google Health sync started.');
   });
 });
 

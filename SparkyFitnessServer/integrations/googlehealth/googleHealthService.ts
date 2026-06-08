@@ -43,23 +43,31 @@ function parseDurationToSeconds(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function googleTimeToIso(t: any): string | null {
   if (!t) return null;
-  // Handle { date: { year, month, day }, time: { hours, minutes, seconds } }
-  if (t.date) {
-    const d = t.date;
-    const ti = t.time || {};
-    return new Date(
-      Date.UTC(
-        d.year,
-        d.month - 1,
-        d.day,
-        ti.hours || 0,
-        ti.minutes || 0,
-        Math.floor(ti.seconds || 0)
-      )
-    ).toISOString();
+  try {
+    // Handle { date: { year, month, day }, time: { hours, minutes, seconds } }
+    if (t.date) {
+      const d = t.date;
+      const ti = t.time || {};
+      const date = new Date(
+        Date.UTC(
+          d.year,
+          d.month - 1,
+          d.day,
+          ti.hours || 0,
+          ti.minutes || 0,
+          Math.floor(ti.seconds || 0)
+        )
+      );
+      return isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    // Handle raw ISO string
+    if (typeof t === 'string') {
+      const date = new Date(t);
+      return isNaN(date.getTime()) ? null : date.toISOString();
+    }
+  } catch {
+    log('warn', 'Failed to parse Google Health time: ' + JSON.stringify(t));
   }
-  // Handle raw ISO string
-  if (typeof t === 'string') return new Date(t).toISOString();
   return null;
 }
 
@@ -163,7 +171,8 @@ async function exchangeCodeForTokens(
 
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
     const encryptedRefreshToken = await encrypt(refresh_token, ENCRYPTION_KEY);
-    const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
+    const expiresIn = Number(expires_in) || 3600;
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     await client.query(
       `UPDATE external_data_providers
@@ -186,10 +195,9 @@ async function exchangeCodeForTokens(
     );
     return { success: true, externalUserId: 'google' };
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `Error exchanging code for Google Health tokens: ${error.message}`
+      `Error exchanging code for Google Health tokens: ${(error as Error).message}`
     );
     throw error;
   } finally {
@@ -261,7 +269,8 @@ async function refreshAccessToken(userId: any) {
     } = response.data;
 
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
-    const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
+    const expiresIn = Number(expires_in) || 3600;
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     // Google may or may not return a new refresh token on each refresh
     if (newRefreshToken) {
@@ -305,15 +314,14 @@ async function refreshAccessToken(userId: any) {
     }
     return access_token;
   } catch (error) {
-    // @ts-expect-error TS(2571)
-    const googleError = error?.response?.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const googleError = (error as any)?.response?.data;
     const detail = googleError
       ? ` — Google: ${JSON.stringify(googleError)}`
       : '';
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `Error refreshing Google Health access token: ${error.message}${detail}`
+      `Error refreshing Google Health access token: ${(error as Error).message}${detail}`
     );
     throw error;
   } finally {
@@ -535,8 +543,8 @@ async function fetchDataPointsRange(
       }
       return { dataPoints: allPoints };
     } catch (error: unknown) {
-      // @ts-expect-error TS(2571)
-      if (filter !== null && error?.response?.status === 400) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (filter !== null && (error as any)?.response?.status === 400) {
         continue;
       }
       throw error;
@@ -660,10 +668,9 @@ async function fetchHeartRate(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching resting heart rate for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching resting heart rate for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -688,10 +695,9 @@ async function fetchSteps(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching steps for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching steps for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -716,10 +722,9 @@ async function fetchWeight(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching weight for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching weight for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -744,10 +749,9 @@ async function fetchSpO2(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching SpO2 for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching SpO2 for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -772,10 +776,9 @@ async function fetchTemperature(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching skin temperature for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching skin temperature for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -789,10 +792,9 @@ async function fetchProfile(userId: any, providedToken: string | null = null) {
   try {
     return await fetchDataPointsList(accessToken, 'height', { pageSize: 100 });
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching height for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching height for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -817,10 +819,9 @@ async function fetchActivities(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching activities for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching activities for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -840,10 +841,9 @@ async function fetchSleep(
   try {
     return await fetchDataPointsRange(accessToken, 'sleep', startDate, endDate);
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching sleep for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching sleep for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -868,10 +868,9 @@ async function fetchRespiratoryRate(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching respiratory rate for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching respiratory rate for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -896,10 +895,9 @@ async function fetchHRV(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching HRV for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching HRV for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -924,10 +922,9 @@ async function fetchActiveZoneMinutes(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching AZM for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching AZM for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -952,10 +949,9 @@ async function fetchBodyFat(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching body fat for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching body fat for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -981,10 +977,9 @@ async function fetchWater(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching hydration log for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching hydration log for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1009,10 +1004,9 @@ async function fetchCoreTemperature(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching core body temperature for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching core body temperature for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1039,10 +1033,9 @@ async function fetchVO2Max(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching VO2 Max for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching VO2 Max for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1069,10 +1062,9 @@ async function fetchActivityMinutes(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching activity minutes for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching activity minutes for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1099,10 +1091,9 @@ async function fetchDistance(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching distance for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching distance for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1129,10 +1120,9 @@ async function fetchFloors(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching floors for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching floors for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1159,10 +1149,9 @@ async function fetchCalories(
       endDate
     );
   } catch (error) {
-    // @ts-expect-error TS(2571)
     log(
       'error',
-      `[googleHealthService] Error fetching daily calories for user ${userId}: ${error.message}`
+      `[googleHealthService] Error fetching daily calories for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }

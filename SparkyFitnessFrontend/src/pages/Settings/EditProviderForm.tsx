@@ -714,13 +714,21 @@ export const EditProviderForm = ({
                 className="ml-2 h-5 w-5"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigator.clipboard.writeText(
-                    `${window.location.origin}/googlehealth/callback`
-                  );
-                  toast({
-                    title: 'Copied!',
-                    description: 'Callback URL copied to clipboard.',
-                  });
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/googlehealth/callback`
+                    );
+                    toast({
+                      title: 'Copied!',
+                      description: 'Callback URL copied to clipboard.',
+                    });
+                  } else {
+                    toast({
+                      title: 'Copy Failed',
+                      description: 'Clipboard access requires a secure context (HTTPS).',
+                      variant: 'destructive',
+                    });
+                  }
                 }}
               >
                 <Clipboard className="h-4 w-4" />

@@ -16,6 +16,8 @@ const GoogleHealthCallback = () => {
     useLinkGoogleHealthMutation();
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const processCallback = async () => {
       const params = new URLSearchParams(location.search);
       const code = params.get('code');
@@ -40,13 +42,14 @@ const GoogleHealthCallback = () => {
         setMessage('Error linking Google Health account.');
       } finally {
         setLoading(false);
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           navigate('/settings');
         }, 1500);
       }
     };
 
     processCallback();
+    return () => clearTimeout(timeoutId);
   }, [location, navigate, toast, linkGoogleHealthAccount]);
 
   return <CallbackStatus loading={loading} message={message} />;
