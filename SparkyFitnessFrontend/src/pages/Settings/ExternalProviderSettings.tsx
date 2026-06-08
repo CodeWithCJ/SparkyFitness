@@ -35,6 +35,7 @@ export interface ExternalDataProvider {
     | 'norish'
     | 'usda'
     | 'fitbit'
+    | 'googlehealth'
     | 'polar'
     | 'hevy'
     | 'yazio'
@@ -66,6 +67,8 @@ export interface ExternalDataProvider {
   hevy_connect_status?: 'connected' | 'disconnected';
   strava_last_sync_at?: string | null;
   strava_token_expires?: string | null;
+  googlehealth_last_sync_at?: string | null;
+  googlehealth_token_expires?: string | null;
   is_strictly_private?: boolean | null;
   sort_order?: number;
 }

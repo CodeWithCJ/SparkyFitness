@@ -13,17 +13,20 @@ import SyncRangeDialog from './SyncRangeDialog';
 
 import {
   useConnectFitbitMutation,
+  useConnectGoogleHealthMutation,
   useConnectPolarMutation,
   useConnectStravaMutation,
   useConnectWithingsMutation,
   useDisconnectFitbitMutation,
   useDisconnectGarminMutation,
+  useDisconnectGoogleHealthMutation,
   useDisconnectPolarMutation,
   useDisconnectStravaMutation,
   useDisconnectWithingsMutation,
   useManualSyncWithingsMutation,
   useManualSyncFitbitMutation,
   useManualSyncGarminMutation,
+  useManualSyncGoogleHealthMutation,
   useManualSyncPolarMutation,
   useManualSyncStravaMutation,
   useSyncHevyMutation,
@@ -100,6 +103,10 @@ export const ProviderCard = ({
 
   const { mutate: handleConnectFitbit, isPending: isConnectFitbitPending } =
     useConnectFitbitMutation();
+  const {
+    mutate: handleConnectGoogleHealth,
+    isPending: isConnectGoogleHealthPending,
+  } = useConnectGoogleHealthMutation();
   const { mutate: handleConnectPolar, isPending: isConnectPolarPending } =
     useConnectPolarMutation();
   const { mutate: handleConnectStrava, isPending: isConnectStravaPending } =
@@ -111,6 +118,10 @@ export const ProviderCard = ({
     mutate: handleDisconnectFitbit,
     isPending: isDisconnectFitbitPending,
   } = useDisconnectFitbitMutation();
+  const {
+    mutate: handleDisconnectGoogleHealth,
+    isPending: isDisconnectGoogleHealthPending,
+  } = useDisconnectGoogleHealthMutation();
   const {
     mutate: handleDisconnectGarmin,
     isPending: isDisconnectGarminPending,
@@ -136,6 +147,10 @@ export const ProviderCard = ({
     useManualSyncPolarMutation();
   const { mutate: handleManualSyncStrava, isPending: isSyncStravaPending } =
     useManualSyncStravaMutation();
+  const {
+    mutate: handleManualSyncGoogleHealth,
+    isPending: isSyncGoogleHealthPending,
+  } = useManualSyncGoogleHealthMutation();
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
 
@@ -166,6 +181,9 @@ export const ProviderCard = ({
       case 'garmin':
         handleManualSyncGarmin({ startDate, endDate });
         break;
+      case 'googlehealth':
+        handleManualSyncGoogleHealth({ startDate, endDate });
+        break;
       case 'hevy':
         syncHevyData({
           fullSync: false,
@@ -182,10 +200,12 @@ export const ProviderCard = ({
     statusPending ||
     deletePending ||
     isConnectFitbitPending ||
+    isConnectGoogleHealthPending ||
     isConnectPolarPending ||
     isConnectStravaPending ||
     isConnectWithingsPending ||
     isDisconnectFitbitPending ||
+    isDisconnectGoogleHealthPending ||
     isDisconnectGarminPending ||
     isDisconnectPolarPending ||
     isDisconnectStravaPending ||
@@ -193,6 +213,7 @@ export const ProviderCard = ({
     isSyncWithingsPending ||
     isSyncFitbitPending ||
     isSyncGarminPending ||
+    isSyncGoogleHealthPending ||
     isSyncPolarPending ||
     isSyncStravaPending ||
     isSyncHevyPending ||
@@ -275,6 +296,15 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.fitbit_last_sync_at,
           tokenExpires: provider.fitbit_token_expires,
+          hasToken: isLinked && provider.is_active,
+        };
+      case 'googlehealth':
+        return {
+          connect: () => handleConnectGoogleHealth(),
+          disconnect: () => handleDisconnectGoogleHealth(),
+          sync: () => setIsSyncDialogOpen(true),
+          lastSync: provider.googlehealth_last_sync_at,
+          tokenExpires: null, // access tokens auto-refresh; showing 1h expiry misleads users
           hasToken: isLinked && provider.is_active,
         };
       case 'polar':
@@ -542,9 +572,15 @@ export const ProviderCard = ({
         )}
       </div>
 
-      {['fitbit', 'withings', 'polar', 'garmin', 'hevy', 'strava'].includes(
-        provider.provider_type
-      ) && (
+      {[
+        'fitbit',
+        'googlehealth',
+        'withings',
+        'polar',
+        'garmin',
+        'hevy',
+        'strava',
+      ].includes(provider.provider_type) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
           <strong>Note from CodewithCJ:</strong> I don't own{' '}
           {provider.provider_name} device/subscription.

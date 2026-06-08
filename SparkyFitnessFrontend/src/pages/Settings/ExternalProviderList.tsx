@@ -210,13 +210,25 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
             ? editData.provider_type === 'yazio'
               ? yazioAppId
               : editData.app_id || undefined
-            : editData.app_id || null,
+            // OAuth providers store credentials encrypted server-side and never echo them back.
+            // Send undefined (not null) when empty so COALESCE preserves the existing value.
+            // null would trigger clearAppId=true and wipe the encrypted credential.
+            : ['googlehealth', 'fitbit', 'withings', 'strava', 'polar'].includes(
+                  editData.provider_type || ''
+                )
+              ? editData.app_id?.trim() || undefined
+              : editData.app_id || null,
       app_key:
         editData.provider_type === 'yazio'
           ? yazioAppKey
           : editData.provider_type === 'openfoodfacts'
             ? editData.app_key || undefined
-            : editData.app_key || null,
+            // Same reasoning as app_id above: undefined preserves, null wipes.
+            : ['googlehealth', 'fitbit', 'withings', 'strava', 'polar'].includes(
+                  editData.provider_type || ''
+                )
+              ? editData.app_key?.trim() || undefined
+              : editData.app_key || null,
       is_active: editData.is_active,
       base_url:
         editData.provider_type === 'mealie' ||
@@ -259,6 +271,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
+        editData.provider_type === 'googlehealth' ||
         editData.provider_type === 'hevy' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar'

@@ -30,6 +30,7 @@ export const ProviderSpecificFields = ({
     'fatsecret',
     'withings',
     'fitbit',
+    'googlehealth',
     'strava',
     'polar',
   ].includes(provider.provider_type || '');
@@ -42,6 +43,7 @@ export const ProviderSpecificFields = ({
     'usda',
     'withings',
     'fitbit',
+    'googlehealth',
     'strava',
     'polar',
     'hevy',
@@ -75,7 +77,7 @@ export const ProviderSpecificFields = ({
       {needsAppId && (
         <div>
           <Label htmlFor="new_app_id">
-            {['withings', 'fitbit', 'strava', 'polar'].includes(
+            {['withings', 'fitbit', 'googlehealth', 'strava', 'polar'].includes(
               provider.provider_type || ''
             )
               ? 'Client ID'
@@ -99,7 +101,7 @@ export const ProviderSpecificFields = ({
       {needsAppKey && (
         <div>
           <Label htmlFor="new_app_key">
-            {['withings', 'fitbit', 'strava', 'polar'].includes(
+            {['withings', 'fitbit', 'googlehealth', 'strava', 'polar'].includes(
               provider.provider_type || ''
             )
               ? 'Client Secret'
@@ -310,7 +312,7 @@ export const ProviderSpecificFields = ({
         </>
       )}
 
-      {['withings', 'fitbit', 'polar'].includes(
+      {['withings', 'fitbit', 'googlehealth', 'polar'].includes(
         provider.provider_type || ''
       ) && (
         <p className="text-sm text-muted-foreground col-span-2">
