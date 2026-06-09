@@ -1,18 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { googleTimeToIso, parseDurationToSeconds } from '../integrations/googlehealth/googleHealthService.js';
+import {
+  googleTimeToIso,
+  parseDurationToSeconds,
+} from '../integrations/googlehealth/googleHealthService.js';
 
 describe('googleTimeToIso', () => {
   it('converts a structured date+time object', () => {
-    const t = { date: { year: 2026, month: 5, day: 1 }, time: { hours: 22, minutes: 30, seconds: 0 } };
+    const t = {
+      date: { year: 2026, month: 5, day: 1 },
+      time: { hours: 22, minutes: 30, seconds: 0 },
+    };
     expect(googleTimeToIso(t)).toBe('2026-05-01T22:30:00.000Z');
   });
 
   it('defaults missing time fields to midnight UTC', () => {
-    expect(googleTimeToIso({ date: { year: 2026, month: 5, day: 1 } })).toBe('2026-05-01T00:00:00.000Z');
+    expect(googleTimeToIso({ date: { year: 2026, month: 5, day: 1 } })).toBe(
+      '2026-05-01T00:00:00.000Z'
+    );
   });
 
   it('converts a raw ISO string', () => {
-    expect(googleTimeToIso('2026-05-01T22:30:00Z')).toBe('2026-05-01T22:30:00.000Z');
+    expect(googleTimeToIso('2026-05-01T22:30:00Z')).toBe(
+      '2026-05-01T22:30:00.000Z'
+    );
   });
 
   it('returns null for null', () => {
