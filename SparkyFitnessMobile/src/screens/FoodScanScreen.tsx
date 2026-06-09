@@ -648,8 +648,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               AI photo estimates aren&apos;t set up
             </Text>
             <Text className="text-text-secondary text-sm">
-              Open SparkyFitness in a browser and visit Settings → AI to add a
-              supported AI provider, then return here.
+              Open SparkyFitness in a browser and visit Settings → AI to add an
+              AI provider, then return here.
             </Text>
             <View className="gap-2 mt-2">
               <UIButton

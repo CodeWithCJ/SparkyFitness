@@ -28,10 +28,7 @@ import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
-import {
-  foodPhotoProviderLabel,
-  mapEstimateError,
-} from '../utils/foodPhotoEstimate';
+import { mapEstimateError } from '../utils/foodPhotoEstimate';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
@@ -142,7 +139,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const mutation = useEstimateFoodPhoto();
   const { data: aiSetting } = useActiveAiServiceSetting();
-  const providerLabel = foodPhotoProviderLabel(aiSetting?.service_type);
 
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -175,17 +171,21 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const appendImage = (uri: string, mimeType?: string) => {
     // Fail fast on the client when the active provider can't read HEIC/HEIF,
     // rather than reading base64 and round-tripping to a guaranteed server
-    // rejection. The service-side guard remains the backstop.
+    // rejection. The service-side guard remains the backstop. Only Gemini
+    // accepts HEIC, so reject for every other provider — but the truthiness
+    // check keeps us from gating while `service_type` is still loading
+    // (undefined), where a bare `!== 'google'` would wrongly reject.
     const provider = aiSetting?.service_type;
     const resolved = resolveMimeType({ uri, mimeType });
     if (
-      (provider === 'openai' || provider === 'anthropic') &&
+      provider &&
+      provider !== 'google' &&
       (resolved === 'image/heic' || resolved === 'image/heif')
     ) {
       Toast.show({
         type: 'error',
         text1: 'Unsupported format',
-        text2: `${provider === 'openai' ? 'OpenAI' : 'Anthropic'} can't read HEIC/HEIF images. Please pick a JPEG or PNG.`,
+        text2: "This AI provider can't read HEIC/HEIF images. Please pick a JPEG or PNG.",
       });
       return;
     }
@@ -318,9 +318,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Fail fast before the memory-intensive base64 reads if any staged image is
     // HEIC/HEIF and the active provider can't read it. Catches the seed image
-    // from the scan screen, which never passes through appendImage.
+    // from the scan screen, which never passes through appendImage. Only Gemini
+    // accepts HEIC; the truthiness check avoids gating while `service_type` is
+    // still loading (undefined).
     const provider = aiSetting?.service_type;
-    if (provider === 'openai' || provider === 'anthropic') {
+    if (provider && provider !== 'google') {
       const hasUnsupported = images.some((img) => {
         const resolved = resolveMimeType(img);
         return resolved === 'image/heic' || resolved === 'image/heif';
@@ -329,7 +331,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         Toast.show({
           type: 'error',
           text1: 'Unsupported format',
-          text2: `${provider === 'openai' ? 'OpenAI' : 'Anthropic'} can't read HEIC/HEIF images. Please remove them or switch to JPEG/PNG.`,
+          text2: "This AI provider can't read HEIC/HEIF images. Please remove them or switch to JPEG/PNG.",
         });
         return;
       }
@@ -501,11 +503,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text className="text-text-primary text-base font-semibold mt-4 text-center">
               {pendingMessage}
             </Text>
-            {providerLabel ? (
-              <Text className="text-text-secondary text-xs text-center opacity-70 mt-4">
-                Powered by {providerLabel}
-              </Text>
-            ) : null}
           </Animated.View>
         ) : (
           <Animated.View
@@ -565,12 +562,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               {description.length}/{DESCRIPTION_MAX}
             </Text>
-
-            {providerLabel ? (
-              <Text className="text-text-secondary text-xs text-center opacity-70 mt-2">
-                Powered by {providerLabel}
-              </Text>
-            ) : null}
           </Animated.View>
         )}
       </KeyboardAwareScrollView>

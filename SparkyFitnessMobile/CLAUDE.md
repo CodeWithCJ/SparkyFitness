@@ -42,7 +42,7 @@ tsc --noEmit                                   # Type check only
 - **hooks/** — React Query hooks organized by domain (food, meals, exercise/workout, workout presets, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
 - **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
 - **types/** — TypeScript interfaces. Core exercise session types (`ExerciseSessionResponse`, `IndividualSessionResponse`, `PresetSessionResponse`, `ExerciseHistoryResponse`) come from `@workspace/shared`.
-- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `foodPhotoEstimate` (`FOOD_PHOTO_PROVIDER_LABELS` allow-list + `mapEstimateError` copy mapping for the photo flow), `rateLimiter`.
+- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `foodPhotoEstimate` (`mapEstimateError` copy mapping for the photo flow), `rateLimiter`.
 - **constants/** — `meals.ts` (meal types, icons, time-based defaults).
 - **HealthMetrics.ts** — Health metric definitions filtered by platform and enabled status at runtime.
 - **plugins/** — Expo config plugins applied at prebuild: `withCalorieWidget` (copies `targets/android-widget/` Kotlin + res into the generated Android project and wires up Glance widget receivers), `withGlanceAndroidSupport`, `withNetworkSecurityConfig`. Edit `targets/`, never the generated `android/` or `ios/` folders.
@@ -163,7 +163,7 @@ Edit/Delete actions are gated on `profile.id === <entity>.userId` (owner-only). 
 
 ### Food Photo Estimation
 
-AI-powered nutrition estimate from a photo. The flow is gated on a configured AI provider (Google Gemini, OpenAI, or Anthropic) — the canonical allow-list is `FOOD_PHOTO_PROVIDER_LABELS` in `utils/foodPhotoEstimate.ts`, which mirrors the server's `SUPPORTED_PROVIDERS`. Provider availability is fetched via `useActiveAiServiceSetting` (React Query, 5-min staleTime, query key `activeAiServiceSettingQueryKey`) and gated through `isFoodPhotoAvailable(setting)` from `services/api/aiSettingsApi.ts`.
+AI-powered nutrition estimate from a photo. Food photo is **attempt-all**: it works with any configured AI provider — the server's `dispatchAiRequest` tries whatever `service_type` is active and a genuinely unbuildable provider surfaces as `UNSUPPORTED_PROVIDER`. The flow is therefore gated only on "a provider is configured at all": availability is fetched via `useActiveAiServiceSetting` (React Query, 5-min staleTime, query key `activeAiServiceSettingQueryKey`) and gated through `isFoodPhotoAvailable(setting)` (any non-empty `service_type`) from `services/api/aiSettingsApi.ts`.
 
 Entry points:
 - **AddSheet "Scan Food"** tile → `FoodScanScreen` with a 3-segment switcher: `Barcode | Label | Photo`. The `photo` segment is hidden when `pickerMode === 'meal-builder'` (photo estimates always log to the diary). Re-tapping the active Photo segment refetches the AI setting — the user's "I configured AI in the web app, try again" gesture.
@@ -216,7 +216,7 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
-| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (Google/Gemini, OpenAI, Anthropic) | `externalFoodSearchApi` |
+| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (any configured AI provider) | `externalFoodSearchApi` |
 | `GET /api/chat/ai-service-settings/active` | Active AI service config (gates the Photo segment) | `aiSettingsApi` |
 | `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |

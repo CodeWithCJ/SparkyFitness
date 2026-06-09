@@ -272,7 +272,9 @@ describe('FoodScanScreen', () => {
       });
     });
 
-    it('shows the gate when AI is configured for an unsupported provider', async () => {
+    it('treats any configured provider (e.g. mistral) as dispatchable: no gate, Photo available', async () => {
+      // Attempt-all: mistral is dispatched server-side, so the gate must NOT
+      // show and the Photo capture UI (library button) is available.
       mockUseActiveAiServiceSetting.mockReturnValue({
         data: {
           id: 's',
@@ -285,10 +287,11 @@ describe('FoodScanScreen', () => {
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
-        ).toBeTruthy();
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
       });
+      expect(
+        screen.queryByText(/AI photo estimates aren.t set up/),
+      ).toBeNull();
     });
 
     it('pushes the intro screen on first Photo use when the user has not seen it', async () => {

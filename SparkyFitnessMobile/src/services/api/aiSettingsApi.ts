@@ -2,7 +2,6 @@ import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
-import { FOOD_PHOTO_PROVIDER_LABELS } from '../../utils/foodPhotoEstimate';
 
 export interface ActiveAiServiceSetting {
   id: string;
@@ -100,10 +99,14 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   }
 }
 
-const FOOD_PHOTO_SUPPORTED_PROVIDERS = new Set(Object.keys(FOOD_PHOTO_PROVIDER_LABELS));
-
+// Food photo is attempt-all: any configured provider is dispatched server-side
+// (dispatchAiRequest tries every service_type it has a builder for). So the
+// mobile gate only asks "is a provider configured at all" — a genuinely
+// unbuildable type is caught server-side as UNSUPPORTED_PROVIDER and surfaced
+// via mapEstimateError. service_type is a free-form string in the shared model,
+// so trim before testing for emptiness.
 export function isFoodPhotoAvailable(
   setting: ActiveAiServiceSetting | null | undefined,
 ): boolean {
-  return FOOD_PHOTO_SUPPORTED_PROVIDERS.has(setting?.service_type ?? '');
+  return (setting?.service_type ?? '').trim().length > 0;
 }

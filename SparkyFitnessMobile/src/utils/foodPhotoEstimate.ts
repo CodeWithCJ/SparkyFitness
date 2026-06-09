@@ -23,22 +23,6 @@ export interface EstimateErrorCopy {
   invalidateAiSettings: boolean;
 }
 
-// Canonical allow-list for food-photo estimation providers. Mirrors the
-// server's SUPPORTED_PROVIDERS in foodPhotoEstimationService.ts; the keys
-// drive both the gate (via isFoodPhotoAvailable) and the display label.
-export const FOOD_PHOTO_PROVIDER_LABELS: Record<string, string> = {
-  google: 'Google Gemini',
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-};
-
-export function foodPhotoProviderLabel(
-  serviceType: string | null | undefined,
-): string | null {
-  if (!serviceType) return null;
-  return FOOD_PHOTO_PROVIDER_LABELS[serviceType] ?? null;
-}
-
 export function mapEstimateError(
   code: FoodPhotoEstimateErrorCode,
 ): EstimateErrorCopy {
