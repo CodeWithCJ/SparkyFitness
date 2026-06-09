@@ -11,6 +11,8 @@ import {
   groupEquivalentVariants,
   nutritionMatches,
   resolveFoodDisplayValues,
+  formatServingDescription,
+  selectDisplayVariant,
 } from '../../src/utils/foodDetails';
 
 function makeItem(overrides: Partial<FoodInfoItem> = {}): FoodInfoItem {
@@ -57,6 +59,119 @@ function makeExternalVariant(overrides: Partial<ExternalFoodVariant> = {}): Exte
     ...overrides,
   };
 }
+
+function makeDisplayVariant(
+  serving_size: number,
+  serving_unit: string,
+  serving_description?: string,
+) {
+  return { serving_size, serving_unit, serving_description };
+}
+
+describe('formatServingDescription', () => {
+  it('replaces underscores with spaces', () => {
+    expect(formatServingDescription('1_stück_(30_g)')).toBe('1 stück (30 g)');
+    expect(formatServingDescription('one_cup')).toBe('one cup');
+  });
+
+  it('collapses multiple whitespace', () => {
+    expect(formatServingDescription('1  Stück   (30 g)')).toBe('1 Stück (30 g)');
+  });
+
+  it('trims leading and trailing whitespace', () => {
+    expect(formatServingDescription('  foo bar  ')).toBe('foo bar');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(formatServingDescription('')).toBe('');
+  });
+
+  it('preserves decimals and units', () => {
+    expect(formatServingDescription('1.5_cups_(350_ml)')).toBe('1.5 cups (350 ml)');
+  });
+
+  it('handles already-clean descriptions', () => {
+    expect(formatServingDescription('1 medium apple')).toBe('1 medium apple');
+  });
+
+  it('handles values with dots', () => {
+    expect(formatServingDescription('1..5_cups')).toBe('1..5 cups');
+  });
+});
+
+describe('selectDisplayVariant', () => {
+  it('returns the default variant when no variants are provided', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const result = selectDisplayVariant(dv, undefined);
+    expect(result.displayVariant).toBe(dv);
+    expect(result.orderedVariants).toBeUndefined();
+  });
+
+  it('returns the default variant when it is not a reference serving', () => {
+    const dv = makeDisplayVariant(50, 'g');
+    const variants = [makeDisplayVariant(50, 'g', 'a small portion')];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(dv);
+    expect(result.orderedVariants).toEqual([dv]);
+  });
+
+  it('prefers a descriptive variant over a 100g reference serving', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const descriptive = makeDisplayVariant(30, 'g', '1 Stück (30 g)');
+    const variants = [descriptive];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(descriptive);
+    expect(result.orderedVariants).toEqual([descriptive, dv]);
+  });
+
+  it('prefers a descriptive variant over a 100ml reference serving', () => {
+    const dv = makeDisplayVariant(100, 'ml');
+    const descriptive = makeDisplayVariant(250, 'ml', '1 cup (250 ml)');
+    const variants = [descriptive];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(descriptive);
+    expect(result.orderedVariants).toEqual([descriptive, dv]);
+  });
+
+  it('deduplicates default variant from ordered list', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const descriptive = makeDisplayVariant(30, 'g', '1 Stück (30 g)');
+    const sameAsDv = makeDisplayVariant(100, 'g', 'Reference serving');
+    const variants = [descriptive, sameAsDv];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(descriptive);
+    expect(result.orderedVariants).toEqual([descriptive, dv]);
+  });
+
+  it('filters out preferred variant from the remaining list to avoid duplicates', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const descriptive = makeDisplayVariant(30, 'g', '1 Stück (30 g)');
+    const other = makeDisplayVariant(200, 'g', 'double portion');
+    const alsoDv = makeDisplayVariant(100, 'g', 'reference copy');
+    const alsoDescriptive = makeDisplayVariant(30, 'g', '1 Stück copy');
+    const variants = [descriptive, other, alsoDv, alsoDescriptive];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(descriptive);
+    expect(result.orderedVariants).toEqual([descriptive, dv, other]);
+  });
+
+  it('returns default variant when no descriptive variant exists', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const another = makeDisplayVariant(50, 'g');
+    const variants = [another];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(dv);
+    expect(result.orderedVariants).toEqual([dv, another]);
+  });
+
+  it('ignores variants without meaningful descriptions', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const numericDesc = makeDisplayVariant(50, 'g', '50 g');
+    const variants = [numericDesc];
+    const result = selectDisplayVariant(dv, variants);
+    expect(result.displayVariant).toBe(dv);
+  });
+});
 
 describe('formatVariantLabel', () => {
   test('formats as "{size} {unit} ({cal} cal)"', () => {

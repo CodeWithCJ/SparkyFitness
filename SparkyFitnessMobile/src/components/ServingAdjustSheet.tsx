@@ -12,6 +12,7 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import StepperInput from './StepperInput';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
+import { formatServingUnit } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 export interface ServingAdjustSheetRef {
@@ -129,7 +130,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
                 {entry.food_name || 'Unknown food'}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {entry.serving_size} {entry.unit} = {entry.calories} Cal
+                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} Cal
               </Text>
             </View>
 
@@ -144,7 +145,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
                   onIncrement={() => adjustQuantity(1)}
                   InputComponent={BottomSheetTextInput}
                 />
-                <Text className="text-text-secondary text-lg ml-3">{entry.unit}</Text>
+                <Text className="text-text-secondary text-lg ml-3">{formatServingUnit(entry.unit)}</Text>
               </View>
             </View>
 

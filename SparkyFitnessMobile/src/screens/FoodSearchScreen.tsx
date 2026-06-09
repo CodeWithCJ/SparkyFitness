@@ -36,6 +36,7 @@ import { Meal } from '../types/meals';
 import { foodItemToFoodInfo, externalFoodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
+import { formatServingDescription, formatServingUnit } from '../utils/foodDetails';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -62,6 +63,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     '--color-text-muted',
     '--color-text-secondary',
   ]) as [string, string, string];
+  const iconSuccess = String(useCSSVariable('--color-icon-success'));
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
@@ -196,6 +198,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       date,
       pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
       returnDepth: isMealBuilderMode ? 2 : undefined,
+      providerId: selectedProvider ?? undefined,
     });
   };
 
@@ -209,10 +212,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
-    if (item.source === 'fatsecret' && selectedProvider) {
+    if ((item.source === 'fatsecret' || item.source === 'yazio') && selectedProvider) {
       setLoadingFoodId(item.id);
       try {
-        const detailed = await fetchExternalFoodDetails('fatsecret', item.id, selectedProvider);
+        const detailed = await fetchExternalFoodDetails(item.source, item.id, selectedProvider);
         showFoodInfo(externalFoodItemToFoodInfo(detailed));
       } catch (error) {
         const message = getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
@@ -273,7 +276,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             {item.default_variant.calories} cal
           </Text>
           <Text className="text-text-secondary text-xs">
-            {item.default_variant.serving_size} {item.default_variant.serving_unit}
+            {item.default_variant.serving_size} {formatServingUnit(item.default_variant.serving_unit)}
           </Text>
         </View>
       </View>
@@ -651,7 +654,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
-          <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+            {item.provider_verified ? (
+              <Icon name="checkmark" size={14} color={iconSuccess} />
+            ) : null}
+          </View>
           {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
           ) : null}
@@ -663,7 +671,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <>
               <Text className="text-text-primary text-base font-semibold">{item.calories} cal</Text>
               <Text className="text-text-secondary text-xs">
-                {item.serving_size} {item.serving_unit}
+                {item.serving_description
+                  ? formatServingDescription(item.serving_description)
+                  : `${item.serving_size} ${formatServingUnit(item.serving_unit)}`}
               </Text>
             </>
           )}

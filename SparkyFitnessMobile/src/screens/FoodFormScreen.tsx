@@ -42,6 +42,7 @@ import {
   buildCreateFoodVariantPayload,
   diffSiblingRows,
   formatServingSizeDisplay,
+  formatServingUnit,
   groupEquivalentVariants,
   toEquivalentUnit,
 } from '../utils/foodDetails';
@@ -747,7 +748,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
             </View>
             <Text className="text-text-secondary text-sm mt-2">
               {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formServingUnit} per serving
+              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} per serving
             </Text>
           </View>
           {/* Save to Database */}

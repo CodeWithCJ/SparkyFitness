@@ -8,6 +8,7 @@ import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
 export interface FoodDisplayValues {
   servingSize: number;
   servingUnit: string;
+  servingDescription?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -86,10 +87,47 @@ export function formatFoodFormNumber(
   }
 }
 
+export function formatServingDescription(desc: string): string {
+  return desc
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Check if a variant represents a standard reference serving (100g or 100ml). */
+export function isReferenceServing(
+  serving_size: number,
+  serving_unit: string,
+): boolean {
+  return serving_size === 100 && (serving_unit === 'g' || serving_unit === 'ml');
+}
+
+/** Check if a variant has a meaningful serving description beyond just a numeric unit string. */
+export function hasMeaningfulDescription(
+  serving_description?: string | null,
+): boolean {
+  return !!(serving_description
+    && serving_description.length > 0
+    && !/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i.test(serving_description));
+}
+
+/**
+ * Compare two variants by value using serving_size + serving_unit.
+ * The API may return the same variant in both default_variant and variants[]
+ * as separate object references — reference equality (===) fails.
+ */
+export function isSameVariant(
+  a: { serving_size: number; serving_unit: string },
+  b: { serving_size: number; serving_unit: string },
+): boolean {
+  return a.serving_size === b.serving_size && a.serving_unit === b.serving_unit;
+}
+
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
   return {
     servingSize: item.servingSize,
     servingUnit: item.servingUnit,
+    servingDescription: item.servingDescription,
     calories: item.calories,
     protein: item.protein,
     carbs: item.carbs,
@@ -112,6 +150,7 @@ export function unitVariantToDisplayValues(variant: FoodUnitVariant): FoodDispla
   return {
     servingSize: variant.serving_size,
     servingUnit: variant.serving_unit,
+    servingDescription: variant.serving_description,
     calories: variant.calories,
     protein: variant.protein,
     carbs: variant.carbs,
@@ -197,6 +236,7 @@ export function externalVariantToUnitVariant(
     id,
     serving_size: variant.serving_size,
     serving_unit: variant.serving_unit,
+    serving_description: variant.serving_description,
     calories: variant.calories,
     protein: variant.protein,
     carbs: variant.carbs,
@@ -215,8 +255,38 @@ export function externalVariantToUnitVariant(
   };
 }
 
+/**
+ * Select the best display variant from a list of variants.
+ * If the default is a reference serving (100g/100ml) and a more descriptive
+ * variant exists, prefers that. Returns both the display variant and the
+ * deduplicated ordered list for the variant picker.
+ */
+export function selectDisplayVariant<T extends { serving_size: number; serving_unit: string; serving_description?: string }>(
+  defaultVariant: T,
+  variants?: T[],
+): { displayVariant: T; orderedVariants: T[] | undefined } {
+  const preferredVariant = isReferenceServing(defaultVariant.serving_size, defaultVariant.serving_unit) && variants
+    ? variants.find((v) => !isSameVariant(v, defaultVariant) && hasMeaningfulDescription(v.serving_description))
+    : undefined;
+
+  const displayVariant = preferredVariant ?? defaultVariant;
+
+  const orderedVariants = variants
+    ? preferredVariant
+      ? [preferredVariant, defaultVariant, ...variants.filter((v) => !isSameVariant(v, defaultVariant) && !isSameVariant(v, preferredVariant))]
+      : [defaultVariant, ...variants.filter((v) => !isSameVariant(v, defaultVariant))]
+    : undefined;
+
+  return { displayVariant, orderedVariants };
+}
+
+export function formatServingUnit(unit: string | undefined | null): string {
+  if (!unit) return '';
+  return /[._]/.test(unit) ? formatServingDescription(unit) : unit;
+}
+
 export function formatVariantLabel(values: Pick<FoodDisplayValues, 'servingSize' | 'servingUnit' | 'calories'>): string {
-  return `${formatServingSizeDisplay(values.servingSize)} ${values.servingUnit} (${formatCaloriesDisplay(values.calories)} cal)`;
+  return `${formatServingSizeDisplay(values.servingSize)} ${formatServingUnit(values.servingUnit)} (${formatCaloriesDisplay(values.calories)} cal)`;
 }
 
 export function buildLocalVariantOptions(
@@ -252,27 +322,31 @@ export function buildLocalVariantOptions(
 export function buildExternalVariantOptions(
   variants?: ExternalFoodVariant[],
 ): FoodVariantOptionData[] {
-  return (variants ?? []).map((variant, index) => ({
-    id: `ext-${index}`,
-    label: `${variant.serving_description} (${variant.calories} cal)`,
-    servingSize: variant.serving_size,
-    servingUnit: variant.serving_unit,
-    calories: variant.calories,
-    protein: variant.protein,
-    carbs: variant.carbs,
-    fat: variant.fat,
-    fiber: variant.fiber,
-    saturatedFat: variant.saturated_fat,
-    sodium: variant.sodium,
-    sugars: variant.sugars,
-    transFat: variant.trans_fat,
-    potassium: variant.potassium,
-    calcium: variant.calcium,
-    iron: variant.iron,
-    cholesterol: variant.cholesterol,
-    vitaminA: variant.vitamin_a,
-    vitaminC: variant.vitamin_c,
-  }));
+  return (variants ?? []).map((variant, index) => {
+    const formatted = formatServingDescription(variant.serving_description || '');
+    return {
+      id: `ext-${index}`,
+      label: `${formatted} (${variant.calories} cal)`,
+      servingDescription: variant.serving_description,
+      servingSize: variant.serving_size,
+      servingUnit: variant.serving_unit,
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fat: variant.fat,
+      fiber: variant.fiber,
+      saturatedFat: variant.saturated_fat,
+      sodium: variant.sodium,
+      sugars: variant.sugars,
+      transFat: variant.trans_fat,
+      potassium: variant.potassium,
+      calcium: variant.calcium,
+      iron: variant.iron,
+      cholesterol: variant.cholesterol,
+      vitaminA: variant.vitamin_a,
+      vitaminC: variant.vitamin_c,
+    };
+  });
 }
 
 export function buildLocalUnitVariants(

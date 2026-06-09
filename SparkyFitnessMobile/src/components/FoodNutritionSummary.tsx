@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
+import Icon from './Icon';
 import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
@@ -21,6 +22,7 @@ interface FoodNutritionSummaryProps {
   // food entry, food photo flow) when user_preferences.show_net_carbs is
   // enabled.
   showNetCarbs?: boolean;
+  provider_verified?: boolean;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -31,8 +33,10 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   goalPercentages,
   goalsLoading,
   showNetCarbs = false,
+  provider_verified = false,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const iconSuccess = String(useCSSVariable('--color-icon-success'));
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
@@ -71,7 +75,12 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   return (
     <Animated.View className="gap-4" layout={layoutTransition}>
       <View>
-        <Text className="text-text-primary text-3xl font-bold">{name}</Text>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-text-primary text-3xl font-bold">{name}</Text>
+          {provider_verified ? (
+            <Icon name="checkmark" size={16} color={iconSuccess} />
+          ) : null}
+        </View>
         {brand ? (
           <Text className="text-text-secondary text-base mt-1">{brand}</Text>
         ) : null}

@@ -1352,6 +1352,7 @@ describe('externalFoodSearchApi', () => {
           serving_unit: 'g',
           serving_description: '30 g',
           source: 'openfoodfacts',
+          provider_verified: false,
           variants: undefined,
         });
       });
