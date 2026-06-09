@@ -166,6 +166,24 @@ export function toMealFoodPayload(food: FoodEntryMealFood): MealFoodPayload {
   };
 }
 
+// Logged-meal component foods (FoodEntryMealFood) carry no brand and arrive at
+// BASE (unscaled) quantities from the server, which is exactly the shape the
+// ingredient editor works in. Spread-then-normalize so the full nutrient
+// snapshot (poly/mono fat, glycemic index, custom nutrients) survives a round
+// trip rather than being dropped.
+export function buildMealIngredientDraftFromEntryMealFood(
+  food: FoodEntryMealFood,
+): MealIngredientDraft {
+  return normalizeMealIngredientDraft({
+    ...food,
+    brand: null,
+    calories: food.calories ?? 0,
+    protein: food.protein ?? 0,
+    carbs: food.carbs ?? 0,
+    fat: food.fat ?? 0,
+  });
+}
+
 export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngredientDraft {
   return normalizeMealIngredientDraft({
     food_id: food.food_id,
