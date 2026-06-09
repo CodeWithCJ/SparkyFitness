@@ -94,6 +94,35 @@ export function formatServingDescription(desc: string): string {
     .trim();
 }
 
+/** Check if a variant represents a standard reference serving (100g or 100ml). */
+export function isReferenceServing(
+  serving_size: number,
+  serving_unit: string,
+): boolean {
+  return serving_size === 100 && (serving_unit === 'g' || serving_unit === 'ml');
+}
+
+/** Check if a variant has a meaningful serving description beyond just a numeric unit string. */
+export function hasMeaningfulDescription(
+  serving_description?: string | null,
+): boolean {
+  return !!(serving_description
+    && serving_description.length > 0
+    && !/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i.test(serving_description));
+}
+
+/**
+ * Compare two variants by value using serving_size + serving_unit.
+ * The API may return the same variant in both default_variant and variants[]
+ * as separate object references — reference equality (===) fails.
+ */
+export function isSameVariant(
+  a: { serving_size: number; serving_unit: string },
+  b: { serving_size: number; serving_unit: string },
+): boolean {
+  return a.serving_size === b.serving_size && a.serving_unit === b.serving_unit;
+}
+
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
   return {
     servingSize: item.servingSize,

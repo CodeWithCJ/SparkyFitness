@@ -15,6 +15,12 @@ interface FoodNutritionSummaryProps {
   servings?: number;
   goalPercentages?: NutritionGoalPercentages;
   goalsLoading?: boolean;
+  // Opt-in: when true and values.fiber is available, the carbs row of the
+  // macro card swaps to "Net Carbs" (max(0, carbs - fiber)), and a
+  // "Total Carbs" row is injected into the nutrient breakdown below.
+  // Applied across all surfaces (food detail, meal detail, meal-type detail,
+  // food entry, food photo flow) when user_preferences.show_net_carbs is
+  // enabled.
   showNetCarbs?: boolean;
   provider_verified?: boolean;
 }
@@ -34,11 +40,15 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
   const scale = (value: number) => value * servings;
+  // Gate the Total Carbs row injection on the same condition NutritionMacroCard
+  // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
+  // bar falls back to total carbs and the row would otherwise duplicate it.
   const useNetCarbs = showNetCarbs && values.fiber !== undefined;
   const { primary: primaryNutrients, additional: additionalNutrients } = useMemo(
     () =>
       buildNutrientDisplayList(values, {
         showNetCarbs: useNetCarbs,
+        // Pass raw carbs; renderRow scales by `servings` like every other row.
         carbs: useNetCarbs ? values.carbs : undefined,
       }),
     [values, useNetCarbs],

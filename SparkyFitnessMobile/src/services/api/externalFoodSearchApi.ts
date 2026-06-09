@@ -7,6 +7,7 @@ import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
+import { isReferenceServing, hasMeaningfulDescription, isSameVariant } from '../../utils/foodDetails';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -485,19 +486,13 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
     vitamin_c: v.vitamin_c,
   });
 
-  const isReferenceServing = (v: NormalizedFoodVariant) =>
-    v.serving_size === 100 && (v.serving_unit === 'g' || v.serving_unit === 'ml');
-
-  const hasDescription = (v: NormalizedFoodVariant) =>
-    v.serving_description && v.serving_description.length > 0 && !v.serving_description.match(/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i);
-
-  // Compare by value: the API may return the same variant in both default_variant
-  // and variants array as separate objects — reference equality fails.
-  const isSameVariant = (a: NormalizedFoodVariant, b: NormalizedFoodVariant) =>
-    a.serving_size === b.serving_size && a.serving_unit === b.serving_unit;
-
-  const preferredVariant = isReferenceServing(dv) && food.variants
-    ? food.variants.find((v) => !isSameVariant(v, dv) && hasDescription(v))
+  // FoodEntryAddScreen selects ext-0 (first variant) by default, so the
+  // default variant must come first to keep search/add calories consistent.
+  // If the default is a reference serving (100g/100ml) and a more descriptive
+  // variant exists (e.g. "1 Stück (30 g)"), prefer that one as the display
+  // variant instead.
+  const preferredVariant = isReferenceServing(dv.serving_size, dv.serving_unit) && food.variants
+    ? food.variants.find((v) => !isSameVariant(v, dv) && hasMeaningfulDescription(v.serving_description))
     : undefined;
 
   const displayVariant = preferredVariant ?? dv;

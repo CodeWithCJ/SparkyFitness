@@ -25,6 +25,7 @@ import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { isReferenceServing, hasMeaningfulDescription, isSameVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
 import { useSoundsEnabled } from '../services/sounds';
@@ -188,20 +189,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           fireSuccessHaptic();
         }
         const dv = result.food.default_variant;
-        const isReferenceServing = (v: typeof dv) =>
-          v.serving_size === 100 && (v.serving_unit === 'g' || v.serving_unit === 'ml');
-        const hasPortionDescription = (v: typeof dv) =>
-          v.serving_description &&
-          v.serving_description.length > 0 &&
-          !v.serving_description.match(/^\d+(\.\d+)?\s*(g|ml|kg|l)$/i);
-        const preferredVariant = isReferenceServing(dv) && result.food.variants
-          ? result.food.variants.find((v) => v !== dv && hasPortionDescription(v))
+        const preferredVariant = isReferenceServing(dv.serving_size, dv.serving_unit) && result.food.variants
+          ? result.food.variants.find((v) => !isSameVariant(v, dv) && hasMeaningfulDescription(v.serving_description))
           : undefined;
         const displayVariant = preferredVariant ?? dv;
         const orderedVariants = result.food.variants
           ? preferredVariant
-            ? [preferredVariant, dv, ...result.food.variants.filter((v) => v !== dv && v !== preferredVariant)]
-            : [dv, ...result.food.variants.filter((v) => v !== dv)]
+            ? [preferredVariant, dv, ...result.food.variants.filter((v) => !isSameVariant(v, dv) && !isSameVariant(v, preferredVariant))]
+            : [dv, ...result.food.variants.filter((v) => !isSameVariant(v, dv))]
           : undefined;
         const item: FoodInfoItem = {
           id: result.food.provider_external_id ?? result.food.id ?? '',
