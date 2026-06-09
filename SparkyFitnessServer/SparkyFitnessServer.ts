@@ -44,6 +44,7 @@ import garminRoutes from './routes/garminRoutes.js';
 import withingsRoutes from './routes/withingsRoutes.js';
 import withingsDataRoutes from './routes/withingsDataRoutes.js';
 import fitbitRoutes from './routes/fitbitRoutes.js';
+import googleHealthRoutes from './routes/googleHealthRoutes.js';
 import polarRoutes from './routes/polarRoutes.js';
 import stravaRoutes from './routes/stravaRoutes.js';
 import hevyRoutes from './routes/hevyRoutes.js';
@@ -72,6 +73,7 @@ import {
 import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
 import fitbitService from './services/fitbitService.js';
+import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
 // @ts-expect-error TS1192
@@ -426,6 +428,7 @@ app.use('/api/admin/oidc-settings', oidcSettingsRoutes);
 app.use('/api/admin/backup', backupRoutes);
 app.use('/api/integrations/withings/data', withingsDataRoutes);
 app.use('/api/integrations/fitbit', fitbitRoutes);
+app.use('/api/integrations/googlehealth', googleHealthRoutes);
 app.use('/api/integrations/polar', polarRoutes);
 app.use('/api/integrations/strava', stravaRoutes);
 app.use('/api/integrations/hevy', hevyRoutes);
@@ -589,6 +592,31 @@ const schedulePolarSyncs = async () => {
     }
   });
 };
+const scheduleGoogleHealthSyncs = async () => {
+  cron.schedule('0 * * * *', async () => {
+    const providers =
+      await externalProviderRepository.getProvidersByType('googlehealth');
+    for (const provider of providers) {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
+        try {
+          await googleHealthService.syncGoogleHealthData(
+            provider.user_id,
+            'scheduled'
+          );
+          await externalProviderRepository.updateProviderLastSync(
+            provider.id,
+            new Date()
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Google Health sync failed for user ${provider.user_id}:`,
+            error
+          );
+        }
+      }
+    }
+  });
+};
 applyMigrations()
   .then(applyRlsPolicies)
   .then(async () => {
@@ -614,6 +642,7 @@ applyMigrations()
     scheduleFitbitSyncs();
     schedulePolarSyncs();
     scheduleStravaSyncs();
+    scheduleGoogleHealthSyncs();
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const adminUser = await userRepository.findUserByEmail(
         process.env.SPARKY_FITNESS_ADMIN_EMAIL

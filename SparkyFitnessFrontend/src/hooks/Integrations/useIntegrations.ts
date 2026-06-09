@@ -1,5 +1,6 @@
 import {
   linkFitbitAccount,
+  linkGoogleHealthAccount,
   linkPolarFlowAccount,
   linkWithingsAccount,
   linkStravaAccount,
@@ -22,6 +23,9 @@ import {
   handleConnectPolar,
   handleDisconnectPolar,
   handleManualSyncPolar,
+  handleConnectGoogleHealth,
+  handleDisconnectGoogleHealth,
+  handleManualSyncGoogleHealth,
   handleConnectStrava,
   handleDisconnectStrava,
   handleManualSyncStrava,
@@ -47,6 +51,26 @@ export const useLinkFitbitMutation = () => {
       successMessage: t(
         'integrations.fitbitLinkSuccess',
         'Fitbit account successfully linked!'
+      ),
+    },
+  });
+};
+
+export const useLinkGoogleHealthMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkGoogleHealthAccount,
+    onSuccess: invalidate,
+    meta: {
+      errorMessage: t(
+        'integrations.googleHealthLinkError',
+        'Failed to link Google Health account.'
+      ),
+      successMessage: t(
+        'integrations.googleHealthLinkSuccess',
+        'Google Health account successfully linked!'
       ),
     },
   });
@@ -288,6 +312,31 @@ export const useManualSyncStravaMutation = () => {
     },
   });
 };
+
+export const useConnectGoogleHealthMutation = () => {
+  return useMutation({
+    mutationFn: handleConnectGoogleHealth,
+  });
+};
+
+export const useDisconnectGoogleHealthMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectGoogleHealth,
+  });
+};
+
+export const useManualSyncGoogleHealthMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncGoogleHealth(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
 export interface GarminStatusResponse {
   isLinked: boolean;
   lastUpdated: string | null;

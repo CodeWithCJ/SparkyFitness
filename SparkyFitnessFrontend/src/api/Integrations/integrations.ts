@@ -38,6 +38,15 @@ export const linkStravaAccount = async (
   });
 };
 
+export const linkGoogleHealthAccount = async (
+  data: IntegrationPayload
+): Promise<void> => {
+  return apiCall('/integrations/googlehealth/callback', {
+    method: 'POST',
+    body: data,
+  });
+};
+
 export const syncHevyData = async (
   fullSync: boolean = false,
   providerId?: string,

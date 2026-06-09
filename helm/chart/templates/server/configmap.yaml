@@ -84,6 +84,9 @@ data:
   {{- with .Values.config.developer.hevyDataSource }}
   SPARKY_FITNESS_HEVY_DATA_SOURCE: {{ . | quote }}
   {{- end }}
+  {{- with .Values.config.developer.googleHealthDataSource }}
+  SPARKY_FITNESS_GOOGLE_HEALTH_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
   {{- if .Values.config.developer.saveMockData }}
   SPARKY_FITNESS_SAVE_MOCK_DATA: "true"
   {{- end }}

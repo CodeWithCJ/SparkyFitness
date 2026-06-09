@@ -78,6 +78,9 @@ const WithingsCallback = lazyWithChunkRecovery(
 const FitbitCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/FitbitCallback')
 );
+const GoogleHealthCallback = lazyWithChunkRecovery(
+  () => import('@/pages/Integrations/GoogleHealthCallback')
+);
 const PolarCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/PolarCallback')
 );
@@ -269,6 +272,11 @@ const router = createBrowserRouter([
       {
         path: '/strava/callback',
         Component: StravaCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/googlehealth/callback',
+        Component: GoogleHealthCallback,
         ErrorBoundary: RootErrorBoundary,
       },
       {

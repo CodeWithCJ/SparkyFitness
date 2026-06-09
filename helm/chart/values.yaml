@@ -141,6 +141,7 @@ config:
     garminDataSource: ""
     polarDataSource: ""
     hevyDataSource: ""
+    googleHealthDataSource: ""
     saveMockData: false
 
 # ========================== 3. NETWORKING ====================================

@@ -660,6 +660,84 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
+      {editData.provider_type === 'googlehealth' && (
+        <>
+          <div>
+            <Label>Client ID</Label>
+            <Input
+              type="text"
+              value={editData.app_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_id: e.target.value,
+                }))
+              }
+              placeholder="Enter Google Cloud Client ID"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label>Client Secret</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder="Enter Google Cloud Client Secret"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Google Health integration uses OAuth2. After saving, click{' '}
+            <strong>Connect</strong> on the provider card to authorize access.
+            <br />
+            In your{' '}
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline"
+            >
+              Google Cloud Console
+            </a>
+            , your OAuth 2.0 Web Application client must have this callback URL:
+            <strong className="flex items-center mt-1">
+              {`${window.location.origin}/googlehealth/callback`}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-2 h-5 w-5"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/googlehealth/callback`
+                    );
+                    toast({
+                      title: 'Copied!',
+                      description: 'Callback URL copied to clipboard.',
+                    });
+                  } else {
+                    toast({
+                      title: 'Copy Failed',
+                      description:
+                        'Clipboard access requires a secure context (HTTPS).',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                <Clipboard className="h-4 w-4" />
+              </Button>
+            </strong>
+          </p>
+        </>
+      )}
       {editData.provider_type === 'hevy' && (
         <>
           <div>
@@ -685,6 +763,7 @@ export const EditProviderForm = ({
       {(editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
+        editData.provider_type === 'googlehealth' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar' ||
         editData.provider_type === 'hevy') && (
