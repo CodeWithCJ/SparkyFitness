@@ -307,6 +307,22 @@ describe('processGoogleSleep — date anchoring', () => {
     );
   });
 
+  it('attributes a past-midnight session (hour < 12 local) to the previous date in a negative offset timezone', async () => {
+    // 2:00 AM local time on May 2 in New York is 2026-05-02T06:00:00Z.
+    // It should be anchored to May 1.
+    await processGoogleSleep(
+      UID,
+      CID,
+      dataPoints(sleepPoint('2026-05-02T06:00:00Z', '2026-05-02T14:00:00Z')),
+      'America/New_York'
+    );
+    expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
+      UID,
+      CID,
+      expect.objectContaining({ entry_date: '2026-05-01' })
+    );
+  });
+
   it('skips a point with no parseable startTime', async () => {
     const point = {
       sleep: {

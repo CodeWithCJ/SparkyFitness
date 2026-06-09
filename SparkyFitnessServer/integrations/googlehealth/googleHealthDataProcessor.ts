@@ -8,6 +8,7 @@ import {
   todayInZone,
   instantToDay,
   instantHourMinute,
+  addDays,
 } from '@workspace/shared';
 import {
   parseDurationToSeconds,
@@ -637,10 +638,7 @@ async function processGoogleSleep(
     const startDate = instantToDay(startIso, tz);
     // Anchor to the "sleep date": if civil start is before noon, attribute to previous day.
     const startHour = instantHourMinute(startIso, tz).hour;
-    const sleepDate =
-      startHour < 12
-        ? instantToDay(new Date(new Date(startDate).getTime() - 86400000), tz)
-        : startDate;
+    const sleepDate = startHour < 12 ? addDays(startDate, -1) : startDate;
 
     const minutesAsleep = parseInt(summary.minutesAsleep as string, 10) || 0;
     const minutesInPeriod =
