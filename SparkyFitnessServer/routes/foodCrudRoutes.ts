@@ -2,7 +2,9 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodService from '../services/foodService.js';
-import labelScanService from '../services/labelScanService.js';
+import labelScanService, {
+  type LabelScanErrorCategory,
+} from '../services/labelScanService.js';
 import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 import { backfillOffAllergens } from '../utils/backfillAllergens.js';
@@ -640,6 +642,20 @@ router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+const LABEL_SCAN_ERROR_HTTP_STATUS: Record<LabelScanErrorCategory, number> = {
+  no_ai_configured: 422,
+  unsupported_provider: 422,
+  api_key_missing: 422,
+  custom_url_missing: 422,
+  unsupported_media: 400,
+  refused: 422,
+  truncated: 422,
+  no_content: 422,
+  parse_error: 422,
+  upstream_error: 502,
+  timeout: 504,
+};
+
 router.post('/scan-label', authenticate, async (req, res, next) => {
   const { image, mime_type } = req.body;
   if (!image || !mime_type) {
@@ -653,7 +669,8 @@ router.post('/scan-label', authenticate, async (req, res, next) => {
       req.userId
     );
     if (!result.success) {
-      return res.status(422).json({ error: result.error });
+      const status = LABEL_SCAN_ERROR_HTTP_STATUS[result.category] ?? 500;
+      return res.status(status).json({ error: result.error });
     }
     res.status(200).json(result.nutrition);
   } catch (error) {

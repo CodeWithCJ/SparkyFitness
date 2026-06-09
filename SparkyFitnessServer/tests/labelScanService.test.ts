@@ -1,14 +1,36 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import undici from 'undici';
 import chatRepository from '../models/chatRepository.js';
-import { getDefaultVisionModel } from '../ai/config.js';
 import { extractNutritionFromLabel } from '../services/labelScanService.js';
+
 vi.mock('../models/chatRepository');
-vi.mock('../ai/config');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+
+// Mock the undici Agent so the Ollama path never constructs a real agent.
+// (global.fetch is mocked per-test; the dispatcher option is ignored by it.)
+// Copied from providerDispatch.test.ts — this suite drives the real
+// dispatchAiRequest, so it needs the same transport stubs.
+vi.mock('undici', () => {
+  // Regular function (not arrow) so it is constructable via `new Agent(...)`.
+  const Agent = vi.fn(function () {
+    return { destroy: vi.fn() };
+  });
+  return { default: { Agent }, Agent };
+});
+
+const mockGetActiveSetting = vi.mocked(
+  chatRepository.getActiveAiServiceSetting
+);
+const mockGetBackendSetting = vi.mocked(
+  chatRepository.getAiServiceSettingForBackend
+);
+const mockAgent = vi.mocked(undici.Agent);
+
 const TEST_USER_ID = 'user-123';
 const TEST_BASE64 = 'iVBORw0KGgoAAAANSUhEUg==';
 const TEST_MIME = 'image/png';
-const makeAiSetting = (overrides = {}) => ({
+
+const makeAiSetting = (overrides: Record<string, unknown> = {}) => ({
   id: 'setting-1',
   service_name: 'My OpenAI',
   service_type: 'openai',
@@ -18,7 +40,8 @@ const makeAiSetting = (overrides = {}) => ({
   source: 'user',
   ...overrides,
 });
-const makeAiServiceDetail = (overrides = {}) => ({
+
+const makeAiServiceDetail = (overrides: Record<string, unknown> = {}) => ({
   id: 'setting-1',
   service_type: 'openai',
   model_name: 'gpt-4o',
@@ -27,6 +50,7 @@ const makeAiServiceDetail = (overrides = {}) => ({
   timeout: null,
   ...overrides,
 });
+
 const sampleNutrition = {
   name: 'Protein Bar',
   brand: 'FitCo',
@@ -49,407 +73,318 @@ const sampleNutrition = {
   vitamin_c: null,
 };
 
-function mockFetchForProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  serviceType: any,
-  nutritionData = sampleNutrition
-) {
-  const json = JSON.stringify(nutritionData);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let responseBody: any;
+// Per-family upstream response-body factories matching each provider's wire
+// shape. Label scan is unstructured (no schema/tool), so every family —
+// including anthropic — delivers the payload as a JSON *string* the helper
+// parses.
+function googleBody(payload: unknown) {
+  return {
+    candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }],
+  };
+}
+function openAiBody(payload: unknown) {
+  return {
+    choices: [
+      { finish_reason: 'stop', message: { content: JSON.stringify(payload) } },
+    ],
+  };
+}
+function anthropicTextBody(payload: unknown) {
+  return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
+}
+function ollamaBody(payload: unknown) {
+  return { message: { content: JSON.stringify(payload) } };
+}
+
+function bodyFor(serviceType: string, payload: unknown) {
   switch (serviceType) {
     case 'google':
-      responseBody = {
-        candidates: [{ content: { parts: [{ text: json }] } }],
-      };
-      break;
-    case 'openai':
-    case 'openai_compatible':
-    case 'mistral':
-    case 'groq':
-    case 'openrouter':
-    case 'custom':
-      responseBody = {
-        choices: [{ message: { content: json } }],
-      };
-      break;
+      return googleBody(payload);
     case 'anthropic':
-      responseBody = {
-        content: [{ text: json }],
-      };
-      break;
+      return anthropicTextBody(payload);
     case 'ollama':
-      responseBody = {
-        message: { content: json },
-      };
-      break;
+      return ollamaBody(payload);
+    default:
+      return openAiBody(payload);
   }
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => responseBody,
-  });
 }
+
+function mockFetch(
+  jsonBody: unknown,
+  init: { ok?: boolean; status?: number } = {}
+) {
+  const m = vi.fn().mockResolvedValue({
+    ok: init.ok ?? true,
+    status: init.status ?? 200,
+    text: async () => (typeof jsonBody === 'string' ? jsonBody : ''),
+    json: async () => jsonBody,
+  });
+  global.fetch = m as typeof global.fetch;
+  return m;
+}
+
 describe('extractNutritionFromLabel', () => {
   const originalFetch = global.fetch;
   beforeEach(() => {
     vi.clearAllMocks();
-    // @ts-expect-error TS(2339): Property 'mockReturnValue' does not exist on type ... Remove this comment to see the full error message
-    getDefaultVisionModel.mockReturnValue('gpt-4o-mini');
   });
   afterEach(() => {
     global.fetch = originalFetch;
   });
-  it('should return error when no AI service is configured', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(null);
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result).toEqual({
-      success: false,
-      error: 'No AI service configured',
-    });
-  });
-  it('should return error when API key is missing for non-ollama service', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail({ api_key: null })
-    );
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result).toEqual({
-      success: false,
-      error: 'API key missing for selected AI service.',
-    });
-  });
-  it('should allow ollama without an API key', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-      makeAiSetting({ service_type: 'ollama' })
-    );
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail({
-        service_type: 'ollama',
-        api_key: null,
-        model_name: 'llava',
-        custom_url: 'http://localhost:11434',
-      })
-    );
-    mockFetchForProvider('ollama');
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result.success).toBe(true);
-    expect(result.nutrition).toEqual(sampleNutrition);
-  });
-  it('should use default vision model when model_name is not set', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail({ model_name: null })
-    );
-    mockFetchForProvider('openai');
-    await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
-    expect(getDefaultVisionModel).toHaveBeenCalledWith('openai');
-    // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-    const fetchCall = global.fetch.mock.calls[0];
-    const body = JSON.parse(fetchCall[1].body);
-    expect(body.model).toBe('gpt-4o-mini');
-  });
-  it('should return error for unsupported service type', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-      makeAiSetting({ service_type: 'unknown_provider' })
-    );
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail({ service_type: 'unknown_provider' })
-    );
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result).toEqual({
-      success: false,
-      error: 'Unsupported service type: unknown_provider',
-    });
-  });
-  it('should return error when API returns non-OK status', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 429,
-      text: async () => 'Rate limit exceeded',
-    });
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result).toEqual({
-      success: false,
-      error: 'AI service returned status 429',
-    });
-  });
-  it('should return error when AI response has no content', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: null } }] }),
-    });
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result).toEqual({
-      success: false,
-      error: 'No content in AI response',
-    });
-  });
-  it('should strip markdown code fences from response', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail()
-    );
-    const wrappedJson = '```json\n' + JSON.stringify(sampleNutrition) + '\n```';
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: wrappedJson } }],
-      }),
-    });
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result.success).toBe(true);
-    expect(result.nutrition).toEqual(sampleNutrition);
-  });
-  it('should return error when response is not valid JSON', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeAiSetting());
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeAiServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: 'not valid json at all' } }],
-      }),
-    });
-    const result = await extractNutritionFromLabel(
-      TEST_BASE64,
-      TEST_MIME,
-      TEST_USER_ID
-    );
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-  });
-  describe('provider-specific request formatting', () => {
-    beforeEach(() => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-        makeAiSetting()
-      );
-    });
-    it('should send correct request format for Google', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({
-          service_type: 'google',
-          model_name: 'gemini-2.5-flash',
-        })
-      );
-      mockFetchForProvider('google');
-      const result = await extractNutritionFromLabel(
-        TEST_BASE64,
-        TEST_MIME,
-        TEST_USER_ID
-      );
-      expect(result.success).toBe(true);
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toContain('generativelanguage.googleapis.com');
-      expect(url).toContain('gemini-2.5-flash');
-      const body = JSON.parse(options.body);
-      expect(body.contents[0].parts[0].inline_data.mime_type).toBe(TEST_MIME);
-      expect(body.contents[0].parts[0].inline_data.data).toBe(TEST_BASE64);
-    });
-    it('should send correct request format for OpenAI', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail()
-      );
-      mockFetchForProvider('openai');
-      const result = await extractNutritionFromLabel(
-        TEST_BASE64,
-        TEST_MIME,
-        TEST_USER_ID
-      );
-      expect(result.success).toBe(true);
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://api.openai.com/v1/chat/completions');
-      expect(options.headers.Authorization).toBe('Bearer sk-test-key');
-      const body = JSON.parse(options.body);
-      expect(body.model).toBe('gpt-4o');
-      expect(body.messages[0].content[0].image_url.url).toBe(
-        `data:${TEST_MIME};base64,${TEST_BASE64}`
-      );
-    });
-    it('should send correct request format for Anthropic', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({
-          service_type: 'anthropic',
-          model_name: 'claude-3-5-sonnet-20241022',
-        })
-      );
-      mockFetchForProvider('anthropic');
-      const result = await extractNutritionFromLabel(
-        TEST_BASE64,
-        TEST_MIME,
-        TEST_USER_ID
-      );
-      expect(result.success).toBe(true);
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://api.anthropic.com/v1/messages');
-      expect(options.headers['x-api-key']).toBe('sk-test-key');
-      const body = JSON.parse(options.body);
-      expect(body.messages[0].content[0].source.media_type).toBe(TEST_MIME);
-      expect(body.messages[0].content[0].source.data).toBe(TEST_BASE64);
-    });
-    it('should use custom_url for openai_compatible provider', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({
-          service_type: 'openai_compatible',
-          custom_url: 'https://my-llm.example.com/v1',
-        })
-      );
-      mockFetchForProvider('openai_compatible');
-      await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-      const [url] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://my-llm.example.com/v1/chat/completions');
-    });
-    it('should include OpenRouter-specific headers', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({ service_type: 'openrouter' })
-      );
-      mockFetchForProvider('openrouter');
-      await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
-      expect(options.headers['HTTP-Referer']).toBe(
-        'https://sparky-fitness.com'
-      );
-      expect(options.headers['X-Title']).toBe('Sparky Fitness');
-    });
-    it('should use correct URLs for Mistral and Groq', async () => {
-      for (const [serviceType, expectedUrl] of [
-        ['mistral', 'https://api.mistral.ai/v1/chat/completions'],
-        ['groq', 'https://api.groq.com/openai/v1/chat/completions'],
-      ]) {
-        vi.clearAllMocks();
-        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-        chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-          makeAiSetting({ service_type: serviceType })
+
+  // Each entry sets the backend detail used for dispatch. The provider comes
+  // from the backend mock, not the active-setting mock.
+  const PROVIDER_CASES: {
+    service_type: string;
+    api_key: string | null;
+    custom_url?: string;
+  }[] = [
+    { service_type: 'google', api_key: 'gem-key' },
+    { service_type: 'openai', api_key: 'sk-test' },
+    { service_type: 'anthropic', api_key: 'anth-key' },
+    { service_type: 'mistral', api_key: 'mistral-key' },
+    { service_type: 'groq', api_key: 'groq-key' },
+    { service_type: 'openrouter', api_key: 'or-key' },
+    {
+      service_type: 'openai_compatible',
+      api_key: 'oc-key',
+      custom_url: 'https://example.local/v1',
+    },
+    {
+      service_type: 'custom',
+      api_key: 'custom-key',
+      custom_url: 'https://example.local/api/foo',
+    },
+    {
+      service_type: 'ollama',
+      api_key: null,
+      custom_url: 'http://localhost:11434',
+    },
+  ];
+
+  describe('all-provider happy path', () => {
+    it.each(PROVIDER_CASES)(
+      'returns the parsed nutrition for $service_type',
+      async ({ service_type, api_key, custom_url }) => {
+        mockGetActiveSetting.mockResolvedValue(makeAiSetting({ service_type }));
+        mockGetBackendSetting.mockResolvedValue(
+          makeAiServiceDetail({
+            service_type,
+            api_key,
+            custom_url: custom_url ?? null,
+          })
         );
-        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-        chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-          makeAiServiceDetail({ service_type: serviceType })
+        mockFetch(bodyFor(service_type, sampleNutrition));
+
+        const result = await extractNutritionFromLabel(
+          TEST_BASE64,
+          TEST_MIME,
+          TEST_USER_ID
         );
-        mockFetchForProvider(serviceType);
-        await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
-        // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
-        const [url] = global.fetch.mock.calls[0];
-        expect(url).toBe(expectedUrl);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.nutrition).toEqual(sampleNutrition);
+        }
+      }
+    );
+  });
+
+  describe('service plumbing', () => {
+    it('returns no_ai_configured when getActiveAiServiceSetting returns null', async () => {
+      mockGetActiveSetting.mockResolvedValue(null);
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result).toEqual({
+        success: false,
+        category: 'no_ai_configured',
+        error: 'No AI service configured',
+      });
+    });
+
+    it('returns no_ai_configured when getAiServiceSettingForBackend returns null', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetBackendSetting.mockResolvedValue(null);
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result).toEqual({
+        success: false,
+        category: 'no_ai_configured',
+        error: 'No AI service configured',
+      });
+    });
+
+    it('returns api_key_missing when a non-ollama provider has no api_key', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetBackendSetting.mockResolvedValue(
+        makeAiServiceDetail({ api_key: null })
+      );
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof global.fetch;
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('api_key_missing');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns custom_url_missing when ollama has a blank custom_url', async () => {
+      mockGetActiveSetting.mockResolvedValue(
+        makeAiSetting({ service_type: 'ollama' })
+      );
+      mockGetBackendSetting.mockResolvedValue(
+        makeAiServiceDetail({
+          service_type: 'ollama',
+          api_key: null,
+          custom_url: '   ',
+        })
+      );
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof global.fetch;
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('custom_url_missing');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns unsupported_provider for an unknown service type', async () => {
+      mockGetActiveSetting.mockResolvedValue(
+        makeAiSetting({ service_type: 'unknown_provider' })
+      );
+      mockGetBackendSetting.mockResolvedValue(
+        makeAiServiceDetail({ service_type: 'unknown_provider' })
+      );
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('unsupported_provider');
       }
     });
-  });
-  describe('response parsing per provider', () => {
-    beforeEach(() => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-        makeAiSetting()
-      );
+
+    it('sends the label-scan prompt the service owns', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetBackendSetting.mockResolvedValue(makeAiServiceDetail());
+      const m = mockFetch(openAiBody(sampleNutrition));
+      await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
+      const init = m.mock.calls[0][1] as { body: string };
+      expect(init.body).toContain('Extract the nutrition facts');
     });
-    it('should parse Google response format', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({ service_type: 'google' })
+
+    it('passes the configured timeout to the Ollama agent', async () => {
+      mockGetActiveSetting.mockResolvedValue(
+        makeAiSetting({ service_type: 'ollama' })
       );
-      mockFetchForProvider('google');
-      const result = await extractNutritionFromLabel(
-        TEST_BASE64,
-        TEST_MIME,
-        TEST_USER_ID
-      );
-      expect(result.success).toBe(true);
-      expect(result.nutrition).toEqual(sampleNutrition);
-    });
-    it('should parse Anthropic response format', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeAiServiceDetail({ service_type: 'anthropic' })
-      );
-      mockFetchForProvider('anthropic');
-      const result = await extractNutritionFromLabel(
-        TEST_BASE64,
-        TEST_MIME,
-        TEST_USER_ID
-      );
-      expect(result.success).toBe(true);
-      expect(result.nutrition).toEqual(sampleNutrition);
-    });
-    it('should parse Ollama response format', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
+      mockGetBackendSetting.mockResolvedValue(
         makeAiServiceDetail({
           service_type: 'ollama',
           api_key: null,
           custom_url: 'http://localhost:11434',
+          timeout: 5000,
         })
       );
-      mockFetchForProvider('ollama');
+      mockFetch(ollamaBody(sampleNutrition));
       const result = await extractNutritionFromLabel(
         TEST_BASE64,
         TEST_MIME,
         TEST_USER_ID
       );
       expect(result.success).toBe(true);
-      expect(result.nutrition).toEqual(sampleNutrition);
+      expect(mockAgent).toHaveBeenCalledWith({
+        headersTimeout: 5000,
+        bodyTimeout: 5000,
+      });
+    });
+  });
+
+  describe('dispatch error categories', () => {
+    beforeEach(() => {
+      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetBackendSetting.mockResolvedValue(makeAiServiceDetail());
+    });
+
+    it('returns upstream_error when the API returns a non-OK status', async () => {
+      mockFetch('Rate limit exceeded', { ok: false, status: 429 });
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('upstream_error');
+        expect(result.error).toContain('status 429');
+      }
+    });
+
+    it('returns no_content when the AI response has no content', async () => {
+      mockFetch({ choices: [{ message: { content: null } }] });
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('no_content');
+      }
+    });
+
+    it('strips markdown code fences from the response', async () => {
+      const wrappedJson =
+        '```json\n' + JSON.stringify(sampleNutrition) + '\n```';
+      mockFetch({
+        choices: [{ finish_reason: 'stop', message: { content: wrappedJson } }],
+      });
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.nutrition).toEqual(sampleNutrition);
+      }
+    });
+
+    it('returns parse_error when the response is not valid JSON', async () => {
+      mockFetch({
+        choices: [
+          {
+            finish_reason: 'stop',
+            message: { content: 'not valid json at all' },
+          },
+        ],
+      });
+      const result = await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.category).toBe('parse_error');
+      }
     });
   });
 });
