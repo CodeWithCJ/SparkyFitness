@@ -4,6 +4,8 @@ function getDefaultModel(serviceType: any) {
     case 'openai':
     case 'openai_compatible':
       return 'gpt-4o-mini';
+    case 'atlascloud':
+      return 'openai/gpt-4o';
     case 'anthropic':
       return 'claude-3-5-sonnet-20241022';
     case 'google':
@@ -24,6 +26,8 @@ function getDefaultVisionModel(serviceType: any) {
     case 'openai':
     case 'openai_compatible':
       return 'gpt-4.1-mini';
+    case 'atlascloud':
+      return 'openai/gpt-4o';
     case 'anthropic':
       return 'claude-haiku-4-5';
     case 'google':

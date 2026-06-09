@@ -476,6 +476,14 @@ async function processChatMessage(
     if (aiService.service_type === 'openai') {
       const provider = createOpenAI({ apiKey });
       modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'atlascloud') {
+      // Atlas Cloud: unified OpenAI-compatible API with 59 frontier LLMs
+      // https://www.atlascloud.ai/
+      const provider = createOpenAI({
+        baseURL: 'https://api.atlascloud.ai/v1',
+        apiKey: apiKey || 'no-key',
+      });
+      modelInstance = provider.chat(modelName);
     } else if (aiService.service_type === 'anthropic') {
       const provider = createAnthropic({ apiKey });
       modelInstance = provider(modelName);
@@ -843,6 +851,29 @@ async function processFoodOptionsRequest(
       aiService.model_name || getDefaultModel(aiService.service_type);
     let response: Response;
     switch (aiService.service_type) {
+      case 'atlascloud':
+        log(
+          'debug',
+          `[AI Service Request] Type: atlascloud (Food Options), URL: https://api.atlascloud.ai/v1/chat/completions, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
+        );
+        response = await fetch('https://api.atlascloud.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(aiService.api_key && {
+              Authorization: `Bearer ${aiService.api_key}`,
+            }),
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.7,
+          }),
+        });
+        if (!response) {
+          throw new Error('Fetch did not return a response object.');
+        }
+        break;
       case 'openai':
       case 'openai_compatible':
       case 'mistral':
@@ -1065,6 +1096,7 @@ async function processFoodOptionsRequest(
     const data = (await response.json()) as FoodOptionsApiResponse;
     let content = '';
     switch (aiService.service_type) {
+      case 'atlascloud':
       case 'openai':
       case 'openai_compatible':
       case 'mistral':
@@ -1131,6 +1163,14 @@ async function processChatMessageStream(
     if (aiService.service_type === 'openai') {
       const provider = createOpenAI({ apiKey });
       modelInstance = provider(modelName);
+    } else if (aiService.service_type === 'atlascloud') {
+      // Atlas Cloud: unified OpenAI-compatible API with 59 frontier LLMs
+      // https://www.atlascloud.ai/
+      const provider = createOpenAI({
+        baseURL: 'https://api.atlascloud.ai/v1',
+        apiKey: apiKey || 'no-key',
+      });
+      modelInstance = provider.chat(modelName);
     } else if (aiService.service_type === 'anthropic') {
       const provider = createAnthropic({ apiKey });
       modelInstance = provider(modelName);
