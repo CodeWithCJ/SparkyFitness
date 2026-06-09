@@ -837,7 +837,9 @@ describe('dispatchAiRequest — model defaulting', () => {
     expect(captured(m).body.model).toBe('llava');
   });
 
-  it('ollama text falls through to gpt-4o-mini (documented getDefaultModel gap, fixed at unit-conversion migration)', async () => {
+  // Shared default: getDefaultModel also feeds normal, food-options, and
+  // streaming chat (chatService), so this pins the value where it's consumed.
+  it('ollama text falls back to llama3.2', async () => {
     const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -849,7 +851,126 @@ describe('dispatchAiRequest — model defaulting', () => {
         }),
       })
     );
-    expect(captured(m).body.model).toBe('gpt-4o-mini');
+    expect(captured(m).body.model).toBe('llama3.2');
+  });
+});
+
+describe('dispatchAiRequest — temperature', () => {
+  // `temperature: 0` is the load-bearing case for every family: a truthy guard
+  // instead of `!== undefined` would silently drop it.
+  it('openai-family sends temperature 0 in the body', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(baseRequest({ temperature: 0 }));
+    expect(captured(m).body.temperature).toBe(0);
+  });
+
+  it('openai-family sends a non-zero temperature in the body', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(baseRequest({ temperature: 0.2 }));
+    expect(captured(m).body.temperature).toBe(0.2);
+  });
+
+  it('openai-family omits temperature when unset', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(baseRequest());
+    expect(captured(m).body.temperature).toBeUndefined();
+  });
+
+  it('google sends generationConfig.temperature 0 alongside the schema config', async () => {
+    const m = mockFetch(googleBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({ service_type: 'google', api_key: 'gem-key' }),
+        temperature: 0,
+      })
+    );
+    const gc = captured(m).body.generationConfig as {
+      temperature: number;
+      responseMimeType: string;
+    };
+    expect(gc.temperature).toBe(0);
+    expect(gc.responseMimeType).toBe('application/json');
+  });
+
+  it('google sends a temperature-only generationConfig without schema/parseJson', async () => {
+    const m = mockFetch(googleBody('just some prose'));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({ service_type: 'google', api_key: 'gem-key' }),
+        jsonSchema: undefined,
+        schemaName: undefined,
+        temperature: 0,
+      })
+    );
+    expect(captured(m).body.generationConfig).toEqual({ temperature: 0 });
+  });
+
+  it('google omits generationConfig entirely for plain-text requests without temperature', async () => {
+    const m = mockFetch(googleBody('just some prose'));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({ service_type: 'google', api_key: 'gem-key' }),
+        jsonSchema: undefined,
+        schemaName: undefined,
+      })
+    );
+    expect(captured(m).body.generationConfig).toBeUndefined();
+  });
+
+  it('anthropic sends temperature 0 in the body', async () => {
+    const m = mockFetch(anthropicToolBody(SAMPLE));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+        temperature: 0,
+      })
+    );
+    expect(captured(m).body.temperature).toBe(0);
+  });
+
+  it('anthropic omits temperature when unset', async () => {
+    const m = mockFetch(anthropicToolBody(SAMPLE));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+      })
+    );
+    expect(captured(m).body.temperature).toBeUndefined();
+  });
+
+  it('ollama sends temperature 0 via options', async () => {
+    const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'ollama',
+          api_key: undefined,
+          custom_url: 'http://localhost:11434',
+        }),
+        temperature: 0,
+      })
+    );
+    expect(captured(m).body.options).toEqual({ temperature: 0 });
+  });
+
+  it('ollama omits options when temperature is unset', async () => {
+    const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'ollama',
+          api_key: undefined,
+          custom_url: 'http://localhost:11434',
+        }),
+      })
+    );
+    expect(captured(m).body.options).toBeUndefined();
   });
 });
 

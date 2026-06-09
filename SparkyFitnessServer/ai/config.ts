@@ -14,6 +14,8 @@ function getDefaultModel(serviceType: any) {
       return 'llama-3.3-70b-versatile';
     case 'openrouter':
       return 'google/gemini-2.5-flash';
+    case 'ollama':
+      return 'llama3.2';
     default:
       return 'gpt-4o-mini';
   }

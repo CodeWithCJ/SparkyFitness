@@ -57,6 +57,8 @@ export interface DispatchRequest {
   schemaName?: string;
   /** Unstructured-but-JSON callers (label scan): populate `json` without a schema. */
   parseJson?: boolean;
+  /** Forwarded to every provider family; omitted from the request body when unset. */
+  temperature?: number;
   /** Default 90_000; Ollama default 120_000 (or `provider.timeout`). */
   timeoutMs?: number;
 }
@@ -207,6 +209,7 @@ interface BuildContext {
   images: DispatchImage[];
   jsonSchema?: JsonSchemaNode;
   toolName: string;
+  temperature?: number;
 }
 
 interface BuiltRequest {
@@ -250,15 +253,19 @@ function buildGoogleRequest(
       },
     ],
   };
+  const generationConfig: Record<string, unknown> = {};
+  if (ctx.temperature !== undefined) {
+    generationConfig.temperature = ctx.temperature;
+  }
   if (ctx.jsonSchema || parseJson) {
-    const generationConfig: Record<string, unknown> = {
-      responseMimeType: 'application/json',
-    };
+    generationConfig.responseMimeType = 'application/json';
     if (ctx.jsonSchema) {
       generationConfig.responseSchema = stripAdditionalProperties(
         ctx.jsonSchema
       );
     }
+  }
+  if (Object.keys(generationConfig).length > 0) {
     body.generationConfig = generationConfig;
   }
   return {
@@ -286,6 +293,9 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
     model: ctx.model,
     messages: [{ role: 'user', content }],
   };
+  if (ctx.temperature !== undefined) {
+    body.temperature = ctx.temperature;
+  }
   if (ctx.jsonSchema) {
     if (STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type)) {
       body.response_format = {
@@ -338,6 +348,9 @@ function buildAnthropicRequest(ctx: BuildContext): BuiltRequest {
     max_tokens: ANTHROPIC_MAX_TOKENS,
     messages: [{ role: 'user', content }],
   };
+  if (ctx.temperature !== undefined) {
+    body.temperature = ctx.temperature;
+  }
   if (ctx.jsonSchema) {
     body.tools = [
       {
@@ -373,6 +386,9 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
     messages: [message],
     stream: false,
   };
+  if (ctx.temperature !== undefined) {
+    body.options = { temperature: ctx.temperature };
+  }
   if (ctx.jsonSchema) {
     body.format = ctx.jsonSchema;
   }
@@ -752,7 +768,15 @@ export async function dispatchAiRequest(
   const toolName = schemaName ?? DEFAULT_SCHEMA_NAME;
   const built = buildRequest(
     family,
-    { provider, model, prompt, images, jsonSchema, toolName },
+    {
+      provider,
+      model,
+      prompt,
+      images,
+      jsonSchema,
+      toolName,
+      temperature: req.temperature,
+    },
     Boolean(parseJson)
   );
 
