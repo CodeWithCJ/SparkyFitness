@@ -255,6 +255,31 @@ export function externalVariantToUnitVariant(
   };
 }
 
+/**
+ * Select the best display variant from a list of variants.
+ * If the default is a reference serving (100g/100ml) and a more descriptive
+ * variant exists, prefers that. Returns both the display variant and the
+ * deduplicated ordered list for the variant picker.
+ */
+export function selectDisplayVariant<T extends { serving_size: number; serving_unit: string; serving_description?: string }>(
+  defaultVariant: T,
+  variants?: T[],
+): { displayVariant: T; orderedVariants: T[] | undefined } {
+  const preferredVariant = isReferenceServing(defaultVariant.serving_size, defaultVariant.serving_unit) && variants
+    ? variants.find((v) => !isSameVariant(v, defaultVariant) && hasMeaningfulDescription(v.serving_description))
+    : undefined;
+
+  const displayVariant = preferredVariant ?? defaultVariant;
+
+  const orderedVariants = variants
+    ? preferredVariant
+      ? [preferredVariant, defaultVariant, ...variants.filter((v) => !isSameVariant(v, defaultVariant) && !isSameVariant(v, preferredVariant))]
+      : [defaultVariant, ...variants.filter((v) => !isSameVariant(v, defaultVariant))]
+    : undefined;
+
+  return { displayVariant, orderedVariants };
+}
+
 export function formatServingUnit(unit: string | undefined | null): string {
   if (!unit) return '';
   return /[._]/.test(unit) ? formatServingDescription(unit) : unit;

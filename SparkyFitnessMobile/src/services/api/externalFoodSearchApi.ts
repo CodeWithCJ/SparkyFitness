@@ -7,7 +7,7 @@ import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
-import { isReferenceServing, hasMeaningfulDescription, isSameVariant } from '../../utils/foodDetails';
+import { selectDisplayVariant } from '../../utils/foodDetails';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -491,17 +491,7 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
   // If the default is a reference serving (100g/100ml) and a more descriptive
   // variant exists (e.g. "1 Stück (30 g)"), prefer that one as the display
   // variant instead.
-  const preferredVariant = isReferenceServing(dv.serving_size, dv.serving_unit) && food.variants
-    ? food.variants.find((v) => !isSameVariant(v, dv) && hasMeaningfulDescription(v.serving_description))
-    : undefined;
-
-  const displayVariant = preferredVariant ?? dv;
-
-  const orderedVariants = food.variants
-    ? (preferredVariant
-      ? [preferredVariant, dv, ...food.variants.filter((v) => !isSameVariant(v, dv) && !isSameVariant(v, preferredVariant))]
-      : [dv, ...food.variants.filter((v) => !isSameVariant(v, dv))])
-    : undefined;
+  const { displayVariant, orderedVariants } = selectDisplayVariant(dv, food.variants);
   const variants = orderedVariants?.map(mapVariant);
 
   return {

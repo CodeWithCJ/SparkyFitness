@@ -25,7 +25,7 @@ import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
-import { isReferenceServing, hasMeaningfulDescription, isSameVariant } from '../utils/foodDetails';
+import { selectDisplayVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
 import { useSoundsEnabled } from '../services/sounds';
@@ -189,15 +189,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           fireSuccessHaptic();
         }
         const dv = result.food.default_variant;
-        const preferredVariant = isReferenceServing(dv.serving_size, dv.serving_unit) && result.food.variants
-          ? result.food.variants.find((v) => !isSameVariant(v, dv) && hasMeaningfulDescription(v.serving_description))
-          : undefined;
-        const displayVariant = preferredVariant ?? dv;
-        const orderedVariants = result.food.variants
-          ? preferredVariant
-            ? [preferredVariant, dv, ...result.food.variants.filter((v) => !isSameVariant(v, dv) && !isSameVariant(v, preferredVariant))]
-            : [dv, ...result.food.variants.filter((v) => !isSameVariant(v, dv))]
-          : undefined;
+        const { displayVariant, orderedVariants } = selectDisplayVariant(dv, result.food.variants);
         const item: FoodInfoItem = {
           id: result.food.provider_external_id ?? result.food.id ?? '',
           name: result.food.name,

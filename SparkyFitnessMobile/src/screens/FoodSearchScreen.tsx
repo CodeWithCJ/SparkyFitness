@@ -58,12 +58,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, textSecondary, formEnabled] = useCSSVariable([
+  const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-secondary',
-    '--color-form-enabled',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
+  const iconSuccess = String(useCSSVariable('--color-icon-success'));
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
@@ -657,10 +657,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <View className="flex-row items-center gap-1">
             <Text className="text-text-primary text-base font-medium">{item.name}</Text>
             {item.provider_verified ? (
-              <View className="flex-row items-center bg-emerald-100 dark:bg-emerald-900/40 rounded-md px-1.5 py-0.5 ml-1">
-                <Icon name="checkmark-circle" size={12} color="#22c55e" />
-                <Text className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold ml-0.5">Verified</Text>
-              </View>
+              <Icon name="checkmark" size={14} color={iconSuccess} />
             ) : null}
           </View>
           {item.brand ? (
