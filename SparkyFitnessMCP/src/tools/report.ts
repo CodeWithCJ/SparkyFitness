@@ -54,17 +54,30 @@ export function registerReportTools(server: McpServer, userId: string): void {
   );
 
 
+const dailyReportSchema = z.object({
+    date: optionalDateSchema.optional(),
+    start_date: optionalDateSchema.optional(),
+    end_date: optionalDateSchema.optional(),
+  });
+
   server.registerTool("sparky_get_daily_report", {
     title: "Get Daily Report",
     description: "Returns daily report data across nutrition, exercise, and water for a specific date or range.",
-    inputSchema: { date: optionalDateSchema.optional(), start_date: optionalDateSchema.optional(), end_date: optionalDateSchema.optional() },
+    inputSchema: dailyReportSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = dailyReportSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await reportService.getDailyReport(userId, args);
+      const data = await reportService.getDailyReport(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Report Tool] sparky_get_daily_report error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Daily report", parsed.data.date || parsed.data.start_date || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });

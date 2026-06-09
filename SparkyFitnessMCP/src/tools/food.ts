@@ -451,18 +451,57 @@ Actions:
   );
 
 
+
   // Standalone domain tools.
+  const foodDateRangeSchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  });
+
+  const foodPaginationSchema = z.object({
+    limit: z.number().int().min(1).max(500).optional(),
+    offset: z.number().int().min(0).optional(),
+  });
+
+  const listFoodsSchema = foodPaginationSchema.extend({
+    search: z.string().optional(),
+  });
+
+  const getFoodDetailsSchema = z.object({
+    food_id: z.string().min(1),
+  });
+
+  const searchFoodsSchema = foodPaginationSchema.extend({
+    query: z.string().min(1),
+  });
+
+  const recentFoodEntriesSchema = z.object({
+    limit: z.number().int().min(1).max(200).optional(),
+  });
+
+  const foodUsageSchema = foodDateRangeSchema.merge(foodPaginationSchema).extend({
+    food_id: z.string().min(1),
+  });
+
   server.registerTool("sparky_list_foods", {
     title: "List Foods",
     description: "Returns a paginated food catalog for the authenticated user, including variants.",
-    inputSchema: { limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional(), search: z.string().optional() },
+    inputSchema: listFoodsSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = listFoodsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await foodService.listFoods(userId, args);
+      const data = await foodService.listFoods(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_list_foods error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -470,14 +509,21 @@ Actions:
   server.registerTool("sparky_get_food_details", {
     title: "Get Food Details",
     description: "Returns full details for one food by food_id, including available variants.",
-    inputSchema: { food_id: z.string().min(1) },
+    inputSchema: getFoodDetailsSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async ({ food_id }): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = getFoodDetailsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await foodService.getFoodDetails(userId, food_id);
+      const data = await foodService.getFoodDetails(userId, parsed.data.food_id);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_get_food_details error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.food_id);
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -485,14 +531,21 @@ Actions:
   server.registerTool("sparky_search_foods", {
     title: "Search Foods",
     description: "Searches foods by name for the authenticated user.",
-    inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    inputSchema: searchFoodsSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = searchFoodsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await foodService.searchFoods(userId, args);
+      const data = await foodService.searchFoods(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_search_foods error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.query);
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -500,14 +553,21 @@ Actions:
   server.registerTool("sparky_get_food_diary", {
     title: "Get Food Diary",
     description: "Returns entry-level food diary data for a specific date or date range.",
-    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    inputSchema: foodDateRangeSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await foodService.getFoodDiary(userId, args);
+      const data = await foodService.getFoodDiary(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_get_food_diary error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food diary", parsed.data.date || parsed.data.start_date || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -515,10 +575,15 @@ Actions:
   server.registerTool("sparky_get_nutrition_summary", {
     title: "Get Nutrition Summary",
     description: "Returns nutrition summary rows for a specific date or date range.",
-    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    inputSchema: foodDateRangeSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
+      const args = parsed.data;
       const today = todayInZone("UTC");
       const start_date = args.date || args.start_date || today;
       const end_date = args.date || args.end_date || start_date;
@@ -526,6 +591,9 @@ Actions:
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_get_nutrition_summary error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Nutrition summary", parsed.data.date || parsed.data.start_date || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -533,14 +601,21 @@ Actions:
   server.registerTool("sparky_get_recent_food_entries", {
     title: "Get Recent Food Entries",
     description: "Returns recent entry-level food diary rows for the authenticated user.",
-    inputSchema: { limit: z.number().int().min(1).max(200).optional() },
+    inputSchema: recentFoodEntriesSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = recentFoodEntriesSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await foodService.getRecentFoodEntries(userId, args);
+      const data = await foodService.getRecentFoodEntries(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_get_recent_food_entries error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food entries", "recent");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -548,14 +623,22 @@ Actions:
   server.registerTool("sparky_get_food_usage", {
     title: "Get Food Usage",
     description: "Shows where a specific food_id was used in the diary.",
-    inputSchema: { food_id: z.string().min(1), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    inputSchema: foodUsageSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async ({ food_id, ...query }): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodUsageSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
+      const { food_id, ...query } = parsed.data;
       const data = await foodService.getFoodUsage(userId, food_id, query);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Food Tool] sparky_get_food_usage error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.food_id);
+      }
       return ERRORS.DB_ERROR();
     }
   });

@@ -254,18 +254,65 @@ Actions:
   );
 
 
+
   // Standalone domain tools.
+  const exerciseDateRangeSchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  });
+
+  const exercisePaginationSchema = z.object({
+    limit: z.number().int().min(1).max(500).optional(),
+    offset: z.number().int().min(0).optional(),
+  });
+
+  const listExercisesSchema = exercisePaginationSchema.extend({
+    search: z.string().optional(),
+  });
+
+  const getExerciseDetailsSchema = z.object({
+    exercise_id: z.string().optional(),
+    exercise_name: z.string().optional(),
+  });
+
+  const searchExercisesSchema = exercisePaginationSchema.extend({
+    query: z.string().min(1),
+    muscle_group: z.string().optional(),
+    equipment: z.string().optional(),
+  });
+
+  const recentExerciseEntriesSchema = z.object({
+    limit: z.number().int().min(1).max(200).optional(),
+  });
+
+  const exerciseUsageSchema = exerciseDateRangeSchema.merge(exercisePaginationSchema).extend({
+    exercise_id: z.string().min(1),
+  });
+
+  const exerciseProgressSchema = exerciseDateRangeSchema.merge(exercisePaginationSchema).extend({
+    exercise_id: z.string().optional(),
+    exercise_name: z.string().optional(),
+  });
+
   server.registerTool("sparky_list_exercises", {
     title: "List Exercises",
     description: "Returns a paginated exercise catalog for the authenticated user.",
-    inputSchema: { limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional(), search: z.string().optional() },
+    inputSchema: listExercisesSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = listExercisesSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.listExercises(userId, args);
+      const data = await exerciseService.listExercises(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_list_exercises error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise", "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -273,14 +320,21 @@ Actions:
   server.registerTool("sparky_get_exercise_details", {
     title: "Get Exercise Details",
     description: "Returns full details for one exercise by exercise_id or exercise_name.",
-    inputSchema: { exercise_id: z.string().optional(), exercise_name: z.string().optional() },
+    inputSchema: getExerciseDetailsSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = getExerciseDetailsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.getExerciseDetails(userId, args);
+      const data = await exerciseService.getExerciseDetails(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_exercise_details error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise", parsed.data.exercise_id || parsed.data.exercise_name || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -288,14 +342,22 @@ Actions:
   server.registerTool("sparky_search_exercises", {
     title: "Search Exercises",
     description: "Searches exercises by name and optional filters.",
-    inputSchema: { query: z.string().min(1), muscle_group: z.string().optional(), equipment: z.string().optional(), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    inputSchema: searchExercisesSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = searchExercisesSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
+      const args = parsed.data;
       const data = await exerciseService.searchExercises(userId, args.query, args.muscle_group, args.equipment, args.limit, args.offset);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_search_exercises error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise", parsed.data.query);
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -303,14 +365,21 @@ Actions:
   server.registerTool("sparky_get_exercise_diary", {
     title: "Get Exercise Diary",
     description: "Returns entry-level exercise diary data for a specific date or date range.",
-    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    inputSchema: exerciseDateRangeSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = exerciseDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.getExerciseDiary(userId, args);
+      const data = await exerciseService.getExerciseDiary(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_exercise_diary error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise diary", parsed.data.date || parsed.data.start_date || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -318,14 +387,21 @@ Actions:
   server.registerTool("sparky_get_daily_exercise_totals", {
     title: "Get Daily Exercise Totals",
     description: "Returns daily exercise totals for a date or range.",
-    inputSchema: { date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() },
+    inputSchema: exerciseDateRangeSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = exerciseDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.getDailyExerciseTotals(userId, args);
+      const data = await exerciseService.getDailyExerciseTotals(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_daily_exercise_totals error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise totals", parsed.data.date || parsed.data.start_date || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -333,14 +409,21 @@ Actions:
   server.registerTool("sparky_get_recent_exercise_entries", {
     title: "Get Recent Exercise Entries",
     description: "Returns recent entry-level exercise diary rows for the authenticated user.",
-    inputSchema: { limit: z.number().int().min(1).max(200).optional() },
+    inputSchema: recentExerciseEntriesSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = recentExerciseEntriesSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.getRecentExerciseEntries(userId, args);
+      const data = await exerciseService.getRecentExerciseEntries(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_recent_exercise_entries error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise entries", "recent");
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -348,14 +431,22 @@ Actions:
   server.registerTool("sparky_get_exercise_usage", {
     title: "Get Exercise Usage",
     description: "Shows where a specific exercise_id was used in the exercise diary.",
-    inputSchema: { exercise_id: z.string().min(1), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    inputSchema: exerciseUsageSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async ({ exercise_id, ...query }): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = exerciseUsageSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
+      const { exercise_id, ...query } = parsed.data;
       const data = await exerciseService.getExerciseUsage(userId, exercise_id, query);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_exercise_usage error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise", parsed.data.exercise_id);
+      }
       return ERRORS.DB_ERROR();
     }
   });
@@ -363,14 +454,21 @@ Actions:
   server.registerTool("sparky_get_exercise_progress", {
     title: "Get Exercise Progress",
     description: "Returns paginated performance history for an exercise.",
-    inputSchema: { exercise_id: z.string().optional(), exercise_name: z.string().optional(), start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() },
+    inputSchema: exerciseProgressSchema.shape,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async (args): Promise<ToolResponse> => {
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = exerciseProgressSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
     try {
-      const data = await exerciseService.getExerciseProgress(userId, args);
+      const data = await exerciseService.getExerciseProgress(userId, parsed.data);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
     } catch (error) {
       console.error("[Exercise Tool] sparky_get_exercise_progress error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Exercise", parsed.data.exercise_id || parsed.data.exercise_name || "unknown");
+      }
       return ERRORS.DB_ERROR();
     }
   });
