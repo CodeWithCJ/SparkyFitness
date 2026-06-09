@@ -6,7 +6,7 @@ import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { RateLimiter } from '../utils/rateLimiter';
 
-const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie', 'tandoor', 'norish']);
+const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie', 'tandoor', 'norish', 'yazio']);
 
 // Open Food Facts allows 10 req/min; use 8 for headroom
 const offRateLimiter = new RateLimiter(8, 60_000);
