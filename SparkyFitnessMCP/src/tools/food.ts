@@ -5,6 +5,7 @@ import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
 import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.js";
 import { z } from "zod";
+import {todayInZone} from "@workspace/shared";
 
 const VALID_ACTIONS = [
   "search_food", "lookup_food_nutrition", "log_food", "create_food", "search_meal", "log_meal",
@@ -30,7 +31,7 @@ Actions:
 - delete_entry(entry_id, entry_type:"food_entry"|"food_entry_meal")
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
 - update_entry(entry_id, entry_type, quantity, unit)
-- update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to updating existing diary entries referencing the variant.
+- update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type?)
 - save_as_meal_template(entry_date, meal_type, meal_name, description?)
 - log_water(amount_ml, entry_date)
@@ -518,7 +519,7 @@ Actions:
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async (args): Promise<ToolResponse> => {
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayInZone("UTC");
       const start_date = args.date || args.start_date || today;
       const end_date = args.date || args.end_date || start_date;
       const data = await foodService.getNutritionalSummary(userId, { start_date, end_date });

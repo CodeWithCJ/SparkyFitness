@@ -32,7 +32,7 @@ async function resolveMealTypeId(client: any, userId: string, mealTypeName: stri
   return result.rows[0].id;
 }
 
-import { todayInZone, addDays } from "@workspace/shared";
+import {addDays, todayInZone} from "@workspace/shared";
 
 /**
  * Gets today's date in YYYY-MM-DD format (UTC for consistency).
@@ -1340,7 +1340,7 @@ type McpDateQuery = { date?: string; start_date?: string; end_date?: string };
 type McpPaginationQuery = { limit?: number; offset?: number };
 
 function mcpDateRange(query: McpDateQuery = {}): { startDate: string; endDate: string } {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInZone("UTC");
   const date = query.date || undefined;
   const startDate = date || query.start_date || today;
   const endDate = date || query.end_date || startDate;

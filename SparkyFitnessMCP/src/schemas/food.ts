@@ -320,7 +320,7 @@ const updateFoodVariantSchema = z
     calcium: z.coerce.number().min(0).optional().describe("Updated calcium (% Daily Value)"),
     iron: z.coerce.number().min(0).optional().describe("Updated iron (% Daily Value)"),
     gi: giIndexEnum.optional().describe("Updated Glycemic Index classification"),
-    update_existing_entries: z.coerce.boolean().optional().default(true).describe("If true, also updates existing diary food entries referencing this variant. Defaults to true."),
+    update_existing_entries: z.coerce.boolean().optional().default(false).describe("If true, also updates existing diary food entries referencing this variant. Defaults to false."),
   })
   .strict();
 

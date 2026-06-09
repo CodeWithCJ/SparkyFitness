@@ -1,6 +1,7 @@
 import { withClient } from "../db/context.js";
 import { normalizePagination, buildPaginatedResult } from "../utils/pagination.js";
 import type { Exercise, ExerciseEntry, ExerciseSet, WorkoutPreset, PaginatedResult } from "../types.js";
+import {todayInZone} from "@workspace/shared";
 
 export async function searchExercises(
   userId: string,
@@ -647,7 +648,7 @@ type McpExerciseDateQuery = { date?: string; start_date?: string; end_date?: str
 type McpExercisePaginationQuery = { limit?: number; offset?: number };
 
 function mcpExerciseDateRange(query: McpExerciseDateQuery = {}): { startDate: string; endDate: string } {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInZone("UTC");
   const date = query.date || undefined;
   const startDate = date || query.start_date || today;
   const endDate = date || query.end_date || startDate;
