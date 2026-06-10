@@ -32,7 +32,7 @@ async function resolveMealTypeId(client: any, userId: string, mealTypeName: stri
   return result.rows[0].id;
 }
 
-import { todayInZone, addDays } from "@workspace/shared";
+import {addDays, todayInZone} from "@workspace/shared";
 
 /**
  * Gets today's date in YYYY-MM-DD format (UTC for consistency).
@@ -813,6 +813,201 @@ export async function deleteFood(
   });
 }
 
+
+export async function updateFoodVariant(
+  userId: string,
+  params: {
+    food_id?: string;
+    variant_id?: string;
+    serving_size?: number;
+    serving_unit?: string;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    saturated_fat?: number;
+    polyunsaturated_fat?: number;
+    monounsaturated_fat?: number;
+    trans_fat?: number;
+    cholesterol?: number;
+    sodium?: number;
+    potassium?: number;
+    fiber?: number;
+    sugar?: number;
+    vitamin_a?: number;
+    vitamin_c?: number;
+    calcium?: number;
+    iron?: number;
+    gi?: string;
+    update_existing_entries?: boolean;
+  }
+): Promise<Record<string, unknown>> {
+  return withClient(userId, async (client) => {
+    await client.query("BEGIN");
+    try {
+      let variantId = params.variant_id;
+
+      if (!variantId && params.food_id) {
+        const defaultVariant = await client.query(
+          `SELECT fv.id
+           FROM food_variants fv
+           JOIN foods f ON f.id = fv.food_id
+           WHERE fv.food_id = $1 AND fv.is_default = TRUE AND f.user_id = $2
+           LIMIT 1`,
+          [params.food_id, userId]
+        );
+        if (defaultVariant.rows.length === 0) {
+          throw new Error(`Default variant for food_id "${params.food_id}" not found or not editable.`);
+        }
+        variantId = defaultVariant.rows[0].id;
+      }
+
+      if (!variantId) {
+        throw new Error("Either variant_id or food_id must be provided.");
+      }
+
+      const existing = await client.query(
+        `SELECT fv.id, fv.food_id, f.name AS food_name
+         FROM food_variants fv
+         JOIN foods f ON f.id = fv.food_id
+         WHERE fv.id = $1 AND f.user_id = $2
+         LIMIT 1`,
+        [variantId, userId]
+      );
+
+      if (existing.rows.length === 0) {
+        throw new Error(`Food variant "${variantId}" not found or not editable.`);
+      }
+
+      if (params.food_id && existing.rows[0].food_id !== params.food_id) {
+        throw new Error(`Variant "${variantId}" does not belong to food "${params.food_id}".`);
+      }
+
+      const fieldMap: Record<string, string> = {
+        serving_size: "serving_size",
+        serving_unit: "serving_unit",
+        calories: "calories",
+        protein: "protein",
+        carbs: "carbs",
+        fat: "fat",
+        saturated_fat: "saturated_fat",
+        polyunsaturated_fat: "polyunsaturated_fat",
+        monounsaturated_fat: "monounsaturated_fat",
+        trans_fat: "trans_fat",
+        cholesterol: "cholesterol",
+        sodium: "sodium",
+        potassium: "potassium",
+        fiber: "dietary_fiber",
+        sugar: "sugars",
+        vitamin_a: "vitamin_a",
+        vitamin_c: "vitamin_c",
+        calcium: "calcium",
+        iron: "iron",
+        gi: "glycemic_index",
+      };
+
+      const updates: string[] = [];
+      const values: unknown[] = [];
+      for (const [inputField, dbField] of Object.entries(fieldMap)) {
+        const value = (params as Record<string, unknown>)[inputField];
+        if (value !== undefined) {
+          values.push(value);
+          updates.push(`${dbField} = $${values.length}`);
+        }
+      }
+
+      if (updates.length === 0) {
+        throw new Error("At least one nutritional or serving field must be provided for update_food_variant.");
+      }
+
+      values.push(variantId);
+      const variantIdParam = values.length;
+
+      const updatedVariant = await client.query(
+        `UPDATE food_variants
+         SET ${updates.join(", ")}, updated_at = NOW()
+         WHERE id = $${variantIdParam}
+         RETURNING id, food_id, serving_size, serving_unit, calories, protein, carbs, fat,
+                   saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+                   cholesterol, sodium, potassium, dietary_fiber, sugars,
+                   vitamin_a, vitamin_c, calcium, iron, glycemic_index, is_default, updated_at`,
+        values
+      );
+
+      if (updatedVariant.rows.length === 0) {
+        throw new Error(`Food variant "${variantId}" could not be updated.`);
+      }
+
+      let updatedEntriesCount = 0;
+      if (params.update_existing_entries !== false) {
+        const v = updatedVariant.rows[0];
+        const updatedEntries = await client.query(
+          `UPDATE food_entries
+           SET serving_size = $1,
+               serving_unit = $2,
+               calories = $3,
+               protein = $4,
+               carbs = $5,
+               fat = $6,
+               saturated_fat = $7,
+               polyunsaturated_fat = $8,
+               monounsaturated_fat = $9,
+               trans_fat = $10,
+               cholesterol = $11,
+               sodium = $12,
+               potassium = $13,
+               dietary_fiber = $14,
+               sugars = $15,
+               vitamin_a = $16,
+               vitamin_c = $17,
+               calcium = $18,
+               iron = $19,
+               glycemic_index = $20
+           WHERE user_id = $21 AND variant_id = $22`,
+          [
+            v.serving_size,
+            v.serving_unit,
+            v.calories,
+            v.protein,
+            v.carbs,
+            v.fat,
+            v.saturated_fat,
+            v.polyunsaturated_fat,
+            v.monounsaturated_fat,
+            v.trans_fat,
+            v.cholesterol,
+            v.sodium,
+            v.potassium,
+            v.dietary_fiber,
+            v.sugars,
+            v.vitamin_a,
+            v.vitamin_c,
+            v.calcium,
+            v.iron,
+            v.glycemic_index,
+            userId,
+            variantId,
+          ]
+        );
+        updatedEntriesCount = updatedEntries.rowCount ?? 0;
+      }
+
+      await client.query("COMMIT");
+      return {
+        food_id: updatedVariant.rows[0].food_id,
+        food_name: existing.rows[0].food_name,
+        variant: updatedVariant.rows[0],
+        updated_existing_entries: params.update_existing_entries !== false,
+        updated_entries_count: updatedEntriesCount,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+
 export async function updateEntry(
   userId: string,
   entryId: string,
@@ -1139,3 +1334,168 @@ export async function lookupFoodNutrition(
   });
 }
 
+// Domain catalog/diary helpers used by standalone MCP tools.
+type McpQueryValue = string | number | boolean | undefined | null;
+type McpDateQuery = { date?: string; start_date?: string; end_date?: string };
+type McpPaginationQuery = { limit?: number; offset?: number };
+
+function mcpDateRange(query: McpDateQuery = {}): { startDate: string; endDate: string } {
+  const today = todayInZone("UTC");
+  const date = query.date || undefined;
+  const startDate = date || query.start_date || today;
+  const endDate = date || query.end_date || startDate;
+  return { startDate, endDate };
+}
+
+function mcpFoodSearch(search?: string): { clause: string; params: McpQueryValue[] } {
+  const trimmed = search?.trim();
+  if (!trimmed) return { clause: "", params: [] };
+  return {
+    clause: "WHERE f.name ILIKE $1 OR COALESCE(f.brand, '') ILIKE $1",
+    params: [`%${trimmed}%`],
+  };
+}
+
+export async function listFoods(
+  userId: string,
+  params: McpPaginationQuery & { search?: string } = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+  const { clause, params: searchParams } = mcpFoodSearch(params.search);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count FROM foods f ${clause}`,
+      searchParams,
+    );
+
+    const dataResult = await client.query(
+      `SELECT f.id, f.name, f.brand, f.is_custom, f.shared_with_public, f.created_at, f.updated_at,
+              COALESCE(
+                json_agg(fv.* ORDER BY fv.is_default DESC, fv.created_at ASC)
+                  FILTER (WHERE fv.id IS NOT NULL),
+                '[]'::json
+              ) AS variants
+       FROM foods f
+       LEFT JOIN food_variants fv ON fv.food_id = f.id
+       ${clause}
+       GROUP BY f.id
+       ORDER BY LOWER(f.name) ASC
+       LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}`,
+      [...searchParams, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}
+
+export async function getFoodDetails(userId: string, foodId: string): Promise<Record<string, unknown>> {
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT f.*,
+              COALESCE(
+                json_agg(fv.* ORDER BY fv.is_default DESC, fv.created_at ASC)
+                  FILTER (WHERE fv.id IS NOT NULL),
+                '[]'::json
+              ) AS variants
+       FROM foods f
+       LEFT JOIN food_variants fv ON fv.food_id = f.id
+       WHERE f.id = $1
+       GROUP BY f.id`,
+      [foodId],
+    );
+
+    if (!result.rows[0]) {
+      throw new Error(`Food not found: ${foodId}`);
+    }
+
+    return result.rows[0];
+  });
+}
+
+export async function searchFoods(
+  userId: string,
+  params: McpPaginationQuery & { query: string },
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  if (!params.query?.trim()) throw new Error("query is required");
+  return listFoods(userId, { ...params, search: params.query });
+}
+
+export async function getFoodDiary(userId: string, params: McpDateQuery = {}): Promise<Record<string, unknown>> {
+  const { startDate, endDate } = mcpDateRange(params);
+
+  return withClient(userId, async (client) => {
+    const foodEntries = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       WHERE fe.entry_date BETWEEN $1 AND $2
+       ORDER BY fe.entry_date ASC, fe.created_at ASC`,
+      [startDate, endDate],
+    );
+
+    const mealEntries = await client.query(
+      `SELECT fem.*, mt.name AS meal_type
+       FROM food_entry_meals fem
+       LEFT JOIN meal_types mt ON mt.id = fem.meal_type_id
+       WHERE fem.entry_date BETWEEN $1 AND $2
+       ORDER BY fem.entry_date ASC, fem.created_at ASC`,
+      [startDate, endDate],
+    ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+
+    return {
+      start_date: startDate,
+      end_date: endDate,
+      food_entries: foodEntries.rows,
+      meal_entries: mealEntries.rows,
+    };
+  });
+}
+
+export async function getRecentFoodEntries(userId: string, params: { limit?: number } = {}): Promise<Record<string, unknown>[]> {
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows;
+  });
+}
+
+export async function getFoodUsage(
+  userId: string,
+  foodId: string,
+  params: McpDateQuery & McpPaginationQuery = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { startDate, endDate } = mcpDateRange(params);
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM food_entries
+       WHERE food_id = $1 AND entry_date BETWEEN $2 AND $3`,
+      [foodId, startDate, endDate],
+    );
+
+    const dataResult = await client.query(
+      `SELECT fe.*, mt.name AS meal_type
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       WHERE fe.food_id = $1 AND fe.entry_date BETWEEN $2 AND $3
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $4 OFFSET $5`,
+      [foodId, startDate, endDate, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}

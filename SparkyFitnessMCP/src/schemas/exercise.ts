@@ -93,6 +93,7 @@ const getExerciseProgressSchema = z.object({
   exercise_name: z.string().min(1).max(200).optional().describe("Name of the exercise (alternative to ID)"),
   start_date: dateSchema.optional().describe("Start date for progress tracking"),
   end_date: dateSchema.optional().describe("End date for progress tracking"),
+  ...paginationSchema.shape,
 }).strict();
 
 export const manageExerciseSchema = z.discriminatedUnion("action", [

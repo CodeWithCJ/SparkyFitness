@@ -4,10 +4,12 @@ import * as foodService from "../services/foodService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
 import type { ToolResponse, FoodItem, FoodEntry, MealTemplate } from "../types.js";
+import { z } from "zod";
+import {todayInZone} from "@workspace/shared";
 
 const VALID_ACTIONS = [
   "search_food", "lookup_food_nutrition", "log_food", "create_food", "search_meal", "log_meal",
-  "list_diary", "delete_entry", "delete_food", "update_entry", "copy_from_yesterday", "save_as_meal_template",
+  "list_diary", "delete_entry", "delete_food", "update_entry", "update_food_variant", "copy_from_yesterday", "save_as_meal_template",
   "log_water", "get_nutritional_summary", "get_water_history",
 ];
 
@@ -29,6 +31,7 @@ Actions:
 - delete_entry(entry_id, entry_type:"food_entry"|"food_entry_meal")
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
 - update_entry(entry_id, entry_type, quantity, unit)
+- update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type?)
 - save_as_meal_template(entry_date, meal_type, meal_name, description?)
 - log_water(amount_ml, entry_date)
@@ -79,7 +82,7 @@ Actions:
             const result = await foodService.lookupFoodNutrition(
               userId, args.food_name!, args.provider_type as any
             );
-            
+
             if (result.source === "ai_estimate") {
               return {
                 content: [{
@@ -94,7 +97,7 @@ Actions:
             let text = `### Found match in **${result.source}**:\n`;
             text += `**${f.name}**`;
             if (f.brand) text += ` (${f.brand})`;
-            
+
             const v = f.default_variant || f.variants?.[0];
             if (v) {
               text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
@@ -312,6 +315,50 @@ Actions:
             );
           }
 
+          case "update_food_variant": {
+            if (!args.food_id && !args.variant_id) {
+                throw new Error("Either food_id or variant_id is required");
+            }
+
+            const result = await foodService.updateFoodVariant(userId, {
+              food_id: args.food_id,
+              variant_id: args.variant_id,
+              serving_size: args.serving_size,
+              serving_unit: args.serving_unit,
+              calories: args.calories,
+              protein: args.protein,
+              carbs: args.carbs,
+              fat: args.fat,
+              saturated_fat: args.saturated_fat,
+              polyunsaturated_fat: args.polyunsaturated_fat,
+              monounsaturated_fat: args.monounsaturated_fat,
+              trans_fat: args.trans_fat,
+              cholesterol: args.cholesterol,
+              sodium: args.sodium,
+              potassium: args.potassium,
+              fiber: args.fiber,
+              sugar: args.sugar,
+              vitamin_a: args.vitamin_a,
+              vitamin_c: args.vitamin_c,
+              calcium: args.calcium,
+              iron: args.iron,
+              gi: args.gi,
+              update_existing_entries: args.update_existing_entries,
+            });
+            const variant = result.variant as any;
+            return formatConfirmation(
+              `Food variant updated for "${result.food_name}" (${variant.calories ?? 0} kcal per ${variant.serving_size ?? "?"}${variant.serving_unit ?? ""}).`,
+              {
+                food_id: result.food_id,
+                food_name: result.food_name,
+                variant_id: variant.id,
+                updated_existing_entries: result.updated_existing_entries,
+                updated_entries_count: result.updated_entries_count,
+              }
+            );
+          }
+
+
           case "copy_from_yesterday": {
             const result = await foodService.copyFromYesterday(userId, {
               target_date: args.target_date,
@@ -402,4 +449,197 @@ Actions:
       }
     }
   );
+
+
+
+  // Standalone domain tools.
+  const foodDateRangeSchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  });
+
+  const foodPaginationSchema = z.object({
+    limit: z.number().int().min(1).max(500).optional(),
+    offset: z.number().int().min(0).optional(),
+  });
+
+  const listFoodsSchema = foodPaginationSchema.extend({
+    search: z.string().optional(),
+  });
+
+  const getFoodDetailsSchema = z.object({
+    food_id: z.string().min(1),
+  });
+
+  const searchFoodsSchema = foodPaginationSchema.extend({
+    query: z.string().min(1),
+  });
+
+  const recentFoodEntriesSchema = z.object({
+    limit: z.number().int().min(1).max(200).optional(),
+  });
+
+  const foodUsageSchema = foodDateRangeSchema.merge(foodPaginationSchema).extend({
+    food_id: z.string().min(1),
+  });
+
+  server.registerTool("sparky_list_foods", {
+    title: "List Foods",
+    description: "Returns a paginated food catalog for the authenticated user, including variants.",
+    inputSchema: listFoodsSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = listFoodsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await foodService.listFoods(userId, parsed.data);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_list_foods error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", "unknown");
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_details", {
+    title: "Get Food Details",
+    description: "Returns full details for one food by food_id, including available variants.",
+    inputSchema: getFoodDetailsSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = getFoodDetailsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await foodService.getFoodDetails(userId, parsed.data.food_id);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_details error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.food_id);
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_search_foods", {
+    title: "Search Foods",
+    description: "Searches foods by name for the authenticated user.",
+    inputSchema: searchFoodsSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = searchFoodsSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await foodService.searchFoods(userId, parsed.data);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_search_foods error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.query);
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_diary", {
+    title: "Get Food Diary",
+    description: "Returns entry-level food diary data for a specific date or date range.",
+    inputSchema: foodDateRangeSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await foodService.getFoodDiary(userId, parsed.data);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_diary error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food diary", parsed.data.date || parsed.data.start_date || "unknown");
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_nutrition_summary", {
+    title: "Get Nutrition Summary",
+    description: "Returns nutrition summary rows for a specific date or date range.",
+    inputSchema: foodDateRangeSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodDateRangeSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const args = parsed.data;
+      const today = todayInZone("UTC");
+      const start_date = args.date || args.start_date || today;
+      const end_date = args.date || args.end_date || start_date;
+      const data = await foodService.getNutritionalSummary(userId, { start_date, end_date });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_nutrition_summary error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Nutrition summary", parsed.data.date || parsed.data.start_date || "unknown");
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_recent_food_entries", {
+    title: "Get Recent Food Entries",
+    description: "Returns recent entry-level food diary rows for the authenticated user.",
+    inputSchema: recentFoodEntriesSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = recentFoodEntriesSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await foodService.getRecentFoodEntries(userId, parsed.data);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_recent_food_entries error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food entries", "recent");
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
+
+  server.registerTool("sparky_get_food_usage", {
+    title: "Get Food Usage",
+    description: "Shows where a specific food_id was used in the diary.",
+    inputSchema: foodUsageSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = foodUsageSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const { food_id, ...query } = parsed.data;
+      const data = await foodService.getFoodUsage(userId, food_id, query);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Food Tool] sparky_get_food_usage error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Food", parsed.data.food_id);
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
 }

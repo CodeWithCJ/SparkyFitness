@@ -294,6 +294,37 @@ const updateEntrySchema = z
   })
   .strict();
 
+
+const updateFoodVariantSchema = z
+  .object({
+    action: z.literal("update_food_variant"),
+    food_id: uuidSchema.optional().describe("Food UUID. Used to find the default variant when variant_id is not provided."),
+    variant_id: uuidSchema.optional().describe("Food variant UUID to update. If omitted, the default variant for food_id is updated."),
+    serving_size: z.coerce.number().min(0).optional().describe("Updated serving size value"),
+    serving_unit: z.string().min(1).max(50).optional().describe("Updated serving unit"),
+    calories: z.coerce.number().min(0).optional().describe("Updated calories (kcal)"),
+    protein: z.coerce.number().min(0).optional().describe("Updated protein (g)"),
+    carbs: z.coerce.number().min(0).optional().describe("Updated carbohydrates (g)"),
+    fat: z.coerce.number().min(0).optional().describe("Updated total fat (g)"),
+    saturated_fat: z.coerce.number().min(0).optional().describe("Updated saturated fat (g)"),
+    polyunsaturated_fat: z.coerce.number().min(0).optional().describe("Updated polyunsaturated fat (g)"),
+    monounsaturated_fat: z.coerce.number().min(0).optional().describe("Updated monounsaturated fat (g)"),
+    trans_fat: z.coerce.number().min(0).optional().describe("Updated trans fat (g)"),
+    cholesterol: z.coerce.number().min(0).optional().describe("Updated cholesterol (mg)"),
+    sodium: z.coerce.number().min(0).optional().describe("Updated sodium (mg)"),
+    potassium: z.coerce.number().min(0).optional().describe("Updated potassium (mg)"),
+    fiber: z.coerce.number().min(0).optional().describe("Updated dietary fiber (g)"),
+    sugar: z.coerce.number().min(0).optional().describe("Updated sugars (g)"),
+    vitamin_a: z.coerce.number().min(0).optional().describe("Updated Vitamin A (% Daily Value)"),
+    vitamin_c: z.coerce.number().min(0).optional().describe("Updated Vitamin C (% Daily Value)"),
+    calcium: z.coerce.number().min(0).optional().describe("Updated calcium (% Daily Value)"),
+    iron: z.coerce.number().min(0).optional().describe("Updated iron (% Daily Value)"),
+    gi: giIndexEnum.optional().describe("Updated Glycemic Index classification"),
+    update_existing_entries: z.coerce.boolean().optional().default(false).describe("If true, also updates existing diary food entries referencing this variant. Defaults to false."),
+  })
+  .strict();
+
+
 const copyFromYesterdaySchema = z
   .object({
     action: z.literal("copy_from_yesterday"),
@@ -386,6 +417,7 @@ export const manageFoodSchema = z.discriminatedUnion("action", [
   deleteEntrySchema,
   deleteFoodSchema,
   updateEntrySchema,
+  updateFoodVariantSchema,
   copyFromYesterdaySchema,
   saveAsMealTemplateSchema,
   logWaterSchema,
@@ -414,6 +446,7 @@ export const manageFoodInput = z.object({
       "delete_entry",
       "delete_food",
       "update_entry",
+      "update_food_variant",
       "copy_from_yesterday",
       "save_as_meal_template",
       "log_water",
@@ -436,6 +469,21 @@ export const manageFoodInput = z.object({
     .optional()
     .describe("Food UUID — alternative to food_name"),
   variant_id: uuidSchema.optional().describe("Food variant UUID"),
+  update_existing_entries: z.coerce
+    .boolean()
+    .optional()
+    .describe("For update_food_variant: if true, also updates existing diary entries referencing this variant"),
+  serving_size: z.coerce
+    .number()
+    .min(0)
+    .optional()
+    .describe("For update_food_variant: updated serving size value"),
+  serving_unit: z
+    .string()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe("For update_food_variant: updated serving unit"),
   brand: z
     .string()
     .max(200)

@@ -1,6 +1,7 @@
 import { withClient } from "../db/context.js";
 import { normalizePagination, buildPaginatedResult } from "../utils/pagination.js";
 import type { Exercise, ExerciseEntry, ExerciseSet, WorkoutPreset, PaginatedResult } from "../types.js";
+import {todayInZone} from "@workspace/shared";
 
 export async function searchExercises(
   userId: string,
@@ -642,10 +643,154 @@ export async function createWorkoutPreset(
   });
 }
 
+// Domain catalog/diary helpers used by standalone MCP tools.
+type McpExerciseDateQuery = { date?: string; start_date?: string; end_date?: string };
+type McpExercisePaginationQuery = { limit?: number; offset?: number };
+
+function mcpExerciseDateRange(query: McpExerciseDateQuery = {}): { startDate: string; endDate: string } {
+  const today = todayInZone("UTC");
+  const date = query.date || undefined;
+  const startDate = date || query.start_date || today;
+  const endDate = date || query.end_date || startDate;
+  return { startDate, endDate };
+}
+
+function mcpOptionalExerciseSearch(search?: string): { clause: string; params: (string | number | boolean | undefined | null)[] } {
+  const trimmed = search?.trim();
+  if (!trimmed) return { clause: "WHERE is_quick_exercise = FALSE", params: [] };
+  return {
+    clause: "WHERE is_quick_exercise = FALSE AND name ILIKE $1",
+    params: [`%${trimmed}%`],
+  };
+}
+
+export async function listExercises(
+  userId: string,
+  params: McpExercisePaginationQuery & { search?: string } = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+  const { clause, params: searchParams } = mcpOptionalExerciseSearch(params.search);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count FROM exercises ${clause}`,
+      searchParams,
+    );
+
+    const dataResult = await client.query(
+      `SELECT *
+       FROM exercises
+       ${clause}
+       ORDER BY LOWER(name) ASC
+       LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}`,
+      [...searchParams, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}
+
+export async function getExerciseDiary(userId: string, params: McpExerciseDateQuery = {}): Promise<Record<string, unknown>> {
+  const { startDate, endDate } = mcpExerciseDateRange(params);
+
+  return withClient(userId, async (client) => {
+    const entries = await client.query(
+      `SELECT ee.*, e.name AS exercise_name_from_catalog, e.category AS exercise_category_from_catalog
+       FROM exercise_entries ee
+       LEFT JOIN exercises e ON e.id = ee.exercise_id
+       WHERE ee.entry_date BETWEEN $1 AND $2
+       ORDER BY ee.entry_date ASC, ee.created_at ASC`,
+      [startDate, endDate],
+    );
+
+    const entryIds = entries.rows.map((row: any) => row.id);
+    let sets: Record<string, unknown>[] = [];
+    if (entryIds.length > 0) {
+      const setsResult = await client.query(
+        `SELECT * FROM exercise_entry_sets
+         WHERE exercise_entry_id = ANY($1)
+         ORDER BY exercise_entry_id, set_number ASC`,
+        [entryIds],
+      ).catch(() => ({ rows: [] as Record<string, unknown>[] }));
+      sets = setsResult.rows;
+    }
+
+    return { start_date: startDate, end_date: endDate, entries: entries.rows, sets };
+  });
+}
+
+export async function getDailyExerciseTotals(userId: string, params: McpExerciseDateQuery = {}): Promise<Record<string, unknown>> {
+  const { startDate, endDate } = mcpExerciseDateRange(params);
+
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT entry_date,
+              COUNT(*)::int AS entry_count,
+              SUM(COALESCE(duration_minutes, 0)) AS duration_minutes,
+              SUM(COALESCE(calories_burned, 0)) AS calories_burned,
+              SUM(COALESCE(distance, 0)) AS distance,
+              SUM(COALESCE(steps, 0)) AS steps
+       FROM exercise_entries
+       WHERE entry_date BETWEEN $1 AND $2
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`,
+      [startDate, endDate],
+    );
+
+    return { start_date: startDate, end_date: endDate, rows: result.rows };
+  });
+}
+
+export async function getRecentExerciseEntries(userId: string, params: { limit?: number } = {}): Promise<Record<string, unknown>[]> {
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+
+  return withClient(userId, async (client) => {
+    const result = await client.query(
+      `SELECT ee.*, e.name AS exercise_name_from_catalog, e.category AS exercise_category_from_catalog
+       FROM exercise_entries ee
+       LEFT JOIN exercises e ON e.id = ee.exercise_id
+       ORDER BY ee.entry_date DESC, ee.created_at DESC
+       LIMIT $1`,
+      [limit],
+    );
+
+    return result.rows;
+  });
+}
+
+export async function getExerciseUsage(
+  userId: string,
+  exerciseId: string,
+  params: McpExerciseDateQuery & McpExercisePaginationQuery = {},
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { startDate, endDate } = mcpExerciseDateRange(params);
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+
+  return withClient(userId, async (client) => {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM exercise_entries
+       WHERE exercise_id = $1 AND entry_date BETWEEN $2 AND $3`,
+      [exerciseId, startDate, endDate],
+    );
+    const dataResult = await client.query(
+      `SELECT * FROM exercise_entries
+       WHERE exercise_id = $1 AND entry_date BETWEEN $2 AND $3
+       ORDER BY entry_date DESC, created_at DESC
+       LIMIT $4 OFFSET $5`,
+      [exerciseId, startDate, endDate, limit, offset],
+    );
+
+    return buildPaginatedResult(dataResult.rows, countResult.rows[0]?.count ?? 0, offset);
+  });
+}
+
 export async function getExerciseProgress(
   userId: string,
-  params: { exercise_id?: string; exercise_name?: string; start_date?: string; end_date?: string }
-): Promise<Record<string, unknown>[]> {
+  params: { exercise_id?: string; exercise_name?: string; start_date?: string; end_date?: string; limit?: number; offset?: number }
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const { limit, offset } = normalizePagination(params.limit, params.offset);
+
   return withClient(userId, async (client) => {
     let exerciseId = params.exercise_id;
     if (!exerciseId && params.exercise_name) {
@@ -655,31 +800,47 @@ export async function getExerciseProgress(
 
     if (!exerciseId) throw new Error("Exercise not found");
 
-    let query = `
-      SELECT ee.entry_date, MAX(ees.weight) as max_weight, MAX(ees.reps) as max_reps, SUM(ees.reps * COALESCE(ees.weight, 0)) as total_volume
-      FROM exercise_entries ee
-      JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
-      WHERE ee.user_id = $1 AND ee.exercise_id = $2
-    `;
+    let where = `ee.user_id = $1 AND ee.exercise_id = $2`;
     const queryParams: any[] = [userId, exerciseId];
     let paramIdx = 3;
 
     if (params.start_date) {
-      query += ` AND ee.entry_date >= $${paramIdx}`;
+      where += ` AND ee.entry_date >= $${paramIdx}`;
       queryParams.push(params.start_date);
       paramIdx++;
     }
     if (params.end_date) {
-      query += ` AND ee.entry_date <= $${paramIdx}`;
+      where += ` AND ee.entry_date <= $${paramIdx}`;
       queryParams.push(params.end_date);
       paramIdx++;
     }
 
-    query += ` GROUP BY ee.entry_date ORDER BY ee.entry_date ASC`;
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM (
+         SELECT ee.entry_date
+         FROM exercise_entries ee
+         JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
+         WHERE ${where}
+         GROUP BY ee.entry_date
+       ) progress_days`,
+      queryParams,
+    );
 
-    const result = await client.query(query, queryParams);
-    return result.rows;
+    const result = await client.query(
+      `SELECT ee.entry_date,
+              MAX(ees.weight) AS max_weight,
+              MAX(ees.reps) AS max_reps,
+              SUM(ees.reps * COALESCE(ees.weight, 0)) AS total_volume
+       FROM exercise_entries ee
+       JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
+       WHERE ${where}
+       GROUP BY ee.entry_date
+       ORDER BY ee.entry_date ASC
+       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      [...queryParams, limit, offset],
+    );
+
+    return buildPaginatedResult(result.rows, countResult.rows[0]?.count ?? 0, offset);
   });
 }
-
-

@@ -11,7 +11,6 @@ import { registerProfileTools } from "./profile.js";
 import { registerHabitTools } from "./habits.js";
 import { registerWizardTools } from "./wizard.js";
 import { registerReportTools } from "./report.js";
-
 /**
  * Registers all MCP tools for the authenticated user.
  * Each tool module is imported and its register function called.

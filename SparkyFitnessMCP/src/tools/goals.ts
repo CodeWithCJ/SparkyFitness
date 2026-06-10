@@ -4,6 +4,7 @@ import * as goalService from "../services/goalService.js";
 import { ERRORS } from "../utils/errors.js";
 import { formatList, formatConfirmation, formatSuccess } from "../utils/formatting.js";
 import type { ToolResponse } from "../types.js";
+import { z } from "zod";
 
 const VALID_ACTIONS = ["get_goals", "set_goals", "list_goal_timeline"];
 
@@ -73,4 +74,31 @@ Actions:
       }
     }
   );
+
+
+const goalSnapshotSchema = z.object({
+    target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  });
+
+  server.registerTool("sparky_get_goal_snapshot", {
+    title: "Get Goal Snapshot",
+    description: "Returns the goals active on a specific date.",
+    inputSchema: goalSnapshotSchema.shape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (rawArgs): Promise<ToolResponse> => {
+    const parsed = goalSnapshotSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      return ERRORS.VALIDATION(parsed.error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+    }
+    try {
+      const data = await goalService.getGoals(userId, parsed.data.target_date);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: { data } };
+    } catch (error) {
+      console.error("[Goal Tool] sparky_get_goal_snapshot error:", error);
+      if (error instanceof Error && error.message.includes("not found")) {
+        return ERRORS.NOT_FOUND("Goal", parsed.data.target_date || "unknown");
+      }
+      return ERRORS.DB_ERROR();
+    }
+  });
 }
