@@ -12,10 +12,9 @@ const { Agent } = undici;
  * handling. It takes an already-resolved provider config (callers fetch the
  * setting via `chatRepository` and pass it in) and never touches the DB.
  *
- * The four hand-rolled dispatch ladders (`foodPhotoEstimationService`,
- * `labelScanService`, `aiUnitConversionService`, and chat's
- * `processFoodOptionsRequest`) migrate onto this module in follow-up PRs;
- * this module is purely additive infrastructure.
+ * All four cloud-AI consumers dispatch through this module:
+ * `foodPhotoEstimationService`, `labelScanService`,
+ * `aiUnitConversionService`, and chat's `processFoodOptionsRequest`.
  */
 
 /** Promoted from the local interface in `aiUnitConversionService`. */
