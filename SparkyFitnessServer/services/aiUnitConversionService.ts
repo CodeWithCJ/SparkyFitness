@@ -90,7 +90,7 @@ function buildPrompt(params: {
 // OpenAI `json_schema` name / Anthropic tool name passed to the dispatch helper.
 const SCHEMA_NAME = 'unit_conversion';
 
-// Deterministic numeric estimation (pre-migration: 0.2 openai-family, 0 ollama).
+// Deterministic numeric estimation.
 const UNIT_CONVERSION_TEMPERATURE = 0;
 
 // STRUCTURED_OUTPUT_SCHEMA is `as const` (readonly), so it needs widening to
@@ -98,10 +98,10 @@ const UNIT_CONVERSION_TEMPERATURE = 0;
 const UNIT_CONVERSION_SCHEMA =
   STRUCTURED_OUTPUT_SCHEMA as unknown as JsonSchemaNode;
 
-// api_key/custom_url checks moved into dispatch; map them back to the legacy
-// 404. Everything else is a 502 carrying the dispatch detail. Declared with
-// `satisfies` so a future new DispatchErrorCategory is a compile error here,
-// not a silent `undefined`.
+// api_key_missing/custom_url_missing map to NoAiServiceError so the route
+// keeps answering 404 for a half-configured service. Everything else is a 502
+// carrying the dispatch detail. Declared with `satisfies` so a future new
+// DispatchErrorCategory is a compile error here, not a silent `undefined`.
 const DISPATCH_ERROR_TO_THROW = {
   api_key_missing: () => new NoAiServiceError(),
   custom_url_missing: () => new NoAiServiceError(),

@@ -817,7 +817,6 @@ async function processFoodOptionsRequest(
       error: 'AI service setting not found for the provided ID.',
     };
   }
-  // Log which source was used
   const source = aiService.source || 'unknown';
   log(
     'info',

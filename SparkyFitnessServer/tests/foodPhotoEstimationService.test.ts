@@ -7,8 +7,8 @@ vi.mock('../config/logging', () => ({ log: vi.fn() }));
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)
-// Copied from providerDispatch.test.ts — this suite drives the real
-// dispatchAiRequest, so it needs the same transport stubs.
+// This suite drives the real dispatchAiRequest, so it needs the same
+// transport stubs as providerDispatch.test.ts.
 vi.mock('undici', () => {
   // Regular function (not arrow) so it is constructable via `new Agent(...)`.
   const Agent = vi.fn(function () {
@@ -99,9 +99,9 @@ function openAiBody(payload: unknown) {
     ],
   };
 }
-// The new unified schemaName is 'food_photo_estimate'; the helper's extractor
-// finds the tool block by that name, so the body must emit it (the old
-// 'submit_food_estimate' would mis-extract → UPSTREAM_ERROR).
+// The helper's extractor finds the tool block by the service's schemaName
+// ('food_photo_estimate'), so the body must emit exactly that name — any
+// other name mis-extracts → UPSTREAM_ERROR.
 function anthropicToolBody(payload: unknown) {
   return {
     stop_reason: 'tool_use',

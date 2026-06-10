@@ -11,13 +11,8 @@ const { Agent } = undici;
  * structured-output strategy, per-provider response extraction, and JSON
  * handling. It takes an already-resolved provider config (callers fetch the
  * setting via `chatRepository` and pass it in) and never touches the DB.
- *
- * All four cloud-AI consumers dispatch through this module:
- * `foodPhotoEstimationService`, `labelScanService`,
- * `aiUnitConversionService`, and chat's `processFoodOptionsRequest`.
  */
 
-/** Promoted from the local interface in `aiUnitConversionService`. */
 export interface ProviderConfig {
   service_type: string;
   api_key?: string;
@@ -31,10 +26,7 @@ export interface DispatchImage {
   mimeType: string;
 }
 
-/**
- * A minimal JSON Schema node. Canonical copy lives here; food-photo keeps its
- * private copy until it migrates, then imports this one.
- */
+/** A minimal JSON Schema node. */
 export interface JsonSchemaNode {
   type?: string;
   properties?: Record<string, JsonSchemaNode>;
@@ -157,9 +149,6 @@ function stripCodeFences(content: string): string {
  * `input_schema` (strict: true). Deep clones, recursively strips
  * `propertyOrdering` (non-standard, rejected in strict mode) and adds
  * `additionalProperties: false` to every object node.
- *
- * Moved here from `foodPhotoEstimationService`; exported so callers and tests
- * share one canonical implementation.
  */
 export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
   const clone: JsonSchemaNode = JSON.parse(JSON.stringify(input));

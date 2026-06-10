@@ -9,8 +9,8 @@ vi.mock('../config/logging', () => ({ log: vi.fn() }));
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)
-// Copied from providerDispatch.test.ts — this suite drives the real
-// dispatchAiRequest, so it needs the same transport stubs.
+// This suite drives the real dispatchAiRequest, so it needs the same
+// transport stubs as providerDispatch.test.ts.
 vi.mock('undici', () => {
   // Regular function (not arrow) so it is constructable via `new Agent(...)`.
   const Agent = vi.fn(function () {
