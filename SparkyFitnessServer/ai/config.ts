@@ -5,11 +5,11 @@ function getDefaultModel(serviceType: any) {
     case 'openai_compatible':
       return 'gpt-4o-mini';
     case 'anthropic':
-      return 'claude-3-5-sonnet-20241022';
+      return 'claude-sonnet-4-6';
     case 'google':
       return 'gemini-2.5-flash';
     case 'mistral':
-      return 'mistral-large-latest';
+      return 'mistral-small-latest';
     case 'groq':
       return 'llama-3.3-70b-versatile';
     case 'openrouter':
@@ -31,9 +31,9 @@ function getDefaultVisionModel(serviceType: any) {
     case 'google':
       return 'gemini-2.5-flash';
     case 'mistral':
-      return 'pixtral-large-latest';
+      return 'mistral-small-latest';
     case 'groq':
-      return 'llama-3.2-11b-vision-preview';
+      return 'meta-llama/llama-4-scout-17b-16e-instruct';
     case 'openrouter':
       return 'google/gemini-2.5-flash';
     case 'ollama':

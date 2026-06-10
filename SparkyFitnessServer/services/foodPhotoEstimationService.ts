@@ -329,6 +329,7 @@ async function estimateFoodPhotoNutrition(
     api_key: aiService.api_key ?? undefined,
     model_name: aiService.model_name ?? undefined,
     custom_url: aiService.custom_url ?? undefined,
+    timeout: aiService.timeout ?? undefined,
   };
 
   const result = await dispatchAiRequest({
@@ -337,7 +338,6 @@ async function estimateFoodPhotoNutrition(
     images,
     jsonSchema: RESPONSE_SCHEMA,
     schemaName: SCHEMA_NAME,
-    // Omit timeoutMs → helper default 90s (non-ollama) / 120s (ollama).
   });
 
   if (!result.ok) {

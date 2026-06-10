@@ -24,72 +24,54 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
+// The first entry in each list is the recommended default — the cheapest model
+// that handles SparkyFitness's tasks well. Keep that ordering when refreshing,
+// since ServiceForm surfaces modelOptions[0] as the recommendation.
 export const getModelOptions = (serviceType: string): string[] => {
   switch (serviceType) {
     case 'openai':
     case 'openai_compatible':
       return [
-        'gpt-4o',
         'gpt-4o-mini',
-        'o1',
-        'o1-mini',
-        'o3-mini',
-        'gpt-4-turbo',
-        'gpt-4',
-        'gpt-3.5-turbo',
+        'gpt-5.4-mini',
+        'gpt-5.4-nano',
+        'gpt-4.1-mini',
+        'gpt-4o',
+        'gpt-5.4',
       ];
     case 'anthropic':
-      return [
-        'claude-3-7-sonnet-20250219',
-        'claude-3-5-sonnet-20241022',
-        'claude-3-5-haiku-20241022',
-        'claude-3-opus-20240229',
-        'claude-3-sonnet-20240229',
-        'claude-3-haiku-20240307',
-      ];
+      return ['claude-sonnet-4-6', 'claude-haiku-4-5', 'claude-opus-4-8'];
     case 'google':
       return [
         'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
         'gemini-2.5-pro',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-lite-preview-02-05',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash',
-        'gemini-pro',
+        'gemini-3.5-flash',
+        'gemini-3.1-flash-lite',
       ];
     case 'mistral':
       return [
-        'mistral-large-latest',
-        'pixtral-12b-2409',
-        'pixtral-large-latest',
-        'mistral-medium-latest',
         'mistral-small-latest',
-        'open-mistral-7b',
-        'open-mixtral-8x7b',
+        'mistral-medium-latest',
+        'mistral-large-latest',
       ];
     case 'groq':
       return [
-        'deepseek-r1-distill-llama-70b',
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
-        'llama-3.2-11b-vision-preview',
-        'meta-llama/llama-guard-4-12b',
+        'meta-llama/llama-4-scout-17b-16e-instruct',
+        'openai/gpt-oss-20b',
+        'openai/gpt-oss-120b',
       ];
     case 'openrouter':
       return [
-        'openrouter/owl-alpha',
         'google/gemini-2.5-flash',
-        'google/gemini-2.5-pro',
-        'deepseek/deepseek-r1:free',
-        'deepseek/deepseek-r1',
+        'google/gemini-2.5-flash-lite',
+        'google/gemini-3.5-flash',
+        'anthropic/claude-haiku-4.5',
+        'anthropic/claude-sonnet-4.6',
         'deepseek/deepseek-chat',
-        'anthropic/claude-3.7-sonnet',
-        'google/gemma-3-27b-it:free',
-        'google/gemma-2-9b-it:free',
-        'meta-llama/llama-3.2-3b-instruct:free',
         'meta-llama/llama-3.1-8b-instruct:free',
-        'qwen/qwen-2.5-72b-instruct:free',
-        'meta-llama/llama-3.1-405b:free',
       ];
     default:
       return [];
