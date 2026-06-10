@@ -89,8 +89,14 @@ type ProviderFamily = 'google' | 'openai' | 'anthropic' | 'ollama';
 const HEIC_MIME_TYPES = new Set(['image/heic', 'image/heif']);
 
 // OpenAI-family providers that reliably support strict `response_format.json_schema`.
-// Others (mistral/openai_compatible/custom) fall back to `json_object`.
-const STRICT_SCHEMA_PROVIDERS = new Set(['openai', 'groq', 'openrouter']);
+// Others (openai_compatible/custom) fall back to `json_object` with the schema
+// embedded in the prompt, since arbitrary compatible servers may not support it.
+const STRICT_SCHEMA_PROVIDERS = new Set([
+  'openai',
+  'mistral',
+  'groq',
+  'openrouter',
+]);
 
 function providerFamily(serviceType: string): ProviderFamily | null {
   switch (serviceType) {
@@ -267,6 +273,15 @@ function buildGoogleRequest(
 }
 
 function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
+  const useStrictSchema =
+    ctx.jsonSchema !== undefined &&
+    STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type);
+  // `json_object` mode only guarantees syntactically valid JSON; the model
+  // never sees the schema unless it is in the prompt, so embed it there.
+  const prompt =
+    ctx.jsonSchema && !useStrictSchema
+      ? `${ctx.prompt}\n\nRespond with a single JSON object that conforms to this JSON Schema:\n${JSON.stringify(toStrictJsonSchema(ctx.jsonSchema))}`
+      : ctx.prompt;
   const content =
     ctx.images.length > 0
       ? [
@@ -274,9 +289,9 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
             type: 'image_url',
             image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
           })),
-          { type: 'text', text: ctx.prompt },
+          { type: 'text', text: prompt },
         ]
-      : ctx.prompt;
+      : prompt;
   const body: Record<string, unknown> = {
     model: ctx.model,
     messages: [{ role: 'user', content }],
@@ -285,7 +300,7 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
     body.temperature = ctx.temperature;
   }
   if (ctx.jsonSchema) {
-    if (STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type)) {
+    if (useStrictSchema) {
       body.response_format = {
         type: 'json_schema',
         json_schema: {

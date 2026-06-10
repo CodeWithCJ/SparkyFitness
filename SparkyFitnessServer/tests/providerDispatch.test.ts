@@ -257,17 +257,21 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(body.provider).toEqual({ require_parameters: true });
   });
 
-  it('mistral uses json_object mode (no strict schema)', async () => {
+  it('mistral mirrors openai strict json_schema but without provider.require_parameters', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({ provider: makeProvider({ service_type: 'mistral' }) })
     );
     const { url, body } = captured(m);
     expect(url).toBe('https://api.mistral.ai/v1/chat/completions');
-    expect(body.response_format).toEqual({ type: 'json_object' });
+    expect((body.response_format as { type: string }).type).toBe('json_schema');
+    expect(body.provider).toBeUndefined();
+    // Strict mode carries the schema; the prompt stays clean.
+    const messages = body.messages as Array<{ content: string }>;
+    expect(messages[0].content).toBe('Do the thing.');
   });
 
-  it('openai_compatible appends /chat/completions to custom_url and uses json_object', async () => {
+  it('openai_compatible appends /chat/completions to custom_url and uses json_object with the schema embedded in the prompt', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -280,9 +284,15 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     const { url, body } = captured(m);
     expect(url).toBe('https://example.local/v1/chat/completions');
     expect(body.response_format).toEqual({ type: 'json_object' });
+    // json_object mode does not carry the schema, so the prompt must.
+    const messages = body.messages as Array<{ content: string }>;
+    expect(messages[0].content).toContain('Do the thing.');
+    expect(messages[0].content).toContain(
+      JSON.stringify(toStrictJsonSchema(SCHEMA))
+    );
   });
 
-  it('custom uses the user-supplied URL as-is and json_object', async () => {
+  it('custom uses the user-supplied URL as-is and json_object with the schema embedded in the prompt', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -295,6 +305,10 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     const { url, body } = captured(m);
     expect(url).toBe('https://example.local/api/foo');
     expect(body.response_format).toEqual({ type: 'json_object' });
+    const messages = body.messages as Array<{ content: string }>;
+    expect(messages[0].content).toContain(
+      JSON.stringify(toStrictJsonSchema(SCHEMA))
+    );
   });
 
   it('gemini sends responseMimeType + responseSchema with additionalProperties stripped, propertyOrdering kept', async () => {
@@ -403,6 +417,28 @@ describe('dispatchAiRequest — vision request shapes', () => {
     expect(imagePart.image_url.url).toBe(
       `data:${IMG.mimeType};base64,${IMG.base64}`
     );
+  });
+
+  it('json_object fallback embeds the schema in the text part alongside images', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://example.local/v1',
+        }),
+        images: [IMG],
+      })
+    );
+    const { body } = captured(m);
+    const content = (
+      body.messages as Array<{ content: Array<Record<string, unknown>> }>
+    )[0].content;
+    const textPart = content.find((p) => p.type === 'text') as {
+      text: string;
+    };
+    expect(textPart.text).toContain('Do the thing.');
+    expect(textPart.text).toContain(JSON.stringify(toStrictJsonSchema(SCHEMA)));
   });
 
   it('anthropic sends a base64 image source block', async () => {

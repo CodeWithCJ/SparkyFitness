@@ -356,6 +356,13 @@ async function estimateFoodPhotoNutrition(
       `Food-photo estimation: ${provider.service_type} JSON failed schema validation for user ${userId}`,
       parsed.error.issues
     );
+    // The issues above describe what was *missing* against the expected shape;
+    // logging the raw payload shows what the provider *actually* returned, which
+    // is what you need to tell "wrong shape" from "truncated/garbage".
+    log(
+      'debug',
+      `Food-photo estimation: ${provider.service_type} raw response that failed validation for user ${userId}: ${result.text.slice(0, 4000)}`
+    );
     return {
       success: false,
       code: 'PARSE_ERROR',
