@@ -1,13 +1,28 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import chatRepository from '../models/chatRepository.js';
-import {
-  estimateFoodPhotoNutrition,
-  toStrictJsonSchema,
-  RESPONSE_SCHEMA,
-} from '../services/foodPhotoEstimationService.js';
+import { estimateFoodPhotoNutrition } from '../services/foodPhotoEstimationService.js';
 
 vi.mock('../models/chatRepository');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+
+// Mock the undici Agent so the Ollama path never constructs a real agent.
+// (global.fetch is mocked per-test; the dispatcher option is ignored by it.)
+// This suite drives the real dispatchAiRequest, so it needs the same
+// transport stubs as providerDispatch.test.ts.
+vi.mock('undici', () => {
+  // Regular function (not arrow) so it is constructable via `new Agent(...)`.
+  const Agent = vi.fn(function () {
+    return { destroy: vi.fn() };
+  });
+  return { default: { Agent }, Agent };
+});
+
+const mockGetActiveSetting = vi.mocked(
+  chatRepository.getActiveAiServiceSetting
+);
+const mockGetBackendSetting = vi.mocked(
+  chatRepository.getAiServiceSettingForBackend
+);
 
 const TEST_USER_ID = 'user-123';
 const TEST_BASE64 = 'iVBORw0KGgoAAAANSUhEUg==';
@@ -34,6 +49,8 @@ const makeServiceDetail = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+// Satisfies foodPhotoEstimateResponseSchema; reused as both the upstream
+// payload and the expected parsed estimate.
 const sampleEstimate = {
   meal_summary: 'Grilled chicken with rice',
   overall_confidence: 'high',
@@ -67,45 +84,90 @@ const sampleEstimate = {
   clarifying_questions: [],
 };
 
-function mockGoogleSuccess(payload: unknown) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      candidates: [
-        {
-          content: {
-            parts: [{ text: JSON.stringify(payload) }],
-          },
-        },
-      ],
-    }),
-  });
+// Per-family upstream response-body factories matching each provider's wire
+// shape. google/openai/ollama deliver the payload as a JSON *string* the helper
+// parses; anthropic returns the object directly in a tool_use block.
+function googleBody(payload: unknown) {
+  return {
+    candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }],
+  };
+}
+function openAiBody(payload: unknown) {
+  return {
+    choices: [
+      { finish_reason: 'stop', message: { content: JSON.stringify(payload) } },
+    ],
+  };
+}
+// The helper's extractor finds the tool block by the service's schemaName
+// ('food_photo_estimate'), so the body must emit exactly that name — any
+// other name mis-extracts → UPSTREAM_ERROR.
+function anthropicToolBody(payload: unknown) {
+  return {
+    stop_reason: 'tool_use',
+    content: [
+      { type: 'tool_use', name: 'food_photo_estimate', input: payload },
+    ],
+  };
+}
+function ollamaBody(payload: unknown) {
+  return { message: { content: JSON.stringify(payload) } };
 }
 
-function mockOpenAiSuccess(payload: unknown) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      choices: [
-        {
-          finish_reason: 'stop',
-          message: { content: JSON.stringify(payload) },
-        },
-      ],
-    }),
-  });
+type ProviderFamily = 'google' | 'openai' | 'anthropic' | 'ollama';
+
+function familyFor(serviceType: string): ProviderFamily {
+  switch (serviceType) {
+    case 'google':
+      return 'google';
+    case 'anthropic':
+      return 'anthropic';
+    case 'ollama':
+      return 'ollama';
+    default:
+      return 'openai';
+  }
 }
 
-function mockAnthropicSuccess(payload: unknown) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      stop_reason: 'tool_use',
-      content: [
-        { type: 'tool_use', name: 'submit_food_estimate', input: payload },
-      ],
-    }),
+function bodyFor(serviceType: string, payload: unknown) {
+  switch (familyFor(serviceType)) {
+    case 'google':
+      return googleBody(payload);
+    case 'anthropic':
+      return anthropicToolBody(payload);
+    case 'ollama':
+      return ollamaBody(payload);
+    default:
+      return openAiBody(payload);
+  }
+}
+
+function mockFetch(
+  jsonBody: unknown,
+  init: { ok?: boolean; status?: number } = {}
+) {
+  const m = vi.fn().mockResolvedValue({
+    ok: init.ok ?? true,
+    status: init.status ?? 200,
+    text: async () => (typeof jsonBody === 'string' ? jsonBody : ''),
+    json: async () => jsonBody,
   });
+  global.fetch = m as typeof global.fetch;
+  return m;
+}
+
+function capturedBody(m: ReturnType<typeof vi.fn>): Record<string, unknown> {
+  const call = m.mock.calls[0];
+  const init = call[1] as { body: string };
+  return JSON.parse(init.body) as Record<string, unknown>;
+}
+
+// The prompt-building tests run against google, where the prompt lives in the
+// last (text) part of the request body.
+function googlePromptText(body: Record<string, unknown>): string {
+  const parts = (body.contents as Array<{ parts: Array<{ text?: string }> }>)[0]
+    .parts;
+  return parts.find((p) => typeof p.text === 'string')?.text ?? '';
 }
 
 describe('estimateFoodPhotoNutrition', () => {
@@ -117,436 +179,68 @@ describe('estimateFoodPhotoNutrition', () => {
     global.fetch = originalFetch;
   });
 
-  it('returns NO_AI_CONFIGURED when getActiveAiServiceSetting returns null', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(null);
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('NO_AI_CONFIGURED');
-    }
-  });
+  // Each entry sets the backend detail used for dispatch. The provider comes
+  // from the backend mock, not the active-setting mock.
+  const PROVIDER_CASES: {
+    service_type: string;
+    api_key: string | null;
+    custom_url?: string;
+  }[] = [
+    { service_type: 'google', api_key: 'gem-key' },
+    { service_type: 'openai', api_key: 'sk-test' },
+    { service_type: 'anthropic', api_key: 'anth-key' },
+    { service_type: 'mistral', api_key: 'mistral-key' },
+    { service_type: 'groq', api_key: 'groq-key' },
+    { service_type: 'openrouter', api_key: 'or-key' },
+    {
+      service_type: 'openai_compatible',
+      api_key: 'oc-key',
+      custom_url: 'https://example.local/v1',
+    },
+    {
+      service_type: 'custom',
+      api_key: 'custom-key',
+      custom_url: 'https://example.local/api/foo',
+    },
+    {
+      service_type: 'ollama',
+      api_key: null,
+      custom_url: 'http://localhost:11434',
+    },
+  ];
 
-  it('returns NO_AI_CONFIGURED when getAiServiceSettingForBackend returns null', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(null);
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('NO_AI_CONFIGURED');
-    }
-  });
+  describe('all-provider happy path', () => {
+    it.each(PROVIDER_CASES)(
+      'returns the parsed estimate for $service_type',
+      async ({ service_type, api_key, custom_url }) => {
+        mockGetActiveSetting.mockResolvedValue(makeSetting({ service_type }));
+        mockGetBackendSetting.mockResolvedValue(
+          makeServiceDetail({
+            service_type,
+            api_key,
+            custom_url: custom_url ?? null,
+          })
+        );
+        mockFetch(bodyFor(service_type, sampleEstimate));
 
-  it('returns UNSUPPORTED_PROVIDER when active provider is not in allow-list', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-      makeSetting({ service_type: 'mistral', source: 'global' })
-    );
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('UNSUPPORTED_PROVIDER');
-      expect(result.error).toContain('mistral');
-      expect(result.error).toContain('google');
-      expect(result.error).toContain('openai');
-      expect(result.error).toContain('anthropic');
-    }
-    expect(chatRepository.getAiServiceSettingForBackend).not.toHaveBeenCalled();
-  });
+        const result = await estimateFoodPhotoNutrition({
+          base64Image: TEST_BASE64,
+          mimeType: TEST_MIME,
+          userId: TEST_USER_ID,
+        });
 
-  it('returns API_KEY_MISSING when provider setting has no api_key', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail({ api_key: null })
-    );
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('API_KEY_MISSING');
-    }
-  });
-
-  it('rejects HEIC with UNSUPPORTED_MIME_TYPE for openai before any upstream call', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-      makeSetting({ service_type: 'openai' })
-    );
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail({ service_type: 'openai', api_key: 'oai-key' })
-    );
-    const fetchSpy = vi.fn();
-    global.fetch = fetchSpy;
-    const result = await estimateFoodPhotoNutrition({
-      images: [{ base64: 'aGVsbG8=', mimeType: 'image/heic' }],
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('UNSUPPORTED_MIME_TYPE');
-    }
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('allows HEIC for google (Gemini supports it)', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    mockGoogleSuccess(sampleEstimate);
-    const result = await estimateFoodPhotoNutrition({
-      images: [{ base64: 'aGVsbG8=', mimeType: 'image/heic' }],
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('returns the parsed estimate on Google happy path', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    mockGoogleSuccess(sampleEstimate);
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.estimate.meal_summary).toBe('Grilled chicken with rice');
-      expect(result.estimate.totals.calories_kcal).toBe(250);
-    }
-  });
-
-  it('returns PARSE_ERROR when Gemini text is not JSON', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: 'not json at all' }] } }],
-      }),
-    });
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('PARSE_ERROR');
-    }
-  });
-
-  it('returns PARSE_ERROR when Gemini JSON has the wrong shape', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    const wrongShape = { ...sampleEstimate };
-    // @ts-expect-error deliberately removing required field
-    delete wrongShape.totals;
-    mockGoogleSuccess(wrongShape);
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('PARSE_ERROR');
-    }
-  });
-
-  it('returns CONTENT_BLOCKED when Google returns no text part', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [] } }],
-      }),
-    });
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('CONTENT_BLOCKED');
-    }
-  });
-
-  it('returns UPSTREAM_ERROR when provider returns 500', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: async () => 'Internal server error',
-    });
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('UPSTREAM_ERROR');
-    }
-  });
-
-  it('returns UPSTREAM_ERROR when fetch rejects', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    global.fetch = vi.fn().mockRejectedValue(new Error('network down'));
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('UPSTREAM_ERROR');
-    }
-  });
-
-  it.each([
-    ['TimeoutError', 'The operation was aborted due to timeout'],
-    ['AbortError', 'The operation was aborted'],
-  ])(
-    'returns TIMEOUT when fetch rejects with %s (server treats user-cancel and timeout the same)',
-    async (errorName, errorMessage) => {
-      // @ts-expect-error mocked
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeServiceDetail()
-      );
-      const err = new Error(errorMessage);
-      err.name = errorName;
-      global.fetch = vi.fn().mockRejectedValue(err);
-      const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.code).toBe('TIMEOUT');
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.estimate.meal_summary).toBe(
+            'Grilled chicken with rice'
+          );
+          expect(result.estimate.totals.calories_kcal).toBe(250);
+        }
       }
-    }
-  );
-
-  it('calls AbortSignal.timeout(90_000) and passes the returned signal to fetch', async () => {
-    // Locks in the actual contract: the 90s constant is supplied, and the signal
-    // produced by AbortSignal.timeout reaches the fetch init. A regression that
-    // replaces it with `new AbortController().signal` (never fires) would not
-    // call the spy and would fail this test.
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
     );
-
-    const sentinelSignal = new AbortController().signal;
-    const timeoutSpy = vi
-      .spyOn(AbortSignal, 'timeout')
-      .mockReturnValue(sentinelSignal);
-
-    try {
-      mockGoogleSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-
-      expect(timeoutSpy).toHaveBeenCalledTimes(1);
-      expect(timeoutSpy).toHaveBeenCalledWith(90_000);
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      expect((options as RequestInit).signal).toBe(sentinelSignal);
-    } finally {
-      timeoutSpy.mockRestore();
-    }
   });
 
-  it('returns UPSTREAM_ERROR when response.json throws', async () => {
-    // @ts-expect-error mocked
-    chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-    // @ts-expect-error mocked
-    chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-      makeServiceDetail()
-    );
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => {
-        throw new Error('invalid json body');
-      },
-    });
-    const result = await estimateFoodPhotoNutrition({
-      base64Image: TEST_BASE64,
-      mimeType: TEST_MIME,
-      userId: TEST_USER_ID,
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.code).toBe('UPSTREAM_ERROR');
-    }
-  });
-
-  describe('Google request assembly', () => {
-    beforeEach(() => {
-      // @ts-expect-error mocked
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(makeSetting());
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeServiceDetail()
-      );
-      mockGoogleSuccess(sampleEstimate);
-    });
-
-    it("renders weight slot as '<n> oz (approximately <g> g)' when caller supplies that string", async () => {
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-        weightSlot: '16 oz (approximately 454 g)',
-      });
-      // @ts-expect-error mock typing
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toContain('generativelanguage.googleapis.com');
-      expect(url).not.toContain('key=');
-      expect(options.headers['x-goog-api-key']).toBe('gem-key');
-      const body = JSON.parse(options.body);
-      const promptPart = body.contents[0].parts.find(
-        (p: { text?: string }) => typeof p.text === 'string'
-      );
-      expect(promptPart.text).toContain('16 oz (approximately 454 g)');
-      expect(body.generationConfig.responseSchema).toBeDefined();
-      expect(body.generationConfig.responseMimeType).toBe('application/json');
-    });
-
-    it('sends the base64 image and mime type in the inline_data part', async () => {
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const imagePart = body.contents[0].parts.find(
-        (p: { inline_data?: unknown }) => p.inline_data !== undefined
-      );
-      expect(imagePart).toBeDefined();
-      expect(imagePart.inline_data.data).toBe(TEST_BASE64);
-      expect(imagePart.inline_data.mime_type).toBe(TEST_MIME);
-    });
-
-    it('emits one inline_data part per image when given multiple images, prompt last', async () => {
-      await estimateFoodPhotoNutrition({
-        images: [
-          { base64: 'aW1nMQ==', mimeType: 'image/jpeg' },
-          { base64: 'aW1nMg==', mimeType: 'image/png' },
-        ],
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const parts = body.contents[0].parts;
-      const imageParts = parts.filter(
-        (p: { inline_data?: unknown }) => p.inline_data !== undefined
-      );
-      expect(imageParts).toHaveLength(2);
-      expect(imageParts[0].inline_data.data).toBe('aW1nMQ==');
-      expect(imageParts[0].inline_data.mime_type).toBe('image/jpeg');
-      expect(imageParts[1].inline_data.data).toBe('aW1nMg==');
-      expect(imageParts[1].inline_data.mime_type).toBe('image/png');
-      // Prompt text part comes after the images.
-      expect(typeof parts[parts.length - 1].text).toBe('string');
-    });
-
-    it('tells the model multiple images are one meal when given several', async () => {
-      await estimateFoodPhotoNutrition({
-        images: [
-          { base64: 'aW1nMQ==', mimeType: 'image/jpeg' },
-          { base64: 'aW1nMg==', mimeType: 'image/jpeg' },
-        ],
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const promptPart = body.contents[0].parts.find(
-        (p: { text?: string }) => typeof p.text === 'string'
-      );
-      expect(promptPart.text).toContain('2 provided photos');
-      expect(promptPart.text).toContain('ONE meal');
-    });
-
-    it('keeps the singular prompt for a single image', async () => {
-      await estimateFoodPhotoNutrition({
-        images: [{ base64: 'aW1n', mimeType: 'image/jpeg' }],
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const promptPart = body.contents[0].parts.find(
-        (p: { text?: string }) => typeof p.text === 'string'
-      );
-      expect(promptPart.text).toContain('Analyze the meal photo');
-      expect(promptPart.text).not.toContain('ONE meal');
-    });
-
+  describe('service plumbing', () => {
     it('returns INVALID_REQUEST when no image is supplied', async () => {
       const result = await estimateFoodPhotoNutrition({
         images: [],
@@ -558,464 +252,280 @@ describe('estimateFoodPhotoNutrition', () => {
       }
     });
 
-    it("normalizes 'image/jpg' to 'image/jpeg' before sending to the provider", async () => {
-      await estimateFoodPhotoNutrition({
-        images: [{ base64: 'aW1n', mimeType: 'image/jpg' }],
+    it('returns NO_AI_CONFIGURED when getActiveAiServiceSetting returns null', async () => {
+      mockGetActiveSetting.mockResolvedValue(null);
+      const result = await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
         userId: TEST_USER_ID,
       });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const imagePart = body.contents[0].parts.find(
-        (p: { inline_data?: { mime_type?: string } }) =>
-          p.inline_data !== undefined
-      );
-      expect(imagePart.inline_data.mime_type).toBe('image/jpeg');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('NO_AI_CONFIGURED');
+      }
     });
 
-    it("renders weight slot as '<n> g' for gram input", async () => {
+    it('returns NO_AI_CONFIGURED when getAiServiceSettingForBackend returns null', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetBackendSetting.mockResolvedValue(null);
+      const result = await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('NO_AI_CONFIGURED');
+      }
+    });
+
+    it('returns API_KEY_MISSING when a non-ollama provider has no api_key', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetBackendSetting.mockResolvedValue(
+        makeServiceDetail({ api_key: null })
+      );
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof global.fetch;
+      const result = await estimateFoodPhotoNutrition({
+        base64Image: TEST_BASE64,
+        mimeType: TEST_MIME,
+        userId: TEST_USER_ID,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('API_KEY_MISSING');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('prompt building (service-owned)', () => {
+    beforeEach(() => {
+      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
+    });
+
+    it('renders the weight slot the caller supplies', async () => {
+      const m = mockFetch(googleBody(sampleEstimate));
       await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
         userId: TEST_USER_ID,
-        weightSlot: '450 g',
+        weightSlot: '16 oz (approximately 454 g)',
       });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const promptPart = body.contents[0].parts.find(
-        (p: { text?: string }) => typeof p.text === 'string'
+      expect(googlePromptText(capturedBody(m))).toContain(
+        '16 oz (approximately 454 g)'
       );
-      expect(promptPart.text).toContain('450 g');
     });
 
     it('renders an empty weight slot when no weight is provided', async () => {
+      const m = mockFetch(googleBody(sampleEstimate));
       await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
         userId: TEST_USER_ID,
       });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const promptPart = body.contents[0].parts.find(
-        (p: { text?: string }) => typeof p.text === 'string'
-      );
-      expect(promptPart.text).toContain(
+      expect(googlePromptText(capturedBody(m))).toContain(
         'User-provided total weight (optional): ""'
       );
     });
 
-    it('uses the user-configured model_name in the Gemini URL', async () => {
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeServiceDetail({ model_name: 'gemini-2.5-pro' })
-      );
+    it('keeps the singular prompt for a single image', async () => {
+      const m = mockFetch(googleBody(sampleEstimate));
       await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
+        images: [{ base64: 'aW1n', mimeType: 'image/jpeg' }],
         userId: TEST_USER_ID,
       });
-      // @ts-expect-error mock typing
-      const [url] = global.fetch.mock.calls[0];
-      expect(url).toContain('gemini-2.5-pro');
+      const prompt = googlePromptText(capturedBody(m));
+      expect(prompt).toContain('Analyze the meal photo');
+      expect(prompt).not.toContain('ONE meal');
     });
 
-    it('falls back to the central vision default when user has no model_name', async () => {
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        makeServiceDetail({ model_name: null })
-      );
+    it('tells the model multiple images are one meal when given several', async () => {
+      const m = mockFetch(googleBody(sampleEstimate));
       await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
+        images: [
+          { base64: 'aW1nMQ==', mimeType: 'image/jpeg' },
+          { base64: 'aW1nMg==', mimeType: 'image/jpeg' },
+        ],
         userId: TEST_USER_ID,
       });
-      // @ts-expect-error mock typing
-      const [url] = global.fetch.mock.calls[0];
-      expect(url).toContain('gemini-2.5-flash');
+      const prompt = googlePromptText(capturedBody(m));
+      expect(prompt).toContain('2 provided photos');
+      expect(prompt).toContain('ONE meal');
     });
   });
 
-  describe('OpenAI provider', () => {
-    const openAiSetting = makeSetting({ service_type: 'openai' });
-    const openAiDetail = makeServiceDetail({
-      service_type: 'openai',
-      api_key: 'sk-test',
-      model_name: 'gpt-3.5-turbo',
-    });
-
-    beforeEach(() => {
-      // @ts-expect-error mocked
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(openAiSetting);
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        openAiDetail
+  describe('dispatch category → food-photo code mapping', () => {
+    function mockGoogle() {
+      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
+    }
+    function mockOpenAi() {
+      mockGetActiveSetting.mockResolvedValue(
+        makeSetting({ service_type: 'openai' })
       );
-    });
+      mockGetBackendSetting.mockResolvedValue(
+        makeServiceDetail({ service_type: 'openai', api_key: 'sk-test' })
+      );
+    }
 
-    it('returns the parsed estimate on happy path', async () => {
-      mockOpenAiSuccess(sampleEstimate);
-      const result = await estimateFoodPhotoNutrition({
+    const estimate = () =>
+      estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
         userId: TEST_USER_ID,
       });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.estimate.meal_summary).toBe('Grilled chicken with rice');
+
+    it.each([['TimeoutError'], ['AbortError']])(
+      'maps a %s fetch rejection → TIMEOUT',
+      async (errorName) => {
+        mockGoogle();
+        const err = new Error('aborted');
+        err.name = errorName;
+        global.fetch = vi.fn().mockRejectedValue(err) as typeof global.fetch;
+        const result = await estimate();
+        expect(result.success).toBe(false);
+        if (!result.success) expect(result.code).toBe('TIMEOUT');
       }
+    );
+
+    it('maps a non-2xx upstream response → UPSTREAM_ERROR', async () => {
+      mockGoogle();
+      mockFetch('Internal server error', { ok: false, status: 500 });
+      const result = await estimate();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.code).toBe('UPSTREAM_ERROR');
     });
 
-    it('posts to the chat completions endpoint with bearer auth and strict json_schema', async () => {
-      mockOpenAiSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://api.openai.com/v1/chat/completions');
-      expect(options.headers.Authorization).toBe('Bearer sk-test');
-      const body = JSON.parse(options.body);
-      expect(body.response_format.type).toBe('json_schema');
-      expect(body.response_format.json_schema.strict).toBe(true);
-      const schema = body.response_format.json_schema.schema;
-      expect(schema.additionalProperties).toBe(false);
-      expect(schema.properties.items.items.additionalProperties).toBe(false);
-      expect(schema.properties.totals.additionalProperties).toBe(false);
-    });
-
-    it('sends the base64 image as a data URL in the image_url content part', async () => {
-      mockOpenAiSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const imagePart = body.messages[0].content.find(
-        (p: { type?: string }) => p.type === 'image_url'
-      );
-      expect(imagePart).toBeDefined();
-      expect(imagePart.image_url.url).toBe(
-        `data:${TEST_MIME};base64,${TEST_BASE64}`
-      );
-    });
-
-    it('uses the user-configured model_name', async () => {
-      mockOpenAiSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.model).toBe('gpt-3.5-turbo');
-    });
-
-    it('falls back to the central vision default when user has no model_name', async () => {
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue({
-        ...openAiDetail,
-        model_name: null,
-      });
-      mockOpenAiSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.model).toBe('gpt-4.1-mini');
-    });
-
-    it('returns CONTENT_BLOCKED when message.refusal is set', async () => {
+    it('maps an openai refusal → CONTENT_BLOCKED', async () => {
+      mockOpenAi();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
+        text: async () => '',
         json: async () => ({
           choices: [
-            {
-              finish_reason: 'stop',
-              message: { refusal: "I can't help with that" },
-            },
+            { finish_reason: 'stop', message: { refusal: "I can't help" } },
           ],
         }),
-      });
-      const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
+      }) as typeof global.fetch;
+      const result = await estimate();
       expect(result.success).toBe(false);
       if (!result.success) expect(result.code).toBe('CONTENT_BLOCKED');
     });
 
-    it("returns CONTENT_BLOCKED when finish_reason is 'content_filter'", async () => {
+    it('maps an empty response body → CONTENT_BLOCKED', async () => {
+      // Today's extractors only reject non-string content, so an empty string
+      // would fall through to JSON.parse('') → PARSE_ERROR. The helper treats
+      // empty/whitespace as no_content, which we map to CONTENT_BLOCKED.
+      mockOpenAi();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
+        text: async () => '',
         json: async () => ({
-          choices: [
-            {
-              finish_reason: 'content_filter',
-              message: { content: '' },
-            },
-          ],
+          choices: [{ finish_reason: 'stop', message: { content: '' } }],
         }),
-      });
-      const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
+      }) as typeof global.fetch;
+      const result = await estimate();
       expect(result.success).toBe(false);
       if (!result.success) expect(result.code).toBe('CONTENT_BLOCKED');
     });
 
-    it("returns PARSE_ERROR when finish_reason is 'length' (do not safeParse partial)", async () => {
-      // Provide a content string that is valid JSON but lacks required fields,
-      // to prove the length-truncation path short-circuits BEFORE schema parse.
-      const partial = JSON.stringify({ meal_summary: 'partial' });
+    it('maps invalid JSON → PARSE_ERROR', async () => {
+      mockOpenAi();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
+        text: async () => '',
+        json: async () => ({
+          choices: [
+            { finish_reason: 'stop', message: { content: 'not json at all' } },
+          ],
+        }),
+      }) as typeof global.fetch;
+      const result = await estimate();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.code).toBe('PARSE_ERROR');
+    });
+
+    it("maps finish_reason 'length' (truncated) → PARSE_ERROR", async () => {
+      mockOpenAi();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => '',
         json: async () => ({
           choices: [
             {
               finish_reason: 'length',
-              message: { content: partial },
+              message: { content: '{"meal_summary":"partial"}' },
             },
           ],
         }),
-      });
-      const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
+      }) as typeof global.fetch;
+      const result = await estimate();
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.code).toBe('PARSE_ERROR');
-        expect(result.error.toLowerCase()).toContain('truncated');
-      }
-    });
-  });
-
-  describe('Anthropic provider', () => {
-    const anthropicSetting = makeSetting({ service_type: 'anthropic' });
-    const anthropicDetail = makeServiceDetail({
-      service_type: 'anthropic',
-      api_key: 'anth-test',
-      model_name: 'claude-3-5-sonnet-20241022',
+      if (!result.success) expect(result.code).toBe('PARSE_ERROR');
     });
 
-    beforeEach(() => {
-      // @ts-expect-error mocked
-      chatRepository.getActiveAiServiceSetting.mockResolvedValue(
-        anthropicSetting
+    it('rejects HEIC to anthropic with UNSUPPORTED_MIME_TYPE before any upstream call', async () => {
+      mockGetActiveSetting.mockResolvedValue(
+        makeSetting({ service_type: 'anthropic' })
       );
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
-        anthropicDetail
+      mockGetBackendSetting.mockResolvedValue(
+        makeServiceDetail({ service_type: 'anthropic', api_key: 'anth-key' })
       );
-    });
-
-    it('returns the parsed estimate on happy path', async () => {
-      mockAnthropicSuccess(sampleEstimate);
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof global.fetch;
       const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
+        images: [{ base64: 'aGVsbG8=', mimeType: 'image/heic' }],
         userId: TEST_USER_ID,
       });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.estimate.meal_summary).toBe('Grilled chicken with rice');
-      }
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.code).toBe('UNSUPPORTED_MIME_TYPE');
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('posts to the messages endpoint with x-api-key + anthropic-version, forces tool call, max_tokens >= 2048', async () => {
-      mockAnthropicSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe('https://api.anthropic.com/v1/messages');
-      expect(options.headers['x-api-key']).toBe('anth-test');
-      expect(options.headers['anthropic-version']).toBe('2023-06-01');
-      const body = JSON.parse(options.body);
-      expect(body.max_tokens).toBeGreaterThanOrEqual(2048);
-      expect(body.tool_choice).toEqual({
-        type: 'tool',
-        name: 'submit_food_estimate',
-      });
-      expect(body.tools).toHaveLength(1);
-      expect(body.tools[0].name).toBe('submit_food_estimate');
-      expect(body.tools[0].strict).toBe(true);
-      expect(body.tools[0].input_schema.additionalProperties).toBe(false);
-      expect(
-        body.tools[0].input_schema.properties.items.items.additionalProperties
-      ).toBe(false);
-      expect(
-        body.tools[0].input_schema.properties.totals.additionalProperties
-      ).toBe(false);
-    });
-
-    it('sends the base64 image and media_type in the image source block', async () => {
-      mockAnthropicSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      const imagePart = body.messages[0].content.find(
-        (p: { type?: string }) => p.type === 'image'
+    it('maps a blank custom_url on ollama → NO_AI_CONFIGURED', async () => {
+      mockGetActiveSetting.mockResolvedValue(
+        makeSetting({ service_type: 'ollama' })
       );
-      expect(imagePart).toBeDefined();
-      expect(imagePart.source.type).toBe('base64');
-      expect(imagePart.source.data).toBe(TEST_BASE64);
-      expect(imagePart.source.media_type).toBe(TEST_MIME);
-    });
-
-    it('uses the user-configured model_name', async () => {
-      mockAnthropicSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.model).toBe('claude-3-5-sonnet-20241022');
-    });
-
-    it('falls back to the central vision default when user has no model_name', async () => {
-      // @ts-expect-error mocked
-      chatRepository.getAiServiceSettingForBackend.mockResolvedValue({
-        ...anthropicDetail,
-        model_name: null,
-      });
-      mockAnthropicSuccess(sampleEstimate);
-      await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      // @ts-expect-error mock typing
-      const [, options] = global.fetch.mock.calls[0];
-      const body = JSON.parse(options.body);
-      expect(body.model).toBe('claude-haiku-4-5');
-    });
-
-    it("returns CONTENT_BLOCKED when stop_reason is 'refusal'", async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ stop_reason: 'refusal', content: [] }),
-      });
+      mockGetBackendSetting.mockResolvedValue(
+        makeServiceDetail({
+          service_type: 'ollama',
+          api_key: null,
+          custom_url: '   ',
+        })
+      );
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy as typeof global.fetch;
       const result = await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
         userId: TEST_USER_ID,
       });
       expect(result.success).toBe(false);
-      if (!result.success) expect(result.code).toBe('CONTENT_BLOCKED');
+      if (!result.success) expect(result.code).toBe('NO_AI_CONFIGURED');
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
+  });
 
-    it("returns CONTENT_BLOCKED when stop_reason is 'end_turn' with no tool_use block", async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          stop_reason: 'end_turn',
-          content: [{ type: 'text', text: 'I cannot help with that.' }],
-        }),
-      });
+  describe('domain validation', () => {
+    it('returns PARSE_ERROR when the provider payload fails the Zod schema', async () => {
+      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
+      const wrongShape: Record<string, unknown> = { ...sampleEstimate };
+      delete wrongShape.totals;
+      mockFetch(googleBody(wrongShape));
       const result = await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
         userId: TEST_USER_ID,
       });
       expect(result.success).toBe(false);
-      if (!result.success) expect(result.code).toBe('CONTENT_BLOCKED');
+      if (!result.success) expect(result.code).toBe('PARSE_ERROR');
     });
-
-    it("returns PARSE_ERROR when stop_reason is 'max_tokens' (do not accept partial input)", async () => {
-      const partial = { meal_summary: 'partial' };
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          stop_reason: 'max_tokens',
-          content: [
-            { type: 'tool_use', name: 'submit_food_estimate', input: partial },
-          ],
-        }),
-      });
-      const result = await estimateFoodPhotoNutrition({
-        base64Image: TEST_BASE64,
-        mimeType: TEST_MIME,
-        userId: TEST_USER_ID,
-      });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.code).toBe('PARSE_ERROR');
-        expect(result.error.toLowerCase()).toContain('truncated');
-      }
-    });
-  });
-});
-
-describe('toStrictJsonSchema', () => {
-  it('adds additionalProperties: false to every object node (root, items[], totals)', () => {
-    const strict = toStrictJsonSchema(RESPONSE_SCHEMA as never);
-    expect(strict.additionalProperties).toBe(false);
-    expect(strict.properties?.items?.items?.additionalProperties).toBe(false);
-    expect(strict.properties?.totals?.additionalProperties).toBe(false);
-  });
-
-  it('recursively strips propertyOrdering from every node', () => {
-    const strict = toStrictJsonSchema(RESPONSE_SCHEMA as never);
-    expect(strict.propertyOrdering).toBeUndefined();
-    expect(strict.properties?.items?.items?.propertyOrdering).toBeUndefined();
-    expect(strict.properties?.totals?.propertyOrdering).toBeUndefined();
-  });
-
-  it('does not mutate the source RESPONSE_SCHEMA', () => {
-    const before = JSON.stringify(RESPONSE_SCHEMA);
-    toStrictJsonSchema(RESPONSE_SCHEMA as never);
-    expect(JSON.stringify(RESPONSE_SCHEMA)).toBe(before);
-  });
-
-  it('every key in properties appears in required (strict-mode invariant)', () => {
-    const check = (node: {
-      type?: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-      items?: unknown;
-    }): void => {
-      if (!node || typeof node !== 'object') return;
-      if (node.type === 'object' && node.properties) {
-        const propKeys = Object.keys(node.properties);
-        const requiredSet = new Set(node.required ?? []);
-        for (const key of propKeys) {
-          expect(requiredSet.has(key)).toBe(true);
-        }
-        for (const value of Object.values(node.properties)) {
-          check(value as never);
-        }
-      }
-      if (node.items) check(node.items as never);
-    };
-    check(RESPONSE_SCHEMA as never);
   });
 });

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-04-21_
+_Last updated: 2026-06-10_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -10,7 +10,7 @@ If a task also touches `shared/`, the frontend, or the mobile app, read the rele
 
 - This file is for package-local work in `SparkyFitnessServer/`.
 - Keep changes inside this package unless the task clearly crosses package boundaries.
-- Treat `CLAUDE.md` as legacy context only; this file is the authoritative package guide when they differ.
+- This is the single source of truth for the package; `CLAUDE.md` just imports it via `See @AGENTS.md`.
 - Do not invent alternate boot paths, duplicate route registries, or parallel migration flows when the current startup path already covers the behavior.
 
 ## Current Snapshot
@@ -64,7 +64,10 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `db/` - pool management, grants, migrations, and RLS policies
 - `config/` - logging and Swagger config
 - `utils/` - startup helpers, CORS, permissions, timezone loading, OIDC helpers, migration helpers
-- `ai/`, `constants/`, `data/` - supporting package data and configuration
+- `ai/` - AI provider configuration (`config.ts`) and the unified provider-dispatch helper (`providerDispatch.ts`)
+- `security/` - encryption utilities (`encryption.ts`)
+- `validation/` - legacy express-validator rules for a few older routes (new routes use Zod schemas)
+- `constants/` - shared constants and supporting package data
 - `tests/` - Vitest suites plus a few utility scripts
 - `devdocs/` - local notes and debugging artifacts when present
 
@@ -124,6 +127,12 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - `@workspace/shared` resolves directly to `../shared/src/index.ts` here and in Vitest
 - New public endpoints should include TypeScript code, Zod validation, and automated tests
 
+### Logging
+
+- Use `log(level, message, ...args)` from `config/logging.ts`; levels are `'debug'`, `'info'`, `'warn'`, and `'error'`
+- Never use `console.error` (or other `console.*`) in application code
+- `SPARKY_FITNESS_LOG_LEVEL` controls verbosity (`DEBUG`, `INFO`, `WARN`, `ERROR`, `SILENT`)
+
 ### Database and RLS
 
 - Use `getClient(userId, authenticatedUserId?)` from `db/poolManager.ts` for normal user-scoped queries
@@ -147,6 +156,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   - `req.user`
 - `req.userId` is the active RLS target; `req.authenticatedUserId` is the logged-in actor
 - Family and delegated access flow through `middleware/checkPermissionMiddleware.ts`, `middleware/onBehalfOfMiddleware.ts`, and the auth middleware’s active-user switching
+- `checkPermissionMiddleware(permissionType)` guards routes; permission types are `'diary'`, `'reports'`, and `'checkin'`
 - If you change auth behavior, check both cookie-backed sessions and API key flows
 
 ### Dates, Day Strings, and Timezones
@@ -165,8 +175,15 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 ### Integrations and Background Work
 
 - Provider-specific adapters live under `integrations/`; coordinating logic usually lives in `services/` and persistence in `models/`
+- Current adapters span food/nutrition (OpenFoodFacts, FatSecret, Nutritionix, USDA, Mealie, Tandoor, Norish, SwissFood, Yazio), fitness devices (Garmin, Withings, Fitbit, Polar, Strava, Hevy), exercise databases (Wger, FreeExerciseDB), and health-data import (Google Health, generic/mobile health data)
 - Scheduled jobs currently include backups, session cleanup, and hourly sync loops for Withings, Garmin, Fitbit, Polar, and Strava
 - Integration work often spans route, service, repository, cron, and external-provider settings code; inspect the whole path before calling the work complete
+
+### AI Services
+
+- AI calls go through the Vercel `ai` SDK (v6) with provider adapters for OpenAI, Anthropic, and Google, plus OpenAI-compatible, Mistral, Groq, OpenRouter, and Ollama service types
+- `ai/config.ts` holds default model and vision-model selection per provider; `ai/providerDispatch.ts` is the unified dispatch helper used by chat, food-photo analysis, nutrition-label scan, and unit conversion
+- Prefer routing new AI features through `providerDispatch.ts` instead of calling provider SDKs directly
 
 ## Testing and Validation
 
@@ -199,6 +216,17 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - If you add persisted or user-visible data, think through migration, RLS, permissions, tests, API docs, and downstream client contracts together
 - Validate shared-contract changes from the affected consumers, not just from this package
 - Keep package-specific guidance here; use `../AGENTS.md` only for cross-package context
+
+## File Naming Conventions
+
+- Routes: `*Routes.ts` (e.g., `foodEntryRoutes.ts`)
+- Services: `*Service.ts` (e.g., `foodEntryService.ts`)
+- Repositories: `*Repository.ts` (e.g., `foodRepository.ts`, `mealRepository.ts`)
+- Some domain model files predate the Repository suffix and remain without it (e.g., `food.ts`, `foodEntry.ts`, `exercise.ts`)
+
+## Planning
+
+- Before exiting plan mode or presenting a plan, run the plan-reviewer agent first and address its feedback before showing the plan.
 
 ## Priority Rule
 

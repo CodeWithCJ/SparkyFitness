@@ -93,7 +93,7 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
     expect(isFoodPhotoAvailable(result)).toBe(true);
   });
 
-  test('200 with unsupported provider parses; isFoodPhotoAvailable=false', async () => {
+  test('200 with any provider parses; isFoodPhotoAvailable=true (attempt-all)', async () => {
     mockGetActiveServerConfig.mockResolvedValue(testConfig);
     mockFetch.mockResolvedValue({
       ok: true,
@@ -109,7 +109,7 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
     });
     const result = await fetchActiveAiServiceSetting();
     expect(result?.service_type).toBe('mistral');
-    expect(isFoodPhotoAvailable(result)).toBe(false);
+    expect(isFoodPhotoAvailable(result)).toBe(true);
   });
 
   test('200 with null body returns null (server "not configured" path)', async () => {
@@ -164,24 +164,31 @@ describe('aiSettingsApi.fetchActiveAiServiceSetting', () => {
 });
 
 describe('isFoodPhotoAvailable', () => {
-  test('null setting → false', () => {
+  test('null / undefined / empty service_type → false', () => {
     expect(isFoodPhotoAvailable(null)).toBe(false);
     expect(isFoodPhotoAvailable(undefined)).toBe(false);
+    expect(
+      isFoodPhotoAvailable({
+        id: 'x',
+        service_name: 'svc',
+        service_type: '',
+        is_active: true,
+      }),
+    ).toBe(false);
+    expect(
+      isFoodPhotoAvailable({
+        id: 'x',
+        service_name: 'svc',
+        service_type: '   ',
+        is_active: true,
+      }),
+    ).toBe(false);
   });
-  test('google / openai / anthropic → true', () => {
-    for (const provider of ['google', 'openai', 'anthropic']) {
-      expect(
-        isFoodPhotoAvailable({
-          id: 'x',
-          service_name: 'svc',
-          service_type: provider,
-          is_active: true,
-        }),
-      ).toBe(true);
-    }
-  });
-  test('unsupported providers → false', () => {
+  test('any non-empty service_type → true (attempt-all; server is the gate)', () => {
     for (const provider of [
+      'google',
+      'openai',
+      'anthropic',
       'mistral',
       'ollama',
       'openrouter',
@@ -196,7 +203,7 @@ describe('isFoodPhotoAvailable', () => {
           service_type: provider,
           is_active: true,
         }),
-      ).toBe(false);
+      ).toBe(true);
     }
   });
 });

@@ -113,7 +113,7 @@ npx expo prebuild -c
 - Food search spans local foods, online providers, meals, barcode scan, label scan, and AI photo estimates. Keep `FoodSearchScreen`, `FoodScanScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and route params aligned.
 - Photo mode is hidden in meal-builder mode because photo estimates log to the diary.
 - `FoodPhotoFlow` is a modal native stack and wraps itself in a local `KeyboardProvider`.
-- Photo availability fetches `GET /api/chat/ai-service-settings/active` through `aiSettingsApi.ts`; provider labels live in `FOOD_PHOTO_PROVIDER_LABELS`.
+- Photo availability fetches `GET /api/chat/ai-service-settings/active` through `aiSettingsApi.ts`; food photo is attempt-all (any configured AI provider works), so `isFoodPhotoAvailable` gates only on a provider being configured.
 - Estimation posts to `POST /api/foods/estimate-food-photo` through `estimateFoodPhoto(...)` in `externalFoodSearchApi.ts` and uses typed `FoodPhotoEstimateError` codes from `@workspace/shared`.
 - Food-photo request/response changes cross package boundaries: update shared schema and server route/service with mobile.
 - Keep `auto_scale_online_imports` separate from Open Food Facts-specific scaling preferences in `FoodSettingsScreen`.

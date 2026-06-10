@@ -174,6 +174,11 @@ export const ServiceForm = ({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t(`${translationPrefix}.recommendedModel`, {
+              model: modelOptions[0],
+            })}
+          </p>
         </div>
       )}
 

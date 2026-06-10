@@ -2,7 +2,11 @@ import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { log } from '../config/logging.js';
 import { getDefaultModel } from '../ai/config.js';
-import undici from 'undici';
+import {
+  dispatchAiRequest,
+  type DispatchErrorCategory,
+  type ProviderConfig,
+} from '../ai/providerDispatch.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   todayInZone,
@@ -37,26 +41,6 @@ interface ChatMessage {
   parts?: ChatMessagePart[];
 }
 
-interface FoodOptionsApiResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  content?: Array<{
-    text?: string;
-  }>;
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-  message?: {
-    content?: string;
-  };
-}
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { generateText, streamText, stepCountIs } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -64,7 +48,6 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import path from 'path';
 
-const { Agent } = undici; // Import Agent from undici
 async function handleAiServiceSettings(
   action: string,
   serviceData: Partial<AiServiceSettings> & { api_key?: string },
@@ -757,21 +740,12 @@ async function processChatMessage(
       actionType = 'habit_logged';
     }
 
-    // Capture tool execution outputs
-    const responseMetadata: Record<string, unknown> = {};
     if (executedToolsList.some((t) => t.name === 'sparky_manage_food')) {
       const foodCall = executedToolsList.find(
         (t) => t.name === 'sparky_manage_food'
       );
       if (foodCall && foodCall.args?.action === 'food_options') {
         actionType = 'food_options';
-        const foodOptionsData = await processFoodOptionsRequest(
-          foodCall.args.food_name as string,
-          (foodCall.args.serving_unit as string) || 'serving',
-          authenticatedUserId,
-          serviceConfigId
-        );
-        responseMetadata.foodOptions = foodOptionsData;
       }
     } else if (
       executedToolsList.some((t) => t.name === 'sparky_manage_exercise')
@@ -789,7 +763,6 @@ async function processChatMessage(
       content: result.text,
       action: actionType,
       executedTools: executedToolsList,
-      metadata: responseMetadata,
     };
   } catch (error) {
     log(
@@ -804,297 +777,82 @@ async function processChatMessage(
     }
   }
 }
+const FOOD_OPTIONS_PROMPT = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information for EVERY field (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: You MUST estimate and populate every single micro-nutritional field. Do NOT default to 0 or leave blank any nutritional field if a realistic scientific estimation can be made based on the food type. Use your biochemical and culinary knowledge to calculate typical distributions.** Do NOT include any other text.
+**CRITICAL: When a unit is specified in the request (e.g., 'GENERATE_FOOD_OPTIONS:apple in piece'), ensure the \`serving_unit\` in the generated \`FoodOption\` objects matches the requested unit exactly, if it's a common and logical unit for that food. If not, provide a common and realistic serving unit.**`;
+
+const FOOD_OPTIONS_TEMPERATURE = 0.7;
+
+// 'no_ai_configured' is the only category this service mints itself; every
+// dispatch failure passes its category through unchanged for the route's
+// HTTP-status map.
+export type FoodOptionsErrorCategory =
+  | DispatchErrorCategory
+  | 'no_ai_configured';
+
+export type FoodOptionsResult =
+  | { success: true; content: string }
+  | { success: false; category: FoodOptionsErrorCategory; error: string };
+
 async function processFoodOptionsRequest(
   foodName: string,
   unit: string,
   authenticatedUserId: string,
   serviceConfigId: string
-) {
-  // Changed serviceConfig to serviceConfigId
-  try {
-    if (!serviceConfigId) {
-      // Check if serviceConfigId is provided
-      throw new Error('AI service configuration ID is missing.');
-    }
-    const aiService = await chatRepository.getAiServiceSettingForBackend(
-      serviceConfigId,
-      authenticatedUserId
-    );
-    if (!aiService) {
-      throw new Error('AI service setting not found for the provided ID.');
-    }
-    // Log which source was used
-    const source = aiService.source || 'unknown';
-    log(
-      'info',
-      `Processing food options request for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
-    );
-    // Ensure API key is present, unless it's Ollama
-    if (aiService.service_type !== 'ollama' && !aiService.api_key) {
-      throw new Error('API key missing for selected AI service.');
-    }
-    const systemPrompt = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information for EVERY field (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: You MUST estimate and populate every single micro-nutritional field. Do NOT default to 0 or leave blank any nutritional field if a realistic scientific estimation can be made based on the food type. Use your biochemical and culinary knowledge to calculate typical distributions.** Do NOT include any other text.
-**CRITICAL: When a unit is specified in the request (e.g., 'GENERATE_FOOD_OPTIONS:apple in piece'), ensure the \`serving_unit\` in the generated \`FoodOption\` objects matches the requested unit exactly, if it's a common and logical unit for that food. If not, provide a common and realistic serving unit.**`;
-    const messages: Array<{ role: string; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `GENERATE_FOOD_OPTIONS:${foodName} in ${unit}` },
-    ];
-    const model =
-      aiService.model_name || getDefaultModel(aiService.service_type);
-    let response: Response;
-    switch (aiService.service_type) {
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom':
-        log(
-          'debug',
-          `[AI Service Request] Type: ${aiService.service_type} (Food Options), URL: ${
-            aiService.service_type === 'openai'
-              ? 'https://api.openai.com/v1/chat/completions'
-              : aiService.service_type === 'openai_compatible'
-                ? `${aiService.custom_url}/chat/completions`
-                : aiService.service_type === 'mistral'
-                  ? 'https://api.mistral.ai/v1/chat/completions'
-                  : aiService.service_type === 'groq'
-                    ? 'https://api.groq.com/openai/v1/chat/completions'
-                    : aiService.service_type === 'openrouter'
-                      ? 'https://openrouter.ai/api/v1/chat/completions'
-                      : aiService.custom_url
-          }, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch(
-          aiService.service_type === 'openai'
-            ? 'https://api.openai.com/v1/chat/completions'
-            : aiService.service_type === 'openai_compatible'
-              ? `${aiService.custom_url}/chat/completions`
-              : aiService.service_type === 'mistral'
-                ? 'https://api.mistral.ai/v1/chat/completions'
-                : aiService.service_type === 'groq'
-                  ? 'https://api.groq.com/openai/v1/chat/completions'
-                  : aiService.service_type === 'openrouter'
-                    ? 'https://openrouter.ai/api/v1/chat/completions'
-                    : aiService.custom_url,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(aiService.service_type === 'openrouter' && {
-                'HTTP-Referer': 'https://sparky-fitness.com',
-                'X-Title': 'Sparky Fitness',
-              }),
-              ...(aiService.api_key && {
-                Authorization: `Bearer ${aiService.api_key}`,
-              }),
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: messages,
-              temperature: 0.7,
-            }),
-          }
-        );
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
-      case 'anthropic':
-        log(
-          'debug',
-          `[AI Service Request] Type: Anthropic (Food Options), URL: https://api.anthropic.com/v1/messages, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            ...(aiService.api_key && { 'x-api-key': aiService.api_key }),
-          },
-          body: JSON.stringify({
-            model: model,
-            max_tokens: 1000,
-            messages: messages.filter((msg) => msg.role !== 'system'), // Anthropic system prompt is separate
-            system: systemPrompt,
-          }),
-        });
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
-      case 'google': {
-        const googleBodyFoodOptions = {
-          contents: messages
-            .map((msg) => {
-              const role = msg.role === 'assistant' ? 'model' : 'user';
-              return {
-                parts: [{ text: msg.content }],
-                role: role,
-              };
-            })
-            .filter((content) => content.parts[0].text.trim() !== ''),
-          systemInstruction: undefined as
-            | { parts: Array<{ text: string }> }
-            | undefined,
-        };
-        if (googleBodyFoodOptions.contents.length === 0) {
-          throw new Error('No valid content found to send to Google AI.');
-        }
-        const cleanSystemPromptFoodOptions = systemPrompt
-          .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .substring(0, 2000);
-        if (
-          cleanSystemPromptFoodOptions &&
-          cleanSystemPromptFoodOptions.length > 0
-        ) {
-          googleBodyFoodOptions.systemInstruction = {
-            parts: [{ text: cleanSystemPromptFoodOptions }],
-          };
-        }
-        if (!aiService.api_key) {
-          throw new Error('API key missing for Google AI service.');
-        }
-        log(
-          'debug',
-          `[AI Service Request] Type: Google (Food Options), URL: https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=..., Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-        );
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${aiService.api_key}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(googleBodyFoodOptions),
-          }
-        );
-        if (!response) {
-          throw new Error('Fetch did not return a response object.');
-        }
-        break;
-      }
-      // For Ollama, extract only the text content from the messages
-      case 'ollama': {
-        const ollamaMessagesFoodOptions = messages.map((msg) => {
-          return { role: msg.role, content: msg.content };
-        });
-        const timeoutFoodOptions = aiService.timeout || 1200000; // Default to 1200 seconds (20 minutes)
-        log(
-          'info',
-          `Ollama food options request timeout set to ${timeoutFoodOptions}ms`
-        );
-        // Create an undici Agent with the desired timeouts
-        const ollamaAgentFoodOptions = new Agent({
-          headersTimeout: timeoutFoodOptions,
-          bodyTimeout: timeoutFoodOptions,
-        });
-        try {
-          log(
-            'debug',
-            `[AI Service Request] Type: Ollama (Food Options), URL: ${aiService.custom_url}/api/chat, Model: ${model}, API Key Provided: ${!!aiService.api_key}`
-          );
-          response = await fetch(`${aiService.custom_url}/api/chat`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: ollamaMessagesFoodOptions,
-              stream: false,
-            }),
-            // Pass the undici agent to the fetch call
-            // @ts-expect-error TS(2769): No overload matches this call.
-            dispatcher: ollamaAgentFoodOptions,
-          });
-        } catch (error) {
-          if (
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            error.name === 'HeadersTimeoutError' ||
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            error.name === 'BodyTimeoutError'
-          ) {
-            throw new Error(
-              `Ollama food options request timed out after ${timeoutFoodOptions}ms due to undici timeout.`,
-              { cause: error }
-            );
-          }
-          throw new Error(
-            // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
-            { cause: error }
-          );
-        } finally {
-          // Destroy the agent to prevent resource leaks
-          ollamaAgentFoodOptions.destroy();
-        }
-        break;
-      }
-      default:
-        throw new Error(
-          `Unsupported service type for food options generation: ${aiService.service_type}`
-        );
-    }
-    if (!response.ok) {
-      const errorBody = await response.text();
-      log(
-        'error',
-        `AI service API call error for food options (${aiService.service_type}). Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get('content-type')}, Body: ${errorBody}`
-      );
-      throw new Error(
-        `AI service API call error: ${response.status} - ${response.statusText}`
-      );
-    }
-    const contentTypeFoodOptions = response.headers.get('content-type');
-    if (
-      !contentTypeFoodOptions ||
-      !contentTypeFoodOptions.includes('application/json')
-    ) {
-      const errorBody = await response.text();
-      log(
-        'error',
-        `AI service returned non-JSON response for food options. Content-Type: ${contentTypeFoodOptions}, Body: ${errorBody}`
-      );
-      throw new Error(
-        `AI service returned non-JSON response for food options. Expected application/json but got ${contentTypeFoodOptions}. Raw Body: ${errorBody.substring(0, 200)}...`
-      );
-    }
-    const data = (await response.json()) as FoodOptionsApiResponse;
-    let content = '';
-    switch (aiService.service_type) {
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom':
-        content =
-          data.choices?.[0]?.message?.content || 'No response from AI service';
-        break;
-      case 'anthropic':
-        content = data.content?.[0]?.text || 'No response from AI service';
-        break;
-      case 'google':
-        content =
-          data.candidates?.[0]?.content?.parts?.[0]?.text ||
-          'No response from AI service';
-        break;
-      case 'ollama':
-        content = data.message?.content || 'No response from AI service';
-        break;
-    }
-    return { content };
-  } catch (error) {
-    log(
-      'error',
-      `Error processing food options request for user ${authenticatedUserId}:`,
-      error
-    );
-    throw error;
+): Promise<FoodOptionsResult> {
+  if (!serviceConfigId) {
+    return {
+      success: false,
+      category: 'no_ai_configured',
+      error: 'AI service configuration ID is missing.',
+    };
   }
+  const aiService = await chatRepository.getAiServiceSettingForBackend(
+    serviceConfigId,
+    authenticatedUserId
+  );
+  if (!aiService) {
+    return {
+      success: false,
+      category: 'no_ai_configured',
+      error: 'AI service setting not found for the provided ID.',
+    };
+  }
+  const source = aiService.source || 'unknown';
+  log(
+    'info',
+    `Processing food options request for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
+  );
+
+  // Dispatch reads everything from the decrypted backend detail. The helper
+  // enforces the supported-provider, api-key, and custom-url checks and
+  // reports each as a category the route maps to an HTTP status.
+  const provider: ProviderConfig = {
+    service_type: aiService.service_type,
+    api_key: aiService.api_key ?? undefined,
+    model_name: aiService.model_name ?? undefined,
+    custom_url: aiService.custom_url ?? undefined,
+    timeout: aiService.timeout ?? undefined,
+  };
+
+  const prompt = `${FOOD_OPTIONS_PROMPT}\n\nGENERATE_FOOD_OPTIONS:${foodName} in ${unit}`;
+
+  const result = await dispatchAiRequest({
+    provider,
+    prompt,
+    parseJson: true,
+    temperature: FOOD_OPTIONS_TEMPERATURE,
+  });
+
+  if (!result.ok) {
+    log(
+      result.category === 'refused' || result.category === 'no_content'
+        ? 'warn'
+        : 'error',
+      `Food options: ${provider.service_type} failed for user ${authenticatedUserId} (${result.category}): ${result.detail}`
+    );
+    return { success: false, category: result.category, error: result.detail };
+  }
+  return { success: true, content: result.text };
 }
 async function processChatMessageStream(
   messages: ChatMessage[],

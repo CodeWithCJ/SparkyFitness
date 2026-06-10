@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-*Last updated: 2026-05-26*
+*Last updated: 2026-06-10*
 
-SparkyFitness Mobile is a React Native (0.81) + Expo (SDK 54) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
+SparkyFitness Mobile is a React Native (0.83) + Expo (SDK 55) app for syncing health data (HealthKit/Health Connect) to a personal server and displaying daily nutrition, exercise, workout tracking, and hydration summaries.
 
 ## Project Overview
 
@@ -30,20 +30,20 @@ tsc --noEmit                                   # Type check only
 
 ### Source Structure (`src/`)
 
-- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`), serving quick-adjust (`ServingAdjustSheet`), workout display/editing (`EditableExerciseCard` with `ExerciseStatsChip` showing best/last set, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), what's-new (`WhatsNewBanner` — version-gated banner above tab content), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
-- **screens/** — Top-level screens for onboarding (multi-step incl. theme switch + external food source config), dashboard, diary, sync, logs, `WhatsNewScreen` (version changelog); settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`/`EditBarcodeScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry, food photo AI estimation (`FoodPhotoIntroScreen` + `FoodPhotoFlow` sub-stack: `FoodPhotoImproveScreen` → `FoodPhotoEstimateReviewScreen` → `FoodPhotoLogEntryScreen`), measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
+- **components/** — UI primitives and feature components: dashboard cards, chart components (Skia + victory-native), diary views, food entry forms, swipe-to-delete + long-press delete rows (`SwipeableFoodRow`, `SwipeableExerciseRow`, `SwipeableIngredientRow`), serving quick-adjust (`ServingAdjustSheet`) and unit selection (`FoodUnitSelectorSheet`), shared input primitives (`SegmentedControl`, `StepperInput`, `CollapsibleSection`), dev-only seeding UI (`DevTools`), workout display/editing (`EditableExerciseCard` with `ExerciseStatsChip` showing best/last set, `EditableSetRow`, `WorkoutEditableExerciseList`, `RestPeriodChip`/`RestPeriodSheet`), workout execution (`ActiveWorkoutBar` — floats above every screen, exports `useActiveWorkoutBarPadding` and `navigationRef`), navigation (`CustomTabBar`), settings UI (`SettingsRow`/`SettingsRowGroup` — icon-tile rows with optional grouping into a rounded card with separators), what's-new (`WhatsNewBanner` — version-gated banner above tab content), auth (`MfaForm`), modals (`ReauthModal`, `ServerConfigModal`), and `ui/` primitives (`Button`, `toastConfig`).
+- **screens/** — Top-level screens for onboarding (multi-step incl. theme switch + external food source config), dashboard, diary, sync, logs, `WhatsNewScreen` (version changelog); settings hub (`SettingsScreen`) with dedicated subscreens (`ServerSettingsScreen`, `AppSettingsScreen` for theme + haptics + sound effects, `CalorieSettingsScreen`, `FoodSettingsScreen`, `AboutScreen`); library hub (`LibraryScreen`) with subscreens for foods (`FoodsLibraryScreen`/`FoodDetailScreen`/`FoodFormScreen`/`EditBarcodeScreen`), meals (`MealsLibraryScreen`/`MealAddScreen`/`MealDetailScreen`/`MealTypeDetailScreen`), exercises (`ExercisesLibraryScreen`/`ExerciseDetailScreen`/`ExerciseFormScreen`), and workout presets (`WorkoutPresetsLibraryScreen`/`WorkoutPresetDetailScreen`/`WorkoutPresetFormScreen`); workouts/activities (add + detail), exercise/preset search, food search/scan/entry/view (`FoodEntryViewScreen`), logged-meal editing (`EditLoggedMealScreen`), food photo AI estimation (`FoodPhotoIntroScreen` + `FoodPhotoFlow` sub-stack: `FoodPhotoImproveScreen` → `FoodPhotoEstimateReviewScreen` → `FoodPhotoLogEntryScreen`), measurements (`MeasurementsAddScreen`). `DashboardScreen`/`DiaryScreen` support fling gestures for date navigation.
 - **services/** — Organized into subdirectories:
-  - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `exerciseApi`, `foodsApi`, `healthDataApi`, etc.)
+  - `api/` — API clients (`apiClient` with proxy header injection, `authService`, `dailySummaryApi`, `goalsApi`, `exerciseApi`, `foodsApi`, `foodEntriesApi`, `foodEntryMealsApi` (logged-meal grouped entries), `mealsApi`, `measurementsApi`, `healthDataApi`, `aiSettingsApi`/`aiConversionApi` (AI gating + unit conversion), `errors`, etc.)
   - `healthconnect/` — Android health data read/aggregation/transformation/preferences
   - `healthkit/` — iOS equivalents plus `backgroundDelivery`
   - `shared/` — `preferences.ts` factory + `healthPermissionMigration.ts`
-  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `autoSyncCoordinator` (in-memory lock + cooldown shared by background sync and sync-on-open), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection` (cross-screen pending-ingredient handoff), `diagnosticReportService`, `healthDiagnosticService` (Android-only), `notifications` (rest-timer scheduling), `haptics` (global enable toggle persisted under `@HealthConnect:hapticsEnabled`; expose via `useHapticsEnabled` + `setHapticsEnabled`, gate calls behind `fireSuccessHaptic`).
+  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `backgroundSyncService`, `autoSyncCoordinator` (in-memory lock + cooldown shared by background sync and sync-on-open), `healthDataDisplay` (health metric display formatting), `calculations` (BMR / Navy body-fat / calorie-balance / age), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection` (cross-screen pending-ingredient handoff), `foodSearchPreferences` (last-used food search tab), `whatsNewBanner` (version-gated banner state), `diagnosticReportService`, `healthDiagnosticService` (Android-only), `seedHealthData`/`.ios.ts` (dev-only health-data seeding, surfaced via `DevTools`), `notifications` (rest-timer scheduling), `haptics` (global enable toggle persisted under `@HealthConnect:hapticsEnabled`; expose via `useHapticsEnabled` + `setHapticsEnabled`, gate calls behind `fireSuccessHaptic`), `sounds` (parallel global sound-effects toggle; `useSoundsEnabled` + `setSoundsEnabled`, both surfaced in `AppSettingsScreen`).
 - **stores/** — Zustand stores (persisted via `zustand/middleware`). See **Workout timer** below for `activeWorkoutStore`.
-- **hooks/** — React Query hooks organized by domain (food, meals, exercise/workout, workout presets, measurements, profile, preferences). `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
+- **hooks/** — React Query hooks organized by domain (food, food-entry-meals, meals, exercise/workout, workout presets, measurements, profile, preferences). AI hooks: `useActiveAiServiceSetting`, `useUserAiConfigAllowed`, `useUnitConversion` (AI cross-category unit conversion), `useEstimateFoodPhoto`. `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android home-screen widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys live in `hooks/queryKeys.ts`.
 - **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
 - **types/** — TypeScript interfaces. Core exercise session types (`ExerciseSessionResponse`, `IndividualSessionResponse`, `PresetSessionResponse`, `ExerciseHistoryResponse`) come from `@workspace/shared`.
-- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `foodPhotoEstimate` (`FOOD_PHOTO_PROVIDER_LABELS` allow-list + `mapEstimateError` copy mapping for the photo flow), `rateLimiter`.
-- **constants/** — `meals.ts` (meal types, icons, time-based defaults).
+- **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `syncUtils` (sync helpers), `workoutSession` (display helpers + stats + `buildExercisesPayload`), `activityDetails` (individual-session display helpers), `foodDetails` (food variant/nutrition transforms shared across food screens), `mealNutrition` / `nutrientUtils` (meal + nutrient aggregation), `mealBuilderDraft` (meal-builder ingredient draft mapping), `numericInput` (locale-tolerant decimal parsing with strict per-shape validation), `foodPhotoEstimate` (`mapEstimateError` copy mapping for the photo flow), `rateLimiter`.
+- **constants/** — `meals.ts` (meal types, icons, time-based defaults), `exercise.ts` (exercise constants).
 - **HealthMetrics.ts** — Health metric definitions filtered by platform and enabled status at runtime.
 - **plugins/** — Expo config plugins applied at prebuild: `withCalorieWidget` (copies `targets/android-widget/` Kotlin + res into the generated Android project and wires up Glance widget receivers), `withGlanceAndroidSupport`, `withNetworkSecurityConfig`. Edit `targets/`, never the generated `android/` or `ios/` folders.
 
@@ -150,8 +150,8 @@ Pattern for adding a third widget is documented at the top of `plugins/withCalor
 
 The **Library** tab (`LibraryScreen`) is the entry point for all user-saved content — foods, meals, exercises, and workout presets. It surfaces "Create" tiles plus a recent-items preview per section, with "View all" pushing the section-specific paginated list:
 
-- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and the food-photo review screen. `FoodForm` supports **equivalent serving sizes** — variants grouped by nutrient signature so e.g. "1 cup (240g)" + "1 oz (28g)" map back to the same base variant; equivalents are edited inline and persisted via `foodsApi` variant endpoints. Also includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes, a `convertServingSizeOnUnitChange` opt-in that converts the value when switching between compatible units (g↔oz) and leaves it alone for incompatible swaps (g→cup), and a `headerChildren` slot for callers (e.g. estimate review) to render an above-form summary. `EditBarcodeScreen` manages additional barcodes for an existing food (so a scanned/manually-typed barcode finds the right food next time).
-- **Meals** — `MealsLibraryScreen` → `MealDetailScreen` and `MealAddScreen` (meal builder). Cross-screen ingredient handoff uses `services/mealBuilderSelection.ts` (set/consume pending selection). `MealTypeDetailScreen` shows a single meal type's day view from the diary.
+- **Foods** — `FoodsLibraryScreen` → `FoodDetailScreen` → `FoodFormScreen` (modes: `create-food`, `edit-food`, `adjust-entry-nutrition`). Backed by `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`. Nutrition transforms (local variants, external variants, selected display values, editable payload) live in `utils/foodDetails.ts` and are shared across `FoodDetailScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, and the food-photo review screen. `FoodForm` supports **equivalent serving sizes** — variants grouped by nutrient signature so e.g. "1 cup (240g)" + "1 oz (28g)" map back to the same base variant; equivalents are edited inline and persisted via `foodsApi` variant endpoints. Also includes an auto-scale-nutrition toggle that proportionally rescales nutrition values when the serving size changes, a `convertServingSizeOnUnitChange` opt-in that converts the value when switching between compatible units (g↔oz); for cross-category swaps (g→cup) it offers an AI-estimated conversion via `shouldOfferAiConversion` + `useUnitConversion` (`POST /api/ai/convert-unit`) rather than guessing, and a `headerChildren` slot for callers (e.g. estimate review) to render an above-form summary. `EditBarcodeScreen` manages additional barcodes for an existing food (so a scanned/manually-typed barcode finds the right food next time).
+- **Meals** — `MealsLibraryScreen` → `MealDetailScreen` and `MealAddScreen` (meal builder). Cross-screen ingredient handoff uses `services/mealBuilderSelection.ts` (set/consume pending selection). `MealTypeDetailScreen` shows a single meal type's day view from the diary. A meal can be logged to the diary as a single grouped entry via `foodEntryMealsApi` (`/api/food-entry-meals`) and edited later in `EditLoggedMealScreen` (ingredient rows reuse `SwipeableIngredientRow` + `mealBuilderDraft`).
 - **Exercises** — `ExercisesLibraryScreen` → `ExerciseDetailScreen` → `ExerciseFormScreen` for user-created exercises (advanced fields supported).
 - **Workout Presets** — `WorkoutPresetsLibraryScreen` → `WorkoutPresetDetailScreen` → `WorkoutPresetFormScreen` for managing reusable presets that feed `WorkoutAddScreen`.
 
@@ -163,7 +163,7 @@ Edit/Delete actions are gated on `profile.id === <entity>.userId` (owner-only). 
 
 ### Food Photo Estimation
 
-AI-powered nutrition estimate from a photo. The flow is gated on a configured AI provider (Google Gemini, OpenAI, or Anthropic) — the canonical allow-list is `FOOD_PHOTO_PROVIDER_LABELS` in `utils/foodPhotoEstimate.ts`, which mirrors the server's `SUPPORTED_PROVIDERS`. Provider availability is fetched via `useActiveAiServiceSetting` (React Query, 5-min staleTime, query key `activeAiServiceSettingQueryKey`) and gated through `isFoodPhotoAvailable(setting)` from `services/api/aiSettingsApi.ts`.
+AI-powered nutrition estimate from a photo. Food photo is **attempt-all**: it works with any configured AI provider — the server's `dispatchAiRequest` tries whatever `service_type` is active and a genuinely unbuildable provider surfaces as `UNSUPPORTED_PROVIDER`. The flow is therefore gated only on "a provider is configured at all": availability is fetched via `useActiveAiServiceSetting` (React Query, 5-min staleTime, query key `activeAiServiceSettingQueryKey`) and gated through `isFoodPhotoAvailable(setting)` (any non-empty `service_type`) from `services/api/aiSettingsApi.ts`.
 
 Entry points:
 - **AddSheet "Scan Food"** tile → `FoodScanScreen` with a 3-segment switcher: `Barcode | Label | Photo`. The `photo` segment is hidden when `pickerMode === 'meal-builder'` (photo estimates always log to the diary). Re-tapping the active Photo segment refetches the AI setting — the user's "I configured AI in the web app, try again" gesture.
@@ -216,8 +216,10 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `DELETE /api/foods/{id}` | Delete a food | `foodsApi` |
 | `GET /api/foods/barcode/:barcode` | Barcode lookup | `foodsApi` |
 | `POST /api/foods/scan-label` | Nutrition label scanning via image | `foodsApi` |
-| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (Google/Gemini, OpenAI, Anthropic) | `externalFoodSearchApi` |
+| `POST /api/foods/estimate-food-photo` | AI food photo nutrition estimate (any configured AI provider) | `externalFoodSearchApi` |
+| `POST /api/ai/convert-unit` | AI cross-category unit conversion (e.g. cup→g) | `aiConversionApi` |
 | `GET /api/chat/ai-service-settings/active` | Active AI service config (gates the Photo segment) | `aiSettingsApi` |
+| `GET /api/global-settings/allow-user-ai-config` | Whether user-level AI config is permitted | `aiSettingsApi` |
 | `GET /api/v2/foods/search/{provider}` | Provider-agnostic external food search (OFF/USDA/FatSecret/Mealie) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/details/{provider}/{externalId}` | External food details (e.g., FatSecret nutrients) | `externalFoodSearchApi` |
 | `GET /api/v2/foods/barcode/{barcode}` | External barcode lookup across providers | `externalFoodSearchApi` |
@@ -228,6 +230,11 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 | `POST /api/meals` | Create a meal | `mealsApi` |
 | `PUT /api/meals/{id}` | Update a meal | `mealsApi` |
 | `DELETE /api/meals/{id}` | Delete a meal | `mealsApi` |
+| `POST /api/food-entry-meals` | Log a meal as a grouped diary entry | `foodEntryMealsApi` |
+| `GET /api/food-entry-meals/by-date/{date}` | Logged meal entries by date | `foodEntryMealsApi` |
+| `GET /api/food-entry-meals/{id}` | Logged meal entry with components | `foodEntryMealsApi` |
+| `PUT /api/food-entry-meals/{id}` | Update a logged meal entry | `foodEntryMealsApi` |
+| `DELETE /api/food-entry-meals/{id}` | Delete a logged meal entry | `foodEntryMealsApi` |
 | `GET /api/meal-types` | Meal type definitions | `mealTypesApi` |
 | `GET /api/external-providers` | Configured external providers | `externalProvidersApi` |
 | `GET /api/v2/exercise-entries/by-date?selectedDate={date}` | Exercise entries by date | `exerciseApi` |
@@ -261,12 +268,14 @@ All endpoints require auth headers (API key or session token). Proxy headers are
 ## Testing
 
 ```bash
-pnpm test                                   # Watch mode
-pnpm run test:run                           # Single run
+pnpm test                                   # Single run (jest; coverage collected by default)
+pnpm run test:run                           # Single run (alias)
+pnpm run test:watch                         # Watch mode
 pnpm run test:coverage                      # Coverage report
+pnpm run test:run -- --watchman=false --runInBand   # CI-style single file/run
 ```
 
-Tests in `__tests__/` mirror source structure. Mocks in `jest.setup.js`. Preset: `jest-expo` with `jsdom` environment.
+Tests in `__tests__/` mirror source structure. Mocks in `jest.setup.js`. Preset: `jest-expo` with `jsdom` environment; `collectCoverage` is on by default in the jest config.
 
 When writing or modifying tests, run the FULL test suite (not just new tests) to catch mock pollution and regressions. Never introduce global mocks without checking for side effects on other test files. When fixing a bug that could have been caught by a test, write a regression test that reproduces the bug and verifies the fix. After file moves or import refactors, run the full test suite immediately and verify asset/require paths.
 

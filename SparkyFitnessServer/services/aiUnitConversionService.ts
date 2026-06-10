@@ -2,7 +2,12 @@ import chatRepository from '../models/chatRepository.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import { getDefaultModel } from '../ai/config.js';
+import {
+  dispatchAiRequest,
+  type DispatchErrorCategory,
+  type JsonSchemaNode,
+  type ProviderConfig,
+} from '../ai/providerDispatch.js';
 import {
   aiProviderRawResponseSchema,
   isAiConvertibleUnit,
@@ -11,9 +16,6 @@ import {
   type AiUnitConversionRequest,
   type AiUnitConversionResponse,
 } from '@workspace/shared';
-import undici from 'undici';
-
-const { Agent } = undici;
 
 export class NoAiServiceError extends Error {
   constructor() {
@@ -85,212 +87,33 @@ function buildPrompt(params: {
   ].join('\n');
 }
 
-interface ProviderConfig {
-  service_type: string;
-  api_key?: string;
-  model_name?: string;
-  custom_url?: string;
-  timeout?: number;
-}
+// OpenAI `json_schema` name / Anthropic tool name passed to the dispatch helper.
+const SCHEMA_NAME = 'unit_conversion';
 
-function requiresCustomUrl(serviceType: string): boolean {
-  return (
-    serviceType === 'ollama' ||
-    serviceType === 'openai_compatible' ||
-    serviceType === 'custom'
-  );
-}
+// Deterministic numeric estimation.
+const UNIT_CONVERSION_TEMPERATURE = 0;
 
-async function callProvider(
-  aiService: ProviderConfig,
-  prompt: string
-): Promise<string> {
-  const model = aiService.model_name || getDefaultModel(aiService.service_type);
-  const apiKey = aiService.api_key;
-  let response: Response;
-  let ollamaAgent: undici.Agent | null = null;
+// STRUCTURED_OUTPUT_SCHEMA is `as const` (readonly), so it needs widening to
+// JsonSchemaNode; the helper deep-clones before any per-provider rewrite.
+const UNIT_CONVERSION_SCHEMA =
+  STRUCTURED_OUTPUT_SCHEMA as unknown as JsonSchemaNode;
 
-  try {
-    switch (aiService.service_type) {
-      case 'google':
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              // Gemini v1beta: use the older responseSchema/responseMimeType pattern;
-              // the new responseFormat.text shape returns 400 here.
-              // responseSchema is an OpenAPI subset and rejects additionalProperties,
-              // so strip it from the shared schema inline.
-              generationConfig: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: STRUCTURED_OUTPUT_SCHEMA.type,
-                  properties: STRUCTURED_OUTPUT_SCHEMA.properties,
-                  required: STRUCTURED_OUTPUT_SCHEMA.required,
-                },
-              },
-            }),
-          }
-        );
-        break;
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom': {
-        const url =
-          aiService.service_type === 'openai'
-            ? 'https://api.openai.com/v1/chat/completions'
-            : aiService.service_type === 'openai_compatible'
-              ? `${aiService.custom_url}/chat/completions`
-              : aiService.service_type === 'mistral'
-                ? 'https://api.mistral.ai/v1/chat/completions'
-                : aiService.service_type === 'groq'
-                  ? 'https://api.groq.com/openai/v1/chat/completions'
-                  : aiService.service_type === 'openrouter'
-                    ? 'https://openrouter.ai/api/v1/chat/completions'
-                    : (aiService.custom_url as string);
-        // Strict json_schema only on providers that reliably support it (OpenAI/Groq/OpenRouter);
-        // others use json_object + Zod-on-receipt.
-        // OpenRouter adds provider.require_parameters so it refuses to route to a model
-        // without structured-output support.
-        const useStrictSchema =
-          aiService.service_type === 'openai' ||
-          aiService.service_type === 'groq' ||
-          aiService.service_type === 'openrouter';
-        const body: Record<string, unknown> = {
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.2,
-          response_format: useStrictSchema
-            ? {
-                type: 'json_schema',
-                json_schema: {
-                  name: 'unit_conversion',
-                  strict: true,
-                  schema: STRUCTURED_OUTPUT_SCHEMA,
-                },
-              }
-            : { type: 'json_object' },
-        };
-        if (aiService.service_type === 'openrouter') {
-          body.provider = { require_parameters: true };
-        }
-        // OpenAI-family providers use Bearer auth; OpenRouter additionally wants
-        // HTTP-Referer/X-Title for traffic attribution.
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(aiService.service_type === 'openrouter' && {
-              'HTTP-Referer': 'https://sparky-fitness.com',
-              'X-Title': 'Sparky Fitness',
-            }),
-            ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
-          },
-          body: JSON.stringify(body),
-        });
-        break;
-      }
-      case 'anthropic':
-        // output_config.format requires Claude 4.5+ (older models 400 — intended fail-loudly).
-        response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-            'x-api-key': apiKey as string,
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 400,
-            messages: [{ role: 'user', content: prompt }],
-            output_config: {
-              format: {
-                type: 'json_schema',
-                schema: STRUCTURED_OUTPUT_SCHEMA,
-              },
-            },
-          }),
-        });
-        break;
-      case 'ollama': {
-        const timeout = aiService.timeout || 120000;
-        ollamaAgent = new Agent({
-          headersTimeout: timeout,
-          bodyTimeout: timeout,
-        });
-        // Local Ollama only (Cloud rejects schema-as-format); temperature: 0 for deterministic JSON.
-        response = await fetch(`${aiService.custom_url}/api/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            stream: false,
-            format: STRUCTURED_OUTPUT_SCHEMA,
-            options: { temperature: 0 },
-          }),
-          // @ts-expect-error undici dispatcher option is not in fetch DOM types
-          dispatcher: ollamaAgent,
-        });
-        break;
-      }
-      default:
-        throw new ProviderResponseError(
-          `Unsupported AI service type: ${aiService.service_type}`
-        );
-    }
-
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => '');
-      log(
-        'error',
-        `AI unit conversion provider error: ${aiService.service_type} status=${response.status} body=${errorBody}`
-      );
-      throw new ProviderResponseError(
-        `AI service returned status ${response.status}`
-      );
-    }
-
-    const data = await response.json();
-    let content: string | undefined;
-    switch (aiService.service_type) {
-      case 'google':
-        content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        break;
-      case 'openai':
-      case 'openai_compatible':
-      case 'mistral':
-      case 'groq':
-      case 'openrouter':
-      case 'custom':
-        content = data?.choices?.[0]?.message?.content;
-        break;
-      case 'anthropic':
-        content = data?.content?.[0]?.text;
-        break;
-      case 'ollama':
-        content = data?.message?.content;
-        break;
-    }
-
-    if (!content) {
-      throw new ProviderResponseError('AI provider returned no content.');
-    }
-    // Strip markdown code fences if any provider wrapped the JSON anyway.
-    return content
-      .replace(/^```(?:json)?\n?/, '')
-      .replace(/\n?```$/, '')
-      .trim();
-  } finally {
-    ollamaAgent?.destroy();
-  }
-}
+// api_key_missing/custom_url_missing map to NoAiServiceError so the route
+// keeps answering 404 for a half-configured service. Everything else is a 502
+// carrying the dispatch detail. Declared with `satisfies` so a future new
+// DispatchErrorCategory is a compile error here, not a silent `undefined`.
+const DISPATCH_ERROR_TO_THROW = {
+  api_key_missing: () => new NoAiServiceError(),
+  custom_url_missing: () => new NoAiServiceError(),
+  unsupported_provider: (d: string) => new ProviderResponseError(d),
+  unsupported_media: (d: string) => new ProviderResponseError(d),
+  timeout: (d: string) => new ProviderResponseError(d),
+  upstream_error: (d: string) => new ProviderResponseError(d),
+  refused: (d: string) => new ProviderResponseError(d),
+  truncated: (d: string) => new ProviderResponseError(d),
+  no_content: (d: string) => new ProviderResponseError(d),
+  parse_error: (d: string) => new ProviderResponseError(d),
+} satisfies Record<DispatchErrorCategory, (detail: string) => Error>;
 
 export async function estimateUnitConversion(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -334,42 +157,47 @@ export async function estimateUnitConversion(
     setting.id,
     userId
   );
-  if (aiService.service_type !== 'ollama' && !aiService.api_key) {
-    throw new NoAiServiceError();
-  }
-  if (
-    requiresCustomUrl(aiService.service_type) &&
-    (!aiService.custom_url || aiService.custom_url.trim().length === 0)
-  ) {
+  if (!aiService) {
     throw new NoAiServiceError();
   }
 
-  // 4. Build prompt + call provider.
-  const prompt = buildPrompt({
-    foodName: params.foodName,
-    brand: params.brand,
-    fromAmount: params.fromAmount,
-    fromUnit: params.fromUnit,
-    toUnit: params.toUnit,
-    knownVariants: params.knownVariants,
+  const provider: ProviderConfig = {
+    service_type: aiService.service_type,
+    api_key: aiService.api_key ?? undefined,
+    model_name: aiService.model_name ?? undefined,
+    custom_url: aiService.custom_url ?? undefined,
+    timeout: aiService.timeout ?? undefined,
+  };
+
+  // 4. Build prompt + dispatch. The helper owns the api-key/custom-url checks,
+  // per-provider structured-output strategy, and JSON parsing.
+  const result = await dispatchAiRequest({
+    provider,
+    prompt: buildPrompt({
+      foodName: params.foodName,
+      brand: params.brand,
+      fromAmount: params.fromAmount,
+      fromUnit: params.fromUnit,
+      toUnit: params.toUnit,
+      knownVariants: params.knownVariants,
+    }),
+    jsonSchema: UNIT_CONVERSION_SCHEMA,
+    schemaName: SCHEMA_NAME,
+    temperature: UNIT_CONVERSION_TEMPERATURE,
   });
 
-  const rawContent = await callProvider(aiService, prompt);
-
-  // 5. Parse and validate response shape.
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawContent);
-  } catch (err) {
+  if (!result.ok) {
     log(
-      'error',
-      `AI unit conversion JSON parse error. Raw: ${rawContent.slice(0, 500)}`,
-      err
+      result.category === 'refused' || result.category === 'no_content'
+        ? 'warn'
+        : 'error',
+      `AI unit conversion: ${provider.service_type} failed for user ${userId} (${result.category}): ${result.detail}`
     );
-    throw new ProviderResponseError('AI response was not valid JSON.');
+    throw DISPATCH_ERROR_TO_THROW[result.category](result.detail);
   }
 
-  const validation = aiProviderRawResponseSchema.safeParse(parsed);
+  // 5. Validate response shape.
+  const validation = aiProviderRawResponseSchema.safeParse(result.json);
   if (!validation.success) {
     log(
       'error',
