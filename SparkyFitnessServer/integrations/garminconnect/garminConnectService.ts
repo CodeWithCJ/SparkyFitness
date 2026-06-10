@@ -368,11 +368,104 @@ async function fetchGarminActivitiesAndWorkouts(
     );
   }
 }
+async function fetchGarminNutritionDiary(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  try {
+    const chunks: { start: string; end: string }[] = [];
+    let currentStart = startDate;
+    const endLimit = endDate;
+
+    while (currentStart <= endLimit) {
+      const nextEndCandidate = addDays(currentStart, 6);
+      const nextEnd =
+        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
+      chunks.push({
+        start: currentStart,
+        end: nextEnd,
+      });
+      currentStart = addDays(nextEnd, 1);
+    }
+
+    log(
+      'info',
+      `fetchGarminNutritionDiary: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+    );
+
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
+    if (!provider || !provider.garth_dump) {
+      throw new Error('Garmin tokens not found for this user.');
+    }
+    let decryptedGarthDump = provider.garth_dump;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aggregatedResult: any = {
+      user_id: userId,
+      start_date: startDate,
+      end_date: endDate,
+      nutrition_data: [],
+    };
+
+    for (const chunk of chunks) {
+      log(
+        'info',
+        `fetchGarminNutritionDiary: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
+      );
+
+      const response = await axios.post(
+        `${GARMIN_MICROSERVICE_URL}/data/nutrition_diary`,
+        {
+          user_id: userId,
+          tokens: decryptedGarthDump,
+          start_date: chunk.start,
+          end_date: chunk.end,
+        },
+        {
+          timeout: 120000,
+        }
+      );
+      const result = response.data;
+
+      if (result.new_tokens) {
+        log(
+          'info',
+          `Detected token refresh during nutrition sync chunk for user ${userId}. Updating...`
+        );
+        await handleGarminTokens(userId, result.new_tokens);
+        decryptedGarthDump = JSON.stringify(result.new_tokens);
+      }
+
+      if (result.nutrition_data && Array.isArray(result.nutrition_data)) {
+        aggregatedResult.nutrition_data.push(...result.nutrition_data);
+      }
+    }
+
+    return aggregatedResult;
+  } catch (error: unknown) {
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log(
+      'error',
+      `Error fetching Garmin nutrition diary for user ${userId} from ${startDate} to ${endDate}:`,
+      errorData
+    );
+    throw new Error(`Failed to fetch Garmin nutrition diary: ${detail}`, {
+      cause: error,
+    });
+  }
+}
+
 export { garminLogin };
 export { garminResumeLogin };
 export { handleGarminTokens };
 export { syncGarminHealthAndWellness };
 export { fetchGarminActivitiesAndWorkouts };
+export { fetchGarminNutritionDiary };
 export { formatGarminMicroserviceError };
 export default {
   garminLogin,
@@ -380,4 +473,5 @@ export default {
   handleGarminTokens,
   syncGarminHealthAndWellness,
   fetchGarminActivitiesAndWorkouts,
+  fetchGarminNutritionDiary,
 };
