@@ -100,8 +100,6 @@ async function createMeal(mealData: any) {
         food.iron ?? null,
         food.glycemic_index ?? null,
         food.custom_nutrients ?? null,
-        new Date(),
-        new Date(),
       ]);
       const mealFoodsQuery = format(
         `INSERT INTO meal_foods (
@@ -110,7 +108,7 @@ async function createMeal(mealData: any) {
            saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
            cholesterol, sodium, potassium, dietary_fiber, sugars,
            vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-           custom_nutrients, created_at, updated_at
+           custom_nutrients
          ) VALUES %L RETURNING id`,
         mealFoodsValues
       );
@@ -349,8 +347,6 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
           food.iron ?? null,
           food.glycemic_index ?? null,
           food.custom_nutrients ?? null,
-          'now()',
-          'now()',
         ]);
         const mealFoodsQuery = format(
           `INSERT INTO meal_foods (
@@ -359,7 +355,7 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
              saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
              cholesterol, sodium, potassium, dietary_fiber, sugars,
              vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-             custom_nutrients, created_at, updated_at
+             custom_nutrients
            ) VALUES %L RETURNING id`,
           mealFoodsValues
         );

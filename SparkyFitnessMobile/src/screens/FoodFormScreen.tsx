@@ -500,13 +500,15 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     );
 
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
-  const equivalentBaseline: EquivalentUnit[] = [];
+  // Baseline is always empty for a new food — use a stable ref so it doesn't
+  // need to be listed as a useEffect dependency.
+  const equivalentBaselineRef = useRef<EquivalentUnit[]>([]);
   const isSavingRef = useRef(false);
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
       if (isSavingRef.current) return;
-      if (!equivalentsDiffer(equivalentDraft, equivalentBaseline)) return;
+      if (!equivalentsDiffer(equivalentDraft, equivalentBaselineRef.current)) return;
       e.preventDefault();
       void confirmDiscardEquivalents().then((ok) => {
         if (ok) navigation.dispatch(e.data.action);

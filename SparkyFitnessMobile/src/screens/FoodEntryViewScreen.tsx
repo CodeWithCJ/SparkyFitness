@@ -380,6 +380,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
+    entry.food_id,
     navigation,
     updateEdit,
     variants,
