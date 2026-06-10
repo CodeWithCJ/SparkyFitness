@@ -11,10 +11,27 @@ async function attachFoodsToMeals(client: any, meals: any) {
   const mealFoodsResult = await client.query(
     `SELECT mf.id, mf.meal_id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
             f.name AS food_name, f.brand,
-            fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-            fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-            fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-            fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+            COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
+            COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
+            COALESCE(mf.calories, fv.calories)                       AS calories,
+            COALESCE(mf.protein, fv.protein)                         AS protein,
+            COALESCE(mf.carbs, fv.carbs)                             AS carbs,
+            COALESCE(mf.fat, fv.fat)                                 AS fat,
+            COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
+            COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
+            COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
+            COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
+            COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
+            COALESCE(mf.sodium, fv.sodium)                           AS sodium,
+            COALESCE(mf.potassium, fv.potassium)                     AS potassium,
+            COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
+            COALESCE(mf.sugars, fv.sugars)                           AS sugars,
+            COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
+            COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
+            COALESCE(mf.calcium, fv.calcium)                         AS calcium,
+            COALESCE(mf.iron, fv.iron)                               AS iron,
+            COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
+            COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
      FROM meal_foods mf
      JOIN foods f ON mf.food_id = f.id
      LEFT JOIN food_variants fv ON mf.variant_id = fv.id
@@ -62,11 +79,37 @@ async function createMeal(mealData: any) {
         food.variant_id,
         food.quantity,
         food.unit,
-        'now()',
-        'now()',
+        food.serving_size ?? null,
+        food.serving_unit ?? null,
+        food.calories ?? null,
+        food.protein ?? null,
+        food.carbs ?? null,
+        food.fat ?? null,
+        food.saturated_fat ?? null,
+        food.polyunsaturated_fat ?? null,
+        food.monounsaturated_fat ?? null,
+        food.trans_fat ?? null,
+        food.cholesterol ?? null,
+        food.sodium ?? null,
+        food.potassium ?? null,
+        food.dietary_fiber ?? null,
+        food.sugars ?? null,
+        food.vitamin_a ?? null,
+        food.vitamin_c ?? null,
+        food.calcium ?? null,
+        food.iron ?? null,
+        food.glycemic_index ?? null,
+        food.custom_nutrients ?? null,
       ]);
       const mealFoodsQuery = format(
-        'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
+        `INSERT INTO meal_foods (
+           meal_id, food_id, variant_id, quantity, unit,
+           serving_size, serving_unit, calories, protein, carbs, fat,
+           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+           cholesterol, sodium, potassium, dietary_fiber, sugars,
+           vitamin_a, vitamin_c, calcium, iron, glycemic_index,
+           custom_nutrients
+         ) VALUES %L RETURNING id`,
         mealFoodsValues
       );
       await client.query(mealFoodsQuery);
@@ -107,10 +150,27 @@ async function getMeals(userId: any, filter = 'all') {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+                COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
+                COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
+                COALESCE(mf.calories, fv.calories)                       AS calories,
+                COALESCE(mf.protein, fv.protein)                         AS protein,
+                COALESCE(mf.carbs, fv.carbs)                             AS carbs,
+                COALESCE(mf.fat, fv.fat)                                 AS fat,
+                COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
+                COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
+                COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
+                COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
+                COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
+                COALESCE(mf.sodium, fv.sodium)                           AS sodium,
+                COALESCE(mf.potassium, fv.potassium)                     AS potassium,
+                COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
+                COALESCE(mf.sugars, fv.sugars)                           AS sugars,
+                COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
+                COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
+                COALESCE(mf.calcium, fv.calcium)                         AS calcium,
+                COALESCE(mf.iron, fv.iron)                               AS iron,
+                COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
+                COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
@@ -145,10 +205,27 @@ async function searchMeals(searchTerm: any, userId: any, limit = null) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+                COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
+                COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
+                COALESCE(mf.calories, fv.calories)                       AS calories,
+                COALESCE(mf.protein, fv.protein)                         AS protein,
+                COALESCE(mf.carbs, fv.carbs)                             AS carbs,
+                COALESCE(mf.fat, fv.fat)                                 AS fat,
+                COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
+                COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
+                COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
+                COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
+                COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
+                COALESCE(mf.sodium, fv.sodium)                           AS sodium,
+                COALESCE(mf.potassium, fv.potassium)                     AS potassium,
+                COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
+                COALESCE(mf.sugars, fv.sugars)                           AS sugars,
+                COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
+                COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
+                COALESCE(mf.calcium, fv.calcium)                         AS calcium,
+                COALESCE(mf.iron, fv.iron)                               AS iron,
+                COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
+                COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
@@ -176,10 +253,27 @@ async function getMealById(mealId: any, userId: any) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+                COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
+                COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
+                COALESCE(mf.calories, fv.calories)                       AS calories,
+                COALESCE(mf.protein, fv.protein)                         AS protein,
+                COALESCE(mf.carbs, fv.carbs)                             AS carbs,
+                COALESCE(mf.fat, fv.fat)                                 AS fat,
+                COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
+                COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
+                COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
+                COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
+                COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
+                COALESCE(mf.sodium, fv.sodium)                           AS sodium,
+                COALESCE(mf.potassium, fv.potassium)                     AS potassium,
+                COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
+                COALESCE(mf.sugars, fv.sugars)                           AS sugars,
+                COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
+                COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
+                COALESCE(mf.calcium, fv.calcium)                         AS calcium,
+                COALESCE(mf.iron, fv.iron)                               AS iron,
+                COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
+                COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id
@@ -232,11 +326,37 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
           food.variant_id,
           food.quantity,
           food.unit,
-          'now()',
-          'now()',
+          food.serving_size ?? null,
+          food.serving_unit ?? null,
+          food.calories ?? null,
+          food.protein ?? null,
+          food.carbs ?? null,
+          food.fat ?? null,
+          food.saturated_fat ?? null,
+          food.polyunsaturated_fat ?? null,
+          food.monounsaturated_fat ?? null,
+          food.trans_fat ?? null,
+          food.cholesterol ?? null,
+          food.sodium ?? null,
+          food.potassium ?? null,
+          food.dietary_fiber ?? null,
+          food.sugars ?? null,
+          food.vitamin_a ?? null,
+          food.vitamin_c ?? null,
+          food.calcium ?? null,
+          food.iron ?? null,
+          food.glycemic_index ?? null,
+          food.custom_nutrients ?? null,
         ]);
         const mealFoodsQuery = format(
-          'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
+          `INSERT INTO meal_foods (
+             meal_id, food_id, variant_id, quantity, unit,
+             serving_size, serving_unit, calories, protein, carbs, fat,
+             saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+             cholesterol, sodium, potassium, dietary_fiber, sugars,
+             vitamin_a, vitamin_c, calcium, iron, glycemic_index,
+             custom_nutrients
+           ) VALUES %L RETURNING id`,
           mealFoodsValues
         );
         await client.query(mealFoodsQuery);
@@ -585,10 +705,27 @@ async function getTopMeals(userId: any, limit = null) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
                 f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+                COALESCE(mf.serving_size, fv.serving_size)               AS serving_size,
+                COALESCE(mf.serving_unit, fv.serving_unit)               AS serving_unit,
+                COALESCE(mf.calories, fv.calories)                       AS calories,
+                COALESCE(mf.protein, fv.protein)                         AS protein,
+                COALESCE(mf.carbs, fv.carbs)                             AS carbs,
+                COALESCE(mf.fat, fv.fat)                                 AS fat,
+                COALESCE(mf.saturated_fat, fv.saturated_fat)             AS saturated_fat,
+                COALESCE(mf.polyunsaturated_fat, fv.polyunsaturated_fat) AS polyunsaturated_fat,
+                COALESCE(mf.monounsaturated_fat, fv.monounsaturated_fat) AS monounsaturated_fat,
+                COALESCE(mf.trans_fat, fv.trans_fat)                     AS trans_fat,
+                COALESCE(mf.cholesterol, fv.cholesterol)                 AS cholesterol,
+                COALESCE(mf.sodium, fv.sodium)                           AS sodium,
+                COALESCE(mf.potassium, fv.potassium)                     AS potassium,
+                COALESCE(mf.dietary_fiber, fv.dietary_fiber)             AS dietary_fiber,
+                COALESCE(mf.sugars, fv.sugars)                           AS sugars,
+                COALESCE(mf.vitamin_a, fv.vitamin_a)                     AS vitamin_a,
+                COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
+                COALESCE(mf.calcium, fv.calcium)                         AS calcium,
+                COALESCE(mf.iron, fv.iron)                               AS iron,
+                COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
+                COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
          FROM meal_foods mf
          JOIN foods f ON mf.food_id = f.id
          LEFT JOIN food_variants fv ON mf.variant_id = fv.id

@@ -575,6 +575,7 @@ describe('MealAddScreen', () => {
       pickerMode: 'meal-builder',
       ingredientIndex: 0,
       returnDepth: 1,
+      selectedVariantOverride: expect.any(Object),
     });
   });
 
@@ -602,6 +603,7 @@ describe('MealAddScreen', () => {
       pickerMode: 'meal-builder',
       ingredientIndex: 0,
       returnDepth: 1,
+      selectedVariantOverride: expect.any(Object),
     });
   });
 });

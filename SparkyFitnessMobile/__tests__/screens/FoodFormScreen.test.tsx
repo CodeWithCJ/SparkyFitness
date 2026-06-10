@@ -862,15 +862,13 @@ describe('FoodFormScreen', () => {
       });
       // The defining assertion: no variant POST when the toggle is off.
       expect(mockCreateVariant).not.toHaveBeenCalled();
-      // The entry's pending unit selection still propagates so the diary entry
-      // records the new unit + nutrition inline.
+      // Draft unit selection still propagates back so the caller can display
+      // the correct unit/nutrition ??? callers handle draft vs existing safely.
       expect(navigation.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
           payload: expect.objectContaining({
             params: expect.objectContaining({
-              adjustedUnitSelection: expect.objectContaining({
-                kind: 'draft',
-              }),
+              adjustedUnitSelection: expect.objectContaining({ kind: 'draft' }),
             }),
           }),
         }),

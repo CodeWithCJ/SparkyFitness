@@ -1201,8 +1201,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
           if (DECIMAL_INPUT_REGEX.test(v)) update(field, v);
         }}
         keyboardType="decimal-pad"
-        returnKeyType={nextField ? 'next' : 'done'}
-        onSubmitEditing={nextField ? () => focusField(nextField) : undefined}
       />
     </View>
   );
@@ -1455,8 +1453,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 if (DECIMAL_INPUT_REGEX.test(v)) update('calories', v);
               }}
               keyboardType="decimal-pad"
-              returnKeyType="next"
-              onSubmitEditing={() => focusField('fat')}
             />
           </View>
           <View className="flex-row gap-3">

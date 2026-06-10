@@ -12,6 +12,7 @@ import type { Exercise } from './exercise';
 import type { Meal, MealIngredientDraft } from './meals';
 import type { FoodEntryMeal } from './foodEntryMeals';
 import type {
+  EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from './foodUnitVariants';
@@ -68,6 +69,8 @@ export type RootStackParamList = {
         date?: string;
         adjustedValues?: FoodFormData;
         adjustedUnitSelection?: FoodUnitSelectionResult;
+        pendingEquivalents?: EquivalentUnit[];
+        selectedVariantOverride?: FoodUnitVariant;
         pickerMode?: FoodPickerMode;
         ingredientIndex?: number;
         returnDepth?: number;

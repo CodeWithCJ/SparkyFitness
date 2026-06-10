@@ -83,7 +83,7 @@ describe('mealRepository', () => {
       );
       // pg-format creates a single formatted string, not array parameters
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringMatching(/INSERT INTO meal_foods.*VALUES/)
+        expect.stringMatching(/INSERT INTO meal_foods[\s\S]*VALUES/)
       );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
       expect(result).toEqual({
@@ -393,7 +393,7 @@ describe('mealRepository', () => {
       );
       // pg-format creates a single formatted string, not array parameters
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringMatching(/INSERT INTO meal_foods.*VALUES/)
+        expect.stringMatching(/INSERT INTO meal_foods[\s\S]*VALUES/)
       );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
       expect(result).toEqual({

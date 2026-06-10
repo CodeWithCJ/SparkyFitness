@@ -37,9 +37,14 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import type { FoodFormData } from '../components/FoodForm';
 import type { MealIngredientDraft } from '../types/meals';
 import type {
+  EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
+import {
+  createFoodVariant,
+  type CreateFoodVariantPayload,
+} from '../services/api/foodsApi';
 import {
   type FoodInfoItem,
   foodItemToFoodInfo,
@@ -67,6 +72,8 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
 const EXTERNAL_DRAFT_VARIANT_ID = '__draft-external-unit__';
+// Sentinel written by FoodForm for AI-converted draft units; never a real DB ID.
+const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
 const NUTRITION_FIELDS = [
   'fiber',
   'saturatedFat',
@@ -169,11 +176,37 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
-  const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(null);
+  // When editing an existing meal ingredient, pre-populate adjustedValues from
+  // the ingredient's stored nutrition snapshot so the form shows the actual
+  // saved values, not the API variant which may differ.
+  const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(() => {
+    if (ingredientIndex === undefined) return null;
+    return {
+      name: item.name,
+      brand: item.brand ?? '',
+      servingSize: item.servingSize != null ? String(item.servingSize) : '',
+      servingUnit: item.servingUnit,
+      calories: item.calories != null ? String(item.calories) : '',
+      protein: item.protein != null ? String(item.protein) : '',
+      carbs: item.carbs != null ? String(item.carbs) : '',
+      fat: item.fat != null ? String(item.fat) : '',
+      fiber: toFormString(item.fiber),
+      saturatedFat: toFormString(item.saturatedFat),
+      transFat: toFormString(item.transFat),
+      sodium: toFormString(item.sodium),
+      sugars: toFormString(item.sugars),
+      potassium: toFormString(item.potassium),
+      cholesterol: toFormString(item.cholesterol),
+      calcium: toFormString(item.calcium),
+      iron: toFormString(item.iron),
+      vitaminA: toFormString(item.vitaminA),
+      vitaminC: toFormString(item.vitaminC),
+    };
+  });
   const [savedFoodOverride, setSavedFoodOverride] =
     useState<FoodInfoItem | null>(null);
   const [selectedVariantOverride, setSelectedVariantOverride] =
-    useState<FoodUnitVariant | null>(null);
+    useState<FoodUnitVariant | null>(route.params?.selectedVariantOverride ?? null);
   const activeItem = savedFoodOverride ?? item;
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
@@ -308,7 +341,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       return {
         kind:
           !selectedVariantOverride.id ||
-          selectedVariantOverride.id === EXTERNAL_DRAFT_VARIANT_ID
+          selectedVariantOverride.id === EXTERNAL_DRAFT_VARIANT_ID ||
+          selectedVariantOverride.id === FORM_DRAFT_UNIT_ID
             ? 'draft'
             : 'existing',
         variant: selectedVariantOverride,
@@ -353,7 +387,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       }
     }
 
-    if (selectedVariantId === activeItem.variantId) {
+    if ((selectedVariantId ?? null) === (activeItem.variantId ?? null)) {
       return activeItem.customNutrients ?? null;
     }
 
@@ -449,9 +483,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const servingSizeRef = useRef(displayValues.servingSize);
+  const pendingEquivalentsRef = useRef<EquivalentUnit[] | null>(null);
 
   const adjustedFromNav = route.params?.adjustedValues;
   const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
+  const pendingEquivalentsFromNav = route.params?.pendingEquivalents;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
@@ -475,7 +511,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             adjustedUnitSelectionFromNav.variant.id ?? EXTERNAL_DRAFT_VARIANT_ID,
         };
         setSelectedVariantOverride(draftVariant);
-        setSelectedVariantId(draftVariant.id);
+        // selectedUnitSelection prefers selectedVariantOverride for UI/re-entry
+        // consistency. For local foods, preserve the real persisted
+        // selectedVariantId so save payloads use the real variant_id, not a
+        // draft ID that was never written to the database.
+        if (!isLocalFood) {
+          setSelectedVariantId(draftVariant.id);
+        }
       } else {
         const knownVariants = isLocalFood ? localUnitVariants : externalUnitVariants;
         const isKnownVariant = knownVariants.some(
@@ -484,7 +526,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         setSelectedVariantOverride(
           isKnownVariant ? null : adjustedUnitSelectionFromNav.variant,
         );
-        if (adjustedUnitSelectionFromNav.variant.id) {
+        // For local foods, guard against draft sentinel IDs that were classified
+        // as 'existing' by the selectedUnitSelection memo (e.g. FORM_DRAFT_UNIT_ID
+        // from AI-converted units, which isn't EXTERNAL_DRAFT_VARIANT_ID so the
+        // memo assigns kind:'existing' even though it's never a real DB ID).
+        const isDraftSentinel =
+          adjustedUnitSelectionFromNav.variant.id === EXTERNAL_DRAFT_VARIANT_ID ||
+          adjustedUnitSelectionFromNav.variant.id === FORM_DRAFT_UNIT_ID;
+        if (adjustedUnitSelectionFromNav.variant.id && !(isLocalFood && isDraftSentinel)) {
           setSelectedVariantId(adjustedUnitSelectionFromNav.variant.id);
         }
       }
@@ -510,6 +559,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     localUnitVariants,
     navigation,
   ]);
+
+  useEffect(() => {
+    if (!pendingEquivalentsFromNav) return;
+    pendingEquivalentsRef.current = pendingEquivalentsFromNav;
+    navigation.setParams({ pendingEquivalents: undefined });
+  }, [pendingEquivalentsFromNav, navigation]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -671,7 +726,39 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const { addEntry, addEntryAsync, isPending: isAddPending, invalidateCache } =
     useAddFoodEntry({
-      onSuccess: () => {
+      onSuccess: async (entry) => {
+        if (entry.food_id && pendingEquivalentsRef.current) {
+          const equivalents = pendingEquivalentsRef.current;
+          pendingEquivalentsRef.current = null;
+          try {
+            await Promise.all(
+              equivalents.map((eq) =>
+                createFoodVariant({
+                  food_id: entry.food_id!,
+                  serving_size: eq.serving_size,
+                  serving_unit: eq.serving_unit,
+                  calories: displayValues.calories,
+                  protein: displayValues.protein,
+                  carbs: displayValues.carbs,
+                  fat: displayValues.fat,
+                  dietary_fiber: displayValues.fiber,
+                  saturated_fat: displayValues.saturatedFat,
+                  sodium: displayValues.sodium,
+                  sugars: displayValues.sugars,
+                  trans_fat: displayValues.transFat,
+                  potassium: displayValues.potassium,
+                  calcium: displayValues.calcium,
+                  iron: displayValues.iron,
+                  cholesterol: displayValues.cholesterol,
+                  vitamin_a: displayValues.vitaminA,
+                  vitamin_c: displayValues.vitaminC,
+                } as CreateFoodVariantPayload),
+              ),
+            );
+          } catch {
+            Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+          }
+        }
         invalidateCache(selectedDate);
         navigation.dispatch(StackActions.popToTop());
       },
@@ -900,15 +987,47 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           <View className="flex-row items-center ml-auto gap-4 z-10">
             <TouchableOpacity
               onPress={() => {
+                // Build selectedUnitSelection from displayValues so FoodForm's
+                // variant-sync effect uses the current displayed nutrition rather
+                // than overwriting initialValues with DB variant defaults.
+                // Spread the existing variant's metadata (source, ai_confidence,
+                // custom_nutrients, etc.) then override only the nutrition fields
+                // with displayValues so FoodForm's variant-sync effect uses the
+                // current displayed nutrition, not DB variant defaults.
+                const displayVariant: FoodUnitVariant = {
+                  ...(selectedUnitSelection?.variant ?? {}),
+                  id: selectedUnitSelection?.variant.id,
+                  serving_size: displayValues.servingSize,
+                  serving_unit: displayValues.servingUnit,
+                  calories: displayValues.calories,
+                  protein: displayValues.protein,
+                  carbs: displayValues.carbs,
+                  fat: displayValues.fat,
+                  dietary_fiber: displayValues.fiber,
+                  saturated_fat: displayValues.saturatedFat,
+                  sodium: displayValues.sodium,
+                  sugars: displayValues.sugars,
+                  trans_fat: displayValues.transFat,
+                  potassium: displayValues.potassium,
+                  calcium: displayValues.calcium,
+                  iron: displayValues.iron,
+                  cholesterol: displayValues.cholesterol,
+                  vitamin_a: displayValues.vitaminA,
+                  vitamin_c: displayValues.vitaminC,
+                };
+                const displayUnitSelection: FoodUnitSelectionResult | undefined =
+                  selectedUnitSelection
+                    ? { kind: selectedUnitSelection.kind, variant: displayVariant }
+                    : undefined;
                 navigation.navigate('FoodForm', {
                   mode: 'adjust-entry-nutrition',
                   returnTo: 'FoodEntryAdd',
                   returnKey: route.key,
                   foodId: isLocalFood ? activeItem.id : undefined,
                   variantId: isLocalFood ? selectedVariantId : undefined,
-                  customNutrients: isLocalFood ? selectedCustomNutrients : undefined,
+                  customNutrients: isLocalFood ? (selectedCustomNutrients ?? null) : undefined,
                   availableUnitVariants: selectorVariants,
-                  selectedUnitSelection,
+                  selectedUnitSelection: displayUnitSelection,
                   initialValues: {
                     name: adjustedValues?.name || activeItem.name,
                     brand: adjustedValues?.brand ?? activeItem.brand ?? '',

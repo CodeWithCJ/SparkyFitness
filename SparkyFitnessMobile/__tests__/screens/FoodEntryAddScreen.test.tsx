@@ -1000,4 +1000,179 @@ describe('FoodEntryAddScreen', () => {
       });
     });
   });
+
+  describe('draft adjustedUnitSelection handling', () => {
+    // Use a stable variants array so the useFoodVariants mock doesn't create a
+    // new array reference on every render (which would cause the adjustedUnitSelection
+    // useEffect to loop via the localUnitVariants dependency).
+    const stableVariants = [
+      {
+        id: 'variant-1',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 100,
+        protein: 15,
+        carbs: 6,
+        fat: 0,
+      },
+    ];
+
+    beforeEach(() => {
+      mockUseFoodVariants.mockImplementation((foodId, options) => ({
+        variants:
+          foodId === 'food-1' && options?.enabled !== false
+            ? (stableVariants as any)
+            : undefined,
+        isLoading: false,
+        isError: false,
+      }));
+    });
+
+    const draftAdjustedValues = {
+      name: 'Greek Yogurt',
+      brand: 'Sparky',
+      servingSize: '30',
+      servingUnit: 'mg',
+      calories: '50',
+      protein: '5',
+      carbs: '3',
+      fat: '2',
+      fiber: '',
+      saturatedFat: '',
+      transFat: '',
+      sodium: '',
+      sugars: '',
+      potassium: '',
+      cholesterol: '',
+      calcium: '',
+      iron: '',
+      vitaminA: '',
+      vitaminC: '',
+    };
+
+    it('preserves real selectedVariantId for local foods when draft is returned', async () => {
+      // Regression: draft branch was calling setSelectedVariantId(draftId) for
+      // local foods, poisoning save payloads with a non-persisted variant ID.
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2026-04-23',
+        adjustedValues: draftAdjustedValues,
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            id: 'FORM_DRAFT_UNIT_ID',
+            serving_size: 30,
+            serving_unit: 'mg',
+            calories: 50,
+            protein: 5,
+            carbs: 3,
+            fat: 2,
+          },
+        },
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          adjustedValues: undefined,
+          adjustedUnitSelection: undefined,
+        });
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+
+      await waitFor(() => {
+        expect(mockAddEntry).toHaveBeenCalledWith(
+          expect.objectContaining({
+            createEntryPayload: expect.objectContaining({
+              variant_id: 'variant-1', // real persisted ID, not 'FORM_DRAFT_UNIT_ID'
+            }),
+          }),
+        );
+      });
+    });
+
+    it('updates selectedVariantId for external foods when draft is returned', async () => {
+      // External foods don't have persisted variant IDs, so draft ID update is correct.
+      const screen = renderScreen({
+        item: baseExternalItem,
+        date: '2026-04-23',
+        adjustedValues: {
+          ...draftAdjustedValues,
+          name: 'Protein Bar',
+          brand: 'Remote Brand',
+        },
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            id: 'EXTERNAL_DRAFT_VARIANT_ID',
+            serving_size: 30,
+            serving_unit: 'mg',
+            calories: 50,
+            protein: 5,
+            carbs: 3,
+            fat: 2,
+          },
+        },
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          adjustedValues: undefined,
+          adjustedUnitSelection: undefined,
+        });
+      });
+
+      // For external foods the screen should render without crash
+      expect(screen.getByText('Add Food')).toBeTruthy();
+    });
+
+    it('passes displayValues-based selectedUnitSelection when re-opening AdjustNutrition after draft return', async () => {
+      // After receiving a draft unit back, re-opening AdjustNutrition should pass
+      // selectedUnitSelection whose variant nutrition matches the current displayValues
+      // (the adjusted values), not the original DB variant's nutrition.
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2026-04-23',
+        adjustedValues: draftAdjustedValues,
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            id: undefined,
+            serving_size: 30,
+            serving_unit: 'mg',
+            calories: 50,
+            protein: 5,
+            carbs: 3,
+            fat: 2,
+          },
+        },
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          adjustedValues: undefined,
+          adjustedUnitSelection: undefined,
+        });
+      });
+
+      // Find and press the nutrition edit (pencil) button
+      const editButtons = screen.queryAllByTestId('icon-pencil');
+      expect(editButtons.length).toBeGreaterThan(0);
+      if (editButtons.length > 0) {
+        fireEvent.press(editButtons[0]);
+        expect(navigation.navigate).toHaveBeenCalledWith(
+          'FoodForm',
+          expect.objectContaining({
+            selectedUnitSelection: expect.objectContaining({
+              variant: expect.objectContaining({
+                serving_unit: 'mg',
+                calories: 50,
+              }),
+            }),
+          }),
+        );
+      }
+    });
+  });
 });

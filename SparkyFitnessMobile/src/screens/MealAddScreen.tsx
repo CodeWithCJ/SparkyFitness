@@ -23,6 +23,7 @@ import { useCreateMeal, useMeal, useUpdateMeal } from '../hooks';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealFoodPayload, MealIngredientDraft } from '../types/meals';
+import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   formatCaloriesDisplay,
@@ -235,11 +236,34 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   };
 
   const editIngredient = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
+    // Pass the ingredient's stored unit snapshot as a selectedVariantOverride so
+    // FoodEntryAdd opens with the actual unit/nutrition rather than the default variant.
+    const variantOverride: FoodUnitVariant = {
+      id: ingredient.variant_id || undefined,
+      serving_size: ingredient.serving_size,
+      serving_unit: ingredient.serving_unit,
+      calories: ingredient.calories,
+      protein: ingredient.protein,
+      carbs: ingredient.carbs,
+      fat: ingredient.fat,
+      dietary_fiber: ingredient.dietary_fiber,
+      saturated_fat: ingredient.saturated_fat,
+      sodium: ingredient.sodium,
+      sugars: ingredient.sugars,
+      trans_fat: ingredient.trans_fat,
+      potassium: ingredient.potassium,
+      calcium: ingredient.calcium,
+      iron: ingredient.iron,
+      cholesterol: ingredient.cholesterol,
+      vitamin_a: ingredient.vitamin_a,
+      vitamin_c: ingredient.vitamin_c,
+    };
     navigation.navigate('FoodEntryAdd', {
       item: mealIngredientDraftToFoodInfo(ingredient),
       pickerMode: 'meal-builder',
       ingredientIndex,
       returnDepth: 1,
+      selectedVariantOverride: variantOverride,
     });
   };
 

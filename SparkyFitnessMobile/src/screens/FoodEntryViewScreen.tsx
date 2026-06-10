@@ -289,7 +289,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       }
     }
 
-    if (selectedVariantId === entry.variant_id) {
+    if ((selectedVariantId ?? null) === (entry.variant_id ?? null)) {
       return entry.custom_nutrients ?? null;
     }
 
@@ -355,7 +355,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       setCreatedVariantOverride(
         isKnownVariant ? null : adjustedUnitSelectionFromNav.variant,
       );
-      if (adjustedUnitSelectionFromNav.variant.id) {
+      // For local foods, only update selectedVariantId when the returned selection
+      // is an existing saved variant. Draft IDs are never persisted to the database
+      // and must not be written into the save payload via handleSave().
+      const isLocalFood = !!entry.food_id;
+      const isDraft = adjustedUnitSelectionFromNav.kind === 'draft';
+      if (adjustedUnitSelectionFromNav.variant.id && !(isLocalFood && isDraft)) {
         updateEdit({
           selectedVariantId: adjustedUnitSelectionFromNav.variant.id,
         });
@@ -375,6 +380,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
+    entry.food_id,
     navigation,
     updateEdit,
     variants,
@@ -421,15 +427,49 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   };
 
   const navigateToNutritionForm = () => {
+    // Build selectedUnitSelection from displayValues so FoodForm's variant-sync
+    // effect uses the entry's actual stored nutrition rather than overwriting
+    // initialValues with the DB variant's defaults.
+    // Use createdVariantOverride as the metadata base when it exists ??? it holds
+    // AI provenance, custom_nutrients, and other draft metadata that
+    // selectedUnitSelection?.variant may not have (the memo falls back to the
+    // DB variant when createdVariantOverride.id !== selectedVariantId, which is
+    // always true for local-food drafts after the P1 guard). Fall back to the
+    // selectedUnitSelection variant for non-draft cases.
+    const metadataBase = createdVariantOverride ?? selectedUnitSelection?.variant ?? {};
+    const displayVariant: FoodUnitVariant = {
+      ...metadataBase,
+      id: selectedVariantId,
+      serving_size: displayValues.servingSize,
+      serving_unit: displayValues.servingUnit,
+      calories: displayValues.calories,
+      protein: displayValues.protein,
+      carbs: displayValues.carbs,
+      fat: displayValues.fat,
+      dietary_fiber: displayValues.fiber,
+      saturated_fat: displayValues.saturatedFat,
+      sodium: displayValues.sodium,
+      sugars: displayValues.sugars,
+      trans_fat: displayValues.transFat,
+      potassium: displayValues.potassium,
+      calcium: displayValues.calcium,
+      iron: displayValues.iron,
+      cholesterol: displayValues.cholesterol,
+      vitamin_a: displayValues.vitaminA,
+      vitamin_c: displayValues.vitaminC,
+    };
+    const displayUnitSelection: FoodUnitSelectionResult | undefined = selectedUnitSelection
+      ? { kind: selectedUnitSelection.kind, variant: displayVariant }
+      : undefined;
     navigation.navigate('FoodForm', {
       mode: 'adjust-entry-nutrition',
       returnTo: 'FoodEntryView',
       returnKey: route.key,
       foodId: entry.food_id ?? undefined,
       variantId: selectedVariantId,
-      customNutrients: selectedCustomNutrients,
+      customNutrients: selectedCustomNutrients ?? null,
       availableUnitVariants: selectorVariants,
-      selectedUnitSelection,
+      selectedUnitSelection: displayUnitSelection,
       initialValues: {
         name: adjustedValues?.name || entry.food_name || '',
         brand: adjustedValues?.brand ?? entry.brand_name ?? '',

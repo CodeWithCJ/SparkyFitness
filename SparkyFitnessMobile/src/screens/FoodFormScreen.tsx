@@ -129,6 +129,21 @@ function confirmDiscardEquivalents(): Promise<boolean> {
   });
 }
 
+function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Save nutrition',
+      `"${unitLabel}" is already a saved variant. Do you want to update it with these values, or save as a new variant?`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+        { text: 'Save as new', onPress: () => resolve('new') },
+        { text: 'Update existing', style: 'destructive', onPress: () => resolve('overwrite') },
+      ],
+      { onDismiss: () => resolve('cancel') },
+    );
+  });
+}
+
 function validateFoodForm(data: FoodFormData): boolean {
   if (!data.name.trim()) {
     Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
@@ -484,6 +499,24 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         : null,
     );
 
+  const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
+  // Baseline is always empty for a new food — use a stable ref so it doesn't
+  // need to be listed as a useEffect dependency.
+  const equivalentBaselineRef = useRef<EquivalentUnit[]>([]);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (isSavingRef.current) return;
+      if (!equivalentsDiffer(equivalentDraft, equivalentBaselineRef.current)) return;
+      e.preventDefault();
+      void confirmDiscardEquivalents().then((ok) => {
+        if (ok) navigation.dispatch(e.data.action);
+      });
+    });
+    return unsub;
+  }, [navigation, equivalentDraft]);
+
   const [selectedDate, setSelectedDate] = useState(params.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
@@ -553,8 +586,16 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
   const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
+  // Holds the equivalent-save function for the current submit so onSuccess can
+  // fire it after the food+entry are both confirmed, without a separate pre-save.
+  const pendingEquivalentSaveRef = useRef<((foodId: string) => void) | null>(null);
   const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
     onSuccess: (entry) => {
+      isSavingRef.current = true;
+      if (entry.food_id && pendingEquivalentSaveRef.current) {
+        pendingEquivalentSaveRef.current(entry.food_id);
+        pendingEquivalentSaveRef.current = null;
+      }
       invalidateCache(normalizeDate(entry.entry_date));
       navigation.dispatch(StackActions.popToTop());
     },
@@ -606,9 +647,48 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
       provider_type: providerType ?? null,
     };
 
+    const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+
+    // Schedules equivalent-variant creation after the food is saved. Fires
+    // and forgets ??? navigation has already occurred. Any failures are shown
+    // via toast; missing equivalents can be added later via the food detail
+    // edit screen (same recovery path as EditFoodMode).
+    const saveEquivalentsAsync = (foodId: string) => {
+      if (cleanEquivalents.length === 0) return;
+      const groupNutrition = buildVariantFromFormData(data);
+      void Promise.all(
+        cleanEquivalents.map((eq) =>
+          createFoodVariant({
+            food_id: foodId,
+            serving_size: eq.serving_size,
+            serving_unit: eq.serving_unit,
+            calories: groupNutrition.calories,
+            protein: groupNutrition.protein,
+            carbs: groupNutrition.carbs,
+            fat: groupNutrition.fat,
+            dietary_fiber: groupNutrition.dietary_fiber,
+            saturated_fat: groupNutrition.saturated_fat,
+            sodium: groupNutrition.sodium,
+            sugars: groupNutrition.sugars,
+            trans_fat: groupNutrition.trans_fat,
+            potassium: groupNutrition.potassium,
+            calcium: groupNutrition.calcium,
+            iron: groupNutrition.iron,
+            cholesterol: groupNutrition.cholesterol,
+            vitamin_a: groupNutrition.vitamin_a,
+            vitamin_c: groupNutrition.vitamin_c,
+          }),
+        ),
+      ).catch(() => {
+        Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+      });
+    };
+
     if (isMealBuilderMode) {
       try {
         const savedFood = await saveFoodAsync(saveFoodPayload);
+        isSavingRef.current = true;
+        saveEquivalentsAsync(savedFood.id);
         setPendingMealIngredientSelection({
           ingredient: buildMealIngredientDraftFromSavedFood(
             savedFood,
@@ -625,7 +705,9 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 
     if (isLibraryMode) {
       try {
-        await saveFoodAsync(saveFoodPayload);
+        const savedFood = await saveFoodAsync(saveFoodPayload);
+        isSavingRef.current = true;
+        saveEquivalentsAsync(savedFood.id);
         Toast.show({ type: 'success', text1: 'Food saved' });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
@@ -643,6 +725,10 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
       return;
     }
 
+    // Always overwrite the ref so a stale callback from a previous failed
+    // attempt can never fire on this retry with the wrong equivalents.
+    pendingEquivalentSaveRef.current = cleanEquivalents.length > 0 ? saveEquivalentsAsync : null;
+    // isSavingRef is set in onSuccess so it stays false if addEntry fails.
     addEntry({
       saveFoodPayload,
       createEntryPayload: {
@@ -689,6 +775,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
               }
             : undefined
         }
+        equivalents={{ items: equivalentDraft, onChange: setEquivalentDraft }}
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
@@ -806,12 +893,90 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const [pendingUnitSelection, setPendingUnitSelection] =
     useState<FoodUnitSelectionResult | null>(selectedUnitSelection ?? null);
   const [currentVariantId, setCurrentVariantId] = useState(variantId);
-  const canUpdateVariant = !!(
-    foodId &&
-    currentVariantId &&
-    customNutrients !== undefined
-  );
+  // Allow saving a new variant even when no currentVariantId exists yet ???
+  // the user may be creating a variant for the first time from an unsaved entry.
+  const canUpdateVariant = !!(foodId && customNutrients !== undefined);
   const [updateFoodToggle, setUpdateFoodToggle] = useState(false);
+
+  // Equivalent units — only fetched/shown when we have a real saved food.
+  const { variants } = useFoodVariants(foodId ?? '', { enabled: !!foodId });
+  const groups = useMemo(
+    () => groupEquivalentVariants(variants),
+    [variants],
+  );
+  const activeGroup = useMemo(
+    () =>
+      groups.find(
+        (g) =>
+          g.base.id === currentVariantId ||
+          g.equivalents.some((eq) => eq.id === currentVariantId),
+      ),
+    [groups, currentVariantId],
+  );
+  const otherSiblings = useMemo<EquivalentUnit[]>(() => {
+    if (!activeGroup) return [];
+    const all: EquivalentUnit[] = [
+      toEquivalentUnit(activeGroup.base),
+      ...activeGroup.equivalents,
+    ];
+    return all.filter((eq) => eq.id !== currentVariantId);
+  }, [activeGroup, currentVariantId]);
+
+  const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
+  const [equivalentBaseline, setEquivalentBaseline] = useState<EquivalentUnit[]>([]);
+
+  const seedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const seedKey = `${currentVariantId}|${otherSiblings
+      .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
+      .join(',')}`;
+    if (seedKeyRef.current === seedKey) return;
+    seedKeyRef.current = seedKey;
+    setEquivalentDraft(otherSiblings);
+    setEquivalentBaseline(otherSiblings);
+  }, [currentVariantId, otherSiblings]);
+
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (isSavingRef.current) return;
+      if (!equivalentsDiffer(equivalentDraft, equivalentBaseline)) return;
+      e.preventDefault();
+      void confirmDiscardEquivalents().then((ok) => {
+        if (ok) navigation.dispatch(e.data.action);
+      });
+    });
+    return unsub;
+  }, [navigation, equivalentDraft, equivalentBaseline]);
+
+  const buildGroupNutrition = useCallback(
+    (
+      data: FoodFormData,
+      snapshot: FoodVariantDetail | undefined,
+    ): Partial<FoodVariantDetail> => ({
+      calories: parseDecimalInput(data.calories) || 0,
+      protein: parseDecimalInput(data.protein) || 0,
+      carbs: parseDecimalInput(data.carbs) || 0,
+      fat: parseDecimalInput(data.fat) || 0,
+      dietary_fiber: parseOptional(data.fiber),
+      saturated_fat: parseOptional(data.saturatedFat),
+      sodium: parseOptional(data.sodium),
+      sugars: parseOptional(data.sugars),
+      trans_fat: parseOptional(data.transFat),
+      potassium: parseOptional(data.potassium),
+      calcium: parseOptional(data.calcium),
+      iron: parseOptional(data.iron),
+      cholesterol: parseOptional(data.cholesterol),
+      vitamin_a: parseOptional(data.vitaminA),
+      vitamin_c: parseOptional(data.vitaminC),
+      polyunsaturated_fat: snapshot?.polyunsaturated_fat,
+      monounsaturated_fat: snapshot?.monounsaturated_fat,
+      glycemic_index: snapshot?.glycemic_index,
+      custom_nutrients: snapshot?.custom_nutrients ?? customNutrients ?? undefined,
+    }),
+    [customNutrients],
+  );
 
   const handleUnitSelectionChange = useCallback(
     async (
@@ -828,8 +993,32 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     [variantId],
   );
 
+  const isDraftSelection = pendingUnitSelection?.kind === 'draft';
+  // Show equivalents for local foods (canUpdateVariant) and also when navigating
+  // from FoodEntryAdd for external foods — equivalents get deferred to onSuccess
+  // of addEntry once the food has a real food_id.
+  const showEquivalents = canUpdateVariant || params.returnTo === 'FoodEntryAdd';
+
   const handleSubmit = async (data: FoodFormData) => {
     if (!validateFoodForm(data)) {
+      return;
+    }
+
+    // If the user wants to save equivalents we need the full variant list to
+    // diff sibling rows. Guard the same way EditFoodMode does.
+    const draftSelectionEarly =
+      pendingUnitSelection?.kind === 'draft' ? pendingUnitSelection : null;
+    if (
+      updateFoodToggle &&
+      canUpdateVariant &&
+      !draftSelectionEarly &&
+      equivalentsDiffer(equivalentDraft, equivalentBaseline) &&
+      !variants
+    ) {
+      Toast.show({
+        type: 'error',
+        text1: 'Still loading food details — try again in a moment.',
+      });
       return;
     }
 
@@ -860,40 +1049,271 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         setPendingUnitSelection(nextUnitSelection);
         setCurrentVariantId(createdVariant.id);
       } catch {
-        Toast.show({ type: 'error', text1: 'Could not update that unit' });
+        Toast.show({ type: 'error', text1: 'Could not save new unit' });
         return;
       }
     }
 
+    // Snapshot the variant ID before any create inside the toggle block so the
+    // equivalent diff can tell whether the variant pre-existed or was just created.
+    // equivDiffVariantId tracks which variant the diff should target — it follows
+    // "Save as new" creates but stays undefined when the variant was brand-new.
+    const variantIdBeforeToggle = nextVariantId;
+    let equivDiffVariantId = nextVariantId;
+
     if (updateFoodToggle && canUpdateVariant) {
       try {
-        if (draftSelection && foodId) {
+        if (!nextVariantId && foodId) {
+          // No saved variant exists for this food yet (e.g. entry was created
+          // from an external search that stored nutrition inline). Create a new
+          // variant from the current form values so future uses see this unit.
+          const createdVariant = await createVariant(
+            buildCreateFoodVariantPayload(
+              foodId,
+              buildVariantFromFormData(data),
+            ),
+          );
+          nextUnitSelection = { kind: 'existing', variant: createdVariant };
+          nextVariantId = createdVariant.id;
+          setPendingUnitSelection(nextUnitSelection);
+          setCurrentVariantId(createdVariant.id);
+          // First-ever variant — no existing siblings to diff against, so create
+          // draft equivalents directly (same pattern as "Save as new" above).
+          const cleanEqFirst = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+          if (cleanEqFirst.length > 0) {
+            const groupNutrFirst = buildGroupNutrition(data, undefined);
+            void Promise.all(
+              cleanEqFirst.map((eq) =>
+                createFoodVariant({
+                  food_id: foodId,
+                  serving_size: eq.serving_size,
+                  serving_unit: eq.serving_unit,
+                  ...groupNutrFirst,
+                } as CreateFoodVariantPayload),
+              ),
+            ).catch(() => {
+              Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+            }).finally(() => {
+              invalidateFoodCaches(queryClient, foodId);
+            });
+            setEquivalentBaseline(equivalentDraft);
+          }
+        } else if (draftSelection && foodId) {
+          // Variant was created above ??? update name/brand if changed, then
+          // warm the cache with the correct nutrition via persistFoodEdits.
           await persistFoodMetadataEdits({
             queryClient,
             foodId,
             data,
             initialValues,
           });
+          if (nextVariantId) {
+            await persistFoodEdits({
+              queryClient,
+              foodId,
+              variantId: nextVariantId,
+              customNutrients,
+              data,
+              variantInitialValues: initialValues,
+              foodInitialValues: initialValues,
+            });
+          }
         } else if (nextVariantId) {
-          await persistFoodEdits({
-            queryClient,
-            foodId,
-            variantId: nextVariantId,
-            customNutrients,
-            data,
-            variantInitialValues: initialValues,
-            foodInitialValues: initialValues,
-          });
+          // When the user has an existing saved variant selected and their
+          // form values differ from what's stored, ask whether they want to
+          // overwrite that variant or save the edited values as a new one.
+          const existingSelection =
+            pendingUnitSelection?.kind === 'existing' ? pendingUnitSelection : null;
+          const variantValues = existingSelection
+            ? buildFormValuesFromVariant(existingSelection.variant)
+            : null;
+          const nutritionChanged = variantValues
+            ? hasFoodFormChanges(variantValues, data, FOOD_VARIANT_FIELDS)
+            : false;
+
+          let saveVariantId = nextVariantId;
+          if (existingSelection && nutritionChanged && foodId) {
+            const choice = await confirmVariantOverwrite(
+              `${existingSelection.variant.serving_size} ${existingSelection.variant.serving_unit}`,
+            );
+            if (choice === 'cancel') return;
+            if (choice === 'new') {
+              try {
+                const createdVariant = await createVariant(
+                  buildCreateFoodVariantPayload(
+                    foodId,
+                    buildVariantFromFormData(data, existingSelection),
+                  ),
+                );
+                nextUnitSelection = { kind: 'existing', variant: createdVariant };
+                saveVariantId = createdVariant.id;
+                equivDiffVariantId = createdVariant.id;
+                setPendingUnitSelection(nextUnitSelection);
+                setCurrentVariantId(createdVariant.id);
+                // New variant has no existing siblings — create draft equivalents
+                // directly rather than diffing against a stale snapshot.
+                const cleanEq = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+                if (cleanEq.length > 0) {
+                  const groupNutr = buildGroupNutrition(data, undefined);
+                  void Promise.all(
+                    cleanEq.map((eq) =>
+                      createFoodVariant({
+                        food_id: foodId,
+                        serving_size: eq.serving_size,
+                        serving_unit: eq.serving_unit,
+                        ...groupNutr,
+                      } as CreateFoodVariantPayload),
+                    ),
+                  ).catch(() => {
+                    Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                  }).finally(() => {
+                    invalidateFoodCaches(queryClient, foodId);
+                  });
+                  setEquivalentBaseline(equivalentDraft);
+                }
+              } catch {
+                Toast.show({ type: 'error', text1: 'Could not save new variant' });
+                return;
+              }
+              // Fall through to persistFoodEdits with the new variant ID so the
+              // cache is populated with the correct nutrition values.
+            }
+          }
+
+          // Check whether the form's serving size/unit matches an existing DB
+          // variant. If not, save as new directly — no dialog needed since the
+          // user explicitly toggled save ON and the variant doesn't exist yet.
+          if (saveVariantId && foodId) {
+            const formServingSize = parseDecimalInput(data.servingSize) || 0;
+            const formServingUnit = data.servingUnit || 'serving';
+            const matchingDbVariant = (variants ?? []).find(
+              (v) =>
+                Number(v.serving_size) === formServingSize &&
+                v.serving_unit === formServingUnit,
+            );
+
+            if (!matchingDbVariant) {
+              // No DB variant matches these serving values — create a new one.
+              const createdVariant = await createVariant(
+                buildCreateFoodVariantPayload(
+                  foodId,
+                  buildVariantFromFormData(data, existingSelection),
+                ),
+              );
+              nextUnitSelection = { kind: 'existing', variant: createdVariant };
+              saveVariantId = createdVariant.id;
+              equivDiffVariantId = createdVariant.id;
+              setPendingUnitSelection(nextUnitSelection);
+              setCurrentVariantId(createdVariant.id);
+              invalidateFoodCaches(queryClient, foodId);
+            } else {
+              // Matching variant exists — update it if nutrition changed.
+              const dbVariantValues = buildFormValuesFromVariant(matchingDbVariant);
+              const saved = await persistFoodEdits({
+                queryClient,
+                foodId,
+                variantId: matchingDbVariant.id,
+                customNutrients,
+                data,
+                variantInitialValues: dbVariantValues,
+                foodInitialValues: initialValues,
+              });
+              if (!saved) {
+                invalidateFoodCaches(queryClient, foodId);
+              }
+            }
+          }
+        }
+
+        // Persist any equivalent-unit edits using the same diff approach as
+        // EditFoodMode. Only runs when a pre-existing variant is in play —
+        // skipped when nextVariantId was just created above (variants snapshot
+        // would be stale and diffSiblingRows would duplicate the new variant).
+        // Only diff equivalents when the active variant pre-existed in the
+        // snapshot. If "Save as new" just created a fresh variant, it isn't in
+        // the stale variants list yet — diffing would collapse currentRows to []
+        // and duplicate every sibling. Skip it; the user can add equivalents on
+        // a subsequent edit once the new variant is persisted and loaded.
+        if (
+          equivDiffVariantId &&
+          equivDiffVariantId === variantIdBeforeToggle &&
+          variants &&
+          equivalentsDiffer(equivalentDraft, equivalentBaseline)
+        ) {
+          const activeSnapshot = variants.find((v) => v.id === equivDiffVariantId);
+          const groupNutrition = buildGroupNutrition(data, activeSnapshot);
+
+          const activeRow: Partial<FoodVariantDetail> & { id?: string } = {
+            id: equivDiffVariantId,
+            food_id: foodId,
+            serving_size: parseDecimalInput(data.servingSize) || 0,
+            serving_unit: data.servingUnit || 'serving',
+            ...groupNutrition,
+          };
+
+          const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+          const siblingRows = cleanEquivalents.map((eq) => ({
+            id: eq.id,
+            food_id: foodId,
+            serving_size: eq.serving_size,
+            serving_unit: eq.serving_unit,
+            ...groupNutrition,
+          }));
+          const desired = [activeRow, ...siblingRows];
+
+          const diffGroups = groupEquivalentVariants(variants);
+          const diffGroup = diffGroups.find(
+            (g) =>
+              g.base.id === equivDiffVariantId ||
+              g.equivalents.some((eq) => eq.id === equivDiffVariantId),
+          );
+          const activeGroupIds = new Set<string>();
+          if (diffGroup) {
+            activeGroupIds.add(diffGroup.base.id);
+            diffGroup.equivalents.forEach((eq) => {
+              if (eq.id) activeGroupIds.add(eq.id);
+            });
+          }
+          const currentRows: FoodVariantDetail[] = variants.filter((v) =>
+            activeGroupIds.has(v.id),
+          );
+
+          const diff = diffSiblingRows(currentRows, desired);
+          const writes: Promise<unknown>[] = [];
+          for (const row of diff.creates) {
+            writes.push(createFoodVariant(row as CreateFoodVariantPayload));
+          }
+          for (const row of diff.updates) {
+            const { id, ...payload } = row;
+            writes.push(updateFoodVariant(id, payload as UpdateFoodVariantPayload));
+          }
+          for (const delId of diff.deletes) {
+            writes.push(deleteFoodVariant(delId));
+          }
+          if (writes.length > 0) {
+            await Promise.all(writes);
+            invalidateFoodCaches(queryClient, foodId);
+          }
+          setEquivalentBaseline(equivalentDraft);
         }
       } catch {
-        Toast.show({ type: 'error', text1: 'Could not update food' });
+        Toast.show({ type: 'error', text1: 'Could not save nutrition for future use' });
       }
     }
 
+    const cleanEquivalentsForReturn = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+
+    isSavingRef.current = true;
     navigation.dispatch({
       ...CommonActions.setParams({
         adjustedValues: data,
         adjustedUnitSelection: nextUnitSelection,
+        // For external foods on the FoodEntryAdd path, return equivalents so
+        // FoodEntryAddScreen can persist them after the food is saved.
+        pendingEquivalents:
+          !canUpdateVariant && params.returnTo === 'FoodEntryAdd' && cleanEquivalentsForReturn.length > 0
+            ? cleanEquivalentsForReturn
+            : undefined,
       }),
       source: returnKey,
     });
@@ -930,11 +1350,18 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
               }
             : undefined
         }
+        equivalents={showEquivalents ? {
+          items: equivalentDraft,
+          onChange: setEquivalentDraft,
+          disabled: isDraftSelection,
+        } : undefined}
       >
         {canUpdateVariant && (
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
-              <Text className="text-text-secondary text-base">Save nutrition for future use</Text>
+              <Text className="text-text-secondary text-base">
+                Save nutrition for future use
+              </Text>
               <Switch
                 accessibilityLabel="Save nutrition for future use"
                 value={updateFoodToggle}
@@ -1217,6 +1644,61 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         const currentRows: FoodVariantDetail[] = (variants ?? []).filter((v) =>
           activeGroupIds.has(v.id),
         );
+
+        // If the active variant's nutrition changed, ask whether to overwrite
+        // the existing variant or save as a new one.
+        const nutritionChanged = hasFoodFormChanges(
+          variantBaselineValues,
+          data,
+          FOOD_VARIANT_FIELDS,
+        );
+        if (nutritionChanged && currentVariantId) {
+          const activeVariant = variants?.find((v) => v.id === currentVariantId);
+          const unitLabel = activeVariant
+            ? `${activeVariant.serving_size} ${activeVariant.serving_unit}`
+            : data.servingUnit;
+          const choice = await confirmVariantOverwrite(unitLabel);
+          if (choice === 'cancel') {
+            setIsSubmitting(false);
+            return;
+          }
+          if (choice === 'new') {
+            const pendingSelection = pendingUnitSelection?.kind === 'existing'
+              ? pendingUnitSelection
+              : null;
+            const createdVariant = await createVariant(
+              buildCreateFoodVariantPayload(
+                foodId,
+                buildVariantFromFormData(data, pendingSelection),
+              ),
+            );
+            nextVariantId = createdVariant.id;
+            setCurrentVariantId(createdVariant.id);
+            setPendingUnitSelection({ kind: 'existing', variant: createdVariant });
+            nextVariantBaselineValues = buildFormValuesFromVariant(createdVariant);
+            nextCustomNutrients = createdVariant.custom_nutrients ?? null;
+            setVariantBaselineValues(nextVariantBaselineValues);
+            setCurrentCustomNutrients(nextCustomNutrients);
+            if (hasFoodMetadataChange) {
+              await updateFood(foodId, foodPayload);
+            }
+            invalidateFoodCaches(queryClient, foodId);
+            // Skip the diff/overwrite path ??? new variant is already saved.
+            setEquivalentBaseline(equivalentDraft);
+            Toast.show({ type: 'success', text1: 'Saved as new variant' });
+            isSavingRef.current = true;
+            navigation.dispatch({
+              ...CommonActions.setParams({
+                updatedItem: buildUpdatedFoodInfo(item, data, nextVariantId),
+                updatedSelectedVariantId: nextVariantId,
+              }),
+              source: returnKey,
+            });
+            navigation.goBack();
+            return;
+          }
+          // choice === 'overwrite': fall through to normal diff/update path
+        }
 
         const diff = diffSiblingRows(currentRows, desired);
         equivalentChangedCount =
