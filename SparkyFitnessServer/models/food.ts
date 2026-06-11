@@ -905,12 +905,98 @@ async function clearUserIgnoredUpdate(userId: any, variantId: any) {
     client.release();
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findFoodByProviderExternalId(
+  userId: string,
+  providerExternalId: string,
+  providerType: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT f.id, f.name, f.brand, f.provider_external_id, f.provider_type,
+              fv.id as default_variant_id, fv.serving_size, fv.serving_unit
+       FROM foods f
+       LEFT JOIN food_variants fv ON fv.food_id = f.id AND fv.is_default = TRUE
+       WHERE f.provider_external_id = $1
+         AND f.provider_type = $2
+         AND f.user_id = $3
+       LIMIT 1`,
+      [providerExternalId, providerType, userId]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateFoodVariantNutrition(
+  variantId: string,
+  userId: string,
+  nutritionData: any
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE food_variants SET
+        serving_size = $2,
+        serving_unit = $3,
+        calories = $4,
+        protein = $5,
+        carbs = $6,
+        fat = $7,
+        saturated_fat = $8,
+        polyunsaturated_fat = $9,
+        monounsaturated_fat = $10,
+        trans_fat = $11,
+        cholesterol = $12,
+        sodium = $13,
+        potassium = $14,
+        dietary_fiber = $15,
+        sugars = $16,
+        vitamin_a = $17,
+        vitamin_c = $18,
+        calcium = $19,
+        iron = $20,
+        updated_at = now()
+      WHERE id = $1`,
+      [
+        variantId,
+        sanitizeNumeric(nutritionData.serving_size),
+        nutritionData.serving_unit,
+        sanitizeNumeric(nutritionData.calories),
+        sanitizeNumeric(nutritionData.protein),
+        sanitizeNumeric(nutritionData.carbs),
+        sanitizeNumeric(nutritionData.fat),
+        sanitizeNumeric(nutritionData.saturated_fat),
+        sanitizeNumeric(nutritionData.polyunsaturated_fat),
+        sanitizeNumeric(nutritionData.monounsaturated_fat),
+        sanitizeNumeric(nutritionData.trans_fat),
+        sanitizeNumeric(nutritionData.cholesterol),
+        sanitizeNumeric(nutritionData.sodium),
+        sanitizeNumeric(nutritionData.potassium),
+        sanitizeNumeric(nutritionData.dietary_fiber),
+        sanitizeNumeric(nutritionData.sugars),
+        sanitizeNumeric(nutritionData.vitamin_a),
+        sanitizeNumeric(nutritionData.vitamin_c),
+        sanitizeNumeric(nutritionData.calcium),
+        sanitizeNumeric(nutritionData.iron),
+      ]
+    );
+  } finally {
+    client.release();
+  }
+}
+
 export { sanitizeGlycemicIndex };
 export { sanitizeNumeric };
 export { sanitizeBoolean };
 export { searchFoods };
 export { createFood };
 export { findFoodByBarcode };
+export { findFoodByProviderExternalId };
+export { updateFoodVariantNutrition };
 export { getFoodById };
 export { getFoodOwnerId };
 export { updateFood };
@@ -929,6 +1015,8 @@ export default {
   searchFoods,
   createFood,
   findFoodByBarcode,
+  findFoodByProviderExternalId,
+  updateFoodVariantNutrition,
   getFoodById,
   getFoodOwnerId,
   updateFood,
