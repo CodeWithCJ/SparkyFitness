@@ -89,6 +89,7 @@ describe('upsertExerciseEntryData active-calories notes and source', () => {
     expect(params[1]).not.toContain('Apple Health');
     expect(sql).toContain('source = $5');
     expect(params[4]).toBe('Health Connect');
+    expect(sql).toContain('updated_at = now()');
   });
 
   it('maps the HealthKit source to the friendly "Apple Health" label', async () => {

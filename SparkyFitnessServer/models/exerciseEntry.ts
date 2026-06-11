@@ -73,7 +73,7 @@ async function upsertExerciseEntryData(
     const updateClient = await getClient(userId);
     try {
       const updateResult = await updateClient.query(
-        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4, source = $5 WHERE id = $6 RETURNING *',
+        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4, source = $5, updated_at = now() WHERE id = $6 RETURNING *',
         [
           caloriesBurned,
           `Active calories logged from ${sourceLabel} (updated).`,
