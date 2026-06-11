@@ -421,9 +421,9 @@ describe('log_sleep', () => {
       opts
     );
 
-    expect(result).toBe(
-      '✅ Sleep logged for 2026-06-01 (7h 30m, score: 85/100).'
-    );
+    // The provided sleep_score must not be echoed: it is never stored
+    // (processSleepEntry computes its own score).
+    expect(result).toBe('✅ Sleep logged for 2026-06-01 (7h 30m).');
     expect(measurementService.processSleepEntry).toHaveBeenCalledWith(
       'user-1',
       'user-1',

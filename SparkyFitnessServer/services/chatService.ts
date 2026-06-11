@@ -15,8 +15,6 @@ import {
   SparkyChatHistory,
   SparkyChatHistoryMutator,
 } from '@workspace/shared';
-import { IncomingHttpHeaders } from 'http';
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 
 interface ChatMessagePart {
   type: 'text' | 'image' | 'image_url' | 'file';
@@ -41,12 +39,11 @@ interface ChatMessage {
   parts?: ChatMessagePart[];
 }
 
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { generateText, streamText, stepCountIs } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import path from 'path';
+import { buildChatbotTools } from '../ai/tools/index.js';
 
 async function handleAiServiceSettings(
   action: string,
@@ -314,74 +311,38 @@ async function saveSparkyChatHistory(
     throw error;
   }
 }
-async function getMcpClient(reqHeaders?: IncomingHttpHeaders) {
-  const mcpUrl = process.env.SPARKY_FITNESS_MCP_URL;
+/**
+ * Loads the per-user chat context shared by the blocking and streaming paths:
+ * the system prompt (custom categories + timezone) and the in-process tool
+ * registry. Everything is scoped to the authenticated user — chat tool calls
+ * always act as the logged-in actor, matching the previous MCP behavior.
+ */
+async function prepareChatContext(authenticatedUserId: string) {
+  const [customCategories, chatTz] = await Promise.all([
+    measurementRepository.getCustomCategories(authenticatedUserId),
+    loadUserTimezone(authenticatedUserId),
+  ]);
 
-  if (mcpUrl) {
-    const mcpEndpoint = mcpUrl.endsWith('/mcp') ? mcpUrl : `${mcpUrl}/mcp`;
-    // Forward the user's authorization and cookies to MCP
-    const headers: Record<string, string> = {};
-    if (reqHeaders?.authorization) {
-      headers['authorization'] = reqHeaders.authorization;
-    }
-    if (reqHeaders?.cookie) {
-      headers['cookie'] = reqHeaders.cookie;
-    }
-    // Forward proxy headers so Better Auth accepts secure cookies over internal HTTP
-    const isHttps =
-      process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https');
-    const protoHeader = reqHeaders?.['x-forwarded-proto'];
-    const resolvedProto = Array.isArray(protoHeader)
-      ? protoHeader[0]
-      : protoHeader;
-    headers['x-forwarded-proto'] =
-      resolvedProto || (isHttps ? 'https' : 'http');
-    const hostHeader = reqHeaders?.['x-forwarded-host'];
-    const resolvedHost = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
-    if (resolvedHost) {
-      headers['x-forwarded-host'] = resolvedHost;
-    }
-    // If a server-level API key is configured, prefer it over session forwarding
-    // for the server→MCP internal call (useful when cookie auth fails over plain
-    // internal Docker HTTP). Mirrors the same priority logic in the stdio path.
-    if (process.env.SPARKY_FITNESS_API_KEY) {
-      headers['x-api-key'] = process.env.SPARKY_FITNESS_API_KEY;
-    }
-    log('info', `Connecting to MCP server over HTTP: ${mcpEndpoint}`);
-    return await createMCPClient({
-      transport: {
-        type: 'http',
-        url: mcpEndpoint,
-        headers,
-      },
-    });
-  } else {
-    // Fallback for local Stdio transport (CLI mode / developer convenience)
-    log('info', 'Connecting to MCP server via local Stdio transport');
-    const indexCjsPath = path.resolve(
-      process.cwd(),
-      '../SparkyFitnessMCP/dist/index.cjs'
-    );
-    return await createMCPClient({
-      transport: new StdioClientTransport({
-        command: 'node',
-        args: [indexCjsPath],
-        env: {
-          ...process.env,
-          // For n8n / external tools: use server-level API key if configured.
-          // For frontend sessions: forward the user's cookie so the MCP
-          // process can authenticate via the existing session.
-          ...(process.env.SPARKY_FITNESS_API_KEY
-            ? { SPARKY_FITNESS_API_KEY: process.env.SPARKY_FITNESS_API_KEY }
-            : {
-                Authorization: reqHeaders?.authorization || '',
-                Cookie: reqHeaders?.cookie || '',
-              }),
-          MCP_TRANSPORT: 'stdio',
-        },
-      }),
-    });
-  }
+  const customCategoriesList =
+    customCategories.length > 0
+      ? customCategories
+          .map(
+            (cat: DatabaseCustomCategories) =>
+              `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
+          )
+          .join('\n')
+      : 'None';
+
+  const tools = buildChatbotTools(authenticatedUserId);
+  log(
+    'info',
+    `Loaded ${Object.keys(tools).length} tools for chatbot: ${Object.keys(tools).join(', ')}`
+  );
+
+  return {
+    systemPromptContent: getSystemPrompt(chatTz, customCategoriesList),
+    tools,
+  };
 }
 
 function getSystemPrompt(chatTz: string, customCategoriesList: string): string {
@@ -420,10 +381,9 @@ Be precise with data extraction and call the correct tools in the correct order.
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
-  authenticatedUserId: string,
-  reqHeaders?: IncomingHttpHeaders
+  userId: string,
+  authenticatedUserId: string
 ) {
-  let mcpClient: Awaited<ReturnType<typeof getMcpClient>> | undefined;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -433,7 +393,7 @@ async function processChatMessage(
     }
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
-      authenticatedUserId
+      userId
     );
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
@@ -442,7 +402,7 @@ async function processChatMessage(
     const source = aiService.source || 'unknown';
     log(
       'info',
-      `Processing chat message for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
+      `Processing chat message for user ${userId} using AI service from ${source} (ID: ${serviceConfigId})`
     );
 
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
@@ -493,47 +453,8 @@ async function processChatMessage(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    // Connect to MCP Server using helper function
-    mcpClient = await getMcpClient(reqHeaders);
-
-    // Load user context (categories, timezone)
-    const [customCategories, chatTz] = await Promise.all([
-      measurementRepository.getCustomCategories(authenticatedUserId),
-      loadUserTimezone(authenticatedUserId),
-    ]);
-
-    const customCategoriesList =
-      customCategories.length > 0
-        ? customCategories
-            .map(
-              (cat: DatabaseCustomCategories) =>
-                `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
-            )
-            .join('\n')
-        : 'None';
-
-    const systemPromptContent = getSystemPrompt(chatTz, customCategoriesList);
-
-    // Retrieve and filter tools from MCP server
-    const allTools = await mcpClient.tools();
-
-    // Filter developer/test tools out
-    const chatbotTools: NonNullable<
-      Parameters<typeof generateText>[0]['tools']
-    > = {};
-    for (const [key, tool] of Object.entries(allTools)) {
-      const isBlocked = [
-        'sparky_run_project_tests',
-        'sparky_inspect_schema',
-      ].includes(key);
-      if (!isBlocked) {
-        chatbotTools[key] = tool;
-      }
-    }
-    log(
-      'info',
-      `Loaded ${Object.keys(chatbotTools).length} tools for chatbot: ${Object.keys(chatbotTools).join(', ')}`
-    );
+    const { systemPromptContent, tools } =
+      await prepareChatContext(authenticatedUserId);
 
     // Map conversation history messages to CoreMessage format
     const conversationMessages = messages.map((msg: ChatMessage) => {
@@ -662,22 +583,18 @@ async function processChatMessage(
       messages: conversationMessages as NonNullable<
         Parameters<typeof generateText>[0]['messages']
       >,
-      tools: chatbotTools,
+      tools,
       stopWhen: stepCountIs(50),
       onStepFinish({ toolCalls }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
-            const toolCall = call as unknown as {
-              toolName: string;
-              args: Record<string, unknown>;
-            };
             log(
               'info',
-              `Agent executed tool call: ${toolCall.toolName} with args: ${JSON.stringify(toolCall.args)}`
+              `Agent executed tool call: ${call.toolName} with args: ${JSON.stringify(call.input)}`
             );
             executedToolsList.push({
-              name: toolCall.toolName,
-              args: toolCall.args,
+              name: call.toolName,
+              args: call.input as Record<string, unknown>,
             });
           });
         }
@@ -699,7 +616,7 @@ async function processChatMessage(
 
     await chatRepository
       .saveChatHistory({
-        user_id: authenticatedUserId,
+        user_id: userId,
         content: userMessageContent,
         messageType: 'user',
         parts: userMessageParts,
@@ -710,7 +627,7 @@ async function processChatMessage(
 
     await chatRepository
       .saveChatHistory({
-        user_id: authenticatedUserId,
+        user_id: userId,
         content: result.text,
         messageType: 'assistant',
         parts: [{ type: 'text', text: result.text }],
@@ -765,16 +682,8 @@ async function processChatMessage(
       executedTools: executedToolsList,
     };
   } catch (error) {
-    log(
-      'error',
-      `Error processing chat message for user ${authenticatedUserId}:`,
-      error
-    );
+    log('error', `Error processing chat message for user ${userId}:`, error);
     throw error;
-  } finally {
-    if (mcpClient) {
-      await mcpClient.close().catch(() => {});
-    }
   }
 }
 const FOOD_OPTIONS_PROMPT = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information for EVERY field (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: You MUST estimate and populate every single micro-nutritional field. Do NOT default to 0 or leave blank any nutritional field if a realistic scientific estimation can be made based on the food type. Use your biochemical and culinary knowledge to calculate typical distributions.** Do NOT include any other text.
@@ -857,10 +766,9 @@ async function processFoodOptionsRequest(
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
-  authenticatedUserId: string,
-  reqHeaders?: IncomingHttpHeaders
+  userId: string,
+  authenticatedUserId: string
 ) {
-  let mcpClient: Awaited<ReturnType<typeof getMcpClient>> | undefined;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -870,7 +778,7 @@ async function processChatMessageStream(
     }
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
-      authenticatedUserId
+      userId
     );
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
@@ -922,42 +830,8 @@ async function processChatMessageStream(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    // Connect to MCP Server using helper function
-    mcpClient = await getMcpClient(reqHeaders);
-
-    const [customCategories, chatTz] = await Promise.all([
-      measurementRepository.getCustomCategories(authenticatedUserId),
-      loadUserTimezone(authenticatedUserId),
-    ]);
-
-    const customCategoriesList =
-      customCategories.length > 0
-        ? customCategories
-            .map(
-              (cat: DatabaseCustomCategories) =>
-                `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
-            )
-            .join('\n')
-        : 'None';
-
-    const systemPromptContent = getSystemPrompt(chatTz, customCategoriesList);
-
-    const allTools = await mcpClient.tools();
-    const chatbotTools: NonNullable<Parameters<typeof streamText>[0]['tools']> =
-      {};
-    for (const [key, tool] of Object.entries(allTools)) {
-      const isBlocked = [
-        'sparky_run_project_tests',
-        'sparky_inspect_schema',
-      ].includes(key);
-      if (!isBlocked) {
-        chatbotTools[key] = tool;
-      }
-    }
-    log(
-      'info',
-      `Loaded ${Object.keys(chatbotTools).length} tools for chatbot: ${Object.keys(chatbotTools).join(', ')}`
-    );
+    const { systemPromptContent, tools } =
+      await prepareChatContext(authenticatedUserId);
 
     const conversationMessages = messages.map((msg: ChatMessage) => {
       // If parts or content is an array of parts (text + images), pass them through
@@ -1060,14 +934,9 @@ async function processChatMessageStream(
       messages: llmMessages as NonNullable<
         Parameters<typeof streamText>[0]['messages']
       >,
-      tools: chatbotTools,
+      tools,
       stopWhen: stepCountIs(50),
       onFinish: async ({ text }) => {
-        // Close MCP Client
-        if (mcpClient) {
-          await mcpClient.close().catch(() => {});
-        }
-
         // Get the last user message from conversationMessages to ensure parts are captured
         const lastUserMessage = [...conversationMessages]
           .reverse()
@@ -1085,7 +954,7 @@ async function processChatMessageStream(
         // Save to DB on completion
         await chatRepository
           .saveChatHistory({
-            user_id: authenticatedUserId,
+            user_id: userId,
             content: userMessageContent,
             messageType: 'user',
             parts: userMessageParts,
@@ -1096,7 +965,7 @@ async function processChatMessageStream(
 
         await chatRepository
           .saveChatHistory({
-            user_id: authenticatedUserId,
+            user_id: userId,
             content: text,
             messageType: 'assistant',
             parts: [{ type: 'text', text }],
@@ -1107,14 +976,11 @@ async function processChatMessageStream(
       },
     });
 
-    return { result, mcpClient };
+    return { result };
   } catch (error) {
-    if (mcpClient) {
-      await mcpClient.close().catch(() => {});
-    }
     log(
       'error',
-      `Error in processChatMessageStream for user ${authenticatedUserId}:`,
+      `Error in processChatMessageStream for user ${userId}:`,
       error
     );
     throw error;

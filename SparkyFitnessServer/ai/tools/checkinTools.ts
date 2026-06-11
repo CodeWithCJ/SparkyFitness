@@ -309,8 +309,9 @@ Actions:
                 const mins = Math.floor((args.duration_seconds % 3600) / 60);
                 parts.push(`${hours}h ${mins}m`);
               }
-              if (isSet(args.sleep_score))
-                parts.push(`score: ${args.sleep_score}/100`);
+              // args.sleep_score is accepted for schema parity but never
+              // stored — processSleepEntry always computes its own score —
+              // so it must not be echoed in the confirmation either.
               if (args.source) parts.push(`source: ${args.source}`);
               const summary = parts.length > 0 ? parts.join(', ') : 'recorded';
               return formatConfirmation(
