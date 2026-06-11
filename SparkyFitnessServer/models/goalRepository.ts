@@ -224,6 +224,24 @@ async function deleteDefaultGoal(userId: any) {
     client.release();
   }
 }
+// Compact goal history (one row per user_goals record, newest first). Backs
+// the chatbot list_goal_timeline action.
+async function getGoalTimeline(userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, goal_date, calories, protein, carbs, fat, water_goal_ml
+       FROM user_goals
+       WHERE user_id = $1
+       ORDER BY goal_date DESC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export { getGoalByDate };
 export { getMostRecentGoalBeforeDate };
 export { getAllHistoricalGoals };
@@ -231,6 +249,7 @@ export { upsertGoal };
 export { deleteGoalsInRange };
 export { deleteDefaultGoal };
 export { getGoalsInRange };
+export { getGoalTimeline };
 export default {
   getGoalByDate,
   getMostRecentGoalBeforeDate,
@@ -239,4 +258,5 @@ export default {
   deleteGoalsInRange,
   deleteDefaultGoal,
   getGoalsInRange,
+  getGoalTimeline,
 };

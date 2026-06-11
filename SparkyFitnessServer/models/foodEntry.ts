@@ -927,6 +927,63 @@ async function deleteFoodEntriesByProviderTypeAndDateRange(
   }
 }
 
+// Most recent food entries with catalog name/brand. Backs the chatbot
+// sparky_get_recent_food_entries tool.
+async function getRecentFoodEntries(userId: string, limit: number) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       WHERE fe.user_id = $1
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Paged entries for one food in a date range, plus the total count. Backs the
+// chatbot sparky_get_food_usage tool.
+async function getFoodUsage(
+  userId: string,
+  foodId: string,
+  startDate: string,
+  endDate: string,
+  limit: number,
+  offset: number
+) {
+  const client = await getClient(userId);
+  try {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM food_entries
+       WHERE user_id = $1 AND food_id = $2 AND entry_date BETWEEN $3 AND $4`,
+      [userId, foodId, startDate, endDate]
+    );
+    const dataResult = await client.query(
+      `SELECT fe.*, mt.name AS meal_type
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       WHERE fe.user_id = $1 AND fe.food_id = $2 AND fe.entry_date BETWEEN $3 AND $4
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $5 OFFSET $6`,
+      [userId, foodId, startDate, endDate, limit, offset]
+    );
+    return {
+      rows: dataResult.rows,
+      totalCount: countResult.rows[0]?.count ?? 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 export { createFoodEntry };
 export { getFoodEntryOwnerId };
 export { updateFoodEntry };
@@ -941,6 +998,8 @@ export { getFoodEntryById };
 export { getFoodEntryComponentsByFoodEntryMealId };
 export { deleteFoodEntryComponentsByFoodEntryMealId };
 export { getFoodEntriesBatch };
+export { getRecentFoodEntries };
+export { getFoodUsage };
 export default {
   createFoodEntry,
   getFoodEntryOwnerId,
@@ -956,4 +1015,6 @@ export default {
   getFoodEntryComponentsByFoodEntryMealId,
   deleteFoodEntryComponentsByFoodEntryMealId,
   getFoodEntriesBatch,
+  getRecentFoodEntries,
+  getFoodUsage,
 };

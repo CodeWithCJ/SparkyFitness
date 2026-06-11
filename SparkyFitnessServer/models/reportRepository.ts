@@ -592,6 +592,48 @@ async function getExerciseNames(userId: any, muscle: any, equipment: any) {
     client.release();
   }
 }
+// Per-day nutrition totals (macros + micros) over a date range, scaled by
+// quantity / serving_size since food_entries snapshots store unscaled
+// per-serving values. Backs the chatbot get_nutritional_summary action and
+// report tools.
+async function getDailyNutritionTotalsRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT entry_date,
+              SUM(calories * quantity / NULLIF(serving_size, 0)) as calories,
+              SUM(protein * quantity / NULLIF(serving_size, 0)) as protein,
+              SUM(carbs * quantity / NULLIF(serving_size, 0)) as carbs,
+              SUM(fat * quantity / NULLIF(serving_size, 0)) as fat,
+              SUM(saturated_fat * quantity / NULLIF(serving_size, 0)) as saturated_fat,
+              SUM(polyunsaturated_fat * quantity / NULLIF(serving_size, 0)) as polyunsaturated_fat,
+              SUM(monounsaturated_fat * quantity / NULLIF(serving_size, 0)) as monounsaturated_fat,
+              SUM(trans_fat * quantity / NULLIF(serving_size, 0)) as trans_fat,
+              SUM(cholesterol * quantity / NULLIF(serving_size, 0)) as cholesterol,
+              SUM(sodium * quantity / NULLIF(serving_size, 0)) as sodium,
+              SUM(potassium * quantity / NULLIF(serving_size, 0)) as potassium,
+              SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)) as fiber,
+              SUM(sugars * quantity / NULLIF(serving_size, 0)) as sugar,
+              SUM(vitamin_a * quantity / NULLIF(serving_size, 0)) as vitamin_a,
+              SUM(vitamin_c * quantity / NULLIF(serving_size, 0)) as vitamin_c,
+              SUM(calcium * quantity / NULLIF(serving_size, 0)) as calcium,
+              SUM(iron * quantity / NULLIF(serving_size, 0)) as iron
+       FROM food_entries
+       WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export { getNutritionData };
 export { getTabularFoodData };
 export { getMeasurementData };
@@ -599,6 +641,7 @@ export { getCustomMeasurementsData };
 export { getMiniNutritionTrends };
 export { getExerciseEntries };
 export { getExerciseNames };
+export { getDailyNutritionTotalsRange };
 export default {
   getNutritionData,
   getTabularFoodData,
@@ -607,4 +650,5 @@ export default {
   getMiniNutritionTrends,
   getExerciseEntries,
   getExerciseNames,
+  getDailyNutritionTotalsRange,
 };

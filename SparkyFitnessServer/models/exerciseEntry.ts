@@ -1246,6 +1246,88 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
     client.release();
   }
 }
+// Per-day exercise totals over a date range. Backs the chatbot
+// sparky_get_daily_exercise_totals tool.
+async function getDailyExerciseTotalsRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT entry_date,
+              COUNT(*)::int AS entry_count,
+              SUM(COALESCE(duration_minutes, 0)) AS duration_minutes,
+              SUM(COALESCE(calories_burned, 0)) AS calories_burned,
+              SUM(COALESCE(distance, 0)) AS distance,
+              SUM(COALESCE(steps, 0)) AS steps
+       FROM exercise_entries
+       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Most recent exercise entries with catalog name/category. Backs the chatbot
+// sparky_get_recent_exercise_entries tool.
+async function getRecentExerciseEntries(userId: string, limit: number) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ee.*, e.name AS exercise_name_from_catalog, e.category AS exercise_category_from_catalog
+       FROM exercise_entries ee
+       LEFT JOIN exercises e ON e.id = ee.exercise_id
+       WHERE ee.user_id = $1
+       ORDER BY ee.entry_date DESC, ee.created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Paged entries for one exercise in a date range, plus the total count.
+// Backs the chatbot sparky_get_exercise_usage tool.
+async function getExerciseUsage(
+  userId: string,
+  exerciseId: string,
+  startDate: string,
+  endDate: string,
+  limit: number,
+  offset: number
+) {
+  const client = await getClient(userId);
+  try {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM exercise_entries
+       WHERE user_id = $1 AND exercise_id = $2 AND entry_date BETWEEN $3 AND $4`,
+      [userId, exerciseId, startDate, endDate]
+    );
+    const dataResult = await client.query(
+      `SELECT * FROM exercise_entries
+       WHERE user_id = $1 AND exercise_id = $2 AND entry_date BETWEEN $3 AND $4
+       ORDER BY entry_date DESC, created_at DESC
+       LIMIT $5 OFFSET $6`,
+      [userId, exerciseId, startDate, endDate, limit, offset]
+    );
+    return {
+      rows: dataResult.rows,
+      totalCount: countResult.rows[0]?.count ?? 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 export { upsertExerciseEntryData };
 export { _createExerciseEntryWithClient };
 export { createExerciseEntry };
@@ -1261,6 +1343,9 @@ export { getExerciseHistory };
 export { getBestSetForExercise };
 export { getLastSetForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
+export { getDailyExerciseTotalsRange };
+export { getRecentExerciseEntries };
+export { getExerciseUsage };
 export default {
   upsertExerciseEntryData,
   _createExerciseEntryWithClient,
@@ -1280,4 +1365,7 @@ export default {
   getBestSetForExercise,
   getLastSetForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
+  getDailyExerciseTotalsRange,
+  getRecentExerciseEntries,
+  getExerciseUsage,
 };
