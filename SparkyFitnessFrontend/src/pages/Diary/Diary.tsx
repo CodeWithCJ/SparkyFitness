@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatDateToYYYYMMDD } from '@/lib/utils';
+import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import DiaryTopControls, { DayTotals } from './DiaryTopControls';
@@ -54,6 +54,7 @@ const Diary = () => {
   const {
     formatDate,
     formatDateInUserTimezone,
+    getDateRelationToToday,
     parseDateInUserTimezone,
     loggingLevel,
     energyUnit,
@@ -120,6 +121,7 @@ const Diary = () => {
     : [];
 
   const dayTotals = calculateDayTotals(foodEntries, foodEntryMeals);
+  const selectedDateRelation = getDateRelationToToday(selectedDate);
 
   // Handle navigation for opening food search dialog
   useEffect(() => {
@@ -329,21 +331,40 @@ const Diary = () => {
   return (
     <div className="space-y-6">
       {/* Date Navigation */}
-      <div className="flex justify-center mb-5 gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground h-9 px-3 rounded-full border border-border/60"
-          onClick={() => handleDateSelect(new Date())}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mb-5 gap-2">
+        <div className="flex justify-end">
+          {selectedDateRelation !== 'today' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground h-9 px-3 rounded-full border border-border/60"
+              onClick={() => handleDateSelect(new Date())}
+            >
+              Today
+            </Button>
+          )}
+        </div>
+        <div
+          className={cn(
+            'relative flex items-center gap-0 rounded-full border border-border/60 bg-background overflow-hidden transition-colors',
+            selectedDateRelation === 'past' && 'border-date-past/50',
+            selectedDateRelation === 'future' && 'border-date-future/50'
+          )}
         >
-          Today
-        </Button>
-        <div className="flex items-center gap-0 rounded-full border border-border/60 bg-background overflow-hidden">
+          {selectedDateRelation !== 'today' && (
+            <div
+              className={cn(
+                'absolute inset-0 pointer-events-none',
+                selectedDateRelation === 'past' && 'bg-date-past/10',
+                selectedDateRelation === 'future' && 'bg-date-future/10'
+              )}
+            />
+          )}
           <Button
             variant="ghost"
             size="icon"
             onClick={handlePreviousDay}
-            className="h-9 w-9 rounded-none border-r border-border/60"
+            className="relative h-9 w-9 rounded-none border-r border-border/60"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -351,9 +372,15 @@ const Diary = () => {
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-9 px-4 rounded-none font-normal text-sm gap-2"
+                className="relative h-9 px-4 rounded-none font-normal text-sm gap-2"
               >
-                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                <CalendarIcon
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    selectedDateRelation === 'past' && 'text-date-past',
+                    selectedDateRelation === 'future' && 'text-date-future'
+                  )}
+                />
                 {date ? (
                   formatDate(date)
                 ) : (
@@ -380,11 +407,12 @@ const Diary = () => {
             variant="ghost"
             size="icon"
             onClick={handleNextDay}
-            className="h-9 w-9 rounded-none border-l border-border/60"
+            className="relative h-9 w-9 rounded-none border-l border-border/60"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        <div />
       </div>
 
       {/* Top Controls Section */}

@@ -31,6 +31,10 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  --color-date-today: hsl(var(--date-today));
+  --color-date-past: hsl(var(--date-past));
+  --color-date-future: hsl(var(--date-future));
+
   --color-sidebar: hsl(var(--sidebar-background));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-primary: hsl(var(--sidebar-primary));
@@ -114,6 +118,10 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
+    --date-today: 160 84% 39%;
+    --date-past: 22 97% 14%;
+    --date-future: 45 93% 47%;
+
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
@@ -154,6 +162,10 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    --date-today: 158 64% 52%;
+    --date-past: 22 85% 62%;
+    --date-future: 48 96% 62%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
