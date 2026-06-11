@@ -205,6 +205,28 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
     client.release();
   }
 }
+// Flat meal-container rows for a date range. Backs the chatbot
+// sparky_get_food_diary tool (per-date reads use getFoodEntryMealsByDate).
+async function getFoodEntryMealsByDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT fem.*, mt.name AS meal_type
+       FROM food_entry_meals fem
+       LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
+       WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
+       ORDER BY fem.entry_date ASC, fem.created_at ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deleteFoodEntryMeal(foodEntryMealId: any, userId: any) {
   log(
@@ -235,11 +257,13 @@ export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
 export { getFoodEntryMealsByDate };
+export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
 export default {
   createFoodEntryMeal,
   updateFoodEntryMeal,
   getFoodEntryMealById,
   getFoodEntryMealsByDate,
+  getFoodEntryMealsByDateRange,
   deleteFoodEntryMeal,
 };

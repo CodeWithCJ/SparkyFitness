@@ -9,6 +9,8 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import foodEntryRepository from '../models/foodEntry.js';
 import goalRepository from '../models/goalRepository.js';
 import fastingRepository from '../models/fastingRepository.js';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import externalProviderRepository from '../models/externalProviderRepository.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -16,6 +18,13 @@ vi.mock('../db/poolManager', () => ({
 }));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
+}));
+// externalProviderRepository imports the encryption module, which requires a
+// key from the environment at import time.
+vi.mock('../security/encryption', () => ({
+  encrypt: vi.fn(),
+  decrypt: vi.fn(),
+  ENCRYPTION_KEY: 'test-key',
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -455,6 +464,55 @@ describe('goalRepository.getGoalTimeline', () => {
     );
     expect(sql).toContain('ORDER BY goal_date DESC');
     expect(params).toEqual(['user-1']);
+  });
+});
+
+describe('foodEntryMealRepository.getFoodEntryMealsByDateRange', () => {
+  it('returns flat meal-container rows for the range in diary order', async () => {
+    const rows = [{ id: 'fem-1', name: 'Protein Shake' }];
+    mockClient.query.mockResolvedValue({ rows });
+
+    const result = await foodEntryMealRepository.getFoodEntryMealsByDateRange(
+      'user-1',
+      '2026-06-01',
+      '2026-06-11'
+    );
+
+    expect(result).toBe(rows);
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('FROM food_entry_meals fem');
+    expect(sql).toContain(
+      'LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id'
+    );
+    expect(sql).toContain('fem.entry_date BETWEEN $2 AND $3');
+    expect(sql).toContain('ORDER BY fem.entry_date ASC, fem.created_at ASC');
+    expect(params).toEqual(['user-1', '2026-06-01', '2026-06-11']);
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+});
+
+describe('externalProviderRepository.getActiveProvidersByTypes', () => {
+  it('filters to active providers of the given types in cascade order', async () => {
+    const rows = [
+      { id: 'prov-1', provider_type: 'usda', provider_name: 'USDA' },
+    ];
+    mockClient.query.mockResolvedValue({ rows });
+
+    const result = await externalProviderRepository.getActiveProvidersByTypes(
+      'user-1',
+      ['usda', 'openfoodfacts']
+    );
+
+    expect(result).toBe(rows);
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('FROM external_data_providers');
+    expect(sql).toContain('is_active = TRUE');
+    expect(sql).toContain('provider_type = ANY($2::text[])');
+    expect(sql).toContain(
+      'ORDER BY sort_order ASC NULLS LAST, created_at DESC'
+    );
+    expect(params).toEqual(['user-1', ['usda', 'openfoodfacts']]);
+    expect(mockClient.release).toHaveBeenCalled();
   });
 });
 

@@ -592,8 +592,31 @@ async function getProvidersByType(providerType: any) {
     client.release();
   }
 }
+// A user's active providers of the given types, in cascade order (manual
+// sort_order first, then most recently created). Backs the chatbot
+// lookup_food_nutrition provider cascade.
+async function getActiveProvidersByTypes(
+  userId: string,
+  providerTypes: string[]
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, provider_type, provider_name
+       FROM external_data_providers
+       WHERE user_id = $1 AND is_active = TRUE
+         AND provider_type = ANY($2::text[])
+       ORDER BY sort_order ASC NULLS LAST, created_at DESC`,
+      [userId, providerTypes]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 export { getExternalDataProviders };
 export { getExternalDataProvidersByUserId };
+export { getActiveProvidersByTypes };
 export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderById };
@@ -605,6 +628,7 @@ export { getProvidersByType };
 export default {
   getExternalDataProviders,
   getExternalDataProvidersByUserId,
+  getActiveProvidersByTypes,
   createExternalDataProvider,
   updateExternalDataProvider,
   getExternalDataProviderById,
