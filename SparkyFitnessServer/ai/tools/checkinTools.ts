@@ -33,6 +33,47 @@ function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
+// Biometrics rows converted into the user's preferred units, oldest-first —
+// MCP's getBiometricsHistory row shape. Shared with the report tools.
+export async function getBiometricsHistoryRows(
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const prefs = await preferenceService.getUserPreferences(userId, userId);
+  const wUnit = prefs.default_weight_unit || 'kg';
+  const mUnit = prefs.default_measurement_unit || 'cm';
+
+  const rows = await measurementService.getCheckInMeasurementsByDateRange(
+    userId,
+    userId,
+    startDate || '1970-01-01',
+    endDate || '9999-12-31'
+  );
+  // The repository returns newest-first; MCP rendered oldest-first.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return [...rows].reverse().map((row: any) => ({
+    ...row,
+    weight: isSet(row.weight)
+      ? convertWeight(Number(row.weight), 'kg', wUnit)
+      : null,
+    height: isSet(row.height)
+      ? convertMeasurement(Number(row.height), 'cm', mUnit)
+      : null,
+    neck: isSet(row.neck)
+      ? convertMeasurement(Number(row.neck), 'cm', mUnit)
+      : null,
+    waist: isSet(row.waist)
+      ? convertMeasurement(Number(row.waist), 'cm', mUnit)
+      : null,
+    hips: isSet(row.hips)
+      ? convertMeasurement(Number(row.hips), 'cm', mUnit)
+      : null,
+    weight_unit: wUnit,
+    measurement_unit: mUnit,
+  }));
+}
+
 export function buildCheckinTools(userId: string) {
   return {
     sparky_manage_checkin: tool({
@@ -491,41 +532,11 @@ Actions:
             }
 
             case 'get_biometrics_history': {
-              const prefs = await preferenceService.getUserPreferences(
+              const history = await getBiometricsHistoryRows(
                 userId,
-                userId
+                args.start_date,
+                args.end_date
               );
-              const wUnit = prefs.default_weight_unit || 'kg';
-              const mUnit = prefs.default_measurement_unit || 'cm';
-
-              const rows =
-                await measurementService.getCheckInMeasurementsByDateRange(
-                  userId,
-                  userId,
-                  args.start_date || '1970-01-01',
-                  args.end_date || '9999-12-31'
-                );
-              // The repository returns newest-first; MCP rendered oldest-first.
-              const history = [...rows].reverse().map((row: any) => ({
-                ...row,
-                weight: isSet(row.weight)
-                  ? convertWeight(Number(row.weight), 'kg', wUnit)
-                  : null,
-                height: isSet(row.height)
-                  ? convertMeasurement(Number(row.height), 'cm', mUnit)
-                  : null,
-                neck: isSet(row.neck)
-                  ? convertMeasurement(Number(row.neck), 'cm', mUnit)
-                  : null,
-                waist: isSet(row.waist)
-                  ? convertMeasurement(Number(row.waist), 'cm', mUnit)
-                  : null,
-                hips: isSet(row.hips)
-                  ? convertMeasurement(Number(row.hips), 'cm', mUnit)
-                  : null,
-                weight_unit: wUnit,
-                measurement_unit: mUnit,
-              }));
               return formatList(history, 'Biometrics History', (h: any) => {
                 const hw = h.weight_unit || 'kg';
                 let text = `**${h.entry_date}**: `;

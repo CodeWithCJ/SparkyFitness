@@ -216,7 +216,8 @@ async function findFoodByExactName(userId: string, name: string) {
 
 // Per-day nutrition totals with the user's energy-unit conversion applied —
 // MCP's getNutritionalSummary row shape (fiber/sugar aliases included).
-async function getNutritionalSummaryRows(
+// Shared with the report tools.
+export async function getNutritionalSummaryRows(
   userId: string,
   startDate: string,
   endDate: string
@@ -252,6 +253,31 @@ async function getNutritionalSummaryRows(
       calcium: Number(row.calcium || 0),
       iron: Number(row.iron || 0),
       energy_unit: energyUnit,
+    };
+  });
+}
+
+// Per-day water totals converted into the user's display unit — MCP's
+// getWaterHistory row shape. Shared with the report tools.
+export async function getWaterHistoryRows(
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const prefs = await preferenceService.getUserPreferences(userId, userId);
+  const waterUnit = (prefs?.water_display_unit as string) || 'ml';
+  const rows = await measurementRepository.getWaterTotalsByDateRange(
+    userId,
+    startDate,
+    endDate
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rows.map((row: any) => {
+    const ml = Number(row.total_ml || 0);
+    return {
+      entry_date: dayString(row.entry_date),
+      amount: waterUnit === 'oz' ? Math.round((ml / 29.5735) * 10) / 10 : ml,
+      unit: waterUnit,
     };
   });
 }
@@ -1122,29 +1148,11 @@ Actions:
             }
 
             case 'get_water_history': {
-              const prefs = await preferenceService.getUserPreferences(
+              const history = await getWaterHistoryRows(
                 userId,
-                userId
+                args.start_date,
+                args.end_date
               );
-              const waterUnit = (prefs?.water_display_unit as string) || 'ml';
-              const rows =
-                await measurementRepository.getWaterTotalsByDateRange(
-                  userId,
-                  args.start_date,
-                  args.end_date
-                );
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const history = rows.map((row: any) => {
-                const ml = Number(row.total_ml || 0);
-                return {
-                  entry_date: dayString(row.entry_date),
-                  amount:
-                    waterUnit === 'oz'
-                      ? Math.round((ml / 29.5735) * 10) / 10
-                      : ml,
-                  unit: waterUnit,
-                };
-              });
               return formatList(
                 history,
                 'Water Intake History',
