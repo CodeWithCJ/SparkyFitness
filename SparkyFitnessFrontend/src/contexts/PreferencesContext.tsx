@@ -39,6 +39,7 @@ import {
   feetInchesToCm,
 } from '@/utils/unitConversions';
 import { DayOfWeek } from '@/types/settings';
+import { todayInZone } from '@workspace/shared';
 
 // Function to fetch user preferences from the backend
 
@@ -500,7 +501,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const getDateRelationToToday = useCallback(
     (date: string | Date) => {
       const dateToCompare = formatDateInUserTimezone(date, 'yyyy-MM-dd');
-      const todayDate = formatDateInUserTimezone(new Date(), 'yyyy-MM-dd');
+      const todayDate = todayInZone(timezone);
 
       if (!dateToCompare || dateToCompare === todayDate) {
         return 'today';
@@ -508,7 +509,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return dateToCompare < todayDate ? 'past' : 'future';
     },
-    [formatDateInUserTimezone]
+    [formatDateInUserTimezone, timezone]
   );
 
   const parseDateInUserTimezone = useCallback(

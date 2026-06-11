@@ -378,7 +378,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
           {selectedDateRelation !== 'today' && (
             <div
               className={cn(
-                'absolute inset-0 pointer-events-none',
+                'absolute inset-0 pointer-events-none z-10',
                 selectedDateRelation === 'past' && 'bg-date-past/10',
                 selectedDateRelation === 'future' && 'bg-date-future/10'
               )}
@@ -412,7 +412,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
           {selectedDateRelation !== 'today' && (
             <div
               className={cn(
-                'absolute inset-0 pointer-events-none',
+                'absolute inset-0 pointer-events-none z-10',
                 selectedDateRelation === 'past' && 'bg-date-past/10',
                 selectedDateRelation === 'future' && 'bg-date-future/10'
               )}
