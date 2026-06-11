@@ -21,3 +21,10 @@ class ActivitiesAndWorkoutsRequest(BaseModel):
     start_date: str
     end_date: str
     activity_type: str | None = None
+
+
+class NutritionDiaryRequest(BaseModel):
+    user_id: str
+    tokens: str
+    start_date: str
+    end_date: str

@@ -901,10 +901,37 @@ async function getFoodEntriesBatch(
   }
 }
 
+async function deleteFoodEntriesByProviderTypeAndDateRange(
+  userId: string,
+  providerType: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM food_entries
+       WHERE user_id = $1
+         AND entry_date BETWEEN $2 AND $3
+         AND food_id IN (
+           SELECT id FROM foods
+           WHERE provider_type = $4
+             AND user_id = $1
+         )
+       RETURNING id`,
+      [userId, startDate, endDate, providerType]
+    );
+    return result.rows.length;
+  } finally {
+    client.release();
+  }
+}
+
 export { createFoodEntry };
 export { getFoodEntryOwnerId };
 export { updateFoodEntry };
 export { deleteFoodEntry };
+export { deleteFoodEntriesByProviderTypeAndDateRange };
 export { getFoodEntriesByDate };
 export { getFoodEntriesByDateAndMealType };
 export { getFoodEntriesByDateRange };
@@ -919,6 +946,7 @@ export default {
   getFoodEntryOwnerId,
   updateFoodEntry,
   deleteFoodEntry,
+  deleteFoodEntriesByProviderTypeAndDateRange,
   getFoodEntriesByDate,
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,
