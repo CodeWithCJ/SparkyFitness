@@ -402,6 +402,56 @@ router.post(
 );
 /**
  * @swagger
+ * /integrations/garmin/sync/nutrition_diary:
+ *   post:
+ *     summary: Manually sync nutrition diary data from Garmin
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate: { type: 'string', format: 'date' }
+ *               endDate: { type: 'string', format: 'date' }
+ *             required: [startDate, endDate]
+ *     responses:
+ *       200:
+ *         description: Nutrition sync completed successfully.
+ */
+router.post('/sync/nutrition_diary', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const { startDate, endDate } = req.body;
+    log(
+      'debug',
+      `[garminRoutes] Sync nutrition_diary received startDate: ${startDate}, endDate: ${endDate}`
+    );
+    const dateValidation = validateDateRange(startDate, endDate);
+    if (!dateValidation.valid) {
+      return res.status(400).json({ error: dateValidation.error });
+    }
+    const nutritionData = await garminConnectService.fetchGarminNutritionDiary(
+      userId,
+      startDate,
+      endDate
+    );
+    const result = await garminService.processGarminNutritionData(
+      userId,
+      nutritionData.nutrition_data,
+      startDate,
+      endDate
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
  * /integrations/garmin/sync:
  *   post:
  *     summary: Manual full sync for Garmin data
