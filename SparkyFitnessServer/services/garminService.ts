@@ -1008,7 +1008,7 @@ async function processGarminNutritionData(
           const nutritionContent = loggedFood.nutritionContent;
           if (!foodMeta || !nutritionContent) continue;
 
-          const garminFoodId = foodMeta.foodId;
+          const garminFoodId = String(foodMeta.foodId);
           const mappedNutrition = mapGarminNutrition(nutritionContent);
 
           // Get or create food in library
