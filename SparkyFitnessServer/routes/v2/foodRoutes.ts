@@ -8,164 +8,34 @@ import {
 import { log } from '../../config/logging.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
 import foodCoreService from '../../services/foodCoreService.js';
-import externalProviderService from '../../services/externalProviderService.js';
 import preferenceService from '../../services/preferenceService.js';
 import {
-  searchOpenFoodFacts,
+  isValidProviderType,
+  resolveOpenFoodFactsProviderId,
+  resolveProviderCredentials,
+  searchProviderFoods,
+} from '../../services/externalFoodSearchService.js';
+import {
   searchOpenFoodFactsByBarcodeFields,
   mapOpenFoodFactsProduct,
 } from '../../integrations/openfoodfacts/openFoodFactsService.js';
 import {
-  searchUsdaFoods,
   getUsdaFoodDetails,
   mapUsdaBarcodeProduct,
 } from '../../integrations/usda/usdaService.js';
+import { mapFatSecretFood } from '../../integrations/fatsecret/fatsecretService.js';
+import { getYazioFoodDetails } from '../../integrations/yazio/yazioService.js';
+import { getSwissFoodDetails } from '../../integrations/swissfood/swissFoodService.js';
 import {
-  mapFatSecretFood,
-  mapFatSecretSearchItem,
-} from '../../integrations/fatsecret/fatsecretService.js';
-import {
-  searchYazioFoods,
-  getYazioFoodDetails,
-} from '../../integrations/yazio/yazioService.js';
-import {
-  searchSwissFoods,
-  getSwissFoodDetails,
-} from '../../integrations/swissfood/swissFoodService.js';
-import {
-  searchFatSecretFoods,
   getFatSecretNutrients,
-  searchMealieFoods,
   getMealieFoodDetails,
-  searchTandoorFoods,
   getTandoorFoodDetails,
-  searchNorishFoods,
   getNorishFoodDetails,
 } from '../../services/foodIntegrationService.js';
 
 const router = express.Router();
 
 router.use(checkPermissionMiddleware('diary'));
-
-const VALID_PROVIDER_TYPES = [
-  'openfoodfacts',
-  'usda',
-  'fatsecret',
-  'mealie',
-  'tandoor',
-  'yazio',
-  'norish',
-  'swissfood',
-] as const;
-
-type ProviderType = (typeof VALID_PROVIDER_TYPES)[number];
-
-function isValidProviderType(value: string): value is ProviderType {
-  return (VALID_PROVIDER_TYPES as readonly string[]).includes(value);
-}
-
-interface ProviderCredentials {
-  app_id?: string;
-  app_key?: string;
-  base_url?: string;
-  is_active?: boolean;
-}
-
-// Resolve an OFF providerId for session-cookie auth. Unlike other providers,
-// OFF does not need credentials to function — this just opts into the
-// authenticated request path when the user has configured an OFF account.
-// Returns the provided id (validated for ownership) or the user's first
-// credentialed OFF provider, or null.
-async function resolveOpenFoodFactsProviderId(
-  userId: string,
-  providerId: string | undefined
-): Promise<string | null> {
-  if (providerId) {
-    try {
-      const details =
-        await externalProviderService.getExternalDataProviderDetails(
-          userId,
-          providerId
-        );
-      if (
-        details &&
-        details.is_active &&
-        details.provider_type === 'openfoodfacts' &&
-        details.app_id &&
-        details.app_key
-      ) {
-        return providerId;
-      }
-    } catch (error) {
-      log('debug', 'v2 OFF providerId validation failed:', error);
-    }
-    return null;
-  }
-  return externalProviderService.getActiveOpenFoodFactsProviderId(userId);
-}
-
-async function resolveProviderCredentials(
-  userId: string,
-  providerId: string | undefined,
-  providerType: ProviderType
-): Promise<ProviderCredentials> {
-  if (providerType === 'openfoodfacts') {
-    return {};
-  }
-
-  if (providerType === 'swissfood' && !providerId) {
-    return {};
-  }
-
-  if (!providerId) {
-    throw Object.assign(new Error('Missing providerId query parameter'), {
-      status: 400,
-    });
-  }
-
-  const details = await externalProviderService.getExternalDataProviderDetails(
-    userId,
-    providerId
-  );
-
-  if (!details || !details.is_active) {
-    throw Object.assign(new Error('Provider not found or is inactive'), {
-      status: 400,
-    });
-  }
-
-  // Guard against Tandoor misconfiguration where app_key contains a URL
-  if (providerType === 'tandoor' && typeof details.app_key === 'string') {
-    const key = details.app_key;
-    if (
-      key.startsWith('http://') ||
-      key.startsWith('https://') ||
-      key.includes('/settings') ||
-      key.includes('/api/')
-    ) {
-      throw Object.assign(
-        new Error(
-          'Tandoor provider configuration appears to have a URL in the app_key field. ' +
-            'Please set the actual Tandoor API token (e.g. tda_...) as the provider app_key.'
-        ),
-        { status: 400 }
-      );
-    }
-  }
-
-  return {
-    app_id: details.app_id ?? undefined,
-    app_key: details.app_key ?? undefined,
-    base_url: details.base_url ?? undefined,
-  };
-}
-
-const EMPTY_PAGINATION = (page: number, pageSize: number) => ({
-  page,
-  pageSize,
-  totalCount: 0,
-  hasMore: false,
-});
 
 function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;
@@ -333,163 +203,15 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
   const providerId = req.query.providerId as string | undefined;
+  const autoScale = ((req.query.autoScale as string) ?? 'true') !== 'false';
 
   try {
-    const credentials = await resolveProviderCredentials(
+    const { foods, pagination } = await searchProviderFoods(
       req.userId,
-      providerId,
-      providerType
+      providerType,
+      query,
+      { page, pageSize, providerId, autoScale }
     );
-    const userPrefs = await preferenceService.getUserPreferences(
-      req.userId,
-
-      req.userId
-    );
-    const language = userPrefs?.language || 'en';
-
-    let foods: unknown[] = [];
-    let pagination = EMPTY_PAGINATION(page, pageSize);
-
-    switch (providerType) {
-      case 'openfoodfacts': {
-        const autoScale =
-          ((req.query.autoScale as string) ?? 'true') !== 'false';
-        const offProviderId = await resolveOpenFoodFactsProviderId(
-          req.userId,
-          providerId
-        );
-        const result = await searchOpenFoodFacts(
-          query,
-          page,
-          language,
-
-          offProviderId ? req.userId : undefined,
-          offProviderId || undefined
-        );
-        const products = (result.products || []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (p: Record<string, any>) =>
-            p.product_name || p[`product_name_${language}`] || p.product_name_en
-        );
-        foods = products
-          .map((p: Record<string, unknown>) =>
-            mapOpenFoodFactsProduct(p, { autoScale, language })
-          )
-          .filter(Boolean);
-        pagination = result.pagination;
-        break;
-      }
-
-      case 'usda': {
-        const result = await searchUsdaFoods(
-          query,
-          credentials.app_key,
-          page,
-          pageSize
-        );
-        const items = result.foods || [];
-        foods = items.map(mapUsdaBarcodeProduct).filter(Boolean);
-        pagination = result.pagination;
-        break;
-      }
-
-      case 'fatsecret': {
-        const result = await searchFatSecretFoods(
-          query,
-          credentials.app_id,
-          credentials.app_key,
-          page
-        );
-        const rawFoods = result.foods?.food;
-        const items = Array.isArray(rawFoods)
-          ? rawFoods
-          : rawFoods
-            ? [rawFoods]
-            : [];
-        foods = items.map(mapFatSecretSearchItem).filter(Boolean);
-        pagination = result.pagination;
-        break;
-      }
-
-      case 'mealie': {
-        const result = await searchMealieFoods(
-          query,
-          credentials.base_url,
-          credentials.app_key,
-
-          req.userId,
-          providerId,
-          page
-        );
-        foods = result.items || [];
-        pagination = result.pagination;
-        break;
-      }
-
-      case 'tandoor': {
-        const results = await searchTandoorFoods(
-          query,
-          credentials.base_url,
-          credentials.app_key,
-
-          req.userId,
-          providerId
-        );
-        foods = results || [];
-        pagination = {
-          page: 1,
-          pageSize: foods.length,
-          totalCount: foods.length,
-          hasMore: false,
-        };
-        break;
-      }
-
-      case 'norish': {
-        const results = await searchNorishFoods(
-          query,
-          credentials.base_url,
-          credentials.app_key,
-
-          req.userId,
-          providerId
-        );
-        foods = results || [];
-        pagination = {
-          page: 1,
-          pageSize: foods.length,
-          totalCount: foods.length,
-          hasMore: false,
-        };
-        break;
-      }
-
-      case 'yazio': {
-        const result = await searchYazioFoods(query, {
-          username: credentials.app_id,
-          password: credentials.app_key,
-          baseUrl: credentials.base_url,
-          page,
-          pageSize,
-        });
-        foods = result.foods || [];
-        pagination = result.pagination;
-        break;
-      }
-
-      case 'swissfood': {
-        const result = await searchSwissFoods(
-          query,
-          page,
-          pageSize,
-          language,
-          credentials.base_url || undefined
-        );
-        foods = result.foods || [];
-        pagination = result.pagination;
-        break;
-      }
-    }
 
     const normalizedFoods = foods.map((food) => normalizeFoodForResponse(food));
     const response = SearchResponseSchema.parse({

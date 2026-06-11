@@ -3,12 +3,24 @@ import express from 'express';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supe... Remove this comment to see the full error message
 import request from 'supertest';
 import foodCoreService from '../services/foodCoreService.js';
+import { searchProviderFoods } from '../services/externalFoodSearchService.js';
 // @ts-expect-error TS(2691): An import path cannot end with a '.ts' extension. ... Remove this comment to see the full error message
 import foodRoutesV2 from '../routes/v2/foodRoutes.js';
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   default: vi.fn(() => (req: any, res: any, next: any) => next()),
 }));
+
+vi.mock('../services/externalFoodSearchService.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../services/externalFoodSearchService.js')
+    >();
+  return {
+    ...actual,
+    searchProviderFoods: vi.fn(),
+  };
+});
 
 vi.mock('../services/foodCoreService.js', () => ({
   default: {
@@ -153,5 +165,108 @@ describe('GET /v2/foods/barcode/:barcode', () => {
     expect(res.body.food.default_variant).not.toHaveProperty(
       'custom_nutrients'
     );
+  });
+});
+
+describe('GET /v2/foods/search/:providerType', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('delegates to searchProviderFoods and normalizes the result', async () => {
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          id: 'food-off-1',
+          name: 'Oat Milk',
+          brand: null,
+          barcode: null,
+          provider_external_id: 'off-123',
+          provider_type: 'openfoodfacts',
+          is_custom: false,
+          default_variant: {
+            id: null,
+            serving_size: 100,
+            serving_unit: 'ml',
+            calories: 45,
+            protein: 1,
+            carbs: 7,
+            fat: 1.5,
+            saturated_fat: null,
+            is_default: true,
+            custom_nutrients: null,
+          },
+          variants: null,
+        },
+      ],
+      pagination: { page: 2, pageSize: 10, totalCount: 25, hasMore: true },
+    });
+
+    const res = await request(app).get(
+      '/v2/foods/search/openfoodfacts?query=oat%20milk&page=2&pageSize=10&autoScale=false'
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-123',
+      'openfoodfacts',
+      'oat milk',
+      { page: 2, pageSize: 10, providerId: undefined, autoScale: false }
+    );
+    expect(res.body).toEqual({
+      foods: [
+        {
+          id: 'food-off-1',
+          name: 'Oat Milk',
+          brand: null,
+          provider_external_id: 'off-123',
+          provider_type: 'openfoodfacts',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'ml',
+            calories: 45,
+            protein: 1,
+            carbs: 7,
+            fat: 1.5,
+            is_default: true,
+          },
+        },
+      ],
+      pagination: { page: 2, pageSize: 10, totalCount: 25, hasMore: true },
+    });
+    expect(res.body.foods[0]).not.toHaveProperty('barcode');
+    expect(res.body.foods[0].default_variant).not.toHaveProperty(
+      'saturated_fat'
+    );
+  });
+
+  it('rejects an invalid provider type without calling the service', async () => {
+    const res = await request(app).get('/v2/foods/search/bogus?query=apple');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ error: 'Invalid provider type: bogus' });
+    expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing query without calling the service', async () => {
+    const res = await request(app).get('/v2/foods/search/usda');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ error: 'Missing query parameter' });
+    expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+
+  it('maps status-tagged service errors to HTTP status codes', async () => {
+    vi.mocked(searchProviderFoods).mockRejectedValue(
+      Object.assign(new Error('Missing providerId query parameter'), {
+        status: 400,
+      })
+    );
+
+    const res = await request(app).get('/v2/foods/search/usda?query=apple');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ error: 'Missing providerId query parameter' });
   });
 });
