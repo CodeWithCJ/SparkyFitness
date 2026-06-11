@@ -353,7 +353,7 @@ const ReportsTables = ({
                 <TableRow>
                   <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
                   <TableHead>{t('reportsTables.meal', 'Meal')}</TableHead>
-                  <TableHead className="min-w-[250px]">
+                  <TableHead className="min-w-[150px] sm:min-w-[200px] md:min-w-[250px]">
                     {t('reportsTables.food', 'Food')}
                   </TableHead>
                   <TableHead>
@@ -407,7 +407,7 @@ const ReportsTables = ({
                       <TableCell className="capitalize">
                         {entry.meal_type}
                       </TableCell>
-                      <TableCell className="min-w-[250px]">
+                      <TableCell className="min-w-[150px] sm:min-w-[200px] md:min-w-[250px]">
                         {!entry.isTotal && (
                           <div>
                             <div className="font-medium">
@@ -503,7 +503,7 @@ const ReportsTables = ({
               )}
               value={exerciseNameFilter}
               onChange={(e) => setExerciseNameFilter(e.target.value)}
-              className="max-w-sm"
+              className="w-full sm:max-w-sm"
             />
             <Input
               placeholder={t(
@@ -512,7 +512,7 @@ const ReportsTables = ({
               )}
               value={setTypeFilter}
               onChange={(e) => setSetTypeFilter(e.target.value)}
-              className="max-w-sm"
+              className="w-full sm:max-w-sm"
             />
           </div>
         </CardHeader>

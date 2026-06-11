@@ -250,7 +250,7 @@ const MealCard = ({
                     <Utensils className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="w-full max-w-full sm:max-w-2xl md:max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {t('mealCard.addFoodToMeal', {

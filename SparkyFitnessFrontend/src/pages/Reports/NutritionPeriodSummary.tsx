@@ -300,14 +300,14 @@ const NutritionPeriodSummary = ({
       <div className="flex justify-end">
         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-[220px] justify-between">
+            <Button variant="outline" className="w-full sm:w-[220px] justify-between">
               {selectedNutrients.length === 1
                 ? selectedOption?.label
                 : `${selectedOption?.label} +${selectedNutrients.length - 1}`}
               <ChevronDown className="h-4 w-4 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[220px] max-h-[300px] overflow-y-auto">
+          <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] sm:w-[220px] max-h-[300px] overflow-y-auto">
             {allNutritionOptions.map((opt) => (
               <DropdownMenuCheckboxItem
                 key={opt.key}
@@ -330,7 +330,7 @@ const NutritionPeriodSummary = ({
       </div>
 
       {/* KPI Dashboard and Daily Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
         <div
           className={`flex flex-col gap-4 h-full ${!showCumulativeChart ? 'hidden' : ''}`}
         >

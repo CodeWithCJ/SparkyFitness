@@ -180,7 +180,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="flex items-center">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <Input
                   id="bodyFat"
                   type="number"
@@ -195,7 +195,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 <Button
                   type="button"
                   onClick={handleCalculateBodyFat}
-                  className="ml-2"
+                  className="shrink-0"
                 >
                   {t('checkIn.calculate', 'Calculate')}
                 </Button>
