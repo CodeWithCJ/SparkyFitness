@@ -1,3 +1,5 @@
+import type { ZodError } from 'zod';
+
 /**
  * Creates a standardized error message for a chatbot tool result.
  * Security: Never exposes internal details (stack traces, SQL errors).
@@ -56,3 +58,17 @@ export const ERRORS = {
       `Valid actions: ${validActions.join(', ')}`
     ),
 };
+
+/**
+ * Renders a zod parse failure as a chat-visible VALIDATION error,
+ * formatted as "path: message; path2: message2".
+ */
+export function formatZodError(error: ZodError): string {
+  return ERRORS.VALIDATION(
+    error.issues
+      .map((i) =>
+        i.path.length > 0 ? `${i.path.join('.')}: ${i.message}` : i.message
+      )
+      .join('; ')
+  );
+}

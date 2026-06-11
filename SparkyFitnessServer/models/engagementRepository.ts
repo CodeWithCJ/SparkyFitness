@@ -5,7 +5,10 @@ import { getClient } from '../db/poolManager.js';
 // nudge selection live in ai/tools/engagementTools.ts; this file only holds
 // the SQL.
 
-async function getLastExerciseDate(userId: string): Promise<string | null> {
+// pg returns DATE columns as Date objects; string covers custom type parsers.
+async function getLastExerciseDate(
+  userId: string
+): Promise<Date | string | null> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
