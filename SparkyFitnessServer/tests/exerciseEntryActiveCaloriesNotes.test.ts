@@ -22,8 +22,10 @@ vi.mock('../models/activityDetailsRepository', () => ({
 }));
 
 // Reproduces the bug where active calories synced from Android Health Connect
-// were stamped with "Apple Health" in the entry notes regardless of platform.
-describe('upsertExerciseEntryData active-calories notes', () => {
+// were stamped with "Apple Health" in the entry notes regardless of platform,
+// and the bug where the source column was never written (left NULL, so clients
+// displayed synced entries as manual "Sparky" entries).
+describe('upsertExerciseEntryData active-calories notes and source', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;
 
@@ -59,6 +61,8 @@ describe('upsertExerciseEntryData active-calories notes', () => {
     expect(sql).toContain('INSERT INTO exercise_entries');
     expect(params[5]).toBe('Active calories logged from Health Connect.');
     expect(params[5]).not.toContain('Apple Health');
+    expect(sql).toContain('source');
+    expect(params[8]).toBe('Health Connect');
   });
 
   it('records the synced source in the notes on update', async () => {
@@ -83,6 +87,9 @@ describe('upsertExerciseEntryData active-calories notes', () => {
       'Active calories logged from Health Connect (updated).'
     );
     expect(params[1]).not.toContain('Apple Health');
+    expect(sql).toContain('source = $5');
+    expect(params[4]).toBe('Health Connect');
+    expect(sql).toContain('updated_at = now()');
   });
 
   it('maps the HealthKit source to the friendly "Apple Health" label', async () => {
@@ -101,6 +108,8 @@ describe('upsertExerciseEntryData active-calories notes', () => {
 
     const [, params] = mockClient.query.mock.calls[1];
     expect(params[5]).toBe('Active calories logged from Apple Health.');
+    // The source column keeps the raw value; clients map it to a display name.
+    expect(params[8]).toBe('HealthKit');
   });
 
   it('falls back to a generic source label when none is provided', async () => {
@@ -118,6 +127,7 @@ describe('upsertExerciseEntryData active-calories notes', () => {
 
     const [, params] = mockClient.query.mock.calls[1];
     expect(params[5]).toBe('Active calories logged from Health Data.');
+    expect(params[8]).toBe('Health Data');
   });
 
   it('falls back to a generic source label when source is explicitly null', async () => {
@@ -138,5 +148,6 @@ describe('upsertExerciseEntryData active-calories notes', () => {
     const [, params] = mockClient.query.mock.calls[1];
     expect(params[5]).toBe('Active calories logged from Health Data.');
     expect(params[5]).not.toContain('null');
+    expect(params[8]).toBe('Health Data');
   });
 });

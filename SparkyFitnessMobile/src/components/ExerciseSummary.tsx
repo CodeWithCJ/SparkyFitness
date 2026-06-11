@@ -27,12 +27,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
 }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const filtered = exerciseEntries.filter((session) => {
-    if (session.type === 'preset') return true;
-    return session.exercise_snapshot?.name !== 'Active Calories';
-  });
-
-  if (filtered.length === 0) {
+  if (exerciseEntries.length === 0) {
     const emptyContent = (
       <Text className="text-text-muted text-base">Tap to add exercise</Text>
     );
@@ -61,7 +56,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
         <Icon name="exercise" size={18} color={accentPrimary} />
         <Text className="text-base font-bold text-text-secondary">Exercise</Text>
       </View>
-      {filtered.map((session, index) => (
+      {exerciseEntries.map((session, index) => (
         <SwipeableExerciseRow
           key={session.id || index}
           session={session}

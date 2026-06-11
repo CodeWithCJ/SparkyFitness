@@ -18,10 +18,12 @@ async function upsertExerciseEntryData(
   source = 'Health Data'
 ) {
   log('info', 'upsertExerciseEntryData received date parameter:', date);
-  // HealthKit is shown to users as "Apple Health"; other sources display as-is.
   // Fall back to 'Health Data' for falsy sources (e.g. an explicit null bypasses the default param).
+  // The raw value goes into the source column; clients map it to a display name.
+  // HealthKit is shown to users as "Apple Health" in notes; other sources display as-is.
+  const sourceValue = source || 'Health Data';
   const sourceLabel =
-    (source === 'HealthKit' ? 'Apple Health' : source) || 'Health Data';
+    sourceValue === 'HealthKit' ? 'Apple Health' : sourceValue;
   const client = await getClient(userId);
   let existingEntry;
   let exerciseName = 'Unknown Exercise'; // Default value
@@ -71,12 +73,13 @@ async function upsertExerciseEntryData(
     const updateClient = await getClient(userId);
     try {
       const updateResult = await updateClient.query(
-        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4 WHERE id = $5 RETURNING *',
+        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4, source = $5, updated_at = now() WHERE id = $6 RETURNING *',
         [
           caloriesBurned,
           `Active calories logged from ${sourceLabel} (updated).`,
           createdByUserId,
           exerciseName,
+          sourceValue,
           existingEntry.id,
         ]
       );
@@ -99,8 +102,8 @@ async function upsertExerciseEntryData(
     const insertClient = await getClient(userId);
     try {
       const insertResult = await insertClient.query(
-        `INSERT INTO exercise_entries (user_id, exercise_id, entry_date, calories_burned, duration_minutes, notes, created_by_user_id, exercise_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        `INSERT INTO exercise_entries (user_id, exercise_id, entry_date, calories_burned, duration_minutes, notes, created_by_user_id, exercise_name, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
         [
           userId,
           exerciseId,
@@ -110,6 +113,7 @@ async function upsertExerciseEntryData(
           `Active calories logged from ${sourceLabel}.`,
           createdByUserId,
           exerciseName,
+          sourceValue,
         ]
       );
       result = insertResult.rows[0];
