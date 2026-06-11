@@ -8,6 +8,7 @@ import reportRepository from '../models/reportRepository.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import foodEntryRepository from '../models/foodEntry.js';
 import goalRepository from '../models/goalRepository.js';
+import fastingRepository from '../models/fastingRepository.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -350,5 +351,25 @@ describe('goalRepository.getGoalTimeline', () => {
     );
     expect(sql).toContain('ORDER BY goal_date DESC');
     expect(params).toEqual(['user-1']);
+  });
+});
+
+describe('fastingRepository.getFastingLogsOverlappingDay', () => {
+  it('matches windows overlapping the day, including open-ended fasts', async () => {
+    const rows = [{ id: 'f1', status: 'ACTIVE' }];
+    mockClient.query.mockResolvedValue({ rows });
+
+    const result = await fastingRepository.getFastingLogsOverlappingDay(
+      'user-1',
+      '2026-06-01'
+    );
+
+    expect(result).toBe(rows);
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('start_time::date <= $2::date');
+    expect(sql).toContain('end_time IS NULL OR end_time::date >= $2::date');
+    expect(sql).toContain('ORDER BY start_time ASC');
+    expect(params).toEqual(['user-1', '2026-06-01']);
+    expect(mockClient.release).toHaveBeenCalled();
   });
 });
