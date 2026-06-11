@@ -427,12 +427,15 @@ async function _createExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createdByUserId: any,
   entrySource = 'Manual',
-  exercisePresetEntryId = null
+  exercisePresetEntryId = null,
+  options: { skipDuplicateCheck?: boolean } = {}
 ) {
   try {
     // Check for existing entry
     // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
     // For entries within a preset, we always allow duplicates (no uniqueness check).
+    // Callers that must always insert (e.g. the chatbot, where logging the
+    // same exercise twice in a day means two workouts) pass skipDuplicateCheck.
     const syncDuplicateCheck = entryData.source_id ? true : false;
     const skipManualDuplicateCheck = [
       'HealthKit',
@@ -455,7 +458,8 @@ async function _createExerciseEntryWithClient(
       !existingEntryResult?.rows?.length &&
       !exercisePresetEntryId &&
       !skipManualDuplicateCheck &&
-      !syncDuplicateCheck
+      !syncDuplicateCheck &&
+      !options.skipDuplicateCheck
     ) {
       if (entryData.workout_plan_assignment_id) {
         // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
@@ -580,7 +584,8 @@ async function createExerciseEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createdByUserId: any,
   entrySource = 'Manual',
-  exercisePresetEntryId = null
+  exercisePresetEntryId = null,
+  options: { skipDuplicateCheck?: boolean } = {}
 ) {
   const client = await getClient(userId);
   try {
@@ -591,7 +596,8 @@ async function createExerciseEntry(
       entryData,
       createdByUserId,
       entrySource,
-      exercisePresetEntryId
+      exercisePresetEntryId,
+      options
     );
     await client.query('COMMIT');
     return entry;
@@ -654,11 +660,12 @@ async function updateExerciseEntry(
         image_url = $7,
         distance = $8,
         avg_heart_rate = $9,
-        sort_order = $10,
-        exercise_name = $11,
-        updated_by_user_id = $12,
+        steps = $10,
+        sort_order = $11,
+        exercise_name = $12,
+        updated_by_user_id = $13,
         updated_at = now()
-      WHERE id = $13 AND user_id = $14
+      WHERE id = $14 AND user_id = $15
       RETURNING id`,
       [
         updateData.exercise_id ?? null,
@@ -670,6 +677,7 @@ async function updateExerciseEntry(
         updateData.image_url ?? null,
         updateData.distance ?? null,
         updateData.avg_heart_rate ?? null,
+        updateData.steps ?? null,
         updateData.sort_order ?? null,
         updateData.exercise_name ?? null,
         actingUserId,
@@ -1274,6 +1282,41 @@ async function getDailyExerciseTotalsRange(
   }
 }
 
+// Entry-level diary rows for a date range, plus all their sets, with catalog
+// name/category. Backs the chatbot sparky_get_exercise_diary tool.
+async function getExerciseDiaryRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const entriesResult = await client.query(
+      `SELECT ee.*, e.name AS exercise_name_from_catalog, e.category AS exercise_category_from_catalog
+       FROM exercise_entries ee
+       LEFT JOIN exercises e ON e.id = ee.exercise_id
+       WHERE ee.user_id = $1 AND ee.entry_date BETWEEN $2 AND $3
+       ORDER BY ee.entry_date ASC, ee.created_at ASC`,
+      [userId, startDate, endDate]
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const entryIds = entriesResult.rows.map((row: any) => row.id);
+    let sets: Record<string, unknown>[] = [];
+    if (entryIds.length > 0) {
+      const setsResult = await client.query(
+        `SELECT * FROM exercise_entry_sets
+         WHERE exercise_entry_id = ANY($1)
+         ORDER BY exercise_entry_id, set_number ASC`,
+        [entryIds]
+      );
+      sets = setsResult.rows;
+    }
+    return { entries: entriesResult.rows, sets };
+  } finally {
+    client.release();
+  }
+}
+
 // Most recent exercise entries with catalog name/category. Backs the chatbot
 // sparky_get_recent_exercise_entries tool.
 async function getRecentExerciseEntries(userId: string, limit: number) {
@@ -1344,6 +1387,7 @@ export { getBestSetForExercise };
 export { getLastSetForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
 export { getDailyExerciseTotalsRange };
+export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
 export { getExerciseUsage };
 export default {
@@ -1366,6 +1410,7 @@ export default {
   getLastSetForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
   getDailyExerciseTotalsRange,
+  getExerciseDiaryRange,
   getRecentExerciseEntries,
   getExerciseUsage,
 };

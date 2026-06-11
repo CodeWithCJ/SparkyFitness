@@ -299,6 +299,110 @@ describe('exerciseEntry range/usage queries', () => {
       0,
     ]);
   });
+
+  it('getExerciseDiaryRange returns entries plus their sets', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [{ id: 'ee-1' }, { id: 'ee-2' }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 's-1', exercise_entry_id: 'ee-1' }],
+      });
+
+    const result = await exerciseEntryRepository.getExerciseDiaryRange(
+      'user-1',
+      '2026-06-01',
+      '2026-06-11'
+    );
+
+    expect(result).toEqual({
+      entries: [{ id: 'ee-1' }, { id: 'ee-2' }],
+      sets: [{ id: 's-1', exercise_entry_id: 'ee-1' }],
+    });
+    const [entriesSql, entriesParams] = mockClient.query.mock.calls[0];
+    expect(entriesSql).toContain(
+      'LEFT JOIN exercises e ON e.id = ee.exercise_id'
+    );
+    expect(entriesSql).toContain('ee.entry_date BETWEEN $2 AND $3');
+    expect(entriesParams).toEqual(['user-1', '2026-06-01', '2026-06-11']);
+    const [setsSql, setsParams] = mockClient.query.mock.calls[1];
+    expect(setsSql).toContain('exercise_entry_id = ANY($1)');
+    expect(setsParams).toEqual([['ee-1', 'ee-2']]);
+  });
+
+  it('getExerciseDiaryRange skips the sets query when there are no entries', async () => {
+    const result = await exerciseEntryRepository.getExerciseDiaryRange(
+      'user-1',
+      '2026-06-01',
+      '2026-06-11'
+    );
+    expect(result).toEqual({ entries: [], sets: [] });
+    expect(mockClient.query).toHaveBeenCalledTimes(1);
+  });
+
+  // Answers the snapshot SELECT, the entry INSERT and the refetch so a
+  // createExerciseEntry call can run end to end; the dedup lookup, when it
+  // happens, finds nothing.
+  function mockEntryCreateQueries() {
+    mockClient.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('SELECT id FROM exercise_entries')) {
+        return { rows: [] };
+      }
+      if (sql.includes('FROM exercises WHERE id')) {
+        return {
+          rows: [
+            { name: 'Running', calories_per_hour: 300, category: 'custom' },
+          ],
+        };
+      }
+      return { rows: [{ id: 'ee-new' }] };
+    });
+  }
+
+  function findQueryCall(snippet: string) {
+    return mockClient.query.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes(snippet)
+    );
+  }
+
+  it('createExerciseEntry dedupes manual same-exercise/same-date entries by default', async () => {
+    mockEntryCreateQueries();
+    await exerciseEntryRepository.createExerciseEntry(
+      'user-1',
+      { exercise_id: 'ex-1', entry_date: '2026-06-11' },
+      'actor-1'
+    );
+    expect(findQueryCall('exercise_preset_entry_id IS NULL')).toBeDefined();
+    expect(findQueryCall('INSERT INTO exercise_entries')).toBeDefined();
+  });
+
+  it('createExerciseEntry always inserts when skipDuplicateCheck is set', async () => {
+    mockEntryCreateQueries();
+    await exerciseEntryRepository.createExerciseEntry(
+      'user-1',
+      { exercise_id: 'ex-1', entry_date: '2026-06-11' },
+      'actor-1',
+      'Manual',
+      null,
+      { skipDuplicateCheck: true }
+    );
+    expect(findQueryCall('exercise_preset_entry_id IS NULL')).toBeUndefined();
+    expect(findQueryCall('INSERT INTO exercise_entries')).toBeDefined();
+  });
+
+  it('updateExerciseEntry persists steps', async () => {
+    await exerciseEntryRepository.updateExerciseEntry(
+      'ee-1',
+      'user-1',
+      'actor-1',
+      { steps: 1234 }
+    );
+    const updateCall = mockClient.query.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('UPDATE exercise_entries')
+    );
+    expect(updateCall).toBeDefined();
+    const [sql, params] = updateCall!;
+    expect(sql).toContain('steps = $10');
+    expect(params[9]).toBe(1234);
+  });
 });
 
 describe('foodEntry recent/usage queries', () => {
