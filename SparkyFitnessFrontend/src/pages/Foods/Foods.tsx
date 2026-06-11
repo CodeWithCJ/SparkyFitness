@@ -27,6 +27,7 @@ import {
   Eye,
   MoreHorizontal,
   Edit,
+  Copy,
   Trash2,
 } from 'lucide-react';
 import {
@@ -105,6 +106,11 @@ const FoodDatabaseManager = () => {
     canEdit,
     handlePageChange,
     handleEdit,
+    handleDuplicate,
+    handleDuplicateComplete,
+    showDuplicateDialog,
+    duplicatingFood,
+    isDuplicating,
     handleSaveComplete,
     handleAddFoodToMeal,
     handleDeleteRequest,
@@ -331,6 +337,13 @@ const FoodDatabaseManager = () => {
                   {t('foodDatabaseManager.editFood', 'Edit food')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  disabled={isDuplicating}
+                  onClick={() => handleDuplicate(food)}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  {t('foodDatabaseManager.duplicateFood', 'Duplicate food')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   disabled={!isEditable}
                   onClick={() =>
                     togglePublicSharing({
@@ -374,6 +387,8 @@ const FoodDatabaseManager = () => {
       t,
       canEdit,
       handleEdit,
+      handleDuplicate,
+      isDuplicating,
       handleDeleteRequest,
       togglePublicSharing,
       getFoodSourceBadge,
@@ -597,6 +612,39 @@ const FoodDatabaseManager = () => {
           </DialogHeader>
           {editingFood && (
             <CustomFoodForm food={editingFood} onSave={handleSaveComplete} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showDuplicateDialog}
+        onOpenChange={(open) => {
+          if (!open) handleDuplicateComplete();
+        }}
+      >
+        <DialogContent
+          requireConfirmation
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                'foodDatabaseManager.duplicateFoodDialogTitle',
+                'Duplicate Food'
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                'foodDatabaseManager.duplicateFoodDialogDescription',
+                'Adjust the details and save this as a new food. The original is not changed.'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {duplicatingFood && (
+            <CustomFoodForm
+              food={duplicatingFood}
+              onSave={handleDuplicateComplete}
+            />
           )}
         </DialogContent>
       </Dialog>
