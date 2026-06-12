@@ -158,6 +158,10 @@ function supportsSeparateAddTabButton() {
   return majorVersion !== null && majorVersion >= IOS_SEARCH_ROLE_MIN_VERSION;
 }
 
+function resolveColor(value: string, fallback: string) {
+  return value && value !== 'unset' ? value : fallback;
+}
+
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
 const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
@@ -252,13 +256,15 @@ function AppContent() {
     };
   }, []);
 
-  const [primary, chrome, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
+  const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
     '--color-chrome',
     '--color-chrome-border',
     '--color-background',
     '--color-text-primary',
-  ]) as [string, string, string, string, string];
+    '--color-tab-active',
+    '--color-tab-inactive',
+  ]) as [string, string, string, string, string, string, string];
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -273,6 +279,9 @@ function AppContent() {
       addLog(`[App] Failed to update Android navigation bar style: ${message}`, 'WARNING');
     }
   }, [isDarkMode]);
+
+  const nativeTabActiveTintColor = resolveColor(tabActive, resolveColor(primary, '#0A84FF'));
+  const nativeTabInactiveTintColor = resolveColor(tabInactive, '#8E8E93');
 
   const navigationTheme = useMemo<Theme>(() => ({
     dark: isDarkMode,
@@ -754,6 +763,8 @@ function AppContent() {
                     <ActiveWorkoutBar variant="embedded" />
                     <NativeTab.Navigator
                       initialRouteName="Dashboard"
+                      tabBarActiveTintColor={nativeTabActiveTintColor}
+                      tabBarInactiveTintColor={nativeTabInactiveTintColor}
                       screenListeners={({ navigation }) => {
                         navigationRef.current = navigation as NavigationProp<TabParamList>;
 
