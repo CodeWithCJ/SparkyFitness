@@ -37,7 +37,11 @@ async function getUserGoalsForRange(
   );
   const explicitByDate = Object.fromEntries(
     explicitGoals.map((g: Goals) => [
-      format(new Date(g.goal_date), 'yyyy-MM-dd'),
+      // goal_date arrives from pg as a 'YYYY-MM-DD' string; use it directly so the key
+      // is not shifted by new Date()/format() on a non-UTC server.
+      typeof g.goal_date === 'string'
+        ? g.goal_date.slice(0, 10)
+        : format(g.goal_date, 'yyyy-MM-dd'),
       g,
     ])
   );

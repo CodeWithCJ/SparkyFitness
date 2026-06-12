@@ -3,7 +3,6 @@ import {
   format,
   startOfDay,
   eachDayOfInterval,
-  isSameDay,
   parseISO,
   differenceInDays,
 } from 'date-fns';
@@ -65,7 +64,12 @@ async function calculateAdaptiveTdee(userId: any, dateParam: any) {
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
     let age = 30;
     if (userProfile?.date_of_birth) {
-      const dob = new Date(userProfile.date_of_birth);
+      // date_of_birth comes from pg as a 'YYYY-MM-DD' string; parse it to local midnight
+      // so the getFullYear/Month/Date comparison below is timezone-stable. Guard the Date
+      // shape too, in case a caller supplies an already-parsed value.
+      const rawDob = userProfile.date_of_birth;
+      const dob =
+        typeof rawDob === 'string' ? parseISO(rawDob.slice(0, 10)) : rawDob;
       age = calculationDate.getFullYear() - dob.getFullYear();
       const m = calculationDate.getMonth() - dob.getMonth();
       if (m < 0 || (m === 0 && calculationDate.getDate() < dob.getDate())) {
@@ -129,8 +133,10 @@ async function calculateAdaptiveTdee(userId: any, dateParam: any) {
       const dateStr = format(day, 'yyyy-MM-dd');
       // Find actual weight or null
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actualWeightEntry = weightEntries.find((we: any) =>
-        isSameDay(new Date(we.entry_date), day)
+      const actualWeightEntry = weightEntries.find(
+        // entry_date comes from pg as a 'YYYY-MM-DD' string; match on the day string
+        // (reusing dateStr) so a non-UTC server can't shift the comparison.
+        (we: any) => String(we.entry_date).slice(0, 10) === dateStr
       );
       const actualWeight = actualWeightEntry
         ? parseFloat(actualWeightEntry.weight)
