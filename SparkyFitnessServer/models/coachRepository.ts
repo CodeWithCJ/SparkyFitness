@@ -93,15 +93,16 @@ async function getWaterIntakeTotal(
   }
 }
 
-async function getWeightSeries(userId: string, days: number) {
+// Trailing windows anchor on `today`, the caller's user-timezone day string.
+async function getWeightSeries(userId: string, days: number, today: string) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT weight, entry_date
        FROM check_in_measurements
-       WHERE user_id = $1 AND weight IS NOT NULL AND entry_date >= (CURRENT_DATE - $2::int)
+       WHERE user_id = $1 AND weight IS NOT NULL AND entry_date >= ($3::date - $2::int)
        ORDER BY entry_date ASC`,
-      [userId, days]
+      [userId, days, today]
     );
     return result.rows;
   } finally {
@@ -109,16 +110,20 @@ async function getWeightSeries(userId: string, days: number) {
   }
 }
 
-async function getDailyCalorieSeries(userId: string, days: number) {
+async function getDailyCalorieSeries(
+  userId: string,
+  days: number,
+  today: string
+) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT entry_date, SUM(calories * quantity / NULLIF(serving_size, 0))::numeric AS daily_calories
        FROM food_entries
-       WHERE user_id = $1 AND entry_date >= (CURRENT_DATE - $2::int)
+       WHERE user_id = $1 AND entry_date >= ($3::date - $2::int)
        GROUP BY entry_date
        ORDER BY entry_date ASC`,
-      [userId, days]
+      [userId, days, today]
     );
     return result.rows;
   } finally {
@@ -220,8 +225,13 @@ async function get30DayWeightSeries(userId: string, endDate: string) {
 }
 
 // Daily nutrition totals joined with same-day sleep and mood, for pattern
-// detection (sparky_detect_patterns).
-async function getDailyCorrelationRows(userId: string, days: number) {
+// detection (sparky_detect_patterns). The trailing window anchors on `today`,
+// the caller's user-timezone day string.
+async function getDailyCorrelationRows(
+  userId: string,
+  days: number,
+  today: string
+) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -243,18 +253,18 @@ async function getDailyCorrelationRows(userId: string, days: number) {
           SUM(calcium * quantity / NULLIF(serving_size, 0)) as calcium,
           SUM(iron * quantity / NULLIF(serving_size, 0)) as iron
         FROM food_entries
-        WHERE user_id = $1 AND entry_date >= CURRENT_DATE - $2::int
+        WHERE user_id = $1 AND entry_date >= $3::date - $2::int
         GROUP BY entry_date
       ),
       daily_sleep AS (
         SELECT entry_date, duration_in_seconds, sleep_score
         FROM sleep_entries
-        WHERE user_id = $1 AND entry_date >= CURRENT_DATE - $2::int
+        WHERE user_id = $1 AND entry_date >= $3::date - $2::int
       ),
       daily_mood AS (
         SELECT entry_date, mood_value
         FROM mood_entries
-        WHERE user_id = $1 AND entry_date >= CURRENT_DATE - $2::int
+        WHERE user_id = $1 AND entry_date >= $3::date - $2::int
       )
       SELECT
         f.*,
@@ -264,7 +274,7 @@ async function getDailyCorrelationRows(userId: string, days: number) {
       LEFT JOIN daily_sleep s ON f.entry_date = s.entry_date
       LEFT JOIN daily_mood m ON f.entry_date = m.entry_date
       ORDER BY f.entry_date DESC`,
-      [userId, days]
+      [userId, days, today]
     );
     return result.rows;
   } finally {

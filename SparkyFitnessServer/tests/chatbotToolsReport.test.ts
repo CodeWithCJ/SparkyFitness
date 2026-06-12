@@ -60,7 +60,7 @@ let tools: ReturnType<typeof buildReportTools>;
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(preferenceService.getUserPreferences).mockResolvedValue(PREFS);
-  tools = buildReportTools('user-1');
+  tools = buildReportTools('user-1', 'UTC');
 });
 
 describe('sparky_get_report (get_weekly_report)', () => {
@@ -264,6 +264,69 @@ describe('sparky_get_daily_report', () => {
     );
   });
 
+  it('renders pg local-midnight Date rows as calendar-day strings in all three sets', async () => {
+    vi.mocked(reportRepository.getDailyNutritionTotalsRange).mockResolvedValue([
+      {
+        entry_date: new Date(2026, 5, 10),
+        calories: 2100.5,
+        protein: 95,
+        carbs: 240,
+        fat: 70,
+        fiber: 28,
+      },
+    ]);
+    vi.mocked(exerciseEntryDb.getDailyExerciseTotalsRange).mockResolvedValue([
+      {
+        entry_date: new Date(2026, 5, 10),
+        entry_count: 2,
+        duration_minutes: 45,
+        calories_burned: 400,
+        distance: 5,
+        steps: 8000,
+      },
+    ]);
+    vi.mocked(
+      measurementRepository.getWaterTotalsByDateRange
+    ).mockResolvedValue([
+      { entry_date: new Date(2026, 5, 10), total_ml: 1500 },
+    ]);
+
+    const result = await tools.sparky_get_daily_report.execute!(
+      { date: '2026-06-10' },
+      opts
+    );
+
+    expect(result).toBe(
+      JSON.stringify(
+        {
+          start_date: '2026-06-10',
+          end_date: '2026-06-10',
+          nutrition: [
+            {
+              entry_date: '2026-06-10',
+              calories: 2100.5,
+              protein: 95,
+              carbs: 240,
+              fat: 70,
+              fiber: 28,
+            },
+          ],
+          exercise: [
+            {
+              entry_date: '2026-06-10',
+              exercise_calories: 400,
+              exercise_minutes: 45,
+              steps: 8000,
+            },
+          ],
+          water: [{ entry_date: '2026-06-10', water_ml: 1500 }],
+        },
+        null,
+        2
+      )
+    );
+  });
+
   it('lets date override start/end and defaults the range to today (UTC)', async () => {
     vi.mocked(reportRepository.getDailyNutritionTotalsRange).mockResolvedValue(
       []
@@ -296,6 +359,36 @@ describe('sparky_get_daily_report', () => {
       today,
       today
     );
+  });
+
+  it("computes the default range in the user's timezone", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-10T20:00:00Z'));
+    try {
+      vi.mocked(
+        reportRepository.getDailyNutritionTotalsRange
+      ).mockResolvedValue([]);
+      vi.mocked(exerciseEntryDb.getDailyExerciseTotalsRange).mockResolvedValue(
+        []
+      );
+      vi.mocked(
+        measurementRepository.getWaterTotalsByDateRange
+      ).mockResolvedValue([]);
+
+      const tokyoTools = buildReportTools('user-1', 'Asia/Tokyo');
+      await tokyoTools.sparky_get_daily_report.execute!({}, opts);
+      expect(
+        reportRepository.getDailyNutritionTotalsRange
+      ).toHaveBeenLastCalledWith('user-1', '2026-06-11', '2026-06-11');
+
+      const utcTools = buildReportTools('user-1', 'UTC');
+      await utcTools.sparky_get_daily_report.execute!({}, opts);
+      expect(
+        reportRepository.getDailyNutritionTotalsRange
+      ).toHaveBeenLastCalledWith('user-1', '2026-06-10', '2026-06-10');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("maps a 'not found' failure to NOT_FOUND keyed by the requested date", async () => {

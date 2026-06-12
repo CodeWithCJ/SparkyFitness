@@ -154,6 +154,27 @@ describe('sparky_manage_habits', () => {
     );
   });
 
+  it('get_habit_history renders a pg local-midnight Date entry_date as a calendar-day string', async () => {
+    vi.mocked(habitRepository.getHabitHistory).mockResolvedValue([
+      {
+        id: 'm1',
+        value: 'true',
+        entry_date: new Date(2026, 5, 10),
+        created_at: '2026-06-10T08:00:00Z',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_habits.execute!(
+      {
+        action: 'get_habit_history',
+        habit_id: HABIT_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('# Habit History\n\n2026-06-10: ✅ Completed');
+  });
+
   it('returns DB_ERROR when the repository throws', async () => {
     vi.mocked(habitRepository.listHabits).mockRejectedValue(new Error('boom'));
 

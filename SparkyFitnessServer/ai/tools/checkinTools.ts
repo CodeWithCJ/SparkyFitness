@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { todayInZone } from '@workspace/shared';
+import { dayToUtcRange, todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import preferenceService from '../../services/preferenceService.js';
@@ -74,7 +74,7 @@ export async function getBiometricsHistoryRows(
   }));
 }
 
-export function buildCheckinTools(userId: string) {
+export function buildCheckinTools(userId: string, tz: string) {
   return {
     sparky_manage_checkin: tool({
       description: `Health tracking: weight, steps, body measurements, mood, sleep, fasting, custom metrics.
@@ -280,8 +280,14 @@ Actions:
               const duration = args.duration_seconds ?? 28800; // Default 8h
 
               if (!bedtime && !wakeTime) {
-                // Default: wake time is 7 AM on entry_date, bedtime is 8h before
-                const wake = new Date(`${args.entry_date}T07:00:00Z`);
+                // Default: wake time is 7 AM on entry_date in the user's
+                // timezone, bedtime is 8h before. Local midnight + 7h is off
+                // by the shifted hour on DST-transition days — acceptable for
+                // a sleep-log default.
+                const wake = new Date(
+                  dayToUtcRange(args.entry_date, tz).start.getTime() +
+                    7 * 3600 * 1000
+                );
                 const bed = new Date(wake.getTime() - duration * 1000);
                 wakeTime = wake.toISOString();
                 bedtime = bed.toISOString();
@@ -320,7 +326,7 @@ Actions:
             }
 
             case 'list_checkin_diary': {
-              const date = args.entry_date || todayInZone('UTC');
+              const date = args.entry_date || todayInZone(tz);
               const dateLabel = args.entry_date || 'today';
 
               const bioRow = await measurementService.getCheckInMeasurements(
@@ -341,7 +347,8 @@ Actions:
               const fastRows =
                 await fastingRepository.getFastingLogsOverlappingDay(
                   userId,
-                  date
+                  date,
+                  tz
                 );
               const customRows =
                 await measurementService.getCustomMeasurementEntriesByDate(
@@ -400,8 +407,12 @@ Actions:
                 }));
               const fasts = fastRows.map((row: any) => ({
                 id: row.id,
-                start_time: row.start_time,
-                end_time: row.end_time,
+                start_time: row.start_time
+                  ? new Date(row.start_time).toISOString()
+                  : null,
+                end_time: row.end_time
+                  ? new Date(row.end_time).toISOString()
+                  : null,
                 fasting_status: row.status,
                 fasting_type: row.fasting_type,
               }));

@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { log } from '../../config/logging.js';
 import habitRepository from '../../models/habitRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { formatConfirmation, formatList } from './formatting.js';
+import { dayString, formatConfirmation, formatList } from './formatting.js';
 import {
   manageHabitsSchema,
   manageHabitsInput,
@@ -60,7 +60,7 @@ Actions:
               const history = rows.map((row: any) => ({
                 id: row.id,
                 completed: row.value === 'true',
-                entry_date: row.entry_date,
+                entry_date: dayString(row.entry_date),
                 created_at: row.created_at,
               }));
               return formatList(

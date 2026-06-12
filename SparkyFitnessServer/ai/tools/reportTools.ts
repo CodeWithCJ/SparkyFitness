@@ -6,6 +6,7 @@ import exerciseEntryDb from '../../models/exerciseEntry.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { dayString } from './formatting.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
 import {
@@ -17,9 +18,10 @@ import {
 
 async function getWeeklyReport(
   userId: string,
+  tz: string,
   endDate?: string
 ): Promise<string> {
-  const end = endDate || todayInZone('UTC');
+  const end = endDate || todayInZone(tz);
   const start = addDays(end, -6);
 
   const nutrition = await getNutritionalSummaryRows(userId, start, end);
@@ -74,13 +76,16 @@ async function getWeeklyReport(
 }
 
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
-// the range defaults to today (UTC) / the start date.
-function reportDateRange(query: {
-  date?: string;
-  start_date?: string;
-  end_date?: string;
-}): { startDate: string; endDate: string } {
-  const today = todayInZone('UTC');
+// the range defaults to today (user timezone) / the start date.
+function reportDateRange(
+  query: {
+    date?: string;
+    start_date?: string;
+    end_date?: string;
+  },
+  tz: string
+): { startDate: string; endDate: string } {
+  const today = todayInZone(tz);
   const date = query.date || undefined;
   const startDate = date || query.start_date || today;
   const endDate = date || query.end_date || startDate;
@@ -89,9 +94,10 @@ function reportDateRange(query: {
 
 async function getDailyReport(
   userId: string,
+  tz: string,
   params: { date?: string; start_date?: string; end_date?: string }
 ): Promise<Record<string, unknown>> {
-  const { startDate, endDate } = reportDateRange(params);
+  const { startDate, endDate } = reportDateRange(params, tz);
 
   const nutritionRows = await reportRepository.getDailyNutritionTotalsRange(
     userId,
@@ -115,7 +121,7 @@ async function getDailyReport(
     end_date: endDate,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     nutrition: nutritionRows.map((r: any) => ({
-      entry_date: r.entry_date,
+      entry_date: dayString(r.entry_date),
       calories: r.calories,
       protein: r.protein,
       carbs: r.carbs,
@@ -124,20 +130,20 @@ async function getDailyReport(
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     exercise: exerciseRows.map((r: any) => ({
-      entry_date: r.entry_date,
+      entry_date: dayString(r.entry_date),
       exercise_calories: r.calories_burned,
       exercise_minutes: r.duration_minutes,
       steps: r.steps,
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     water: waterRows.map((r: any) => ({
-      entry_date: r.entry_date,
+      entry_date: dayString(r.entry_date),
       water_ml: r.total_ml,
     })),
   };
 }
 
-export function buildReportTools(userId: string) {
+export function buildReportTools(userId: string, tz: string) {
   return {
     sparky_get_report: tool({
       description: 'Generates consolidated health and fitness reports.',
@@ -151,7 +157,7 @@ export function buildReportTools(userId: string) {
         try {
           switch (args.action) {
             case 'get_weekly_report': {
-              return await getWeeklyReport(userId, args.end_date);
+              return await getWeeklyReport(userId, tz, args.end_date);
             }
             default:
               return ERRORS.INVALID_ACTION(
@@ -177,7 +183,7 @@ export function buildReportTools(userId: string) {
           return formatZodError(parsed.error);
         }
         try {
-          const data = await getDailyReport(userId, parsed.data);
+          const data = await getDailyReport(userId, tz, parsed.data);
           return JSON.stringify(data, null, 2);
         } catch (error) {
           log('error', '[Report Tool] sparky_get_daily_report error:', error);

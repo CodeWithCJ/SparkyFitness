@@ -31,9 +31,10 @@ let tools: ReturnType<typeof buildEngagementTools>;
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  // Local noon, June 11 2026
-  vi.setSystemTime(new Date(2026, 5, 11, 12, 0, 0));
-  tools = buildEngagementTools('user-1');
+  // A UTC instant ("today" is computed via todayInZone, so a local-time
+  // anchor would make the suite host-timezone-dependent).
+  vi.setSystemTime(new Date('2026-06-11T12:00:00Z'));
+  tools = buildEngagementTools('user-1', 'UTC');
 });
 
 afterEach(() => {
@@ -78,6 +79,10 @@ describe('sparky_check_engagement', () => {
     );
     expect(engagementRepository.getLastExerciseDate).toHaveBeenCalledWith(
       'user-1'
+    );
+    expect(engagementRepository.getWeeklyLoggedDayCount).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-11'
     );
   });
 
@@ -158,7 +163,7 @@ describe('sparky_get_logging_streak', () => {
     expect(result).toBe(
       success('Logging Streak', {
         current_streak: 3,
-        last_logged: rows[0].entry_date,
+        last_logged: '2026-06-11',
       })
     );
     expect(engagementRepository.getLoggedDates).toHaveBeenCalledWith('user-1');
@@ -173,7 +178,7 @@ describe('sparky_get_logging_streak', () => {
     expect(result).toBe(
       success('Logging Streak', {
         current_streak: 2,
-        last_logged: rows[0].entry_date,
+        last_logged: '2026-06-10',
       })
     );
   });
@@ -187,7 +192,7 @@ describe('sparky_get_logging_streak', () => {
     expect(result).toBe(
       success('Logging Streak', {
         current_streak: 0,
-        last_logged: rows[0].entry_date,
+        last_logged: '2026-06-08',
       })
     );
   });
@@ -201,7 +206,27 @@ describe('sparky_get_logging_streak', () => {
     expect(result).toBe(
       success('Logging Streak', {
         current_streak: 1,
-        last_logged: rows[0].entry_date,
+        last_logged: '2026-06-11',
+      })
+    );
+  });
+
+  it("anchors the streak on the user's timezone today", async () => {
+    // 20:00 UTC June 11 is already June 12 in Tokyo.
+    vi.setSystemTime(new Date('2026-06-11T20:00:00Z'));
+    const rows = [{ entry_date: day(12) }, { entry_date: day(11) }];
+    vi.mocked(engagementRepository.getLoggedDates).mockResolvedValue(rows);
+
+    const tokyoTools = buildEngagementTools('user-1', 'Asia/Tokyo');
+    const result = await tokyoTools.sparky_get_logging_streak.execute!(
+      {},
+      opts
+    );
+
+    expect(result).toBe(
+      success('Logging Streak', {
+        current_streak: 2,
+        last_logged: '2026-06-12',
       })
     );
   });
@@ -274,7 +299,9 @@ describe('sparky_get_contextual_nudge', () => {
       })
     );
     expect(engagementRepository.getTodayActivityCounts).toHaveBeenCalledWith(
-      'user-1'
+      'user-1',
+      '2026-06-11',
+      'UTC'
     );
   });
 

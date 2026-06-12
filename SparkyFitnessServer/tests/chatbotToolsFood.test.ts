@@ -145,7 +145,7 @@ beforeEach(() => {
     energy_unit: 'kcal',
     water_display_unit: 'ml',
   });
-  tools = buildFoodTools('user-1');
+  tools = buildFoodTools('user-1', 'UTC');
 });
 
 describe('sparky_manage_food validation', () => {
@@ -831,6 +831,41 @@ describe('list_diary', () => {
       'user-1',
       todayInZone('UTC')
     );
+  });
+
+  it("computes the default 'today' in the user's timezone", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-10T20:00:00Z'));
+    try {
+      vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([]);
+      vi.mocked(
+        foodEntryMealRepository.getFoodEntryMealsByDate
+      ).mockResolvedValue([]);
+
+      const tokyoTools = buildFoodTools('user-1', 'Asia/Tokyo');
+      await tokyoTools.sparky_manage_food.execute!(
+        { action: 'list_diary' },
+        opts
+      );
+      expect(foodEntryService.getFoodEntriesByDate).toHaveBeenLastCalledWith(
+        'user-1',
+        'user-1',
+        '2026-06-11'
+      );
+
+      const utcTools = buildFoodTools('user-1', 'UTC');
+      await utcTools.sparky_manage_food.execute!(
+        { action: 'list_diary' },
+        opts
+      );
+      expect(foodEntryService.getFoodEntriesByDate).toHaveBeenLastCalledWith(
+        'user-1',
+        'user-1',
+        '2026-06-10'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('converts displayed calories when the user prefers kJ', async () => {

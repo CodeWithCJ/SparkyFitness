@@ -333,7 +333,7 @@ async function prepareChatContext(authenticatedUserId: string) {
           .join('\n')
       : 'None';
 
-  const tools = buildChatbotTools(authenticatedUserId);
+  const tools = buildChatbotTools(authenticatedUserId, chatTz);
   log(
     'info',
     `Loaded ${Object.keys(tools).length} tools for chatbot: ${Object.keys(tools).join(', ')}`

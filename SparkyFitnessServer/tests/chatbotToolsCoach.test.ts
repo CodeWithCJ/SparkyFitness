@@ -32,7 +32,7 @@ let tools: ReturnType<typeof buildCoachTools>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  tools = buildCoachTools('user-1');
+  tools = buildCoachTools('user-1', 'UTC');
 });
 
 describe('sparky_get_health_summary', () => {
@@ -97,6 +97,60 @@ describe('sparky_get_health_summary', () => {
       'user-1',
       '2026-06-01',
       '2026-06-07'
+    );
+  });
+
+  it('renders a pg local-midnight Date weight date as a calendar-day string', async () => {
+    vi.mocked(coachRepository.getNutritionAggregates).mockResolvedValue({
+      total_calories: '0',
+      avg_protein: '0',
+      avg_carbs: '0',
+      avg_fat: '0',
+      entry_count: 0,
+    });
+    vi.mocked(coachRepository.getExerciseAggregates).mockResolvedValue({
+      total_calories_burned: '0',
+      workout_count: 0,
+    });
+    vi.mocked(coachRepository.getLatestWeightInRange).mockResolvedValue({
+      weight: '81.5',
+      entry_date: new Date(2026, 5, 10),
+    });
+    vi.mocked(coachRepository.getWaterIntakeTotal).mockResolvedValue({
+      total_water: '0',
+    });
+
+    const result = await tools.sparky_get_health_summary.execute!(
+      { start_date: '2026-06-10' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Health Summary\n\n' +
+        JSON.stringify(
+          {
+            period: { start_date: '2026-06-10', end_date: '2026-06-10' },
+            nutrition: {
+              total_calories: 0,
+              avg_protein: 0,
+              avg_carbs: 0,
+              avg_fat: 0,
+              entry_count: 0,
+            },
+            fitness: {
+              total_calories_burned: 0,
+              workout_count: 0,
+            },
+            vitals: {
+              latest_weight: { weight: 81.5, date: '2026-06-10' },
+            },
+            hydration: {
+              total_water_ml: 0,
+            },
+          },
+          null,
+          2
+        )
     );
   });
 
@@ -224,10 +278,15 @@ describe('sparky_analyze_trends', () => {
           2
         )
     );
-    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith('user-1', 14);
+    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith(
+      'user-1',
+      14,
+      todayInZone('UTC')
+    );
     expect(coachRepository.getDailyCalorieSeries).toHaveBeenCalledWith(
       'user-1',
-      14
+      14,
+      todayInZone('UTC')
     );
   });
 
@@ -276,7 +335,11 @@ describe('sparky_analyze_trends', () => {
           2
         )
     );
-    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith('user-1', 7);
+    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith(
+      'user-1',
+      7,
+      todayInZone('UTC')
+    );
   });
 
   it('maps repository failures to DB_ERROR', async () => {
@@ -501,7 +564,8 @@ describe('sparky_detect_patterns', () => {
     );
     expect(coachRepository.getDailyCorrelationRows).toHaveBeenCalledWith(
       'user-1',
-      30
+      30,
+      todayInZone('UTC')
     );
   });
 
@@ -614,10 +678,15 @@ describe('sparky_generate_coaching_plan', () => {
           2
         )
     );
-    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith('user-1', 14);
+    expect(coachRepository.getWeightSeries).toHaveBeenCalledWith(
+      'user-1',
+      14,
+      todayInZone('UTC')
+    );
     expect(coachRepository.getDailyCalorieSeries).toHaveBeenCalledWith(
       'user-1',
-      14
+      14,
+      todayInZone('UTC')
     );
   });
 

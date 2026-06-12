@@ -27,7 +27,7 @@ let tools: ReturnType<typeof buildGoalTools>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  tools = buildGoalTools('user-1');
+  tools = buildGoalTools('user-1', 'UTC');
 });
 
 describe('sparky_manage_goals', () => {
@@ -176,6 +176,30 @@ describe('sparky_manage_goals', () => {
         '**2026-05-01**: 1800 kcal | P: 140g | C: 200g | F: 60g | W: 1500ml'
     );
     expect(goalRepository.getGoalTimeline).toHaveBeenCalledWith('user-1');
+  });
+
+  it('list_goal_timeline renders a pg local-midnight Date goal_date as a calendar-day string', async () => {
+    vi.mocked(goalRepository.getGoalTimeline).mockResolvedValue([
+      {
+        id: 1,
+        goal_date: new Date(2026, 5, 1),
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fat: 67,
+        water_goal_ml: 2000,
+      },
+    ]);
+
+    const result = await tools.sparky_manage_goals.execute!(
+      { action: 'list_goal_timeline' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Goal Timeline\n\n' +
+        '**2026-06-01**: 2000 kcal | P: 150g | C: 250g | F: 67g | W: 2000ml'
+    );
   });
 
   it('list_goal_timeline reports when there are no goals', async () => {

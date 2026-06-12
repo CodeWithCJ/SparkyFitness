@@ -8,7 +8,7 @@ import exerciseDb from '../../models/exercise.js';
 import exerciseEntryDb from '../../models/exerciseEntry.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { formatConfirmation, formatList } from './formatting.js';
+import { dayString, formatConfirmation, formatList } from './formatting.js';
 import {
   normalizePagination,
   buildPaginatedResult,
@@ -86,17 +86,27 @@ function toRepoSets(sets: ExerciseSetInput[]) {
 }
 
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
-// the range defaults to today (UTC) / the start date.
-function exerciseDateRange(query: {
-  date?: string;
-  start_date?: string;
-  end_date?: string;
-}): { startDate: string; endDate: string } {
-  const today = todayInZone('UTC');
+// the range defaults to today (user timezone) / the start date.
+function exerciseDateRange(
+  query: {
+    date?: string;
+    start_date?: string;
+    end_date?: string;
+  },
+  tz: string
+): { startDate: string; endDate: string } {
+  const today = todayInZone(tz);
   const date = query.date || undefined;
   const startDate = date || query.start_date || today;
   const endDate = date || query.end_date || startDate;
   return { startDate, endDate };
+}
+
+// Renders a row's bare-DATE entry_date as a calendar-day string for JSON
+// output. entry_date is nullable; NULL stays JSON null, not the string "null".
+function projectEntryDate<T extends { entry_date?: unknown }>(row: T) {
+  if (!isSet(row.entry_date)) return row;
+  return { ...row, entry_date: dayString(row.entry_date) };
 }
 
 // The column set MCP's exercise search exposed; richer server rows are
@@ -164,7 +174,7 @@ async function getExerciseDetails(
 }
 
 interface ProgressDay {
-  entry_date: unknown;
+  entry_date: string;
   max_weight: number | null;
   max_reps: number | null;
   total_volume: number | null;
@@ -206,11 +216,11 @@ async function getExerciseProgress(
   for (const entry of entries) {
     const sets: ExerciseSetInput[] = entry.sets ?? [];
     if (sets.length === 0) continue;
-    const key = String(entry.entry_date);
+    const key = dayString(entry.entry_date);
     let day = byDate.get(key);
     if (!day) {
       day = {
-        entry_date: entry.entry_date,
+        entry_date: key,
         max_weight: null,
         max_reps: null,
         total_volume: null,
@@ -297,7 +307,7 @@ const exerciseProgressSchema = exerciseDateRangeSchema
     exercise_name: z.string().optional(),
   });
 
-export function buildExerciseTools(userId: string) {
+export function buildExerciseTools(userId: string, tz: string) {
   return {
     sparky_manage_exercise: tool({
       description: `Fitness tracking: search exercises, log workouts with sets, manage presets.
@@ -799,7 +809,7 @@ Actions:
           return formatZodError(parsed.error);
         }
         try {
-          const { startDate, endDate } = exerciseDateRange(parsed.data);
+          const { startDate, endDate } = exerciseDateRange(parsed.data, tz);
           const { entries, sets } = await exerciseEntryDb.getExerciseDiaryRange(
             userId,
             startDate,
@@ -808,7 +818,7 @@ Actions:
           const data = {
             start_date: startDate,
             end_date: endDate,
-            entries,
+            entries: entries.map(projectEntryDate),
             sets,
           };
           return JSON.stringify(data, null, 2);
@@ -838,13 +848,17 @@ Actions:
           return formatZodError(parsed.error);
         }
         try {
-          const { startDate, endDate } = exerciseDateRange(parsed.data);
+          const { startDate, endDate } = exerciseDateRange(parsed.data, tz);
           const rows = await exerciseEntryDb.getDailyExerciseTotalsRange(
             userId,
             startDate,
             endDate
           );
-          const data = { start_date: startDate, end_date: endDate, rows };
+          const data = {
+            start_date: startDate,
+            end_date: endDate,
+            rows: rows.map(projectEntryDate),
+          };
           return JSON.stringify(data, null, 2);
         } catch (error) {
           log(
@@ -874,11 +888,11 @@ Actions:
         }
         try {
           const limit = Math.min(Math.max(parsed.data.limit ?? 50, 1), 200);
-          const data = await exerciseEntryDb.getRecentExerciseEntries(
+          const rows = await exerciseEntryDb.getRecentExerciseEntries(
             userId,
             limit
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(rows.map(projectEntryDate), null, 2);
         } catch (error) {
           log(
             'error',
@@ -904,7 +918,7 @@ Actions:
         }
         try {
           const { exercise_id, ...query } = parsed.data;
-          const { startDate, endDate } = exerciseDateRange(query);
+          const { startDate, endDate } = exerciseDateRange(query, tz);
           const { limit, offset } = normalizePagination(
             query.limit,
             query.offset
@@ -917,7 +931,11 @@ Actions:
             limit,
             offset
           );
-          const data = buildPaginatedResult(rows, totalCount, offset);
+          const data = buildPaginatedResult(
+            rows.map(projectEntryDate),
+            totalCount,
+            offset
+          );
           return JSON.stringify(data, null, 2);
         } catch (error) {
           log(

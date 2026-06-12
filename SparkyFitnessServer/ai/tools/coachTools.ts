@@ -3,7 +3,7 @@ import { todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { formatSuccess } from './formatting.js';
+import { dayString, formatSuccess } from './formatting.js';
 import {
   GetHealthSummarySchema,
   AnalyzeTrendsSchema,
@@ -58,7 +58,7 @@ async function getHealthSummary(
     },
     vitals: {
       latest_weight: weight
-        ? { weight: Number(weight.weight), date: weight.entry_date }
+        ? { weight: Number(weight.weight), date: dayString(weight.entry_date) }
         : null,
     },
     hydration: {
@@ -67,19 +67,24 @@ async function getHealthSummary(
   };
 }
 
-async function analyzeTrends(userId: string, days: number) {
-  const weightRows = await coachRepository.getWeightSeries(userId, days);
-  const calorieRows = await coachRepository.getDailyCalorieSeries(userId, days);
+async function analyzeTrends(userId: string, tz: string, days: number) {
+  const today = todayInZone(tz);
+  const weightRows = await coachRepository.getWeightSeries(userId, days, today);
+  const calorieRows = await coachRepository.getDailyCalorieSeries(
+    userId,
+    days,
+    today
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const weights = weightRows.map((r: any) => ({
-    date: r.entry_date,
+    date: dayString(r.entry_date),
     weight: Number(r.weight),
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calories = calorieRows.map((r: any) => ({
-    date: r.entry_date,
+    date: dayString(r.entry_date),
     calories: Number(r.daily_calories),
   }));
 
@@ -129,9 +134,10 @@ async function analyzeTrends(userId: string, days: number) {
 
 async function get30DayTrends(
   userId: string,
+  tz: string,
   endDate?: string
 ): Promise<Record<string, unknown>> {
-  const end = endDate || todayInZone('UTC');
+  const end = endDate || todayInZone(tz);
 
   const food = await coachRepository.get30DayFoodAggregates(userId, end);
   const exercise = await coachRepository.get30DayExerciseAggregates(
@@ -144,7 +150,7 @@ async function get30DayTrends(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const weights = weightRows.map((r: any) => ({
-    date: r.entry_date,
+    date: dayString(r.entry_date),
     weight: Number(r.weight),
   }));
 
@@ -180,9 +186,14 @@ async function get30DayTrends(
 
 async function detectPatterns(
   userId: string,
+  tz: string,
   days: number
 ): Promise<Record<string, unknown>> {
-  const data = await coachRepository.getDailyCorrelationRows(userId, days);
+  const data = await coachRepository.getDailyCorrelationRows(
+    userId,
+    days,
+    todayInZone(tz)
+  );
   const patterns: string[] = [];
 
   if (data.length >= 7) {
@@ -256,7 +267,7 @@ async function detectPatterns(
     raw_correlations: data
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((r: any) => ({
-        date: r.entry_date,
+        date: dayString(r.entry_date),
         nutrition: {
           calories: Number(r.calories),
           protein: Number(r.protein),
@@ -282,10 +293,11 @@ async function detectPatterns(
 
 async function generateCoachingPlan(
   userId: string,
+  tz: string,
   goal: 'weight_loss' | 'muscle_gain' | 'maintenance'
 ): Promise<Record<string, unknown>> {
   // 1. Get recent trends to calculate TDEE
-  const trends = await analyzeTrends(userId, 14);
+  const trends = await analyzeTrends(userId, tz, 14);
   const weightData = trends.weight.entries;
   const calorieData = trends.calories.entries;
 
@@ -333,7 +345,7 @@ async function generateCoachingPlan(
   };
 }
 
-export function buildCoachTools(userId: string) {
+export function buildCoachTools(userId: string, tz: string) {
   return {
     sparky_get_health_summary: tool({
       description:
@@ -368,7 +380,7 @@ export function buildCoachTools(userId: string) {
           return formatZodError(parsed.error);
         }
         try {
-          const result = await analyzeTrends(userId, parsed.data.days);
+          const result = await analyzeTrends(userId, tz, parsed.data.days);
           return formatSuccess(result, 'Trend Analysis');
         } catch (error) {
           log('error', '[Coach Tool] analyzeTrends error:', error);
@@ -387,7 +399,7 @@ export function buildCoachTools(userId: string) {
           return formatZodError(parsed.error);
         }
         try {
-          const result = await get30DayTrends(userId, parsed.data.end_date);
+          const result = await get30DayTrends(userId, tz, parsed.data.end_date);
           return formatSuccess(result, '30-Day Trends');
         } catch (error) {
           log('error', '[Coach Tool] get30DayTrends error:', error);
@@ -406,7 +418,7 @@ export function buildCoachTools(userId: string) {
           return formatZodError(parsed.error);
         }
         try {
-          const result = await detectPatterns(userId, parsed.data.days);
+          const result = await detectPatterns(userId, tz, parsed.data.days);
           return formatSuccess(result, 'Pattern Detection');
         } catch (error) {
           log('error', '[Coach Tool] detectPatterns error:', error);
@@ -426,7 +438,11 @@ export function buildCoachTools(userId: string) {
         }
         try {
           // target_weight is accepted by the schema but unused, as in MCP.
-          const result = await generateCoachingPlan(userId, parsed.data.goal);
+          const result = await generateCoachingPlan(
+            userId,
+            tz,
+            parsed.data.goal
+          );
           return formatSuccess(result, 'Coaching Plan');
         } catch (error) {
           log('error', '[Coach Tool] generateCoachingPlan error:', error);

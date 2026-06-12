@@ -38,20 +38,24 @@ async function getRecentWeights(userId: string, limit = 7) {
   }
 }
 
-// Distinct days with any food/exercise/check-in entry in the last 7 days.
-async function getWeeklyLoggedDayCount(userId: string): Promise<number> {
+// Distinct days with any food/exercise/check-in entry in the 7 days before
+// `today`, the caller's user-timezone day string.
+async function getWeeklyLoggedDayCount(
+  userId: string,
+  today: string
+): Promise<number> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT COUNT(DISTINCT d.entry_date)::int AS streak_days
        FROM (
-         SELECT entry_date FROM food_entries WHERE user_id = $1 AND entry_date >= (CURRENT_DATE - 7)
+         SELECT entry_date FROM food_entries WHERE user_id = $1 AND entry_date >= ($2::date - 7)
          UNION
-         SELECT entry_date FROM exercise_entries WHERE user_id = $1 AND entry_date >= (CURRENT_DATE - 7)
+         SELECT entry_date FROM exercise_entries WHERE user_id = $1 AND entry_date >= ($2::date - 7)
          UNION
-         SELECT entry_date FROM check_in_measurements WHERE user_id = $1 AND entry_date >= (CURRENT_DATE - 7)
+         SELECT entry_date FROM check_in_measurements WHERE user_id = $1 AND entry_date >= ($2::date - 7)
        ) d`,
-      [userId]
+      [userId, today]
     );
     return result.rows[0]?.streak_days ?? 0;
   } finally {
@@ -82,28 +86,35 @@ async function getLoggedDates(userId: string) {
   }
 }
 
-async function getTodayActivityCounts(userId: string) {
+// Counts for `today`, the caller's user-timezone day string. The fasting
+// branch counts fasts *started* today, bucketing start_time in the user's
+// timezone.
+async function getTodayActivityCounts(
+  userId: string,
+  today: string,
+  tz: string
+) {
   const client = await getClient(userId);
   try {
     const foodResult = await client.query(
-      'SELECT COUNT(*)::int AS count FROM food_entries WHERE user_id = $1 AND entry_date = CURRENT_DATE',
-      [userId]
+      'SELECT COUNT(*)::int AS count FROM food_entries WHERE user_id = $1 AND entry_date = $2::date',
+      [userId, today]
     );
     const exerciseResult = await client.query(
-      'SELECT COUNT(*)::int AS count FROM exercise_entries WHERE user_id = $1 AND entry_date = CURRENT_DATE',
-      [userId]
+      'SELECT COUNT(*)::int AS count FROM exercise_entries WHERE user_id = $1 AND entry_date = $2::date',
+      [userId, today]
     );
     const checkinResult = await client.query(
       `SELECT COUNT(*)::int AS count FROM (
-         SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date = CURRENT_DATE
+         SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2::date
          UNION ALL
-         SELECT id FROM mood_entries WHERE user_id = $1 AND entry_date = CURRENT_DATE
+         SELECT id FROM mood_entries WHERE user_id = $1 AND entry_date = $2::date
          UNION ALL
-         SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = CURRENT_DATE
+         SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2::date
          UNION ALL
-         SELECT id FROM fasting_logs WHERE user_id = $1 AND start_time::date = CURRENT_DATE
+         SELECT id FROM fasting_logs WHERE user_id = $1 AND (start_time AT TIME ZONE $3)::date = $2::date
        ) all_checkins`,
-      [userId]
+      [userId, today, tz]
     );
 
     return {

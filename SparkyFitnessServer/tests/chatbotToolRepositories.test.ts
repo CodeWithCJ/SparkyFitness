@@ -73,20 +73,33 @@ describe('coachRepository', () => {
     expect(result).toBeNull();
   });
 
-  it('getDailyCalorieSeries uses a CURRENT_DATE window of N days', async () => {
-    await coachRepository.getDailyCalorieSeries('user-1', 14);
+  it("getWeightSeries anchors the window on the caller's today", async () => {
+    await coachRepository.getWeightSeries('user-1', 14, '2026-06-11');
     const [sql, params] = mockClient.query.mock.calls[0];
-    expect(sql).toContain('CURRENT_DATE - $2::int');
-    expect(params).toEqual(['user-1', 14]);
+    expect(sql).toContain('entry_date >= ($3::date - $2::int)');
+    expect(sql).not.toContain('CURRENT_DATE');
+    expect(params).toEqual(['user-1', 14, '2026-06-11']);
   });
 
-  it('getDailyCorrelationRows joins food, sleep and mood by day', async () => {
-    await coachRepository.getDailyCorrelationRows('user-1', 30);
+  it("getDailyCalorieSeries anchors the window on the caller's today", async () => {
+    await coachRepository.getDailyCalorieSeries('user-1', 14, '2026-06-11');
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('entry_date >= ($3::date - $2::int)');
+    expect(sql).not.toContain('CURRENT_DATE');
+    expect(params).toEqual(['user-1', 14, '2026-06-11']);
+  });
+
+  it("getDailyCorrelationRows joins food, sleep and mood by day, all anchored on the caller's today", async () => {
+    await coachRepository.getDailyCorrelationRows('user-1', 30, '2026-06-11');
     const [sql, params] = mockClient.query.mock.calls[0];
     expect(sql).toContain('daily_food');
     expect(sql).toContain('daily_sleep');
     expect(sql).toContain('daily_mood');
-    expect(params).toEqual(['user-1', 30]);
+    // All three CTEs must carry the anchor — a single toContain would pass
+    // with a half-fixed query.
+    expect(sql.match(/entry_date >= \$3::date - \$2::int/g)).toHaveLength(3);
+    expect(sql).not.toContain('CURRENT_DATE');
+    expect(params).toEqual(['user-1', 30, '2026-06-11']);
   });
 
   it('releases the client when a query throws', async () => {
@@ -122,9 +135,19 @@ describe('engagementRepository', () => {
   });
 
   it('getWeeklyLoggedDayCount returns 0 when there are no rows', async () => {
-    expect(await engagementRepository.getWeeklyLoggedDayCount('user-1')).toBe(
-      0
-    );
+    expect(
+      await engagementRepository.getWeeklyLoggedDayCount('user-1', '2026-06-11')
+    ).toBe(0);
+  });
+
+  it("getWeeklyLoggedDayCount anchors all three UNION branches on the caller's today", async () => {
+    await engagementRepository.getWeeklyLoggedDayCount('user-1', '2026-06-11');
+    const [sql, params] = mockClient.query.mock.calls[0];
+    // All three UNION branches must carry the anchor — a single toContain
+    // would pass with a half-fixed query.
+    expect(sql.match(/entry_date >= \(\$2::date - 7\)/g)).toHaveLength(3);
+    expect(sql).not.toContain('CURRENT_DATE');
+    expect(params).toEqual(['user-1', '2026-06-11']);
   });
 
   it('getTodayActivityCounts maps the three count queries and defaults to 0', async () => {
@@ -133,7 +156,11 @@ describe('engagementRepository', () => {
       .mockResolvedValueOnce({ rows: [{ count: 1 }] })
       .mockResolvedValueOnce({ rows: [] });
 
-    const result = await engagementRepository.getTodayActivityCounts('user-1');
+    const result = await engagementRepository.getTodayActivityCounts(
+      'user-1',
+      '2026-06-11',
+      'UTC'
+    );
 
     expect(result).toEqual({
       food_count: 3,
@@ -142,6 +169,34 @@ describe('engagementRepository', () => {
     });
     expect(mockClient.query).toHaveBeenCalledTimes(3);
     expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("getTodayActivityCounts anchors every query on the caller's today, bucketing fasts in the user's timezone", async () => {
+    await engagementRepository.getTodayActivityCounts(
+      'user-1',
+      '2026-06-11',
+      'Asia/Tokyo'
+    );
+
+    const [foodSql, foodParams] = mockClient.query.mock.calls[0];
+    expect(foodSql).toContain('entry_date = $2::date');
+    expect(foodSql).not.toContain('CURRENT_DATE');
+    expect(foodParams).toEqual(['user-1', '2026-06-11']);
+
+    const [exerciseSql, exerciseParams] = mockClient.query.mock.calls[1];
+    expect(exerciseSql).toContain('entry_date = $2::date');
+    expect(exerciseSql).not.toContain('CURRENT_DATE');
+    expect(exerciseParams).toEqual(['user-1', '2026-06-11']);
+
+    const [checkinSql, checkinParams] = mockClient.query.mock.calls[2];
+    // All three entry_date branches plus the fasting branch must carry the
+    // anchor — a single toContain would pass with a half-fixed query.
+    expect(checkinSql.match(/entry_date = \$2::date/g)).toHaveLength(3);
+    expect(checkinSql).toContain(
+      '(start_time AT TIME ZONE $3)::date = $2::date'
+    );
+    expect(checkinSql).not.toContain('CURRENT_DATE');
+    expect(checkinParams).toEqual(['user-1', '2026-06-11', 'Asia/Tokyo']);
   });
 });
 
@@ -517,21 +572,27 @@ describe('externalProviderRepository.getActiveProvidersByTypes', () => {
 });
 
 describe('fastingRepository.getFastingLogsOverlappingDay', () => {
-  it('matches windows overlapping the day, including open-ended fasts', async () => {
+  it('matches windows overlapping the user-timezone day, including open-ended fasts', async () => {
     const rows = [{ id: 'f1', status: 'ACTIVE' }];
     mockClient.query.mockResolvedValue({ rows });
 
     const result = await fastingRepository.getFastingLogsOverlappingDay(
       'user-1',
-      '2026-06-01'
+      '2026-06-01',
+      'Pacific/Auckland'
     );
 
     expect(result).toBe(rows);
     const [sql, params] = mockClient.query.mock.calls[0];
-    expect(sql).toContain('start_time::date <= $2::date');
-    expect(sql).toContain('end_time IS NULL OR end_time::date >= $2::date');
+    expect(sql).toContain('(start_time AT TIME ZONE $3)::date <= $2::date');
+    expect(sql).toContain(
+      'end_time IS NULL OR (end_time AT TIME ZONE $3)::date >= $2::date'
+    );
+    // No bare ::date casts left — those bucket by the DB session timezone.
+    expect(sql).not.toContain('start_time::date');
+    expect(sql).not.toContain('end_time::date');
     expect(sql).toContain('ORDER BY start_time ASC');
-    expect(params).toEqual(['user-1', '2026-06-01']);
+    expect(params).toEqual(['user-1', '2026-06-01', 'Pacific/Auckland']);
     expect(mockClient.release).toHaveBeenCalled();
   });
 });

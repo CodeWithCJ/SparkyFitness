@@ -51,12 +51,12 @@ const EXPECTED_TOOLS = [
 
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {
-    const tools = buildChatbotTools('user-1');
+    const tools = buildChatbotTools('user-1', 'UTC');
     expect(Object.keys(tools).sort()).toEqual(EXPECTED_TOOLS);
   });
 
   it('gives every tool a description, an input schema, and an executor', () => {
-    const tools = buildChatbotTools('user-1');
+    const tools = buildChatbotTools('user-1', 'UTC');
     for (const [name, t] of Object.entries(tools)) {
       expect(t.description, `${name} description`).toBeTruthy();
       expect(t.inputSchema, `${name} inputSchema`).toBeDefined();

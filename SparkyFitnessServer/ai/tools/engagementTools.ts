@@ -1,8 +1,9 @@
 import { tool } from 'ai';
+import { addDays, todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import engagementRepository from '../../models/engagementRepository.js';
 import { ERRORS } from './errors.js';
-import { formatSuccess } from './formatting.js';
+import { dayString, formatSuccess } from './formatting.js';
 import {
   CheckEngagementSchema,
   GetLoggingStreakSchema,
@@ -11,7 +12,13 @@ import {
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-export function buildEngagementTools(userId: string) {
+// Whole days between two day strings. Day strings parse as UTC midnight per
+// the ES spec, so the difference is exact and DST-free.
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(to) - Date.parse(from)) / MS_PER_DAY);
+}
+
+export function buildEngagementTools(userId: string, tz: string) {
   return {
     sparky_check_engagement: tool({
       description:
@@ -25,9 +32,9 @@ export function buildEngagementTools(userId: string) {
           const lastExerciseDate =
             await engagementRepository.getLastExerciseDate(userId);
           if (lastExerciseDate !== null) {
-            const lastDate = new Date(lastExerciseDate);
-            const daysSince = Math.floor(
-              (Date.now() - lastDate.getTime()) / MS_PER_DAY
+            const daysSince = daysBetween(
+              dayString(lastExerciseDate),
+              todayInZone(tz)
             );
             if (daysSince >= 3) {
               triggers.push({
@@ -60,8 +67,10 @@ export function buildEngagementTools(userId: string) {
           }
 
           // Achievements (logged days in the past week)
-          const streakDays =
-            await engagementRepository.getWeeklyLoggedDayCount(userId);
+          const streakDays = await engagementRepository.getWeeklyLoggedDayCount(
+            userId,
+            todayInZone(tz)
+          );
           if (streakDays >= 7) {
             triggers.push({
               type: 'achievement',
@@ -105,42 +114,27 @@ export function buildEngagementTools(userId: string) {
           }
 
           // Count consecutive days, allowing the streak to start from
-          // yesterday if nothing is logged today yet.
+          // yesterday if nothing is logged today yet. Rows arrive newest
+          // first with no duplicate days (SELECT DISTINCT).
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const days = rows.map((r: any) => dayString(r.entry_date));
+          const today = todayInZone(tz);
           let streak = 0;
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          for (let i = 0; i < rows.length; i++) {
-            const entryDate = new Date(rows[i].entry_date);
-            entryDate.setHours(0, 0, 0, 0);
-
-            if (i === 0) {
-              const yesterday = new Date(today);
-              yesterday.setDate(yesterday.getDate() - 1);
-              if (
-                entryDate.getTime() !== today.getTime() &&
-                entryDate.getTime() !== yesterday.getTime()
-              ) {
-                break;
-              }
-            } else {
-              const firstEntry = new Date(rows[0].entry_date);
-              firstEntry.setHours(0, 0, 0, 0);
-              const daysSinceFirst = Math.round(
-                (firstEntry.getTime() - entryDate.getTime()) / MS_PER_DAY
-              );
-              if (daysSinceFirst !== i) {
-                break;
-              }
+          if (days[0] === today || days[0] === addDays(today, -1)) {
+            streak = 1;
+            for (
+              let i = 1;
+              i < days.length && days[i] === addDays(days[0], -i);
+              i++
+            ) {
+              streak++;
             }
-
-            streak++;
           }
 
           return formatSuccess(
             {
               current_streak: streak,
-              last_logged: rows[0].entry_date,
+              last_logged: days[0],
             },
             'Logging Streak'
           );
@@ -157,8 +151,11 @@ export function buildEngagementTools(userId: string) {
       inputSchema: GetContextualNudgeSchema,
       execute: async () => {
         try {
-          const counts =
-            await engagementRepository.getTodayActivityCounts(userId);
+          const counts = await engagementRepository.getTodayActivityCounts(
+            userId,
+            todayInZone(tz),
+            tz
+          );
           const foodCount = counts.food_count;
           const exerciseCount = counts.exercise_count;
           const checkinCount = counts.checkin_count;

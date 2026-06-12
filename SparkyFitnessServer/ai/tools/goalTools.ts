@@ -5,7 +5,7 @@ import { log } from '../../config/logging.js';
 import goalService from '../../services/goalService.js';
 import goalRepository from '../../models/goalRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { formatConfirmation, formatList } from './formatting.js';
+import { dayString, formatConfirmation, formatList } from './formatting.js';
 import {
   manageGoalsSchema,
   manageGoalsInput,
@@ -44,7 +44,7 @@ const goalSnapshotSchema = z.object({
     .optional(),
 });
 
-export function buildGoalTools(userId: string) {
+export function buildGoalTools(userId: string, tz: string) {
   return {
     sparky_manage_goals: tool({
       description: `Target management: set and view calorie, macro, water, and weight goals.
@@ -65,7 +65,7 @@ Actions:
             case 'get_goals': {
               const goals = (await goalService.getUserGoals(
                 userId,
-                args.target_date || todayInZone('UTC')
+                args.target_date || todayInZone(tz)
               )) as Record<string, unknown>;
               let text = `### Goals for ${args.target_date || 'today'}\n\n`;
               text += `- **Calories:** ${goals.calories || 2000} kcal\n`;
@@ -99,7 +99,7 @@ Actions:
                 timeline,
                 'Goal Timeline',
                 (g: any) =>
-                  `**${g.goal_date}**: ${g.calories} kcal | P: ${g.protein}g | C: ${g.carbs}g | F: ${g.fat}g | W: ${g.water_goal_ml}ml`
+                  `**${dayString(g.goal_date)}**: ${g.calories} kcal | P: ${g.protein}g | C: ${g.carbs}g | F: ${g.fat}g | W: ${g.water_goal_ml}ml`
               );
             }
 
@@ -127,7 +127,7 @@ Actions:
         try {
           const goals = (await goalService.getUserGoals(
             userId,
-            parsed.data.target_date || todayInZone('UTC')
+            parsed.data.target_date || todayInZone(tz)
           )) as Record<string, unknown>;
           const data: Record<string, unknown> = {};
           for (const field of GOAL_SNAPSHOT_FIELDS) {

@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { addDays, localDateToDay, todayInZone } from '@workspace/shared';
+import { addDays, todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import foodCoreService from '../../services/foodCoreService.js';
 import foodEntryService from '../../services/foodEntryService.js';
@@ -16,7 +16,7 @@ import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { formatConfirmation, formatList } from './formatting.js';
+import { dayString, formatConfirmation, formatList } from './formatting.js';
 import {
   normalizePagination,
   buildPaginatedResult,
@@ -82,20 +82,17 @@ function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
-// pg returns DATE columns as local-midnight Date objects; render them as
-// calendar-day strings.
-function dayString(value: unknown): string {
-  return value instanceof Date ? localDateToDay(value) : String(value);
-}
-
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
-// the range defaults to today (UTC) / the start date.
-function foodDateRange(query: {
-  date?: string;
-  start_date?: string;
-  end_date?: string;
-}): { startDate: string; endDate: string } {
-  const today = todayInZone('UTC');
+// the range defaults to today (user timezone) / the start date.
+function foodDateRange(
+  query: {
+    date?: string;
+    start_date?: string;
+    end_date?: string;
+  },
+  tz: string
+): { startDate: string; endDate: string } {
+  const today = todayInZone(tz);
   const date = query.date || undefined;
   const startDate = date || query.start_date || today;
   const endDate = date || query.end_date || startDate;
@@ -432,7 +429,7 @@ const foodUsageSchema = foodDateRangeSchema.merge(foodPaginationSchema).extend({
   food_id: z.string().min(1),
 });
 
-export function buildFoodTools(userId: string) {
+export function buildFoodTools(userId: string, tz: string) {
   return {
     sparky_manage_food: tool({
       description: `Nutrition tracking: search food, log meals, create foods, manage diary.
@@ -623,7 +620,7 @@ Actions:
               const v = food.default_variant;
               let msg = `Food "${food.name}" created with ${v?.calories || 0} kcal per ${v?.serving_size || 100}${v?.serving_unit || 'g'}.`;
               if (args.meal_type) {
-                const entryDate = args.entry_date || todayInZone('UTC');
+                const entryDate = args.entry_date || todayInZone(tz);
                 await foodEntryService.createFoodEntry(userId, userId, {
                   user_id: userId,
                   food_id: food.id,
@@ -722,7 +719,7 @@ Actions:
             }
 
             case 'list_diary': {
-              const date = args.entry_date || todayInZone('UTC');
+              const date = args.entry_date || todayInZone(tz);
               const prefs = await preferenceService.getUserPreferences(
                 userId,
                 userId
@@ -1065,9 +1062,9 @@ Actions:
             case 'copy_from_yesterday': {
               // MCP's defaults: target falls back to today, source to
               // yesterday-of-today (not yesterday-of-target).
-              const targetDate = args.target_date || todayInZone('UTC');
+              const targetDate = args.target_date || todayInZone(tz);
               const sourceDate =
-                args.source_date || addDays(todayInZone('UTC'), -1);
+                args.source_date || addDays(todayInZone(tz), -1);
               const copied = args.meal_type
                 ? await foodEntryService.copyFoodEntries(
                     userId,
@@ -1300,7 +1297,7 @@ Actions:
           return formatZodError(parsed.error);
         }
         try {
-          const { startDate, endDate } = foodDateRange(parsed.data);
+          const { startDate, endDate } = foodDateRange(parsed.data, tz);
           const foodEntries = await foodEntryService.getFoodEntriesByDateRange(
             userId,
             userId,
@@ -1343,7 +1340,7 @@ Actions:
           return formatZodError(parsed.error);
         }
         try {
-          const { startDate, endDate } = foodDateRange(parsed.data);
+          const { startDate, endDate } = foodDateRange(parsed.data, tz);
           const data = await getNutritionalSummaryRows(
             userId,
             startDate,
@@ -1404,7 +1401,7 @@ Actions:
         }
         try {
           const { food_id, ...query } = parsed.data;
-          const { startDate, endDate } = foodDateRange(query);
+          const { startDate, endDate } = foodDateRange(query, tz);
           const { limit, offset } = normalizePagination(
             query.limit,
             query.offset

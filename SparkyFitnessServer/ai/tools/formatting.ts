@@ -1,4 +1,11 @@
+import { localDateToDay } from '@workspace/shared';
 import { truncateIfNeeded } from './truncation.js';
+
+// pg returns DATE columns as local-midnight Date objects; render them as
+// calendar-day strings.
+export function dayString(value: unknown): string {
+  return value instanceof Date ? localDateToDay(value) : String(value);
+}
 
 /**
  * Formats successful tool result data as text, with optional truncation.

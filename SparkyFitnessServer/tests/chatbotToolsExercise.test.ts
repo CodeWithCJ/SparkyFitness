@@ -65,7 +65,7 @@ let tools: ReturnType<typeof buildExerciseTools>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  tools = buildExerciseTools('user-1');
+  tools = buildExerciseTools('user-1', 'UTC');
 });
 
 describe('sparky_manage_exercise validation', () => {
@@ -1273,6 +1273,38 @@ describe('sparky_get_exercise_progress', () => {
       EXERCISE_ID,
       '2026-06-01',
       '2026-06-07'
+    );
+  });
+
+  it('collapses two same-day pg Date entries into one calendar-day group', async () => {
+    vi.mocked(exerciseService.getExerciseProgressData).mockResolvedValue([
+      { entry_date: new Date(2026, 5, 10), sets: [{ reps: 10, weight: 60 }] },
+      { entry_date: new Date(2026, 5, 10), sets: [{ reps: 8, weight: 70 }] },
+    ]);
+
+    const result = await tools.sparky_get_exercise_progress.execute!(
+      { exercise_id: EXERCISE_ID },
+      opts
+    );
+
+    expect(result).toBe(
+      JSON.stringify(
+        {
+          data: [
+            {
+              entry_date: '2026-06-10',
+              max_weight: 70,
+              max_reps: 10,
+              total_volume: 10 * 60 + 8 * 70,
+            },
+          ],
+          has_more: false,
+          next_offset: null,
+          total_count: 1,
+        },
+        null,
+        2
+      )
     );
   });
 });

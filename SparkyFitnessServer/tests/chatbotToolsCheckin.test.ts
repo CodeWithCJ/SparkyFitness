@@ -70,7 +70,7 @@ function mockEmptyDiary() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({});
-  tools = buildCheckinTools('user-1');
+  tools = buildCheckinTools('user-1', 'UTC');
 });
 
 describe('log_biometrics', () => {
@@ -103,6 +103,37 @@ describe('log_biometrics', () => {
         weight: 180 * 0.45359237,
         waist: 32 * 2.54,
         steps: 9000,
+      }
+    );
+  });
+
+  it("converts the 'lb' and 'ft' alias units for storage", async () => {
+    vi.mocked(measurementService.upsertCheckInMeasurements).mockResolvedValue({
+      id: 'ci-1',
+    });
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_biometrics',
+        entry_date: '2026-06-01',
+        weight: 150,
+        weight_unit: 'lb',
+        height: 6,
+        height_unit: 'ft',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Biometrics logged for 2026-06-01 (weight: 150lb, height: 6ft).'
+    );
+    expect(measurementService.upsertCheckInMeasurements).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      '2026-06-01',
+      {
+        weight: 150 * 0.45359237,
+        height: 6 * 30.48,
       }
     );
   });
@@ -437,6 +468,35 @@ describe('log_sleep', () => {
     );
   });
 
+  it("anchors the default wake time at 7 AM in the user's timezone", async () => {
+    vi.mocked(measurementService.processSleepEntry).mockResolvedValue({
+      id: 's1',
+    });
+    const tokyoTools = buildCheckinTools('user-1', 'Asia/Tokyo');
+
+    await tokyoTools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_sleep',
+        entry_date: '2026-06-01',
+        duration_seconds: 27000,
+      },
+      opts
+    );
+
+    // 7 AM in Tokyo on 2026-06-01 is 22:00 UTC the previous day.
+    expect(measurementService.processSleepEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      {
+        entry_date: '2026-06-01',
+        bedtime: '2026-05-31T14:30:00.000Z',
+        wake_time: '2026-05-31T22:00:00.000Z',
+        duration_in_seconds: 27000,
+        source: 'manual',
+      }
+    );
+  });
+
   it('derives wake time from bedtime using the default 8h duration', async () => {
     vi.mocked(measurementService.processSleepEntry).mockResolvedValue({
       id: 's1',
@@ -551,6 +611,38 @@ describe('list_checkin_diary', () => {
         '## Custom Metrics\n' +
         '- **Blood Pressure**: 120\n' +
         '\n'
+    );
+  });
+
+  it('renders fasting timestamps from pg Date objects as ISO-8601 strings', async () => {
+    mockEmptyDiary();
+    vi.mocked(fastingRepository.getFastingLogsOverlappingDay).mockResolvedValue(
+      [
+        {
+          id: 'f1',
+          start_time: new Date('2026-06-01T20:00:00Z'),
+          end_time: new Date('2026-06-02T12:00:00Z'),
+          status: 'COMPLETED',
+          fasting_type: '16:8',
+        },
+      ]
+    );
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-06-01' },
+      opts
+    );
+
+    expect(result).toBe(
+      '### Check-in Diary: 2026-06-01\n\n' +
+        '## Fasting\n' +
+        '- COMPLETED (16:8): 2026-06-01T20:00:00.000Z → 2026-06-02T12:00:00.000Z\n' +
+        '\n'
+    );
+    expect(fastingRepository.getFastingLogsOverlappingDay).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-01',
+      'UTC'
     );
   });
 
