@@ -193,6 +193,48 @@ export type BmrCalculatorFn = (
   bodyFatPercentage?: number | null
 ) => number;
 
+export function calculateBmr(
+  algorithm: string,
+  weightKg?: number | null,
+  heightCm?: number | null,
+  age?: number | null,
+  gender?: "male" | "female" | null,
+  bodyFatPercentage?: number | null
+): number {
+  if (
+    algorithm === "Katch-McArdle" ||
+    algorithm === "Cunningham"
+  ) {
+    if (!weightKg || !bodyFatPercentage) {
+      return 0;
+    }
+    const lbm = weightKg * (1 - bodyFatPercentage / 100);
+    return algorithm === "Katch-McArdle"
+      ? 370 + 21.6 * lbm
+      : 500 + 22 * lbm;
+  }
+
+  if (!weightKg || !heightCm || !age || !gender) {
+    return 0;
+  }
+
+  if (algorithm === "Revised Harris-Benedict") {
+    if (gender === "male") {
+      return 13.397 * weightKg + 4.799 * heightCm - 5.677 * age + 88.362;
+    } else {
+      return 9.247 * weightKg + 3.098 * heightCm - 4.33 * age + 447.593;
+    }
+  }
+
+  if (algorithm === "Oxford") {
+    return gender === "male" ? 14.2 * weightKg + 593 : 10.9 * weightKg + 677;
+  }
+
+  // Default: Mifflin-St Jeor
+  const genderOffset = gender === "male" ? 5 : -161;
+  return 10 * weightKg + 6.25 * heightCm - 5 * age + genderOffset;
+}
+
 export function calculateMinimumMetabolism(
   weightKg: number,
   heightCm: number,
@@ -207,12 +249,8 @@ export function calculateMinimumMetabolism(
     return 370 + 21.6 * lbm;
   }
 
-  if (calculateBmrFn) {
-    return calculateBmrFn(bmrAlgorithm, weightKg, heightCm, age, gender, bodyFatPercentage);
-  }
-
-  const genderOffset = gender === "male" ? 5 : -161;
-  return 10 * weightKg + 6.25 * heightCm - 5 * age + genderOffset;
+  const activeBmrFn = calculateBmrFn || calculateBmr;
+  return activeBmrFn(bmrAlgorithm, weightKg, heightCm, age, gender, bodyFatPercentage);
 }
 
 export interface CalorieTargetResult {

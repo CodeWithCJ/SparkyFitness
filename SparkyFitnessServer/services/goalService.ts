@@ -14,6 +14,7 @@ import {
   todayInZone,
   CALORIE_CALCULATION_CONSTANTS,
   computeCalorieTarget,
+  ACTIVITY_MULTIPLIERS,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { DEFAULT_GOALS } from '../constants/goals.js';
@@ -115,7 +116,17 @@ async function getUserGoalsForRange(
   }
 
   const getMeasurementForDate = (dateStr: string) => {
-    return allMeasurements.find((m: any) => m.entry_date <= dateStr) || null;
+    return (
+      allMeasurements.find((m: any) => {
+        const mDateStr =
+          m.entry_date instanceof Date
+            ? format(m.entry_date, 'yyyy-MM-dd')
+            : typeof m.entry_date === 'string' && m.entry_date.includes('T')
+              ? m.entry_date.split('T')[0]
+              : String(m.entry_date);
+        return mDateStr <= dateStr;
+      }) || null
+    );
   };
 
   while (!isAfter(cursor, end)) {
@@ -185,10 +196,7 @@ async function getUserGoalsForRange(
       }
 
       // Mirror DashboardService exactly: use user's actual activity multiplier, not hardcoded
-      const activityMultiplier =
-        (bmrService.ActivityMultiplier as Record<string, number>)[
-          activityLevel
-        ] || 1.2;
+      const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
       const staticTdee = Math.round(bmr * activityMultiplier);
       // Offset = how far the stored goal sits above/below the static TDEE estimate
       const calorieGoalOffset = bmr > 0 ? goalCalories - staticTdee : 0;

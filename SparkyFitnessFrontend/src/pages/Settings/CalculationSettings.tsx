@@ -60,6 +60,7 @@ import {
   getGoalModeDeficit,
   GoalMode,
   GoalModeCalculationMethod,
+  calculateBmr,
 } from '@workspace/shared';
 
 const CalculationSettings = () => {
@@ -326,6 +327,7 @@ const CalculationSettings = () => {
     bodyFatPercentage: bodyFat,
     bmrAlgorithm,
     currentGoalCalories: currentGoalBase,
+    calculateBmrFn: calculateBmr,
   });
 
   const formatProjectedLoss = (kgVal: number) => {
@@ -1041,16 +1043,70 @@ const CalculationSettings = () => {
                       </span>
                     </div>
                     <p className="text-muted-foreground/70">
-                      {bmrAlgorithm === 'Katch-McArdle' &&
-                      bodyFat &&
-                      bodyFat > 0 ? (
-                        <>
-                          Formula: 370 + 21.6 × LBM (where LBM = weight × (1 -
-                          BF/100))
-                          <br />
-                          Math: 370 + 21.6 × ({(weightKg || 70).toFixed(1)} kg ×
-                          (1 - {bodyFat.toFixed(1)}/100))
-                        </>
+                      {bmrAlgorithm === 'Katch-McArdle' ? (
+                        bodyFat && bodyFat > 0 ? (
+                          <>
+                            Formula: 370 + 21.6 × LBM (where LBM = weight × (1 -
+                            BF/100))
+                            <br />
+                            Math: 370 + 21.6 × ({(weightKg || 70).toFixed(1)} kg
+                            × (1 - {bodyFat.toFixed(1)}/100))
+                          </>
+                        ) : (
+                          <span className="text-amber-500 font-medium">
+                            Katch-McArdle requires body fat percentage. Enter
+                            body fat or select another algorithm.
+                          </span>
+                        )
+                      ) : bmrAlgorithm === 'Cunningham' ? (
+                        bodyFat && bodyFat > 0 ? (
+                          <>
+                            Formula: 500 + 22 × LBM (where LBM = weight × (1 -
+                            BF/100))
+                            <br />
+                            Math: 500 + 22 × ({(weightKg || 70).toFixed(1)} kg ×
+                            (1 - {bodyFat.toFixed(1)}/100))
+                          </>
+                        ) : (
+                          <span className="text-amber-500 font-medium">
+                            Cunningham requires body fat percentage. Enter body
+                            fat or select another algorithm.
+                          </span>
+                        )
+                      ) : bmrAlgorithm === 'Revised Harris-Benedict' ? (
+                        gender === 'male' ? (
+                          <>
+                            Formula: 13.397 × weight + 4.799 × height - 5.677 ×
+                            age + 88.362
+                            <br />
+                            Math: 13.397 × {(weightKg || 70).toFixed(1)} + 4.799
+                            × {(heightCm || 170).toFixed(1)} - 5.677 × {age} +
+                            88.362
+                          </>
+                        ) : (
+                          <>
+                            Formula: 9.247 × weight + 3.098 × height - 4.33 ×
+                            age + 447.593
+                            <br />
+                            Math: 9.247 × {(weightKg || 70).toFixed(1)} + 3.098
+                            × {(heightCm || 170).toFixed(1)} - 4.33 × {age} +
+                            447.593
+                          </>
+                        )
+                      ) : bmrAlgorithm === 'Oxford' ? (
+                        gender === 'male' ? (
+                          <>
+                            Formula: 14.2 × weight + 593
+                            <br />
+                            Math: 14.2 × {(weightKg || 70).toFixed(1)} + 593
+                          </>
+                        ) : (
+                          <>
+                            Formula: 10.9 × weight + 677
+                            <br />
+                            Math: 10.9 × {(weightKg || 70).toFixed(1)} + 677
+                          </>
+                        )
                       ) : (
                         <>
                           Formula (Mifflin-St Jeor): 10 × weight (kg) + 6.25 ×
