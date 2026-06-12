@@ -69,18 +69,21 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            What is your sex?
+            {t('onboarding.sexTitle', 'What is your sex?')}
           </h1>
           <p className="text-muted-foreground mb-8">
-            Used to calculate your base metabolic rate.
+            {t(
+              'onboarding.sexDescription',
+              'Used to calculate your base metabolic rate.'
+            )}
           </p>
           <OptionButton
-            label="Male"
+            label={t('onboarding.male', 'Male')}
             isSelected={formData.sex === 'male'}
             onClick={() => handleSelect('sex', 'male')}
           />
           <OptionButton
-            label="Female"
+            label={t('onboarding.female', 'Female')}
             isSelected={formData.sex === 'female'}
             onClick={() => handleSelect('sex', 'female')}
           />
@@ -90,20 +93,20 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-8">
-            What is your primary goal?
+            {t('onboarding.primaryGoalTitle', 'What is your primary goal?')}
           </h1>
           <OptionButton
-            label="Lose weight"
+            label={t('onboarding.loseWeight', 'Lose weight')}
             isSelected={formData.primaryGoal === 'lose_weight'}
             onClick={() => handleSelect('primaryGoal', 'lose_weight')}
           />
           <OptionButton
-            label="Maintain weight"
+            label={t('onboarding.maintainWeight', 'Maintain weight')}
             isSelected={formData.primaryGoal === 'maintain_weight'}
             onClick={() => handleSelect('primaryGoal', 'maintain_weight')}
           />
           <OptionButton
-            label="Gain weight"
+            label={t('onboarding.gainWeight', 'Gain weight')}
             isSelected={formData.primaryGoal === 'gain_weight'}
             onClick={() => handleSelect('primaryGoal', 'gain_weight')}
           />
@@ -113,9 +116,13 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            What is your current weight?
+            {t('onboarding.currentWeightTitle', 'What is your current weight?')}
           </h1>
-          <p className="text-muted-foreground mb-8">Enter in {weightUnit}.</p>
+          <p className="text-muted-foreground mb-8">
+            {t('onboarding.enterInUnit', 'Enter in {{unit}}.', {
+              unit: weightUnit,
+            })}
+          </p>
 
           <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <button
@@ -155,7 +162,7 @@ export const OnboardingSteps = ({
             disabled={!formData.currentWeight}
             className="w-full mt-12 h-14 text-lg rounded-full"
           >
-            Continue
+            {t('common.continue', 'Continue')}
           </Button>
         </>
       );
@@ -163,9 +170,13 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            What is your height?
+            {t('onboarding.heightTitle', 'What is your height?')}
           </h1>
-          <p className="text-muted-foreground mb-8">Enter in {heightUnit}.</p>
+          <p className="text-muted-foreground mb-8">
+            {t('onboarding.enterInUnit', 'Enter in {{unit}}.', {
+              unit: heightUnit,
+            })}
+          </p>
 
           <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <button
@@ -203,7 +214,7 @@ export const OnboardingSteps = ({
             disabled={!formData.height}
             className="w-full mt-12 h-14 text-lg rounded-full"
           >
-            Continue
+            {t('common.continue', 'Continue')}
           </Button>
         </>
       );
@@ -211,15 +222,20 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            When were you born?
+            {t('onboarding.birthDateTitle', 'When were you born?')}
           </h1>
           <p className="text-muted-foreground mb-8">
-            Age is a key factor in your metabolism.
+            {t(
+              'onboarding.birthDateDescription',
+              'Age is a key factor in your metabolism.'
+            )}
           </p>
           <div className="flex justify-center mb-6 bg-muted p-1 rounded-lg w-fit mx-auto">
             <Select value={localDateFormat} onValueChange={setLocalDateFormat}>
               <SelectTrigger className="w-[180px] bg-card border-none rounded-md">
-                <SelectValue placeholder="Select format" />
+                <SelectValue
+                  placeholder={t('onboarding.selectFormat', 'Select format')}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MM/dd/yyyy">
@@ -251,7 +267,9 @@ export const OnboardingSteps = ({
                   {formData.birthDate ? (
                     format(parseISO(formData.birthDate), localDateFormat)
                   ) : (
-                    <span className="text-muted-foreground">Pick a date</span>
+                    <span className="text-muted-foreground">
+                      {t('common.pickADate', 'Pick a date')}
+                    </span>
                   )}
                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                 </Button>
@@ -286,49 +304,65 @@ export const OnboardingSteps = ({
             disabled={!formData.birthDate}
             className="w-full mt-12 h-14 text-lg rounded-full"
           >
-            Continue
+            {t('common.continue', 'Continue')}
           </Button>
         </>
       );
-    case 6:
+    case 6: {
+      const bodyFatRanges = [
+        { key: t('onboarding.bodyFatLow', 'Low (<15%)'), value: 'Low (<15%)' },
+        {
+          key: t('onboarding.bodyFatMedium', 'Medium (15-25%)'),
+          value: 'Medium (15-25%)',
+        },
+        {
+          key: t('onboarding.bodyFatHigh', 'High (25-35%)'),
+          value: 'High (25-35%)',
+        },
+        {
+          key: t('onboarding.bodyFatVeryHigh', 'Very High (>35%)'),
+          value: 'Very High (>35%)',
+        },
+      ];
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Estimate your body fat
+            {t('onboarding.bodyFatTitle', 'Estimate your body fat')}
           </h1>
           <p className="text-muted-foreground mb-8">
-            A visual estimate is sufficient.
+            {t(
+              'onboarding.bodyFatDescription',
+              'A visual estimate is sufficient.'
+            )}
           </p>
           <div className="grid grid-cols-2 gap-4">
-            {[
-              'Low (<15%)',
-              'Medium (15-25%)',
-              'High (25-35%)',
-              'Very High (>35%)',
-            ].map((range) => (
+            {bodyFatRanges.map(({ key, value }) => (
               <button
-                key={range}
-                onClick={() => handleSelect('bodyFatRange', range)}
+                key={value}
+                onClick={() => handleSelect('bodyFatRange', value)}
                 className={`p-6 rounded-xl border-2 bg-card text-foreground font-semibold transition-all duration-200
                      ${
-                       formData.bodyFatRange === range
+                       formData.bodyFatRange === value
                          ? 'border-green-500'
                          : 'border-border hover:border-green-500/50 hover:shadow-sm'
                      }`}
               >
-                {range}
+                {key}
               </button>
             ))}
           </div>
         </>
       );
+    }
     case 7:
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            What is your target weight?
+            {t('onboarding.targetWeightTitle', 'What is your target weight?')}
           </h1>
-          <p className="text-muted-foreground mb-8">Your ultimate goal.</p>
+          <p className="text-muted-foreground mb-8">
+            {t('onboarding.targetWeightDescription', 'Your ultimate goal.')}
+          </p>
           <div className="flex items-center justify-center">
             <UnitInput
               id="target-weight"
@@ -346,7 +380,7 @@ export const OnboardingSteps = ({
             disabled={!formData.targetWeight}
             className="w-full mt-12 h-14 text-lg rounded-full"
           >
-            Continue
+            {t('common.continue', 'Continue')}
           </Button>
         </>
       );
@@ -354,12 +388,17 @@ export const OnboardingSteps = ({
       return (
         <>
           <h1 className="text-3xl font-bold text-foreground mb-8">
-            How many meals do you eat in a typical day?
+            {t(
+              'onboarding.mealsTitle',
+              'How many meals do you eat in a typical day?'
+            )}
           </h1>
           {[3, 4, 5, 6].map((num) => (
             <OptionButton
               key={num}
-              label={`${num} meals per day`}
+              label={t('onboarding.mealsPerDay', '{{count}} meals per day', {
+                count: num,
+              })}
               isSelected={formData.mealsPerDay === num}
               onClick={() => handleSelect('mealsPerDay', num)}
             />
@@ -465,10 +504,16 @@ export const OnboardingSteps = ({
             </span>
           </div>
           <h2 className="text-2xl font-bold text-foreground text-center">
-            Preparing your personalized plan...
+            {t(
+              'onboarding.preparingPlan',
+              'Preparing your personalized plan...'
+            )}
           </h2>
           <p className="text-muted-foreground mt-4">
-            Crunching the numbers based on your unique profile.
+            {t(
+              'onboarding.preparingPlanDescription',
+              'Crunching the numbers based on your unique profile.'
+            )}
           </p>
         </div>
       );

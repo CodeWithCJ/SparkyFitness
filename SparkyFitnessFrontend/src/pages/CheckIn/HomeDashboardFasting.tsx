@@ -114,8 +114,8 @@ const HomeDashboardFasting = () => {
         </CardTitle>
         <CardDescription>
           {activeFast
-            ? 'You are currently fasting'
-            : 'Ready to start a new fast?'}
+            ? t('fasting.currentlyFasting', 'You are currently fasting')
+            : t('fasting.readyToStart', 'Ready to start a new fast?')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-6">
@@ -168,7 +168,7 @@ const HomeDashboardFasting = () => {
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
               <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Total Fasts
+                {t('fasting.totalFastsLabel', 'Total Fasts')}
               </span>
               <span className="text-xl font-bold">
                 {stats.total_completed_fasts}
@@ -176,7 +176,7 @@ const HomeDashboardFasting = () => {
             </div>
             <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
               <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Avg Duration
+                {t('fasting.avgDurationLabel', 'Avg Duration')}
               </span>
               <span className="text-xl font-bold">
                 {Math.round(parseInt(stats.average_duration_minutes) / 60)}h
@@ -190,9 +190,14 @@ const HomeDashboardFasting = () => {
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Start a New Fast</DialogTitle>
+            <DialogTitle>
+              {t('fasting.startNewFastTitle', 'Start a New Fast')}
+            </DialogTitle>
             <DialogDescription>
-              Select a protocol to begin your fast.
+              {t(
+                'fasting.startNewFastDesc',
+                'Select a protocol to begin your fast.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

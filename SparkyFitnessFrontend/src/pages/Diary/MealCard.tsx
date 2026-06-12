@@ -324,7 +324,7 @@ const MealCard = ({
         <CardContent>
           {meal.entries.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No foods added yet
+              {t('mealCard.noFoodsAdded', 'No foods added yet')}
             </div>
           ) : (
             <div className="space-y-3">

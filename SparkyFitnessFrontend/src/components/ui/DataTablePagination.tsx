@@ -1,4 +1,5 @@
 import { type Table } from '@tanstack/react-table';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,16 +24,25 @@ interface DataTablePaginationProps<TData> {
 export function DataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   return (
     <div className="flex items-center justify-between px-2 py-4">
       <div className="flex-1 text-sm text-muted-foreground hidden sm:block">
-        {table.getFilteredSelectedRowModel().rows.length} of{' '}
-        {table.getFilteredRowModel().rows.length} row(s) selected.
+        {t(
+          'dataTable.rowsSelected',
+          '{{selected}} of {{total}} row(s) selected.',
+          {
+            selected: table.getFilteredSelectedRowModel().rows.length,
+            total: table.getFilteredRowModel().rows.length,
+          }
+        )}
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8 ml-auto">
         <div className="hidden sm:flex items-center space-x-2">
-          <p className="text-sm font-medium whitespace-nowrap">Rows per page</p>
+          <p className="text-sm font-medium whitespace-nowrap">
+            {t('dataTable.rowsPerPage', 'Rows per page')}
+          </p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {

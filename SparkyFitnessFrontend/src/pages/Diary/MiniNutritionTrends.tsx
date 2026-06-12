@@ -225,7 +225,10 @@ const MiniNutritionTrends = ({
   if (chartData.length === 0) {
     return (
       <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        No trend data available for the past 14 days
+        {t(
+          'miniNutritionTrends.noTrendData',
+          'No trend data available for the past 14 days'
+        )}
       </div>
     );
   }

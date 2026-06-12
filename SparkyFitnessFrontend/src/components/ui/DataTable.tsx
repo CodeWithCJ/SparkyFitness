@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ColumnDef,
   flexRender,
@@ -82,6 +83,7 @@ export function DataTable<TData, TValue>({
   onSearchChange,
   titleColumnId,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>(
     initialState?.sorting || []
   );
@@ -270,7 +272,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('dataTable.noResults', 'No results.')}
                 </TableCell>
               </TableRow>
             )}

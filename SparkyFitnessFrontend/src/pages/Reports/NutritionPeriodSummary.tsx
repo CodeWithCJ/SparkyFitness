@@ -300,7 +300,10 @@ const NutritionPeriodSummary = ({
       <div className="flex justify-end">
         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-[220px] justify-between">
+            <Button
+              variant="outline"
+              className="w-full sm:w-[220px] justify-between"
+            >
               {selectedNutrients.length === 1
                 ? selectedOption?.label
                 : `${selectedOption?.label} +${selectedNutrients.length - 1}`}

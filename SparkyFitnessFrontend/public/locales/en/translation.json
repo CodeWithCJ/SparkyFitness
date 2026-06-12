@@ -135,7 +135,17 @@
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",
       "netCalories": "Net Calories: {{netCalories}}",
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned",
-      "dailyProgress": "Daily Progress"
+      "dailyProgress": "Daily Progress",
+      "dailyEnergyGoal": "Daily Energy Goal",
+      "energyBurnedBreakdownTitle": "Energy Burned Breakdown",
+      "netEnergyBreakdown": "{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned",
+      "adaptiveTdee": "Adaptive TDEE",
+      "weightTrend": "Weight Trend",
+      "dataPoints": "Data Points",
+      "days": "days",
+      "expenditure": "Expenditure",
+      "dailyBurn": "Daily Burn",
+      "adjustment": "Adjustment"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Set",
@@ -236,7 +246,11 @@
       "forceDeleteConfirmLabel": "Force Delete",
       "syncConfirmationTitle": "Sync Past Entries?",
       "syncConfirmationDescription": "Do you want to update all your past diary entries for this exercise with the new information?",
-      "addExerciseButton": "Add Exercise"
+      "addExerciseButton": "Add Exercise",
+      "name": "Name",
+      "category": "Category",
+      "energy": "Energy",
+      "details": "Details"
     },
     "exerciseImportCSV": {
       "importExerciseData": "Import Exercise Data",
@@ -293,7 +307,13 @@
     "deleteSuccess": "Workout preset deleted successfully.",
     "deleteError": "Failed to delete workout preset.",
     "logSuccess": "Workout preset \"{{presetName}}\" logged to diary.",
-    "logError": "Failed to log workout preset \"{{presetName}}\" to diary."
+    "logError": "Failed to log workout preset \"{{presetName}}\" to diary.",
+    "startWorkout": "Start Workout",
+    "name": "Name",
+    "exercises": "Exercises",
+    "stats": "Stats",
+    "presets": "presets",
+    "logToDiary": "Log to Diary"
   },
   "workoutPlansManager": {
     "addPlanButton": "Add Plan",
@@ -315,7 +335,10 @@
     "deleteError": "Failed to delete workout plan.",
     "updateStatusError": "Could not find the plan to update.",
     "toggleStatusSuccess": "Workout plan {{status}} successfully.",
-    "toggleStatusError": "Failed to toggle workout plan active status."
+    "toggleStatusError": "Failed to toggle workout plan active status.",
+    "planName": "Plan Name",
+    "status": "Status",
+    "duration": "Duration"
   },
   "exerciseCard": {
     "title": "Exercise",
@@ -389,7 +412,8 @@
     "exerciseEntryAddedSuccessfully": "Exercise entry added successfully.",
     "failedToDeleteExerciseEntry": "Failed to delete exercise entry.",
     "exerciseEntryDeletedSuccessfully": "Exercise entry deleted successfully.",
-    "loadingExercises": "Loading exercises..."
+    "loadingExercises": "Loading exercises...",
+    "startWorkout": "Start Workout"
   },
   "foodSearchDialog": {
     "title": "Search and Add Food",
@@ -482,6 +506,8 @@
       "language": "Language",
       "english": "English",
       "tamil": "தமிழ்",
+      "calories": "Calories (kcal)",
+      "joules": "Joules (kJ)",
       "savePreferences": "Save Preferences"
     },
     "waterTracking": {
@@ -976,7 +1002,17 @@
       "distributeRemaining": "Distribute Remaining Evenly",
       "total": "Total",
       "mustBe100": "Must be 100% to save"
-    }
+    },
+    "startCascadingPlan": "Start 6-Month Cascading Plan",
+    "savePresetAndStart": "Save Preset & Start 6-Month Cascading Goal",
+    "saveAsPreset": "Save as Goal Preset",
+    "savePresetDescription": "Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.",
+    "presetName": "Preset Name",
+    "presetNamePlaceholder": "e.g., Cutting Phase 1",
+    "presetNameRequired": "Please enter a name for your preset.",
+    "presetCreatedSuccess": "Goal preset created successfully!",
+    "errorSavingPreset": "Failed to save preset.",
+    "saveAndStart": "Save & Start Plan"
   },
   "common": {
     "add": "Add",
@@ -1013,7 +1049,167 @@
     "errorOccurred": "An Error Occurred",
     "confirm": "Confirm",
     "notApplicable": "N/A",
-    "totalSets": "Total Sets"
+    "totalSets": "Total Sets",
+    "continue": "Continue",
+    "skip": "Skip",
+    "error": "Error",
+    "success": "Success",
+    "actions": "Actions",
+    "select": "Select"
+  },
+  "fasting": {
+    "checklistTitle": "Fasting Timer",
+    "currentlyFasting": "You are currently fasting",
+    "readyToStart": "Ready to start a new fast?",
+    "totalFastsLabel": "Total Fasts",
+    "avgDurationLabel": "Avg Duration",
+    "startNewFastTitle": "Start a New Fast",
+    "startNewFastDesc": "Select a protocol to begin your fast."
+  },
+  "miniNutritionTrends": {
+    "noTrendData": "No trend data available for the past 14 days"
+  },
+  "onboarding": {
+    "sexTitle": "What is your sex?",
+    "sexDescription": "Used to calculate your base metabolic rate.",
+    "male": "Male",
+    "female": "Female",
+    "primaryGoalTitle": "What is your primary goal?",
+    "loseWeight": "Lose weight",
+    "maintainWeight": "Maintain weight",
+    "gainWeight": "Gain weight",
+    "currentWeightTitle": "What is your current weight?",
+    "enterInUnit": "Enter in {{unit}}.",
+    "heightTitle": "What is your height?",
+    "birthDateTitle": "When were you born?",
+    "birthDateDescription": "Age is a key factor in your metabolism.",
+    "selectFormat": "Select format",
+    "bodyFatTitle": "Estimate your body fat",
+    "bodyFatDescription": "A visual estimate is sufficient.",
+    "bodyFatLow": "Low (<15%)",
+    "bodyFatMedium": "Medium (15-25%)",
+    "bodyFatHigh": "High (25-35%)",
+    "bodyFatVeryHigh": "Very High (>35%)",
+    "targetWeightTitle": "What is your target weight?",
+    "targetWeightDescription": "Your ultimate goal.",
+    "mealsTitle": "How many meals do you eat in a typical day?",
+    "mealsPerDay": "{{count}} meals per day",
+    "activityLevelTitle": "How often do you exercise?",
+    "activityNotMuch": "Not Much",
+    "activityNotMuchDesc": "Sedentary lifestyle, little to no exercise.",
+    "activityLight": "Light (1-2 days/week)",
+    "activityLightDesc": "Light exercise or sports.",
+    "activityModerate": "Moderate (3-5 days/week)",
+    "activityModerateDesc": "Moderate exercise or sports.",
+    "activityHeavy": "Heavy (6-7 days/week)",
+    "activityHeavyDesc": "Hard exercise or sports.",
+    "addBurnedCaloriesTitle": "Add burned calories from exercise?",
+    "addBurnedCaloriesDesc": "If you exercise, should we add those calories back to your daily budget?",
+    "preparingPlan": "Preparing your personalized plan...",
+    "preparingPlanDescription": "Crunching the numbers based on your unique profile.",
+    "submissionFailed": "Could not save your plan. Please try again.",
+    "planReady": "Your personalized plan is ready to go.",
+    "personalPlan": {
+      "title": "Your Personal Plan",
+      "subtitle": "Ready to reach your goal of {{goal}}.",
+      "medicalDisclaimerTitle": "Medical Disclaimer:",
+      "medicalDisclaimerText": "This plan is for informational purposes only and should not replace professional medical advice. Please consult with your doctor or a certified nutritionist before making significant changes to your diet or exercise routine.",
+      "dailyCalorieBudget": "Daily Calorie Budget",
+      "perDay": "{{unit}} / day",
+      "baseBmr": "Base BMR:",
+      "calorieBuyback": "Calorie Buyback:",
+      "on": "ON",
+      "off": "OFF",
+      "dietApproach": "Diet Approach",
+      "dietApproachDescription": "Choose a preset diet or customize your macro split",
+      "macroSplitFormat": "{{carbs}}% Carbs / {{protein}}% Protein / {{fat}}% Fat",
+      "customMacroSplit": "Custom Macro Split",
+      "total": "Total",
+      "autoAdjustHint": "Adjust or type in a value. Unlocked macros will auto-adjust to maintain 100% total.",
+      "fatBreakdownMethod": "Fat Breakdown Method",
+      "mineralCalculation": "Mineral Calculation",
+      "vitaminCalculation": "Vitamin Calculation",
+      "sugarRecommendation": "Sugar Recommendation",
+      "calculationSettingsHint": "These settings control how your nutrient goals are calculated. You can change them later in Settings.",
+      "nutrientGoals": "Nutrient Goals",
+      "dailyMacroTargets": "Daily Macro Targets",
+      "carbohydrates": "Carbohydrates",
+      "protein": "Protein",
+      "fat": "Fat",
+      "fats": "Fats",
+      "fiber": "Fiber",
+      "fatBreakdown": "Fat Breakdown",
+      "saturatedFat": "Saturated Fat",
+      "transFat": "Trans Fat",
+      "polyunsaturated": "Polyunsaturated",
+      "monounsaturated": "Monounsaturated",
+      "mineralsOther": "Minerals & Other",
+      "cholesterol": "Cholesterol",
+      "sodium": "Sodium",
+      "potassium": "Potassium",
+      "calcium": "Calcium",
+      "iron": "Iron",
+      "sugarsVitamins": "Sugars & Vitamins",
+      "sugar": "Sugar",
+      "vitaminA": "Vitamin A",
+      "vitaminC": "Vitamin C",
+      "hydrationExercise": "Hydration & Exercise",
+      "waterGoal": "Water Goal",
+      "exerciseDuration": "Exercise Duration",
+      "exerciseCalories": "Exercise Calories"
+    }
+  },
+  "dietTemplates": {
+    "balanced": {
+      "name": "Balanced",
+      "description": "Well-rounded nutrition for general health"
+    },
+    "mediterranean": {
+      "name": "Mediterranean",
+      "description": "Heart-healthy with healthy fats"
+    },
+    "dash": {
+      "name": "DASH",
+      "description": "Dietary Approaches to Stop Hypertension"
+    },
+    "atkins": {
+      "name": "Atkins",
+      "description": "Very low carb, high fat"
+    },
+    "low_fat": {
+      "name": "Low Fat",
+      "description": "High carb, minimal fat"
+    },
+    "low_carb": {
+      "name": "Low Carb / Keto",
+      "description": "Ketogenic-style diet"
+    },
+    "custom": {
+      "name": "Custom",
+      "description": "Set your own percentages"
+    }
+  },
+  "nutrientAlgorithms": {
+    "fatBreakdown": {
+      "AHA_GUIDELINES": "AHA Guidelines (Heart Health)",
+      "KETO_ADAPTED": "Keto-Adapted",
+      "MEDITERRANEAN": "Mediterranean Diet"
+    },
+    "mineral": {
+      "RDA_STANDARD": "RDA Standard (Age/Sex-Based)",
+      "ATHLETIC_PERFORMANCE": "Athletic Performance",
+      "HEART_HEALTH": "Heart Health (Low Sodium)"
+    },
+    "vitamin": {
+      "RDA_STANDARD": "RDA Standard",
+      "IMMUNE_SUPPORT": "Immune Support",
+      "ANTIOXIDANT_FOCUS": "Antioxidant Focus"
+    },
+    "sugar": {
+      "WHO_GUIDELINES": "WHO Guidelines (10% max)",
+      "LOW_CARB_KETO": "Low-Carb/Keto (5% max)",
+      "BALANCED": "Balanced (15% max)"
+    }
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
@@ -1081,7 +1277,8 @@
     "addFoodToMeal": "Add Food to {{mealName}}",
     "searchFoodsForMeal": "Search for foods to add to your {{mealName}}.",
     "addFoodTo": "Add Food to",
-    "searchFoodsToYour": "Search for foods to add to your"
+    "searchFoodsToYour": "Search for foods to add to your",
+    "noFoodsAdded": "No foods added yet"
   },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
@@ -1348,7 +1545,14 @@
     "deleteTemplateError": "Failed to delete template.",
     "updateStatusError": "Could not find the meal plan to update.",
     "toggleStatusSuccess": "Meal plan {{status}} successfully.",
-    "toggleStatusError": "Failed to toggle meal plan active status."
+    "toggleStatusError": "Failed to toggle meal plan active status.",
+    "planName": "Plan Name",
+    "status": "Status",
+    "duration": "Duration",
+    "mealsHeader": "Meals",
+    "activeStatus": "Active",
+    "inactiveStatus": "Inactive",
+    "ongoingStatus": "Indefinite"
   },
   "mealPlanTemplateForm": {
     "createTitle": "Create Meal Plan Template",
@@ -1440,10 +1644,39 @@
     "chartsTab": "Charts",
     "exerciseProgressTab": "Exercise Progress",
     "sleepTab": "Sleep",
+    "stressTab": "Stress",
     "tableTab": "Table View",
+    "nutrientsTab": "Nutrients",
+    "measurementsTab": "Measurements",
+    "weight": "Weight",
+    "height": "Height",
+    "neck": "Neck",
+    "waist": "Waist",
+    "hips": "Hips",
+    "bodyFatPercentage": "Body Fat %",
+    "dailySteps": "Daily Steps",
+    "fasting": {
+      "insightsTab": "Fasting",
+      "totalFasts": "Total Fasts",
+      "totalHours": "Total Hours",
+      "avgDuration": "Avg Duration (hrs)",
+      "longestFast": "Longest Fast (hrs)",
+      "dailyDuration": "Daily Fasting Duration",
+      "hours": "Hours",
+      "zoneDistribution": "Fasting Zones",
+      "history": "Fasting History",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "duration": "Duration",
+      "protocol": "Protocol",
+      "trends": "Fasting Trends",
+      "avgHours": "Avg Hours"
+    },
     "customMeasurementsTitle": "Custom Measurements",
     "errorLoadingReports": "Failed to load reports.",
     "noData": "No Data",
+    "noStressData": "No raw stress data available.",
+    "noMoodData": "No daily mood data available.",
     "noFoodDiaryDataToExport": "No food diary data to export",
     "foodDiaryExportSuccess": "Food diary exported successfully",
     "foodDiaryExportError": "Failed to export food diary",
@@ -2250,5 +2483,10 @@
     "noDataDesc": "Start tracking your sleep to unlock advanced insights.",
     "baselineCalculated": "Sleep need baseline calculated successfully",
     "baselineError": "Failed to calculate sleep need baseline"
+  },
+  "dataTable": {
+    "noResults": "No results.",
+    "rowsPerPage": "Rows per page",
+    "rowsSelected": "{{selected}} of {{total}} row(s) selected."
   }
 }

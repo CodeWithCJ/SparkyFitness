@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/NumericInput';
@@ -361,6 +362,7 @@ const EditGoalsForm = ({
 };
 
 const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { formatDate } = usePreferences();
   const [open, setOpen] = useState(false);
@@ -410,12 +412,16 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="dark:text-slate-300">
           <Settings className="w-4 h-4 mr-2" />
-          Edit Goals
+          {t('goals.goalsSettings.editGoals', 'Edit Goals')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Goals for {formatDate(selectedDate)}</DialogTitle>
+          <DialogTitle>
+            {t('goals.goalsSettings.editGoalsFor', 'Edit Goals for {{date}}', {
+              date: formatDate(selectedDate),
+            })}
+          </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (

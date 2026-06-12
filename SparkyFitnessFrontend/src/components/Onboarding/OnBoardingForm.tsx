@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Globe } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import PersonalPlan from './PersonalPlan';
@@ -9,6 +9,18 @@ import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
 import { RecentCheckInMeasurementsResponse } from '@workspace/shared';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings';
+import { useTranslation } from 'react-i18next';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  getSupportedLanguages,
+  getLanguageDisplayName,
+} from '@/utils/languageUtils';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -41,11 +53,19 @@ export const OnBoardingForm = ({
   heightData,
 }: OnBoardingFormProps) => {
   // Get preferences including algorithm settings
+  const { t, i18n } = useTranslation();
   const {
     weightUnit: preferredWeightUnit,
     measurementUnit: preferredMeasurementUnit,
     dateFormat,
+    language,
+    setLanguage,
   } = usePreferences();
+
+  const handleLanguageChange = (lang: string) => {
+    setLanguage(lang);
+    i18n.changeLanguage(lang);
+  };
 
   // State management
   const [step, setStep] = useState(1);
@@ -196,11 +216,24 @@ export const OnBoardingForm = ({
             variant="ghost"
             className="text-muted-foreground hover:text-foreground font-semibold ml-2 w-16"
           >
-            Skip
+            {t('common.skip', 'Skip')}
           </Button>
         )}
 
-        <div className="ml-auto -mr-2">
+        <div className="ml-2 flex items-center gap-1">
+          <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={language} onValueChange={handleLanguageChange}>
+            <SelectTrigger className="h-8 w-32 border-none bg-transparent text-sm focus:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getSupportedLanguages().map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {getLanguageDisplayName(lang)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <ThemeToggle />
         </div>
       </div>
