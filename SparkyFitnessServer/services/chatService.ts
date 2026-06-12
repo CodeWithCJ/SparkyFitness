@@ -40,6 +40,7 @@ interface ChatMessage {
 }
 
 import { generateText, streamText, stepCountIs } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -625,16 +626,23 @@ async function processChatMessage(
         log('error', 'Failed to save user chat history:', err)
       );
 
-    await chatRepository
-      .saveChatHistory({
-        user_id: userId,
-        content: result.text,
-        messageType: 'assistant',
-        parts: [{ type: 'text', text: result.text }],
-      })
-      .catch((err: unknown) =>
-        log('error', 'Failed to save assistant chat history:', err)
+    if (result.text.trim()) {
+      await chatRepository
+        .saveChatHistory({
+          user_id: userId,
+          content: result.text,
+          messageType: 'assistant',
+          parts: [{ type: 'text', text: result.text }],
+        })
+        .catch((err: unknown) =>
+          log('error', 'Failed to save assistant chat history:', err)
+        );
+    } else {
+      log(
+        'warn',
+        `Skipping empty assistant chat history for user ${userId} (finishReason: ${result.finishReason})`
       );
+    }
 
     // Determine the general action type based on executed tools
     let actionType = 'advice';
@@ -763,6 +771,42 @@ async function processFoodOptionsRequest(
   }
   return { success: true, content: result.text };
 }
+const EMPTY_RESPONSE_ERROR_TEXT =
+  'The AI service returned an empty response. Please try again.';
+
+// Some providers (notably Gemini via MALFORMED_FUNCTION_CALL) end a tool-calling
+// turn with finishReason 'error' and an empty completion instead of a thrown
+// error, so the stream closes cleanly and clients render nothing. Inject an
+// explicit error chunk so the UI surfaces a failure instead of staying silent.
+function withEmptyCompletionGuard(
+  stream: ReadableStream<UIMessageChunk>
+): ReadableStream<UIMessageChunk> {
+  let sawContent = false;
+  return stream.pipeThrough(
+    new TransformStream<UIMessageChunk, UIMessageChunk>({
+      transform(chunk, controller) {
+        if (
+          chunk.type === 'text-delta' ||
+          chunk.type === 'reasoning-delta' ||
+          chunk.type.startsWith('tool-')
+        ) {
+          sawContent = true;
+        }
+        if (
+          chunk.type === 'finish' &&
+          (chunk.finishReason === 'error' || !sawContent)
+        ) {
+          controller.enqueue({
+            type: 'error',
+            errorText: EMPTY_RESPONSE_ERROR_TEXT,
+          });
+        }
+        controller.enqueue(chunk);
+      },
+    })
+  );
+}
+
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -936,7 +980,7 @@ async function processChatMessageStream(
       >,
       tools,
       stopWhen: stepCountIs(50),
-      onFinish: async ({ text }) => {
+      onFinish: async ({ text, finishReason }) => {
         // Get the last user message from conversationMessages to ensure parts are captured
         const lastUserMessage = [...conversationMessages]
           .reverse()
@@ -963,6 +1007,14 @@ async function processChatMessageStream(
             log('error', 'Failed to save user chat history:', err)
           );
 
+        if (!text.trim()) {
+          log(
+            'warn',
+            `Skipping empty assistant chat history for user ${userId} (finishReason: ${finishReason})`
+          );
+          return;
+        }
+
         await chatRepository
           .saveChatHistory({
             user_id: userId,
@@ -976,7 +1028,7 @@ async function processChatMessageStream(
       },
     });
 
-    return { result };
+    return { stream: withEmptyCompletionGuard(result.toUIMessageStream()) };
   } catch (error) {
     log(
       'error',

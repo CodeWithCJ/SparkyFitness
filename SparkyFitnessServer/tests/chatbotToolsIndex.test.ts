@@ -63,4 +63,14 @@ describe('buildChatbotTools', () => {
       expect(typeof t.execute, `${name} execute`).toBe('function');
     }
   });
+
+  // OpenAI's Responses API treats an omitted strict flag as "attempt strict
+  // mode", which forces models to fill every published property with
+  // placeholder values that the per-action union validation then rejects.
+  it('publishes every tool with provider strict mode disabled', () => {
+    const tools = buildChatbotTools('user-1', 'UTC');
+    for (const [name, t] of Object.entries(tools)) {
+      expect(t.strict, `${name} strict`).toBe(false);
+    }
+  });
 });

@@ -20,7 +20,7 @@ import { buildWizardTools } from './wizardTools.js';
  * intentionally not part of the chat surface.
  */
 export function buildChatbotTools(userId: string, tz: string) {
-  return {
+  const tools = {
     ...buildExerciseTools(userId, tz),
     ...buildFoodTools(userId, tz),
     ...buildCheckinTools(userId, tz),
@@ -33,4 +33,13 @@ export function buildChatbotTools(userId: string, tz: string) {
     ...buildWizardTools(userId),
     ...buildReportTools(userId, tz),
   };
+  // The published flat schemas are advisory; real validation is the strict
+  // per-action union inside each handler. Strict provider-side mode must stay
+  // off: OpenAI's Responses API treats an omitted flag as "attempt strict
+  // mode" and then forces models to emit every published property, producing
+  // placeholder junk that the per-action validation rejects.
+  for (const tool of Object.values(tools)) {
+    tool.strict = false;
+  }
+  return tools;
 }

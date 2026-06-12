@@ -1,4 +1,5 @@
 import express from 'express';
+import { pipeUIMessageStreamToResponse } from 'ai';
 import { authenticate } from '../middleware/authMiddleware.js';
 import chatService from '../services/chatService.js';
 import type { FoodOptionsErrorCategory } from '../services/chatService.js';
@@ -153,14 +154,14 @@ router.post('/', authenticate, async (req, res, next) => {
 router.post('/stream', authenticate, async (req, res, next) => {
   const { messages, service_config_id } = req.body;
   try {
-    const { result } = await chatService.processChatMessageStream(
+    const { stream } = await chatService.processChatMessageStream(
       messages,
       service_config_id,
       req.userId,
       req.authenticatedUserId
     );
 
-    result.pipeUIMessageStreamToResponse(res);
+    pipeUIMessageStreamToResponse({ response: res, stream });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
+import { simulateReadableStream } from 'ai';
+import type { UIMessageChunk } from 'ai';
 import chatService from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
@@ -437,6 +439,169 @@ describe('chatService', () => {
       expect(model.doGenerateCalls).toHaveLength(2);
       expect(JSON.stringify(model.doGenerateCalls[1].prompt)).toContain(
         'Error [DB_ERROR]: A database error occurred.'
+      );
+    });
+  });
+
+  describe('processChatMessageStream (empty completion handling)', () => {
+    const activeUserId = 'user-123';
+    const actorUserId = 'actor-456';
+
+    const aiServiceSetting = {
+      id: 'svc-1',
+      service_type: 'openai',
+      api_key: 'sk-test',
+      model_name: 'gpt-test',
+      source: 'user',
+    };
+
+    const usage = {
+      inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 5, text: 5, reasoning: 0 },
+    };
+
+    const streamModel = (parts: unknown[]) => {
+      const model = new MockLanguageModelV3({
+        doStream: async () => ({
+          stream: simulateReadableStream({
+            chunks: parts as never[],
+          }),
+        }),
+      });
+      mockModelHolder.current = model;
+      return model;
+    };
+
+    const drainStream = async (stream: ReadableStream<UIMessageChunk>) => {
+      const chunks: UIMessageChunk[] = [];
+      const reader = stream.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      return chunks;
+    };
+
+    beforeEach(() => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        aiServiceSetting
+      );
+      vi.mocked(chatRepository.saveChatHistory).mockResolvedValue(true);
+      vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
+        []
+      );
+    });
+
+    it('injects an error chunk and skips the assistant save when the model errors out with an empty completion', async () => {
+      // Gemini's MALFORMED_FUNCTION_CALL surfaces as finishReason 'error' with
+      // no content instead of a thrown error.
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        {
+          type: 'finish',
+          finishReason: { unified: 'error', raw: 'MALFORMED_FUNCTION_CALL' },
+          usage,
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Show my goal timeline' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const chunks = await drainStream(stream);
+
+      expect(chunks).toContainEqual({
+        type: 'error',
+        errorText:
+          'The AI service returned an empty response. Please try again.',
+      });
+
+      await vi.waitFor(() =>
+        expect(log).toHaveBeenCalledWith(
+          'warn',
+          expect.stringContaining('Skipping empty assistant chat history')
+        )
+      );
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledTimes(1);
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: activeUserId,
+          messageType: 'user',
+          content: 'Show my goal timeline',
+        })
+      );
+    });
+
+    it('injects an error chunk when the stream finishes without any content even on a normal stop', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Show my goal timeline' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const chunks = await drainStream(stream);
+
+      expect(chunks).toContainEqual({
+        type: 'error',
+        errorText:
+          'The AI service returned an empty response. Please try again.',
+      });
+    });
+
+    it('passes a normal completion through untouched and saves both history rows', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Here is your timeline.' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Show my goal timeline' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const chunks = await drainStream(stream);
+
+      expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+      expect(chunks).toContainEqual(
+        expect.objectContaining({
+          type: 'text-delta',
+          delta: 'Here is your timeline.',
+        })
+      );
+
+      await vi.waitFor(() =>
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messageType: 'assistant',
+            content: 'Here is your timeline.',
+          })
+        )
+      );
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'user',
+          content: 'Show my goal timeline',
+        })
       );
     });
   });
