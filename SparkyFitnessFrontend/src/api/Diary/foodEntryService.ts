@@ -90,9 +90,15 @@ export const downloadDiaryExport = async (
   return response;
 };
 
-export const loadDiaryGoals = async (date: string): Promise<ExpandedGoals> => {
+export const loadDiaryGoals = async (
+  date: string,
+  adjust?: boolean
+): Promise<ExpandedGoals> => {
   // Adjust return type as needed
-  const response = await apiCall(`/goals/by-date/${date}`, {
+  const url = adjust
+    ? `/goals/by-date/${date}?adjust=true`
+    : `/goals/by-date/${date}`;
+  const response = await apiCall(url, {
     method: 'GET',
   });
   return response;

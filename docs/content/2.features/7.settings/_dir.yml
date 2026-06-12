@@ -1,6 +1,7 @@
 title: Settings
 navigation:
   - preferences.md
+  - calculation-settings.md
   - external-providers.md
   - nutrient-display-settings.md
   - login-management.md

@@ -20,6 +20,7 @@ import {
   computeCaloriesRemaining,
   computeCalorieProgress,
   computeTdeeAdjustment,
+  computeCalorieTarget,
 } from '@workspace/shared';
 import type { CalorieGoalAdjustmentMode } from '@workspace/shared';
 
@@ -79,7 +80,11 @@ function computeCalorieBalance(
     height?: string | number;
     body_fat_percentage?: string | number;
   } | null,
-  adaptiveTdeeData: { tdee: number } | null
+  adaptiveTdeeData: {
+    tdee: number;
+    isFallback?: boolean;
+    daysOfData?: number;
+  } | null
 ): CalorieBalance {
   // 1. Eaten calories — scale per-serving values by quantity/serving_size
   const eatenCalories = foodEntries.reduce((sum, e) => {
@@ -167,6 +172,61 @@ function computeCalorieBalance(
       1200,
       Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
     );
+  }
+
+  // Apply Goal Mode Deficit targets if enabled
+  const goalMode = userPreferences?.goal_mode || 'maintain';
+  const goalModeCalculationMethod =
+    userPreferences?.goal_mode_calculation_method || 'manual';
+  const goalModeCustomPercentage =
+    userPreferences?.goal_mode_custom_percentage ?? 0;
+
+  if (goalMode !== 'maintain' && bmr > 0) {
+    const tz = userPreferences?.timezone || 'UTC';
+    const age = userProfile
+      ? (userAge(userProfile.date_of_birth ?? '', tz) ?? 30)
+      : 30;
+    const gender = (userProfile?.gender || 'male') as 'male' | 'female';
+    const weightKg =
+      parseFloat(String(measurements?.weight ?? '')) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
+    const heightCm =
+      parseFloat(String(measurements?.height ?? '')) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
+    const bodyFat = measurements?.body_fat_percentage
+      ? parseFloat(String(measurements.body_fat_percentage))
+      : null;
+    const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
+
+    const activityMultiplier =
+      (bmrService.ActivityMultiplier as Record<string, number>)[
+        activityLevel
+      ] || 1.2;
+
+    const result = computeCalorieTarget({
+      goalMode,
+      calculationMethod: goalModeCalculationMethod,
+      customPercentage: goalModeCustomPercentage,
+      bmr,
+      activityLevelMultiplier: activityMultiplier,
+      adaptiveTdee: adaptiveTdeeData ? adaptiveTdeeData.tdee : null,
+      adaptiveTdeeFallback: adaptiveTdeeData
+        ? (adaptiveTdeeData.isFallback ?? true)
+        : true,
+      adaptiveTdeeDaysOfData: adaptiveTdeeData
+        ? (adaptiveTdeeData.daysOfData ?? 0)
+        : 0,
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      bodyFatPercentage: bodyFat,
+      bmrAlgorithm,
+      currentGoalCalories: goalCalories,
+      calculateBmrFn: bmrService.calculateBmr,
+    });
+
+    goalCalories = result.finalTarget;
   }
 
   // TDEE mode adjustment

@@ -13,6 +13,39 @@ async function validateTimezone(preferenceData: any) {
     );
   }
 }
+async function validateGoalMode(preferenceData: any) {
+  if (preferenceData.goal_mode !== undefined) {
+    const validGoalModes = ['maintain', 'recomp', 'cut', 'high_cut', 'manual'];
+    if (!validGoalModes.includes(preferenceData.goal_mode)) {
+      throw Object.assign(
+        new Error(`Invalid goal_mode: '${preferenceData.goal_mode}'`),
+        { status: 400 }
+      );
+    }
+  }
+  if (preferenceData.goal_mode_calculation_method !== undefined) {
+    const validMethods = ['adaptive', 'manual'];
+    if (!validMethods.includes(preferenceData.goal_mode_calculation_method)) {
+      throw Object.assign(
+        new Error(
+          `Invalid goal_mode_calculation_method: '${preferenceData.goal_mode_calculation_method}'`
+        ),
+        { status: 400 }
+      );
+    }
+  }
+  if (preferenceData.goal_mode_custom_percentage !== undefined) {
+    const pct = Number(preferenceData.goal_mode_custom_percentage);
+    if (isNaN(pct) || pct < 0 || pct > 40) {
+      throw Object.assign(
+        new Error(
+          `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be between 0 and 40.`
+        ),
+        { status: 400 }
+      );
+    }
+  }
+}
 function getDefaultPreferences() {
   return {
     calorie_goal_adjustment_mode: 'dynamic',
@@ -30,6 +63,7 @@ async function updateUserPreferences(
 ) {
   try {
     await validateTimezone(preferenceData);
+    await validateGoalMode(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
       preferenceData
@@ -128,6 +162,7 @@ async function upsertUserPreferences(
 ) {
   try {
     await validateTimezone(preferenceData);
+    await validateGoalMode(preferenceData);
     preferenceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
     // Provide a default for calorie_goal_adjustment_mode if it's not present
     if (!preferenceData.calorie_goal_adjustment_mode) {

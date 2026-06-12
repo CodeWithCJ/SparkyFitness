@@ -8,6 +8,7 @@ import {
   computeExerciseCredited,
   computeCalorieProgress,
 } from '@/utils/calorieCalculations';
+import { computeCalorieTarget, getGoalModeDeficit } from '@workspace/shared';
 
 // ---------------------------------------------------------------------------
 // ACTIVITY_MULTIPLIERS
@@ -237,5 +238,68 @@ describe('computeCalorieProgress', () => {
   it('clamps to 0 and never goes negative', () => {
     // remaining > goal means nothing consumed
     expect(computeCalorieProgress(2000, 3000)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getGoalModeDeficit
+// ---------------------------------------------------------------------------
+describe('getGoalModeDeficit', () => {
+  it('returns correct deficits for standard modes', () => {
+    expect(getGoalModeDeficit('maintain')).toBe(0.0);
+    expect(getGoalModeDeficit('recomp')).toBe(0.1);
+    expect(getGoalModeDeficit('cut')).toBe(0.15);
+    expect(getGoalModeDeficit('high_cut')).toBe(0.2);
+  });
+
+  it('handles custom percentage in manual mode', () => {
+    expect(getGoalModeDeficit('manual', 12)).toBe(0.12);
+    expect(getGoalModeDeficit('manual', 45)).toBe(0.4); // capped at 40%
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeCalorieTarget
+// ---------------------------------------------------------------------------
+describe('computeCalorieTarget', () => {
+  it('calculates correct targets under manual goal mode', () => {
+    const result = computeCalorieTarget({
+      goalMode: 'recomp',
+      calculationMethod: 'manual',
+      customPercentage: 0,
+      bmr: 1500,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: null,
+      adaptiveTdeeFallback: true,
+      adaptiveTdeeDaysOfData: 0,
+      weightKg: 70,
+      heightCm: 170,
+      age: 30,
+      gender: 'male',
+      currentGoalCalories: 2000,
+    });
+    expect(result.finalTarget).toBe(1800);
+    expect(result.appliedDeficit).toBe(200);
+  });
+
+  it('applies fallback and caps at safety floor under adaptive method', () => {
+    const result = computeCalorieTarget({
+      goalMode: 'high_cut',
+      calculationMethod: 'adaptive',
+      customPercentage: 0,
+      bmr: 1800,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: null,
+      adaptiveTdeeFallback: true,
+      adaptiveTdeeDaysOfData: 0,
+      weightKg: 80,
+      heightCm: 180,
+      age: 35,
+      gender: 'male',
+      currentGoalCalories: 2000,
+    });
+    // Target 2160 * 0.8 = 1728, gets auto-raised to max(1800 BMR, 1500 absolute) = 1800
+    expect(result.target).toBe(1728);
+    expect(result.finalTarget).toBe(1800);
   });
 });

@@ -172,6 +172,23 @@ export const useMostRecentHeightQuery = (enabled = true) => {
     },
   });
 };
+
+export const useMostRecentBodyFatQuery = (enabled = true) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: dailyProgressKeys.measurements.mostRecent('body_fat_percentage'),
+    queryFn: () => getMostRecentMeasurement('body_fat_percentage'),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'measurements.errorLoadingBodyFat',
+        'Failed to load most recent body fat.'
+      ),
+    },
+  });
+};
+
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
   const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
@@ -184,10 +201,7 @@ export const useCalculatedBMR = () => {
 
   const { data: weightData } = useMostRecentWeightQuery();
   const { data: heightData } = useMostRecentHeightQuery();
-  const { data: bodyFatData } = useQuery({
-    queryKey: dailyProgressKeys.measurements.mostRecent('body_fat_percentage'),
-    queryFn: () => getMostRecentMeasurement('body_fat_percentage'),
-  });
+  const { data: bodyFatData } = useMostRecentBodyFatQuery();
 
   if (
     !userProfile ||

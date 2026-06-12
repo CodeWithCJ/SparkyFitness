@@ -9,6 +9,7 @@ import { log } from '../config/logging.js';
 import {
   CALORIE_CALCULATION_CONSTANTS,
   userHourMinute,
+  computeCalorieTarget,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 /**
@@ -37,7 +38,7 @@ async function getDashboardStats(userId: any, date: any) {
       measurementRepository.getLatestMeasurement(userId),
       measurementRepository.getCheckInMeasurementsByDate(userId, date),
       // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-      adaptiveTdeeService.calculateAdaptiveTdee(userId),
+      adaptiveTdeeService.calculateAdaptiveTdee(userId) as Promise<any>,
     ]);
     // 1. Goal Calories (Base)
     const rawGoalCalories = parseFloat(goals?.calories) || 2000;
@@ -127,8 +128,49 @@ async function getDashboardStats(userId: any, date: any) {
       userPreferences?.tdee_allow_negative_adjustment ?? false;
     // Apply Adaptive TDEE baseline if mode is active and BMR is available
     if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       finalGoalCalories = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
+    }
+
+    // Apply Goal Mode Deficit targets if enabled
+    const goalMode = userPreferences?.goal_mode || 'maintain';
+    const goalModeCalculationMethod =
+      userPreferences?.goal_mode_calculation_method || 'manual';
+    const goalModeCustomPercentage =
+      userPreferences?.goal_mode_custom_percentage ?? 0;
+
+    if (goalMode !== 'maintain' && bmr > 0) {
+      const tz = userPreferences?.timezone || 'UTC';
+      const age = userAge(userProfile.date_of_birth, tz) ?? 30;
+      const gender = (userProfile.gender || 'male') as 'male' | 'female';
+      const bodyFat = latestMeasurements?.body_fat_percentage;
+      const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
+
+      const result = computeCalorieTarget({
+        goalMode,
+        calculationMethod: goalModeCalculationMethod,
+        customPercentage: goalModeCustomPercentage,
+        bmr,
+        activityLevelMultiplier: multiplier,
+        adaptiveTdee: adaptiveTdeeData
+          ? (adaptiveTdeeData.tdee as number)
+          : null,
+        adaptiveTdeeFallback: adaptiveTdeeData
+          ? (adaptiveTdeeData.isFallback as boolean)
+          : true,
+        adaptiveTdeeDaysOfData: adaptiveTdeeData
+          ? (adaptiveTdeeData.daysOfData as number) || 0
+          : 0,
+        weightKg,
+        heightCm,
+        age,
+        gender,
+        bodyFatPercentage: bodyFat,
+        bmrAlgorithm,
+        currentGoalCalories: finalGoalCalories,
+        calculateBmrFn: bmrService.calculateBmr,
+      });
+
+      finalGoalCalories = result.finalTarget;
     }
     if (adjustmentMode === 'dynamic') {
       // 100% of all burned calories credited

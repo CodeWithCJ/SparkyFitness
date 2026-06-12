@@ -499,7 +499,7 @@
     },
     "calculationSettings": {
       "title": "Calculation Settings",
-      "description": "Manage BMR and Body Fat calculation preferences"
+      "description": "Manage BMR formulas, body fat algorithms, daily energy adjustments, goal deficit modes, and safety floors."
     },
     "familyAccess": {
       "title": "Family Access",

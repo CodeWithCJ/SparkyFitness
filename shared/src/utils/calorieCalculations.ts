@@ -164,3 +164,156 @@ export function computeCalorieProgress(
   const effectiveConsumed = goalCalories - caloriesRemaining;
   return Math.max(0, (effectiveConsumed / goalCalories) * 100);
 }
+
+export type GoalMode = "maintain" | "recomp" | "cut" | "high_cut" | "manual";
+export type GoalModeCalculationMethod = "adaptive" | "manual";
+
+export function getGoalModeDeficit(goalMode: string, customPercentage: number = 0): number {
+  switch (goalMode) {
+    case "recomp":
+      return 0.10;
+    case "cut":
+      return 0.15;
+    case "high_cut":
+      return 0.20;
+    case "manual":
+      return Math.min(40, Math.max(0, customPercentage)) / 100;
+    case "maintain":
+    default:
+      return 0.0;
+  }
+}
+
+export type BmrCalculatorFn = (
+  algorithm: string,
+  weight: number,
+  height: number,
+  age: number,
+  gender: "male" | "female",
+  bodyFatPercentage?: number | null
+) => number;
+
+export function calculateMinimumMetabolism(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  gender: "male" | "female",
+  bodyFatPercentage?: number | null,
+  bmrAlgorithm: string = "Mifflin-St Jeor",
+  calculateBmrFn?: BmrCalculatorFn
+): number {
+  if (bodyFatPercentage && bodyFatPercentage > 0) {
+    const lbm = weightKg * (1 - bodyFatPercentage / 100);
+    return 370 + 21.6 * lbm;
+  }
+
+  if (calculateBmrFn) {
+    return calculateBmrFn(bmrAlgorithm, weightKg, heightCm, age, gender, bodyFatPercentage);
+  }
+
+  const genderOffset = gender === "male" ? 5 : -161;
+  return 10 * weightKg + 6.25 * heightCm - 5 * age + genderOffset;
+}
+
+export interface CalorieTargetResult {
+  target: number;
+  rmr: number;
+  baselineTdee: number;
+  appliedDeficit: number;
+  isBelowRmr: boolean;
+  isBelowAbsoluteFloor: boolean;
+  absoluteFloorValue: number;
+  finalTarget: number;
+  insufficientHistory: boolean;
+  projectedWeeklyLossKg: number;
+  projectedWeeklyLossPercent: number;
+  lossSafetyZone: "green" | "yellow" | "red";
+}
+
+export function computeCalorieTarget({
+  goalMode,
+  calculationMethod,
+  customPercentage,
+  bmr,
+  activityLevelMultiplier,
+  adaptiveTdee,
+  adaptiveTdeeFallback,
+  adaptiveTdeeDaysOfData,
+  weightKg,
+  heightCm,
+  age,
+  gender,
+  bodyFatPercentage,
+  bmrAlgorithm,
+  currentGoalCalories,
+  calculateBmrFn
+}: {
+  goalMode: string;
+  calculationMethod: string;
+  customPercentage: number;
+  bmr: number;
+  activityLevelMultiplier: number;
+  adaptiveTdee: number | null;
+  adaptiveTdeeFallback: boolean;
+  adaptiveTdeeDaysOfData: number;
+  weightKg: number;
+  heightCm: number;
+  age: number;
+  gender: "male" | "female";
+  bodyFatPercentage?: number | null;
+  bmrAlgorithm?: string;
+  currentGoalCalories: number;
+  calculateBmrFn?: BmrCalculatorFn;
+}): CalorieTargetResult {
+  const rmr = calculateMinimumMetabolism(weightKg, heightCm, age, gender, bodyFatPercentage, bmrAlgorithm, calculateBmrFn);
+  const deficitPercent = getGoalModeDeficit(goalMode, customPercentage);
+
+  let baselineTdee = currentGoalCalories;
+  let insufficientHistory = false;
+
+  if (calculationMethod === "adaptive") {
+    if (adaptiveTdeeFallback || !adaptiveTdee || adaptiveTdeeDaysOfData < 14) {
+      baselineTdee = Math.round(bmr * activityLevelMultiplier);
+      insufficientHistory = true;
+    } else {
+      baselineTdee = adaptiveTdee;
+    }
+  }
+
+  const calculatedTarget = baselineTdee * (1 - deficitPercent);
+  const isBelowRmr = calculatedTarget < rmr;
+
+  const absoluteFloorValue = gender === "female" ? 1200 : 1500;
+  const isBelowAbsoluteFloor = calculatedTarget < absoluteFloorValue;
+
+  const safetyFloor = Math.max(rmr, absoluteFloorValue);
+  const finalTarget = (calculationMethod === "adaptive" && calculatedTarget < safetyFloor)
+    ? Math.round(safetyFloor)
+    : Math.round(calculatedTarget);
+
+  const dailyDeficit = Math.max(0, baselineTdee - finalTarget);
+  const projectedWeeklyLossKg = (dailyDeficit * 7) / 7700;
+  const projectedWeeklyLossPercent = weightKg > 0 ? (projectedWeeklyLossKg / weightKg) * 100 : 0;
+
+  let lossSafetyZone: "green" | "yellow" | "red" = "green";
+  if (projectedWeeklyLossPercent > 1.5) {
+    lossSafetyZone = "red";
+  } else if (projectedWeeklyLossPercent > 1.0) {
+    lossSafetyZone = "yellow";
+  }
+
+  return {
+    target: Math.round(calculatedTarget),
+    rmr: Math.round(rmr),
+    baselineTdee: Math.round(baselineTdee),
+    appliedDeficit: Math.round(baselineTdee * deficitPercent),
+    isBelowRmr,
+    isBelowAbsoluteFloor,
+    absoluteFloorValue,
+    finalTarget,
+    insufficientHistory,
+    projectedWeeklyLossKg,
+    projectedWeeklyLossPercent,
+    lossSafetyZone
+  };
+}
