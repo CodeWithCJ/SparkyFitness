@@ -25,6 +25,7 @@ interface AddSheetProps {
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
   onAddMeasurements: () => void;
+  onDismissWithoutAction?: () => void;
 }
 
 interface ActionCard {
@@ -34,11 +35,12 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan, onAddMeasurements }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan, onAddMeasurements, onDismissWithoutAction }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
     const isPresentingRef = useRef(false);
+    const selectedActionRef = useRef(false);
     const pendingPresentRef = useRef(false);
     const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
@@ -87,6 +89,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
         pendingPresentRef.current = false;
         pendingInitialMenuRef.current = null;
+        selectedActionRef.current = false;
         setShowExerciseMenu(initialMenu === 'exercise');
         schedulePresent();
       },
@@ -123,6 +126,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const handleAction = useCallback((action?: () => void) => {
       pendingPresentRef.current = false;
       pendingInitialMenuRef.current = null;
+      selectedActionRef.current = true;
       isPresentingRef.current = false;
       isDismissingRef.current = true;
       clearScheduledPresent();
@@ -137,13 +141,18 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         const initialMenu = pendingInitialMenuRef.current;
         pendingPresentRef.current = false;
         pendingInitialMenuRef.current = null;
+        selectedActionRef.current = false;
         setShowExerciseMenu(initialMenu === 'exercise');
         schedulePresent();
       } else {
+        if (!selectedActionRef.current) {
+          onDismissWithoutAction?.();
+        }
+        selectedActionRef.current = false;
         isPresentingRef.current = false;
         pendingInitialMenuRef.current = null;
       }
-    }, [schedulePresent]);
+    }, [onDismissWithoutAction, schedulePresent]);
 
     const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
       if (fromIndex >= 0 && toIndex === -1) {

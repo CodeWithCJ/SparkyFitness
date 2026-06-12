@@ -102,8 +102,10 @@ import {
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
+import type { AppleIcon, TabRole } from 'react-native-bottom-tabs';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
@@ -114,6 +116,7 @@ import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
+const NativeTab = createNativeBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type TabStateSnapshot = {
@@ -125,8 +128,35 @@ type TabStateSnapshot = {
 };
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
+const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as const;
+type NonAddTabName = typeof NON_ADD_TABS[number];
+const ADD_TAB_ICON: AppleIcon = { sfSymbol: 'plus' };
+const IOS_SEARCH_ROLE_MIN_VERSION = 26;
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
+
+let lastActiveTab: NonAddTabName = 'Dashboard';
+
+function rememberActiveTab(routeName: string) {
+  if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
+    lastActiveTab = routeName as NonAddTabName;
+  }
+}
+
+function getIOSMajorVersion() {
+  if (Platform.OS !== 'ios') return null;
+
+  const version = Platform.Version;
+  if (typeof version === 'number') return Math.trunc(version);
+
+  const major = Number.parseInt(version, 10);
+  return Number.isFinite(major) ? major : null;
+}
+
+function supportsSeparateAddTabButton() {
+  const majorVersion = getIOSMajorVersion();
+  return majorVersion !== null && majorVersion >= IOS_SEARCH_ROLE_MIN_VERSION;
+}
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -208,9 +238,18 @@ function AppContent() {
   const foregroundAutoSyncWindowRef = useRef(false);
   const backgroundEnteredAtRef = useRef<number | null>(null);
   const wasInBackgroundRef = useRef(false);
+  const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setForegroundAutoSyncWindowState = useCallback((isOpen: boolean) => {
     foregroundAutoSyncWindowRef.current = isOpen;
     setForegroundAutoSyncWindowOpen(isOpen);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (addSheetDismissNavigationTimeoutRef.current != null) {
+        clearTimeout(addSheetDismissNavigationTimeoutRef.current);
+      }
+    };
   }, []);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
@@ -390,6 +429,42 @@ function AppContent() {
 
     syncMutation.mutate({ timeRange, healthMetricStates });
   }, [syncMutation]);
+
+  const handleAddPress = useCallback(() => {
+    addSheetRef.current?.present();
+  }, []);
+
+  const handleAddSheetDismissWithoutAction = useCallback(() => {
+    const navigateBackToPreviousTab = () => {
+      const navigation = navigationRef.current;
+      if (navigation) {
+        navigation.dispatch({
+          ...CommonActions.navigate(lastActiveTab),
+          target: navigation.getState().key,
+        });
+        return;
+      }
+
+      if (!rootNavigationRef.isReady()) return;
+      rootNavigationRef.dispatch(
+        CommonActions.navigate('Tabs', {
+          screen: lastActiveTab,
+        }),
+      );
+    };
+
+    if (addSheetDismissNavigationTimeoutRef.current != null) {
+      clearTimeout(addSheetDismissNavigationTimeoutRef.current);
+      addSheetDismissNavigationTimeoutRef.current = null;
+    }
+
+    navigateBackToPreviousTab();
+    requestAnimationFrame(navigateBackToPreviousTab);
+    addSheetDismissNavigationTimeoutRef.current = setTimeout(() => {
+      addSheetDismissNavigationTimeoutRef.current = null;
+      navigateBackToPreviousTab();
+    }, 150);
+  }, []);
 
   const triggerAutoSync = useCallback(async (configId: string, release: () => void) => {
     let committed = false;
@@ -668,43 +743,132 @@ function AppContent() {
             options={{ gestureEnabled: false }}
           />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
-            {() => (
-              <Tab.Navigator
-                initialRouteName="Dashboard"
-                screenOptions={{
-                  headerShown: false,
-                }}
-                tabBar={(props) => (
-                  // Wrap the tab bar so the active workout HUD can sit
-                  // directly on top of it. Order matters: CustomTabBar is
-                  // a later sibling than ActiveWorkoutBar, so its Add button
-                  // (which uses -mt-5 to rise above the tab bar's top edge)
-                  // paints on top of the embedded bar — matching the mockup
-                  // where the + button visually bridges both bars.
-                  <View collapsable={false}>
+            {() => {
+              const addTabRole: TabRole | undefined =
+                supportsSeparateAddTabButton() ? 'search' : undefined;
+
+              if (Platform.OS === 'ios') {
+                return (
+                  <>
                     <WhatsNewBanner />
                     <ActiveWorkoutBar variant="embedded" />
-                    <CustomTabBar {...props} />
-                  </View>
-                )}
-              >
-                <Tab.Screen name="Dashboard" component={SafeDashboard} />
-                <Tab.Screen name="Diary" component={SafeDiary} />
-                <Tab.Screen
-                  name="Add"
-                  component={EmptyScreen}
-                  listeners={({ navigation }) => ({
-                    tabPress: (e) => {
-                      e.preventDefault();
-                      navigationRef.current = navigation;
-                      addSheetRef.current?.present();
-                    },
-                  })}
-                />
-                <Tab.Screen name="Library" component={SafeLibrary} />
-                <Tab.Screen name="Settings" component={SettingsScreen} />
-              </Tab.Navigator>
-            )}
+                    <NativeTab.Navigator
+                      initialRouteName="Dashboard"
+                      screenListeners={({ navigation }) => {
+                        navigationRef.current = navigation as NavigationProp<TabParamList>;
+
+                        return {
+                          state: (event) => {
+                            const state = event.data.state;
+                            const route = state.routes[state.index ?? 0];
+                            rememberActiveTab(route.name);
+                          },
+                        };
+                      }}
+                    >
+                      <NativeTab.Screen
+                        name="Dashboard"
+                        component={SafeDashboard}
+                        options={{
+                          tabBarLabel: 'Dashboard',
+                          tabBarIcon: () => ({ sfSymbol: 'house' } as AppleIcon),
+                        }}
+                      />
+                      <NativeTab.Screen
+                        name="Diary"
+                        component={SafeDiary}
+                        options={{
+                          tabBarLabel: 'Diary',
+                          tabBarIcon: () => ({ sfSymbol: 'doc.text' } as AppleIcon),
+                        }}
+                      />
+                      <NativeTab.Screen
+                        name="Add"
+                        component={EmptyScreen}
+                        options={{
+                          tabBarLabel: 'Add',
+                          tabBarIcon: () => ADD_TAB_ICON,
+                          role: addTabRole,
+                          preventsDefault: true,
+                        }}
+                        listeners={({ navigation }) => ({
+                          tabPress: (e) => {
+                            e.preventDefault();
+                            navigationRef.current = navigation as NavigationProp<TabParamList>;
+                            handleAddPress();
+                          },
+                        })}
+                      />
+                      <NativeTab.Screen
+                        name="Library"
+                        component={SafeLibrary}
+                        options={{
+                          tabBarLabel: 'Library',
+                          tabBarIcon: () => ({ sfSymbol: 'book' } as AppleIcon),
+                        }}
+                      />
+                      <NativeTab.Screen
+                        name="Settings"
+                        component={SettingsScreen}
+                        options={{
+                          tabBarLabel: 'Settings',
+                          tabBarIcon: () => ({ sfSymbol: 'gearshape' } as AppleIcon),
+                        }}
+                      />
+                    </NativeTab.Navigator>
+                  </>
+                );
+              }
+
+              return (
+                <Tab.Navigator
+                  initialRouteName="Dashboard"
+                  screenListeners={({ navigation }) => {
+                    navigationRef.current = navigation as NavigationProp<TabParamList>;
+
+                    return {
+                      state: (event) => {
+                        const state = event.data.state;
+                        const route = state.routes[state.index ?? 0];
+                        rememberActiveTab(route.name);
+                      },
+                    };
+                  }}
+                  screenOptions={{
+                    headerShown: false,
+                  }}
+                  tabBar={(props) => (
+                    // Wrap the tab bar so the active workout HUD can sit
+                    // directly on top of it. Order matters: CustomTabBar is
+                    // a later sibling than ActiveWorkoutBar, so its Add button
+                    // (which uses -mt-5 to rise above the tab bar's top edge)
+                    // paints on top of the embedded bar — matching the mockup
+                    // where the + button visually bridges both bars.
+                    <View collapsable={false}>
+                      <WhatsNewBanner />
+                      <ActiveWorkoutBar variant="embedded" />
+                      <CustomTabBar {...props} />
+                    </View>
+                  )}
+                >
+                  <Tab.Screen name="Dashboard" component={SafeDashboard} />
+                  <Tab.Screen name="Diary" component={SafeDiary} />
+                  <Tab.Screen
+                    name="Add"
+                    component={EmptyScreen}
+                    listeners={({ navigation }) => ({
+                      tabPress: (e) => {
+                        e.preventDefault();
+                        navigationRef.current = navigation;
+                        handleAddPress();
+                      },
+                    })}
+                  />
+                  <Tab.Screen name="Library" component={SafeLibrary} />
+                  <Tab.Screen name="Settings" component={SettingsScreen} />
+                </Tab.Navigator>
+              );
+            }}
           </Stack.Screen>
           <Stack.Screen
             name="FoodsLibrary"
@@ -1022,7 +1186,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}
