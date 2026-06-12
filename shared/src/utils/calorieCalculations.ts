@@ -324,7 +324,7 @@ export function computeCalorieTarget({
   const absoluteFloorValue = gender === "female" ? 1200 : 1500;
   const isBelowAbsoluteFloor = calculatedTarget < absoluteFloorValue;
 
-  const safetyFloor = Math.max(rmr, absoluteFloorValue);
+  const safetyFloor = Math.max(bmr, absoluteFloorValue);
   const finalTarget = (calculationMethod === "adaptive" && calculatedTarget < safetyFloor)
     ? Math.round(safetyFloor)
     : Math.round(calculatedTarget);
