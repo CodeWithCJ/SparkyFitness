@@ -64,9 +64,12 @@ async function calculateAdaptiveTdee(userId: any, dateParam: any) {
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
     let age = 30;
     if (userProfile?.date_of_birth) {
-      // date_of_birth comes from pg as a 'YYYY-MM-DD' string; parseISO yields local
-      // midnight so the getFullYear/Month/Date comparison below is timezone-stable.
-      const dob = parseISO(String(userProfile.date_of_birth).slice(0, 10));
+      // date_of_birth comes from pg as a 'YYYY-MM-DD' string; parse it to local midnight
+      // so the getFullYear/Month/Date comparison below is timezone-stable. Guard the Date
+      // shape too, in case a caller supplies an already-parsed value.
+      const rawDob = userProfile.date_of_birth;
+      const dob =
+        typeof rawDob === 'string' ? parseISO(rawDob.slice(0, 10)) : rawDob;
       age = calculationDate.getFullYear() - dob.getFullYear();
       const m = calculationDate.getMonth() - dob.getMonth();
       if (m < 0 || (m === 0 && calculationDate.getDate() < dob.getDate())) {
