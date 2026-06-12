@@ -147,6 +147,46 @@ async function updateUserProfile(
     client.release();
   }
 }
+// Account fields on the Better Auth "user" table; backs the chatbot profile
+// tools (ai/tools/profileTools.ts).
+async function getAuthUserProfile(userId: string) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      'SELECT id, email, name, image FROM "user" WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+// Partial COALESCE update of the Better Auth "user" row. Note: unlike
+// updateUserEmail, an email change here does not update account.account_id
+// for credential logins.
+async function updateAuthUserProfile(
+  userId: string,
+  name: string | null,
+  email: string | null,
+  image: string | null
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `UPDATE "user"
+       SET name = COALESCE($2, name),
+           email = COALESCE($3, email),
+           image = COALESCE($4, image),
+           updated_at = now()
+       WHERE id = $1
+       RETURNING id, email, name, image`,
+      [userId, name, email, image]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
 async function updateUserPassword(userId: string, hashedPassword: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -515,6 +555,8 @@ export { findUserIdByEmail };
 export { getAccessibleUsers };
 export { getUserProfile };
 export { updateUserProfile };
+export { getAuthUserProfile };
+export { updateAuthUserProfile };
 export { updateUserPassword };
 export { updateUserEmail };
 export { getUserRole };
@@ -543,6 +585,8 @@ export default {
   getAccessibleUsers,
   getUserProfile,
   updateUserProfile,
+  getAuthUserProfile,
+  updateAuthUserProfile,
   updateUserPassword,
   updateUserEmail,
   getUserRole,

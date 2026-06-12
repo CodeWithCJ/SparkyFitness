@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-11_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -64,7 +64,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `db/` - pool management, grants, migrations, and RLS policies
 - `config/` - logging and Swagger config
 - `utils/` - startup helpers, CORS, permissions, timezone loading, OIDC helpers, migration helpers
-- `ai/` - AI provider configuration (`config.ts`) and the unified provider-dispatch helper (`providerDispatch.ts`)
+- `ai/` - AI provider configuration (`config.ts`), the unified provider-dispatch helper (`providerDispatch.ts`), and the in-process chatbot tool registry (`ai/tools/`)
 - `security/` - encryption utilities (`encryption.ts`)
 - `validation/` - legacy express-validator rules for a few older routes (new routes use Zod schemas)
 - `constants/` - shared constants and supporting package data
@@ -184,6 +184,10 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - AI calls go through the Vercel `ai` SDK (v6) with provider adapters for OpenAI, Anthropic, and Google, plus OpenAI-compatible, Mistral, Groq, OpenRouter, and Ollama service types
 - `ai/config.ts` holds default model and vision-model selection per provider; `ai/providerDispatch.ts` is the unified dispatch helper used by chat, food-photo analysis, nutrition-label scan, and unit conversion
 - Prefer routing new AI features through `providerDispatch.ts` instead of calling provider SDKs directly
+- Chatbot tool calls run in-process through the registry in `ai/tools/`; the chat path does not use the external `SparkyFitnessMCP/` server (that package now serves external MCP clients only)
+- `ai/tools/index.ts` exposes `buildChatbotTools(userId, tz)`, composing the per-domain builders (`build<Domain>Tools` in `ai/tools/<domain>Tools.ts`); handlers close over the authenticated user — so two-actor services receive `(userId, userId, ...)` — and the user's IANA timezone, used for "today" defaults and day bucketing
+- Tool handlers follow a fixed contract: publish a flat Zod schema, validate with a strict union `safeParse` inside `execute`, orchestrate through existing services and repositories, and never throw - errors come back as `ERRORS.*` strings from `ai/tools/errors.ts`
+- Tool output text is a parity contract with the MCP tool set; golden tests in `tests/chatbotTools*.test.ts` assert exact returned strings, so do not reword tool output casually
 
 ## Testing and Validation
 
@@ -209,6 +213,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the relevant `integrations/*` code, then the matching service and repository files
 - Health data or date bucketing issue:
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
+- AI chat or chatbot tool issue:
+  inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
 
 ## Working Rules
 

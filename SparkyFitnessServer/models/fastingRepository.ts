@@ -214,6 +214,30 @@ async function getFastingLogsByDateRange(
     client.release();
   }
 }
+// Fasting logs whose window overlaps the given calendar day in the user's
+// timezone, including active fasts with no end_time. Backs the chatbot
+// check-in diary (ai/tools/checkinTools.ts).
+async function getFastingLogsOverlappingDay(
+  userId: string,
+  date: string,
+  timezone: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, start_time, end_time, status, fasting_type
+       FROM fasting_logs
+       WHERE user_id = $1
+         AND (start_time AT TIME ZONE $3)::date <= $2::date
+         AND (end_time IS NULL OR (end_time AT TIME ZONE $3)::date >= $2::date)
+       ORDER BY start_time ASC`,
+      [userId, date, timezone]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 export { createFastingLog };
 export { endFast };
 export { getFastingById };
@@ -222,6 +246,7 @@ export { getFastingHistory };
 export { updateFast };
 export { getFastingStats };
 export { getFastingLogsByDateRange };
+export { getFastingLogsOverlappingDay };
 export default {
   createFastingLog,
   endFast,
@@ -231,4 +256,5 @@ export default {
   updateFast,
   getFastingStats,
   getFastingLogsByDateRange,
+  getFastingLogsOverlappingDay,
 };
