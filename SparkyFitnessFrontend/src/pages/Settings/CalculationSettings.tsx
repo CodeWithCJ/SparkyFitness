@@ -217,6 +217,14 @@ const CalculationSettings = () => {
     contextGoalModeCustomPercentage,
   ]);
 
+  // Reset calculation method and custom percentage when Goal Mode is 'maintain' to avoid stale values
+  useEffect(() => {
+    if (goalMode === 'maintain') {
+      setGoalModeCalculationMethod('manual');
+      setGoalModeCustomPercentage(0);
+    }
+  }, [goalMode]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -897,6 +905,7 @@ const CalculationSettings = () => {
               <SelectTrigger
                 id="calculation-method-select"
                 className={goalMode === 'maintain' ? 'opacity-50' : ''}
+                disabled={goalMode === 'maintain'}
               >
                 <SelectValue />
               </SelectTrigger>

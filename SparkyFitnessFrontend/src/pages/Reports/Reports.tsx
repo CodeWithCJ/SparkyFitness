@@ -138,7 +138,7 @@ const Reports = () => {
     customMeasurementsData = [],
   } = reportsData || {};
 
-  const { data: goalData } = useDailyGoalsRange(startDate, endDate);
+  const { data: goalData } = useDailyGoalsRange(startDate, endDate, true, true);
 
   const handleStartDateChange = (date: string) => {
     debug(loggingLevel, 'Reports: Start date change handler called:', {
