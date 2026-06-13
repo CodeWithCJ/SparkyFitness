@@ -39,6 +39,21 @@ async function getDashboardStats(userId: any, date: any) {
       // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
       adaptiveTdeeService.calculateAdaptiveTdee(userId),
     ]);
+
+    // External BMR override — mirror dailySummaryService logic so /dashboard/stats stays consistent.
+    const useExternalBmr = userPreferences?.use_external_bmr || false;
+    const externalBmr = useExternalBmr
+      ? await measurementRepository
+          .getExternalBmrForDate(userId, date)
+          .catch((error: unknown) => {
+            log(
+              'warn',
+              `DashboardService: external BMR fetch failed for user ${userId} on ${date}:`,
+              error
+            );
+            return null;
+          })
+      : null;
     // 1. Goal Calories (Base)
     const rawGoalCalories = parseFloat(goals?.calories) || 2000;
     // 2. Eaten Calories
@@ -101,6 +116,14 @@ async function getDashboardStats(userId: any, date: any) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         log('warn', `DashboardService: BMR calc failed: ${error.message}`);
       }
+    }
+    if (
+      useExternalBmr &&
+      externalBmr !== null &&
+      externalBmr >= 600 &&
+      externalBmr <= 6000
+    ) {
+      bmr = externalBmr;
     }
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
     const calorieGoalOffset =

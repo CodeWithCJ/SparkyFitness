@@ -7,10 +7,14 @@ const BmrAlgorithm = {
   OXFORD: 'Oxford',
 };
 const ActivityMultiplier = {
+  none: 1.0,
   sedentary: 1.2,
-  not_much: 1.2, // Map existing value
+  not_much: 1.2,
+  light: 1.375,
   lightly_active: 1.375,
+  moderate: 1.55,
   moderately_active: 1.55,
+  heavy: 1.725,
   very_active: 1.725,
   extra_active: 1.9,
 };
