@@ -103,6 +103,7 @@
       "otherExerciseCalories": "Inne ćwiczenia: {{exerciseCalories}} kcal",
       "stepsCalories": "Kroki: {{dailySteps}} = {{stepsCalories}} kcal",
       "bmrCalories": "BMR: {{bmr}} kcal",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Suma: {{totalCaloriesBurned}} kcal",
       "goal": "cel",
       "caloriesBurnedBreakdownTitle": "Podsumowanie spalonych kalorii",

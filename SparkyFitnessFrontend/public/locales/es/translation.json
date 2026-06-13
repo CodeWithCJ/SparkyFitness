@@ -104,6 +104,7 @@
       "activeCalories": "Calorías activas: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "Pasos: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "TMB: {{bmr}} cal",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Total: {{totalCaloriesBurned}} cal",
       "goal": "objetivo",
       "caloriesBurnedBreakdownTitle": "Desglose de calorías quemadas",

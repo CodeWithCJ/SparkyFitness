@@ -101,6 +101,7 @@
       "otherExerciseCalories": "التمارين الأخرى: {{exerciseCalories}} سعرة حرارية",
       "stepsCalories": "الخطوات: {{dailySteps}} = {{stepsCalories}} سعرة حرارية",
       "bmrCalories": "معدل الأيض الأساسي: {{bmr}} سعرة حرارية",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "المجموع: {{totalCaloriesBurned}} سعرة حرارية",
       "goal": "الهدف",
       "caloriesBurnedBreakdownTitle": "تفاصيل السعرات الحرارية المحروقة",

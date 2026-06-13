@@ -104,6 +104,7 @@
       "activeCalories": "Aktīvās kalorijas: {{activeCaloriesFromExercise}} kcal",
       "stepsCalories": "Soli: {{dailySteps}} = {{stepsCalories}} kcal",
       "bmrCalories": "BMR: {{bmr}} kcal",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Kopā: {{totalCaloriesBurned}} kcal",
       "goal": "mērķis",
       "caloriesBurnedBreakdownTitle": "Sadedzināto kaloriju detalizējums",
