@@ -119,8 +119,8 @@
     --ring: 222.2 84% 4.9%;
 
     --date-today: 160 84% 39%;
-    --date-past: 22 97% 14%;
-    --date-future: 45 93% 47%;
+    --date-past: 20 90% 50%;
+    --date-future: 40 90% 50%;
 
     --radius: 0.5rem;
 
@@ -164,8 +164,8 @@
     --ring: 212.7 26.8% 83.9%;
 
     --date-today: 158 64% 52%;
-    --date-past: 22 85% 62%;
-    --date-future: 48 96% 62%;
+    --date-past: 20 90% 30%;
+    --date-future: 40 90% 30%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

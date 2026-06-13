@@ -369,9 +369,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         <nav
           className={cn(
             'relative hidden sm:grid w-full gap-1 mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg border transition-colors overflow-hidden',
-            gridClass
+            gridClass,
+            selectedDateRelation === 'today' && 'border-transparent',
+            selectedDateRelation === 'past' && 'border-date-past/40',
+            selectedDateRelation === 'future' && 'border-date-future/40'
           )}
         >
+          {selectedDateRelation !== 'today' && (
+            <div
+              className={cn(
+                'absolute inset-0 pointer-events-none z-10',
+                selectedDateRelation === 'past' && 'bg-date-past/10',
+                selectedDateRelation === 'future' && 'bg-date-future/10'
+              )}
+            />
+          )}
           {availableTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
