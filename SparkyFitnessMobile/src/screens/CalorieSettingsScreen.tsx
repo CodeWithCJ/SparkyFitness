@@ -350,7 +350,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
-              Use BMR from connected health apps
+              Use BMR from Health Apps
             </Text>
             <Switch
               onValueChange={handleExternalBmrToggle}
@@ -368,11 +368,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
               <HealthSourceLabel />
               <Text className="text-text-secondary text-xs mt-3">
                 The synced value already includes light daily activity, so you may want to set
-                your Activity Level above to None (×1.0) to avoid counting it twice.
-              </Text>
-              <Text className="text-text-secondary text-xs mt-2">
-                Enable the &quot;Basal Metabolic Rate&quot; metric under Health Data Sync for
-                this data to sync.
+                your Activity Level to None (×1.0) to avoid counting it twice.
               </Text>
             </View>
           )}

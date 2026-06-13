@@ -94,6 +94,8 @@ function extractBMRValue(record: unknown): number | null {
   } else {
     const energy = r.energy as Record<string, unknown> | undefined;
     if (energy && 'inCalories' in energy) return energy.inCalories as number;
+    // Aggregated iOS HealthKit record: { date, value, type, record_timezone }
+    if (typeof r.value === 'number') return r.value;
   }
   return null;
 }
