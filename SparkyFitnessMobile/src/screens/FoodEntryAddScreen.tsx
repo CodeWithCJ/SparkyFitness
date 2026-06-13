@@ -1193,10 +1193,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
         {!isMealBuilderMode ? (
           <>
+          <View className="flex-row items-center mt-2">
             <TouchableOpacity
               onPress={() => calendarRef.current?.present()}
               activeOpacity={0.7}
-              className="flex-row items-center mt-2"
+              className="flex-row items-center"
             >
               <Text className="text-text-secondary text-base">Date</Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
@@ -1209,6 +1210,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 weight="medium"
               />
             </TouchableOpacity>
+
+            {selectedDate !== getTodayDate() && (
+                <TouchableOpacity activeOpacity={0.7} className="flex-row items-center mx-4" onPress={
+                  () => setSelectedDate(getTodayDate())
+                }>
+                  <Text className="text-text-link text-small font-medium mx-1.5">Use Today</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {selectedMealType ? (
               <View className="flex-row items-center mt-2">
