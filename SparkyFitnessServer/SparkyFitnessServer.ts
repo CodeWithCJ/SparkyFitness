@@ -87,6 +87,7 @@ import { toNodeHandler } from 'better-auth/node';
 import freeExerciseDBService from './integrations/freeexercisedb/FreeExerciseDBService.js';
 import { downloadImage } from './utils/imageDownloader.js';
 import authRoutes from './routes/authRoutes.js';
+import mcpRoutes from './routes/mcpRoutes.js';
 import identityRoutes from './routes/identityRoutes.js';
 import oidcSettingsRoutes from './routes/oidcSettingsRoutes.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
@@ -148,6 +149,22 @@ app.use(
       req
     );
   })
+);
+// External MCP endpoint — a self-contained chain mounted top-level (NOT under
+// /api) so it dodges the /api/auth interceptor and the /api cache-control
+// middleware. It must sit before the global 50mb JSON parser below: the
+// route-local 1mb parser caps this machine-facing JSON-RPC endpoint at the
+// standalone MCP server's limit instead of inheriting the 50mb photo-upload
+// budget (the global parser sets req._body first and would no-op the local
+// one). cookieParser runs here too because the global cookieParser is after
+// the 50mb parser, and authenticate dereferences req.cookies. Mounting before
+// the global auth gate means mcpRoutes ends the response, so auth runs once.
+app.use(
+  '/mcp',
+  express.json({ limit: '1mb' }),
+  cookieParser(),
+  authenticate,
+  mcpRoutes
 );
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads

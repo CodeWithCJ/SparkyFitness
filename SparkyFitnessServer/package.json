@@ -27,6 +27,7 @@
     "@better-auth/api-key": "^1.5.6",
     "@better-auth/passkey": "^1.5.6",
     "@better-auth/sso": "^1.5.6",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@workspace/shared": "workspace:*",
     "ai": "^6.0.191",
     "axios": "^1.13.2",
