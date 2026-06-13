@@ -46,7 +46,12 @@ import { todayInZone } from '@workspace/shared';
 // Function to upsert user preferences to the backend
 
 export type EnergyUnit = 'kcal' | 'kJ';
-export type ActivityLevel = 'not_much' | 'light' | 'moderate' | 'heavy';
+export type ActivityLevel =
+  | 'none'
+  | 'not_much'
+  | 'light'
+  | 'moderate'
+  | 'heavy';
 export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
 export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
 export type DistanceUnit = 'km' | 'miles';

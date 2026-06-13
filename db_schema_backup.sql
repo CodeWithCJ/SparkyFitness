@@ -2375,6 +2375,7 @@ CREATE TABLE public.user_preferences (
     barcode_fallback_open_food_facts boolean DEFAULT true,
     show_net_carbs boolean DEFAULT false NOT NULL,
     ai_assisted_conversions boolean DEFAULT true NOT NULL,
+    use_external_bmr boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
