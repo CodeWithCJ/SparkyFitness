@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -126,6 +126,35 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   );
   const displayValues = viewMode === 'perServing' ? perServingValues : totalValues;
 
+  // iOS uses the native glass header (configured in App.tsx). The title stays
+  // blank — the meal name is shown in the body's nutrition card, so a bar title
+  // would just duplicate it; we only drive the owner-gated Edit action here once
+  // the meal loads. Android keeps the custom in-screen header below.
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerRight: canManageMeal
+        ? () => (
+            <Pressable
+              onPress={() =>
+                navigation.navigate('MealAdd', {
+                  mode: 'edit',
+                  mealId: meal!.id,
+                  initialMeal: meal,
+                })
+              }
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit meal"
+            >
+              <Text style={{ color: accentColor, fontSize: 17, fontWeight: '500' }}>Edit</Text>
+            </Pressable>
+          )
+        : undefined,
+    });
+  }, [navigation, meal, canManageMeal, accentColor]);
+
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
       return (
@@ -165,9 +194,10 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
     return (
       <ScrollView
-        className="flex-1"
+        className="flex-1 bg-background"
         contentContainerClassName="px-4 py-4 gap-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + activeWorkoutBarPadding + 16 }}
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
       >
         <View className="gap-2">
           <SegmentedControl
@@ -259,6 +289,14 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       </ScrollView>
     );
   };
+
+  // iOS: the native glass header replaces the custom header entirely. Return the
+  // content (a ScrollView in the loaded state) as the screen root — UIKit only
+  // attaches the large-title collapse to a scroll view it finds at the top of
+  // the screen, so wrapping it in another View breaks the inset + collapse.
+  if (Platform.OS === 'ios') {
+    return renderContent();
+  }
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

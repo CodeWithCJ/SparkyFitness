@@ -23,7 +23,7 @@ export type NonAddTabName = typeof NON_ADD_TABS[number];
 const ADD_TAB_ICON: AppleIcon = { sfSymbol: 'plus' };
 const IOS_SEARCH_ROLE_MIN_VERSION = 26;
 
-function createIOSNativeHeaderOptions(tintColor: string): NativeStackNavigationOptions {
+export function createIOSNativeHeaderOptions(tintColor: string): NativeStackNavigationOptions {
   return {
     headerShown: true,
     headerLargeTitleEnabled: true,
