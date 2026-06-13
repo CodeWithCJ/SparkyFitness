@@ -24,6 +24,7 @@ import {
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { useState } from 'react';
 import { ExpandedGoals } from '@/types/goals';
+import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -58,6 +59,18 @@ const DiaryTopControls = ({
   const { loggingLevel, nutrientDisplayPreferences, showNetCarbs } =
     usePreferences(); // Get logging level
   const isMobile = useIsMobile();
+  const { data: summaryData } = useDailySummary(selectedDate);
+  const adjustedGoals = summaryData?.adjustedGoals;
+
+  const effectiveGoals: ExpandedGoals = adjustedGoals
+    ? {
+        ...goals,
+        calories: adjustedGoals.calories,
+        protein: adjustedGoals.protein,
+        carbs: adjustedGoals.carbs,
+        fat: adjustedGoals.fat,
+      }
+    : goals;
   const platform = isMobile ? 'mobile' : 'desktop';
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
@@ -153,11 +166,11 @@ const DiaryTopControls = ({
                   nutrient === 'carbs' && showNetCarbs
                     ? getNetCarbsValue(dayTotals.carbs, dayTotals.dietary_fiber)
                     : total;
-                const rawGoal = goals[nutrient as keyof ExpandedGoals];
+                const rawGoal = effectiveGoals[nutrient as keyof ExpandedGoals];
                 const goal =
                   typeof rawGoal === 'number'
                     ? rawGoal
-                    : (goals.custom_nutrients?.[nutrient] ?? 0);
+                    : (effectiveGoals.custom_nutrients?.[nutrient] ?? 0);
 
                 const displayTotal =
                   nutrient === 'calories'
