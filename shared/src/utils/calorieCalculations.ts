@@ -246,7 +246,9 @@ export function calculateMinimumMetabolism(
 ): number {
   if (bodyFatPercentage && bodyFatPercentage > 0) {
     const lbm = weightKg * (1 - bodyFatPercentage / 100);
-    return 370 + 21.6 * lbm;
+    return bmrAlgorithm === "Cunningham"
+      ? 500 + 22 * lbm
+      : 370 + 21.6 * lbm;
   }
 
   const activeBmrFn = calculateBmrFn || calculateBmr;

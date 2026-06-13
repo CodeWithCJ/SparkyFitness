@@ -306,8 +306,16 @@ const CalculationSettings = () => {
   const bodyFat = bodyFatData?.body_fat_percentage;
   const gender = (userProfile?.gender || 'male') as 'male' | 'female';
   const age = userProfile?.date_of_birth
-    ? new Date().getFullYear() -
-      new Date(userProfile.date_of_birth).getFullYear()
+    ? (() => {
+        const today = new Date();
+        const birthDate = new Date(userProfile.date_of_birth);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      })()
     : 30;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;

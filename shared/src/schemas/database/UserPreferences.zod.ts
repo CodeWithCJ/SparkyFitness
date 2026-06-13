@@ -37,9 +37,9 @@ export const userPreferencesSchema = z.object({
   default_barcode_provider_id: externalDataProvidersIdSchema.nullable(),
   first_day_of_week: z.number().int().min(0).max(6).nullable().optional(),
   ai_assisted_conversions: z.boolean(),
-  goal_mode: z.string(),
-  goal_mode_calculation_method: z.string(),
-  goal_mode_custom_percentage: z.number(),
+  goal_mode: z.enum(['maintain', 'recomp', 'cut', 'high_cut', 'manual']),
+  goal_mode_calculation_method: z.enum(['adaptive', 'manual']),
+  goal_mode_custom_percentage: z.number().int().min(0).max(40),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -78,9 +78,9 @@ export const userPreferencesInitializerSchema = z.object({
     .nullable(),
   first_day_of_week: z.number().int().min(0).max(6).nullable().optional(),
   ai_assisted_conversions: z.boolean().optional(),
-  goal_mode: z.string().optional(),
-  goal_mode_calculation_method: z.string().optional(),
-  goal_mode_custom_percentage: z.number().optional(),
+  goal_mode: z.enum(['maintain', 'recomp', 'cut', 'high_cut', 'manual']).optional(),
+  goal_mode_calculation_method: z.enum(['adaptive', 'manual']).optional(),
+  goal_mode_custom_percentage: z.number().int().min(0).max(40).optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -119,9 +119,9 @@ export const userPreferencesMutatorSchema = z.object({
     .nullable(),
   first_day_of_week: z.number().int().min(0).max(6).nullable().optional(),
   ai_assisted_conversions: z.boolean().optional(),
-  goal_mode: z.string().optional(),
-  goal_mode_calculation_method: z.string().optional(),
-  goal_mode_custom_percentage: z.number().optional(),
+  goal_mode: z.enum(['maintain', 'recomp', 'cut', 'high_cut', 'manual']).optional(),
+  goal_mode_calculation_method: z.enum(['adaptive', 'manual']).optional(),
+  goal_mode_custom_percentage: z.number().int().min(0).max(40).optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
