@@ -90,6 +90,7 @@ describe('MealDetailScreen', () => {
   const navigation = {
     goBack: jest.fn(),
     navigate: jest.fn(),
+    setOptions: jest.fn(),
   } as any;
   const route = {
     key: 'MealDetail-key',
@@ -106,6 +107,11 @@ describe('MealDetailScreen', () => {
         <MealDetailScreen navigation={navigation} route={route} />
       </SafeAreaProvider>,
     );
+
+  // On iOS the Edit action lives in the native header, applied via
+  // navigation.setOptions({ headerRight }); pull it back out to assert on it.
+  const getHeaderRight = () =>
+    (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.headerRight;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -140,8 +146,11 @@ describe('MealDetailScreen', () => {
 
     expect(screen.getByText('Lunch Bowl')).toBeTruthy();
     expect(screen.getByText('Per serving')).toBeTruthy();
-    expect(screen.getByText('Edit')).toBeTruthy();
     expect(screen.getByText('Delete Meal')).toBeTruthy();
+
+    const headerRight = getHeaderRight();
+    expect(headerRight).toBeTruthy();
+    expect(render(headerRight()).getByText('Edit')).toBeTruthy();
   });
 
   it('logs the meal from the detail screen', () => {
@@ -162,9 +171,9 @@ describe('MealDetailScreen', () => {
   });
 
   it('opens MealAdd in edit mode for owners', () => {
-    const screen = renderScreen();
+    renderScreen();
 
-    fireEvent.press(screen.getByText('Edit'));
+    fireEvent.press(render(getHeaderRight()()).getByText('Edit'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('MealAdd', {
       mode: 'edit',
@@ -184,7 +193,7 @@ describe('MealDetailScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.queryByText('Edit')).toBeNull();
+    expect(getHeaderRight()).toBeUndefined();
     expect(screen.queryByText('Delete Meal')).toBeNull();
     expect(screen.getByText('Log Meal')).toBeTruthy();
   });

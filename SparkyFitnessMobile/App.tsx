@@ -107,7 +107,7 @@ import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
-import { navigateToLastActiveTab, NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
+import { createIOSNativeHeaderOptions, navigateToLastActiveTab, NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
 import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
@@ -790,10 +790,24 @@ function AppContent() {
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={
+              Platform.OS === 'ios'
+                ? {
+                    // Path A, small glass header with a blank title — the meal
+                    // name is shown in the body's nutrition card, so a bar title
+                    // would just duplicate it. The screen drives the owner-gated
+                    // Edit button via setOptions; a small title absorbs that
+                    // without the large-title "fly in".
+                    ...createIOSNativeHeaderOptions(textPrimary),
+                    headerLargeTitleEnabled: false,
+                    title: '',
+                    gestureEnabled: true,
+                  }
+                : {
+                    headerShown: false,
+                    gestureEnabled: true,
+                  }
+            }
           />
           <Stack.Screen
             name="ExerciseDetail"
@@ -960,10 +974,25 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) =>
+              Platform.OS === 'ios'
+                ? {
+                    // Path A, dynamic-header variant: native iOS *glass* header
+                    // with a SMALL inline title (not large). Editor/stateful
+                    // screens re-apply header config via setOptions; re-applying
+                    // a *large* title after mount makes it "fly in" on every
+                    // return — a small title has no entrance animation, so it
+                    // stays put. The glass material is identical either way.
+                    ...createIOSNativeHeaderOptions(textPrimary),
+                    headerLargeTitleEnabled: false,
+                    title: route.params?.session?.name ?? 'Workout',
+                    gestureEnabled: true,
+                  }
+                : {
+                    headerShown: false,
+                    gestureEnabled: true,
+                  }
+            }
           />
           <Stack.Screen
             name="ActivityDetail"
