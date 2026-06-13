@@ -221,10 +221,14 @@ const CalculationSettings = () => {
   // Reset calculation method and custom percentage when Goal Mode is 'maintain' to avoid stale values
   useEffect(() => {
     if (goalMode === 'maintain') {
-      setGoalModeCalculationMethod('manual');
-      setGoalModeCustomPercentage(0);
+      if (goalModeCalculationMethod !== 'manual') {
+        setGoalModeCalculationMethod('manual');
+      }
+      if (goalModeCustomPercentage !== 0) {
+        setGoalModeCustomPercentage(0);
+      }
     }
-  }, [goalMode]);
+  }, [goalMode, goalModeCalculationMethod, goalModeCustomPercentage]);
 
   const handleSave = async () => {
     setIsSaving(true);

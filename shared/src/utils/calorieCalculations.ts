@@ -244,14 +244,18 @@ export function calculateMinimumMetabolism(
   bmrAlgorithm: string = "Mifflin-St Jeor",
   calculateBmrFn?: BmrCalculatorFn
 ): number {
-  if (bodyFatPercentage && bodyFatPercentage > 0) {
+  const activeBmrFn = calculateBmrFn || calculateBmr;
+  if (
+    (bmrAlgorithm === "Katch-McArdle" || bmrAlgorithm === "Cunningham") &&
+    bodyFatPercentage &&
+    bodyFatPercentage > 0
+  ) {
     const lbm = weightKg * (1 - bodyFatPercentage / 100);
     return bmrAlgorithm === "Cunningham"
       ? 500 + 22 * lbm
       : 370 + 21.6 * lbm;
   }
 
-  const activeBmrFn = calculateBmrFn || calculateBmr;
   return activeBmrFn(bmrAlgorithm, weightKg, heightCm, age, gender, bodyFatPercentage);
 }
 
