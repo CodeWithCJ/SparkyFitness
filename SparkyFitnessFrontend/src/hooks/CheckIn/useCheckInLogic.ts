@@ -71,7 +71,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     formatDateInUserTimezone,
-    timezone,
     bodyFatAlgorithm,
     timezone,
   } = usePreferences();
