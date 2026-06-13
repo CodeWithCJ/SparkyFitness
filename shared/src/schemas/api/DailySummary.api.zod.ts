@@ -23,6 +23,15 @@ export const calorieBalanceSchema = z.object({
 
 export type CalorieBalance = z.infer<typeof calorieBalanceSchema>;
 
+export const adjustedGoalsSchema = z.object({
+  calories: z.number(),
+  protein: z.number(),
+  carbs: z.number(),
+  fat: z.number(),
+});
+
+export type AdjustedGoals = z.infer<typeof adjustedGoalsSchema>;
+
 export const dailySummaryResponseSchema = z.object({
   goals: dailyGoalsResponseSchema,
   foodEntries: z.array(foodEntryResponseSchema),
@@ -30,6 +39,7 @@ export const dailySummaryResponseSchema = z.object({
   waterIntake: z.number(),
   stepCalories: z.number(),
   calorieBalance: calorieBalanceSchema,
+  adjustedGoals: adjustedGoalsSchema.nullable(),
 });
 
 export type DailySummaryResponse = z.infer<typeof dailySummaryResponseSchema>;

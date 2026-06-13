@@ -279,6 +279,35 @@ export async function getDailySummary({
     measurements
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawGoalData = goals as Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adjustedGoalData = adjustedGoals as Record<string, any>;
+  const rawCalories = parseFloat(String(rawGoalData?.calories ?? '')) || 2000;
+  const adjCalories =
+    parseFloat(String(adjustedGoalData?.calories ?? '')) || rawCalories;
+
+  const computedAdjustedGoals: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null =
+    adjCalories !== rawCalories
+      ? {
+          calories: Math.round(adjCalories),
+          protein: Math.round(
+            parseFloat(String(adjustedGoalData?.protein ?? '')) || 0
+          ),
+          carbs: Math.round(
+            parseFloat(String(adjustedGoalData?.carbs ?? '')) || 0
+          ),
+          fat: Math.round(
+            parseFloat(String(adjustedGoalData?.fat ?? '')) || 0
+          ),
+        }
+      : null;
+
   return {
     goals,
     foodEntries,
@@ -286,5 +315,6 @@ export async function getDailySummary({
     waterIntake: parseFloat(waterResult?.water_ml) || 0,
     stepCalories,
     calorieBalance,
+    adjustedGoals: computedAdjustedGoals,
   };
 }
