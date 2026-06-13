@@ -248,7 +248,7 @@ const MealCard = ({
                         `MealCard: Add Food button clicked for ${meal.name}.`
                       )
                     }
-                    title="Add a new food item}"
+                    title="Add a new food item"
                   >
                     <Utensils className="w-4 h-4" />
                   </Button>
