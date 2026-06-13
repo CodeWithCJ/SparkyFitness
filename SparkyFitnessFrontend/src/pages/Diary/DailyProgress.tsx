@@ -295,8 +295,9 @@ Calculated: ${bfp.toFixed(1)}%`;
       ? adaptiveTdeeData.tdee
       : bmr * activityMultiplier;
 
-  // Offset uses fixed 'not_much' baseline to prevent goal inversion
-  const baselineMaintenance = bmr > 0 ? Math.round(bmr * 1.2) : 0;
+  // Offset uses user's actual activity multiplier to match goalService server calculations
+  const baselineMaintenance =
+    bmr > 0 ? Math.round(bmr * activityMultiplier) : 0;
   const calorieGoalOffset = bmr > 0 ? rawManualGoal - baselineMaintenance : 0;
 
   let adjustedManualGoal = rawManualGoal;
