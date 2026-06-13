@@ -306,6 +306,47 @@ export async function getDailySummary({
     adaptiveTdeeData
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const goalData = goals as Record<string, any>;
+  const rawGoalCalories = parseFloat(String(goalData?.calories ?? '')) || 2000;
+  const adjustedCalories = calorieBalance.goal;
+  let adjustedGoals: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null = null;
+
+  if (adjustedCalories !== rawGoalCalories && rawGoalCalories > 0) {
+    const pPct = goalData.protein_percentage;
+    const cPct = goalData.carbs_percentage;
+    const fPct = goalData.fat_percentage;
+
+    if (
+      pPct !== null &&
+      pPct !== undefined &&
+      cPct !== null &&
+      cPct !== undefined &&
+      fPct !== null &&
+      fPct !== undefined
+    ) {
+      adjustedGoals = {
+        calories: adjustedCalories,
+        protein: Math.round((adjustedCalories * (pPct / 100)) / 4),
+        carbs: Math.round((adjustedCalories * (cPct / 100)) / 4),
+        fat: Math.round((adjustedCalories * (fPct / 100)) / 9),
+      };
+    } else {
+      const ratio = adjustedCalories / rawGoalCalories;
+      adjustedGoals = {
+        calories: adjustedCalories,
+        protein: Math.round((goalData.protein || 0) * ratio),
+        carbs: Math.round((goalData.carbs || 0) * ratio),
+        fat: Math.round((goalData.fat || 0) * ratio),
+      };
+    }
+  }
+
   return {
     goals,
     foodEntries,
@@ -313,5 +354,6 @@ export async function getDailySummary({
     waterIntake: parseFloat(waterResult?.water_ml) || 0,
     stepCalories,
     calorieBalance,
+    adjustedGoals,
   };
 }
