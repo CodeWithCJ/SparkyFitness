@@ -201,6 +201,10 @@ describe('dailySummaryService', () => {
       goal_mode_custom_percentage: 0,
     });
 
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1800,
+    });
+
     const result = await getDailySummary({
       actorUserId,
       targetUserId,
@@ -226,6 +230,10 @@ describe('dailySummaryService', () => {
       goal_mode: 'recomp',
       goal_mode_calculation_method: 'adaptive',
       goal_mode_custom_percentage: 0,
+    });
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1944,
     });
 
     // bmr is mocked to 1800. activity multiplier for 'not_much' is 1.2.
@@ -256,6 +264,10 @@ describe('dailySummaryService', () => {
       goal_mode: 'high_cut', // 20% deficit
       goal_mode_calculation_method: 'adaptive',
       goal_mode_custom_percentage: 0,
+    });
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1800,
     });
 
     // bmr is mocked to 1800. activity multiplier is 1.2 -> baselineTdee = 2160.

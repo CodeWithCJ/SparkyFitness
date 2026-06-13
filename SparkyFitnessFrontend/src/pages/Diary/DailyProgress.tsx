@@ -294,7 +294,22 @@ Calculated: ${bfp.toFixed(1)}%`;
     adaptiveTdeeData && !adaptiveTdeeData.isFallback
       ? adaptiveTdeeData.tdee
       : bmr * activityMultiplier;
-  const targetBaseline = isAdaptiveMethod ? adaptiveTdeeValue : rawManualGoal;
+
+  // Offset uses fixed 'not_much' baseline to prevent goal inversion
+  const baselineMaintenance = bmr > 0 ? Math.round(bmr * 1.2) : 0;
+  const calorieGoalOffset = bmr > 0 ? rawManualGoal - baselineMaintenance : 0;
+
+  let adjustedManualGoal = rawManualGoal;
+  if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
+    adjustedManualGoal = Math.max(
+      1200,
+      Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+    );
+  }
+
+  const targetBaseline = isAdaptiveMethod
+    ? adaptiveTdeeValue
+    : adjustedManualGoal;
   const deficitPct =
     goalMode === 'maintain'
       ? 0
@@ -813,11 +828,27 @@ Calculated: ${bfp.toFixed(1)}%`;
                         )
                       ) : (
                         <span>
-                          Manual Daily Calorie Goal ={' '}
-                          {Math.round(
-                            convertEnergy(rawManualGoal, 'kcal', energyUnit)
-                          )}{' '}
-                          {getEnergyUnitString(energyUnit)}
+                          {calorieGoalAdjustmentMode === 'adaptive' ? (
+                            <>
+                              Adaptive Manual Calorie Goal ={' '}
+                              {Math.round(
+                                convertEnergy(
+                                  adjustedManualGoal,
+                                  'kcal',
+                                  energyUnit
+                                )
+                              )}{' '}
+                              {getEnergyUnitString(energyUnit)}
+                            </>
+                          ) : (
+                            <>
+                              Manual Daily Calorie Goal ={' '}
+                              {Math.round(
+                                convertEnergy(rawManualGoal, 'kcal', energyUnit)
+                              )}{' '}
+                              {getEnergyUnitString(energyUnit)}
+                            </>
+                          )}
                         </span>
                       )}
                     </div>

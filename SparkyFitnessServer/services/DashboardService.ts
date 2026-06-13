@@ -1,15 +1,13 @@
-import goalRepository from '../models/goalRepository.js';
+import goalService from './goalService.js';
 import reportRepository from '../models/reportRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
-import adaptiveTdeeService from './AdaptiveTdeeService.js';
 import { log } from '../config/logging.js';
 import {
   CALORIE_CALCULATION_CONSTANTS,
   userHourMinute,
-  computeCalorieTarget,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 /**
@@ -26,9 +24,8 @@ async function getDashboardStats(userId: string, date: string) {
       userPreferences,
       latestMeasurements,
       checkInMeasurements,
-      adaptiveTdeeData,
     ] = await Promise.all([
-      goalRepository.getMostRecentGoalBeforeDate(userId, date),
+      goalService.getUserGoals(userId, date, undefined, true),
       reportRepository.getNutritionData(userId, date, date, []),
       // @ts-expect-error TS(2554): Expected 6 arguments, but got 3.
       reportRepository.getExerciseEntries(userId, date, date),
@@ -36,10 +33,9 @@ async function getDashboardStats(userId: string, date: string) {
       preferenceRepository.getUserPreferences(userId),
       measurementRepository.getLatestMeasurement(userId),
       measurementRepository.getCheckInMeasurementsByDate(userId, date),
-      adaptiveTdeeService.calculateAdaptiveTdee(userId),
     ]);
     // 1. Goal Calories (Base)
-    const rawGoalCalories = parseFloat(goals?.calories) || 2000;
+    const rawGoalCalories = parseFloat((goals as any)?.calories) || 2000;
     // 2. Eaten Calories
     const eatenCalories =
       nutritionData.length > 0 ? parseFloat(nutritionData[0].calories) || 0 : 0;
@@ -104,8 +100,6 @@ async function getDashboardStats(userId: string, date: string) {
       }
     }
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
-    const calorieGoalOffset =
-      bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
     // 3-tier fallback to avoid double-counting
     // We compare:
     // 1. Device total "Active Calories" (which includes steps + workouts)
@@ -119,59 +113,13 @@ async function getDashboardStats(userId: string, date: string) {
     const netCalories = eatenCalories - totalBurned;
     // 6. Goal Adjustment Logic
     let remaining = 0;
-    let finalGoalCalories = rawGoalCalories;
+    const finalGoalCalories = rawGoalCalories;
     const adjustmentMode =
       userPreferences?.calorie_goal_adjustment_mode || 'dynamic';
     const exerciseCaloriePercentage =
       userPreferences?.exercise_calorie_percentage ?? 100;
     const allowNegativeAdjustment =
       userPreferences?.tdee_allow_negative_adjustment ?? false;
-    // Apply Adaptive TDEE baseline if mode is active and BMR is available
-    if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-      finalGoalCalories = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
-    }
-
-    // Apply Goal Mode Deficit targets if enabled
-    const goalMode = userPreferences?.goal_mode || 'maintain';
-    const goalModeCalculationMethod =
-      userPreferences?.goal_mode_calculation_method || 'manual';
-    const goalModeCustomPercentage =
-      userPreferences?.goal_mode_custom_percentage ?? 0;
-
-    if (goalMode !== 'maintain' && bmr > 0) {
-      const tz = userPreferences?.timezone || 'UTC';
-      const age = userAge(userProfile.date_of_birth, tz) ?? 30;
-      const gender = (userProfile.gender || 'male') as 'male' | 'female';
-      const bodyFat = latestMeasurements?.body_fat_percentage;
-      const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
-
-      const result = computeCalorieTarget({
-        goalMode,
-        calculationMethod: goalModeCalculationMethod,
-        customPercentage: goalModeCustomPercentage,
-        bmr,
-        activityLevelMultiplier: multiplier,
-        adaptiveTdee: adaptiveTdeeData
-          ? (adaptiveTdeeData.tdee as number)
-          : null,
-        adaptiveTdeeFallback: adaptiveTdeeData
-          ? (adaptiveTdeeData.isFallback as boolean)
-          : true,
-        adaptiveTdeeDaysOfData: adaptiveTdeeData
-          ? (adaptiveTdeeData.daysOfData as number) || 0
-          : 0,
-        weightKg,
-        heightCm,
-        age,
-        gender,
-        bodyFatPercentage: bodyFat,
-        bmrAlgorithm,
-        currentGoalCalories: finalGoalCalories,
-        calculateBmrFn: bmrService.calculateBmr,
-      });
-
-      finalGoalCalories = result.finalTarget;
-    }
     if (adjustmentMode === 'dynamic') {
       // 100% of all burned calories credited
       remaining = finalGoalCalories - netCalories;

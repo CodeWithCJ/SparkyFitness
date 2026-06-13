@@ -268,8 +268,11 @@ async function getUserGoalsForRange(
         );
       }
 
-      // Apply goal mode deficit (lose / gain weight)
-      if (goalMode !== 'maintain' && bmr > 0) {
+      // Apply goal mode deficit AND baseline replacement.
+      // Must always run when bmr > 0 — even for 'maintain' — so that
+      // calculationMethod='adaptive' replaces the stored goal with the
+      // adaptive TDEE baseline (matches CalculationSettings preview).
+      if (bmr > 0) {
         const tz = userPreferences?.timezone || 'UTC';
         const age = userProfile
           ? (userAge(userProfile.date_of_birth ?? '', tz) ?? 30)

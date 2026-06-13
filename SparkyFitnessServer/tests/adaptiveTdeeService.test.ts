@@ -64,7 +64,6 @@ describe('AdaptiveTdeeService', () => {
     reportRepository.getNutritionData.mockResolvedValue(nutritionData);
     // @ts-expect-error TS(2339): Property 'mockReturnValue' does not exist on type ... Remove this comment to see the full error message
     bmrService.calculateBmr.mockReturnValue(1800);
-    // @ts-expect-error TS(2322): Type '{ moderate: number; }' is not assignable to ... Remove this comment to see the full error message
     bmrService.ActivityMultiplier = { moderate: 1.55 };
     const result = await calculateAdaptiveTdee(userId, calculationDateStr);
     expect(result).toBeDefined();
@@ -117,7 +116,6 @@ describe('AdaptiveTdeeService', () => {
     };
     // @ts-expect-error
     bmrService.calculateBmr.mockReturnValue(1800);
-    // @ts-expect-error
     bmrService.ActivityMultiplier = { moderate: 1.55 };
 
     const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
@@ -166,7 +164,6 @@ describe('AdaptiveTdeeService', () => {
     reportRepository.getNutritionData.mockResolvedValue(nutritionData);
     // @ts-expect-error
     bmrService.calculateBmr.mockReturnValue(1800);
-    // @ts-expect-error
     bmrService.ActivityMultiplier = { moderate: 1.55 };
 
     const startDateStr = format(subDays(calculationDate, 2), 'yyyy-MM-dd');

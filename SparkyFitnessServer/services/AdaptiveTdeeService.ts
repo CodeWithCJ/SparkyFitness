@@ -481,10 +481,22 @@ function getConfidence(
   return 'LOW';
 }
 
+/**
+ * Clears all cached TDEE results for a specific user.
+ * Call this whenever user preferences that affect TDEE change
+ * (e.g. activity_level, bmr_algorithm, goal_mode).
+ */
+function clearUserTdeeCache(userId: string): void {
+  const keys = tdeeCache.keys();
+  const prefix = `adaptive_tdee_${userId}_`;
+  keys.filter((k) => k.startsWith(prefix)).forEach((k) => tdeeCache.del(k));
+}
+
 export {
   calculateAdaptiveTdee,
   calculateAdaptiveTdeeRange,
   computeAdaptiveTdeeFromData,
+  clearUserTdeeCache,
 };
 export type {
   UserProfile,
@@ -497,4 +509,5 @@ export type {
 export default {
   calculateAdaptiveTdee,
   calculateAdaptiveTdeeRange,
+  clearUserTdeeCache,
 };

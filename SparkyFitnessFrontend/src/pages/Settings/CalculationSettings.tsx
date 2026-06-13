@@ -312,10 +312,20 @@ const CalculationSettings = () => {
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
   const rawManualGoal = goalsData?.calories ?? 2000;
-  const currentGoalBase =
+  const staticTdee = Math.round(bmr * activityMultiplier);
+  const calorieGoalOffset = bmr > 0 ? rawManualGoal - staticTdee : 0;
+
+  let currentGoalBase =
     goalModeCalculationMethod === 'manual'
       ? rawManualGoal
       : Math.round(bmr > 0 ? bmr * activityMultiplier : 2000);
+
+  if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
+    currentGoalBase = Math.max(
+      1200,
+      Math.round((adaptiveTdeeData.tdee ?? 0) + calorieGoalOffset)
+    );
+  }
 
   const previewResult = computeCalorieTarget({
     goalMode,

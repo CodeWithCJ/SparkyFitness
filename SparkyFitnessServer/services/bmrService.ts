@@ -1,5 +1,8 @@
 import { log } from '../config/logging.js';
-import { calculateBmr as sharedCalculateBmr } from '@workspace/shared';
+import {
+  calculateBmr as sharedCalculateBmr,
+  ACTIVITY_MULTIPLIERS,
+} from '@workspace/shared';
 
 const BmrAlgorithm = {
   MIFFLIN_ST_JEOR: 'Mifflin-St Jeor',
@@ -10,12 +13,7 @@ const BmrAlgorithm = {
 };
 
 const ActivityMultiplier = {
-  sedentary: 1.2,
-  not_much: 1.2, // Map existing value
-  lightly_active: 1.375,
-  moderately_active: 1.55,
-  very_active: 1.725,
-  extra_active: 1.9,
+  ...ACTIVITY_MULTIPLIERS,
 };
 
 /**
