@@ -142,16 +142,20 @@ async function getUserGoalsForRange(
     }
   }
 
-  const getMeasurementForDate = (dateStr: string) => {
-    return (
-      allMeasurements.find((m: any) => {
-        const mDateStr =
-          m.entry_date instanceof Date
-            ? localDateToDay(m.entry_date)
-            : String(m.entry_date).slice(0, 10);
-        return mDateStr <= dateStr;
-      }) || null
-    );
+  const getMeasurementFieldForDate = (dateStr: string, field: string) => {
+    const found = allMeasurements.find((m: any) => {
+      const mDateStr =
+        m.entry_date instanceof Date
+          ? localDateToDay(m.entry_date)
+          : String(m.entry_date).slice(0, 10);
+      return (
+        mDateStr <= dateStr &&
+        m[field] !== null &&
+        m[field] !== undefined &&
+        m[field] !== ''
+      );
+    });
+    return found ? parseFloat(String(found[field])) : null;
   };
 
   while (!isAfter(cursor, end)) {
@@ -187,16 +191,14 @@ async function getUserGoalsForRange(
       const activityLevel = userPreferences?.activity_level || 'not_much';
       const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
 
-      const dayMeasurement = getMeasurementForDate(dateStr);
       const weightKg =
-        parseFloat(String(dayMeasurement?.weight ?? '')) ||
+        getMeasurementFieldForDate(dateStr, 'weight') ||
         CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
       const heightCm =
-        parseFloat(String(dayMeasurement?.height ?? '')) ||
+        getMeasurementFieldForDate(dateStr, 'height') ||
         CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-      const bodyFat = dayMeasurement?.body_fat_percentage
-        ? parseFloat(String(dayMeasurement.body_fat_percentage))
-        : undefined;
+      const bodyFat =
+        getMeasurementFieldForDate(dateStr, 'body_fat_percentage') || undefined;
 
       let bmr = 0;
       if (userProfile && userPreferences) {
@@ -256,7 +258,10 @@ async function getUserGoalsForRange(
 
       // Apply adaptive TDEE base adjustment — mirrors DashboardService
       if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-        goalCalories = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
+        goalCalories = Math.max(
+          1200,
+          Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+        );
       }
 
       // Apply goal mode deficit (lose / gain weight)
