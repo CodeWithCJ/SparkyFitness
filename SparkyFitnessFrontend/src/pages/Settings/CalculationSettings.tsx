@@ -352,6 +352,71 @@ const CalculationSettings = () => {
     calculateBmrFn: calculateBmr,
   });
 
+  const deficitPct = getGoalModeDeficit(goalMode, goalModeCustomPercentage);
+
+  const getCoachingAdvice = () => {
+    if (goalMode === 'maintain') {
+      return {
+        title: 'Maintenance Coaching',
+        style:
+          'bg-emerald-50/50 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
+        icon: (
+          <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        ),
+        text: 'Maintenance calories are designed to keep body weight relatively stable. Focus on consistent protein intake (1.6–2.2g/kg of body weight), regular resistance training, and monitoring weight trends over time to make minor adjustments.',
+      };
+    }
+
+    if (deficitPct > 0.25) {
+      return {
+        title: 'Highly Aggressive Deficit Warning',
+        style:
+          'bg-amber-50/50 dark:bg-amber-950/15 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300',
+        icon: (
+          <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        ),
+        text: 'Highly aggressive deficit. Deficits above 25% significantly increase the risk of muscle loss, training performance decline, intense hunger, and poor recovery. Consider a smaller deficit unless under active professional supervision. If proceeding, prioritize high protein (2.2–2.5g/kg) and sleep.',
+      };
+    }
+
+    if (deficitPct >= 0.17) {
+      return {
+        title: 'Aggressive Deficit Recommendations',
+        style:
+          'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
+        icon: (
+          <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        ),
+        text: 'Aggressive deficit for fast fat loss. To prevent muscle loss, consume 2.2–2.5g of protein per kg of body weight, prioritize sleep, and consider returning to maintenance every 6–8 weeks. Target loss rate: ~0.75–1.0% body weight/week.',
+      };
+    }
+
+    if (deficitPct >= 0.1) {
+      return {
+        title: 'Standard Deficit Recommendations',
+        style:
+          'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
+        icon: (
+          <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        ),
+        text: 'Ideal deficit for steady fat loss while preserving lean mass. Focus on a high protein intake (2.0–2.4g/kg of body weight) and monitor energy and recovery levels. Target loss rate: ~0.5–0.75% body weight/week.',
+      };
+    }
+
+    // deficitPct < 0.10 (but > 0)
+    return {
+      title: 'Body Recomposition Recommendations',
+      style:
+        'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
+      icon: (
+        <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+      ),
+      text: 'Suitable for body recomposition or a slow cut. The modest calorie deficit helps preserve performance and muscle while gradually reducing body fat. Aim for 1.6–2.2g of protein per kg of body weight daily, and keep a consistent resistance training program. Target loss rate: ~0.25–0.5% body weight/week.',
+    };
+  };
+
+  const coachingAdvice = getCoachingAdvice();
+
   const formatProjectedLoss = (kgVal: number) => {
     if (weightUnit === 'lbs') {
       const lbsVal = convertWeight(kgVal, 'kg', 'lbs');
@@ -1157,16 +1222,21 @@ const CalculationSettings = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between font-medium text-foreground/85">
                       <span>2. Baseline TDEE</span>
-                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px] capitalize">
-                        {goalModeCalculationMethod} Method
+                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+                        {goalModeCalculationMethod === 'adaptive'
+                          ? previewResult.insufficientHistory
+                            ? 'Fallback Estimate (Adaptive TDEE unavailable)'
+                            : 'Adaptive TDEE'
+                          : `${goalModeCalculationMethod} Method`}
                       </span>
                     </div>
                     <div className="text-muted-foreground/70">
                       {goalModeCalculationMethod === 'adaptive' ? (
                         previewResult.insufficientHistory ? (
                           <>
-                            Insufficient history (&lt;14 days). Using fallback
-                            estimate:
+                            Not enough history (&lt;14 days). Using BMR ×
+                            activity multiplier until sufficient data is
+                            collected.
                             <br />
                             Math: BMR (
                             {Math.round(
@@ -1181,8 +1251,8 @@ const CalculationSettings = () => {
                           </>
                         ) : (
                           <>
-                            Based on your calculated Adaptive TDEE (metabolism
-                            trend over past 14+ days).
+                            Based on weight trend and calorie intake over the
+                            last 35 days.
                           </>
                         )
                       ) : (
@@ -1327,22 +1397,29 @@ const CalculationSettings = () => {
           </div>
 
           {/* Coaching Tip */}
-          {goalMode !== 'maintain' && (
-            <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold text-sm">
-                <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Coaching Recommendations</span>
+          {coachingAdvice && (
+            <div
+              className={`p-4 border rounded-xl space-y-2 ${coachingAdvice.style}`}
+            >
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                {coachingAdvice.icon}
+                <span>{coachingAdvice.title}</span>
               </div>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400/90 leading-relaxed">
-                {goalMode === 'recomp' &&
-                  'Perfect for building muscle while burning body fat. Aim for 1.6–2.2g of protein per kg of body weight daily, and keep a consistent resistance training program.'}
-                {goalMode === 'cut' &&
-                  'Ideal deficit for steady fat loss while preserving lean mass. Focus on a high protein intake (2.0–2.4g/kg of body weight) and monitor energy and recovery levels.'}
-                {goalMode === 'high_cut' &&
-                  'Aggressive deficit for fast fat loss. To prevent muscle loss, consume 2.2–2.5g of protein per kg of body weight, prioritize sleep, and consider returning to maintenance every 6–8 weeks.'}
-                {goalMode === 'manual' &&
-                  'Custom deficit. Deficits of 10–20% are generally recommended. Ensure your protein targets are adjusted upwards to safe-guard lean muscle tissue.'}
+              <p className="text-xs leading-relaxed opacity-95">
+                {coachingAdvice.text}
               </p>
+              {goalModeCalculationMethod === 'adaptive' &&
+                previewResult.insufficientHistory && (
+                  <p className="mt-2 text-[10px] opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
+                    <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      Note: This target is currently based on an estimated
+                      activity level. After 14+ days of weight and calorie data,
+                      SparkyFitness will calculate a more personalized adaptive
+                      TDEE.
+                    </span>
+                  </p>
+                )}
             </div>
           )}
 

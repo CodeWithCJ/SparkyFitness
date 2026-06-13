@@ -792,8 +792,12 @@ Calculated: ${bfp.toFixed(1)}%`;
                 <div className="space-y-1">
                   <div className="flex items-center justify-between font-medium text-foreground/85">
                     <span>3. Daily Calorie Goal calculation</span>
-                    <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px] capitalize">
-                      {goalModeCalculationMethod} Method
+                    <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+                      {isAdaptiveMethod
+                        ? adaptiveTdeeData?.isFallback
+                          ? 'Fallback Estimate (Adaptive TDEE unavailable)'
+                          : 'Adaptive TDEE'
+                        : `${goalModeCalculationMethod} Method`}
                     </span>
                   </div>
                   <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
@@ -812,7 +816,7 @@ Calculated: ${bfp.toFixed(1)}%`;
                               )
                             )}{' '}
                             {getEnergyUnitString(energyUnit)} (Fallback used:
-                            insufficient history)
+                            not enough history [&lt;14 days])
                           </span>
                         ) : (
                           <span>
