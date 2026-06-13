@@ -29,9 +29,13 @@ router.get('/stats', authenticate, async (req, res, next) => {
   try {
     const userId = req.activeUserId || req.authenticatedUserId;
     const tz = await loadUserTimezone(userId);
-    const date = req.query.date || todayInZone(tz);
-    log('info', `Dashboard stats requested for user ${userId} on date ${date}`);
-    const stats = await dashboardService.getDashboardStats(userId, date);
+    const dateParam =
+      typeof req.query.date === 'string' ? req.query.date : todayInZone(tz);
+    log(
+      'info',
+      `Dashboard stats requested for user ${userId} on date ${dateParam}`
+    );
+    const stats = await dashboardService.getDashboardStats(userId, dateParam);
     res.json(stats);
   } catch (error) {
     next(error);

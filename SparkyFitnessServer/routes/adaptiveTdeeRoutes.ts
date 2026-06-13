@@ -17,9 +17,10 @@ const router = express.Router();
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const { date } = req.query;
+    const dateParam = typeof date === 'string' ? date : null;
     const result = await adaptiveTdeeService.calculateAdaptiveTdee(
       req.userId,
-      date
+      dateParam
     );
     res.status(200).json(result);
   } catch (error) {

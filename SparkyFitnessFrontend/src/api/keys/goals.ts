@@ -3,8 +3,8 @@ export const goalKeys = {
 
   daily: {
     all: () => [...goalKeys.all, 'daily'] as const,
-    byDate: (startDate: string, endDate?: string) =>
-      [...goalKeys.daily.all(), startDate, endDate] as const,
+    byDate: (startDate: string, endDate?: string, adjust?: boolean) =>
+      [...goalKeys.daily.all(), startDate, endDate, adjust] as const,
   },
 
   presets: {

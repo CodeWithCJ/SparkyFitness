@@ -48,6 +48,22 @@ vi.mock('../models/preferenceRepository.js', () => ({
 vi.mock('../services/bmrService.js', () => ({
   default: {
     calculateBmr: vi.fn(),
+    ActivityMultiplier: {
+      sedentary: 1.2,
+      not_much: 1.2,
+      lightly_active: 1.375,
+      moderately_active: 1.55,
+      very_active: 1.725,
+      extra_active: 1.9,
+    },
+  },
+  ActivityMultiplier: {
+    sedentary: 1.2,
+    not_much: 1.2,
+    lightly_active: 1.375,
+    moderately_active: 1.55,
+    very_active: 1.725,
+    extra_active: 1.9,
   },
 }));
 
@@ -169,5 +185,101 @@ describe('dailySummaryService', () => {
     });
 
     expect(result.calorieBalance.tdeeProjection).toBeNull();
+  });
+
+  test('returns adjusted goal calories under recomp goal mode', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+      goal_mode: 'recomp',
+      goal_mode_calculation_method: 'manual',
+      goal_mode_custom_percentage: 0,
+    });
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1800,
+    });
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    // Baseline goal from goalService.getUserGoals mock is 2000 kcal
+    // recomp is a 10% deficit under manual calculation method.
+    // 2000 * (1 - 0.10) = 1800 kcal
+    expect(result.calorieBalance.goal).toBe(1800);
+  });
+
+  test('returns adjusted goal calories under recomp goal mode with adaptive calculation method', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+      goal_mode: 'recomp',
+      goal_mode_calculation_method: 'adaptive',
+      goal_mode_custom_percentage: 0,
+    });
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1944,
+    });
+
+    // bmr is mocked to 1800. activity multiplier for 'not_much' is 1.2.
+    // baselineTdee = 1800 * 1.2 = 2160
+    // recomp is 10% deficit -> 2160 * 0.9 = 1944.
+    // Safety floors:
+    // Mifflin-St Jeor rmr calculates to 1800 because bmrService.calculateBmr is mocked to return 1800.
+    // Target 1944 is >= 1800, so final target is 1944.
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieBalance.goal).toBe(1944);
+  });
+
+  test('caps target at RMR under adaptive calculation method if deficit is too aggressive', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+      goal_mode: 'high_cut', // 20% deficit
+      goal_mode_calculation_method: 'adaptive',
+      goal_mode_custom_percentage: 0,
+    });
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 1800,
+    });
+
+    // bmr is mocked to 1800. activity multiplier is 1.2 -> baselineTdee = 2160.
+    // high_cut is 20% deficit -> 2160 * 0.8 = 1728.
+    // Since it falls below RMR (1800), adaptive mode auto-raises target to 1800.
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieBalance.goal).toBe(1800);
   });
 });

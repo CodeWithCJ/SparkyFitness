@@ -34,12 +34,13 @@ export const useDailyGoals = (date: string) => {
 export const useDailyGoalsRange = (
   startDate: string,
   endDate: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  adjust: boolean = false // Reports use raw stored goals — stable, never jumps on settings change
 ) => {
   return useQuery<Record<string, ExpandedGoals>>({
-    queryKey: goalKeys.daily.byDate(startDate, endDate),
+    queryKey: goalKeys.daily.byDate(startDate, endDate, adjust),
     queryFn: async () => {
-      const data = await loadGoals(startDate, endDate);
+      const data = await loadGoals(startDate, endDate, adjust);
       return (data as Record<string, ExpandedGoals>) || {};
     },
     placeholderData: (previousData) => previousData,

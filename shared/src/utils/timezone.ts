@@ -268,3 +268,33 @@ function midnightUtcInstant(day: string, tz: string): Date {
 
   return new Date(resultMs);
 }
+
+/**
+ * Calculate age in years from a YYYY-MM-DD string, respecting a given timezone.
+ * If timezone is not provided, defaults to local time.
+ */
+export function calculateAge(dob: string, tz?: string): number {
+  if (!dob) return 0;
+  
+  const targetTz = tz && isValidTimeZone(tz) 
+    ? tz 
+    : (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC');
+
+  const todayStr = todayInZone(targetTz);
+  const todayParts = todayStr.split('-');
+  const todayYear = parseInt(todayParts[0] || '0', 10);
+  const todayMonth = parseInt(todayParts[1] || '0', 10);
+  const todayDay = parseInt(todayParts[2] || '0', 10);
+
+  const dobParts = dob.split('-');
+  const dobYear = parseInt(dobParts[0] || '0', 10);
+  const dobMonth = parseInt(dobParts[1] || '0', 10);
+  const dobDay = parseInt(dobParts[2] || '0', 10);
+
+  let age = todayYear - dobYear;
+  if (todayMonth < dobMonth || (todayMonth === dobMonth && todayDay < dobDay)) {
+    age--;
+  }
+  return age;
+}
+

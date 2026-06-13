@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import preferenceService from '../services/preferenceService.js';
+import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
 // Endpoint to bootstrap timezone from the device only if unset
 router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
@@ -63,6 +64,7 @@ router.put('/', authenticate, async (req, res, next) => {
       req.userId,
       preferenceData
     );
+    clearUserTdeeCache(req.userId);
     res.status(200).json(updatedPreferences);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -186,6 +188,7 @@ router.post('/', authenticate, async (req, res, next) => {
       req.userId,
       preferenceData
     );
+    clearUserTdeeCache(req.userId);
     res.status(200).json(newPreferences);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
