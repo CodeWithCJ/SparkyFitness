@@ -104,7 +104,6 @@
       "activeCalories": "활동 칼로리: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "걸음 수: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "기초대사량: {{bmr}} cal",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "총합: {{totalCaloriesBurned}} cal",
       "goal": "목표",
       "caloriesBurnedBreakdownTitle": "소모 칼로리 상세",

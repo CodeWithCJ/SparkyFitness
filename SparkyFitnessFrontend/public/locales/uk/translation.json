@@ -104,7 +104,6 @@
       "activeCalories": "Активні калорії: {{activeCaloriesFromExercise}} кал",
       "stepsCalories": "Кроки: {{dailySteps}} = {{stepsCalories}} кал",
       "bmrCalories": "BMR: {{bmr}} кал",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Разом: {{totalCaloriesBurned}} кал",
       "goal": "ціль",
       "caloriesBurnedBreakdownTitle": "Розподіл спалених калорій",

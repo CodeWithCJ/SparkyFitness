@@ -104,7 +104,6 @@
       "activeCalories": "Aktiivisuus: {{activeCaloriesFromExercise}} kaloria",
       "stepsCalories": "Askeleet: {{dailySteps}} = {{stepsCalories}} kaloria",
       "bmrCalories": "Perusaineenvaihdunta: {{bmr}} kaloria",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Yhteensä: {{totalCaloriesBurned}} kaloria",
       "goal": "tavoite",
       "caloriesBurnedBreakdownTitle": "Kulutettujen kalorien erittely",

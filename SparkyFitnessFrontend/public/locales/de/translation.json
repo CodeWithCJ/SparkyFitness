@@ -261,7 +261,6 @@
       "activeCalories": "Aktive Kalorien: {{activeCaloriesFromExercise}} kcal",
       "stepsCalories": "Schritte: {{dailySteps}} = {{stepsCalories}} kcal",
       "bmrCalories": "Grundumsatz: {{bmr}} kcal",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Insgesamt: {{totalCaloriesBurned}} kcal",
       "goal": "Ziel",
       "caloriesBurnedBreakdownTitle": "Aufteilung verbrannter Kalorien",

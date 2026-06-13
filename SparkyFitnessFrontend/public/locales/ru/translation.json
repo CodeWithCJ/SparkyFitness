@@ -189,7 +189,6 @@
       "activeCalories": "Активные калории: {{activeCaloriesFromExercise}} кал",
       "stepsCalories": "Шаги: {{dailySteps}} = {{stepsCalories}} кал",
       "bmrCalories": "BMR: {{bmr}} кал",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Всего: {{totalCaloriesBurned}} кал",
       "netCalories": "Чистые калории: {{netCalories}}",
       "netCaloriesBreakdown": "Съедено {{dailyIntakeCalories}} калорий, сожжено {{finalTotalCaloriesBurned}} калорий",
