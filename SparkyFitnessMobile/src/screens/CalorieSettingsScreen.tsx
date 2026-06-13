@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { View, Text, Switch, ScrollView } from 'react-native';
+import { View, Text, Switch, ScrollView, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -366,10 +366,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
           {normalized.useExternalBmr && (
             <View className="mt-3">
               <HealthSourceLabel />
-              <Text className="text-text-secondary text-xs mt-3">
-                The synced value already includes light daily activity, so you may want to set
-                your Activity Level to None (×1.0) to avoid counting it twice.
-              </Text>
+              {Platform.OS === 'ios' && (
+                <Text className="text-text-secondary text-xs mt-3">
+                  The synced value already includes light daily activity, so you may want to set
+                  your Activity Level to None (×1.0) to avoid counting it twice.
+                </Text>
+              )}
             </View>
           )}
         </View>
