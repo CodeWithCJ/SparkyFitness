@@ -104,7 +104,6 @@
       "activeCalories": "Aktivní kalorie: {{activeCaloriesFromExercise}} kal",
       "stepsCalories": "Kroky: {{dailySteps}} = {{stepsCalories}} kal",
       "bmrCalories": "Bazální metabolismus: {{bmr}} kal",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Celkový: {{totalCaloriesBurned}} kal",
       "goal": "cíl",
       "caloriesBurnedBreakdownTitle": "Rozklad spálených kalorií",

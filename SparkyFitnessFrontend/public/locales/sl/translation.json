@@ -104,7 +104,6 @@
       "activeCalories": "Aktivne kalorije: {{activeCaloriesFromExercise}} kal",
       "stepsCalories": "Koraki: {{dailySteps}} = {{stepsCalories}} kal",
       "bmrCalories": "BMR: {{bmr}} kal",
-      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Skupaj: {{totalCaloriesBurned}} kal",
       "goal": "cilj",
       "caloriesBurnedBreakdownTitle": "Razčlenitev porabljenih kalorij",
