@@ -1,0 +1,25 @@
+reports has the n+1 issue that gemini commented on which is probably why it wont load. it's here: https://github.com/CodeWithCJ/SparkyFitness/pull/1519/changes#diff-653ee896ebbdb8ab12313273c95dc5493f10208f5393d698e03ec3219bea13a6R217
+
+when it loads a day, its loading every day around it into two 30 day windows that overlap a lot. and that happens for each day. it does need all this data but much of it is the same. the fix is probably to split calculateAdaptiveTdee into a part that fetches the data and a "pure" half that does the calculations 
+
+I think what you've got is close so I wouldn't abandon it. i found a couple other things ill put on github comments
+claude thinks its a good idea heres the details he gave:
+
+Best solution: separate I/O from compute, bulk-fetch once
+
+  Split calculateAdaptiveTdee into a fetch half and a pure half, then add a range entry point:
+
+  computeAdaptiveTdeeFromData(
+    { profile, preferences, latestMeasurement, checkInMeasurements, nutritionData },
+    calculationDateStr
+  ) -> result          // PURE: no DB, just the existing interpolation/SMA/window math
+
+  
+Single-day path keeps current behavior: fetch its 35-day window, call the pure fn, cache. (No await-in-loop, no signature break for existing callers.)
+New calculateAdaptiveTdeeRange(userId, startDate, endDate): fetch profile/prefs/latestMeasurement once, fetch measurements + nutrition once over the union window [startDate − 35,
+endDate], then loop the days in memory, calling the pure fn with the same shared arrays (its internal .find(dateStr) already self-selects the right [D−35, D] rows, so you don't
+even need to re-slice).
+
+  goalService.getUserGoalsForRange then calls calculateAdaptiveTdeeRange once up front and looks up each day's TDEE from a map instead of awaiting inside the loop.
+
+  Result: ~6 × N queries → ~5 queries, constant regardless of range length. The per-day work becomes trivial CPU.

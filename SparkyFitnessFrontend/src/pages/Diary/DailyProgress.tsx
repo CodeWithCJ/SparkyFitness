@@ -43,7 +43,7 @@ import { EnergyCircle } from './EnergyProgressCircle';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
-import { getGoalModeDeficit } from '@workspace/shared';
+import { getGoalModeDeficit, calculateAge } from '@workspace/shared';
 import { ACTIVITY_MULTIPLIERS } from '@/utils/calorieCalculations';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
@@ -61,6 +61,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     goalModeCalculationMethod,
     goalModeCustomPercentage,
     activityLevel,
+    timezone,
   } = usePreferences();
 
   const { user } = useAuth();
@@ -193,16 +194,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const displayHips = hipsData?.hips;
   const displayGender = (userProfile?.gender || 'male') as 'male' | 'female';
   const displayAge = userProfile?.date_of_birth
-    ? (() => {
-        const today = new Date();
-        const birthDate = new Date(userProfile.date_of_birth);
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        return age;
-      })()
+    ? calculateAge(userProfile.date_of_birth, timezone)
     : 30;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;

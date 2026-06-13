@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { FoodEntry } from '@/types/food';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { calculateAge } from '@workspace/shared';
 import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
 import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { userManagementService } from '@/api/Admin/userManagementService';
@@ -191,7 +192,7 @@ export const useMostRecentBodyFatQuery = (enabled = true) => {
 
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
-  const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
+  const { bmrAlgorithm, includeBmrInNetCalories, timezone } = usePreferences();
 
   const { data: userProfile } = useQuery({
     queryKey: userKeys.profile(user?.id ?? ''),
@@ -213,8 +214,7 @@ export const useCalculatedBMR = () => {
   }
 
   const age = userProfile.date_of_birth
-    ? new Date().getFullYear() -
-      new Date(userProfile.date_of_birth).getFullYear()
+    ? calculateAge(userProfile.date_of_birth, timezone)
     : 0;
 
   try {

@@ -117,6 +117,31 @@ async function getUserGoalsForRange(
     );
   }
 
+  let adaptiveTdeeMap: Record<string, any> = {};
+  if (adjust && userPreferences) {
+    const adjustmentMode =
+      userPreferences.calorie_goal_adjustment_mode || 'dynamic';
+    const goalModeCalculationMethod =
+      userPreferences.goal_mode_calculation_method || 'manual';
+    if (
+      adjustmentMode === 'adaptive' ||
+      goalModeCalculationMethod === 'adaptive'
+    ) {
+      try {
+        adaptiveTdeeMap = await adaptiveTdeeService.calculateAdaptiveTdeeRange(
+          userId,
+          startDate,
+          endDate
+        );
+      } catch (err) {
+        log(
+          'warn',
+          `goalService: Failed to bulk fetch adaptive TDEE range for ${userId} [${startDate}, ${endDate}]: ${(err as Error).message}`
+        );
+      }
+    }
+  }
+
   const getMeasurementForDate = (dateStr: string) => {
     return (
       allMeasurements.find((m: any) => {
@@ -213,16 +238,19 @@ async function getUserGoalsForRange(
         adjustmentMode === 'adaptive' ||
         goalModeCalculationMethod === 'adaptive'
       ) {
-        try {
-          adaptiveTdeeData = (await adaptiveTdeeService.calculateAdaptiveTdee(
-            userId,
-            dateStr
-          )) as { tdee: number; isFallback: boolean; daysOfData: number };
-        } catch (err) {
-          log(
-            'warn',
-            `goalService: Adaptive TDEE fetch failed for ${userId} on ${dateStr}: ${(err as Error).message}`
-          );
+        adaptiveTdeeData = adaptiveTdeeMap[dateStr] || null;
+        if (!adaptiveTdeeData) {
+          try {
+            adaptiveTdeeData = (await adaptiveTdeeService.calculateAdaptiveTdee(
+              userId,
+              dateStr
+            )) as { tdee: number; isFallback: boolean; daysOfData: number };
+          } catch (err) {
+            log(
+              'warn',
+              `goalService: Adaptive TDEE fetch failed for ${userId} on ${dateStr}: ${(err as Error).message}`
+            );
+          }
         }
       }
 

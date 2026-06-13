@@ -362,7 +362,6 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
-    // @ts-expect-error TS(2345): Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
     adaptiveTdeeData
   );
 
