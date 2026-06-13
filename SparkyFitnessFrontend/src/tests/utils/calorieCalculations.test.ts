@@ -292,7 +292,7 @@ describe('computeCalorieTarget', () => {
       adaptiveTdee: null,
       adaptiveTdeeFallback: true,
       adaptiveTdeeDaysOfData: 0,
-      weightKg: 80,
+      weightKg: 84.5,
       heightCm: 180,
       age: 35,
       gender: 'male',
