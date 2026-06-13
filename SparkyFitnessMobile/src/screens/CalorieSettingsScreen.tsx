@@ -187,7 +187,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
           >
             <Icon name="chevron-back" size={22} color={accentPrimary} />
           </Button>
-          <Text className="text-2xl font-bold text-text-primary">Calorie &amp; BMR Settings</Text>
+          <Text className="text-2xl font-bold text-text-primary">Calorie & BMR Settings</Text>
         </View>
 
         {/* Mode */}
