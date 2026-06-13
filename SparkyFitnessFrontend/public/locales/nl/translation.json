@@ -104,6 +104,7 @@
       "activeCalories": "Actieve Calorieën: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "Stappen: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "BMR: {{bmr}} cal",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "Totaal: {{totalCaloriesBurned}} cal",
       "goal": "doel",
       "caloriesBurnedBreakdownTitle": "Verbrande Calorieën Overzicht",

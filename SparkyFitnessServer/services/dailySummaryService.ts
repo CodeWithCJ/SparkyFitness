@@ -226,6 +226,7 @@ function computeCalorieBalance(
     net: Math.round(netCalories),
     progress: Math.round(progress),
     bmr: Math.round(bmr),
+    bmrSource: bmrSource as 'formula' | 'external',
     exerciseSource: resolved.source,
     tdeeProjection,
   };

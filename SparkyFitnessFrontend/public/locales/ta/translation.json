@@ -104,6 +104,7 @@
       "activeCalories": "செயலில் உள்ள கலோரிகள்: {{activeCaloriesFromExercise}} கலோரி",
       "stepsCalories": "படிகள்: {{dailySteps}} = {{stepsCalories}} கலோரி",
       "bmrCalories": "BMR: {{bmr}} கலோரி",
+      "bmrSourceExternal": "from Health App",
       "totalCaloriesBurned": "மொத்தம்: {{totalCaloriesBurned}} கலோரி",
       "goal": "இலக்கு",
       "caloriesBurnedBreakdownTitle": "எரிக்கப்பட்ட கலோரிகள் முறிவு",

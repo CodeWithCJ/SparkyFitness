@@ -14,7 +14,11 @@ import { userAge } from '../utils/dateHelpers.js';
  * Aggregates stats for external dashboards (like gethomepage.dev).
  * matches logic in DailyProgress.tsx
  */
-async function getDashboardStats(userId: string, date: string) {
+async function getDashboardStats(
+  userId: string,
+  date: string,
+  includeCheckin = true
+) {
   try {
     const [
       goals,
@@ -31,24 +35,30 @@ async function getDashboardStats(userId: string, date: string) {
       reportRepository.getExerciseEntries(userId, date, date),
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
-      measurementRepository.getLatestMeasurement(userId),
-      measurementRepository.getCheckInMeasurementsByDate(userId, date),
+      includeCheckin
+        ? measurementRepository.getLatestMeasurement(userId)
+        : null,
+      includeCheckin
+        ? measurementRepository.getCheckInMeasurementsByDate(userId, date)
+        : null,
     ]);
 
     // External BMR override — mirror dailySummaryService logic so /dashboard/stats stays consistent.
+    // Gated on includeCheckin for future delegated-access parity with dailySummaryService.
     const useExternalBmr = userPreferences?.use_external_bmr || false;
-    const externalBmr = useExternalBmr
-      ? await measurementRepository
-          .getExternalBmrForDate(userId, date)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `DashboardService: external BMR fetch failed for user ${userId} on ${date}:`,
-              error
-            );
-            return null;
-          })
-      : null;
+    const externalBmr =
+      useExternalBmr && includeCheckin
+        ? await measurementRepository
+            .getExternalBmrForDate(userId, date)
+            .catch((error: unknown) => {
+              log(
+                'warn',
+                `DashboardService: external BMR fetch failed for user ${userId} on ${date}:`,
+                error
+              );
+              return null;
+            })
+        : null;
     // 1. Goal Calories (Base)
     const rawGoalCalories = parseFloat((goals as any)?.calories) || 2000;
     // 2. Eaten Calories
