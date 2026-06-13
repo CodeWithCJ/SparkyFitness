@@ -36,10 +36,10 @@ async function validateGoalMode(preferenceData: any) {
   }
   if (preferenceData.goal_mode_custom_percentage !== undefined) {
     const pct = Number(preferenceData.goal_mode_custom_percentage);
-    if (isNaN(pct) || pct < 0 || pct > 40) {
+    if (isNaN(pct) || !Number.isInteger(pct) || pct < 0 || pct > 40) {
       throw Object.assign(
         new Error(
-          `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be between 0 and 40.`
+          `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be an integer between 0 and 40.`
         ),
         { status: 400 }
       );

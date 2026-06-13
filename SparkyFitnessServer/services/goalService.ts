@@ -9,6 +9,7 @@ import adaptiveTdeeService from './AdaptiveTdeeService.js';
 import { userAge } from '../utils/dateHelpers.js';
 import { log } from '../config/logging.js';
 import { addDays, format, getDay, isAfter, parseISO } from 'date-fns';
+import { localDateToDay } from '@workspace/shared';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   todayInZone,
@@ -121,10 +122,8 @@ async function getUserGoalsForRange(
       allMeasurements.find((m: any) => {
         const mDateStr =
           m.entry_date instanceof Date
-            ? format(m.entry_date, 'yyyy-MM-dd')
-            : typeof m.entry_date === 'string' && m.entry_date.includes('T')
-              ? m.entry_date.split('T')[0]
-              : String(m.entry_date);
+            ? localDateToDay(m.entry_date)
+            : String(m.entry_date).slice(0, 10);
         return mDateStr <= dateStr;
       }) || null
     );
