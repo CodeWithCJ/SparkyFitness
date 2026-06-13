@@ -39,6 +39,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
+import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
 interface AddCompItem {
@@ -63,7 +64,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     hasWritePermission,
     activeUserName,
   } = useActiveUser();
-  const { loggingLevel } = usePreferences();
+  const { getDateRelationToToday, loggingLevel } = usePreferences();
   debug(loggingLevel, 'MainLayout: Component rendered.');
 
   const { data: appVersion } = useCurrentVersionQuery();
@@ -317,6 +318,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   const mobileGridClass = getGridClassNormal(availableMobileTabs.length);
 
   const location = useLocation();
+  const selectedDate = new URLSearchParams(location.search).get('date');
+  const selectedDateRelation = selectedDate
+    ? getDateRelationToToday(selectedDate)
+    : 'today';
 
   return (
     <div className="min-h-screen bg-background">
@@ -362,13 +367,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
           </div>
         </div>
         <nav
-          className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}
+          className={cn(
+            'relative hidden sm:grid w-full gap-1 mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg border transition-colors overflow-hidden',
+            gridClass,
+            selectedDateRelation === 'today' && 'border-transparent',
+            selectedDateRelation === 'past' && 'border-date-past/40',
+            selectedDateRelation === 'future' && 'border-date-future/40'
+          )}
         >
+          {selectedDateRelation !== 'today' && (
+            <div
+              className={cn(
+                'absolute inset-0 pointer-events-none z-10',
+                selectedDateRelation === 'past' && 'bg-date-past/10',
+                selectedDateRelation === 'future' && 'bg-date-future/10'
+              )}
+            />
+          )}
           {availableTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
               variant="ghost"
-              className={`flex items-center gap-2 hover:bg-background/50 transition-all ${
+              className={`relative flex items-center gap-2 hover:bg-background/50 transition-all ${
                 location.pathname === value
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground'
@@ -382,9 +402,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         </nav>
 
         {/* Mobile Navigation */}
-        <nav className="apple-safe-area sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-background border-t">
+        <nav
+          className={cn(
+            'apple-safe-area sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-background border-t transition-colors overflow-hidden',
+            selectedDateRelation === 'past' && 'border-date-past/80',
+            selectedDateRelation === 'future' && 'border-date-future/50'
+          )}
+        >
+          {selectedDateRelation !== 'today' && (
+            <div
+              className={cn(
+                'absolute inset-0 pointer-events-none z-10',
+                selectedDateRelation === 'past' && 'bg-date-past/10',
+                selectedDateRelation === 'future' && 'bg-date-future/10'
+              )}
+            />
+          )}
           <div
-            className={`h-14 grid ${mobileGridClass} items-center justify-items-center`}
+            className={`relative h-14 grid ${mobileGridClass} items-center justify-items-center`}
           >
             {availableMobileTabs.map(({ value, icon: Icon }) => (
               <Button
