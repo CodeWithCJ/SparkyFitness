@@ -1074,6 +1074,44 @@ async function updateWaterIntakeLogTime(
   }
 }
 
+// Per-day water totals over an optional date range (both bounds optional;
+// no bounds returns the full history). Used by the chatbot get_water_history
+// action.
+async function getWaterTotalsByDateRange(
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const client = await getClient(userId);
+  try {
+    let query = `
+      SELECT entry_date, SUM(water_ml) as total_ml
+      FROM water_intake_entries
+      WHERE user_id = $1
+    `;
+    const queryParams: unknown[] = [userId];
+    let paramIdx = 2;
+
+    if (startDate) {
+      query += ` AND entry_date >= $${paramIdx}`;
+      queryParams.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      query += ` AND entry_date <= $${paramIdx}`;
+      queryParams.push(endDate);
+      paramIdx++;
+    }
+
+    query += ' GROUP BY entry_date ORDER BY entry_date ASC';
+
+    const result = await client.query(query, queryParams);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -1089,6 +1127,7 @@ export default {
   deleteWaterIntakeLog,
   getWaterIntakeLogEntryOwnerId,
   updateWaterIntakeLogTime,
+  getWaterTotalsByDateRange,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
   updateCheckInMeasurements,

@@ -117,9 +117,12 @@ const MealCard = ({
   customNutrients = [], // Default to empty array
 }: MealCardProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
+  const { loggingLevel, nutrientDisplayPreferences, getDateRelationToToday } =
+    usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
+
+  const selectedDateRelation = getDateRelationToToday(selectedDate);
 
   const [internalFoodSearchOpen, setInternalFoodSearchOpen] = useState(false);
 
@@ -272,6 +275,20 @@ const MealCard = ({
                           meal.name
                         ).toLowerCase()}.`,
                       })}
+                      <br />
+                      <span className="text-red-500">
+                        {(selectedDateRelation === 'past' &&
+                          t(
+                            'foodDiary.pastDateWarning',
+                            'Warning: You are adding food entries for a past date.'
+                          )) ||
+                          (selectedDateRelation === 'future' &&
+                            t(
+                              'foodDiary.futureDateWarning',
+                              'Warning: You are adding food entries for a future date.'
+                            )) ||
+                          ''}
+                      </span>
                     </DialogDescription>
                   </DialogHeader>
                   <EnhancedFoodSearch

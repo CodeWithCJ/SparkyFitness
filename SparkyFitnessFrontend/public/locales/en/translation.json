@@ -1042,6 +1042,8 @@
     "success": "Success",
     "error": "Error",
     "genericError": "An unexpected error occurred.",
+    "pastDateWarning": "Warning: You are adding food entries for a past date.",
+    "futureDateWarning": "Warning: You are adding food entries for a future date.",
     "entryCopied": "Food entries copied successfully",
     "entryCopyError": "Failed to copy food entries.",
     "copiedFromYesterday": "Food entries copied from yesterday successfully",

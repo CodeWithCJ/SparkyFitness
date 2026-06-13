@@ -40,6 +40,7 @@ import {
   feetInchesToCm,
 } from '@/utils/unitConversions';
 import { DayOfWeek } from '@/types/settings';
+import { todayInZone } from '@workspace/shared';
 
 // Function to fetch user preferences from the backend
 
@@ -162,6 +163,7 @@ interface PreferencesContextType {
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
   saveAllPreferences: (
@@ -503,6 +505,26 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       return formatDateInUserTimezone(date, dateFormat);
     },
     [formatDateInUserTimezone, dateFormat]
+  );
+
+  /**
+   * Returns whether the given date is in the past, today, or in the future.
+   *
+   * @param date - A date string or Date to compare with today.
+   * @returns "past", "today", or "future".
+   */
+  const getDateRelationToToday = useCallback(
+    (date: string | Date) => {
+      const dateToCompare = formatDateInUserTimezone(date, 'yyyy-MM-dd');
+      const todayDate = todayInZone(timezone);
+
+      if (!dateToCompare || dateToCompare === todayDate) {
+        return 'today';
+      }
+
+      return dateToCompare < todayDate ? 'past' : 'future';
+    },
+    [formatDateInUserTimezone, timezone]
   );
 
   const parseDateInUserTimezone = useCallback(
@@ -1153,6 +1175,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       getEnergyUnitString,
       formatDate,
       formatDateInUserTimezone,
+      getDateRelationToToday,
       parseDateInUserTimezone,
       loadPreferences,
       saveAllPreferences,
@@ -1223,6 +1246,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       getEnergyUnitString,
       formatDate,
       formatDateInUserTimezone,
+      getDateRelationToToday,
       parseDateInUserTimezone,
       loadPreferences,
       saveAllPreferences,

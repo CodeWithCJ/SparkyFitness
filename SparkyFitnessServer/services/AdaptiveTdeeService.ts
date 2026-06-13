@@ -3,7 +3,6 @@ import {
   format,
   startOfDay,
   eachDayOfInterval,
-  isSameDay,
   parseISO,
   differenceInDays,
 } from 'date-fns';
@@ -170,8 +169,10 @@ function computeAdaptiveTdeeFromData(
   const dailyData: DailyDataEntry[] = dayInterval.map((day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
     // Find actual weight or null
-    const actualWeightEntry = weightEntries.find((we) =>
-      isSameDay(new Date(we.entry_date), day)
+    // entry_date comes from pg as a 'YYYY-MM-DD' string; match on the day string
+    // so a non-UTC server can't shift the comparison.
+    const actualWeightEntry = weightEntries.find(
+      (we) => String(we.entry_date).slice(0, 10) === dateStr
     );
     const actualWeight = actualWeightEntry
       ? parseFloat(String(actualWeightEntry.weight))

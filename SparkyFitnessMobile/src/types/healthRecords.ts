@@ -133,11 +133,51 @@ export interface TransformedRecord extends RecordTimezoneMetadata {
   source: string;
 }
 
+/** Sparky meal type slug derived from Health Connect MealType constant */
+export type SparkyMealType = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
+
+/**
+ * Nutrition entry output (one per Health Connect NutritionRecord).
+ *
+ * Maps an HC NutritionRecord (a single eaten item with a name, meal type and
+ * nutrients) to a structure the server ingests as a food entry. Energy is in
+ * kcal; nutrients are converted from HC's grams to each Sparky column's unit
+ * (g for macros, mg/mcg for micros — see HC_NUTRIENT_COLUMNS).
+ */
+export interface TransformedNutritionEntry extends RecordTimezoneMetadata {
+  type: 'Nutrition';
+  source: typeof HEALTH_CONNECT_SOURCE;
+  /** Stable Health Connect record id, used for idempotent re-sync. */
+  source_id?: string;
+  /** Instant the food was consumed; the server derives the day from this + offset. */
+  timestamp: string;
+  food_name: string;
+  meal_type: SparkyMealType;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+}
+
 /** Union type for all possible transform outputs */
 export type TransformOutput =
   | TransformedRecord
   | AggregatedSleepSession
-  | TransformedExerciseSession;
+  | TransformedExerciseSession
+  | TransformedNutritionEntry;
 
 // ==========================================
 // SYNC RESULT TYPES (Phase 5)
