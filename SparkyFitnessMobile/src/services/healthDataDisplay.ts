@@ -155,9 +155,27 @@ const AGGREGATED_FORMATTERS: Record<string, (start: Date, end: Date) => Promise<
   Distance: makeAggregatedFormatter(getAggregatedDistanceByDate, t => `${(t / 1000).toFixed(2)} km`),
   FloorsClimbed: makeAggregatedFormatter(getAggregatedFloorsClimbedByDate, t => Math.round(t).toLocaleString()),
   BasalMetabolicRate: async (start, end) => {
-    const records = await getAggregatedBasalEnergyByDate(start, end);
-    if (records.length === 0) return NO_DATA_DISPLAY;
-    const avg = records.reduce((sum: number, r) => sum + r.value, 0) / records.length;
+    // iOS: use aggregated resting energy; Android: fall back to raw HC records
+    const aggregated = await getAggregatedBasalEnergyByDate(start, end);
+    if (aggregated.length > 0) {
+      const avg = aggregated.reduce((sum: number, r) => sum + r.value, 0) / aggregated.length;
+      return `${Math.round(avg)} kcal`;
+    }
+    const rawRecords = await readHealthRecords('BasalMetabolicRate', start, end) as unknown[];
+    if (rawRecords.length === 0) return NO_DATA_DISPLAY;
+    const dailyBMRs: Record<string, { sum: number; count: number }> = {};
+    rawRecords.forEach((r) => {
+      const date = getRecordDate(r);
+      const value = extractBMRValue(r);
+      if (date && value !== null && !isNaN(value)) {
+        if (!dailyBMRs[date]) dailyBMRs[date] = { sum: 0, count: 0 };
+        dailyBMRs[date].sum += value;
+        dailyBMRs[date].count++;
+      }
+    });
+    const dailyAvgs = Object.values(dailyBMRs).map(d => d.sum / d.count);
+    if (dailyAvgs.length === 0) return NO_DATA_DISPLAY;
+    const avg = dailyAvgs.reduce((sum, v) => sum + v, 0) / dailyAvgs.length;
     return `${Math.round(avg)} kcal`;
   },
 };
