@@ -350,6 +350,45 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
     client.release();
   }
 }
+
+/**
+ * Returns the synced external BMR / resting-energy value (kcal) stored as a custom
+ * measurement for the exact given day, or null if none exists for that day.
+ *
+ * Mobile syncs this under the custom category named 'basal_metabolic_rate'
+ * (see measurementService.processHealthData default branch + getOrCreateCustomCategory).
+ * Lookup is EXACT-date (not <= date) so "no value for that day" correctly falls back to
+ * the formula BMR upstream. A single date can hold multiple rows across sources (unique
+ * key is user+category+date+source), so we apply a deterministic "latest write wins" rule.
+ */
+async function getExternalBmrForDate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  date: any
+): Promise<number | null> {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT cm.value
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1
+         AND cc.name = 'basal_metabolic_rate'
+         AND cm.entry_date = $2
+       ORDER BY cm.updated_at DESC, cm.entry_timestamp DESC
+       LIMIT 1`,
+      [userId, date]
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    const value = parseFloat(result.rows[0].value);
+    return Number.isFinite(value) ? value : null;
+  } finally {
+    client.release();
+  }
+}
 async function updateCheckInMeasurements(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -960,6 +999,7 @@ export { deleteCustomMeasurement };
 export { getCustomMeasurementOwnerId };
 export { getLatestMeasurement };
 export { getLatestCheckInMeasurementsOnOrBeforeDate };
+export { getExternalBmrForDate };
 export { getMostRecentMeasurement };
 export { getStepCaloriesForDate };
 
@@ -1146,6 +1186,7 @@ export default {
   getCustomMeasurementOwnerId,
   getLatestMeasurement,
   getLatestCheckInMeasurementsOnOrBeforeDate,
+  getExternalBmrForDate,
   getMostRecentMeasurement,
   getStepCaloriesForDate,
 };

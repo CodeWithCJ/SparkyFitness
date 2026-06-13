@@ -34,6 +34,21 @@ async function getDashboardStats(userId: string, date: string) {
       measurementRepository.getLatestMeasurement(userId),
       measurementRepository.getCheckInMeasurementsByDate(userId, date),
     ]);
+
+    // External BMR override — mirror dailySummaryService logic so /dashboard/stats stays consistent.
+    const useExternalBmr = userPreferences?.use_external_bmr || false;
+    const externalBmr = useExternalBmr
+      ? await measurementRepository
+          .getExternalBmrForDate(userId, date)
+          .catch((error: unknown) => {
+            log(
+              'warn',
+              `DashboardService: external BMR fetch failed for user ${userId} on ${date}:`,
+              error
+            );
+            return null;
+          })
+      : null;
     // 1. Goal Calories (Base)
     const rawGoalCalories = parseFloat((goals as any)?.calories) || 2000;
     // 2. Eaten Calories
@@ -98,6 +113,14 @@ async function getDashboardStats(userId: string, date: string) {
         const errMsg = error instanceof Error ? error.message : String(error);
         log('warn', `DashboardService: BMR calc failed: ${errMsg}`);
       }
+    }
+    if (
+      useExternalBmr &&
+      externalBmr !== null &&
+      externalBmr >= 600 &&
+      externalBmr <= 6000
+    ) {
+      bmr = externalBmr;
     }
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
     // 3-tier fallback to avoid double-counting

@@ -6,6 +6,7 @@ export type CalorieGoalAdjustmentMode =
   | 'adaptive';
 
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
+  none: 1.0,
   not_much: 1.2,
   light: 1.375,
   moderate: 1.55,

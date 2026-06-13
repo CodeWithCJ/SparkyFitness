@@ -38,6 +38,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         goal_mode = COALESCE($34, goal_mode),
         goal_mode_calculation_method = COALESCE($35, goal_mode_calculation_method),
         goal_mode_custom_percentage = COALESCE($36, goal_mode_custom_percentage),
+        use_external_bmr = COALESCE($37, use_external_bmr),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
@@ -80,6 +81,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.goal_mode,
         preferenceData.goal_mode_calculation_method,
         preferenceData.goal_mode_custom_percentage,
+        preferenceData.use_external_bmr,
       ]
     );
     return result.rows[0];
@@ -160,6 +162,7 @@ async function upsertUserPreferences(preferenceData: any) {
        goal_mode,
        goal_mode_calculation_method,
        goal_mode_custom_percentage,
+       use_external_bmr,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -179,6 +182,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($34, 'maintain'),
        COALESCE($35, 'manual'),
        COALESCE($36, 0),
+       COALESCE($37, false),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -215,6 +219,7 @@ async function upsertUserPreferences(preferenceData: any) {
        goal_mode = COALESCE(EXCLUDED.goal_mode, user_preferences.goal_mode),
        goal_mode_calculation_method = COALESCE(EXCLUDED.goal_mode_calculation_method, user_preferences.goal_mode_calculation_method),
        goal_mode_custom_percentage = COALESCE(EXCLUDED.goal_mode_custom_percentage, user_preferences.goal_mode_custom_percentage),
+       use_external_bmr = COALESCE(EXCLUDED.use_external_bmr, user_preferences.use_external_bmr),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
@@ -255,6 +260,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.goal_mode,
         preferenceData.goal_mode_calculation_method,
         preferenceData.goal_mode_custom_percentage,
+        preferenceData.use_external_bmr,
       ]
     );
     return result.rows[0];

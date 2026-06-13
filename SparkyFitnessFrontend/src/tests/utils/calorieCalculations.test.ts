@@ -15,6 +15,7 @@ import { computeCalorieTarget, getGoalModeDeficit } from '@workspace/shared';
 // ---------------------------------------------------------------------------
 describe('ACTIVITY_MULTIPLIERS', () => {
   it('has expected multiplier for each level', () => {
+    expect(ACTIVITY_MULTIPLIERS['none']).toBe(1.0);
     expect(ACTIVITY_MULTIPLIERS['not_much']).toBe(1.2);
     expect(ACTIVITY_MULTIPLIERS['light']).toBe(1.375);
     expect(ACTIVITY_MULTIPLIERS['moderate']).toBe(1.55);
@@ -83,6 +84,10 @@ describe('computeSparkyfitnessBurned', () => {
 
   it('multiplies BMR by the moderate multiplier', () => {
     expect(computeSparkyfitnessBurned(2000, 'moderate')).toBe(3100);
+  });
+
+  it('applies no multiplier for the "none" activity level', () => {
+    expect(computeSparkyfitnessBurned(2000, 'none')).toBe(2000);
   });
 
   it('falls back to the not_much multiplier for unknown activity level', () => {

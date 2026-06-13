@@ -15,7 +15,7 @@ export const CALORIE_CALCULATION_CONSTANTS = {
 } as const;
 
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
-  // Frontend keys
+  none: 1.0,
   not_much: 1.2,
   light: 1.375,
   moderate: 1.55,
