@@ -144,12 +144,18 @@ export const fetchWithRetry = async (
   throw lastError ?? new Error('All retry attempts failed');
 };
 
-// Exercise/Workout use server-side delete-then-insert per source (range-delete
-// [min..max], then re-insert), so a source's sessions must stay in one request:
-// splitting across overlapping date ranges lets a later range-delete wipe an
-// earlier insert. Sleep is excluded — since #1180 the server merges it by natural
-// key (no range delete), so it can be chunked freely.
+// Exercise/Workout use server-side delete-then-insert per source (delete that
+// source's rows for the affected days, then re-insert), so a source's records
+// must stay in one request: splitting across overlapping date ranges lets a later
+// chunk's pre-cleanup wipe an earlier chunk's inserts.
 const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
+
+// Types the server ingests idempotently by natural key (no range-delete), so they
+// can be chunked freely — but each record is expensive to process server-side
+// (multiple queries / merges), so they're capped at SESSION_CHUNK_SIZE rather than
+// the much larger simple-measurement CHUNK_SIZE. Sleep merges by key (#1180);
+// Nutrition upserts each food entry by (source, source_id).
+const SMALL_CHUNK_TYPES = new Set(['SleepSession', 'Nutrition']);
 
 /** Splits the payload into request-sized chunks (see RANGE_DELETE_TYPES). */
 const sendHealthDataChunked = async (
@@ -159,12 +165,12 @@ const sendHealthDataChunked = async (
   serverConfig: ServerConfig,
 ): Promise<unknown> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
-  const sleepRecords: HealthDataPayloadItem[] = [];
+  const smallChunkRecords: HealthDataPayloadItem[] = [];
   const rangeDeleteBySource = new Map<string, HealthDataPayloadItem[]>();
 
   for (const record of data) {
-    if (record.type === 'SleepSession') {
-      sleepRecords.push(record);
+    if (SMALL_CHUNK_TYPES.has(record.type)) {
+      smallChunkRecords.push(record);
     } else if (RANGE_DELETE_TYPES.has(record.type)) {
       const source = (record as unknown as Record<string, unknown>).source as string ?? 'manual';
       const group = rangeDeleteBySource.get(source);
@@ -185,9 +191,9 @@ const sendHealthDataChunked = async (
     chunks.push(sessionRecords);
   }
 
-  // Sleep: chunked by SESSION_CHUNK_SIZE.
-  for (let i = 0; i < sleepRecords.length; i += SESSION_CHUNK_SIZE) {
-    chunks.push(sleepRecords.slice(i, i + SESSION_CHUNK_SIZE));
+  // Sleep/Nutrition: chunked by SESSION_CHUNK_SIZE.
+  for (let i = 0; i < smallChunkRecords.length; i += SESSION_CHUNK_SIZE) {
+    chunks.push(smallChunkRecords.slice(i, i + SESSION_CHUNK_SIZE));
   }
 
   // Simple measurements: chunked by CHUNK_SIZE.

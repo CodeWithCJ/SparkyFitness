@@ -1439,6 +1439,8 @@ CREATE TABLE public.food_entries (
     meal_type_id uuid NOT NULL,
     allergens text[],
     traces text[],
+    source character varying(50),
+    source_id character varying(255),
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
 
@@ -3740,6 +3742,13 @@ CREATE UNIQUE INDEX idx_exercises_user_source_source_id_unique ON public.exercis
 --
 
 CREATE INDEX idx_food_entries_food_entry_meal_id ON public.food_entries USING btree (food_entry_meal_id);
+
+
+--
+-- Name: idx_food_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_food_entries_user_source_source_id ON public.food_entries USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --
