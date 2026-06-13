@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
+import React, { useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { setNativeHeaderDatePickerHandlers } from '../utils/nativeHeaderDatePicker';
 import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import HydrationGauge from '../components/HydrationGauge';
@@ -54,11 +55,32 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }, [])
   );
 
-  const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
-  const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));
-  const goToToday = () => setSelectedDate(getTodayDate());
+  const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
+  const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
+  const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
+  const syncNativeHeaderDatePicker = useCallback(() => {
+    if (Platform.OS !== 'ios') return;
+
+    const handlers = {
+      selectedDate,
+      onPreviousDate: goToPreviousDay,
+      onDatePress: openCalendar,
+      onNextDate: goToNextDay,
+    };
+
+    setNativeHeaderDatePickerHandlers('Dashboard', handlers);
+
+    (navigation as unknown as {
+      setParams: (params: {
+        selectedDate: string;
+        onPreviousDate: () => void;
+        onDatePress: () => void;
+        onNextDate: () => void;
+      }) => void;
+    }).setParams(handlers);
+  }, [goToNextDay, goToPreviousDay, navigation, openCalendar, selectedDate]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
@@ -106,7 +128,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const topSafeAreaStyle = { paddingTop: insets.top };
+  const topSafeAreaStyle = Platform.OS === 'ios' ? undefined : { paddingTop: insets.top };
+
+  useLayoutEffect(() => {
+    syncNativeHeaderDatePicker();
+  }, [syncNativeHeaderDatePicker]);
+
+  useFocusEffect(
+    useCallback(() => {
+      syncNativeHeaderDatePicker();
+    }, [syncNativeHeaderDatePicker])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
@@ -119,9 +152,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     if (!isConnectionLoading && !isConnected) {
       return (
         <View className="flex-1">
-          <View className="px-4 pt-4 pb-5">
-            <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
-          </View>
+          {Platform.OS !== 'ios' && (
+            <View className="px-4 pt-4 pb-5">
+              <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
+            </View>
+          )}
           <StatusView
             icon="cloud-offline"
             iconColor="#9CA3AF"
@@ -139,15 +174,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1">
           {!isConnectionLoading && isConnected && (
-            <DateNavigator
-              title="Dashboard"
-              selectedDate={selectedDate}
-              onPreviousDay={goToPreviousDay}
-              onNextDay={goToNextDay}
-              onToday={goToToday}
-              onDatePress={openCalendar}
-              skipTopInset
-            />
+            Platform.OS !== 'ios' ? (
+              <DateNavigator
+                title="Dashboard"
+                selectedDate={selectedDate}
+                onPreviousDay={goToPreviousDay}
+                onNextDay={goToNextDay}
+                onToday={goToToday}
+                onDatePress={openCalendar}
+                skipTopInset
+              />
+            ) : null
           )}
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
             <ActivityIndicator size="large" color="#3B82F6" />
@@ -161,15 +198,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
         <View className="flex-1">
-          <DateNavigator
-            title="Dashboard"
-            selectedDate={selectedDate}
-            onPreviousDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-            onToday={goToToday}
-            onDatePress={openCalendar}
-            skipTopInset
-          />
+          {Platform.OS !== 'ios' && (
+            <DateNavigator
+              title="Dashboard"
+              selectedDate={selectedDate}
+              onPreviousDay={goToPreviousDay}
+              onNextDay={goToNextDay}
+              onToday={goToToday}
+              onDatePress={openCalendar}
+              skipTopInset
+            />
+          )}
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
             <Icon name="alert-circle" size={64} color="#EF4444" />
             <Text className="text-text-muted text-lg text-center mt-4">
@@ -203,23 +242,32 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
+        className="flex-1 bg-background"
+        style={[{ flex: 1 }, topSafeAreaStyle]}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
-        <DateNavigator
-          title="Dashboard"
-          selectedDate={selectedDate}
-          onPreviousDay={goToPreviousDay}
-          onNextDay={goToNextDay}
-          onToday={goToToday}
-          onDatePress={openCalendar}
-          skipTopInset
-          skipHorizontalPadding
-        />
+        {Platform.OS !== 'ios' && (
+          <DateNavigator
+            title="Dashboard"
+            selectedDate={selectedDate}
+            onPreviousDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+            onToday={goToToday}
+            onDatePress={openCalendar}
+            skipTopInset
+            skipHorizontalPadding
+          />
+        )}
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || goal > 0) && (
           <CalorieRingCard
             caloriesConsumed={eaten}
@@ -317,11 +365,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={topSafeAreaStyle}>
+    <>
       {renderContent()}
 
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
-    </View>
+    </>
   );
 };
 

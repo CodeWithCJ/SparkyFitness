@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
@@ -21,6 +21,7 @@ import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { setNativeHeaderDatePickerHandlers } from '../utils/nativeHeaderDatePicker';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -49,20 +50,49 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     }, [])
   );
 
-  useEffect(() => {
-    navigation.setParams({ selectedDate });
-  }, [navigation, selectedDate]);
-
   const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
   const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
+  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  const accentColor = useCSSVariable('--color-accent-primary') as string;
+
+  const syncNativeHeaderDatePicker = useCallback(() => {
+    if (Platform.OS !== 'ios') return;
+
+    const handlers = {
+      selectedDate,
+      onPreviousDate: goToPreviousDay,
+      onDatePress: openCalendar,
+      onNextDate: goToNextDay,
+    };
+
+    setNativeHeaderDatePickerHandlers('Diary', handlers);
+
+    (navigation as unknown as {
+      setParams: (params: {
+        selectedDate: string;
+        onPreviousDate: () => void;
+        onDatePress: () => void;
+        onNextDate: () => void;
+      }) => void;
+    }).setParams(handlers);
+  }, [goToNextDay, goToPreviousDay, navigation, openCalendar, selectedDate]);
+
+  useLayoutEffect(() => {
+    syncNativeHeaderDatePicker();
+  }, [syncNativeHeaderDatePicker]);
+
+  useFocusEffect(
+    useCallback(() => {
+      syncNativeHeaderDatePicker();
+    }, [syncNativeHeaderDatePicker])
+  );
 
   const swipeGesture = useMemo(() => Gesture.Race(
     Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
   ), [goToPreviousDay, goToNextDay]);
 
-  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
   const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
     navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
@@ -99,11 +129,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   }, [measurements]);
 
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
-
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
+  const topSafeAreaStyle = Platform.OS === 'ios' ? undefined : { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchMeasurements()]);
@@ -160,9 +188,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
+        className="flex-1 bg-background"
+        style={[{ flex: 1 }, topSafeAreaStyle]}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -214,28 +249,36 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   };
 
+  const content = (
+    <>
+      {Platform.OS !== 'ios' && !isConnectionLoading && isConnected ? (
+        <DateNavigator
+          title="Diary"
+          selectedDate={selectedDate}
+          onPreviousDay={goToPreviousDay}
+          onNextDay={goToNextDay}
+          onToday={goToToday}
+          onDatePress={openCalendar}
+          showDateAlways
+          skipSafeAreaTop
+        />
+      ) : Platform.OS !== 'ios' && !isConnectionLoading && (
+        <View className="px-4 pt-4 pb-5">
+          <Text className="text-2xl font-bold text-text-primary">Diary</Text>
+        </View>
+      )}
+      {renderContent()}
+      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+    </>
+  );
+
+  if (Platform.OS === 'ios') return content;
+
   return (
     <GestureDetector gesture={swipeGesture}>
       <View className="flex-1 bg-background" style={topSafeAreaStyle}>
-        {!isConnectionLoading && isConnected ? (
-          <DateNavigator
-            title="Diary"
-            selectedDate={selectedDate}
-            onPreviousDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-            onToday={goToToday}
-            onDatePress={openCalendar}
-            showDateAlways
-            skipSafeAreaTop
-          />
-        ) : !isConnectionLoading && (
-          <View className="px-4 pt-4 pb-5">
-            <Text className="text-2xl font-bold text-text-primary">Diary</Text>
-          </View>
-        )}
-        {renderContent()}
-        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
-        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+        {content}
       </View>
     </GestureDetector>
   );

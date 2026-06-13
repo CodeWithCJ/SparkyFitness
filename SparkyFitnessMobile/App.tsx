@@ -5,6 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
 import {
   CommonActions,
+  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   type LinkingOptions,
   type NavigationProp,
@@ -94,22 +96,17 @@ import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
-import type { AppleIcon, TabRole } from 'react-native-bottom-tabs';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
-import CustomTabBar from './src/components/CustomTabBar';
+import { navigateToLastActiveTab, NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
 import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
-const Tab = createBottomTabNavigator<TabParamList>();
-const NativeTab = createNativeBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type TabStateSnapshot = {
@@ -119,41 +116,9 @@ type TabStateSnapshot = {
     params?: unknown;
   }>;
 };
-const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
-const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as const;
-type NonAddTabName = typeof NON_ADD_TABS[number];
-const ADD_TAB_ICON: AppleIcon = { sfSymbol: 'plus' };
-const IOS_SEARCH_ROLE_MIN_VERSION = 26;
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
-
-let lastActiveTab: NonAddTabName = 'Dashboard';
-
-function rememberActiveTab(routeName: string) {
-  if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
-    lastActiveTab = routeName as NonAddTabName;
-  }
-}
-
-function getIOSMajorVersion() {
-  if (Platform.OS !== 'ios') return null;
-
-  const version = Platform.Version;
-  if (typeof version === 'number') return Math.trunc(version);
-
-  const major = Number.parseInt(version, 10);
-  return Number.isFinite(major) ? major : null;
-}
-
-function supportsSeparateAddTabButton() {
-  const majorVersion = getIOSMajorVersion();
-  return majorVersion !== null && majorVersion >= IOS_SEARCH_ROLE_MIN_VERSION;
-}
-
-function resolveColor(value: string, fallback: string) {
-  return value && value !== 'unset' ? value : fallback;
-}
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -234,6 +199,13 @@ function AppContent() {
   const backgroundEnteredAtRef = useRef<number | null>(null);
   const wasInBackgroundRef = useRef(false);
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
+  const rememberActiveTab = useCallback((routeName: string) => {
+    if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
+      lastActiveTabRef.current = routeName as NonAddTabName;
+    }
+  }, []);
+  const getLastActiveTab = useCallback(() => lastActiveTabRef.current, []);
   const setForegroundAutoSyncWindowState = useCallback((isOpen: boolean) => {
     foregroundAutoSyncWindowRef.current = isOpen;
     setForegroundAutoSyncWindowOpen(isOpen);
@@ -247,15 +219,12 @@ function AppContent() {
     };
   }, []);
 
-  const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
+  const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-chrome',
     '--color-chrome-border',
     '--color-background',
     '--color-text-primary',
-    '--color-tab-active',
-    '--color-tab-inactive',
-  ]) as [string, string, string, string, string, string, string];
+  ]) as [string, string, string, string];
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -271,26 +240,32 @@ function AppContent() {
     }
   }, [isDarkMode]);
 
-  const nativeTabActiveTintColor = resolveColor(tabActive, resolveColor(primary, '#0A84FF'));
-  const nativeTabInactiveTintColor = resolveColor(tabInactive, '#8E8E93');
+  const navigationTheme = useMemo<Theme>(() => {
+    const baseTheme = isDarkMode ? DarkTheme : DefaultTheme;
 
-  const navigationTheme = useMemo<Theme>(() => ({
-    dark: isDarkMode,
-    colors: {
-      primary: primary,
-      background: bgPrimary,
-      card: chrome,
-      text: textPrimary,
-      border: chromeBorder,
-      notification: primary,
-    },
-    fonts: {
-      regular: { fontFamily: 'System', fontWeight: '400' },
-      medium: { fontFamily: 'System', fontWeight: '500' },
-      bold: { fontFamily: 'System', fontWeight: '600' },
-      heavy: { fontFamily: 'System', fontWeight: '700' },
-    },
-  }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
+    return {
+      ...baseTheme,
+      dark: isDarkMode,
+      colors: {
+        ...baseTheme.colors,
+        primary,
+        background: bgPrimary,
+        // Native iOS 26 Liquid Glass reads the navigation card color during
+        // tab/header transitions. Keep it solid and in-sync with the app
+        // background to avoid light-mode flashes/flicker in dark themes.
+        card: bgPrimary,
+        text: textPrimary,
+        border: chromeBorder,
+        notification: primary,
+      },
+      fonts: {
+        regular: { fontFamily: 'System', fontWeight: '400' },
+        medium: { fontFamily: 'System', fontWeight: '500' },
+        bold: { fontFamily: 'System', fontWeight: '600' },
+        heavy: { fontFamily: 'System', fontWeight: '700' },
+      },
+    };
+  }, [isDarkMode, primary, bgPrimary, textPrimary, chromeBorder]);
 
   const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
@@ -313,101 +288,45 @@ function AppContent() {
     return diaryParams?.selectedDate;
   }, []);
 
-  const handleAddFood = useCallback(() => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
+const handleAddFood = useCallback(async () => {
+    if (!rootNavigationRef.isReady()) return;
     const date = getActiveDiaryDate();
-    navigation.getParent()?.navigate('FoodSearch', { date });
+    rootNavigationRef.dispatch(CommonActions.navigate('FoodSearch', { date }));
   }, [getActiveDiaryDate]);
 
-  const handleBarcodeScan = useCallback(() => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
+  const handleBarcodeScan = useCallback(async () => {
+    if (!rootNavigationRef.isReady()) return;
     const date = getActiveDiaryDate();
-    navigation.getParent()?.navigate('FoodScan', { date });
+    rootNavigationRef.dispatch(CommonActions.navigate('FoodScan', { date }));
   }, [getActiveDiaryDate]);
 
-  const navigateFromSheet = useCallback((screen: keyof RootStackParamList, params?: RootStackParamList[keyof RootStackParamList]) => {
-    if (rootNavigationRef.isReady()) {
-      rootNavigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
-      return;
-    }
-
-    navigationRef.current?.getParent()?.dispatch(CommonActions.navigate({ name: screen, params }));
+  const handleAddWorkout = useCallback(() => {
+    if (!rootNavigationRef.isReady()) return;
+    setTimeout(() => {
+      rootNavigationRef.dispatch(CommonActions.navigate('WorkoutAdd', { date: getActiveDiaryDate(), skipDraftLoad: true }));
+    }, 0);
   }, []);
 
-  const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
-      const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
-      if (!isConnected) {
-        Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to add an exercise.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Go to Settings',
-              onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
-            },
-          ],
-        );
-        return;
-      }
+  const handleAddActivity = useCallback(() => {
+    if (!rootNavigationRef.isReady()) return;
+    setTimeout(() => {
+      rootNavigationRef.dispatch(CommonActions.navigate('ActivityAdd', { date: getActiveDiaryDate(), skipDraftLoad: true }));
+    }, 0);
+  }, []);
 
-      const date = getActiveDiaryDate();
-      const draft = await loadActiveDraft();
-      if (draft) {
-        Alert.alert(
-          'Draft in Progress',
-          `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Resume Draft',
-              onPress: () => {
-                if (draft.type === 'workout') {
-                  navigateFromSheet('WorkoutAdd');
-                } else {
-                  navigateFromSheet('ActivityAdd');
-                }
-              },
-            },
-            {
-              text: 'Discard & Continue',
-              style: 'destructive',
-              onPress: async () => {
-                await clearDraft();
-                if (screen === 'PresetSearch') {
-                  navigateFromSheet('PresetSearch', { date });
-                } else {
-                  navigateFromSheet(screen, { date, skipDraftLoad: true });
-                }
-              },
-            },
-          ],
-        );
-        return;
-      }
-
-      if (screen === 'PresetSearch') {
-        navigateFromSheet('PresetSearch', { date });
-      } else {
-        navigateFromSheet(screen, { date, skipDraftLoad: true });
-      }
-    },
-    [navigateFromSheet, getActiveDiaryDate],
-  );
-
-  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
-  const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
-  const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
+  const handleAddFromPreset = useCallback(() => {
+    if (!rootNavigationRef.isReady()) return;
+    const date = getActiveDiaryDate();
+    rootNavigationRef.dispatch(CommonActions.navigate('PresetSearch', { date }));
+  }, [getActiveDiaryDate]);
 
   const syncMutation = useSyncHealthData();
 
   const handleAddMeasurements = useCallback(() => {
+    if (!rootNavigationRef.isReady()) return;
     const date = getActiveDiaryDate();
-    navigateFromSheet('MeasurementsAdd', { date });
-  }, [getActiveDiaryDate, navigateFromSheet]);
+    rootNavigationRef.dispatch(CommonActions.navigate('MeasurementsAdd', { date }));
+  }, [getActiveDiaryDate]);
 
   const handleSyncHealthData = useCallback(async () => {
     if (syncMutation.isPending || isSyncClaimed()) return;
@@ -430,25 +349,16 @@ function AppContent() {
     syncMutation.mutate({ timeRange, healthMetricStates });
   }, [syncMutation]);
 
-  const handleAddPress = useCallback(() => {
-    addSheetRef.current?.present();
-  }, []);
-
   const handleAddSheetDismissWithoutAction = useCallback(() => {
-    const navigateBackToPreviousTab = () => {
-      const navigation = navigationRef.current;
-      if (navigation) {
-        navigation.dispatch({
-          ...CommonActions.navigate(lastActiveTab),
-          target: navigation.getState().key,
-        });
-        return;
-      }
+    if (!rootNavigationRef.isReady()) return;
 
+    const navigateBackToPreviousTab = () => {
+      if (navigateToLastActiveTab(lastActiveTabRef.current)) return;
       if (!rootNavigationRef.isReady()) return;
+
       rootNavigationRef.dispatch(
         CommonActions.navigate('Tabs', {
-          screen: lastActiveTab,
+          screen: 'Dashboard',
         }),
       );
     };
@@ -459,6 +369,7 @@ function AppContent() {
     }
 
     navigateBackToPreviousTab();
+
     requestAnimationFrame(navigateBackToPreviousTab);
     addSheetDismissNavigationTimeoutRef.current = setTimeout(() => {
       addSheetDismissNavigationTimeoutRef.current = null;
@@ -733,141 +644,31 @@ function AppContent() {
       <SafeAreaProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'default',
+            contentStyle: { backgroundColor: bgPrimary },
+          }}
+          initialRouteName={initialRoute}
+        >
           <Stack.Screen
             name="Onboarding"
             component={SafeOnboarding}
             options={{ gestureEnabled: false }}
           />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
-            {() => {
-              const addTabRole: TabRole | undefined =
-                supportsSeparateAddTabButton() ? 'search' : undefined;
-
-              if (Platform.OS === 'ios') {
-                return (
-                  <>
-                    <WhatsNewBanner />
-                    <ActiveWorkoutBar variant="embedded" />
-                    <NativeTab.Navigator
-                      initialRouteName="Dashboard"
-                      tabBarActiveTintColor={nativeTabActiveTintColor}
-                      tabBarInactiveTintColor={nativeTabInactiveTintColor}
-                      screenListeners={({ navigation }) => {
-                        navigationRef.current = navigation as NavigationProp<TabParamList>;
-
-                        return {
-                          state: (event) => {
-                            const state = event.data.state;
-                            const route = state.routes[state.index ?? 0];
-                            rememberActiveTab(route.name);
-                          },
-                        };
-                      }}
-                    >
-                      <NativeTab.Screen
-                        name="Dashboard"
-                        component={SafeDashboard}
-                        options={{
-                          tabBarLabel: 'Dashboard',
-                          tabBarIcon: () => ({ sfSymbol: 'house' } as AppleIcon),
-                        }}
-                      />
-                      <NativeTab.Screen
-                        name="Diary"
-                        component={SafeDiary}
-                        options={{
-                          tabBarLabel: 'Diary',
-                          tabBarIcon: () => ({ sfSymbol: 'doc.text' } as AppleIcon),
-                        }}
-                      />
-                      <NativeTab.Screen
-                        name="Add"
-                        component={EmptyScreen}
-                        options={{
-                          tabBarLabel: 'Add',
-                          tabBarIcon: () => ADD_TAB_ICON,
-                          role: addTabRole,
-                          preventsDefault: true,
-                        }}
-                        listeners={({ navigation }) => ({
-                          tabPress: (e) => {
-                            e.preventDefault();
-                            navigationRef.current = navigation as NavigationProp<TabParamList>;
-                            handleAddPress();
-                          },
-                        })}
-                      />
-                      <NativeTab.Screen
-                        name="Library"
-                        component={SafeLibrary}
-                        options={{
-                          tabBarLabel: 'Library',
-                          tabBarIcon: () => ({ sfSymbol: 'book' } as AppleIcon),
-                        }}
-                      />
-                      <NativeTab.Screen
-                        name="Settings"
-                        component={SettingsScreen}
-                        options={{
-                          tabBarLabel: 'Settings',
-                          tabBarIcon: () => ({ sfSymbol: 'gearshape' } as AppleIcon),
-                        }}
-                      />
-                    </NativeTab.Navigator>
-                  </>
-                );
-              }
-
-              return (
-                <Tab.Navigator
-                  initialRouteName="Dashboard"
-                  screenListeners={({ navigation }) => {
-                    navigationRef.current = navigation as NavigationProp<TabParamList>;
-
-                    return {
-                      state: (event) => {
-                        const state = event.data.state;
-                        const route = state.routes[state.index ?? 0];
-                        rememberActiveTab(route.name);
-                      },
-                    };
-                  }}
-                  screenOptions={{
-                    headerShown: false,
-                  }}
-                  tabBar={(props) => (
-                    // Wrap the tab bar so the active workout HUD can sit
-                    // directly on top of it. Order matters: CustomTabBar is
-                    // a later sibling than ActiveWorkoutBar, so its Add button
-                    // (which uses -mt-5 to rise above the tab bar's top edge)
-                    // paints on top of the embedded bar — matching the mockup
-                    // where the + button visually bridges both bars.
-                    <View collapsable={false}>
-                      <WhatsNewBanner />
-                      <ActiveWorkoutBar variant="embedded" />
-                      <CustomTabBar {...props} />
-                    </View>
-                  )}
-                >
-                  <Tab.Screen name="Dashboard" component={SafeDashboard} />
-                  <Tab.Screen name="Diary" component={SafeDiary} />
-                  <Tab.Screen
-                    name="Add"
-                    component={EmptyScreen}
-                    listeners={({ navigation }) => ({
-                      tabPress: (e) => {
-                        e.preventDefault();
-                        navigationRef.current = navigation;
-                        handleAddPress();
-                      },
-                    })}
-                  />
-                  <Tab.Screen name="Library" component={SafeLibrary} />
-                  <Tab.Screen name="Settings" component={SettingsScreen} />
-                </Tab.Navigator>
-              );
-            }}
+            {() => (
+              <>
+                <WhatsNewBanner />
+                <ActiveWorkoutBar variant="embedded" />
+                <TabsLayout
+                  onAddPress={() => addSheetRef.current?.present()}
+                  rememberActiveTab={rememberActiveTab}
+                  getLastActiveTab={getLastActiveTab}
+                />
+              </>
+            )}
           </Stack.Screen>
           <Stack.Screen
             name="FoodsLibrary"
