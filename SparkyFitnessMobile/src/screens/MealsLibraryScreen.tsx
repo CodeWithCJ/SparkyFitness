@@ -177,8 +177,8 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {renderHeader()}
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && renderHeader()}
       {isConnected ? renderSearchBar() : null}
       {renderContent()}
     </View>

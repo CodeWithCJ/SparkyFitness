@@ -31,6 +31,7 @@ import { extractActivitySummary } from '../utils/activityDetails';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   ExerciseEntryResponse,
@@ -275,11 +276,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-text-muted',
     '--color-border-subtle',
-  ]) as [string, string, string];
+  ]) as [string, string, string, string];
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -648,51 +650,44 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         title: 'Edit Workout',
         headerBackVisible: false,
         gestureEnabled: false,
-        headerLeft: () => (
-          <Pressable
-            onPress={cancelEditing}
-            disabled={isSaving}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Cancel"
-          >
-            <Text style={{ color: accentPrimary, fontSize: 17, opacity: isSaving ? 0.4 : 1 }}>Cancel</Text>
-          </Pressable>
-        ),
-        headerRight: () =>
-          isSaving ? (
-            <ActivityIndicator size="small" color={accentPrimary} />
-          ) : (
-            <Pressable
-              onPress={handleSave}
-              disabled={!hasEditedExercisesWithSets}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Save"
-            >
-              <Text style={{ color: accentPrimary, fontSize: 17, fontWeight: '600', opacity: hasEditedExercisesWithSets ? 1 : 0.4 }}>
-                Save
-              </Text>
-            </Pressable>
-          ),
+        unstable_headerLeftItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Cancel',
+            identifier: 'workout-detail-cancel',
+            tintColor: textPrimary,
+            accessibilityLabel: 'Cancel',
+            disabled: isSaving,
+            onPress: () => cancelEditing(),
+          }),
+        ],
+        unstable_headerRightItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Save',
+            identifier: 'workout-detail-save',
+            tintColor: textPrimary,
+            accessibilityLabel: 'Save',
+            fontWeight: '600',
+            disabled: isSaving || !hasEditedExercisesWithSets,
+            onPress: () => handleSave(),
+          }),
+        ],
       });
     } else {
       navigation.setOptions({
         title: name,
         headerBackVisible: true,
         gestureEnabled: true,
-        headerLeft: undefined,
-        headerRight: isSparky
-          ? () => (
-              <Pressable
-                onPress={startEditing}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Edit workout"
-              >
-                <Text style={{ color: accentPrimary, fontSize: 17, fontWeight: '500' }}>Edit</Text>
-              </Pressable>
-            )
+        unstable_headerLeftItems: undefined,
+        unstable_headerRightItems: isSparky
+          ? () => [
+              createNativeHeaderTextButtonItem({
+                label: 'Edit',
+                identifier: 'workout-detail-edit',
+                tintColor: textPrimary,
+                accessibilityLabel: 'Edit workout',
+                onPress: () => startEditing(),
+              }),
+            ]
           : undefined,
       });
     }
@@ -703,7 +698,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     hasEditedExercisesWithSets,
     name,
     isSparky,
-    accentPrimary,
+    textPrimary,
     startEditing,
     cancelEditing,
     handleSave,

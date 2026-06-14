@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -282,9 +283,27 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     updateMeal(payload);
   };
 
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'edit-logged-meal-save',
+          tintColor: textPrimary,
+          accessibilityLabel: 'Save meal',
+          fontWeight: '600',
+          disabled: !canSave || isRowBusy,
+          onPress: () => handleSave(),
+        }),
+      ],
+    });
+  }, [navigation, textPrimary, canSave, isRowBusy, handleSave]);
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background justify-center items-center" style={{ paddingTop: insets.top }}>
+      <View className="flex-1 bg-background justify-center items-center" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
         <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
@@ -308,8 +327,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     baseTotals.fiber != null ? baseTotals.fiber * displayScale : undefined;
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -330,6 +350,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           </Button>
         </View>
       </View>
+      )}
 
       <ScrollView
         className="flex-1"

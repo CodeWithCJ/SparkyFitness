@@ -4,8 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions, useFocusEffect, useNavigation, type NavigationAction } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
-import { createNativeStackNavigator, type NativeStackHeaderItem, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, type NativeStackHeaderItem } from '@react-navigation/native-stack';
 import { useCSSVariable } from 'uniwind';
+import { createIOSNativeHeaderOptions } from '../utils/nativeHeaderItems';
 import DashboardScreen from '../screens/DashboardScreen';
 import DiaryScreen from '../screens/DiaryScreen';
 import LibraryScreen from '../screens/LibraryScreen';
@@ -22,24 +23,6 @@ export const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as con
 export type NonAddTabName = typeof NON_ADD_TABS[number];
 const ADD_TAB_ICON: AppleIcon = { sfSymbol: 'plus' };
 const IOS_SEARCH_ROLE_MIN_VERSION = 26;
-
-export function createIOSNativeHeaderOptions(tintColor: string): NativeStackNavigationOptions {
-  return {
-    headerShown: true,
-    headerLargeTitleEnabled: true,
-    headerLargeTitleShadowVisible: false,
-    headerTintColor: tintColor,
-    headerTitleStyle: {
-      color: tintColor,
-      fontWeight: '600',
-    },
-    headerLargeTitleStyle: {
-      color: tintColor,
-      fontWeight: '700',
-    },
-    animation: 'default',
-  };
-}
 
 let tabsNavigation: { dispatch: (action: NavigationAction) => void; getState: () => { key?: string } } | null = null;
 

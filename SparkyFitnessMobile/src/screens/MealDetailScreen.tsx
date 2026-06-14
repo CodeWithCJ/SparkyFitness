@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteMeal, useMeal, useProfile, useServerConnection, usePreferences } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
@@ -100,6 +101,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const headerTintColor = useCSSVariable('--color-text-primary') as string;
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -134,26 +136,24 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
-      headerRight: canManageMeal
-        ? () => (
-            <Pressable
-              onPress={() =>
+      unstable_headerRightItems: canManageMeal
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: 'Edit',
+              identifier: 'meal-detail-edit',
+              tintColor: headerTintColor,
+              accessibilityLabel: 'Edit meal',
+              onPress: () =>
                 navigation.navigate('MealAdd', {
                   mode: 'edit',
                   mealId: meal!.id,
                   initialMeal: meal,
-                })
-              }
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Edit meal"
-            >
-              <Text style={{ color: accentColor, fontSize: 17, fontWeight: '500' }}>Edit</Text>
-            </Pressable>
-          )
+                }),
+            }),
+          ]
         : undefined,
     });
-  }, [navigation, meal, canManageMeal, accentColor]);
+  }, [navigation, meal, canManageMeal, headerTintColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

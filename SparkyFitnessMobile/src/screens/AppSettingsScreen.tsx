@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import { Platform, View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -39,14 +39,15 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const soundsEnabled = useSoundsEnabled();
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
+        {Platform.OS !== 'ios' && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -58,6 +59,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
           </Button>
           <Text className="text-2xl font-bold text-text-primary">App Settings</Text>
         </View>
+        )}
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

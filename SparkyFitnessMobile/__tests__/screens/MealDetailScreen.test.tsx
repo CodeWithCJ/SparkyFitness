@@ -108,9 +108,10 @@ describe('MealDetailScreen', () => {
     );
 
   // On iOS the Edit action lives in the native header, applied via
-  // navigation.setOptions({ headerRight }); pull it back out to assert on it.
-  const getHeaderRight = () =>
-    (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.headerRight;
+  // navigation.setOptions({ unstable_headerRightItems }); pull it back out to
+  // assert on the native item config.
+  const getHeaderRightItems = () =>
+    (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.unstable_headerRightItems;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -147,9 +148,16 @@ describe('MealDetailScreen', () => {
     expect(screen.getByText('Per serving')).toBeTruthy();
     expect(screen.getByText('Delete Meal')).toBeTruthy();
 
-    const headerRight = getHeaderRight();
-    expect(headerRight).toBeTruthy();
-    expect(render(headerRight()).getByText('Edit')).toBeTruthy();
+    const headerRightItems = getHeaderRightItems();
+    expect(headerRightItems).toBeTruthy();
+    expect(headerRightItems()).toEqual([
+      expect.objectContaining({
+        type: 'button',
+        label: 'Edit',
+        identifier: 'meal-detail-edit',
+        sharesBackground: true,
+      }),
+    ]);
   });
 
   it('logs the meal from the detail screen', () => {
@@ -172,7 +180,8 @@ describe('MealDetailScreen', () => {
   it('opens MealAdd in edit mode for owners', () => {
     renderScreen();
 
-    fireEvent.press(render(getHeaderRight()()).getByText('Edit'));
+    const editItem = getHeaderRightItems()()[0];
+    editItem.onPress();
 
     expect(navigation.navigate).toHaveBeenCalledWith('MealAdd', {
       mode: 'edit',
@@ -192,7 +201,7 @@ describe('MealDetailScreen', () => {
 
     const screen = renderScreen();
 
-    expect(getHeaderRight()).toBeUndefined();
+    expect(getHeaderRightItems()).toBeUndefined();
     expect(screen.queryByText('Delete Meal')).toBeNull();
     expect(screen.getByText('Log Meal')).toBeTruthy();
   });

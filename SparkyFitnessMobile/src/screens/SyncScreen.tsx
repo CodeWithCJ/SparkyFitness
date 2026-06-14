@@ -342,12 +342,13 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
         {/* Header */}
+        {Platform.OS !== 'ios' && (
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Button
@@ -361,6 +362,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
             <Text className="text-2xl font-bold text-text-primary">Health Data Sync</Text>
           </View>
         </View>
+        )}
 
         {/* Sync Range */}
         <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">

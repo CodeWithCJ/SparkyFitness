@@ -204,14 +204,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
+        {Platform.OS !== 'ios' && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -223,6 +224,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
           </Button>
           <Text className="text-2xl font-bold text-text-primary">Server Settings</Text>
         </View>
+        )}
 
         {activeConfig && (
           <>
