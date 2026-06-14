@@ -629,17 +629,20 @@ export const calculateBasePlan = (
         }
       : getDietTemplate(localSelectedDiet);
 
+  const fiberGrams = Math.round((finalDailyCalories / 1000) * 14);
+  const adjustedCalories = Math.max(0, finalDailyCalories - fiberGrams * 2);
+
   const macros = {
     carbs: Math.round(
-      (finalDailyCalories * ((dietTemplate?.carbsPercentage ?? 0) / 100)) / 4
+      (adjustedCalories * ((dietTemplate?.carbsPercentage ?? 0) / 100)) / 4
     ),
     protein: Math.round(
-      (finalDailyCalories * ((dietTemplate?.proteinPercentage ?? 0) / 100)) / 4
+      (adjustedCalories * ((dietTemplate?.proteinPercentage ?? 0) / 100)) / 4
     ),
     fat: Math.round(
-      (finalDailyCalories * ((dietTemplate?.fatPercentage ?? 0) / 100)) / 9
+      (adjustedCalories * ((dietTemplate?.fatPercentage ?? 0) / 100)) / 9
     ),
-    fiber: Math.round((finalDailyCalories / 1000) * 14),
+    fiber: fiberGrams,
   };
 
   return { bmr, tdee, finalDailyCalories, macros };

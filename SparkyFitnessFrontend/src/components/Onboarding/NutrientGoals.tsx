@@ -61,10 +61,14 @@ export const NutrientGoals = ({
                 {editedPlan?.calories
                   ? Math.round(
                       ((editedPlan.carbs * 4) /
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
+                        Math.max(
+                          1,
+                          convertEnergy(
+                            editedPlan.calories,
+                            localEnergyUnit,
+                            'kcal'
+                          ) -
+                            (editedPlan.dietary_fiber || 0) * 2
                         )) *
                         100
                     )
@@ -94,10 +98,14 @@ export const NutrientGoals = ({
                 {editedPlan?.calories
                   ? Math.round(
                       ((editedPlan.protein * 4) /
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
+                        Math.max(
+                          1,
+                          convertEnergy(
+                            editedPlan.calories,
+                            localEnergyUnit,
+                            'kcal'
+                          ) -
+                            (editedPlan.dietary_fiber || 0) * 2
                         )) *
                         100
                     )
@@ -129,10 +137,14 @@ export const NutrientGoals = ({
                 {editedPlan?.calories
                   ? Math.round(
                       ((editedPlan.fat * 9) /
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
+                        Math.max(
+                          1,
+                          convertEnergy(
+                            editedPlan.calories,
+                            localEnergyUnit,
+                            'kcal'
+                          ) -
+                            (editedPlan.dietary_fiber || 0) * 2
                         )) *
                         100
                     )

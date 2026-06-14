@@ -29,11 +29,15 @@ function calculateGramsFromPercentages(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   carbs_percentage: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fat_percentage: any
+  fat_percentage: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dietary_fiber?: any
 ) {
-  const protein_grams = (calories * (protein_percentage / 100)) / 4;
-  const carbs_grams = (calories * (carbs_percentage / 100)) / 4;
-  const fat_grams = (calories * (fat_percentage / 100)) / 9;
+  const fiber = Number(dietary_fiber) || 0;
+  const adjustedCalories = Math.max(0, calories - fiber * 2);
+  const protein_grams = (adjustedCalories * (protein_percentage / 100)) / 4;
+  const carbs_grams = (adjustedCalories * (carbs_percentage / 100)) / 4;
+  const fat_grams = (adjustedCalories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
 
@@ -317,7 +321,8 @@ async function getUserGoalsForRange(
           processedGoals.calories,
           processedGoals.protein_percentage,
           processedGoals.carbs_percentage,
-          processedGoals.fat_percentage
+          processedGoals.fat_percentage,
+          processedGoals.dietary_fiber
         );
       processedGoals = {
         ...processedGoals,
@@ -426,7 +431,8 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
           p_calories,
           p_protein_percentage,
           p_carbs_percentage,
-          p_fat_percentage
+          p_fat_percentage,
+          p_dietary_fiber
         );
       protein_to_store = protein_grams;
       carbs_to_store = carbs_grams;
