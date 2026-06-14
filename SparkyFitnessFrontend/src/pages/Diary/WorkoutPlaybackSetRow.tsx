@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { UnitInput } from '@/components/ui/UnitInput';
 import {
   Select,
   SelectContent,
@@ -38,15 +39,6 @@ function parseNullableInteger(raw: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function parseNullableDecimal(raw: string): number | null {
-  if (raw.trim() === '') {
-    return null;
-  }
-
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 interface WorkoutPlaybackSetRowProps {
   exerciseName: string;
   exerciseKey: string;
@@ -72,6 +64,7 @@ interface WorkoutPlaybackSetRowProps {
   onOpenRestEditor: (pointer: WorkoutSetPointer) => void;
   onRemoveSet: (pointer: WorkoutSetPointer) => void;
   canRemove: boolean;
+  weightUnit: string;
 }
 
 const WorkoutPlaybackSetRow = ({
@@ -95,6 +88,7 @@ const WorkoutPlaybackSetRow = ({
   onOpenRestEditor,
   onRemoveSet,
   canRemove,
+  weightUnit,
 }: WorkoutPlaybackSetRowProps) => {
   const { t } = useTranslation();
   const pointer: WorkoutSetPointer = { exerciseIndex, setIndex };
@@ -186,24 +180,19 @@ const WorkoutPlaybackSetRow = ({
             className="col-span-1 w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:col-start-3"
           />
 
-          <Input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.5}
-            aria-label={`Weight set ${setNumber}`}
-            value={weight ?? ''}
+          <div
+            className="col-span-1 w-full sm:col-start-4"
             onClick={(event) => event.stopPropagation()}
-            onChange={(event) =>
-              onSetFieldChange(
-                pointer,
-                'weight',
-                parseNullableDecimal(event.target.value)
-              )
-            }
-            placeholder={t('common.weight', 'Weight')}
-            className="col-span-1 w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:col-start-4"
-          />
+          >
+            <UnitInput
+              value={weight ?? ''}
+              unit={weightUnit}
+              type="weight"
+              placeholder={t('common.weight', 'Weight')}
+              onChange={(value) => onSetFieldChange(pointer, 'weight', value)}
+              inputClassName="focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
 
           <Button
             type="button"

@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
 import { useCreatePresetSessionMutation } from '@/hooks/Exercises/useExerciseEntries';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   DEFAULT_REST_SECONDS,
   addWorkoutSetToExercise,
@@ -110,6 +111,7 @@ function startRestTimer(
 
 const WorkoutPlaybackPage = () => {
   const { t } = useTranslation();
+  const { weightUnit } = usePreferences();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -559,6 +561,7 @@ const WorkoutPlaybackPage = () => {
         onOpenRestEditor={handleOpenRestEditor}
         onRemoveSet={handleRemoveSet}
         onAddSet={handleAddSet}
+        weightUnit={weightUnit}
       />
 
       <WorkoutPlaybackDialogs

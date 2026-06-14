@@ -24,6 +24,7 @@ interface WorkoutPlaybackExercisesListProps {
   onOpenRestEditor: (pointer: WorkoutSetPointer) => void;
   onRemoveSet: (pointer: WorkoutSetPointer) => void;
   onAddSet: (exerciseIndex: number) => void;
+  weightUnit: string;
 }
 
 const WorkoutPlaybackExercisesList = ({
@@ -37,6 +38,7 @@ const WorkoutPlaybackExercisesList = ({
   onOpenRestEditor,
   onRemoveSet,
   onAddSet,
+  weightUnit,
 }: WorkoutPlaybackExercisesListProps) => {
   const { t } = useTranslation();
   const [expandedCompletedExercises, setExpandedCompletedExercises] = useState<
@@ -160,6 +162,7 @@ const WorkoutPlaybackExercisesList = ({
                         onOpenRestEditor={onOpenRestEditor}
                         onRemoveSet={onRemoveSet}
                         canRemove={exercise.sets.length > 1}
+                        weightUnit={weightUnit}
                       />
                     );
                   })}
