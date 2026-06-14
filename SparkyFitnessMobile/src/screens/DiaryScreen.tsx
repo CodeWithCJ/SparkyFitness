@@ -249,9 +249,23 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   };
 
+  const renderedContent = renderContent();
+
+  if (Platform.OS === 'ios') {
+    return (
+      <>
+        <GestureDetector gesture={swipeGesture}>
+          {renderedContent ?? <View className="flex-1 bg-background" />}
+        </GestureDetector>
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+      </>
+    );
+  }
+
   const content = (
     <>
-      {Platform.OS !== 'ios' && !isConnectionLoading && isConnected ? (
+      {!isConnectionLoading && isConnected ? (
         <DateNavigator
           title="Diary"
           selectedDate={selectedDate}
@@ -262,20 +276,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           showDateAlways
           skipSafeAreaTop
         />
-      ) : Platform.OS !== 'ios' && !isConnectionLoading && (
+      ) : !isConnectionLoading && (
         <View className="px-4 pt-4 pb-5">
           <Text className="text-2xl font-bold text-text-primary">Diary</Text>
         </View>
       )}
-      {renderContent()}
+      {renderedContent}
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
       <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
     </>
   );
-
-  if (Platform.OS === 'ios') {
-    return <GestureDetector gesture={swipeGesture}>{content}</GestureDetector>;
-  }
 
   return (
     <GestureDetector gesture={swipeGesture}>
