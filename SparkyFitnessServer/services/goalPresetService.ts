@@ -28,11 +28,15 @@ function calculateGramsFromPercentages(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   carbs_percentage: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fat_percentage: any
+  fat_percentage: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dietary_fiber?: any
 ) {
-  const protein_grams = (calories * (protein_percentage / 100)) / 4;
-  const carbs_grams = (calories * (carbs_percentage / 100)) / 4;
-  const fat_grams = (calories * (fat_percentage / 100)) / 9;
+  const fiber = Number(dietary_fiber) || 0;
+  const adjustedCalories = Math.max(0, (Number(calories) || 0) - fiber * 2);
+  const protein_grams = (adjustedCalories * (protein_percentage / 100)) / 4;
+  const carbs_grams = (adjustedCalories * (carbs_percentage / 100)) / 4;
+  const fat_grams = (adjustedCalories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +59,8 @@ async function createGoalPreset(userId: any, presetData: any) {
           presetData.calories,
           presetData.protein_percentage,
           presetData.carbs_percentage,
-          presetData.fat_percentage
+          presetData.fat_percentage,
+          presetData.dietary_fiber
         );
       presetData.protein = protein_grams;
       presetData.carbs = carbs_grams;
@@ -122,7 +127,8 @@ async function updateGoalPreset(presetId: any, userId: any, presetData: any) {
           presetData.calories,
           presetData.protein_percentage,
           presetData.carbs_percentage,
-          presetData.fat_percentage
+          presetData.fat_percentage,
+          presetData.dietary_fiber
         );
       presetData.protein = protein_grams;
       presetData.carbs = carbs_grams;

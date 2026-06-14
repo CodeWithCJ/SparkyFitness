@@ -279,18 +279,23 @@ const PersonalPlan = ({
           'kcal'
         );
 
+        const fiber = editedPlan.dietary_fiber || 0;
+        const macroCalories = Math.max(0, storedCalories - fiber * 2);
         const newGoals: ExpandedGoals = {
           ...editedPlan,
           calories: storedCalories,
-          protein_percentage: Math.round(
-            ((editedPlan.protein * 4) / storedCalories) * 100
-          ),
-          carbs_percentage: Math.round(
-            ((editedPlan.carbs * 4) / storedCalories) * 100
-          ),
-          fat_percentage: Math.round(
-            ((editedPlan.fat * 9) / storedCalories) * 100
-          ),
+          protein_percentage:
+            macroCalories > 0
+              ? Math.round(((editedPlan.protein * 4) / macroCalories) * 100)
+              : 0,
+          carbs_percentage:
+            macroCalories > 0
+              ? Math.round(((editedPlan.carbs * 4) / macroCalories) * 100)
+              : 0,
+          fat_percentage:
+            macroCalories > 0
+              ? Math.round(((editedPlan.fat * 9) / macroCalories) * 100)
+              : 0,
           dietary_fiber: editedPlan.dietary_fiber,
           water_goal_ml: editedPlan.water_goal_ml,
           target_exercise_duration_minutes:

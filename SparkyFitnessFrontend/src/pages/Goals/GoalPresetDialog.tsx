@@ -40,10 +40,12 @@ interface GoalPresetDialogProps {
 const calculateGrams = (
   calories: number,
   percentage: number,
-  nutrient: 'protein' | 'carbs' | 'fat'
+  nutrient: 'protein' | 'carbs' | 'fat',
+  dietaryFiber: number = 0
 ) => {
   const factor = nutrient === 'fat' ? 9 : 4;
-  return Math.round((calories * (percentage / 100)) / factor);
+  const adjustedCalories = Math.max(0, calories - dietaryFiber * 2);
+  return Math.round((adjustedCalories * (percentage / 100)) / factor);
 };
 
 export const GoalPresetDialog = ({
@@ -103,13 +105,17 @@ export const GoalPresetDialog = ({
 
     if (macroInputType === 'percentages') {
       const cal = toSave.calories;
+      const fiber = toSave.dietary_fiber || 0;
+      const adjustedCal = Math.max(0, cal - fiber * 2);
       toSave.protein = Math.round(
-        (cal * (toSave.protein_percentage || 0)) / 100 / 4
+        (adjustedCal * (toSave.protein_percentage || 0)) / 100 / 4
       );
       toSave.carbs = Math.round(
-        (cal * (toSave.carbs_percentage || 0)) / 100 / 4
+        (adjustedCal * (toSave.carbs_percentage || 0)) / 100 / 4
       );
-      toSave.fat = Math.round((cal * (toSave.fat_percentage || 0)) / 100 / 9);
+      toSave.fat = Math.round(
+        (adjustedCal * (toSave.fat_percentage || 0)) / 100 / 9
+      );
     } else {
       toSave.protein_percentage = null;
       toSave.carbs_percentage = null;
@@ -260,7 +266,8 @@ export const GoalPresetDialog = ({
                     {calculateGrams(
                       formData.calories,
                       formData.protein_percentage || 0,
-                      'protein'
+                      'protein',
+                      formData.dietary_fiber
                     )}
                     g
                   </div>
@@ -269,7 +276,8 @@ export const GoalPresetDialog = ({
                     {calculateGrams(
                       formData.calories,
                       formData.carbs_percentage || 0,
-                      'carbs'
+                      'carbs',
+                      formData.dietary_fiber
                     )}
                     g
                   </div>
@@ -278,7 +286,8 @@ export const GoalPresetDialog = ({
                     {calculateGrams(
                       formData.calories,
                       formData.fat_percentage || 0,
-                      'fat'
+                      'fat',
+                      formData.dietary_fiber
                     )}
                     g
                   </div>

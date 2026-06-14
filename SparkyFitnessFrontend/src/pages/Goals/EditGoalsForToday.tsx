@@ -45,10 +45,12 @@ interface EditGoalsProps {
 const calculateGrams = (
   calories: number,
   percentage: number,
-  nutrient: 'protein' | 'carbs' | 'fat'
+  nutrient: 'protein' | 'carbs' | 'fat',
+  dietaryFiber: number = 0
 ) => {
   const factor = nutrient === 'fat' ? 9 : 4;
-  return Math.round((calories * (percentage / 100)) / factor);
+  const adjustedCalories = Math.max(0, calories - dietaryFiber * 2);
+  return Math.round((adjustedCalories * (percentage / 100)) / factor);
 };
 
 /**
@@ -270,7 +272,8 @@ const EditGoalsForm = ({
               {calculateGrams(
                 goals.calories,
                 goals.protein_percentage || 0,
-                'protein'
+                'protein',
+                goals.dietary_fiber
               )}
               g
             </span>
@@ -279,13 +282,19 @@ const EditGoalsForm = ({
               {calculateGrams(
                 goals.calories,
                 goals.carbs_percentage || 0,
-                'carbs'
+                'carbs',
+                goals.dietary_fiber
               )}
               g
             </span>
             <span>
               Fat:{' '}
-              {calculateGrams(goals.calories, goals.fat_percentage || 0, 'fat')}
+              {calculateGrams(
+                goals.calories,
+                goals.fat_percentage || 0,
+                'fat',
+                goals.dietary_fiber
+              )}
               g
             </span>
           </div>
@@ -380,14 +389,16 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       finalGoals.protein_percentage !== undefined
     ) {
       const cal = finalGoals.calories;
+      const fiber = finalGoals.dietary_fiber || 0;
+      const adjustedCal = Math.max(0, cal - fiber * 2);
       finalGoals.protein = Math.round(
-        (cal * (finalGoals.protein_percentage || 0)) / 100 / 4
+        (adjustedCal * (finalGoals.protein_percentage || 0)) / 100 / 4
       );
       finalGoals.carbs = Math.round(
-        (cal * (finalGoals.carbs_percentage || 0)) / 100 / 4
+        (adjustedCal * (finalGoals.carbs_percentage || 0)) / 100 / 4
       );
       finalGoals.fat = Math.round(
-        (cal * (finalGoals.fat_percentage || 0)) / 100 / 9
+        (adjustedCal * (finalGoals.fat_percentage || 0)) / 100 / 9
       );
     }
 
