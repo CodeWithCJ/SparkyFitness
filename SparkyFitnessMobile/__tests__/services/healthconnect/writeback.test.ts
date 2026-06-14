@@ -45,7 +45,7 @@ const foodEntry = {
   meal_type: 'breakfast',
   quantity: 1,
   unit: 'serving',
-  entry_date: '2026-06-14',
+  entry_date: '2026-06-01',
   serving_size: 1,
   food_name: 'Eggs',
   calories: 150,
@@ -79,13 +79,13 @@ beforeEach(() => {
 describe('writebackPhase', () => {
   it('does nothing when both metrics are disabled', async () => {
     prefs({ writebackNutritionEnabled: false, writebackHydrationEnabled: false });
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
   it('writes nutrition records when enabled and permission granted', async () => {
     prefs({ writebackNutritionEnabled: true });
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     const records = mockInsert.mock.calls[0][0];
     expect(records).toHaveLength(1);
@@ -97,7 +97,7 @@ describe('writebackPhase', () => {
   it('skips a metric when its write permission is not granted', async () => {
     prefs({ writebackNutritionEnabled: true });
     mockGranted.mockResolvedValue([]); // nothing granted
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
@@ -107,19 +107,19 @@ describe('writebackPhase', () => {
       foodEntries: [{ ...foodEntry, source: 'health_connect' }],
       waterIntake: 0,
     });
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockInsert).not.toHaveBeenCalled(); // nothing originated in Sparky
   });
 
   it("deletes the previous run's records before inserting", async () => {
     prefs({
       writebackNutritionEnabled: true,
-      'writebackNutritionIds:2026-06-14': [
+      'writebackNutritionIds:2026-06-01': [
         'sparky-nutrition-fe1-1',
         'sparky-nutrition-gone-1',
       ],
     });
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockDelete).toHaveBeenCalledWith('Nutrition', [], [
       'sparky-nutrition-fe1-1',
       'sparky-nutrition-gone-1',
@@ -130,23 +130,23 @@ describe('writebackPhase', () => {
   it('writes water and deletes the day record when water drops to 0', async () => {
     prefs({
       writebackHydrationEnabled: true,
-      'writebackHydrationIds:2026-06-14': ['sparky-water-2026-06-14-1'],
+      'writebackHydrationIds:2026-06-01': ['sparky-water-2026-06-01-1'],
     });
     mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 0 });
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     expect(mockInsert).not.toHaveBeenCalled(); // ml<=0 → no record
-    expect(mockDelete).toHaveBeenCalledWith('Hydration', [], ['sparky-water-2026-06-14-1']);
+    expect(mockDelete).toHaveBeenCalledWith('Hydration', [], ['sparky-water-2026-06-01-1']);
   });
 
   it('is idempotent — a second run deletes the first run\'s record', async () => {
     prefs({ writebackNutritionEnabled: true });
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1000);
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     const firstId = mockInsert.mock.calls[0][0][0].metadata.clientRecordId;
     expect(firstId).toBe('sparky-nutrition-fe1-1000');
 
     nowSpy.mockReturnValue(2000);
-    await writebackPhase(['2026-06-14']);
+    await writebackPhase(['2026-06-01']);
     // Second run deletes exactly what the first run wrote, then inserts fresh.
     expect(mockDelete).toHaveBeenLastCalledWith('Nutrition', [], ['sparky-nutrition-fe1-1000']);
     expect(mockInsert.mock.calls[1][0][0].metadata.clientRecordId).toBe('sparky-nutrition-fe1-2000');
@@ -158,6 +158,6 @@ describe('writebackPhase', () => {
     mockInsert.mockRejectedValueOnce(new Error('quota'));
     const { isQuotaExceededError } = jest.requireMock('../../../src/services/healthconnect/index');
     (isQuotaExceededError as jest.Mock).mockReturnValue(true);
-    await expect(writebackPhase(['2026-06-14'])).resolves.toBeUndefined();
+    await expect(writebackPhase(['2026-06-01'])).resolves.toBeUndefined();
   });
 });

@@ -16,12 +16,14 @@ import type { FoodEntry } from '../../../src/types/foodEntries';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const field = (record: any, key: string) => record[key];
 
+// A clearly-past date so every meal-time anchor (incl. dinner 19:00) is in the
+// past at test time — otherwise recordInterval would defer same-day future anchors.
 const baseEntry: FoodEntry = {
   id: 'fe1',
   meal_type: 'breakfast',
   quantity: 150,
   unit: 'g',
-  entry_date: '2026-06-14',
+  entry_date: '2026-06-01',
   serving_size: 100, // consumed = value * 150 / 100 = value * 1.5
   food_name: 'Oatmeal',
   calories: 200, // -> 300 kcal
@@ -61,6 +63,11 @@ describe('foodEntryToNutritionRecord', () => {
     expect(foodEntryToNutritionRecord({ ...baseEntry, serving_size: 0 }, 1)).toBeNull();
   });
 
+  it('defers (returns null) when the meal-time anchor is still in the future', () => {
+    // Far-future date → anchor is after "now", so HC would reject it; skip this run.
+    expect(foodEntryToNutritionRecord({ ...baseEntry, entry_date: '2099-01-01' }, 1)).toBeNull();
+  });
+
   it('stamps a version-suffixed, prefixed clientRecordId + version', () => {
     const record = foodEntryToNutritionRecord(baseEntry, 4242)!;
     const metadata = field(record, 'metadata');
@@ -79,14 +86,18 @@ describe('foodEntryToNutritionRecord', () => {
 
 describe('waterMlToHydrationRecord', () => {
   it('returns null for non-positive ml', () => {
-    expect(waterMlToHydrationRecord('2026-06-14', 0, 1)).toBeNull();
-    expect(waterMlToHydrationRecord('2026-06-14', -5, 1)).toBeNull();
+    expect(waterMlToHydrationRecord('2026-06-01', 0, 1)).toBeNull();
+    expect(waterMlToHydrationRecord('2026-06-01', -5, 1)).toBeNull();
+  });
+
+  it('defers (returns null) when the noon anchor is still in the future', () => {
+    expect(waterMlToHydrationRecord('2099-01-01', 500, 1)).toBeNull();
   });
 
   it('builds an interval Hydration record in milliliters', () => {
-    const record = waterMlToHydrationRecord('2026-06-14', 750, 99)!;
+    const record = waterMlToHydrationRecord('2026-06-01', 750, 99)!;
     expect(field(record, 'volume')).toEqual({ value: 750, unit: 'milliliters' });
-    expect(field(record, 'metadata').clientRecordId).toBe('sparky-water-2026-06-14-99');
+    expect(field(record, 'metadata').clientRecordId).toBe('sparky-water-2026-06-01-99');
     expect(field(record, 'metadata').clientRecordVersion).toBe(99);
     expect(new Date(field(record, 'endTime')).getTime()).toBeGreaterThan(
       new Date(field(record, 'startTime')).getTime(),

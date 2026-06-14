@@ -79,15 +79,35 @@ const scaleConsumed = (
   return (value * quantity) / servingSize;
 };
 
+const MINUTE_MS = 60_000;
+
 const localDayInstant = (date: string, hour: number, minute: number): Date => {
   const d = new Date(`${date}T00:00:00`); // parsed in device-local time
   d.setHours(hour, minute, 0, 0);
   return d;
 };
 
+// A short interval anchored to a representative local meal time. Returns null when
+// the anchor is still in the future — Health Connect rejects records whose time is
+// after "now" (and one bad record fails the whole insert batch). A snack logged at
+// 13:00 anchors to 15:00, so we defer it; a later sync writes it once 15:00 has
+// passed (the entry's day stays in the writeback window). Past dates never defer.
+const recordInterval = (
+  date: string,
+  hour: number,
+  minute: number,
+  now: Date = new Date(),
+): { start: string; end: string } | null => {
+  const start = localDayInstant(date, hour, minute);
+  const end = new Date(start.getTime() + MINUTE_MS);
+  if (end.getTime() > now.getTime()) return null;
+  return { start: start.toISOString(), end: end.toISOString() };
+};
+
 /**
  * Map one Sparky food entry to a Health Connect NutritionRecord.
- * Returns null when the entry can't be scaled (serving_size === 0).
+ * Returns null when the entry can't be scaled (serving_size === 0) or its meal-time
+ * anchor is still in the future (deferred to a later sync).
  */
 export const foodEntryToNutritionRecord = (
   entry: FoodEntry,
@@ -96,14 +116,14 @@ export const foodEntryToNutritionRecord = (
   if (entry.serving_size === 0) return null;
 
   const [hour, minute] = MEAL_START_HM[entry.meal_type] ?? MEAL_START_HM.snacks;
-  const start = localDayInstant(entry.entry_date, hour, minute);
-  const end = new Date(start.getTime() + 60_000);
+  const interval = recordInterval(entry.entry_date, hour, minute);
+  if (!interval) return null; // anchor still in the future — defer to a later sync
 
   // Built as a loose record because nutrient columns are assigned by dynamic key.
   const record: Record<string, unknown> = {
     recordType: 'Nutrition',
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
+    startTime: interval.start,
+    endTime: interval.end,
     mealType: mealSlugToInt(entry.meal_type),
     name: entry.food_name || 'SparkyFitness food',
     metadata: {
@@ -140,7 +160,8 @@ export const foodEntryToNutritionRecord = (
 /**
  * Map a day's total water (ml) to a Health Connect HydrationRecord.
  * Returns null when there's nothing to write (ml <= 0) — the caller treats that
- * as "delete the day's record" rather than writing an empty one.
+ * as "delete the day's record" rather than writing an empty one — or when the noon
+ * anchor is still in the future (deferred to a later sync).
  */
 export const waterMlToHydrationRecord = (
   entryDate: string,
@@ -149,13 +170,13 @@ export const waterMlToHydrationRecord = (
 ): HydrationRecord | null => {
   if (ml <= 0) return null;
 
-  const start = localDayInstant(entryDate, 12, 0);
-  const end = new Date(start.getTime() + 60_000); // Hydration is an interval record
+  const interval = recordInterval(entryDate, 12, 0); // Hydration is an interval record
+  if (!interval) return null; // noon anchor still in the future — defer to a later sync
 
   return {
     recordType: 'Hydration',
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
+    startTime: interval.start,
+    endTime: interval.end,
     volume: { value: ml, unit: 'milliliters' },
     metadata: {
       clientRecordId: waterClientRecordId(entryDate, clientRecordVersion),
