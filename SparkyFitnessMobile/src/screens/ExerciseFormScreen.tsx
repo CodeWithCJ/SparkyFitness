@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
@@ -409,6 +410,35 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'exercise-create-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'exercise-create-save',
+          tintColor: headerTintColor,
+          onPress: () => void handleSave(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, headerTintColor, isPending]);
+
   return (
     <FormScreenChrome
       title="New Exercise"
@@ -552,6 +582,35 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
       // Error toast handled in useUpdateExercise.
     }
   };
+
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'exercise-edit-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save Changes',
+          identifier: 'exercise-edit-save',
+          tintColor: headerTintColor,
+          onPress: () => void handleSave(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, headerTintColor, isPending]);
 
   return (
     <FormScreenChrome

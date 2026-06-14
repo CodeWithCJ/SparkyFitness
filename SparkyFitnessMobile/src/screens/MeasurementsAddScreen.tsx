@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
@@ -418,6 +419,33 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'measurements-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isSaveDisabled,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'measurements-save',
+          tintColor: headerTintColor,
+          onPress: handleSave,
+          disabled: isSaveDisabled,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerTintColor, isSaveDisabled, handleSave]);
+
   return (
     <View
       className="flex-1 bg-background"
@@ -602,6 +630,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       </KeyboardAwareScrollView>
 
       {/* Sticky footer */}
+      {Platform.OS !== 'ios' && (
       <View
         className="px-4 py-3"
         style={{
@@ -625,6 +654,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </Button>
       </View>
+      )}
 
       <CalendarSheet
         ref={calendarSheetRef}

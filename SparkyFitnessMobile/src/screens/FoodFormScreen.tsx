@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
@@ -743,6 +744,34 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     });
   };
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const saveLabel = isLibraryMode ? 'Save Food' : 'Save';
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-create-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isSubmitting,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: saveLabel,
+          identifier: 'food-create-save',
+          tintColor: headerTintColor,
+          onPress: () => { /* submit handled by FoodForm */ },
+          disabled: isSubmitting,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerTintColor, isSubmitting, isLibraryMode]);
+
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
@@ -769,6 +798,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         isSubmitting={isSubmitting}
         initialValues={initialFood}
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
+        hideSubmitButton={Platform.OS === 'ios'}
         showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
@@ -1332,6 +1362,31 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     navigation.goBack();
   };
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-adjust-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Update Values',
+          identifier: 'food-adjust-save',
+          tintColor: headerTintColor,
+          onPress: () => { /* submit handled by FoodForm */ },
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerTintColor]);
+
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {Platform.OS !== 'ios' && (
@@ -1353,6 +1408,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         onSubmit={handleSubmit}
         initialValues={initialValues}
         submitLabel="Update Values"
+        hideSubmitButton={Platform.OS === 'ios'}
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
@@ -1775,6 +1831,33 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     }
   };
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-edit-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isSubmitting,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save Changes',
+          identifier: 'food-edit-save',
+          tintColor: headerTintColor,
+          onPress: () => { /* submit handled by FoodForm */ },
+          disabled: isSubmitting,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerTintColor, isSubmitting]);
+
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {Platform.OS !== 'ios' && (
@@ -1799,6 +1882,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         initialValues={initialValues}
         submitLabel="Save Changes"
         isSubmitting={isSubmitting}
+        hideSubmitButton={Platform.OS === 'ios'}
         unitSelector={
           availableUnitVariants.length > 0
             ? {

@@ -767,22 +767,22 @@ function AppContent() {
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}
-            options={createStackScreenOptions('Foods')}
+            options={createStackScreenOptions('Foods', { headerBackTitle: 'Library' })}
           />
           <Stack.Screen
             name="MealsLibrary"
             component={SafeMealsLibrary}
-            options={createStackScreenOptions('Meals')}
+            options={createStackScreenOptions('Meals', { headerBackTitle: 'Library' })}
           />
           <Stack.Screen
             name="ExercisesLibrary"
             component={SafeExercisesLibrary}
-            options={createStackScreenOptions('Exercises')}
+            options={createStackScreenOptions('Exercises', { headerBackTitle: 'Library' })}
           />
           <Stack.Screen
             name="WorkoutPresetsLibrary"
             component={SafeWorkoutPresetsLibrary}
-            options={createStackScreenOptions('Workout Presets')}
+            options={createStackScreenOptions('Workout Presets', { headerBackTitle: 'Library' })}
           />
           <Stack.Screen
             name="WorkoutPresetDetail"
@@ -849,7 +849,7 @@ function AppContent() {
           <Stack.Screen
             name="EditBarcode"
             component={SafeEditBarcode}
-            options={createStackScreenOptions('Barcodes')}
+            options={createStackScreenOptions('Barcodes', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="ExerciseForm"
@@ -979,12 +979,12 @@ function AppContent() {
           <Stack.Screen
             name="Logs"
             component={SafeLogs}
-            options={createStackScreenOptions('Logs')}
+            options={createStackScreenOptions('Logs', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="Sync"
             component={SafeSync}
-            options={createStackScreenOptions('Health Sync')}
+            options={createStackScreenOptions('Health Sync', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="MeasurementsAdd"
@@ -997,12 +997,12 @@ function AppContent() {
           <Stack.Screen
             name="CalorieSettings"
             component={SafeCalorieSettings}
-            options={createStackScreenOptions('Calorie Settings')}
+            options={createStackScreenOptions('Calorie Settings', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="FoodSettings"
             component={SafeFoodSettings}
-            options={createStackScreenOptions('Food Settings')}
+            options={createStackScreenOptions('Food Settings', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="DashboardSettings"
@@ -1014,22 +1014,22 @@ function AppContent() {
           <Stack.Screen
             name="ServerSettings"
             component={SafeServerSettings}
-            options={createStackScreenOptions('Server Settings')}
+            options={createStackScreenOptions('Server Settings', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="AppSettings"
             component={SafeAppSettings}
-            options={createStackScreenOptions('App Settings')}
+            options={createStackScreenOptions('App Settings', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="About"
             component={SafeAbout}
-            options={createStackScreenOptions('About')}
+            options={createStackScreenOptions('About', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="WhatsNew"
             component={SafeWhatsNew}
-            options={createStackScreenOptions("What's New")}
+            options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
           />
         </Stack.Navigator>
         <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />

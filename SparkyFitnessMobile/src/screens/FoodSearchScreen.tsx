@@ -14,7 +14,7 @@ import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
+import { createNativeHeaderIconButtonItem, createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import MealLibraryRow from '../components/MealLibraryRow';
 import SegmentedControl from '../components/SegmentedControl';
 import {
@@ -248,6 +248,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-search-cancel',
+          tintColor: accentColor,
+          onPress: () => navigation.goBack(),
+        }),
+      ],
       unstable_headerRightItems: () => [
         createNativeHeaderIconButtonItem({
           sfSymbol: 'plus',

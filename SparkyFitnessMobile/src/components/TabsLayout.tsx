@@ -191,6 +191,7 @@ function DashboardStackScreen() {
         component={SafeDashboard as React.ComponentType}
         options={({ route }) => ({
           title: 'Dashboard',
+          headerBackTitle: 'Dashboard',
           unstable_headerRightItems: Platform.OS === 'ios'
             ? () => createDateHeaderItems({
                 handlerKey: 'Dashboard',
@@ -222,6 +223,7 @@ function DiaryStackScreen() {
         component={SafeDiary as React.ComponentType}
         options={({ route }) => ({
           title: 'Diary',
+          headerBackTitle: 'Diary',
           unstable_headerRightItems: Platform.OS === 'ios'
             ? () => createDateHeaderItems({
                 handlerKey: 'Diary',
@@ -248,7 +250,7 @@ function LibraryStackScreen() {
 
   return (
     <LibraryStack.Navigator screenOptions={screenOptions}>
-      <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library' }} />
+      <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library', headerBackTitle: 'Library' }} />
     </LibraryStack.Navigator>
   );
 }
@@ -262,7 +264,7 @@ function SettingsStackScreen() {
 
   return (
     <SettingsStack.Navigator screenOptions={screenOptions}>
-      <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings' }} />
+      <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings', headerBackTitle: 'Settings' }} />
     </SettingsStack.Navigator>
   );
 }

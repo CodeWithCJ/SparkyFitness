@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import FormInput from '../components/FormInput';
@@ -15,6 +15,8 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useCSSVariable } from 'uniwind';
 import { buildPresetExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type {
@@ -223,6 +225,35 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     }
   };
 
+  const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'preset-create-cancel',
+          tintColor: presetHeaderTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'preset-create-save',
+          tintColor: presetHeaderTintColor,
+          onPress: () => void handleSave(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, presetHeaderTintColor, isPending]);
+
   return (
     <FormScreenChrome
       title="New Preset"
@@ -384,6 +415,35 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       // Error toast handled in useUpdateWorkoutPreset.
     }
   };
+
+  const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'preset-edit-cancel',
+          tintColor: presetHeaderTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save Changes',
+          identifier: 'preset-edit-save',
+          tintColor: presetHeaderTintColor,
+          onPress: () => void handleSave(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, presetHeaderTintColor, isPending]);
 
   return (
     <FormScreenChrome

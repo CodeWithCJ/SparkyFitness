@@ -58,6 +58,7 @@ export interface FoodFormProps {
   onServingChange?: (servingSize: string, servingUnit: string) => void;
   submitLabel?: string;
   isSubmitting?: boolean;
+  hideSubmitButton?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
   unitSelector?: {
@@ -565,6 +566,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onServingChange,
   submitLabel = 'Add Food',
   isSubmitting = false,
+  hideSubmitButton = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
   unitSelector,
@@ -1597,6 +1599,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {children}
 
         {/* Submit */}
+        {!hideSubmitButton && (
         <Button
           variant="primary"
           className="mt-2"
@@ -1609,6 +1612,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
             <Text className="text-white text-base font-semibold">{submitLabel}</Text>
           )}
         </Button>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

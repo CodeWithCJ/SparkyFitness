@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-han
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
@@ -385,6 +386,35 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
+  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: isEditMode ? 'meal-edit-cancel' : 'meal-create-cancel',
+          tintColor: headerTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isSaving,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: saveLabel,
+          identifier: isEditMode ? 'meal-edit-save' : 'meal-create-save',
+          tintColor: headerTintColor,
+          onPress: () => void handleSaveMeal(),
+          disabled: isSaving,
+          fontWeight: '600',
+        }),
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, headerTintColor, isSaving, isEditMode, saveLabel]);
+
   const renderHeader = () => Platform.OS === 'ios' ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
       <TouchableOpacity
@@ -694,6 +724,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           ) : null}
         </View>
 
+        {Platform.OS !== 'ios' && (
         <Button
           variant="primary"
           onPress={() => {
@@ -709,6 +740,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             </Text>
           )}
         </Button>
+        )}
       </ScrollView>
     </View>
   );
