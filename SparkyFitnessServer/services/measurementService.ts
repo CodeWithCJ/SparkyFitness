@@ -1787,17 +1787,8 @@ async function updateCheckInMeasurements(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deleteCheckInMeasurements(authenticatedUserId: any, id: any) {
   try {
-    const entryOwnerId =
-      // @ts-expect-error TS(2551): Property 'getCheckInMeasurementOwnerId' does not e... Remove this comment to see the full error message
-      await measurementRepository.getCheckInMeasurementOwnerId(id);
-    if (!entryOwnerId) {
-      throw new Error('Check-in measurement not found.');
-    }
-    if (entryOwnerId !== authenticatedUserId) {
-      throw new Error(
-        'Forbidden: You do not have permission to delete this check-in measurement.'
-      );
-    }
+    // deleteCheckInMeasurements is scoped by user_id, so it already enforces
+    // both existence and ownership; no separate owner pre-check is needed.
     const success = await measurementRepository.deleteCheckInMeasurements(
       id,
       authenticatedUserId
