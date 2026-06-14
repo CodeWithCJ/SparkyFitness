@@ -34,7 +34,7 @@ function calculateGramsFromPercentages(
   dietary_fiber?: any
 ) {
   const fiber = Number(dietary_fiber) || 0;
-  const adjustedCalories = Math.max(0, calories - fiber * 2);
+  const adjustedCalories = Math.max(0, (Number(calories) || 0) - fiber * 2);
   const protein_grams = (adjustedCalories * (protein_percentage / 100)) / 4;
   const carbs_grams = (adjustedCalories * (carbs_percentage / 100)) / 4;
   const fat_grams = (adjustedCalories * (fat_percentage / 100)) / 9;
