@@ -17,22 +17,29 @@ import {
 } from './writebackMappers';
 import { WRITEBACK_METRICS, type WritebackMetric } from '../../WritebackMetrics';
 
-// Orchestrates the outbound phase: SparkyFitness diary → Health Connect. Reads
-// the existing daily summary, maps the manually-logged entries to HC records, and
+type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
+
+// Orchestrates the outbound phase: SparkyFitness diary → Health Connect. Reads the
+// daily summary once per date, maps the manually-logged entries to HC records, and
 // replaces the previous run's records (delete-then-insert with fresh ids). Android
 // only; the iOS entry point is a no-op.
 
+const message = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 // Per-date set of clientRecordIds we last wrote, so the next run can delete exactly
 // those before inserting fresh ones (handles add / edit / delete uniformly).
-// Stored under the same @HealthConnect preference prefix.
-const writtenIdsKey = (metricId: string, date: string): string =>
-  `writeback${metricId}Ids:${date}`;
+const writtenIdsKey = (recordType: string, date: string): string =>
+  `writeback${recordType}Ids:${date}`;
 
-const loadWrittenIds = async (metricId: string, date: string): Promise<string[]> =>
-  (await loadHealthPreference<string[]>(writtenIdsKey(metricId, date))) ?? [];
+const loadWrittenIds = async (recordType: string, date: string): Promise<string[]> =>
+  (await loadHealthPreference<string[]>(writtenIdsKey(recordType, date))) ?? [];
 
-const saveWrittenIds = (metricId: string, date: string, ids: string[]): Promise<void> =>
-  saveHealthPreference(writtenIdsKey(metricId, date), ids);
+// Persisted AFTER the insert resolves. A crash in that gap orphans the just-written
+// records (the next run can't find them to delete) — a rare, self-correcting-on-edit
+// tradeoff we accept rather than a write-ahead log.
+const saveWrittenIds = (recordType: string, date: string, ids: string[]): Promise<void> =>
+  saveHealthPreference(writtenIdsKey(recordType, date), ids);
 
 // Deterministic replace: delete the exact ids we wrote last run, then insert this
 // run's records (which carry brand-new, version-suffixed clientRecordIds — see
@@ -40,7 +47,7 @@ const saveWrittenIds = (metricId: string, date: string, ids: string[]): Promise<
 // upsert: via the RN bridge it does not reliably overwrite on edit, and re-inserting
 // a stable id we just deleted is rejected (HC tombstones deleted clientRecordIds).
 // Fresh ids each run sidestep both. Mirrors the read/Garmin provider pattern.
-const replaceProviderRecords = async (
+const replaceTrackedRecords = async (
   previousIds: string[],
   recordType: 'Nutrition' | 'Hydration',
   records: HealthConnectRecord[],
@@ -53,25 +60,30 @@ const replaceProviderRecords = async (
   }
 };
 
-// clientRecordIds of the records actually built this run (what we just inserted).
 const recordIds = (records: HealthConnectRecord[]): string[] =>
   records.map((r) => r.metadata?.clientRecordId).filter((id): id is string => id != null);
 
-const hasWritePermission = async (metric: WritebackMetric): Promise<boolean> => {
+// Active metrics that also hold a granted write permission. getGrantedPermissions is
+// queried once per run, not per metric/date.
+const writableMetrics = async (metrics: WritebackMetric[]): Promise<WritebackMetric[]> => {
+  let granted: { recordType?: string; accessType?: string }[];
   try {
-    const granted = await getGrantedPermissions();
-    return granted.some(
-      (p) =>
-        (p as { recordType?: string; accessType?: string }).recordType === metric.recordType &&
-        (p as { accessType?: string }).accessType === 'write',
-    );
+    granted = await getGrantedPermissions();
   } catch {
-    return false;
+    return [];
   }
+  return metrics.filter((m) => {
+    const ok = granted.some((p) => p.recordType === m.recordType && p.accessType === 'write');
+    if (!ok) addLog(`[Writeback] Skipping ${m.label}: write permission not granted`, 'WARNING');
+    return ok;
+  });
 };
 
-const writeNutritionForDate = async (date: string, version: number): Promise<void> => {
-  const summary = await fetchDailySummary(date);
+const writeNutritionForDate = async (
+  date: string,
+  summary: DailySummary,
+  version: number,
+): Promise<void> => {
   const entries = await resolveCollapsedFoodEntries(date, summary.foodEntries);
 
   // Only write entries that originated in Sparky. Entries with a `source` were
@@ -82,70 +94,82 @@ const writeNutritionForDate = async (date: string, version: number): Promise<voi
     .map((entry) => foodEntryToNutritionRecord(entry, version))
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  const previousIds = await loadWrittenIds('Nutrition', date);
-  await replaceProviderRecords(previousIds, 'Nutrition', records);
+  await replaceTrackedRecords(await loadWrittenIds('Nutrition', date), 'Nutrition', records);
   await saveWrittenIds('Nutrition', date, recordIds(records));
   addLog(`[Writeback] Nutrition ${date}: wrote ${records.length} record(s)`, 'INFO');
 };
 
-const writeHydrationForDate = async (date: string, version: number): Promise<void> => {
-  const summary = await fetchDailySummary(date);
+const writeHydrationForDate = async (
+  date: string,
+  summary: DailySummary,
+  version: number,
+): Promise<void> => {
   const ml = summary.waterIntake ?? 0;
   const record = waterMlToHydrationRecord(date, ml, version);
   const records = record ? [record] : [];
 
-  const previousIds = await loadWrittenIds('Hydration', date);
-  await replaceProviderRecords(previousIds, 'Hydration', records);
+  await replaceTrackedRecords(await loadWrittenIds('Hydration', date), 'Hydration', records);
   await saveWrittenIds('Hydration', date, recordIds(records));
   addLog(`[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`, 'INFO');
 };
 
 /**
  * Run the writeback phase for the given calendar dates. Gated per-metric on the
- * opt-in preference AND a granted write permission. Each metric/date is isolated
- * so one failure doesn't abort the rest; a Health Connect quota error stops the
- * phase early (it will resume next sync).
+ * opt-in preference AND a granted write permission. Each metric/date is isolated so
+ * one failure doesn't abort the rest. Returns `false` if a Health Connect quota
+ * error stopped the run early — the caller holds the cursor so the unwritten dates
+ * retry next sync; `true` once every date has been attempted. A metric the user
+ * hasn't granted is skipped without holding the cursor (otherwise it would retry
+ * forever); a per-date failure is logged and reconciled by the cursor's overlap.
  */
-export const writebackPhase = async (dates: string[]): Promise<void> => {
+export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   const enabled = await Promise.all(
     WRITEBACK_METRICS.map((m) => loadHealthPreference<boolean>(m.preferenceKey)),
   );
   const active = WRITEBACK_METRICS.filter((_, i) => enabled[i] === true);
-  if (active.length === 0) return;
+  if (active.length === 0) return true;
 
-  const version = Date.now(); // monotonic clientRecordVersion so edits overwrite
+  const writable = await writableMetrics(active);
+  if (writable.length === 0) return true;
 
-  for (const metric of active) {
-    if (!(await hasWritePermission(metric))) {
-      addLog(`[Writeback] Skipping ${metric.label}: write permission not granted`, 'WARNING');
+  // Also the clientRecordId suffix, so each run writes fresh ids (see writebackMappers).
+  const version = Date.now();
+
+  for (const date of dates) {
+    let summary: DailySummary;
+    try {
+      summary = await fetchDailySummary(date); // once per date, shared by both metrics
+    } catch (error) {
+      addLog(`[Writeback] Failed to load summary for ${date}: ${message(error)}`, 'ERROR');
       continue;
     }
-    for (const date of dates) {
+    for (const metric of writable) {
       try {
         if (metric.id === 'nutrition') {
-          await writeNutritionForDate(date, version);
+          await writeNutritionForDate(date, summary, version);
         } else {
-          await writeHydrationForDate(date, version);
+          await writeHydrationForDate(date, summary, version);
         }
       } catch (error) {
         if (isQuotaExceededError(error)) {
           addLog('[Writeback] Health Connect quota exceeded — stopping; resumes next sync', 'WARNING');
-          return;
+          return false;
         }
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[Writeback] Failed ${metric.label} for ${date}: ${message}`, 'ERROR');
+        addLog(`[Writeback] Failed ${metric.label} for ${date}: ${message(error)}`, 'ERROR');
       }
     }
   }
+  return true;
 };
 
 /**
  * Cursor-aware entry point called from the sync engine. Computes the date window,
- * runs the writeback phase, and advances the writeback cursor on completion.
+ * runs the writeback phase, and advances the cursor only on a complete run (a
+ * quota-stopped run keeps the cursor so the unwritten dates retry next sync).
  * Callers wrap this in their own try/catch so writeback can't block inbound sync.
  */
 export const runWriteback = async (): Promise<void> => {
   const dates = computeWritebackDates(await loadLastWritebackTime());
-  await writebackPhase(dates);
-  await saveLastWritebackTime();
+  const completed = await writebackPhase(dates);
+  if (completed) await saveLastWritebackTime();
 };

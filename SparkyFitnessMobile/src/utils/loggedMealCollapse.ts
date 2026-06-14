@@ -7,6 +7,9 @@ import type { FoodEntryMeal } from '../types/foodEntryMeals';
 // against the meal total, so consumers collapse the components into one entry per
 // logged meal. Shared by useDailySummary (display) and Health Connect writeback
 // (one HC record per logged meal, not per component).
+//
+// The collapsed entry has no `source` (logged meals are assembled manually in
+// Sparky), so writeback always exports it — see the source filter in writeback.ts.
 
 export function hasLoggedMealComponents(foodEntries: FoodEntry[]): boolean {
   return foodEntries.some((entry) => !!entry.food_entry_meal_id);

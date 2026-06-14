@@ -4,8 +4,8 @@ import {
   type HydrationRecord,
 } from 'react-native-health-connect';
 import type { FoodEntry } from '../../types/foodEntries';
-import { HC_NUTRIENT_COLUMNS, G_TO_MG, G_TO_MCG } from './dataTransformation';
-import { toLocalDateString } from '../../utils/dateUtils';
+import { HC_NUTRIENT_COLUMNS, G_TO_MG, G_TO_MCG, tidyNumber } from './dataTransformation';
+import { toLocalDateString, addDays } from '../../utils/dateUtils';
 
 // HC Mass units we emit (subset of the library's Mass['unit']).
 type MassUnit = 'grams' | 'milligrams' | 'micrograms';
@@ -63,9 +63,6 @@ const MEAL_START_HM: Record<string, [number, number]> = {
   dinner: [19, 0],
   snacks: [15, 0],
 };
-
-// Strip float noise from scaling (0.1*3 -> 0.30000000000000004 -> 0.3).
-const tidy = (value: number): number => Number(value.toPrecision(6));
 
 // Consumed amount of a per-serving snapshot value — same formula the diary uses
 // (calculateMacro / calculateCaloriesConsumed in foodEntriesApi). For collapsed
@@ -135,7 +132,7 @@ export const foodEntryToNutritionRecord = (
 
   const calories = scaleConsumed(entry.calories, entry.quantity, entry.serving_size);
   if (calories != null && calories > 0) {
-    record.energy = { value: tidy(calories), unit: 'kilocalories' };
+    record.energy = { value: tidyNumber(calories), unit: 'kilocalories' };
   }
 
   // Each nutrient is written in the unit Sparky stores it in (factor → HC unit),
@@ -148,7 +145,7 @@ export const foodEntryToNutritionRecord = (
     );
     if (value != null && value > 0) {
       record[hcField] = {
-        value: tidy(value),
+        value: tidyNumber(value),
         unit: MASS_UNIT_BY_FACTOR[factor] ?? 'grams',
       };
     }
@@ -201,13 +198,15 @@ export const computeWritebackDates = (
 ): string[] => {
   let backDays = 1; // default: yesterday + today
   if (lastWritebackIso) {
-    const last = new Date(lastWritebackIso);
-    const elapsed = Math.floor((now.getTime() - last.getTime()) / DAY_MS);
+    const elapsed = Math.floor((now.getTime() - new Date(lastWritebackIso).getTime()) / DAY_MS);
     backDays = Math.min(Math.max(elapsed + 1, 1), MAX_WRITEBACK_DAYS);
   }
+  // Generate calendar days with addDays (local, DST-safe) rather than subtracting
+  // fixed-millisecond offsets, which can skip/duplicate a day across a DST boundary.
+  const today = toLocalDateString(now);
   const dates: string[] = [];
   for (let i = backDays; i >= 0; i--) {
-    dates.push(toLocalDateString(new Date(now.getTime() - i * DAY_MS)));
+    dates.push(addDays(today, -i));
   }
-  return Array.from(new Set(dates));
+  return dates;
 };

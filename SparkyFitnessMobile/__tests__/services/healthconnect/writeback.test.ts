@@ -10,7 +10,10 @@ import {
 } from '../../../src/services/healthconnect/preferences';
 // Jest resolves './writeback' to the iOS no-op stub by default; require the .ts
 // explicitly to test the real Android implementation (see SparkyFitnessMobile CLAUDE.md).
-const { writebackPhase } = require('../../../src/services/healthconnect/writeback.ts');
+const {
+  writebackPhase,
+  runWriteback,
+} = require('../../../src/services/healthconnect/writeback.ts');
 
 jest.mock('react-native-health-connect', () => ({
   insertRecords: jest.fn().mockResolvedValue([]),
@@ -30,6 +33,10 @@ jest.mock('../../../src/services/healthconnect/preferences', () => ({
 }));
 jest.mock('../../../src/services/healthconnect/index', () => ({
   isQuotaExceededError: jest.fn(() => false),
+}));
+jest.mock('../../../src/services/storage', () => ({
+  loadLastWritebackTime: jest.fn().mockResolvedValue(null),
+  saveLastWritebackTime: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
@@ -153,11 +160,31 @@ describe('writebackPhase', () => {
     nowSpy.mockRestore();
   });
 
-  it('swallows a Health Connect quota error', async () => {
+  it('returns false (does not throw) on a Health Connect quota error', async () => {
     prefs({ writebackNutritionEnabled: true });
     mockInsert.mockRejectedValueOnce(new Error('quota'));
     const { isQuotaExceededError } = jest.requireMock('../../../src/services/healthconnect/index');
     (isQuotaExceededError as jest.Mock).mockReturnValue(true);
-    await expect(writebackPhase(['2026-06-01'])).resolves.toBeUndefined();
+    await expect(writebackPhase(['2026-06-01'])).resolves.toBe(false);
+  });
+});
+
+describe('runWriteback (cursor)', () => {
+  const { saveLastWritebackTime } = jest.requireMock('../../../src/services/storage');
+  const mockSaveCursor = saveLastWritebackTime as jest.Mock;
+
+  it('advances the cursor after a completed run', async () => {
+    prefs({ writebackNutritionEnabled: true });
+    await runWriteback();
+    expect(mockSaveCursor).toHaveBeenCalled();
+  });
+
+  it('holds the cursor when a quota error stops the run early', async () => {
+    prefs({ writebackNutritionEnabled: true });
+    mockInsert.mockRejectedValue(new Error('quota'));
+    const { isQuotaExceededError } = jest.requireMock('../../../src/services/healthconnect/index');
+    (isQuotaExceededError as jest.Mock).mockReturnValue(true);
+    await runWriteback();
+    expect(mockSaveCursor).not.toHaveBeenCalled();
   });
 });

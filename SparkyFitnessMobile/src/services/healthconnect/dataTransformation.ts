@@ -546,8 +546,9 @@ export const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: num
 // fabricating both the value's unit and a name that nothing renders.
 
 // Strip float noise (4.949999999999999 -> 4.95). Significant figures (not fixed
-// decimals) so small post-conversion values aren't truncated.
-const tidyNumber = (value: number): number => Number(value.toPrecision(6));
+// decimals) so small post-conversion values aren't truncated. Shared with the
+// writeback mappers so read and write rounding can never drift.
+export const tidyNumber = (value: number): number => Number(value.toPrecision(6));
 
 // HC's native bridge emits `{ inGrams: 0 }` / `{ inKilocalories: 0 }` for every
 // nutrient a source did NOT set — it cannot distinguish "0" from "absent". So we
