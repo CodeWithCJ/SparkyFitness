@@ -38,11 +38,11 @@ export const useFoodEntries = (date: string) => {
   });
 };
 
-export const useDiaryGoals = (date: string) => {
+export const useDiaryGoals = (date: string, adjust = true) => {
   const { t } = useTranslation();
   return useQuery({
-    queryKey: goalKeys.daily.byDate(date),
-    queryFn: () => loadDiaryGoals(date),
+    queryKey: goalKeys.daily.byDate(date, undefined, adjust),
+    queryFn: () => loadDiaryGoals(date, adjust),
     enabled: !!date,
     meta: {
       errorMessage: t('diary.goalsLoadError', 'Failed to load daily goals.'),

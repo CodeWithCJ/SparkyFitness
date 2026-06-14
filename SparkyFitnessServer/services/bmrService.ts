@@ -1,4 +1,9 @@
 import { log } from '../config/logging.js';
+import {
+  calculateBmr as sharedCalculateBmr,
+  ACTIVITY_MULTIPLIERS,
+} from '@workspace/shared';
+
 const BmrAlgorithm = {
   MIFFLIN_ST_JEOR: 'Mifflin-St Jeor',
   REVISED_HARRIS_BENEDICT: 'Revised Harris-Benedict',
@@ -6,14 +11,11 @@ const BmrAlgorithm = {
   CUNNINGHAM: 'Cunningham',
   OXFORD: 'Oxford',
 };
+
 const ActivityMultiplier = {
-  sedentary: 1.2,
-  not_much: 1.2, // Map existing value
-  lightly_active: 1.375,
-  moderately_active: 1.55,
-  very_active: 1.725,
-  extra_active: 1.9,
+  ...ACTIVITY_MULTIPLIERS,
 };
+
 /**
  * Calculates Basal Metabolic Rate (BMR) using various algorithms.
  * @param {string} algorithm - The algorithm to use.
@@ -25,82 +27,22 @@ const ActivityMultiplier = {
  * @returns {number} - Calculated BMR
  */
 function calculateBmr(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  algorithm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  weight: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  height: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  age: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  gender: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bodyFatPercentage: any
-) {
+  algorithm: string,
+  weight?: number | null,
+  height?: number | null,
+  age?: number | null,
+  gender?: string | null,
+  bodyFatPercentage?: number | null
+): number {
   log('info', `Calculating BMR with ${algorithm} algorithm.`);
-  switch (algorithm) {
-    case BmrAlgorithm.MIFFLIN_ST_JEOR:
-      if (!weight || !height || !age || !gender) {
-        log(
-          'warn',
-          'BMR calculation skipped: Missing weight, height, age, or gender.'
-        );
-        return 0;
-      }
-      return (
-        10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161)
-      );
-    case BmrAlgorithm.REVISED_HARRIS_BENEDICT:
-      if (!weight || !height || !age || !gender) {
-        log(
-          'warn',
-          'BMR calculation skipped: Missing weight, height, age, or gender.'
-        );
-        return 0;
-      }
-      if (gender === 'male') {
-        return 13.397 * weight + 4.799 * height - 5.677 * age + 88.362;
-      } else {
-        return 9.247 * weight + 3.098 * height - 4.33 * age + 447.593;
-      }
-    case BmrAlgorithm.KATCH_MCARDLE: {
-      if (!weight || !bodyFatPercentage) {
-        log(
-          'warn',
-          'BMR calculation skipped: Missing weight or body fat percentage.'
-        );
-        return 0;
-      }
-      const lbmKatch = weight * (1 - bodyFatPercentage / 100);
-      return 370 + 21.6 * lbmKatch;
-    }
-    case BmrAlgorithm.CUNNINGHAM: {
-      if (!weight || !bodyFatPercentage) {
-        log(
-          'warn',
-          'BMR calculation skipped: Missing weight or body fat percentage.'
-        );
-        return 0;
-      }
-      const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
-      return 500 + 22 * lbmCunningham;
-    }
-    case BmrAlgorithm.OXFORD:
-      if (!weight || !height || !age || !gender)
-        throw new Error('Oxford requires weight, height, age, and gender.');
-      // NOTE: The Oxford equation has many variations based on age/gender groups.
-      // This implementation uses a simplified version for adults.
-      // A more complex implementation could be added later if needed.
-      if (gender === 'male') {
-        return 14.2 * weight + 593; // Simplified for adult males
-      } else {
-        return 10.9 * weight + 677; // Simplified for adult females
-      }
-    default:
-      log('error', `Unknown BMR algorithm: ${algorithm}`);
-      throw new Error('Unknown BMR algorithm');
-  }
+  return sharedCalculateBmr(
+    algorithm,
+    weight,
+    height,
+    age,
+    gender as 'male' | 'female' | null,
+    bodyFatPercentage
+  );
 }
 export { BmrAlgorithm };
 export { ActivityMultiplier };

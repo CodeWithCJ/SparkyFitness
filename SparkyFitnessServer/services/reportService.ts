@@ -1,7 +1,7 @@
 import reportRepository from '../models/reportRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
-import goalRepository from '../models/goalRepository.js';
+import goalService from './goalService.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import sleepAnalyticsService from './sleepAnalyticsService.js';
@@ -10,6 +10,96 @@ import { log } from '../config/logging.js';
 import { addDays, compareDays, todayInZone } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+
+interface CustomNutrientDefinition {
+  id: string;
+  user_id: string;
+  name: string;
+  unit: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+interface TabularFoodRow {
+  food_name: string;
+  brand?: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  glycemic_index?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  serving_size: number;
+  [key: string]: unknown;
+}
+
+interface MeasurementEntry {
+  entry_date: string | Date;
+  weight?: number | string | null;
+  height?: number | string | null;
+  body_fat_percentage?: number | string | null;
+  [key: string]: unknown;
+}
+
+interface WorkoutEntry {
+  entry_date: string | Date;
+  exercise_name: string;
+  exercise_id?: string;
+  exercise_category?: string;
+  exercise_calories_per_hour?: number;
+  exercise_equipment?: string;
+  exercise_primary_muscles?: string;
+  exercise_secondary_muscles?: string;
+  exercise_instructions?: string;
+  exercise_images?: string;
+  exercise_source?: string;
+  exercise_source_id?: string;
+  exercise_user_id?: string;
+  exercise_is_custom?: boolean;
+  exercise_level?: string;
+  exercise_force?: string;
+  exercise_mechanic?: string;
+  sets?: Array<{
+    weight?: string | number;
+    reps?: string | number;
+  }>;
+  exercises?: {
+    primary_muscles?: string;
+  };
+}
+
+interface PrRecord {
+  date: string | Date;
+  oneRM: number;
+  maxWeight: number;
+  maxReps: number;
+}
+
+interface SetData {
+  reps: number[];
+  weight: number[];
+  avgReps?: number;
+  avgWeight?: number;
+}
+
+interface ExercisePerformance {
+  firstSet: SetData;
+  middleSet: SetData;
+  lastSet: SetData;
+}
+
 async function getReportsData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -65,8 +155,7 @@ async function getReportsData(
         );
       customMeasurementsData.push(...customMeasurementResult);
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tabularData = tabularDataRaw.map((row: any) => {
+    const tabularData = tabularDataRaw.map((row: TabularFoodRow) => {
       // Custom nutrients are now already in the row, scaled and summed by the repository
       return {
         ...row,
@@ -95,49 +184,52 @@ async function getReportsData(
         },
       };
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nutritionData = fetchedNutritionData.map((item: any) => {
-      const mappedItem = {
-        date: item.date,
-        calories: parseFloat(item.calories) || 0,
-        protein: parseFloat(item.protein) || 0,
-        carbs: parseFloat(item.carbs) || 0,
-        fat: parseFloat(item.fat) || 0,
-        saturated_fat: parseFloat(item.saturated_fat) || 0,
-        polyunsaturated_fat: parseFloat(item.polyunsaturated_fat) || 0,
-        monounsaturated_fat: parseFloat(item.monounsaturated_fat) || 0,
-        trans_fat: parseFloat(item.trans_fat) || 0,
-        cholesterol: parseFloat(item.cholesterol) || 0,
-        sodium: parseFloat(item.sodium) || 0,
-        potassium: parseFloat(item.potassium) || 0,
-        dietary_fiber: parseFloat(item.dietary_fiber) || 0,
-        sugars: parseFloat(item.sugars) || 0,
-        vitamin_a: parseFloat(item.vitamin_a) || 0,
-        vitamin_c: parseFloat(item.vitamin_c) || 0,
-        calcium: parseFloat(item.calcium) || 0,
-        iron: parseFloat(item.iron) || 0,
-      };
-      // Map custom nutrients dynamically
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      customNutrients.forEach((cn: any) => {
-        const key = cn.name; // Use exact name as key, matching frontend expectation
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        mappedItem[key] = parseFloat(item[key]) || 0;
-      });
-      return mappedItem;
-    });
+    const nutritionData = fetchedNutritionData.map(
+      (item: Record<string, string | number>) => {
+        const mappedItem = {
+          date: item.date,
+          calories: parseFloat(String(item.calories)) || 0,
+          protein: parseFloat(String(item.protein)) || 0,
+          carbs: parseFloat(String(item.carbs)) || 0,
+          fat: parseFloat(String(item.fat)) || 0,
+          saturated_fat: parseFloat(String(item.saturated_fat)) || 0,
+          polyunsaturated_fat:
+            parseFloat(String(item.polyunsaturated_fat)) || 0,
+          monounsaturated_fat:
+            parseFloat(String(item.monounsaturated_fat)) || 0,
+          trans_fat: parseFloat(String(item.trans_fat)) || 0,
+          cholesterol: parseFloat(String(item.cholesterol)) || 0,
+          sodium: parseFloat(String(item.sodium)) || 0,
+          potassium: parseFloat(String(item.potassium)) || 0,
+          dietary_fiber: parseFloat(String(item.dietary_fiber)) || 0,
+          sugars: parseFloat(String(item.sugars)) || 0,
+          vitamin_a: parseFloat(String(item.vitamin_a)) || 0,
+          vitamin_c: parseFloat(String(item.vitamin_c)) || 0,
+          calcium: parseFloat(String(item.calcium)) || 0,
+          iron: parseFloat(String(item.iron)) || 0,
+        };
+        // Map custom nutrients dynamically
+        customNutrients.forEach((cn: CustomNutrientDefinition) => {
+          const key = cn.name; // Use exact name as key, matching frontend expectation
+          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+          mappedItem[key] = parseFloat(item[key]) || 0;
+        });
+        return mappedItem;
+      }
+    );
     // BMR Calculation
     if (userProfile && userPreferences) {
       const tz = userPreferences?.timezone || 'UTC';
       const age = userAge(userProfile.date_of_birth, tz);
       const gender = userProfile.gender;
       const bmrAlgorithm = userPreferences.bmr_algorithm;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      nutritionData.forEach((day: any) => {
+      nutritionData.forEach((day: Record<string, unknown>) => {
         // Find the most recent measurement on or before the current day
-        const relevantMeasurements = measurementData
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((m: any) => new Date(m.entry_date) <= new Date(day.date))
+        const relevantMeasurements = (measurementData as MeasurementEntry[])
+          .filter(
+            (m: MeasurementEntry) =>
+              new Date(m.entry_date as string) <= new Date(day.date as string)
+          )
 
           .sort(
             // @ts-expect-error
@@ -145,9 +237,21 @@ async function getReportsData(
             (a: any, b: any) => new Date(b.entry_date) - new Date(a.entry_date)
           );
         const latestMeasurement = relevantMeasurements[0];
-        const weight = latestMeasurement?.weight;
-        const height = latestMeasurement?.height;
-        const bodyFat = latestMeasurement?.body_fat_percentage;
+        const weight =
+          latestMeasurement?.weight !== null &&
+          latestMeasurement?.weight !== undefined
+            ? Number(latestMeasurement.weight)
+            : undefined;
+        const height =
+          latestMeasurement?.height !== null &&
+          latestMeasurement?.height !== undefined
+            ? Number(latestMeasurement.height)
+            : undefined;
+        const bodyFat =
+          latestMeasurement?.body_fat_percentage !== null &&
+          latestMeasurement?.body_fat_percentage !== undefined
+            ? Number(latestMeasurement.body_fat_percentage)
+            : undefined;
         if (weight && height && age && gender && bmrAlgorithm) {
           try {
             day.bmr = bmrService.calculateBmr(
@@ -173,8 +277,7 @@ async function getReportsData(
           userPreferences.include_bmr_in_net_calories;
       });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const exerciseEntries = exerciseEntriesRaw.map((entry: any) => ({
+    const exerciseEntries = exerciseEntriesRaw.map((entry: WorkoutEntry) => ({
       ...entry,
 
       exercises: {
@@ -264,8 +367,7 @@ async function getMiniNutritionTrends(
         iron: parseFloat(row.total_iron) || 0,
       };
       // Map custom nutrients dynamically
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      customNutrients.forEach((cn: any) => {
+      customNutrients.forEach((cn: CustomNutrientDefinition) => {
         // The repository will return them as columns like "MyNutrient", matching the nutrient name
         // However, standard nutrients in this query are prefixed with "total_", so let's check how we implement the repo.
         // Usually, for consistency, I might prefix them or just use the name.
@@ -302,6 +404,14 @@ async function getNutritionTrendsWithGoals(
       startDate,
       endDate
     );
+    // Fetch daily goals for range with adjustments (deficit targets, adaptive TDEE offset)
+    const rangeGoals = (await goalService.getUserGoals(
+      targetUserId,
+      startDate,
+      endDate,
+      true // adjust = true
+    )) as Record<string, any>;
+
     // Create a map for quick lookup of nutrition data by date
     const nutritionMap = new Map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -311,11 +421,8 @@ async function getNutritionTrendsWithGoals(
     let currentDay = startDate;
     while (compareDays(currentDay, endDate) <= 0) {
       const dailyNutrition = nutritionMap.get(currentDay) || {};
-      // Fetch the most recent goal for the current date
-      const dailyGoal = await goalRepository.getMostRecentGoalBeforeDate(
-        targetUserId,
-        currentDay
-      );
+      const dailyGoal = rangeGoals[currentDay] || {};
+
       trendData.push({
         date: currentDay,
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -326,10 +433,10 @@ async function getNutritionTrendsWithGoals(
         carbs: parseFloat(dailyNutrition.carbs || 0),
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         fat: parseFloat(dailyNutrition.fat || 0),
-        calorieGoal: parseFloat(dailyGoal?.calories || 0),
-        proteinGoal: parseFloat(dailyGoal?.protein || 0),
-        carbsGoal: parseFloat(dailyGoal?.carbs || 0),
-        fatGoal: parseFloat(dailyGoal?.fat || 0),
+        calorieGoal: parseFloat(dailyGoal.calories || 0),
+        proteinGoal: parseFloat(dailyGoal.protein || 0),
+        carbsGoal: parseFloat(dailyGoal.carbs || 0),
+        fatGoal: parseFloat(dailyGoal.fat || 0),
       });
       currentDay = addDays(currentDay, 1);
     }
@@ -478,9 +585,8 @@ function calculateExerciseVariety(exerciseEntries: any) {
   return varietyData;
 }
 // Helper function to calculate PR progression
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calculatePrProgression(exerciseEntries: any) {
-  const progression = {};
+function calculatePrProgression(exerciseEntries: WorkoutEntry[]) {
+  const progression: Record<string, PrRecord[]> = {};
   // Sort entries by date ascending to process in chronological order
   const sortedEntries = [...exerciseEntries].sort(
     (a, b) =>
@@ -488,17 +594,13 @@ function calculatePrProgression(exerciseEntries: any) {
   );
   sortedEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      entry.sets.forEach((set: any) => {
-        const weight = parseFloat(set.weight) || 0;
-        const reps = parseInt(set.reps) || 0;
+      entry.sets.forEach((set) => {
+        const weight = parseFloat(String(set.weight)) || 0;
+        const reps = parseInt(String(set.reps)) || 0;
         const oneRM = calculate1RM(weight, reps);
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         if (!progression[entry.exercise_name]) {
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           progression[entry.exercise_name] = [];
         }
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         const exerciseProgression = progression[entry.exercise_name];
         const lastPr =
           exerciseProgression.length > 0
@@ -510,7 +612,6 @@ function calculatePrProgression(exerciseEntries: any) {
           weight > lastPr.maxWeight ||
           reps > lastPr.maxReps
         ) {
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           progression[entry.exercise_name].push({
             date: entry.entry_date,
             oneRM: oneRM,
@@ -524,16 +625,12 @@ function calculatePrProgression(exerciseEntries: any) {
   return progression;
 }
 // Helper function to analyze set performance (first vs. middle vs. last sets)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calculateSetPerformance(exerciseEntries: any) {
-  const setPerformance = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseEntries.forEach((entry: any) => {
+function calculateSetPerformance(exerciseEntries: WorkoutEntry[]) {
+  const setPerformance: Record<string, ExercisePerformance> = {};
+  exerciseEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length >= 3) {
       const exerciseName = entry.exercise_name;
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       if (!setPerformance[exerciseName]) {
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         setPerformance[exerciseName] = {
           firstSet: { reps: [], weight: [] },
           middleSet: { reps: [], weight: [] },
@@ -544,47 +641,36 @@ function calculateSetPerformance(exerciseEntries: any) {
       const lastSet = entry.sets[entry.sets.length - 1];
       const middleIndex = Math.floor(entry.sets.length / 2);
       const middleSet = entry.sets[middleIndex];
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].firstSet.reps.push(firstSet.reps);
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].firstSet.weight.push(firstSet.weight);
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].middleSet.reps.push(middleSet.reps);
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].middleSet.weight.push(middleSet.weight);
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].lastSet.reps.push(lastSet.reps);
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      setPerformance[exerciseName].lastSet.weight.push(lastSet.weight);
+      setPerformance[exerciseName].firstSet.reps.push(Number(firstSet.reps));
+      setPerformance[exerciseName].firstSet.weight.push(
+        Number(firstSet.weight)
+      );
+      setPerformance[exerciseName].middleSet.reps.push(Number(middleSet.reps));
+      setPerformance[exerciseName].middleSet.weight.push(
+        Number(middleSet.weight)
+      );
+      setPerformance[exerciseName].lastSet.reps.push(Number(lastSet.reps));
+      setPerformance[exerciseName].lastSet.weight.push(Number(lastSet.weight));
     }
   });
   // Averaging the results for a cleaner data structure
   for (const exercise in setPerformance) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     const data = setPerformance[exercise];
     data.firstSet.avgReps =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.firstSet.reps.reduce((a: any, b: any) => a + b, 0) /
-      data.firstSet.reps.length;
+      data.firstSet.reps.reduce((a, b) => a + b, 0) / data.firstSet.reps.length;
     data.firstSet.avgWeight =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.firstSet.weight.reduce((a: any, b: any) => a + b, 0) /
+      data.firstSet.weight.reduce((a, b) => a + b, 0) /
       data.firstSet.weight.length;
     data.middleSet.avgReps =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.middleSet.reps.reduce((a: any, b: any) => a + b, 0) /
+      data.middleSet.reps.reduce((a, b) => a + b, 0) /
       data.middleSet.reps.length;
     data.middleSet.avgWeight =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.middleSet.weight.reduce((a: any, b: any) => a + b, 0) /
+      data.middleSet.weight.reduce((a, b) => a + b, 0) /
       data.middleSet.weight.length;
     data.lastSet.avgReps =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.lastSet.reps.reduce((a: any, b: any) => a + b, 0) /
-      data.lastSet.reps.length;
+      data.lastSet.reps.reduce((a, b) => a + b, 0) / data.lastSet.reps.length;
     data.lastSet.avgWeight =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.lastSet.weight.reduce((a: any, b: any) => a + b, 0) /
+      data.lastSet.weight.reduce((a, b) => a + b, 0) /
       data.lastSet.weight.length;
   }
   return setPerformance;

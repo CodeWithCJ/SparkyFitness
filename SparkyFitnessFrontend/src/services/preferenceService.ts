@@ -29,6 +29,9 @@ export interface UserPreferences {
   sugar_calculation_algorithm: 'WHO_GUIDELINES' | string;
   include_bmr_in_net_calories: boolean;
   show_net_carbs: boolean;
+  goal_mode?: 'maintain' | 'recomp' | 'cut' | 'high_cut' | 'manual' | string;
+  goal_mode_calculation_method?: 'adaptive' | 'manual' | string;
+  goal_mode_custom_percentage?: number;
   calorie_goal_adjustment_mode:
     | 'dynamic'
     | 'fixed'

@@ -3,6 +3,7 @@ import foodEntryService from '../services/foodEntryService.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
@@ -77,6 +78,7 @@ router.post('/', async (req, res, next) => {
       } // mealData
     );
     log('info', `User ${userId} created FoodEntryMeal ${newFoodEntryMeal.id}`);
+    clearUserTdeeCache(targetUserId);
     res.status(201).json(newFoodEntryMeal);
   } catch (err) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -291,6 +293,7 @@ router.put('/:id', async (req, res, next) => {
       } // updatedMealData
     );
     log('info', `User ${userId} updated FoodEntryMeal`);
+    clearUserTdeeCache(targetUserId);
     res.status(200).json(updatedFoodEntryMeal);
   } catch (err) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -328,6 +331,7 @@ router.delete('/:id', async (req, res, next) => {
     const userId = req.userId; // From authMiddleware
     await foodEntryService.deleteFoodEntryMeal(userId, id);
     log('info', `User ${userId} deleted FoodEntryMeal ${id}`);
+    clearUserTdeeCache(userId);
     res.status(204).send(); // No content
   } catch (err) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

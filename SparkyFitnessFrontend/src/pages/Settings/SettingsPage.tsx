@@ -151,7 +151,7 @@ const Settings = () => {
             className="flex items-center gap-2 p-4 hover:no-underline"
             description={t(
               'settings.calculationSettings.description',
-              'Manage BMR and Body Fat calculation preferences'
+              'Manage BMR formulas, body fat algorithms, daily energy adjustments, goal deficit modes, and safety floors.'
             )}
           >
             <SettingsIcon className="h-5 w-5" />

@@ -32,6 +32,7 @@ import {
   CustomMeasurementsResponse,
   UpdateCheckInMeasurementsRequest,
   UpdateCustomMeasurementsRequest,
+  calculateAge,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
 import { useSearchParams } from 'react-router-dom';
@@ -70,8 +71,8 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     formatDateInUserTimezone,
-    timezone,
     bodyFatAlgorithm,
+    timezone,
   } = usePreferences();
 
   const [searchParams] = useSearchParams();
@@ -565,8 +566,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       }
 
       const age = userProfile.date_of_birth
-        ? new Date().getFullYear() -
-          new Date(userProfile.date_of_birth).getFullYear()
+        ? calculateAge(userProfile.date_of_birth, timezone)
         : 0;
       const gender = userProfile.gender;
 

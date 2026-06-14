@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tGmxTeKSu7MfeiqshFPq1OVApXU7t9W02961x6i06YLmvvnr5ewBvWlRMVYzFUS
+\restrict MnDfCZua2AbHyHbfP3jmY5A6tLHzs46xu2mlpy8Bau6ZBPcMjGgwK8XgEr0zKcq
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.0
@@ -225,6 +225,13 @@ BEGIN
     user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
   ) VALUES (
     p_user_id, 'Open Food Facts', 'openfoodfacts', TRUE, FALSE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
+
+  -- Insert default 'swissfood' provider
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
+  ) VALUES (
+    p_user_id, 'Swiss Food Database', 'swissfood', TRUE, FALSE, now(), now()
   ) ON CONFLICT (user_id, provider_name) DO NOTHING;
 END;
 $$;
@@ -2375,6 +2382,9 @@ CREATE TABLE public.user_preferences (
     barcode_fallback_open_food_facts boolean DEFAULT true,
     show_net_carbs boolean DEFAULT false NOT NULL,
     ai_assisted_conversions boolean DEFAULT true NOT NULL,
+    goal_mode character varying(50) DEFAULT 'maintain'::character varying NOT NULL,
+    goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -3770,6 +3780,13 @@ CREATE INDEX idx_food_entry_meals_user_id_entry_date ON public.food_entry_meals 
 --
 
 CREATE INDEX idx_foods_provider_external_id_provider_type ON public.foods USING btree (provider_external_id, provider_type);
+
+
+--
+-- Name: idx_foods_provider_type_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_foods_provider_type_user_id ON public.foods USING btree (provider_type, user_id) WHERE (provider_type IS NOT NULL);
 
 
 --
@@ -7492,5 +7509,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tGmxTeKSu7MfeiqshFPq1OVApXU7t9W02961x6i06YLmvvnr5ewBvWlRMVYzFUS
+\unrestrict MnDfCZua2AbHyHbfP3jmY5A6tLHzs46xu2mlpy8Bau6ZBPcMjGgwK8XgEr0zKcq
 

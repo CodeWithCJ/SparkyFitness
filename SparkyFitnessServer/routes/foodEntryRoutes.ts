@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
 router.use(express.json());
 // Apply diary permission check to all food entry routes
@@ -108,6 +109,7 @@ router.post(
         req.originalUserId || req.userId,
         req.body
       );
+      clearUserTdeeCache(targetUserId);
       res.status(201).json(newEntry);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -179,6 +181,7 @@ router.post(
         targetDate,
         targetMealType
       );
+      clearUserTdeeCache(req.userId);
       res.status(201).json(copiedEntries);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -239,6 +242,7 @@ router.post(
         mealType,
         targetDate
       );
+      clearUserTdeeCache(req.userId);
       res.status(201).json(copiedEntries);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -300,6 +304,7 @@ router.post(
         sourceDate,
         targetDate
       );
+      clearUserTdeeCache(req.userId);
       res.status(201).json(copiedEntries);
     } catch (error) {
       next(error);
@@ -348,6 +353,7 @@ router.post(
           req.originalUserId || req.userId,
           targetDate
         );
+      clearUserTdeeCache(req.userId);
       res.status(201).json(copiedEntries);
     } catch (error) {
       next(error);
@@ -406,6 +412,7 @@ router.put(
         id,
         req.body
       );
+      clearUserTdeeCache(req.userId);
       res.status(200).json(updatedEntry);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -461,6 +468,7 @@ router.delete(
     try {
       // @ts-expect-error TS(2339): Property 'userId' does not exist on type 'Request<... Remove this comment to see the full error message
       await foodEntryService.deleteFoodEntry(req.userId, id, req.userId);
+      clearUserTdeeCache(req.userId);
       res.status(200).json({ message: 'Food entry deleted successfully.' });
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
