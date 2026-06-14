@@ -1,6 +1,7 @@
 import { useState, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
+import type { WeightUnit } from '@/contexts/PreferencesContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   WORKOUT_PLAYBACK_SET_GRID_CLASSES,
@@ -24,7 +25,7 @@ interface WorkoutPlaybackExercisesListProps {
   onOpenRestEditor: (pointer: WorkoutSetPointer) => void;
   onRemoveSet: (pointer: WorkoutSetPointer) => void;
   onAddSet: (exerciseIndex: number) => void;
-  weightUnit: string;
+  weightUnit: WeightUnit;
 }
 
 const WorkoutPlaybackExercisesList = ({

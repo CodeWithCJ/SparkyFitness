@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { memo } from 'react';
+import type { WeightUnit } from '@/contexts/PreferencesContext';
 import { MessageSquare, Timer, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -64,7 +65,7 @@ interface WorkoutPlaybackSetRowProps {
   onOpenRestEditor: (pointer: WorkoutSetPointer) => void;
   onRemoveSet: (pointer: WorkoutSetPointer) => void;
   canRemove: boolean;
-  weightUnit: string;
+  weightUnit: WeightUnit;
 }
 
 const WorkoutPlaybackSetRow = ({
@@ -191,6 +192,7 @@ const WorkoutPlaybackSetRow = ({
               placeholder={t('common.weight', 'Weight')}
               onChange={(value) => onSetFieldChange(pointer, 'weight', value)}
               inputClassName="focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              aria-label={`Weight set ${setNumber}`}
             />
           </div>
 
