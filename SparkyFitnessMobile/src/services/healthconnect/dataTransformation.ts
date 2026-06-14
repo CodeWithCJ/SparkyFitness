@@ -14,6 +14,26 @@ import {
 import { toLocalDateString } from '../../utils/dateUtils';
 
 // ============================================================================
+// Own-app exclusion (read/write feedback-loop guard)
+// ============================================================================
+
+// Health Connect returns records written by *this* app too. If writeback is on,
+// re-importing them would duplicate diary entries (and compound every sync). Per
+// Google's guidance we skip records whose dataOrigin is our own package. The
+// package name is injected from the service layer (setOwnPackageName) so this
+// pure module needs no expo-application import.
+let ownPackageName: string | null = null;
+export const setOwnPackageName = (pkg: string | null): void => {
+  ownPackageName = pkg;
+};
+
+const isOwnRecord = (rec: Record<string, unknown>): boolean => {
+  if (!ownPackageName) return false;
+  const dataOrigin = (rec.metadata as { dataOrigin?: string } | undefined)?.dataOrigin;
+  return dataOrigin === ownPackageName;
+};
+
+// ============================================================================
 // Transformer Infrastructure
 // ============================================================================
 
@@ -187,6 +207,7 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
   },
 
   Hydration: (rec) => {
+    if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
     const value = extractNestedValue(rec, 'volume', 'inLiters');
     const date = getDateString(rec.startTime);
     return value !== null && date ? { value, date } : null;
@@ -492,11 +513,14 @@ const mapHealthConnectMealType = (mealType: unknown): SparkyMealType => {
 // specific unit per nutrient — matching how OpenFoodFacts/Garmin populate them:
 // macros in grams, most minerals/vitamins in mg, a few trace nutrients in mcg.
 // We convert from grams accordingly; otherwise e.g. sodium lands 1000x too low.
-const G_TO_MG = 1_000;
-const G_TO_MCG = 1_000_000;
+export const G_TO_MG = 1_000;
+export const G_TO_MCG = 1_000_000;
 
 // HC NutritionRecord Mass field → { Sparky column, grams→column-unit factor }.
-const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: number }[] = [
+// Exported so the writeback mapper reuses the exact same field/unit mapping
+// (read multiplies grams→column-unit; writeback writes the column value back in
+// that same unit via factor→HC-unit, so the two directions never drift).
+export const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: number }[] = [
   { hcField: 'protein', column: 'protein', factor: 1 },
   { hcField: 'totalCarbohydrate', column: 'carbs', factor: 1 },
   { hcField: 'totalFat', column: 'fat', factor: 1 },
@@ -554,6 +578,7 @@ const extractEnergyKcal = (rec: Record<string, unknown>, field: string): number 
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
   Nutrition: (rec, _record, _metricConfig, output) => {
     if (!rec.startTime) return;
+    if (isOwnRecord(rec)) return; // don't re-import nutrition Sparky wrote
 
     const metadata = rec.metadata as { id?: string } | undefined;
     // Skip records without HC's stable id: the server keys idempotent re-sync on

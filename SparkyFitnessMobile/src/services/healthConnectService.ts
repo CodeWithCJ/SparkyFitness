@@ -15,9 +15,16 @@ import {
 import { SyncDuration } from './healthconnect/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
+import { runWriteback } from './healthconnect/writeback';
+import * as Application from 'expo-application';
 
 const METRIC_FETCH_CONCURRENCY = 3;
 const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
+
+// Tell the read transformers which package is "us" so they skip Health Connect
+// records this app wrote (writeback feedback-loop guard). Resolved once here so
+// the pure transformer module stays free of expo-application.
+HealthConnectTransformation.setOwnPackageName(Application.applicationId);
 
 export const initHealthConnect = HealthConnect.initHealthConnect;
 export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
@@ -262,6 +269,16 @@ export const syncHealthData = async (
       addLog(`[HealthConnectService] Error processing ${type}: ${message}`, 'ERROR');
       syncErrors.push({ type, error: message });
     }
+  }
+
+  // Outbound phase: SparkyFitness diary → Health Connect. Runs before the inbound
+  // result is returned, in its own try/catch so a writeback failure never affects
+  // the inbound sync outcome.
+  try {
+    await runWriteback();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthConnectService] Writeback phase failed: ${message}`, 'ERROR');
   }
 
   if (allTransformedData.length > 0) {

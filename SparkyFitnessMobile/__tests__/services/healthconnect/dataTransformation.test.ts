@@ -1,4 +1,4 @@
-import { transformHealthRecords, extractTimezoneMetadata } from '../../../src/services/healthconnect/dataTransformation';
+import { transformHealthRecords, extractTimezoneMetadata, setOwnPackageName } from '../../../src/services/healthconnect/dataTransformation';
 import { toLocalDateString } from '../../../src/services/healthconnect/dataAggregation';
 import type {
   TransformedRecord,
@@ -1646,5 +1646,40 @@ describe('extractTimezoneMetadata', () => {
     // Some zones have 30/45-minute offsets (e.g., India UTC+5:30 = 19800s)
     const rec = { startZoneOffset: { totalSeconds: 19800 } };
     expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 330 });
+  });
+});
+
+describe('own-app exclusion (writeback feedback-loop guard)', () => {
+  const OWN = 'com.sparky.app';
+  afterEach(() => setOwnPackageName(null)); // don't leak into other tests
+
+  test('Nutrition: records written by our own app are dropped, others pass', () => {
+    setOwnPackageName(OWN);
+    const records = [
+      { startTime: '2024-01-15T08:00:00Z', name: 'Ours', mealType: 1, metadata: { id: 'a', dataOrigin: OWN } },
+      { startTime: '2024-01-15T09:00:00Z', name: 'Theirs', mealType: 1, metadata: { id: 'b', dataOrigin: 'com.other.app' } },
+    ];
+    const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+    expect(result).toHaveLength(1);
+    expect(result[0].food_name).toBe('Theirs');
+  });
+
+  test('Hydration: records written by our own app are dropped, others pass', () => {
+    setOwnPackageName(OWN);
+    const records = [
+      { startTime: '2024-01-15T08:00:00Z', volume: { inLiters: 0.5 }, metadata: { dataOrigin: OWN } },
+      { startTime: '2024-01-15T09:00:00Z', volume: { inLiters: 0.3 }, metadata: { dataOrigin: 'com.other.app' } },
+    ];
+    const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'L', type: 'hydration' }) as TransformedRecord[];
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(0.3);
+  });
+
+  test('with no own package set, nothing is excluded', () => {
+    const records = [
+      { startTime: '2024-01-15T08:00:00Z', name: 'X', mealType: 1, metadata: { id: 'a', dataOrigin: OWN } },
+    ];
+    const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+    expect(result).toHaveLength(1);
   });
 });

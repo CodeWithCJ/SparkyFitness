@@ -31,6 +31,7 @@ const SERVER_CONFIGS_KEY = 'serverConfigs';
 const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';
 const TIME_RANGE_KEY = 'timeRange';
 const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
+const LAST_WRITEBACK_TIME_KEY = 'lastWritebackTime';
 const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 const SYNC_ON_OPEN_ENABLED_KEY = 'syncOnOpenEnabled';
 const PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY = 'pendingHealthSyncCacheRefresh';
@@ -290,6 +291,30 @@ export const saveLastSyncedTime = async (): Promise<string | null> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Storage] Failed to save sync time: ${message}`, 'ERROR');
+    return null;
+  }
+};
+
+// Separate cursor for the outbound Health Connect writeback phase, so writeback
+// failures never advance (or get blocked by) the inbound read cursor above.
+export const loadLastWritebackTime = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(LAST_WRITEBACK_TIME_KEY);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to retrieve writeback time: ${message}`, 'ERROR');
+    return null;
+  }
+};
+
+export const saveLastWritebackTime = async (): Promise<string | null> => {
+  try {
+    const timestamp = new Date().toISOString();
+    await AsyncStorage.setItem(LAST_WRITEBACK_TIME_KEY, timestamp);
+    return timestamp;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[Storage] Failed to save writeback time: ${message}`, 'ERROR');
     return null;
   }
 };
