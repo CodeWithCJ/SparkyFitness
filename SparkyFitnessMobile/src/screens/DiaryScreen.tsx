@@ -273,7 +273,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     </>
   );
 
-  if (Platform.OS === 'ios') return content;
+  if (Platform.OS === 'ios') {
+    return <GestureDetector gesture={swipeGesture}>{content}</GestureDetector>;
+  }
 
   return (
     <GestureDetector gesture={swipeGesture}>

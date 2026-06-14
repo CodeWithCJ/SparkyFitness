@@ -1,5 +1,6 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions, useFocusEffect, useNavigation, type NavigationAction } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
@@ -12,6 +13,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import type { TabParamList } from '../types/navigation';
 import type { AppleIcon, TabRole } from 'react-native-bottom-tabs';
 import { withErrorBoundary } from './ScreenErrorBoundary';
+import ActiveWorkoutBar from './ActiveWorkoutBar';
 import CustomTabBar from './CustomTabBar';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import { getNativeHeaderDatePickerHandlers, type NativeHeaderDatePickerKey } from '../utils/nativeHeaderDatePicker';
@@ -302,24 +304,27 @@ export function NativeTabsLayout({
     [getLastActiveTab],
   );
 
-  return (
-    <NativeTab.Navigator
-      initialRouteName="Dashboard"
-      tabBarActiveTintColor={activeTintColor}
-      tabBarInactiveTintColor={inactiveTintColor}
-      screenListeners={({ navigation }) => {
-        tabsNavigation = navigation;
+  const insets = useSafeAreaInsets();
 
-        return {
-          state: (event) => {
-            const state = event.data?.state;
-            if (!state?.routes) return;
-            const route = state.routes[state.index ?? 0];
-            if (route) rememberActiveTab(route.name);
-          },
-        };
-      }}
-    >
+  return (
+    <View className="flex-1">
+      <NativeTab.Navigator
+        initialRouteName="Dashboard"
+        tabBarActiveTintColor={activeTintColor}
+        tabBarInactiveTintColor={inactiveTintColor}
+        screenListeners={({ navigation }) => {
+          tabsNavigation = navigation;
+
+          return {
+            state: (event) => {
+              const state = event.data?.state;
+              if (!state?.routes) return;
+              const route = state.routes[state.index ?? 0];
+              if (route) rememberActiveTab(route.name);
+            },
+          };
+        }}
+      >
       <NativeTab.Screen
         name="Dashboard"
         component={DashboardStackScreen}
@@ -368,7 +373,18 @@ export function NativeTabsLayout({
           tabBarIcon: () => ({ sfSymbol: 'gearshape' } as unknown as AppleIcon),
         }}
       />
-    </NativeTab.Navigator>
+      </NativeTab.Navigator>
+      {/* Native UITabBar does not expose a custom tabBar slot. Pin the HUD
+          just above the native bar so it keeps the original "above tab bar"
+          placement without moving to the top of the tab screen. */}
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-x-0 z-50"
+        style={{ bottom: insets.bottom + 49 }}
+      >
+        <ActiveWorkoutBar variant="embedded" />
+      </View>
+    </View>
   );
 }
 
@@ -397,7 +413,12 @@ export function FallbackTabsLayout({ rememberActiveTab, getLastActiveTab }: TabT
       screenOptions={{
         headerShown: false,
       }}
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => (
+        <View collapsable={false}>
+          <ActiveWorkoutBar variant="embedded" />
+          <CustomTabBar {...props} />
+        </View>
+      )}
     >
       <FallbackTab.Screen name="Dashboard" component={SafeDashboard} />
       <FallbackTab.Screen name="Diary" component={SafeDiary} />
