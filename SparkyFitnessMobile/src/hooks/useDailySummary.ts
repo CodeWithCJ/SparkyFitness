@@ -144,7 +144,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
     select: (raw): DailySummary => {
       const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance, adjustedGoals } = raw;
 
-      const calorieGoal = goals.calories || 0;
+      const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
       const exerciseStats = calculateExerciseStats(exerciseEntries);
       const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;

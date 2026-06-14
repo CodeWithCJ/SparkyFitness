@@ -271,21 +271,16 @@ export async function getDailySummary({
     exerciseSessions as ExerciseSessionResponse[],
     stepCalories,
     goals,
-    (adjustedGoals as any)?.calories
-      ? parseFloat(String((adjustedGoals as any).calories))
-      : 2000,
+    Number((adjustedGoals as Record<string, unknown> | null)?.calories) || 2000,
     userProfile,
     userPreferences,
     measurements
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawGoalData = goals as Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adjustedGoalData = adjustedGoals as Record<string, any>;
-  const rawCalories = parseFloat(String(rawGoalData?.calories ?? '')) || 2000;
-  const adjCalories =
-    parseFloat(String(adjustedGoalData?.calories ?? '')) || rawCalories;
+  const rawGoalData = goals as Record<string, unknown> | null;
+  const adjustedGoalData = adjustedGoals as Record<string, unknown> | null;
+  const rawCalories = Number(rawGoalData?.calories) || 2000;
+  const adjCalories = Number(adjustedGoalData?.calories) || rawCalories;
 
   const computedAdjustedGoals: {
     calories: number;
@@ -296,15 +291,9 @@ export async function getDailySummary({
     adjCalories !== rawCalories
       ? {
           calories: Math.round(adjCalories),
-          protein: Math.round(
-            parseFloat(String(adjustedGoalData?.protein ?? '')) || 0
-          ),
-          carbs: Math.round(
-            parseFloat(String(adjustedGoalData?.carbs ?? '')) || 0
-          ),
-          fat: Math.round(
-            parseFloat(String(adjustedGoalData?.fat ?? '')) || 0
-          ),
+          protein: Math.round(Number(adjustedGoalData?.protein) || 0),
+          carbs: Math.round(Number(adjustedGoalData?.carbs) || 0),
+          fat: Math.round(Number(adjustedGoalData?.fat) || 0),
         }
       : null;
 
