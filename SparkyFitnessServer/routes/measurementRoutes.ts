@@ -453,8 +453,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Water intake entry not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Water intake entry not found or not authorized to delete.'
+          'Water intake entry not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -820,8 +822,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Check-in measurement not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Check-in measurement not found or not authorized to delete.'
+          'Check-in measurement not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -1057,8 +1061,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Custom measurement entry not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Custom measurement entry not found or not authorized to delete.'
+          'Custom measurement entry not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -1197,8 +1203,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Custom category not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Custom category not found or not authorized to delete.'
+          'Custom category not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
