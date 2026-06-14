@@ -90,7 +90,9 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="weight"
                 unit={defaultWeightUnit}
                 value={weight}
-                onChange={(val) => setWeight(val.toString())}
+                onChange={(val) =>
+                  setWeight(val !== null ? val.toString() : '')
+                }
               />
             </div>
 
@@ -101,7 +103,9 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="height"
                 unit={defaultMeasurementUnit}
                 value={height}
-                onChange={(val) => setHeight(val.toString())}
+                onChange={(val) =>
+                  setHeight(val !== null ? val.toString() : '')
+                }
               />
             </div>
 
@@ -125,7 +129,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={neck}
-                onChange={(val) => setNeck(val.toString())}
+                onChange={(val) => setNeck(val !== null ? val.toString() : '')}
               />
             </div>
 
@@ -136,7 +140,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={waist}
-                onChange={(val) => setWaist(val.toString())}
+                onChange={(val) => setWaist(val !== null ? val.toString() : '')}
               />
             </div>
 
@@ -147,7 +151,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={hips}
-                onChange={(val) => setHips(val.toString())}
+                onChange={(val) => setHips(val !== null ? val.toString() : '')}
               />
             </div>
             <div>
@@ -236,7 +240,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                       onChange={(val) => {
                         setCustomValues((prev) => ({
                           ...prev,
-                          [category.id]: val.toString(),
+                          [category.id]: val !== null ? val.toString() : '',
                         }));
                       }}
                     />

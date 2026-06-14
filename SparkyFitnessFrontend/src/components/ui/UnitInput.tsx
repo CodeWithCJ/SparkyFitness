@@ -14,13 +14,14 @@ import { getPrecision } from '@workspace/shared';
 
 interface UnitInputProps {
   id?: string;
-  value: number | string; // Metric base value (kg or cm)
+  value: number | string | null; // Metric base value (kg or cm)
   unit: string; // kg, lbs, st_lbs, cm, inches, ft_in
   type: 'weight' | 'height' | 'measurement';
-  onChange: (metricValue: number) => void;
+  onChange: (metricValue: number | null) => void;
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  'aria-label'?: string;
 }
 
 export const UnitInput: React.FC<UnitInputProps> = ({
@@ -32,9 +33,14 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   placeholder,
   className,
   inputClassName = '',
+  'aria-label': ariaLabel,
 }) => {
   const metricValue =
-    typeof value === 'string' ? parseFloat(value) || 0 : value;
+    value === null || value === undefined || value === ''
+      ? null
+      : typeof value === 'string'
+        ? parseFloat(value)
+        : value;
 
   // Local state for split inputs
   const [val1, setVal1] = useState<string>(''); // stones, feet, or single value
@@ -48,7 +54,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     setPrevMetricValue(metricValue);
     setPrevUnit(unit);
 
-    if (!metricValue) {
+    if (metricValue === null || Number.isNaN(metricValue)) {
       setVal1('');
       setVal2('');
     } else {
@@ -87,7 +93,19 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     setVal1(e.target.value);
   };
   const handleSingleBlur = () => {
-    const num = parseFloat(val1) || 0;
+    if (val1.trim() === '') {
+      if (metricValue !== null) {
+        onChange(null);
+      }
+      return;
+    }
+    const num = parseFloat(val1);
+    if (Number.isNaN(num)) {
+      if (metricValue !== null) {
+        onChange(null);
+      }
+      return;
+    }
     let converted = num;
     if (unit === 'lbs') converted = lbsToKg(num);
     if (unit === 'inches') converted = inchesToCm(num);
@@ -102,6 +120,12 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   };
 
   const handleSplitBlur = () => {
+    if (val1.trim() === '' && val2.trim() === '') {
+      if (metricValue !== null) {
+        onChange(null);
+      }
+      return;
+    }
     const n1 = parseFloat(val1) || 0;
     const n2 = parseFloat(val2) || 0;
     let converted = 0;
@@ -172,6 +196,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         onBlur={handleSingleBlur}
         placeholder={placeholder}
         className={`pr-9 ${inputClassName}`}
+        aria-label={ariaLabel}
       />
       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
         {unit}

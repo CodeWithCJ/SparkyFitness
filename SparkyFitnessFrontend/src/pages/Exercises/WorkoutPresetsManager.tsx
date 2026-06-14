@@ -44,6 +44,7 @@ import {
 import { useLogWorkoutPresetMutation } from '@/hooks/Exercises/useExerciseEntries';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { createWorkoutPlaybackRouteState } from '@/utils/workoutPlayback';
+import { formatWeight } from '@/utils/numberFormatting';
 import WorkoutPresetSelector from './WorkoutPresetSelector';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
@@ -267,10 +268,7 @@ const WorkoutPresetsManager = () => {
               </div>
               <div className="flex items-center gap-1">
                 <Dumbbell className="w-3 h-3 text-indigo-500" />
-                <span>
-                  {totalWeight}
-                  {weightUnit}
-                </span>
+                <span>{formatWeight(totalWeight, weightUnit)}</span>
               </div>
             </div>
           );
