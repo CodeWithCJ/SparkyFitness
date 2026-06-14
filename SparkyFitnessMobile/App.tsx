@@ -1,6 +1,6 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
+import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
 import {
@@ -297,45 +297,100 @@ function AppContent() {
     return diaryParams?.selectedDate;
   }, []);
 
-const handleAddFood = useCallback(async () => {
-    if (!rootNavigationRef.isReady()) return;
-    const date = getActiveDiaryDate();
-    rootNavigationRef.dispatch(CommonActions.navigate('FoodSearch', { date }));
-  }, [getActiveDiaryDate]);
+  const navigateFromSheet = useCallback(<T extends keyof RootStackParamList>(
+    screen: T,
+    params?: RootStackParamList[T],
+  ) => {
+    if (rootNavigationRef.isReady()) {
+      rootNavigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
+      return;
+    }
 
-  const handleBarcodeScan = useCallback(async () => {
-    if (!rootNavigationRef.isReady()) return;
-    const date = getActiveDiaryDate();
-    rootNavigationRef.dispatch(CommonActions.navigate('FoodScan', { date }));
-  }, [getActiveDiaryDate]);
-
-  const handleAddWorkout = useCallback(() => {
-    if (!rootNavigationRef.isReady()) return;
-    setTimeout(() => {
-      rootNavigationRef.dispatch(CommonActions.navigate('WorkoutAdd', { date: getActiveDiaryDate(), skipDraftLoad: true }));
-    }, 0);
+    navigationRef.current?.getParent()?.dispatch(CommonActions.navigate({ name: screen, params }));
   }, []);
 
-  const handleAddActivity = useCallback(() => {
-    if (!rootNavigationRef.isReady()) return;
-    setTimeout(() => {
-      rootNavigationRef.dispatch(CommonActions.navigate('ActivityAdd', { date: getActiveDiaryDate(), skipDraftLoad: true }));
-    }, 0);
-  }, []);
-
-  const handleAddFromPreset = useCallback(() => {
-    if (!rootNavigationRef.isReady()) return;
+  const handleAddFood = useCallback(() => {
     const date = getActiveDiaryDate();
-    rootNavigationRef.dispatch(CommonActions.navigate('PresetSearch', { date }));
-  }, [getActiveDiaryDate]);
+    navigateFromSheet('FoodSearch', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
+
+  const handleBarcodeScan = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('FoodScan', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
+
+  const handleStartExerciseForm = useCallback(
+    async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
+      const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+      if (!isConnected) {
+        Alert.alert(
+          'No Server Connected',
+          'Configure your server connection in Settings to add an exercise.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
+            },
+          ],
+        );
+        return;
+      }
+
+      const date = getActiveDiaryDate();
+      const draft = await loadActiveDraft();
+      if (draft) {
+        Alert.alert(
+          'Draft in Progress',
+          `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Resume Draft',
+              onPress: () => {
+                if (draft.type === 'workout') {
+                  navigateFromSheet('WorkoutAdd');
+                } else {
+                  navigateFromSheet('ActivityAdd');
+                }
+              },
+            },
+            {
+              text: 'Discard & Continue',
+              style: 'destructive',
+              onPress: async () => {
+                await clearDraft();
+                if (screen === 'PresetSearch') {
+                  navigateFromSheet('PresetSearch', { date });
+                } else {
+                  navigateFromSheet(screen, { date, skipDraftLoad: true });
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      if (screen === 'PresetSearch') {
+        navigateFromSheet('PresetSearch', { date });
+      } else {
+        navigateFromSheet(screen, { date, skipDraftLoad: true });
+      }
+    },
+    [navigateFromSheet, getActiveDiaryDate],
+  );
+
+  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
+  const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
+  const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
 
   const handleAddMeasurements = useCallback(() => {
-    if (!rootNavigationRef.isReady()) return;
     const date = getActiveDiaryDate();
-    rootNavigationRef.dispatch(CommonActions.navigate('MeasurementsAdd', { date }));
-  }, [getActiveDiaryDate]);
+    navigateFromSheet('MeasurementsAdd', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
     if (syncMutation.isPending || isSyncClaimed()) return;
@@ -377,6 +432,9 @@ const handleAddFood = useCallback(async () => {
       addSheetDismissNavigationTimeoutRef.current = null;
     }
 
+    // Native tabs can briefly re-select the Add route while the bottom sheet
+    // dismissal animation settles. These idempotent retries keep the user on
+    // the last content tab without depending on one exact UIKit transition tick.
     navigateBackToPreviousTab();
 
     requestAnimationFrame(navigateBackToPreviousTab);
@@ -673,7 +731,6 @@ const handleAddFood = useCallback(async () => {
             {() => (
               <>
                 <WhatsNewBanner />
-                <ActiveWorkoutBar variant="embedded" />
                 <TabsLayout
                   onAddPress={() => addSheetRef.current?.present()}
                   rememberActiveTab={rememberActiveTab}
