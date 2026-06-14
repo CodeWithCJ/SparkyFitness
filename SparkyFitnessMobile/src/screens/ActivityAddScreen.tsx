@@ -6,6 +6,7 @@ import {
   Pressable,
   Keyboard,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -135,8 +136,9 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-3 py-3">
         <Button
           variant="ghost"
@@ -147,6 +149,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           <Icon name="close" size={24} color={accentPrimary} />
         </Button>
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"

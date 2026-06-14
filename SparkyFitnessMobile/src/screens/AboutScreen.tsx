@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
+import { Platform, View, Text, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import * as Application from 'expo-application';
@@ -27,11 +27,12 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
+        {Platform.OS !== 'ios' && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -43,6 +44,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
           </Button>
           <Text className="text-2xl font-bold text-text-primary">About</Text>
         </View>
+        )}
 
         <View className="bg-surface rounded-xl p-5 mb-4 items-center shadow-sm">
           <Image source={require('../../assets/images/logo.png')} className="w-20 h-20 mb-4" resizeMode="contain" />

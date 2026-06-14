@@ -1,10 +1,11 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Pressable,
   ScrollView,
+  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import Animated, {
@@ -16,6 +17,7 @@ import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -707,8 +709,45 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? `${Math.round(scaled(value))}${unit}`
       : `${Math.round(scaledValue(value, entry))}${unit}`;
 
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerBackVisible: true,
+      unstable_headerRightItems: canEdit
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: isEditing ? 'Done' : 'Edit',
+              identifier: isEditing ? 'food-entry-view-done' : 'food-entry-view-edit',
+              tintColor: textPrimary,
+              accessibilityLabel: isEditing ? 'Save food entry changes' : 'Edit food entry',
+              fontWeight: isEditing ? '600' : '500',
+              disabled: isEditing && (isUpdatePending || quantity <= 0),
+              onPress: () => {
+                if (isEditing) {
+                  handleSave();
+                  return;
+                }
+                updateEdit({ isEditing: true });
+              },
+            }),
+          ]
+        : undefined,
+    });
+  }, [
+    navigation,
+    canEdit,
+    isEditing,
+    isUpdatePending,
+    quantity,
+    textPrimary,
+    handleSave,
+    updateEdit,
+  ]);
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -742,6 +781,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           </FadeView>
         )}
       </View>
+      )}
 
       <ScrollView
         className="flex-1"
