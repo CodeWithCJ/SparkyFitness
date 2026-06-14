@@ -1095,7 +1095,9 @@ export function useCustomFoodForm({
   };
 
   const handleSyncConfirmation = async (sync: boolean) => {
-    if (sync && savedFoodResult) {
+    if (!savedFoodResult) return;
+
+    if (sync) {
       try {
         await updateFoodEntriesSnapshot(savedFoodResult.id);
       } catch {
@@ -1103,11 +1105,7 @@ export function useCustomFoodForm({
       }
     }
     setShowSyncConfirmation(false);
-    if (savedFoodResult) {
-      onSave(savedFoodResult);
-    } else if (food) {
-      onSave(food);
-    }
+    onSave(savedFoodResult);
     setSavedFoodResult(null);
   };
 
