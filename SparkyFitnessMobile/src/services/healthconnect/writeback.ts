@@ -2,6 +2,7 @@ import {
   insertRecords,
   deleteRecordsByUuids,
   getGrantedPermissions,
+  type HealthConnectRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
@@ -12,20 +13,18 @@ import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
   foodEntryToNutritionRecord,
   waterMlToHydrationRecord,
-  nutritionClientRecordId,
-  waterClientRecordId,
   computeWritebackDates,
 } from './writebackMappers';
 import { WRITEBACK_METRICS, type WritebackMetric } from '../../WritebackMetrics';
 
 // Orchestrates the outbound phase: SparkyFitness diary → Health Connect. Reads
-// the existing daily summary (no server changes), maps to HC records, upserts via
-// insertRecords (idempotent by clientRecordId), and deletes records that no
-// longer exist in the app. Android-only; the iOS entry point is a no-op.
+// the existing daily summary, maps the manually-logged entries to HC records, and
+// replaces the previous run's records (delete-then-insert with fresh ids). Android
+// only; the iOS entry point is a no-op.
 
-// Per-date set of clientRecordIds we last wrote, so a later sync can delete the
-// ones that disappeared (food deleted / water zeroed). Stored under the same
-// @HealthConnect preference prefix.
+// Per-date set of clientRecordIds we last wrote, so the next run can delete exactly
+// those before inserting fresh ones (handles add / edit / delete uniformly).
+// Stored under the same @HealthConnect preference prefix.
 const writtenIdsKey = (metricId: string, date: string): string =>
   `writeback${metricId}Ids:${date}`;
 
@@ -35,19 +34,28 @@ const loadWrittenIds = async (metricId: string, date: string): Promise<string[]>
 const saveWrittenIds = (metricId: string, date: string, ids: string[]): Promise<void> =>
   saveHealthPreference(writtenIdsKey(metricId, date), ids);
 
-// Delete clientRecordIds we wrote previously but didn't write this run.
-const deleteStale = async (
-  recordType: 'Nutrition' | 'Hydration',
+// Deterministic replace: delete the exact ids we wrote last run, then insert this
+// run's records (which carry brand-new, version-suffixed clientRecordIds — see
+// writebackMappers). We do NOT rely on Health Connect's clientRecordId+version
+// upsert: via the RN bridge it does not reliably overwrite on edit, and re-inserting
+// a stable id we just deleted is rejected (HC tombstones deleted clientRecordIds).
+// Fresh ids each run sidestep both. Mirrors the read/Garmin provider pattern.
+const replaceProviderRecords = async (
   previousIds: string[],
-  currentIds: string[],
+  recordType: 'Nutrition' | 'Hydration',
+  records: HealthConnectRecord[],
 ): Promise<void> => {
-  const current = new Set(currentIds);
-  const stale = previousIds.filter((id) => !current.has(id));
-  if (stale.length > 0) {
-    await deleteRecordsByUuids(recordType, [], stale);
-    addLog(`[Writeback] Deleted ${stale.length} stale ${recordType} record(s)`, 'DEBUG');
+  if (previousIds.length > 0) {
+    await deleteRecordsByUuids(recordType, [], previousIds);
+  }
+  if (records.length > 0) {
+    await insertRecords(records);
   }
 };
+
+// clientRecordIds of the records actually built this run (what we just inserted).
+const recordIds = (records: HealthConnectRecord[]): string[] =>
+  records.map((r) => r.metadata?.clientRecordId).filter((id): id is string => id != null);
 
 const hasWritePermission = async (metric: WritebackMetric): Promise<boolean> => {
   try {
@@ -66,33 +74,30 @@ const writeNutritionForDate = async (date: string, version: number): Promise<voi
   const summary = await fetchDailySummary(date);
   const entries = await resolveCollapsedFoodEntries(date, summary.foodEntries);
 
+  // Only write entries that originated in Sparky. Entries with a `source` were
+  // imported from a provider (e.g. Health Connect itself) — re-exporting them
+  // would duplicate that provider's own data back into HC.
   const records = entries
+    .filter((e) => !e.source)
     .map((entry) => foodEntryToNutritionRecord(entry, version))
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  if (records.length > 0) {
-    await insertRecords(records);
-  }
-  const currentIds = entries
-    .filter((e) => e.serving_size !== 0)
-    .map((e) => nutritionClientRecordId(e.id));
-
-  await deleteStale('Nutrition', await loadWrittenIds('Nutrition', date), currentIds);
-  await saveWrittenIds('Nutrition', date, currentIds);
+  const previousIds = await loadWrittenIds('Nutrition', date);
+  await replaceProviderRecords(previousIds, 'Nutrition', records);
+  await saveWrittenIds('Nutrition', date, recordIds(records));
+  addLog(`[Writeback] Nutrition ${date}: wrote ${records.length} record(s)`, 'INFO');
 };
 
 const writeHydrationForDate = async (date: string, version: number): Promise<void> => {
   const summary = await fetchDailySummary(date);
   const ml = summary.waterIntake ?? 0;
   const record = waterMlToHydrationRecord(date, ml, version);
+  const records = record ? [record] : [];
 
-  if (record) {
-    await insertRecords([record]);
-  }
-  const currentIds = record ? [waterClientRecordId(date)] : [];
-
-  await deleteStale('Hydration', await loadWrittenIds('Hydration', date), currentIds);
-  await saveWrittenIds('Hydration', date, currentIds);
+  const previousIds = await loadWrittenIds('Hydration', date);
+  await replaceProviderRecords(previousIds, 'Hydration', records);
+  await saveWrittenIds('Hydration', date, recordIds(records));
+  addLog(`[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`, 'INFO');
 };
 
 /**

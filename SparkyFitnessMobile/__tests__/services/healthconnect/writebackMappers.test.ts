@@ -61,10 +61,10 @@ describe('foodEntryToNutritionRecord', () => {
     expect(foodEntryToNutritionRecord({ ...baseEntry, serving_size: 0 }, 1)).toBeNull();
   });
 
-  it('stamps a deterministic, prefixed clientRecordId + version', () => {
+  it('stamps a version-suffixed, prefixed clientRecordId + version', () => {
     const record = foodEntryToNutritionRecord(baseEntry, 4242)!;
     const metadata = field(record, 'metadata');
-    expect(metadata.clientRecordId).toBe('sparky-nutrition-fe1');
+    expect(metadata.clientRecordId).toBe('sparky-nutrition-fe1-4242');
     expect(metadata.clientRecordVersion).toBe(4242);
     expect(metadata.recordingMethod).toBe(3); // MANUAL_ENTRY
   });
@@ -86,7 +86,7 @@ describe('waterMlToHydrationRecord', () => {
   it('builds an interval Hydration record in milliliters', () => {
     const record = waterMlToHydrationRecord('2026-06-14', 750, 99)!;
     expect(field(record, 'volume')).toEqual({ value: 750, unit: 'milliliters' });
-    expect(field(record, 'metadata').clientRecordId).toBe('sparky-water-2026-06-14');
+    expect(field(record, 'metadata').clientRecordId).toBe('sparky-water-2026-06-14-99');
     expect(field(record, 'metadata').clientRecordVersion).toBe(99);
     expect(new Date(field(record, 'endTime')).getTime()).toBeGreaterThan(
       new Date(field(record, 'startTime')).getTime(),
@@ -95,9 +95,9 @@ describe('waterMlToHydrationRecord', () => {
 });
 
 describe('clientRecordId helpers', () => {
-  it('are prefixed and deterministic', () => {
-    expect(nutritionClientRecordId('abc')).toBe('sparky-nutrition-abc');
-    expect(waterClientRecordId('2026-06-14')).toBe('sparky-water-2026-06-14');
+  it('are prefixed and version-suffixed (fresh per write run)', () => {
+    expect(nutritionClientRecordId('abc', 7)).toBe('sparky-nutrition-abc-7');
+    expect(waterClientRecordId('2026-06-14', 7)).toBe('sparky-water-2026-06-14-7');
   });
 });
 

@@ -43,4 +43,9 @@ export interface FoodEntry {
   iron?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+
+  // Provider that produced this entry (e.g. 'health_connect'); null/undefined for
+  // manually-logged entries. Used by Health Connect writeback to avoid re-exporting
+  // entries that were themselves imported from a provider.
+  source?: string | null;
 }

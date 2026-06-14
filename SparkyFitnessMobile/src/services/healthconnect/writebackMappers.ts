@@ -19,13 +19,21 @@ type MassUnit = 'grams' | 'milligrams' | 'micrograms';
  *  is the canonical exclusion; this prefix is purely a write-side namespace). */
 export const SPARKY_CLIENT_RECORD_PREFIX = 'sparky-';
 
-/** Stable per-food-entry id — Health Connect upserts on it, so edits replace. */
-export const nutritionClientRecordId = (entryId: string): string =>
-  `${SPARKY_CLIENT_RECORD_PREFIX}nutrition-${entryId}`;
+// clientRecordIds embed the write version (a timestamp) so every run produces
+// *fresh* ids. The orchestrator deletes the previous run's ids and inserts these,
+// rather than reusing a stable id: Health Connect tombstones a deleted
+// clientRecordId and silently rejects re-inserting it, so an edit done as
+// delete-then-insert on the same id would vanish. Fresh ids sidestep that (and the
+// unreliable clientRecordId+version upsert) — dedup is via the tracked id set, the
+// same delete-then-insert pattern the read/Garmin provider path uses.
 
-/** One water record per day, keyed by date. */
-export const waterClientRecordId = (entryDate: string): string =>
-  `${SPARKY_CLIENT_RECORD_PREFIX}water-${entryDate}`;
+/** Per-food-entry id for one write run (entry id + version → unique per run). */
+export const nutritionClientRecordId = (entryId: string, version: number): string =>
+  `${SPARKY_CLIENT_RECORD_PREFIX}nutrition-${entryId}-${version}`;
+
+/** One water record per day, scoped to the write run by version. */
+export const waterClientRecordId = (entryDate: string, version: number): string =>
+  `${SPARKY_CLIENT_RECORD_PREFIX}water-${entryDate}-${version}`;
 
 // factor (from HC_NUTRIENT_COLUMNS) → the HC Mass unit Sparky already stores that
 // column in, so we write the value verbatim with no conversion (and never drift
@@ -99,7 +107,7 @@ export const foodEntryToNutritionRecord = (
     mealType: mealSlugToInt(entry.meal_type),
     name: entry.food_name || 'SparkyFitness food',
     metadata: {
-      clientRecordId: nutritionClientRecordId(entry.id),
+      clientRecordId: nutritionClientRecordId(entry.id, clientRecordVersion),
       clientRecordVersion,
       recordingMethod: RecordingMethod.RECORDING_METHOD_MANUAL_ENTRY,
     },
@@ -150,7 +158,7 @@ export const waterMlToHydrationRecord = (
     endTime: end.toISOString(),
     volume: { value: ml, unit: 'milliliters' },
     metadata: {
-      clientRecordId: waterClientRecordId(entryDate),
+      clientRecordId: waterClientRecordId(entryDate, clientRecordVersion),
       clientRecordVersion,
       recordingMethod: RecordingMethod.RECORDING_METHOD_MANUAL_ENTRY,
     },

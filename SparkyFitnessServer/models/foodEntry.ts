@@ -545,6 +545,7 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.iron,
         fe.glycemic_index,
         fe.custom_nutrients,
+        fe.source,
         COALESCE(fe.allergens, fv.allergens) AS allergens,
         COALESCE(fe.traces, fv.traces) AS traces
        FROM food_entries fe
