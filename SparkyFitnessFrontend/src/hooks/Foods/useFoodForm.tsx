@@ -351,7 +351,7 @@ export function useCustomFoodForm({
   >([]);
   const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
-  const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
+  const [savedFoodResult, setSavedFoodResult] = useState<Food | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -1071,7 +1071,7 @@ export function useCustomFoodForm({
       });
 
       if (food?.id && user?.id === food.user_id) {
-        setSyncFoodId(savedFood.id);
+        setSavedFoodResult(savedFood);
         setShowSyncConfirmation(true);
       } else {
         if (!food?.id) resetForm();
@@ -1094,16 +1094,19 @@ export function useCustomFoodForm({
     await persistFood();
   };
 
-  const handleSyncConfirmation = async () => {
-    if (syncFoodId) {
+  const handleSyncConfirmation = async (sync: boolean) => {
+    if (!savedFoodResult) return;
+
+    if (sync) {
       try {
-        await updateFoodEntriesSnapshot(syncFoodId);
+        await updateFoodEntriesSnapshot(savedFoodResult.id);
       } catch {
         /* toast handled by QueryClient */
       }
     }
     setShowSyncConfirmation(false);
-    if (food) onSave(food);
+    onSave(savedFoodResult);
+    setSavedFoodResult(null);
   };
 
   const variantErrors = useMemo(

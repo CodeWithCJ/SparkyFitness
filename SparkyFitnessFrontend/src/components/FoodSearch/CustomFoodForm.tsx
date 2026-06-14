@@ -60,7 +60,6 @@ const CustomFoodForm = ({
     variantErrors,
     loading,
     showSyncConfirmation,
-    setShowSyncConfirmation,
     loadedVariants,
     conversionBaseVariants,
     hasTrustedCompatibilityBase,
@@ -295,8 +294,12 @@ const CustomFoodForm = ({
       {showSyncConfirmation && (
         <ConfirmationDialog
           open={showSyncConfirmation}
-          onOpenChange={setShowSyncConfirmation}
-          onConfirm={handleSyncConfirmation}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleSyncConfirmation(false);
+            }
+          }}
+          onConfirm={() => handleSyncConfirmation(true)}
           title="Sync Past Entries?"
           description="Do you want to update all your past diary entries for this food with the new nutritional information?"
         />
