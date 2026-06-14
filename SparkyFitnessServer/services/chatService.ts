@@ -586,6 +586,7 @@ async function processChatMessage(
       >,
       tools,
       stopWhen: stepCountIs(50),
+      maxRetries: 5,
       onStepFinish({ toolCalls }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
@@ -980,6 +981,7 @@ async function processChatMessageStream(
       >,
       tools,
       stopWhen: stepCountIs(50),
+      maxRetries: 5,
       onFinish: async ({ text, finishReason }) => {
         // Get the last user message from conversationMessages to ensure parts are captured
         const lastUserMessage = [...conversationMessages]

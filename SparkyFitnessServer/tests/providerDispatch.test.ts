@@ -1010,6 +1010,132 @@ describe('dispatchAiRequest — temperature', () => {
   });
 });
 
+describe('dispatchAiRequest — 429 rate-limit retry', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('retries after a 429 and succeeds on the second attempt', async () => {
+    let calls = 0;
+    global.fetch = vi.fn().mockImplementation(() => {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 429,
+          text: async () => 'Rate limit exceeded',
+          json: async () => ({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => '',
+        json: async () => openAiBody(JSON.stringify(SAMPLE)),
+      });
+    }) as typeof global.fetch;
+
+    const promise = dispatchAiRequest(baseRequest());
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(calls).toBe(2);
+  });
+
+  it('parses "retry in Xs" from the error body and uses it as the sleep delay', async () => {
+    let calls = 0;
+    const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+    global.fetch = vi.fn().mockImplementation(() => {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 429,
+          text: async () => 'Please retry in 11.69562819s',
+          json: async () => ({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => '',
+        json: async () => openAiBody(JSON.stringify(SAMPLE)),
+      });
+    }) as typeof global.fetch;
+
+    const promise = dispatchAiRequest(baseRequest());
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // Math.ceil(11.69562819 * 1000) + 500 = 12196
+    const sleepCall = setTimeoutSpy.mock.calls.find(
+      ([, ms]) => typeof ms === 'number' && (ms as number) >= 12000
+    );
+    expect(sleepCall).toBeDefined();
+  });
+
+  it('falls back to exponential backoff when no retry hint is in the body', async () => {
+    let calls = 0;
+    const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+    global.fetch = vi.fn().mockImplementation(() => {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 429,
+          text: async () => 'Too Many Requests',
+          json: async () => ({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => '',
+        json: async () => openAiBody(JSON.stringify(SAMPLE)),
+      });
+    }) as typeof global.fetch;
+
+    const promise = dispatchAiRequest(baseRequest());
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // First backoff: INITIAL_BACKOFF_MS * 2^0 = 2000
+    const sleepCall = setTimeoutSpy.mock.calls.find(
+      ([, ms]) => ms === 2000
+    );
+    expect(sleepCall).toBeDefined();
+  });
+
+  it('returns upstream_error after exhausting all retries', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: async () => 'Quota exceeded',
+      json: async () => ({}),
+    }) as typeof global.fetch;
+
+    const promise = dispatchAiRequest(baseRequest());
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.category).toBe('upstream_error');
+      expect(result.status).toBe(429);
+    }
+    // 1 initial + MAX_FETCH_RETRIES(3) retries = 4 total calls
+    expect(
+      (global.fetch as ReturnType<typeof vi.fn>).mock.calls.length
+    ).toBe(4);
+  });
+});
+
 describe('toStrictJsonSchema', () => {
   it('adds additionalProperties:false to every object node and strips propertyOrdering', () => {
     const strict = toStrictJsonSchema(SCHEMA);
