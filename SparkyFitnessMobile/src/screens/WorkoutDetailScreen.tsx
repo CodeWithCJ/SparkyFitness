@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Pressable, Alert } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, TouchableOpacity, Pressable, Alert, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -31,6 +31,7 @@ import { extractActivitySummary } from '../utils/activityDetails';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   ExerciseEntryResponse,
@@ -275,11 +276,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-text-muted',
     '--color-border-subtle',
-  ]) as [string, string, string];
+  ]) as [string, string, string, string];
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -350,7 +352,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     populate,
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode: true, skipDraftLoad: true });
-  const submission = getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs');
+  const submission = useMemo(
+    () => getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs'),
+    [formState, weightUnit],
+  );
   const hasEditedExercisesWithSets = submission.canSave;
 
   const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
@@ -383,18 +388,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     [eligibleIds],
   );
 
-  const startEditing = () => {
+  const startEditing = useCallback(() => {
     populate(session, weightUnit as 'kg' | 'lbs');
     setEditNotes(session.notes ?? '');
     setEligibleIds(new Set());
     setIsEditing(true);
-  };
+  }, [populate, session, weightUnit]);
 
-  const cancelEditing = () => {
+  const cancelEditing = useCallback(() => {
     setIsEditing(false);
     setEditNotes('');
     deactivateSet();
-  };
+  }, [deactivateSet]);
 
   useSelectedExercise(route.params, handleAddExercise);
 
@@ -499,7 +504,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // --- Save ---
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const editedDate = submission.entryDate;
     const dateChanged = editedDate !== normalizedDate;
 
@@ -531,7 +536,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       addLog(`Failed to save workout: ${error}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
     }
-  };
+  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef]);
 
   // --- Read-only render helpers ---
 
@@ -628,9 +633,83 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {/* Header */}
+  // iOS: drive the native glass header. We use a SMALL inline title (set in
+  // App.tsx), never a large one — re-applying a large title via setOptions (as
+  // this screen must, for edit mode) makes it "fly in" on every return. A small
+  // title updates in place. The glass material is the same either way.
+  // - View mode: small title = workout name + an Edit action (owner only). The
+  //   in-body name <Text> stays iOS-suppressed since the name lives in the bar.
+  // - Edit mode: title becomes "Edit Workout", the back button is hidden (+
+  //   swipe-back disabled) so Cancel owns the left slot, Save on the right; the
+  //   name is edited inline in the body.
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    if (isEditing) {
+      navigation.setOptions({
+        title: 'Edit Workout',
+        headerBackVisible: false,
+        gestureEnabled: false,
+        unstable_headerLeftItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Cancel',
+            identifier: 'workout-detail-cancel',
+            tintColor: textPrimary,
+            accessibilityLabel: 'Cancel',
+            disabled: isSaving,
+            onPress: () => cancelEditing(),
+          }),
+        ],
+        unstable_headerRightItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Save',
+            identifier: 'workout-detail-save',
+            tintColor: textPrimary,
+            accessibilityLabel: 'Save',
+            fontWeight: '600',
+            disabled: isSaving || !hasEditedExercisesWithSets,
+            onPress: () => handleSave(),
+          }),
+        ],
+      });
+    } else {
+      navigation.setOptions({
+        title: name,
+        headerBackVisible: true,
+        gestureEnabled: true,
+        unstable_headerLeftItems: undefined,
+        unstable_headerRightItems: isSparky
+          ? () => [
+              createNativeHeaderTextButtonItem({
+                label: 'Edit',
+                identifier: 'workout-detail-edit',
+                tintColor: textPrimary,
+                accessibilityLabel: 'Edit workout',
+                onPress: () => startEditing(),
+              }),
+            ]
+          : undefined,
+      });
+    }
+  }, [
+    navigation,
+    isEditing,
+    isSaving,
+    hasEditedExercisesWithSets,
+    name,
+    isSparky,
+    textPrimary,
+    startEditing,
+    cancelEditing,
+    handleSave,
+  ]);
+
+  // iOS: native glass header (above) replaces the custom header, and the
+  // KeyboardAwareScrollView must be the screen root for the large title to
+  // attach. Android keeps the custom header + padded wrapper.
+  const content = (
+    <>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3">
         {isEditing ? (
           <FadeView
@@ -688,12 +767,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </FadeView>
         )}
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4 py-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 + activeWorkoutBarPadding }}
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
       >
         {/* Title area */}
         <View className="mb-4">
@@ -707,11 +788,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
               />
             </FadeView>
-          ) : (
+          ) : Platform.OS !== 'ios' ? (
             <FadeView key="view-title">
               <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
             </FadeView>
-          )}
+          ) : null}
           <View className="flex-row items-center">
             <Text className="text-sm text-text-muted">{sourceLabel}</Text>
             <Text className="text-sm text-text-muted mx-2">{'\u2022'}</Text>
@@ -813,6 +894,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         selectedDate={isEditing ? formState.entryDate : normalizedDate}
         onSelectDate={setFormDate}
       />
+    </>
+  );
+
+  if (Platform.OS === 'ios') return content;
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      {content}
     </View>
   );
 };

@@ -743,6 +743,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -755,6 +756,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
           New Food
         </Text>
       </View>
+      )}
 
       <FoodForm
         onSubmit={(data) => {
@@ -1322,6 +1324,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1334,6 +1337,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           Adjust Nutrition
         </Text>
       </View>
+      )}
 
       <FoodForm
         onSubmit={handleSubmit}
@@ -1762,6 +1766,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1774,6 +1779,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
           Edit Food
         </Text>
       </View>
+      )}
 
       <FoodForm
         onSubmit={(data) => {

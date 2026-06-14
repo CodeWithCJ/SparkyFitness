@@ -1,10 +1,12 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
+import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
 import {
   CommonActions,
+  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   type LinkingOptions,
   type NavigationProp,
@@ -19,7 +21,7 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
 
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -94,19 +96,18 @@ import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
-import CustomTabBar from './src/components/CustomTabBar';
+import { navigateToLastActiveTab, NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
+import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
 import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
-const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type TabStateSnapshot = {
@@ -116,7 +117,6 @@ type TabStateSnapshot = {
     params?: unknown;
   }>;
 };
-const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
@@ -199,18 +199,57 @@ function AppContent() {
   const foregroundAutoSyncWindowRef = useRef(false);
   const backgroundEnteredAtRef = useRef<number | null>(null);
   const wasInBackgroundRef = useRef(false);
+  const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
+  const rememberActiveTab = useCallback((routeName: string) => {
+    if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
+      lastActiveTabRef.current = routeName as NonAddTabName;
+    }
+  }, []);
+  const getLastActiveTab = useCallback(() => lastActiveTabRef.current, []);
   const setForegroundAutoSyncWindowState = useCallback((isOpen: boolean) => {
     foregroundAutoSyncWindowRef.current = isOpen;
     setForegroundAutoSyncWindowOpen(isOpen);
   }, []);
 
-  const [primary, chrome, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
+  useEffect(() => {
+    return () => {
+      if (addSheetDismissNavigationTimeoutRef.current != null) {
+        clearTimeout(addSheetDismissNavigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-chrome',
     '--color-chrome-border',
     '--color-background',
     '--color-text-primary',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string, string, string];
+  const iosSmallHeaderOptions = useMemo(
+    () => createIOSSmallNativeHeaderOptions(textPrimary),
+    [textPrimary],
+  );
+  const createStackScreenOptions = useCallback(
+    (
+      title: string,
+      options: NativeStackNavigationOptions = {},
+    ): NativeStackNavigationOptions => (
+      Platform.OS === 'ios'
+        ? {
+            ...iosSmallHeaderOptions,
+            title,
+            gestureEnabled: true,
+            ...options,
+          }
+        : {
+            headerShown: false,
+            gestureEnabled: true,
+            ...options,
+          }
+    ),
+    [iosSmallHeaderOptions],
+  );
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -226,23 +265,32 @@ function AppContent() {
     }
   }, [isDarkMode]);
 
-  const navigationTheme = useMemo<Theme>(() => ({
-    dark: isDarkMode,
-    colors: {
-      primary: primary,
-      background: bgPrimary,
-      card: chrome,
-      text: textPrimary,
-      border: chromeBorder,
-      notification: primary,
-    },
-    fonts: {
-      regular: { fontFamily: 'System', fontWeight: '400' },
-      medium: { fontFamily: 'System', fontWeight: '500' },
-      bold: { fontFamily: 'System', fontWeight: '600' },
-      heavy: { fontFamily: 'System', fontWeight: '700' },
-    },
-  }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
+  const navigationTheme = useMemo<Theme>(() => {
+    const baseTheme = isDarkMode ? DarkTheme : DefaultTheme;
+
+    return {
+      ...baseTheme,
+      dark: isDarkMode,
+      colors: {
+        ...baseTheme.colors,
+        primary,
+        background: bgPrimary,
+        // Native iOS 26 Liquid Glass reads the navigation card color during
+        // tab/header transitions. Keep it solid and in-sync with the app
+        // background to avoid light-mode flashes/flicker in dark themes.
+        card: bgPrimary,
+        text: textPrimary,
+        border: chromeBorder,
+        notification: primary,
+      },
+      fonts: {
+        regular: { fontFamily: 'System', fontWeight: '400' },
+        medium: { fontFamily: 'System', fontWeight: '500' },
+        bold: { fontFamily: 'System', fontWeight: '600' },
+        heavy: { fontFamily: 'System', fontWeight: '700' },
+      },
+    };
+  }, [isDarkMode, primary, bgPrimary, textPrimary, chromeBorder]);
 
   const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
@@ -265,21 +313,10 @@ function AppContent() {
     return diaryParams?.selectedDate;
   }, []);
 
-  const handleAddFood = useCallback(() => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
-    const date = getActiveDiaryDate();
-    navigation.getParent()?.navigate('FoodSearch', { date });
-  }, [getActiveDiaryDate]);
-
-  const handleBarcodeScan = useCallback(() => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
-    const date = getActiveDiaryDate();
-    navigation.getParent()?.navigate('FoodScan', { date });
-  }, [getActiveDiaryDate]);
-
-  const navigateFromSheet = useCallback((screen: keyof RootStackParamList, params?: RootStackParamList[keyof RootStackParamList]) => {
+  const navigateFromSheet = useCallback(<T extends keyof RootStackParamList>(
+    screen: T,
+    params?: RootStackParamList[T],
+  ) => {
     if (rootNavigationRef.isReady()) {
       rootNavigationRef.dispatch(CommonActions.navigate({ name: screen, params }));
       return;
@@ -287,6 +324,16 @@ function AppContent() {
 
     navigationRef.current?.getParent()?.dispatch(CommonActions.navigate({ name: screen, params }));
   }, []);
+
+  const handleAddFood = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('FoodSearch', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
+
+  const handleBarcodeScan = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('FoodScan', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
 
   const handleStartExerciseForm = useCallback(
     async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
@@ -381,6 +428,37 @@ function AppContent() {
 
     syncMutation.mutate({ timeRange, healthMetricStates });
   }, [syncMutation]);
+
+  const handleAddSheetDismissWithoutAction = useCallback(() => {
+    if (!rootNavigationRef.isReady()) return;
+
+    const navigateBackToPreviousTab = () => {
+      if (navigateToLastActiveTab(lastActiveTabRef.current)) return;
+      if (!rootNavigationRef.isReady()) return;
+
+      rootNavigationRef.dispatch(
+        CommonActions.navigate('Tabs', {
+          screen: 'Dashboard',
+        }),
+      );
+    };
+
+    if (addSheetDismissNavigationTimeoutRef.current != null) {
+      clearTimeout(addSheetDismissNavigationTimeoutRef.current);
+      addSheetDismissNavigationTimeoutRef.current = null;
+    }
+
+    // Native tabs can briefly re-select the Add route while the bottom sheet
+    // dismissal animation settles. These idempotent retries keep the user on
+    // the last content tab without depending on one exact UIKit transition tick.
+    navigateBackToPreviousTab();
+
+    requestAnimationFrame(navigateBackToPreviousTab);
+    addSheetDismissNavigationTimeoutRef.current = setTimeout(() => {
+      addSheetDismissNavigationTimeoutRef.current = null;
+      navigateBackToPreviousTab();
+    }, 150);
+  }, []);
 
   const triggerAutoSync = useCallback(async (configId: string, release: () => void) => {
     let committed = false;
@@ -649,7 +727,14 @@ function AppContent() {
       <SafeAreaProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'default',
+            contentStyle: { backgroundColor: bgPrimary },
+          }}
+          initialRouteName={initialRoute}
+        >
           <Stack.Screen
             name="Onboarding"
             component={SafeOnboarding}
@@ -657,184 +742,140 @@ function AppContent() {
           />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
             {() => (
-              <Tab.Navigator
-                initialRouteName="Dashboard"
-                screenOptions={{
-                  headerShown: false,
-                }}
-                tabBar={(props) => (
-                  // Wrap the tab bar so the active workout HUD can sit
-                  // directly on top of it. Order matters: CustomTabBar is
-                  // a later sibling than ActiveWorkoutBar, so its Add button
-                  // (which uses -mt-5 to rise above the tab bar's top edge)
-                  // paints on top of the embedded bar — matching the mockup
-                  // where the + button visually bridges both bars.
-                  <View collapsable={false}>
-                    <WhatsNewBanner />
-                    <ActiveWorkoutBar variant="embedded" />
-                    <CustomTabBar {...props} />
-                  </View>
-                )}
-              >
-                <Tab.Screen name="Dashboard" component={SafeDashboard} />
-                <Tab.Screen name="Diary" component={SafeDiary} />
-                <Tab.Screen
-                  name="Add"
-                  component={EmptyScreen}
-                  listeners={({ navigation }) => ({
-                    tabPress: (e) => {
-                      e.preventDefault();
-                      navigationRef.current = navigation;
-                      addSheetRef.current?.present();
-                    },
-                  })}
+              <>
+                <WhatsNewBanner />
+                <TabsLayout
+                  onAddPress={() => addSheetRef.current?.present()}
+                  rememberActiveTab={rememberActiveTab}
+                  getLastActiveTab={getLastActiveTab}
                 />
-                <Tab.Screen name="Library" component={SafeLibrary} />
-                <Tab.Screen name="Settings" component={SettingsScreen} />
-              </Tab.Navigator>
+              </>
             )}
           </Stack.Screen>
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Foods')}
           />
           <Stack.Screen
             name="MealsLibrary"
             component={SafeMealsLibrary}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Meals')}
           />
           <Stack.Screen
             name="ExercisesLibrary"
             component={SafeExercisesLibrary}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Exercises')}
           />
           <Stack.Screen
             name="WorkoutPresetsLibrary"
             component={SafeWorkoutPresetsLibrary}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Workout Presets')}
           />
           <Stack.Screen
             name="WorkoutPresetDetail"
             component={SafeWorkoutPresetDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name)}
           />
           <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
           />
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={
+              Platform.OS === 'ios'
+                ? {
+                    ...iosSmallHeaderOptions,
+                    title: '',
+                    gestureEnabled: true,
+                  }
+                : {
+                    headerShown: false,
+                    gestureEnabled: true,
+                  }
+            }
           />
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
           />
           <Stack.Screen
             name="FoodSearch"
             component={SafeFoodSearch}
-            options={{
+            options={createStackScreenOptions('Add Food', {
               presentation: 'fullScreenModal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="FoodEntryAdd"
             component={SafeFoodEntryAdd}
-            options={{
+            options={({ route }) => createStackScreenOptions(route.params.item.name, {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="FoodForm"
             component={SafeFoodForm}
-            options={{
+            options={({ route }) => createStackScreenOptions(
+              route.params.mode === 'create-food'
+                ? 'New Food'
+                : route.params.mode === 'edit-food'
+                  ? 'Edit Food'
+                  : 'Adjust Nutrition',
+              {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+              },
+            )}
           />
           <Stack.Screen
             name="EditBarcode"
             component={SafeEditBarcode}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Barcodes')}
           />
           <Stack.Screen
             name="ExerciseForm"
             component={SafeExerciseForm}
-            options={{
+            options={({ route }) => createStackScreenOptions(
+              route.params.mode === 'edit-exercise' ? 'Edit Exercise' : 'New Exercise',
+              {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+              },
+            )}
           />
           <Stack.Screen
             name="WorkoutPresetForm"
             component={SafeWorkoutPresetForm}
-            options={{
+            options={({ route }) => createStackScreenOptions(
+              route.params.mode === 'edit-preset' ? 'Edit Preset' : 'New Preset',
+              {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+              },
+            )}
           />
           <Stack.Screen
             name="FoodScan"
             component={SafeFoodScan}
-            options={{
+            options={createStackScreenOptions('Scan Food', {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="FoodPhotoIntro"
             component={SafeFoodPhotoIntro}
-            options={{
+            options={createStackScreenOptions('Photo Food', {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="FoodPhotoFlow"
@@ -849,153 +890,122 @@ function AppContent() {
           <Stack.Screen
             name="MealAdd"
             component={SafeMealAdd}
-            options={{
+            options={({ route }) => createStackScreenOptions(
+              route.params?.mode === 'edit' ? 'Edit Meal' : 'Create Meal',
+              {
               presentation: 'modal',
-              headerShown: false,
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+              },
+            )}
           />
           <Stack.Screen
             name="FoodEntryView"
             component={SafeFoodEntryView}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.entry.food_name ?? 'Food Entry')}
           />
           <Stack.Screen
             name="EditLoggedMeal"
             component={SafeEditLoggedMeal}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Edit Meal')}
           />
           <Stack.Screen
             name="MealTypeDetail"
             component={SafeMealTypeDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? 'Meal')}
           />
           <Stack.Screen
             name="ExerciseSearch"
             component={SafeExerciseSearch}
-            options={{
-              headerShown: false,
+            options={createStackScreenOptions('Select Exercise', {
               presentation: 'modal',
-            }}
+            })}
           />
           <Stack.Screen
             name="PresetSearch"
             component={SafePresetSearch}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={createStackScreenOptions('Workout Presets')}
           />
           <Stack.Screen
             name="WorkoutAdd"
             component={SafeWorkoutAdd}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params?.session ? 'Edit Workout' : 'New Workout')}
           />
           <Stack.Screen
             name="ActivityAdd"
             component={SafeActivityAdd}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params?.entry ? 'Edit Activity' : 'New Activity')}
           />
           <Stack.Screen
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) =>
+              Platform.OS === 'ios'
+                ? {
+                    ...iosSmallHeaderOptions,
+                    title: route.params?.session?.name ?? 'Workout',
+                    gestureEnabled: true,
+                  }
+                : {
+                    headerShown: false,
+                    gestureEnabled: true,
+                  }
+            }
           />
           <Stack.Screen
             name="ActivityDetail"
             component={SafeActivityDetail}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
+            options={({ route }) => createStackScreenOptions(route.params.session.name ?? 'Activity')}
           />
           <Stack.Screen
             name="Logs"
             component={SafeLogs}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Logs')}
           />
           <Stack.Screen
             name="Sync"
             component={SafeSync}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Health Sync')}
           />
           <Stack.Screen
             name="MeasurementsAdd"
             component={SafeMeasurementsAdd}
-            options={{
-              headerShown: false,
+            options={createStackScreenOptions('Measurements', {
               presentation: 'modal',
-              gestureEnabled: true,
-              ...androidModalAnimation,
-            }}
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="CalorieSettings"
             component={SafeCalorieSettings}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Calorie Settings')}
           />
           <Stack.Screen
             name="FoodSettings"
             component={SafeFoodSettings}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Food Settings')}
           />
           <Stack.Screen
             name="ServerSettings"
             component={SafeServerSettings}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Server Settings')}
           />
           <Stack.Screen
             name="AppSettings"
             component={SafeAppSettings}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('App Settings')}
           />
           <Stack.Screen
             name="About"
             component={SafeAbout}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('About')}
           />
           <Stack.Screen
             name="WhatsNew"
             component={SafeWhatsNew}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions("What's New")}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

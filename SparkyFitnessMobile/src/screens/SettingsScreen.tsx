@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -114,12 +114,24 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 80 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
-        <View className="flex-1 p-4">
-          <View className="mb-6">
-            <Text className="text-2xl font-bold text-text-primary">Settings</Text>
-          </View>
+    <>
+      <ScrollView
+        className="flex-1 bg-background"
+        style={[{ flex: 1 }, Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }]}
+        contentContainerStyle={{
+          ...(Platform.OS !== 'ios' ? { paddingTop: 0 } : null),
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
+      >
+        <View className={Platform.OS === 'ios' ? 'px-4 pb-4' : 'flex-1 p-4'}>
+          {Platform.OS !== 'ios' && (
+            <View className="mb-6">
+              <Text className="text-2xl font-bold text-text-primary">Settings</Text>
+            </View>
+          )}
 
           <SettingsRow
             icon="server"
@@ -217,7 +229,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         visible={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
       />
-    </View>
+    </>
   );
 };
 

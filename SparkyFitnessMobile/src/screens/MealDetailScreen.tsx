@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteMeal, useMeal, useProfile, useServerConnection, usePreferences } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
@@ -100,6 +101,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const headerTintColor = useCSSVariable('--color-text-primary') as string;
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -125,6 +127,33 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     [meal],
   );
   const displayValues = viewMode === 'perServing' ? perServingValues : totalValues;
+
+  // iOS uses the native glass header (configured in App.tsx). The title stays
+  // blank — the meal name is shown in the body's nutrition card, so a bar title
+  // would just duplicate it; we only drive the owner-gated Edit action here once
+  // the meal loads. Android keeps the custom in-screen header below.
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: canManageMeal
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: 'Edit',
+              identifier: 'meal-detail-edit',
+              tintColor: headerTintColor,
+              accessibilityLabel: 'Edit meal',
+              onPress: () =>
+                navigation.navigate('MealAdd', {
+                  mode: 'edit',
+                  mealId: meal!.id,
+                  initialMeal: meal,
+                }),
+            }),
+          ]
+        : undefined,
+    });
+  }, [navigation, meal, canManageMeal, headerTintColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -165,9 +194,10 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
     return (
       <ScrollView
-        className="flex-1"
+        className="flex-1 bg-background"
         contentContainerClassName="px-4 py-4 gap-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + activeWorkoutBarPadding + 16 }}
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
       >
         <View className="gap-2">
           <SegmentedControl
@@ -259,6 +289,14 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       </ScrollView>
     );
   };
+
+  // iOS: the native glass header replaces the custom header entirely. Return the
+  // content (a ScrollView in the loaded state) as the screen root — UIKit only
+  // attaches the large-title collapse to a scroll view it finds at the top of
+  // the screen, so wrapping it in another View breaks the inset + collapse.
+  if (Platform.OS === 'ios') {
+    return renderContent();
+  }
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

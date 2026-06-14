@@ -420,8 +420,9 @@ useEffect(() => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+      <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -436,6 +437,7 @@ useEffect(() => {
         </Text>
         <View style={{ width: 22 }} />
       </View>
+      )}
 
       {/* Segmented control */}
       <View className="px-4 mt-2">

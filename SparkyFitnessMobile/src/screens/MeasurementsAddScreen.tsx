@@ -424,6 +424,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -438,6 +439,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           Measurements
         </Text>
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4 py-4"

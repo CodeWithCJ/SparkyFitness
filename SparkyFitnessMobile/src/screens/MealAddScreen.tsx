@@ -385,7 +385,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
-  const renderHeader = () => (
+  const renderHeader = () => Platform.OS === 'ios' ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
       <TouchableOpacity
         onPress={() => navigation.goBack()}
