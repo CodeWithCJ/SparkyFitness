@@ -12,7 +12,7 @@ import type { FoodEntryMeal } from '../types/foodEntryMeals';
 // Sparky), so writeback always exports it — see the source filter in writeback.ts.
 
 export function hasLoggedMealComponents(foodEntries: FoodEntry[]): boolean {
-  return foodEntries.some((entry) => !!entry.food_entry_meal_id);
+  return foodEntries?.some((entry) => !!entry?.food_entry_meal_id) ?? false;
 }
 
 export function loggedMealToFoodEntry(meal: FoodEntryMeal): FoodEntry {
@@ -59,7 +59,10 @@ export function collapseLoggedMealComponents(
   foodEntries: FoodEntry[],
   loggedMeals: FoodEntryMeal[],
 ): FoodEntry[] {
-  if (loggedMeals.length === 0) {
+  if (!foodEntries) {
+    return [];
+  }
+  if (!loggedMeals || loggedMeals.length === 0) {
     return foodEntries;
   }
 
@@ -104,8 +107,8 @@ export async function resolveCollapsedFoodEntries(
   date: string,
   rawFoodEntries: FoodEntry[],
 ): Promise<FoodEntry[]> {
-  if (!hasLoggedMealComponents(rawFoodEntries)) {
-    return rawFoodEntries;
+  if (!rawFoodEntries || !hasLoggedMealComponents(rawFoodEntries)) {
+    return rawFoodEntries ?? [];
   }
   try {
     const loggedMeals = await fetchFoodEntryMealsByDate(date);

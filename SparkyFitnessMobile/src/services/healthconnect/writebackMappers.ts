@@ -72,16 +72,19 @@ const scaleConsumed = (
   quantity: number,
   servingSize: number,
 ): number | undefined => {
-  if (servingSize === 0 || value == null || isNaN(value)) return undefined;
+  // Guard falsy serving sizes (0/null/undefined/NaN): the type says number, but the
+  // daily-summary can return null, and `x / null` coerces to `x / 0` → Infinity.
+  if (!servingSize || value == null || isNaN(value)) return undefined;
   return (value * quantity) / servingSize;
 };
 
 const MINUTE_MS = 60_000;
 
 const localDayInstant = (date: string, hour: number, minute: number): Date => {
-  const d = new Date(`${date}T00:00:00`); // parsed in device-local time
-  d.setHours(hour, minute, 0, 0);
-  return d;
+  // Construct from parts in local time. `new Date('YYYY-MM-DDT00:00:00')` is parsed
+  // as UTC in some JS engines, which shifts the calendar day for non-UTC offsets.
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
 };
 
 // A short interval anchored to a representative local meal time. Returns null when
@@ -110,7 +113,7 @@ export const foodEntryToNutritionRecord = (
   entry: FoodEntry,
   clientRecordVersion: number,
 ): NutritionRecord | null => {
-  if (entry.serving_size === 0) return null;
+  if (!entry.serving_size) return null; // 0 / null / undefined — can't scale
 
   const [hour, minute] = MEAL_START_HM[entry.meal_type] ?? MEAL_START_HM.snacks;
   const interval = recordInterval(entry.entry_date, hour, minute);
