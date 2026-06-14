@@ -22,8 +22,6 @@ import {
   TrendingDown,
   ShieldAlert,
   Info,
-  ChevronDown,
-  Calculator,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
@@ -53,6 +51,8 @@ import {
   useMostRecentBodyFatQuery,
 } from '@/hooks/Diary/useDailyProgress';
 import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
+import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
+import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import {
   computeCalorieTarget,
   todayInZone,
@@ -307,6 +307,13 @@ const CalculationSettings = () => {
   const { user } = useAuth();
   const { data: userProfile } = useProfileQuery(user?.id);
   const { data: bodyFatData } = useMostRecentBodyFatQuery();
+  const { data: waistData } = useMostRecentMeasurement('waist');
+  const { data: neckData } = useMostRecentMeasurement('neck');
+  const { data: hipsData } = useMostRecentMeasurement('hips');
+
+  const displayWaist = waistData?.waist;
+  const displayNeck = neckData?.neck;
+  const displayHips = hipsData?.hips;
 
   const bodyFat = bodyFatData?.body_fat_percentage;
   const gender = (userProfile?.gender || 'male') as 'male' | 'female';
@@ -1112,287 +1119,27 @@ const CalculationSettings = () => {
 
             {/* Detailed Calculation Breakdown */}
             <div className="pt-3 border-t border-border/40 space-y-2.5">
-              <details className="group">
-                <summary className="flex items-center justify-between cursor-pointer py-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <Calculator className="w-3.5 h-3.5 text-muted-foreground/80" />
-                    <span>How your target is calculated</span>
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180 text-muted-foreground/60" />
-                </summary>
-
-                <div className="mt-3 space-y-3 pl-1 text-[11px] text-muted-foreground/90 leading-relaxed border-l border-border/60 ml-1.5">
-                  {/* Step 1: BMR/RMR Calculation */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between font-medium text-foreground/85">
-                      <span>1. Basal Metabolic Rate (BMR)</span>
-                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-                        {bmrAlgorithm}
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground/70">
-                      {bmrAlgorithm === 'Katch-McArdle' ? (
-                        bodyFat && bodyFat > 0 ? (
-                          <>
-                            Formula: 370 + 21.6 × LBM (where LBM = weight × (1 -
-                            BF/100))
-                            <br />
-                            Math: 370 + 21.6 × ({(weightKg || 70).toFixed(1)} kg
-                            × (1 - {bodyFat.toFixed(1)}/100))
-                          </>
-                        ) : (
-                          <span className="text-amber-500 font-medium">
-                            Katch-McArdle requires body fat percentage. Enter
-                            body fat or select another algorithm.
-                          </span>
-                        )
-                      ) : bmrAlgorithm === 'Cunningham' ? (
-                        bodyFat && bodyFat > 0 ? (
-                          <>
-                            Formula: 500 + 22 × LBM (where LBM = weight × (1 -
-                            BF/100))
-                            <br />
-                            Math: 500 + 22 × ({(weightKg || 70).toFixed(1)} kg ×
-                            (1 - {bodyFat.toFixed(1)}/100))
-                          </>
-                        ) : (
-                          <span className="text-amber-500 font-medium">
-                            Cunningham requires body fat percentage. Enter body
-                            fat or select another algorithm.
-                          </span>
-                        )
-                      ) : bmrAlgorithm === 'Revised Harris-Benedict' ? (
-                        gender === 'male' ? (
-                          <>
-                            Formula: 13.397 × weight + 4.799 × height - 5.677 ×
-                            age + 88.362
-                            <br />
-                            Math: 13.397 × {(weightKg || 70).toFixed(1)} + 4.799
-                            × {(heightCm || 170).toFixed(1)} - 5.677 × {age} +
-                            88.362
-                          </>
-                        ) : (
-                          <>
-                            Formula: 9.247 × weight + 3.098 × height - 4.33 ×
-                            age + 447.593
-                            <br />
-                            Math: 9.247 × {(weightKg || 70).toFixed(1)} + 3.098
-                            × {(heightCm || 170).toFixed(1)} - 4.33 × {age} +
-                            447.593
-                          </>
-                        )
-                      ) : bmrAlgorithm === 'Oxford' ? (
-                        gender === 'male' ? (
-                          <>
-                            Formula: 14.2 × weight + 593
-                            <br />
-                            Math: 14.2 × {(weightKg || 70).toFixed(1)} + 593
-                          </>
-                        ) : (
-                          <>
-                            Formula: 10.9 × weight + 677
-                            <br />
-                            Math: 10.9 × {(weightKg || 70).toFixed(1)} + 677
-                          </>
-                        )
-                      ) : (
-                        <>
-                          Formula (Mifflin-St Jeor): 10 × weight (kg) + 6.25 ×
-                          height (cm) - 5 × age + offset (
-                          {gender === 'male' ? '+5' : '-161'})
-                          <br />
-                          Math: 10 × {(weightKg || 70).toFixed(1)} + 6.25 ×{' '}
-                          {(heightCm || 170).toFixed(1)} - 5 × {age}{' '}
-                          {gender === 'male' ? '+ 5' : '- 161'}
-                        </>
-                      )}
-                    </p>
-                    <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-                      <span>Resting Metabolism (RMR/BMR):</span>
-                      <span className="font-semibold text-foreground">
-                        {Math.round(
-                          convertEnergy(previewResult.rmr, 'kcal', energyUnit)
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Baseline TDEE */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between font-medium text-foreground/85">
-                      <span>2. Baseline TDEE</span>
-                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-                        {goalModeCalculationMethod === 'adaptive'
-                          ? previewResult.insufficientHistory
-                            ? 'Fallback Estimate (Adaptive TDEE unavailable)'
-                            : 'Adaptive TDEE'
-                          : `${goalModeCalculationMethod} Method`}
-                      </span>
-                    </div>
-                    <div className="text-muted-foreground/70">
-                      {goalModeCalculationMethod === 'adaptive' ? (
-                        previewResult.insufficientHistory ? (
-                          <>
-                            Not enough history (&lt;14 days). Using BMR ×
-                            activity multiplier until sufficient data is
-                            collected.
-                            <br />
-                            Math: BMR (
-                            {Math.round(
-                              convertEnergy(
-                                previewResult.rmr,
-                                'kcal',
-                                energyUnit
-                              )
-                            )}{' '}
-                            {getEnergyUnitString(energyUnit)}) × activity
-                            multiplier ({activityMultiplier.toFixed(3)})
-                          </>
-                        ) : (
-                          <>
-                            Based on weight trend and calorie intake over the
-                            last 35 days.
-                          </>
-                        )
-                      ) : (
-                        <>
-                          Based on your manually configured Daily Calorie Goal.
-                        </>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-                      <span>Baseline Burn (TDEE):</span>
-                      <span className="font-semibold text-foreground">
-                        {Math.round(
-                          convertEnergy(
-                            previewResult.baselineTdee,
-                            'kcal',
-                            energyUnit
-                          )
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Step 3: Deficit */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between font-medium text-foreground/85">
-                      <span>3. Applied Deficit</span>
-                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px] capitalize">
-                        {goalMode} Deficit
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground/70">
-                      Math:{' '}
-                      {Math.round(
-                        convertEnergy(
-                          previewResult.baselineTdee,
-                          'kcal',
-                          energyUnit
-                        )
-                      )}{' '}
-                      {getEnergyUnitString(energyUnit)} TDEE ×{' '}
-                      {Math.round(
-                        getGoalModeDeficit(goalMode, goalModeCustomPercentage) *
-                          100
-                      )}
-                      % Deficit
-                    </p>
-                    <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1 text-red-600 dark:text-red-400">
-                      <span>Deficit Amount:</span>
-                      <span className="font-semibold">
-                        -
-                        {Math.round(
-                          convertEnergy(
-                            previewResult.appliedDeficit,
-                            'kcal',
-                            energyUnit
-                          )
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Step 4: Safety Floors */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between font-medium text-foreground/85">
-                      <span>4. Safety Floors Check</span>
-                      <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-                        Safety Caps
-                      </span>
-                    </div>
-                    <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground/70">
-                      <li>
-                        RMR Floor:{' '}
-                        {Math.round(
-                          convertEnergy(previewResult.rmr, 'kcal', energyUnit)
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </li>
-                      <li>
-                        Clinical Absolute Floor (for biological {gender}):{' '}
-                        {Math.round(
-                          convertEnergy(
-                            previewResult.absoluteFloorValue,
-                            'kcal',
-                            energyUnit
-                          )
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </li>
-                      <li>
-                        Effective Safety Floor:{' '}
-                        {Math.round(
-                          convertEnergy(
-                            Math.max(
-                              previewResult.rmr,
-                              previewResult.absoluteFloorValue
-                            ),
-                            'kcal',
-                            energyUnit
-                          )
-                        )}{' '}
-                        {getEnergyUnitString(energyUnit)}
-                      </li>
-                    </ul>
-                    <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-                      <span>Safety Floor Outcome:</span>
-                      <span className="font-semibold text-foreground">
-                        {goalModeCalculationMethod === 'adaptive' ? (
-                          previewResult.target <
-                          Math.max(
-                            previewResult.rmr,
-                            previewResult.absoluteFloorValue
-                          ) ? (
-                            <span className="text-amber-600 dark:text-amber-400 font-medium">
-                              Target raised to Safety Floor
-                            </span>
-                          ) : (
-                            <span className="text-green-600 dark:text-green-400 font-medium">
-                              Target remains above Safety Floor
-                            </span>
-                          )
-                        ) : previewResult.target <
-                          Math.max(
-                            previewResult.rmr,
-                            previewResult.absoluteFloorValue
-                          ) ? (
-                          <span className="text-red-500 font-semibold">
-                            Below safety limits (Warning triggers)
-                          </span>
-                        ) : (
-                          <span className="text-green-600 dark:text-green-400 font-medium">
-                            Target remains above Safety Floor
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </details>
+              <CalorieTargetBreakdown
+                previewResult={previewResult}
+                adaptiveTdeeData={adaptiveTdeeData}
+                bmrAlgorithm={bmrAlgorithm}
+                bodyFatAlgorithm={bodyFatAlgorithm}
+                displayWeight={weightKg || 70}
+                displayHeight={heightCm || 170}
+                displayAge={age}
+                displayGender={gender}
+                displayBodyFat={bodyFat ?? undefined}
+                displayWaist={displayWaist ?? undefined}
+                displayNeck={displayNeck ?? undefined}
+                displayHips={displayHips ?? undefined}
+                goalMode={goalMode}
+                goalModeCalculationMethod={goalModeCalculationMethod}
+                goalModeCustomPercentage={goalModeCustomPercentage}
+                calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
+                rawManualGoal={rawManualGoal}
+                adjustedManualGoal={currentGoalBase}
+                activityMultiplier={activityMultiplier}
+              />
             </div>
           </div>
 
