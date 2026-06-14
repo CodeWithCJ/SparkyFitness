@@ -1135,7 +1135,21 @@
     "measurementDeletedSuccessfully": "Measurement deleted successfully",
     "failedToDeleteMeasurement": "Failed to delete measurement",
     "failedToLoadRecentMeasurements": "Failed to load recent measurements",
-    "enterCustomCategory": "Enter {{categoryName}}"
+    "enterCustomCategory": "Enter {{categoryName}}",
+    "photos": {
+      "title": "Progress Photos",
+      "subtitle": "Upload front, back, and side photos to track your physique over time.",
+      "front": "Front",
+      "back": "Back",
+      "side": "Side",
+      "tapToUpload": "Tap to upload",
+      "upload": "Upload",
+      "replace": "Replace",
+      "uploadSuccess": "Photo saved",
+      "uploadError": "Upload failed",
+      "deleteSuccess": "Photo removed",
+      "deleteError": "Failed to remove photo"
+    }
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Sleep Timeline",
