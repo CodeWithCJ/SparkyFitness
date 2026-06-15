@@ -34,7 +34,15 @@ export const useUpdateBackupSettings = () => {
       return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
     meta: {
-      successMessage: t('admin.backupSettings.backupSettingsSaved', 'Saved'),
+      successMessage: (data: unknown) => {
+        const response = data as { schedulerFailed?: boolean };
+        return response?.schedulerFailed
+          ? t(
+              'admin.backupSettings.saveWarningSchedulerFailed',
+              'Settings saved, but the live scheduler could not be updated. Changes will take effect on next server restart.'
+            )
+          : t('admin.backupSettings.backupSettingsSaved', 'Saved');
+      },
       errorMessage: t('error', 'Error'),
     },
   });
