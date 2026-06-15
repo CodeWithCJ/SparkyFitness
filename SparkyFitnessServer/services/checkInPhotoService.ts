@@ -16,13 +16,15 @@ const __dirname = path.dirname(__filename);
 const resolveFilePath = (relativePath: string) =>
   path.join(__dirname, '..', relativePath);
 
-const safeUnlink = (absolutePath: string) => {
+const safeUnlink = async (absolutePath: string) => {
   try {
-    if (fs.existsSync(absolutePath)) {
-      fs.unlinkSync(absolutePath);
-    }
+    await fs.promises.unlink(absolutePath);
   } catch (err) {
-    log('warn', `Failed to remove check-in photo file ${absolutePath}`, err);
+    // A missing file is fine here (e.g. nothing was ever written); only surface
+    // real failures.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      log('warn', `Failed to remove check-in photo file ${absolutePath}`, err);
+    }
   }
 };
 
@@ -82,7 +84,7 @@ export const upsertPhoto = async (
   const client = await getClient(userId);
   let committed = false;
   try {
-    fs.mkdirSync(path.dirname(finalPath), { recursive: true });
+    await fs.promises.mkdir(path.dirname(finalPath), { recursive: true });
 
     await client.query('BEGIN');
 
@@ -100,7 +102,7 @@ export const upsertPhoto = async (
     );
     const measurementId = measurementResult.rows[0]?.id ?? null;
 
-    fs.writeFileSync(tempPath, buffer);
+    await fs.promises.writeFile(tempPath, buffer);
 
     const result = await client.query(
       `INSERT INTO check_in_photos
@@ -120,12 +122,12 @@ export const upsertPhoto = async (
     committed = true;
 
     // Atomically replace the final file with the new content.
-    fs.renameSync(tempPath, finalPath);
+    await fs.promises.rename(tempPath, finalPath);
 
     // Remove the previous file only when the name changed (e.g. a different
     // extension); a same-name replace was already overwritten by the rename.
     if (oldRelativePath && oldRelativePath !== relativePath) {
-      safeUnlink(resolveFilePath(oldRelativePath));
+      await safeUnlink(resolveFilePath(oldRelativePath));
     }
 
     const r = result.rows[0];
@@ -144,7 +146,7 @@ export const upsertPhoto = async (
     if (!committed) {
       await client.query('ROLLBACK').catch(() => {});
     }
-    safeUnlink(tempPath);
+    await safeUnlink(tempPath);
     throw err;
   } finally {
     client.release();
@@ -205,9 +207,14 @@ export const deletePhoto = async (
       return;
     }
     const filePath = resolveFilePath(result.rows[0].file_path);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      await fs.promises.unlink(filePath);
       log('debug', `Deleted check-in photo file: ${filePath}`);
+    } catch (err) {
+      // The DB row is already gone; a missing file is not an error.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
     }
   } finally {
     client.release();

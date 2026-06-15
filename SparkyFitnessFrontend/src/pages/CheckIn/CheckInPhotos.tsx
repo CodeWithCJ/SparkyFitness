@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Camera, Upload, Trash2, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -149,7 +149,10 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
   const { photos, uploadPhoto, deletePhoto, isUploading, uploadingType } =
     useCheckInPhotos(selectedDate);
 
-  const photoMap = new Map(photos.map((p) => [p.photo_type, p]));
+  const photoMap = useMemo(
+    () => new Map(photos.map((p) => [p.photo_type, p])),
+    [photos]
+  );
 
   return (
     <Card>
