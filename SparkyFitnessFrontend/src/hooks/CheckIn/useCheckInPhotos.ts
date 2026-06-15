@@ -11,6 +11,10 @@ import {
 
 export type { PhotoType, CheckInPhoto };
 
+// Mirror the server's multer limit so oversized files are rejected up front
+// with immediate feedback instead of after a round-trip.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
 export const useCheckInPhotos = (selectedDate: string) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -53,8 +57,20 @@ export const useCheckInPhotos = (selectedDate: string) => {
 
   return {
     photos,
-    uploadPhoto: (type: PhotoType, file: File) =>
-      uploadMutation.mutate({ type, file }),
+    uploadPhoto: (type: PhotoType, file: File) => {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        toast({
+          title: t('checkIn.photos.uploadError', 'Upload failed'),
+          description: t(
+            'checkIn.photos.tooLarge',
+            'Image is too large (max 10 MB).'
+          ),
+          variant: 'destructive',
+        });
+        return;
+      }
+      uploadMutation.mutate({ type, file });
+    },
     deletePhoto: (id: string) => deleteMutation.mutate(id),
     isUploading: uploadMutation.isPending,
     uploadingType: uploadMutation.variables?.type,

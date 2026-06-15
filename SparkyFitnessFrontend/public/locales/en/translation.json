@@ -1147,6 +1147,7 @@
       "replace": "Replace",
       "uploadSuccess": "Photo saved",
       "uploadError": "Upload failed",
+      "tooLarge": "Image is too large (max 10 MB).",
       "deleteSuccess": "Photo removed",
       "deleteError": "Failed to remove photo"
     }

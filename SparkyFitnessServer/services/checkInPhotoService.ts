@@ -213,9 +213,15 @@ export const deletePhoto = async (
       await fs.promises.unlink(filePath);
       log('debug', `Deleted check-in photo file: ${filePath}`);
     } catch (err) {
-      // The DB row is already gone; a missing file is not an error.
+      // The DB row is already deleted (the source of truth), so don't fail the
+      // request over the file. A missing file is expected; log anything else so
+      // the orphaned file can be cleaned up later.
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw err;
+        log(
+          'error',
+          `Failed to delete check-in photo file ${filePath} for photo ${photoId}`,
+          err
+        );
       }
     }
   } finally {

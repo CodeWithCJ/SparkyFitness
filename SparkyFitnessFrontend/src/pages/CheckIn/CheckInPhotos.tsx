@@ -16,7 +16,11 @@ interface PhotoSlotProps {
   date: string;
   onUpload: (type: PhotoType, file: File) => void;
   onDelete: (id: string) => void;
+  // True only while THIS slot's upload is in flight (drives the spinner).
   isUploading: boolean;
+  // True while ANY slot is uploading — blocks interaction on every slot so a
+  // second upload can't race the in-flight one.
+  disabled: boolean;
 }
 
 const PhotoSlot = ({
@@ -27,6 +31,7 @@ const PhotoSlot = ({
   onUpload,
   onDelete,
   isUploading,
+  disabled,
 }: PhotoSlotProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +63,7 @@ const PhotoSlot = ({
       <div
         className="relative w-full aspect-[3/4] rounded-lg border border-border bg-muted overflow-hidden
                    flex items-center justify-center cursor-pointer group"
-        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onClick={() => !disabled && fileInputRef.current?.click()}
       >
         {photoUrl ? (
           <>
@@ -95,7 +100,7 @@ const PhotoSlot = ({
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
-        disabled={isUploading}
+        disabled={disabled}
       />
 
       <div className="flex gap-2 w-full">
@@ -104,7 +109,7 @@ const PhotoSlot = ({
           variant="outline"
           size="sm"
           className="flex-1"
-          disabled={isUploading}
+          disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="h-3 w-3 mr-1" />
@@ -119,7 +124,7 @@ const PhotoSlot = ({
             variant="ghost"
             size="sm"
             className="text-destructive hover:text-destructive"
-            disabled={isUploading}
+            disabled={disabled}
             onClick={() => onDelete(photo.id)}
           >
             <Trash2 className="h-3 w-3" />
@@ -177,6 +182,7 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
               onUpload={uploadPhoto}
               onDelete={deletePhoto}
               isUploading={isUploading && uploadingType === type}
+              disabled={isUploading}
             />
           ))}
         </div>

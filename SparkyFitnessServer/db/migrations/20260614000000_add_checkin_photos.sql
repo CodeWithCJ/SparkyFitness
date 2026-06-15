@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS public.check_in_photos (
     CONSTRAINT check_in_photos_user_date_type_unique UNIQUE (user_id, entry_date, photo_type)
 );
 
-CREATE INDEX IF NOT EXISTS idx_check_in_photos_user_date
-    ON public.check_in_photos (user_id, entry_date);
+-- No separate (user_id, entry_date) index: the unique constraint above already
+-- builds a composite index whose leading columns cover lookups by user + date.
 
 COMMIT;
