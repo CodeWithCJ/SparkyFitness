@@ -1172,6 +1172,13 @@ async function syncGarminData(
             if (mapping) {
               const value = entry[key];
               if (value === null || value === undefined) continue;
+              if (
+                value === 0 &&
+                mapping.targetType === 'check_in' &&
+                (mapping.field === 'weight' ||
+                  mapping.field === 'body_fat_percentage')
+              )
+                continue;
               const type =
                 mapping.targetType === 'check_in'
                   ? mapping.field

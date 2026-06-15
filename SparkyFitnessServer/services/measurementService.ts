@@ -694,9 +694,9 @@ async function processHealthData(
         case 'body_fat_percentage':
         case 'body_fat': {
           const numericValue = parseFloat(value);
-          if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
+          if (isNaN(numericValue) || numericValue <= 0 || numericValue > 100) {
             errors.push({
-              error: `Invalid value for ${type}. Must be between 0 and 100.`,
+              error: `Invalid value for ${type}. Must be greater than 0 and at most 100.`,
               entry: dataEntry,
             });
             break;
@@ -1686,12 +1686,12 @@ async function getCheckInMeasurements(
   date: any
 ) {
   try {
-    const measurement =
-      await measurementRepository.getCheckInMeasurementsByDate(
+    const row =
+      await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         targetUserId,
         date
       );
-    return measurement || {};
+    return row || {};
   } catch (error) {
     log(
       'error',
