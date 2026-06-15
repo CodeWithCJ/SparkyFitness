@@ -6,6 +6,29 @@ import {
 // Using native fetch (standard in Node 22+)
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
+const STANDARD_UNITS = new Set([
+  'g',
+  'ml',
+  'oz',
+  'tbsp',
+  'tsp',
+  'cup',
+  'slice',
+  'serving',
+  'portion',
+  'can',
+  'bottle',
+  'packet',
+  'bag',
+  'bowl',
+  'plate',
+  'handful',
+  'scoop',
+  'bar',
+  'stick',
+  'whole',
+]);
+
 export interface UsdaNutrient {
   nutrientId?: number;
   nutrient?: {
@@ -160,7 +183,9 @@ function evaluateFraction(fractionStr: string | null | undefined): number {
       const [num, den] = part.split('/');
       const n = parseFloat(num);
       const d = parseFloat(den);
-      if (d !== 0) total += n / d;
+      if (!isNaN(n) && !isNaN(d) && d !== 0) {
+        total += n / d;
+      }
     } else {
       const val = parseFloat(part);
       if (!isNaN(val)) total += val;
@@ -204,23 +229,23 @@ function parseMixedPortionDescription(desc: string | null | undefined) {
 
 function parsePackageWeight(packageWeight: string | null | undefined) {
   if (!packageWeight) return null;
-  // Match metric first: e.g. "31.2 g", "450 ml"
+  // Match metric first: e.g. "31.2 g", "1,000 ml"
   const metricMatch = packageWeight.match(
-    /(\d+(?:\.\d+)?)\s*(g|grm|gm|grams?|ml|milliliters?|l|liters?)\b/i
+    /\b(\d+(?:,\d{3})*(?:\.\d+)?)\s*(g|grm|gm|grams?|ml|milliliters?|l|liters?)\b/i
   );
   if (metricMatch) {
     return {
-      size: parseFloat(metricMatch[1]),
+      size: parseFloat(metricMatch[1].replace(/,/g, '')),
       unit: metricMatch[2],
     };
   }
-  // Match imperial: e.g. "1.10 oz", "1 lb"
+  // Match imperial: e.g. "1.10 oz", "1,200 lb"
   const imperialMatch = packageWeight.match(
-    /(\d+(?:\.\d+)?)\s*(oz|ounce|ounces|lb|lbs|pounds?)\b/i
+    /\b(\d+(?:,\d{3})*(?:\.\d+)?)\s*(oz|ounce|ounces|lb|lbs|pounds?)\b/i
   );
   if (imperialMatch) {
     return {
-      size: parseFloat(imperialMatch[1]),
+      size: parseFloat(imperialMatch[1].replace(/,/g, '')),
       unit: imperialMatch[2],
     };
   }
@@ -321,29 +346,7 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
       let unit = mixed.unit;
       if (food.dataType === 'Branded') {
         const normalized = normalizeServingUnit(unit);
-        const standardUnits = new Set([
-          'g',
-          'ml',
-          'oz',
-          'tbsp',
-          'tsp',
-          'cup',
-          'slice',
-          'serving',
-          'portion',
-          'can',
-          'bottle',
-          'packet',
-          'bag',
-          'bowl',
-          'plate',
-          'handful',
-          'scoop',
-          'bar',
-          'stick',
-          'whole',
-        ]);
-        if (!standardUnits.has(normalized)) {
+        if (!STANDARD_UNITS.has(normalized)) {
           unit = 'piece';
         }
       }
@@ -356,29 +359,7 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
         if (parsedSize > 0 && parsedUnit) {
           if (food.dataType === 'Branded') {
             const normalized = normalizeServingUnit(parsedUnit);
-            const standardUnits = new Set([
-              'g',
-              'ml',
-              'oz',
-              'tbsp',
-              'tsp',
-              'cup',
-              'slice',
-              'serving',
-              'portion',
-              'can',
-              'bottle',
-              'packet',
-              'bag',
-              'bowl',
-              'plate',
-              'handful',
-              'scoop',
-              'bar',
-              'stick',
-              'whole',
-            ]);
-            if (!standardUnits.has(normalized)) {
+            if (!STANDARD_UNITS.has(normalized)) {
               parsedUnit = 'piece';
             }
           }

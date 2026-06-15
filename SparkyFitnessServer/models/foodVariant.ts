@@ -232,7 +232,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       variant.iron,
       variant.is_default || false,
       sanitizeGlycemicIndex(variant.glycemic_index),
-      variant.custom_nutrients ?? {},
+      JSON.stringify(variant.custom_nutrients ?? {}),
       variant.source ?? 'manual',
       variant.ai_confidence ?? null,
       'now()',
