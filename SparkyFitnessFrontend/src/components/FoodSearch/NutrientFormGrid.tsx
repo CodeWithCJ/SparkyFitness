@@ -50,7 +50,6 @@ function NutrientInput({
   value,
   step = '0.1',
   decimals,
-  disabled,
   onChange,
 }: {
   id: string;
@@ -58,7 +57,6 @@ function NutrientInput({
   value: number | undefined;
   step?: string;
   decimals?: number;
-  disabled: boolean;
   onChange: (val: number | undefined) => void;
 }) {
   return (
@@ -71,7 +69,6 @@ function NutrientInput({
         decimals={decimals}
         onValueChange={(value) => onChange(value)}
         placeholder="0"
-        disabled={disabled}
       />
     </div>
   );
@@ -87,7 +84,10 @@ export function NutrientGrid({
   onUpdate,
 }: NutrientGridProps) {
   const { t } = useTranslation();
-  const isLocked = variant.is_locked ?? false;
+  // Auto-Scale (is_locked) controls whether changing the serving size rescales
+  // the nutrition values; it no longer disables the inputs, so the user can
+  // auto-scale and still edit any value directly. A manual edit re-captures the
+  // scaling base in useFoodForm, so a later serving-size change scales from it.
   const update = (field: string) => (val: number | undefined) =>
     onUpdate(variantIndex, field, val);
 
@@ -107,10 +107,7 @@ export function NutrientGrid({
                   onUpdate(variantIndex, 'glycemic_index', val)
                 }
               >
-                <SelectTrigger
-                  id={gridId(variantIndex, 'glycemic_index')}
-                  disabled={isLocked}
-                >
+                <SelectTrigger id={gridId(variantIndex, 'glycemic_index')}>
                   <SelectValue placeholder="Select GI" />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,7 +138,6 @@ export function NutrientGrid({
               }
               step="1"
               decimals={0}
-              disabled={isLocked}
               onChange={update('calories')}
             />
           );
@@ -158,7 +154,6 @@ export function NutrientGrid({
               value={variant[key as NumericFoodVariantKeys]}
               step={cfg.decimals === 0 ? '1' : '0.1'}
               decimals={cfg.decimals}
-              disabled={isLocked}
               onChange={update(key)}
             />
           );
@@ -176,7 +171,6 @@ export function NutrientGrid({
             label={`${cn.name} (${cn.unit})`}
             value={typeof value === 'number' ? value : undefined}
             decimals={1}
-            disabled={isLocked}
             onChange={update(cn.name)}
           />
         );

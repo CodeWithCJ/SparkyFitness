@@ -74,4 +74,31 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
       ['user-1'],
     ]);
   });
+
+  it('round-trips goal_mode preferences through save and load', async () => {
+    const row = {
+      user_id: 'user-1',
+      goal_mode: 'recomp',
+      goal_mode_calculation_method: 'adaptive',
+      goal_mode_custom_percentage: 15,
+    };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      goal_mode: 'recomp',
+      goal_mode_calculation_method: 'adaptive',
+      goal_mode_custom_percentage: 15,
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.goal_mode).toBe('recomp');
+    expect(result.goal_mode_calculation_method).toBe('adaptive');
+    expect(result.goal_mode_custom_percentage).toBe(15);
+    expect(mockClient.query.mock.calls[0][0]).toContain('goal_mode');
+    expect(mockClient.query.mock.calls[0][1]).toContain('recomp');
+    expect(mockClient.query.mock.calls[0][1]).toContain('adaptive');
+    expect(mockClient.query.mock.calls[0][1]).toContain(15);
+  });
 });

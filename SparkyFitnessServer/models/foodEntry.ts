@@ -230,11 +230,52 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
          food_entry_meal_id,
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
-         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id
+         potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
+         source, source_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
-       ) RETURNING *`,
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39
+       )
+       -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
+       -- re-ingesting the same record updates it in place. Manual/web entries
+       -- (source/source_id NULL) are excluded by the partial unique index, so
+       -- this never alters their behavior.
+       ON CONFLICT (user_id, source, source_id)
+         WHERE source IS NOT NULL AND source_id IS NOT NULL
+         DO UPDATE SET
+           food_id = EXCLUDED.food_id,
+           meal_type_id = EXCLUDED.meal_type_id,
+           quantity = EXCLUDED.quantity,
+           unit = EXCLUDED.unit,
+           entry_date = EXCLUDED.entry_date,
+           variant_id = EXCLUDED.variant_id,
+           food_name = EXCLUDED.food_name,
+           brand_name = EXCLUDED.brand_name,
+           serving_size = EXCLUDED.serving_size,
+           serving_unit = EXCLUDED.serving_unit,
+           calories = EXCLUDED.calories,
+           protein = EXCLUDED.protein,
+           carbs = EXCLUDED.carbs,
+           fat = EXCLUDED.fat,
+           saturated_fat = EXCLUDED.saturated_fat,
+           polyunsaturated_fat = EXCLUDED.polyunsaturated_fat,
+           monounsaturated_fat = EXCLUDED.monounsaturated_fat,
+           trans_fat = EXCLUDED.trans_fat,
+           cholesterol = EXCLUDED.cholesterol,
+           sodium = EXCLUDED.sodium,
+           potassium = EXCLUDED.potassium,
+           dietary_fiber = EXCLUDED.dietary_fiber,
+           sugars = EXCLUDED.sugars,
+           vitamin_a = EXCLUDED.vitamin_a,
+           vitamin_c = EXCLUDED.vitamin_c,
+           calcium = EXCLUDED.calcium,
+           iron = EXCLUDED.iron,
+           glycemic_index = EXCLUDED.glycemic_index,
+           custom_nutrients = EXCLUDED.custom_nutrients,
+           allergens = EXCLUDED.allergens,
+           traces = EXCLUDED.traces,
+           updated_by_user_id = EXCLUDED.updated_by_user_id
+       RETURNING *`,
       [
         entryData.user_id,
         entryData.food_id,
@@ -273,6 +314,8 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         snapshot.allergens || null,
         snapshot.traces || null,
         createdByUserId, // updated_by_user_id
+        entryData.source ?? null,
+        entryData.source_id ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -901,10 +944,94 @@ async function getFoodEntriesBatch(
   }
 }
 
+async function deleteFoodEntriesByProviderTypeAndDateRange(
+  userId: string,
+  providerType: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM food_entries
+       WHERE user_id = $1
+         AND entry_date BETWEEN $2 AND $3
+         AND food_id IN (
+           SELECT id FROM foods
+           WHERE provider_type = $4
+             AND user_id = $1
+         )
+       RETURNING id`,
+      [userId, startDate, endDate, providerType]
+    );
+    return result.rows.length;
+  } finally {
+    client.release();
+  }
+}
+
+// Most recent food entries with catalog name/brand. Backs the chatbot
+// sparky_get_recent_food_entries tool.
+async function getRecentFoodEntries(userId: string, limit: number) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT fe.*, mt.name AS meal_type, f.name AS food_name_from_catalog, f.brand AS brand_from_catalog
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       LEFT JOIN foods f ON f.id = fe.food_id
+       WHERE fe.user_id = $1
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Paged entries for one food in a date range, plus the total count. Backs the
+// chatbot sparky_get_food_usage tool.
+async function getFoodUsage(
+  userId: string,
+  foodId: string,
+  startDate: string,
+  endDate: string,
+  limit: number,
+  offset: number
+) {
+  const client = await getClient(userId);
+  try {
+    const countResult = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM food_entries
+       WHERE user_id = $1 AND food_id = $2 AND entry_date BETWEEN $3 AND $4`,
+      [userId, foodId, startDate, endDate]
+    );
+    const dataResult = await client.query(
+      `SELECT fe.*, mt.name AS meal_type
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       WHERE fe.user_id = $1 AND fe.food_id = $2 AND fe.entry_date BETWEEN $3 AND $4
+       ORDER BY fe.entry_date DESC, fe.created_at DESC
+       LIMIT $5 OFFSET $6`,
+      [userId, foodId, startDate, endDate, limit, offset]
+    );
+    return {
+      rows: dataResult.rows,
+      totalCount: countResult.rows[0]?.count ?? 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 export { createFoodEntry };
 export { getFoodEntryOwnerId };
 export { updateFoodEntry };
 export { deleteFoodEntry };
+export { deleteFoodEntriesByProviderTypeAndDateRange };
 export { getFoodEntriesByDate };
 export { getFoodEntriesByDateAndMealType };
 export { getFoodEntriesByDateRange };
@@ -914,11 +1041,14 @@ export { getFoodEntryById };
 export { getFoodEntryComponentsByFoodEntryMealId };
 export { deleteFoodEntryComponentsByFoodEntryMealId };
 export { getFoodEntriesBatch };
+export { getRecentFoodEntries };
+export { getFoodUsage };
 export default {
   createFoodEntry,
   getFoodEntryOwnerId,
   updateFoodEntry,
   deleteFoodEntry,
+  deleteFoodEntriesByProviderTypeAndDateRange,
   getFoodEntriesByDate,
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,
@@ -928,4 +1058,6 @@ export default {
   getFoodEntryComponentsByFoodEntryMealId,
   deleteFoodEntryComponentsByFoodEntryMealId,
   getFoodEntriesBatch,
+  getRecentFoodEntries,
+  getFoodUsage,
 };

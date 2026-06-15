@@ -326,13 +326,26 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM check_in_measurements
-       WHERE user_id = $1 AND entry_date <= $2
-       ORDER BY entry_date DESC
-       LIMIT 1`,
+      `SELECT 
+         (SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as id,
+         $1 as user_id,
+         (SELECT entry_date FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as entry_date,
+         (SELECT weight FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND weight IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as weight,
+         (SELECT neck FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND neck IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as neck,
+         (SELECT waist FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND waist IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as waist,
+         (SELECT hips FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND hips IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as hips,
+         (SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND steps IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as steps,
+         (SELECT height FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND height IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as height,
+         (SELECT body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_fat_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_fat_percentage,
+         (SELECT created_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as created_at,
+         (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
       [userId, date]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    if (row && row.id === null) {
+      return null;
+    }
+    return row;
   } finally {
     client.release();
   }
@@ -865,13 +878,26 @@ async function getLatestMeasurement(userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT weight FROM check_in_measurements
-       WHERE user_id = $1 AND weight IS NOT NULL
-       ORDER BY entry_date DESC, updated_at DESC
-       LIMIT 1`,
+      `SELECT 
+         (SELECT id FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as id,
+         $1 as user_id,
+         (SELECT entry_date FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as entry_date,
+         (SELECT weight FROM check_in_measurements WHERE user_id = $1 AND weight IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as weight,
+         (SELECT neck FROM check_in_measurements WHERE user_id = $1 AND neck IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as neck,
+         (SELECT waist FROM check_in_measurements WHERE user_id = $1 AND waist IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as waist,
+         (SELECT hips FROM check_in_measurements WHERE user_id = $1 AND hips IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as hips,
+         (SELECT steps FROM check_in_measurements WHERE user_id = $1 AND steps IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as steps,
+         (SELECT height FROM check_in_measurements WHERE user_id = $1 AND height IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as height,
+         (SELECT body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND body_fat_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_fat_percentage,
+         (SELECT created_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as created_at,
+         (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
       [userId]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    if (row && row.id === null) {
+      return null;
+    }
+    return row;
   } finally {
     client.release();
   }
@@ -1048,6 +1074,44 @@ async function updateWaterIntakeLogTime(
   }
 }
 
+// Per-day water totals over an optional date range (both bounds optional;
+// no bounds returns the full history). Used by the chatbot get_water_history
+// action.
+async function getWaterTotalsByDateRange(
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const client = await getClient(userId);
+  try {
+    let query = `
+      SELECT entry_date, SUM(water_ml) as total_ml
+      FROM water_intake_entries
+      WHERE user_id = $1
+    `;
+    const queryParams: unknown[] = [userId];
+    let paramIdx = 2;
+
+    if (startDate) {
+      query += ` AND entry_date >= $${paramIdx}`;
+      queryParams.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      query += ` AND entry_date <= $${paramIdx}`;
+      queryParams.push(endDate);
+      paramIdx++;
+    }
+
+    query += ' GROUP BY entry_date ORDER BY entry_date ASC';
+
+    const result = await client.query(query, queryParams);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -1063,6 +1127,7 @@ export default {
   deleteWaterIntakeLog,
   getWaterIntakeLogEntryOwnerId,
   updateWaterIntakeLogTime,
+  getWaterTotalsByDateRange,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
   updateCheckInMeasurements,

@@ -323,7 +323,8 @@ async function createExerciseEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any
+  entryData: any,
+  options: { skipDuplicateCheck?: boolean } = {}
 ) {
   try {
     const snapshotEntryData = await prepareExerciseEntryForCreate(
@@ -334,7 +335,10 @@ async function createExerciseEntry(
     const newEntry = await exerciseEntryDb.createExerciseEntry(
       authenticatedUserId,
       snapshotEntryData,
-      actingUserId
+      actingUserId,
+      'Manual',
+      null,
+      options
     );
     // If activity_details are provided, create them
     if (entryData.activity_details && entryData.activity_details.length > 0) {
@@ -478,6 +482,7 @@ async function updateExerciseEntry(
         distance: updateData.distance ?? existingEntry.distance,
         avg_heart_rate:
           updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
+        steps: updateData.steps ?? existingEntry.steps,
         sort_order: updateData.sort_order ?? existingEntry.sort_order,
         exercise_name: updateData.exercise_name ?? existingEntry.exercise_name,
       }

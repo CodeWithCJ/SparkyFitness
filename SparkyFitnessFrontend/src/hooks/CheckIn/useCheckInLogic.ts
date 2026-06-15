@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format, parseISO, subDays } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
@@ -32,9 +32,11 @@ import {
   CustomMeasurementsResponse,
   UpdateCheckInMeasurementsRequest,
   UpdateCustomMeasurementsRequest,
+  calculateAge,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
 import { useSearchParams } from 'react-router-dom';
+import { addDays, todayInZone } from '@workspace/shared';
 
 function useDerivedState<T>(derivedValue: T, selectedDate: string) {
   const [stateMap, setStateMap] = useState<Record<string, T>>({});
@@ -70,13 +72,13 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     measurementUnit: defaultMeasurementUnit,
     formatDateInUserTimezone,
     bodyFatAlgorithm,
+    timezone,
   } = usePreferences();
 
   const [searchParams] = useSearchParams();
 
   const [selectedDate, setSelectedDate] = useState(
-    searchParams.get('date') ??
-      formatDateInUserTimezone(new Date(), 'yyyy-MM-dd')
+    searchParams.get('date') ?? todayInZone(timezone)
   );
 
   const { mutateAsync: saveCheckInMeasurements, isPending: isSavingCheckIn } =
@@ -108,8 +110,8 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { data: existingMood } = useMoodEntryByDate(selectedDate);
 
   const { data: recentCustom = [] } = useRecentCustomMeasurements();
-  const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-  const endDate = format(new Date(), 'yyyy-MM-dd');
+  const endDate = todayInZone(timezone);
+  const startDate = addDays(endDate, -30);
   const { data: recentStandard = [] } = useRecentStandardMeasurements(
     startDate,
     endDate
@@ -564,8 +566,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       }
 
       const age = userProfile.date_of_birth
-        ? new Date().getFullYear() -
-          new Date(userProfile.date_of_birth).getFullYear()
+        ? calculateAge(userProfile.date_of_birth, timezone)
         : 0;
       const gender = userProfile.gender;
 

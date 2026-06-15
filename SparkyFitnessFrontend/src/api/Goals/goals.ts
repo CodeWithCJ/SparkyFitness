@@ -115,11 +115,12 @@ export async function deleteWeeklyGoalPlan(id: string): Promise<void> {
 
 export const loadGoals = async (
   selectedDate: string,
-  endDate?: string
+  endDate?: string,
+  adjust?: boolean
 ): Promise<ExpandedGoals | Record<string, ExpandedGoals>> => {
-  const params = endDate
-    ? new URLSearchParams({ date: selectedDate, end_date: endDate })
-    : new URLSearchParams({ date: selectedDate });
+  const params = new URLSearchParams({ date: selectedDate });
+  if (endDate) params.append('end_date', endDate);
+  if (adjust) params.append('adjust', 'true');
   const data = await apiCall(`/goals/for-date?${params.toString()}`, {
     method: 'GET',
   });

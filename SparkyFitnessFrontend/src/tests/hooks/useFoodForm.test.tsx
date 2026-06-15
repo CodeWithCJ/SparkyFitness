@@ -186,6 +186,38 @@ describe('useCustomFoodForm', () => {
     expect(result.current.hasTrustedCompatibilityBase[0]).toBe(true);
   });
 
+  it('rescales a serving-size change from a value edited while auto-scale is on', async () => {
+    // With Auto-Scale on the user can still edit values directly (the inputs
+    // are no longer locked). A manual edit must re-capture the scaling base so a
+    // later serving-size change scales from the edited value, not the original.
+    mockAutoScaleOnlineImports = true;
+    const food = createFood(); // base variant: 10 g, 100 kcal
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        food,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.is_locked).toBe(true);
+    });
+
+    // Tweak calories directly while auto-scale is on.
+    act(() => {
+      result.current.updateVariant(0, 'calories', 200);
+    });
+    expect(result.current.variants[0]?.calories).toBe(200);
+
+    // Doubling the serving size scales from the edited 200, giving 400.
+    act(() => {
+      result.current.updateVariant(0, 'serving_size', 20);
+    });
+    expect(result.current.variants[0]?.serving_size).toBe(20);
+    expect(result.current.variants[0]?.calories).toBe(400);
+  });
+
   it('opens brand-new custom foods with auto-scale off even when the preference is enabled', async () => {
     mockAutoScaleOnlineImports = true;
 

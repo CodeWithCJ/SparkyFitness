@@ -29,6 +29,7 @@ import {
 } from '@/hooks/Settings/useWaterContainers';
 import { getErrorMessage } from '@/utils/api';
 import { CalorieGoalAdjustmentMode } from '@/utils/calorieCalculations';
+import { GoalMode, GoalModeCalculationMethod } from '@workspace/shared';
 
 import {
   kgToLbs,
@@ -39,6 +40,7 @@ import {
   feetInchesToCm,
 } from '@/utils/unitConversions';
 import { DayOfWeek } from '@/types/settings';
+import { todayInZone } from '@workspace/shared';
 
 // Function to fetch user preferences from the backend
 
@@ -100,6 +102,12 @@ interface PreferencesContextType {
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
   firstDayOfWeek: DayOfWeek;
+  goalMode: GoalMode;
+  goalModeCalculationMethod: GoalModeCalculationMethod;
+  goalModeCustomPercentage: number;
+  setGoalMode: (mode: GoalMode) => void;
+  setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
+  setGoalModeCustomPercentage: (pct: number) => void;
   setWeightUnit: (unit: WeightUnit) => void;
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
@@ -155,6 +163,7 @@ interface PreferencesContextType {
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
   saveAllPreferences: (
@@ -198,6 +207,9 @@ export interface DefaultPreferences {
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
   sugar_calculation_algorithm: SugarCalculationAlgorithm;
   first_day_of_week: number;
+  goal_mode: GoalMode;
+  goal_mode_calculation_method: GoalModeCalculationMethod;
+  goal_mode_custom_percentage: number;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -295,6 +307,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
+  const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
+  const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
+    useState<GoalModeCalculationMethod>('manual');
+  const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
+    useState<number>(0);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -490,6 +507,26 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [formatDateInUserTimezone, dateFormat]
   );
 
+  /**
+   * Returns whether the given date is in the past, today, or in the future.
+   *
+   * @param date - A date string or Date to compare with today.
+   * @returns "past", "today", or "future".
+   */
+  const getDateRelationToToday = useCallback(
+    (date: string | Date) => {
+      const dateToCompare = formatDateInUserTimezone(date, 'yyyy-MM-dd');
+      const todayDate = todayInZone(timezone);
+
+      if (!dateToCompare || dateToCompare === todayDate) {
+        return 'today';
+      }
+
+      return dateToCompare < todayDate ? 'past' : 'future';
+    },
+    [formatDateInUserTimezone, timezone]
+  );
+
   const parseDateInUserTimezone = useCallback(
     (dateString: string): Date => {
       debug(
@@ -646,6 +683,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setSelectedDietState(data.selected_diet || 'balanced');
         setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+        setGoalModeState(data.goal_mode || 'maintain');
+        setGoalModeCalculationMethodState(
+          data.goal_mode_calculation_method || 'manual'
+        );
+        setGoalModeCustomPercentageState(data.goal_mode_custom_percentage ?? 0);
       } else {
         await createDefaultPreferences();
         await createDefaultWaterContainer();
@@ -799,6 +841,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
         selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
         first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
+        goal_mode: newPrefs?.goalMode ?? goalMode,
+        goal_mode_calculation_method:
+          newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
+        goal_mode_custom_percentage:
+          newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
       };
 
       try {
@@ -850,6 +897,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
       updatePreferences,
       loadPreferences,
     ]
@@ -960,6 +1010,30 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  const setGoalMode = useCallback(
+    (mode: GoalMode) => {
+      setGoalModeState(mode);
+      saveAllPreferences({ goalMode: mode });
+    },
+    [saveAllPreferences]
+  );
+
+  const setGoalModeCalculationMethod = useCallback(
+    (method: GoalModeCalculationMethod) => {
+      setGoalModeCalculationMethodState(method);
+      saveAllPreferences({ goalModeCalculationMethod: method });
+    },
+    [saveAllPreferences]
+  );
+
+  const setGoalModeCustomPercentage = useCallback(
+    (pct: number) => {
+      setGoalModeCustomPercentageState(pct);
+      saveAllPreferences({ goalModeCustomPercentage: pct });
+    },
+    [saveAllPreferences]
+  );
+
   // --- Effects ---
 
   useEffect(() => {
@@ -1056,6 +1130,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
+      setGoalMode,
+      setGoalModeCalculationMethod,
+      setGoalModeCustomPercentage,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,
@@ -1095,6 +1175,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       getEnergyUnitString,
       formatDate,
       formatDateInUserTimezone,
+      getDateRelationToToday,
       parseDateInUserTimezone,
       loadPreferences,
       saveAllPreferences,
@@ -1133,6 +1214,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
+      setGoalMode,
+      setGoalModeCalculationMethod,
+      setGoalModeCustomPercentage,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,
@@ -1159,6 +1246,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       getEnergyUnitString,
       formatDate,
       formatDateInUserTimezone,
+      getDateRelationToToday,
       parseDateInUserTimezone,
       loadPreferences,
       saveAllPreferences,

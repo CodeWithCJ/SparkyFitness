@@ -5,7 +5,6 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
-import adaptiveTdeeService from './AdaptiveTdeeService.js';
 import { log } from '../config/logging.js';
 import { userAge } from '../utils/dateHelpers.js';
 import type {
@@ -71,6 +70,7 @@ function computeCalorieBalance(
   exerciseSessions: ExerciseSessionResponse[],
   stepCalories: number,
   goals: { calories?: number | null },
+  adjustedGoalCalories: number,
   userProfile: { date_of_birth?: string; gender?: string } | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userPreferences: Record<string, any> | null,
@@ -78,8 +78,7 @@ function computeCalorieBalance(
     weight?: string | number;
     height?: string | number;
     body_fat_percentage?: string | number;
-  } | null,
-  adaptiveTdeeData: { tdee: number } | null
+  } | null
 ): CalorieBalance {
   // 1. Eaten calories — scale per-serving values by quantity/serving_size
   const eatenCalories = foodEntries.reduce((sum, e) => {
@@ -142,8 +141,7 @@ function computeCalorieBalance(
   const totalBurned = exerciseCaloriesBurned + bmrCalories;
   const netCalories = eatenCalories - totalBurned;
 
-  // 5. Goal adjustment
-  const rawGoalCalories = parseFloat(String(goals?.calories ?? '')) || 2000;
+  // 5. Goal adjustment - calculated by goalService
   const adjustmentMode: CalorieGoalAdjustmentMode =
     (userPreferences?.calorie_goal_adjustment_mode as CalorieGoalAdjustmentMode) ||
     'dynamic';
@@ -152,22 +150,10 @@ function computeCalorieBalance(
   const allowNegativeAdjustment =
     userPreferences?.tdee_allow_negative_adjustment ?? false;
 
-  // Offset uses fixed 'not_much' baseline to prevent goal inversion when
-  // the user changes their activity level setting.
-  const baselineMaintenance = computeSparkyfitnessBurned(bmr, 'not_much');
-  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - baselineMaintenance : 0;
-
   // Actual TDEE baseline (for TDEE mode projection)
   const sparkyfitnessBurned = computeSparkyfitnessBurned(bmr, activityLevel);
 
-  // Effective goal — adaptive mode uses adaptive TDEE + offset with safety floor
-  let goalCalories = rawGoalCalories;
-  if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    goalCalories = Math.max(
-      1200,
-      Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
-    );
-  }
+  const goalCalories = adjustedGoalCalories;
 
   // TDEE mode adjustment
   let tdeeAdjustment = 0;
@@ -232,6 +218,7 @@ export async function getDailySummary({
   // Each function acquires its own pool client, allowing true parallel execution.
   const [
     goals,
+    adjustedGoals,
     foodEntries,
     exerciseSessions,
     waterResult,
@@ -239,7 +226,8 @@ export async function getDailySummary({
     userPreferences,
     measurements,
   ] = await Promise.all([
-    goalService.getUserGoals(targetUserId, date),
+    goalService.getUserGoals(targetUserId, date, undefined, false),
+    goalService.getUserGoals(targetUserId, date, undefined, true),
     foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
     getExerciseEntriesByDateV2(targetUserId, date),
     includeCheckin
@@ -278,32 +266,17 @@ export async function getDailySummary({
       )
     : 0;
 
-  // Conditionally fetch adaptive TDEE only when the user's mode requires it
-  const adjustmentMode = userPreferences?.calorie_goal_adjustment_mode;
-  const adaptiveTdeeData =
-    adjustmentMode === 'adaptive' && includeCheckin
-      ? await adaptiveTdeeService
-          .calculateAdaptiveTdee(targetUserId, date)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `Adaptive TDEE fetch failed for user ${targetUserId}:`,
-              error
-            );
-            return null;
-          })
-      : null;
-
   const calorieBalance = computeCalorieBalance(
     foodEntries,
     exerciseSessions as ExerciseSessionResponse[],
     stepCalories,
     goals,
+    (adjustedGoals as any)?.calories
+      ? parseFloat(String((adjustedGoals as any).calories))
+      : 2000,
     userProfile,
     userPreferences,
-    measurements,
-    // @ts-expect-error TS(2345): Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
-    adaptiveTdeeData
+    measurements
   );
 
   return {

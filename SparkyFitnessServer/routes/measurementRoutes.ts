@@ -17,6 +17,7 @@ import {
   CustomMeasurementsRangeParamSchema,
 } from '../schemas/measurementSchemas.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
 /**
  * @swagger
@@ -453,8 +454,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Water intake entry not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Water intake entry not found or not authorized to delete.'
+          'Water intake entry not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -530,6 +533,7 @@ router.post(
         entry_date,
         measurements
       );
+      clearUserTdeeCache(req.userId);
       res.status(200).json(result);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -756,6 +760,7 @@ router.put(
           entry_date,
           updateData
         );
+      clearUserTdeeCache(req.userId);
       res.status(200).json(updatedMeasurement);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -811,6 +816,7 @@ router.delete(
         req.userId,
         id
       );
+      clearUserTdeeCache(req.userId);
       res.status(200).json(result);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -820,8 +826,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Check-in measurement not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Check-in measurement not found or not authorized to delete.'
+          'Check-in measurement not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -1057,8 +1065,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Custom measurement entry not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Custom measurement entry not found or not authorized to delete.'
+          'Custom measurement entry not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
@@ -1197,8 +1207,10 @@ router.delete(
       }
       if (
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message === 'Custom category not found.' ||
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
-        'Custom category not found or not authorized to delete.'
+          'Custom category not found or not authorized to delete.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });

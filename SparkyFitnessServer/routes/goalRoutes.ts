@@ -32,11 +32,17 @@ router.get(
   checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     const { date } = req.params;
+    const adjust = req.query.adjust === 'true';
     if (!date) {
       return res.status(400).json({ error: 'Date is required.' });
     }
     try {
-      const goals = await goalService.getUserGoals(req.userId, date);
+      const goals = await goalService.getUserGoals(
+        req.userId,
+        date,
+        undefined,
+        adjust
+      );
       res.status(200).json(goals);
     } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -76,7 +82,8 @@ router.get(
   authenticate,
   checkPermissionMiddleware('diary'),
   async (req, res, next) => {
-    const { date, userId, end_date } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
+    const { date, userId, end_date, adjust } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
+    const shouldAdjust = adjust === 'true';
     if (!date) {
       return res.status(400).json({ error: 'Date is required.' });
     }
@@ -88,13 +95,16 @@ router.get(
         const goals = await goalService.getUserGoalsForRange(
           targetUserId as string,
           date as string,
-          end_date as string
+          end_date as string,
+          shouldAdjust
         );
         res.status(200).json(goals);
       } else {
         const goals = await goalService.getUserGoals(
           targetUserId as string,
-          date as string
+          date as string,
+          undefined,
+          shouldAdjust
         );
         res.status(200).json(goals);
       }

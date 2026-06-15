@@ -3,6 +3,12 @@ import { log } from '../config/logging.js';
 const { Pool, types } = pg;
 // Parse numeric types
 types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
+// Keep DATE columns (oid 1082) as raw 'YYYY-MM-DD' calendar-day strings. The default
+// parser builds a JS Date at the server process's local midnight, which then serializes
+// to a UTC instant and shifts the calendar day backward on servers running ahead of UTC
+// (e.g. TZ=Europe/Berlin). Returning the string keeps day values stable regardless of the
+// process timezone. timestamp/timestamptz columns use different oids and are unaffected.
+types.setTypeParser(types.builtins.DATE, (value) => value);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let ownerPoolInstance: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

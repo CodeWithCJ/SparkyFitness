@@ -12,6 +12,9 @@ import moment from 'moment';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import sleepRepository from '../models/sleepRepository.js';
+import foodRepository from '../models/food.js';
+import foodEntryRepository from '../models/foodEntry.js';
+import mealTypeRepository from '../models/mealType.js';
 
 const GARMIN_CARDIO_CATEGORY_INDICATORS = [
   'running',
@@ -902,6 +905,198 @@ async function processGarminSleepData(
     };
   }
 }
+const GARMIN_MEAL_TYPE_MAP: Record<string, string> = {
+  BREAKFAST: 'breakfast',
+  LUNCH: 'lunch',
+  DINNER: 'dinner',
+  SNACKS: 'snacks',
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapGarminNutrition(nutritionContent: any) {
+  return {
+    calories: nutritionContent.calories ?? null,
+    protein: nutritionContent.protein ?? null,
+    carbs: nutritionContent.carbs ?? null,
+    fat: nutritionContent.fat ?? null,
+    saturated_fat: nutritionContent.saturatedFat ?? null,
+    polyunsaturated_fat: nutritionContent.polyunsaturatedFat ?? null,
+    monounsaturated_fat: nutritionContent.monounsaturatedFat ?? null,
+    trans_fat: null,
+    cholesterol: nutritionContent.cholesterol ?? null,
+    sodium: nutritionContent.sodium ?? null,
+    potassium: nutritionContent.potassium ?? null,
+    dietary_fiber: nutritionContent.fiber ?? null,
+    sugars: nutritionContent.sugar ?? null,
+    vitamin_a: nutritionContent.vitaminA ?? null,
+    vitamin_c: nutritionContent.vitaminC ?? null,
+    calcium: nutritionContent.calcium ?? null,
+    iron: nutritionContent.iron ?? null,
+  };
+}
+
+async function processGarminNutritionData(
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nutritionData: any[],
+  startDate: string,
+  endDate: string
+) {
+  log(
+    'info',
+    `[garminService] Processing Garmin nutrition data for user ${userId} from ${startDate} to ${endDate}. Days: ${nutritionData.length}`
+  );
+
+  // Step 1: Idempotency — delete existing Garmin food entries for this date range
+  const deletedCount =
+    await foodEntryRepository.deleteFoodEntriesByProviderTypeAndDateRange(
+      userId,
+      'garmin',
+      startDate,
+      endDate
+    );
+  log(
+    'info',
+    `[garminService] Deleted ${deletedCount} existing Garmin food entries for date range.`
+  );
+
+  // Resolve meal types once
+  const allMealTypes = await mealTypeRepository.getAllMealTypes(userId);
+  const mealTypeIdMap: Record<string, string> = {};
+  for (const mt of allMealTypes) {
+    mealTypeIdMap[mt.name.toLowerCase()] = mt.id;
+  }
+
+  let processedFoods = 0;
+  let processedEntries = 0;
+  const errors: string[] = [];
+
+  // Step 2: Process each day
+  for (const dayLog of nutritionData) {
+    const mealDate = dayLog.mealDate;
+    if (!mealDate) continue;
+
+    const mealDetails = dayLog.mealDetails;
+    if (!Array.isArray(mealDetails)) continue;
+
+    for (const mealDetail of mealDetails) {
+      const garminMealName = mealDetail.meal?.mealName;
+      const mappedMealType = GARMIN_MEAL_TYPE_MAP[garminMealName] || 'snacks';
+      const mealTypeId = mealTypeIdMap[mappedMealType];
+
+      if (!mealTypeId) {
+        log(
+          'warn',
+          `[garminService] Could not resolve meal type '${mappedMealType}' for user ${userId}. Skipping meal.`
+        );
+        continue;
+      }
+
+      if (garminMealName && !GARMIN_MEAL_TYPE_MAP[garminMealName]) {
+        log(
+          'warn',
+          `[garminService] Unrecognized Garmin meal name '${garminMealName}', defaulting to snacks.`
+        );
+      }
+
+      const loggedFoods = mealDetail.loggedFoods;
+      if (!Array.isArray(loggedFoods)) continue;
+
+      for (const loggedFood of loggedFoods) {
+        try {
+          const foodMeta = loggedFood.foodMetaData;
+          const nutritionContent = loggedFood.nutritionContent;
+          if (!foodMeta || !nutritionContent) continue;
+
+          const garminFoodId = String(foodMeta.foodId);
+          const mappedNutrition = mapGarminNutrition(nutritionContent);
+
+          // Get or create food in library
+          let food = await foodRepository.findFoodByProviderExternalId(
+            userId,
+            garminFoodId,
+            'garmin'
+          );
+
+          if (food) {
+            // Update the variant nutrition to reflect latest Garmin data
+            if (food.default_variant_id) {
+              await foodRepository.updateFoodVariantNutrition(
+                food.default_variant_id,
+                userId,
+                {
+                  serving_size: 1,
+                  serving_unit: nutritionContent.servingUnit || 'serving',
+                  ...mappedNutrition,
+                }
+              );
+            }
+          } else {
+            // Create a new food with its default variant
+            food = await foodRepository.createFood({
+              name: foodMeta.foodName,
+              brand: foodMeta.brandName || null,
+              is_custom: false,
+              user_id: userId,
+              provider_external_id: garminFoodId,
+              provider_type: 'garmin',
+              shared_with_public: false,
+              serving_size: 1,
+              serving_unit: nutritionContent.servingUnit || 'serving',
+              source: 'imported',
+              ...mappedNutrition,
+            });
+            processedFoods++;
+          }
+
+          const foodId = food.id;
+          const variantId = food.default_variant_id || food.default_variant?.id;
+
+          // Create food entry
+          await foodEntryRepository.createFoodEntry(
+            {
+              user_id: userId,
+              food_id: foodId,
+              variant_id: variantId,
+              meal_type_id: mealTypeId,
+              quantity: loggedFood.servingQty ?? 1,
+              unit: nutritionContent.servingUnit || 'serving',
+              entry_date: mealDate,
+              serving_size: 1,
+              serving_unit: nutritionContent.servingUnit || 'serving',
+              food_name: foodMeta.foodName,
+              brand_name: foodMeta.brandName || null,
+              ...mappedNutrition,
+            },
+            userId
+          );
+          processedEntries++;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log(
+            'warn',
+            `[garminService] Failed to process food entry on ${mealDate}: ${msg}`
+          );
+          errors.push(`${mealDate}: ${msg}`);
+        }
+      }
+    }
+  }
+
+  log(
+    'info',
+    `[garminService] Nutrition sync complete. Foods created: ${processedFoods}, Entries created: ${processedEntries}, Errors: ${errors.length}`
+  );
+
+  return {
+    message: 'Garmin nutrition diary sync completed.',
+    processedFoods,
+    processedEntries,
+    deletedEntries: deletedCount,
+    errors,
+  };
+}
+
 async function syncGarminData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -928,9 +1123,14 @@ async function syncGarminData(
     'info',
     `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`
   );
-  const results = {
+  const results: {
+    health: Record<string, unknown> | null;
+    activities: Record<string, unknown> | null;
+    nutrition: Record<string, unknown> | null;
+  } = {
     health: null,
     activities: null,
+    nutrition: null,
   };
   // Phase 1: Health and Wellness — runs independently so a failure here does not skip activities
   try {
@@ -1012,7 +1212,6 @@ async function syncGarminData(
         endDate
       );
     }
-    // @ts-expect-error TS(2322): Type '{ processedGarminHealthData: { message: stri... Remove this comment to see the full error message
     results.health = {
       processedGarminHealthData,
       measurementServiceResult,
@@ -1024,7 +1223,6 @@ async function syncGarminData(
       `[garminService] Error during health sync for user ${userId}:`,
       healthError
     );
-    // @ts-expect-error TS(2322): Type '{ error: string; }' is not assignable to typ... Remove this comment to see the full error message
     results.health = {
       error:
         healthError instanceof Error
@@ -1050,7 +1248,6 @@ async function syncGarminData(
       endDate,
       tz
     );
-    // @ts-expect-error TS(2322): Type '{ processedEntries: number; }' is not assign... Remove this comment to see the full error message
     results.activities = processedActivities;
   } catch (activitiesError) {
     log(
@@ -1058,7 +1255,6 @@ async function syncGarminData(
       `[garminService] Error during activities sync for user ${userId}:`,
       activitiesError
     );
-    // @ts-expect-error TS(2322): Type '{ error: string; }' is not assignable to typ... Remove this comment to see the full error message
     results.activities = {
       error:
         activitiesError instanceof Error
@@ -1066,6 +1262,35 @@ async function syncGarminData(
           : String(activitiesError),
     };
   }
+  // Phase 3: Nutrition Diary — runs independently
+  try {
+    log('info', '[garminService] Fetching Nutrition Diary data...');
+    const nutritionData = await garminConnectService.fetchGarminNutritionDiary(
+      userId,
+      startDate,
+      endDate
+    );
+    const processedNutrition = await processGarminNutritionData(
+      userId,
+      nutritionData.nutrition_data,
+      startDate,
+      endDate
+    );
+    results.nutrition = processedNutrition;
+  } catch (nutritionError) {
+    log(
+      'error',
+      `[garminService] Error during nutrition sync for user ${userId}:`,
+      nutritionError
+    );
+    results.nutrition = {
+      error:
+        nutritionError instanceof Error
+          ? nutritionError.message
+          : String(nutritionError),
+    };
+  }
+
   log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
   return results;
 }
@@ -1076,6 +1301,7 @@ export {
   processGarminSimpleActivity,
   processGarminSleepData,
   processGarminHealthAndWellnessData,
+  processGarminNutritionData,
   syncGarminData,
   mapGarminExerciseCategory,
   formatExerciseName,
@@ -1087,5 +1313,6 @@ export default {
   processGarminSimpleActivity,
   processGarminSleepData,
   processGarminHealthAndWellnessData,
+  processGarminNutritionData,
   syncGarminData,
 };

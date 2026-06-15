@@ -597,7 +597,7 @@ async function createMealFromDiaryEntries(
   mealType: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mealName: any,
-  description = null,
+  description: string | null = null,
   isPublic = false
 ) {
   try {

@@ -33,6 +33,7 @@ const androidPermissions = [
   'android.permission.health.READ_HEART_RATE',
   'android.permission.health.READ_HEIGHT',
   'android.permission.health.READ_HYDRATION',
+  'android.permission.health.READ_NUTRITION',
   'android.permission.health.READ_LEAN_BODY_MASS',
   'android.permission.health.READ_INTERMENSTRUAL_BLEEDING',
   'android.permission.health.READ_MENSTRUATION',

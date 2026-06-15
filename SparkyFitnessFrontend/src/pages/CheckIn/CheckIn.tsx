@@ -1,8 +1,8 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import CheckInPreferences from './CheckInPreferences';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import SleepEntrySection from './SleepEntrySection';
+import DayNavigator from '@/components/DayNavigator';
 import { CheckInForm } from './CheckInForm';
 import { RecentActivity } from './RecentActivity';
 import { CheckInTopRow } from './CheckInTopRow';
@@ -56,7 +56,7 @@ const CheckIn = () => {
 
   return (
     <div className="container mx-auto space-y-6">
-      <CheckInPreferences
+      <DayNavigator
         selectedDate={selectedDate}
         onDateChange={(dateString) => {
           setSelectedDate(dateString);

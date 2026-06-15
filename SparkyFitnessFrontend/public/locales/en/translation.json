@@ -525,7 +525,7 @@
     },
     "calculationSettings": {
       "title": "Calculation Settings",
-      "description": "Manage BMR and Body Fat calculation preferences"
+      "description": "Manage BMR formulas, body fat algorithms, daily energy adjustments, goal deficit modes, and safety floors."
     },
     "familyAccess": {
       "title": "Family Access",
@@ -1238,6 +1238,8 @@
     "success": "Success",
     "error": "Error",
     "genericError": "An unexpected error occurred.",
+    "pastDateWarning": "Warning: You are adding food entries for a past date.",
+    "futureDateWarning": "Warning: You are adding food entries for a future date.",
     "entryCopied": "Food entries copied successfully",
     "entryCopyError": "Failed to copy food entries.",
     "copiedFromYesterday": "Food entries copied from yesterday successfully",
@@ -1426,11 +1428,16 @@
     "shareWithPublic": "Share with public",
     "notEditable": "Not editable",
     "editFood": "Edit food",
+    "duplicateFood": "Duplicate food",
     "deleteFood": "Delete food",
     "mealManagement": "Meal Management",
     "mealPlanCalendar": "Meal Plan",
     "editFoodDialogTitle": "Edit Food",
     "editFoodDialogDescription": "Edit the details of the selected food item.",
+    "duplicateFoodDialogTitle": "Duplicate Food",
+    "duplicateFoodDialogDescription": "Adjust the details and save this as a new food. The original is not changed.",
+    "copySuffix": "(copy)",
+    "duplicateFailed": "Failed to duplicate food.",
     "deleteFoodConfirmTitle": "Delete {{foodName}}?",
     "foodUsedIn": "This food is used in:",
     "diaryEntries": "{{count}} diary entries",

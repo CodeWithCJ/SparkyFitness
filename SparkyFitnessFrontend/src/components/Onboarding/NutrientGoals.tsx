@@ -62,15 +62,18 @@ export const NutrientGoals = ({
               <TableCell className="font-medium text-muted-foreground text-sm">
                 {t('onboarding.personalPlan.carbohydrates', 'Carbohydrates')} (
                 {editedPlan?.calories
-                  ? Math.round(
-                      ((editedPlan.carbs * 4) /
+                  ? (() => {
+                      const adjusted =
                         convertEnergy(
                           editedPlan.calories,
                           localEnergyUnit,
                           'kcal'
-                        )) *
-                        100
-                    )
+                        ) -
+                        (editedPlan.dietary_fiber || 0) * 2;
+                      return adjusted > 0
+                        ? Math.round(((editedPlan.carbs * 4) / adjusted) * 100)
+                        : 0;
+                    })()
                   : 0}
                 %)
               </TableCell>
@@ -95,15 +98,20 @@ export const NutrientGoals = ({
               <TableCell className="font-medium text-muted-foreground text-sm">
                 {t('onboarding.personalPlan.protein', 'Protein')} (
                 {editedPlan?.calories
-                  ? Math.round(
-                      ((editedPlan.protein * 4) /
+                  ? (() => {
+                      const adjusted =
                         convertEnergy(
                           editedPlan.calories,
                           localEnergyUnit,
                           'kcal'
-                        )) *
-                        100
-                    )
+                        ) -
+                        (editedPlan.dietary_fiber || 0) * 2;
+                      return adjusted > 0
+                        ? Math.round(
+                            ((editedPlan.protein * 4) / adjusted) * 100
+                          )
+                        : 0;
+                    })()
                   : 0}
                 %)
               </TableCell>
@@ -130,15 +138,18 @@ export const NutrientGoals = ({
               <TableCell className="font-medium text-muted-foreground text-sm">
                 {t('onboarding.personalPlan.fats', 'Fats')} (
                 {editedPlan?.calories
-                  ? Math.round(
-                      ((editedPlan.fat * 9) /
+                  ? (() => {
+                      const adjusted =
                         convertEnergy(
                           editedPlan.calories,
                           localEnergyUnit,
                           'kcal'
-                        )) *
-                        100
-                    )
+                        ) -
+                        (editedPlan.dietary_fiber || 0) * 2;
+                      return adjusted > 0
+                        ? Math.round(((editedPlan.fat * 9) / adjusted) * 100)
+                        : 0;
+                    })()
                   : 0}
                 %)
               </TableCell>

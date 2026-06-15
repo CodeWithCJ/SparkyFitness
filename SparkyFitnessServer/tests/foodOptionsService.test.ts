@@ -6,6 +6,9 @@ import { processFoodOptionsRequest } from '../services/chatService.js';
 vi.mock('../models/chatRepository');
 vi.mock('../models/measurementRepository');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+// chatService pulls in the tool registry, whose real foodEntryService trips
+// on a deep '@workspace/shared' subpath import under vitest.
+vi.mock('../services/foodEntryService', () => ({ default: {} }));
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)

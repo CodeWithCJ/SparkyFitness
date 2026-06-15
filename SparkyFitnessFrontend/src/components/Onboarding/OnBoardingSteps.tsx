@@ -152,7 +152,10 @@ export const OnboardingSteps = ({
               unit={weightUnit}
               value={formData.currentWeight}
               onChange={(val) =>
-                handleInputChange('currentWeight', val.toString())
+                handleInputChange(
+                  'currentWeight',
+                  val !== null ? val.toString() : ''
+                )
               }
               className="w-64"
             />
@@ -205,7 +208,9 @@ export const OnboardingSteps = ({
               type="height"
               unit={heightUnit}
               value={formData.height}
-              onChange={(val) => handleInputChange('height', val.toString())}
+              onChange={(val) =>
+                handleInputChange('height', val !== null ? val.toString() : '')
+              }
               className="w-64"
             />
           </div>
@@ -370,7 +375,10 @@ export const OnboardingSteps = ({
               unit={weightUnit}
               value={formData.targetWeight}
               onChange={(val) =>
-                handleInputChange('targetWeight', val.toString())
+                handleInputChange(
+                  'targetWeight',
+                  val !== null ? val.toString() : ''
+                )
               }
               className="w-64"
             />
