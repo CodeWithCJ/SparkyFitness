@@ -74,5 +74,6 @@ export const useCheckInPhotos = (selectedDate: string) => {
     deletePhoto: (id: string) => deleteMutation.mutate(id),
     isUploading: uploadMutation.isPending,
     uploadingType: uploadMutation.variables?.type,
+    isDeleting: deleteMutation.isPending,
   };
 };

@@ -106,7 +106,17 @@ router.get(
       // Stored uploads are user-supplied; stop the browser from MIME-sniffing
       // the response into an executable type.
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.sendFile(absolutePath);
+      // sendFile streams asynchronously, so a transmission error won't reach the
+      // surrounding try/catch — handle it in the callback and only respond if the
+      // headers/stream haven't started yet.
+      res.sendFile(absolutePath, (err) => {
+        if (err) {
+          log('error', 'Failed to stream check-in photo', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to serve check-in photo' });
+          }
+        }
+      });
     } catch (err) {
       log('error', 'Failed to serve check-in photo', err);
       res.status(500).json({ error: 'Failed to serve check-in photo' });

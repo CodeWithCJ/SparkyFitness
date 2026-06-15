@@ -151,8 +151,14 @@ const PHOTO_TYPES: {
 
 export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
   const { t } = useTranslation();
-  const { photos, uploadPhoto, deletePhoto, isUploading, uploadingType } =
-    useCheckInPhotos(selectedDate);
+  const {
+    photos,
+    uploadPhoto,
+    deletePhoto,
+    isUploading,
+    uploadingType,
+    isDeleting,
+  } = useCheckInPhotos(selectedDate);
 
   const photoMap = useMemo(
     () => new Map(photos.map((p) => [p.photo_type, p])),
@@ -182,7 +188,7 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
               onUpload={uploadPhoto}
               onDelete={deletePhoto}
               isUploading={isUploading && uploadingType === type}
-              disabled={isUploading}
+              disabled={isUploading || isDeleting}
             />
           ))}
         </div>

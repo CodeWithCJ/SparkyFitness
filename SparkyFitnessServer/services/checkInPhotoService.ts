@@ -159,8 +159,9 @@ export const upsertPhoto = async (
  * Resolves the absolute on-disk path of a photo the user is allowed to see.
  * The SELECT is RLS-scoped (has_diary_access), so a row only comes back for the
  * owner or a family member with check-in access. Returns null when the photo
- * does not exist, is not accessible, or its stored path escapes the uploads
- * root (defense in depth against a tampered file_path).
+ * row does not exist or is not accessible, the file is missing on disk, or its
+ * stored path escapes the uploads root (defense in depth against a tampered
+ * file_path).
  */
 export const getPhotoFileById = async (
   userId: string,
@@ -186,6 +187,13 @@ export const getPhotoFileById = async (
         'warn',
         `Rejected check-in photo path outside uploads root: ${filePath}`
       );
+      return null;
+    }
+    // Confirm the file is actually on disk so a missing file yields a clean 404
+    // at the route instead of a 500 from sendFile.
+    try {
+      await fs.promises.access(absolute);
+    } catch {
       return null;
     }
     return absolute;
