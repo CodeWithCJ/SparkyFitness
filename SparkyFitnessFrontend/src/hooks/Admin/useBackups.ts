@@ -34,7 +34,13 @@ export const useUpdateBackupSettings = () => {
       return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
     meta: {
-      successMessage: t('admin.backupSettings.backupSettingsSaved', 'Saved'),
+      successMessage: (data: unknown) => {
+        const response = data as { warning?: string };
+        return (
+          response?.warning ??
+          t('admin.backupSettings.backupSettingsSaved', 'Saved')
+        );
+      },
       errorMessage: t('error', 'Error'),
     },
   });

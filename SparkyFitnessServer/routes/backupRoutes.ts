@@ -1,12 +1,31 @@
 import express from 'express';
+import { z } from 'zod';
 import { log } from '../config/logging.js';
 import {
   performBackup,
   performRestore,
   BACKUP_DIR,
 } from '../services/backupService.js';
+import { rescheduleBackups } from '../services/backupScheduler.js';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
+
+const backupSettingsBodySchema = z.object({
+  backupEnabled: z.boolean(),
+  backupDays: z.array(
+    z.enum([
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ])
+  ),
+  backupTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  retentionDays: z.number().int().positive(),
+});
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
 import path from 'path';
@@ -292,8 +311,16 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
  *         description: Server error.
  */
 router.post('/settings', authenticate, isAdmin, async (req, res) => {
+  const parsed = backupSettingsBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      message: 'Invalid backup settings.',
+      errors: parsed.error.flatten(),
+    });
+    return;
+  }
+  const { backupEnabled, backupDays, backupTime, retentionDays } = parsed.data;
   try {
-    const { backupEnabled, backupDays, backupTime, retentionDays } = req.body;
     const updatedSettings = await backupSettingsRepository.updateBackupSettings(
       {
         backup_enabled: backupEnabled,
@@ -302,10 +329,24 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
         retention_days: retentionDays,
       }
     );
-    // TODO: Re-schedule cron jobs based on new settings
+
+    let schedulerWarning: string | undefined;
+    try {
+      await rescheduleBackups();
+    } catch (schedErr) {
+      log(
+        'error',
+        '[CRON] Settings saved but live reschedule failed:',
+        schedErr
+      );
+      schedulerWarning =
+        'Settings saved, but the live scheduler could not be updated. Changes will take effect on next server restart.';
+    }
+
     res.status(200).json({
-      message: 'Backup settings saved successfully.',
+      message: schedulerWarning ?? 'Backup settings saved successfully.',
       settings: updatedSettings,
+      ...(schedulerWarning ? { warning: schedulerWarning } : {}),
     });
   } catch (error) {
     log('error', 'Error saving backup settings:', error);

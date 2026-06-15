@@ -66,10 +66,7 @@ import backupRoutes from './routes/backupRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import cron from 'node-cron';
-import {
-  performBackup,
-  applyRetentionPolicy,
-} from './services/backupService.js';
+import { scheduleBackupsOnStartup } from './services/backupScheduler.js';
 import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
 import fitbitService from './services/fitbitService.js';
@@ -458,14 +455,7 @@ app.get(
 );
 app.get('/api/api-docs/json', (_req, res) => res.json(swaggerSpecs));
 app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
-// Backup scheduling
-const scheduleBackups = async () => {
-  cron.schedule('0 2 * * *', async () => {
-    const result = await performBackup();
-    // @ts-expect-error TS2554
-    if (result.success) await applyRetentionPolicy(7);
-  });
-};
+// Backup scheduling is handled by services/backupScheduler.ts
 // Session cleanup scheduling
 const scheduleSessionCleanup = async () => {
   // Run every day at 3 AM
@@ -635,7 +625,7 @@ applyMigrations()
         console.error('[AUTH] Post-init SSO sync failed:', err)
       );
     }
-    scheduleBackups();
+    scheduleBackupsOnStartup();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
