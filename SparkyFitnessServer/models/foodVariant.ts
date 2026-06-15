@@ -202,7 +202,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
   try {
     const query = `
       INSERT INTO food_variants (
-        user_id, food_id, serving_size, serving_unit, calories, protein, carbs, fat,
+        food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
@@ -210,7 +210,6 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       ) VALUES %L RETURNING id`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
-      userId,
       variant.food_id,
       variant.serving_size,
       variant.serving_unit,
