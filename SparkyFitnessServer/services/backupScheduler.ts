@@ -27,7 +27,18 @@ export const buildCronExpression = (
   backupTime: string,
   backupDays: string[]
 ): string => {
-  const [hour, minute] = backupTime.split(':').map(Number);
+  let [hour, minute] = backupTime.split(':').map(Number);
+  if (
+    isNaN(hour) ||
+    isNaN(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    hour = 2;
+    minute = 0;
+  }
   const days = backupDays
     .map((d) => DOW_MAP[d])
     .filter((n) => n !== undefined && !isNaN(n));

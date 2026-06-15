@@ -35,11 +35,13 @@ export const useUpdateBackupSettings = () => {
     },
     meta: {
       successMessage: (data: unknown) => {
-        const response = data as { warning?: string };
-        return (
-          response?.warning ??
-          t('admin.backupSettings.backupSettingsSaved', 'Saved')
-        );
+        const response = data as { schedulerFailed?: boolean };
+        return response?.schedulerFailed
+          ? t(
+              'admin.backupSettings.saveWarningSchedulerFailed',
+              'Settings saved, but the live scheduler could not be updated. Changes will take effect on next server restart.'
+            )
+          : t('admin.backupSettings.backupSettingsSaved', 'Saved');
       },
       errorMessage: t('error', 'Error'),
     },

@@ -23,33 +23,21 @@ describe('getLocalTimeString', () => {
   it('handles midnight UTC (00:00) without corrupting to current time', () => {
     const expected = new Date(FIXED_DATE);
     expected.setUTCHours(0, 0, 0, 0);
-    const expectedStr = expected.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
+    const expectedStr = `${String(expected.getHours()).padStart(2, '0')}:${String(expected.getMinutes()).padStart(2, '0')}`;
     expect(getLocalTimeString('00:00', FIXED_DATE)).toBe(expectedStr);
   });
 
   it('handles times with zero minutes (e.g. 01:00) correctly', () => {
     const expected = new Date(FIXED_DATE);
     expected.setUTCHours(1, 0, 0, 0);
-    const expectedStr = expected.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
+    const expectedStr = `${String(expected.getHours()).padStart(2, '0')}:${String(expected.getMinutes()).padStart(2, '0')}`;
     expect(getLocalTimeString('01:00', FIXED_DATE)).toBe(expectedStr);
   });
 
   it('handles end-of-day UTC time (23:59)', () => {
     const expected = new Date(FIXED_DATE);
     expected.setUTCHours(23, 59, 0, 0);
-    const expectedStr = expected.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
+    const expectedStr = `${String(expected.getHours()).padStart(2, '0')}:${String(expected.getMinutes()).padStart(2, '0')}`;
     expect(getLocalTimeString('23:59', FIXED_DATE)).toBe(expectedStr);
   });
 

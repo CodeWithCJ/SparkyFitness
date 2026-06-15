@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
+import { toast } from '@/hooks/use-toast';
 import { getLocalTimeString } from './backupTimeUtils';
 
 interface BackupSettingsFormProps {
@@ -71,13 +72,32 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     const parts = backupTime.split(':').map(Number);
     const hours = parts[0];
     const minutes = parts[1];
-    const localDate = new Date();
     if (
-      hours !== undefined &&
-      minutes !== undefined &&
-      !isNaN(hours) &&
-      !isNaN(minutes)
+      backupEnabled &&
+      (hours === undefined ||
+        minutes === undefined ||
+        isNaN(hours) ||
+        isNaN(minutes) ||
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59)
     ) {
+      toast({
+        title: t(
+          'admin.backupSettings.invalidTimeTitle',
+          'Invalid backup time'
+        ),
+        description: t(
+          'admin.backupSettings.invalidTimeDescription',
+          'Please enter a valid time in HH:MM format before saving.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+    const localDate = new Date();
+    if (hours !== undefined && minutes !== undefined) {
       localDate.setHours(hours, minutes, 0, 0);
     }
     const utcTime = localDate.toISOString().substring(11, 16);

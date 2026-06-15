@@ -12,9 +12,5 @@ export const getLocalTimeString = (
     return '02:00';
   const date = new Date(now);
   date.setUTCHours(h, m, 0, 0);
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };

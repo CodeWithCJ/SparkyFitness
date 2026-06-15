@@ -330,7 +330,7 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
       }
     );
 
-    let schedulerWarning: string | undefined;
+    let schedulerFailed = false;
     try {
       await rescheduleBackups();
     } catch (schedErr) {
@@ -339,14 +339,13 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
         '[CRON] Settings saved but live reschedule failed:',
         schedErr
       );
-      schedulerWarning =
-        'Settings saved, but the live scheduler could not be updated. Changes will take effect on next server restart.';
+      schedulerFailed = true;
     }
 
     res.status(200).json({
-      message: schedulerWarning ?? 'Backup settings saved successfully.',
+      message: 'Backup settings saved successfully.',
       settings: updatedSettings,
-      ...(schedulerWarning ? { warning: schedulerWarning } : {}),
+      ...(schedulerFailed ? { schedulerFailed: true } : {}),
     });
   } catch (error) {
     log('error', 'Error saving backup settings:', error);
