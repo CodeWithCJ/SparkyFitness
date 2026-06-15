@@ -87,12 +87,12 @@ const PhotoSlot = ({
         )}
       </div>
 
-      {/* Hidden file input — capture="environment" lets mobile show camera/gallery choice */}
+      {/* Hidden file input — no capture attribute so mobile users can pick
+          either the camera or an existing photo from the gallery. */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFileChange}
         disabled={isUploading}

@@ -63,10 +63,12 @@ export const upsertPhoto = async (
   userId: string,
   entryDate: string,
   photoType: PhotoType,
-  originalName: string,
+  fileExtension: string,
   buffer: Buffer
 ): Promise<CheckInPhotoResponse> => {
-  const fileName = `${photoType}${path.extname(originalName).toLowerCase()}`;
+  // The extension is derived from the validated image bytes by the route, not
+  // from the client-supplied filename, so the stored name matches the content.
+  const fileName = `${photoType}.${fileExtension}`;
   // Store a relative path so records are portable across deployments.
   const relativePath = path.join(
     'uploads',

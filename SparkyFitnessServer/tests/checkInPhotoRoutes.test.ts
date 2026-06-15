@@ -157,7 +157,24 @@ describe('POST /:date/:type', () => {
       'test-user-id',
       '2026-06-14',
       'front',
-      'front.jpg',
+      'jpg',
+      expect.any(Buffer)
+    );
+  });
+
+  it('accepts a WebP image and stores it with a webp extension', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.upsertPhoto.mockResolvedValue(MOCK_PHOTO);
+    // "RIFF" + 4-byte size + "WEBP"
+    const res = await request(app)
+      .post('/2026-06-14/front')
+      .set('x-test-bytes', '524946460000000057454250');
+    expect(res.status).toBe(200);
+    expect(checkInPhotoService.upsertPhoto).toHaveBeenCalledWith(
+      'test-user-id',
+      '2026-06-14',
+      'front',
+      'webp',
       expect.any(Buffer)
     );
   });
@@ -166,6 +183,15 @@ describe('POST /:date/:type', () => {
     const res = await request(app)
       .post('/2026-06-14/front')
       .set('x-test-bytes', '0001020304');
+    expect(res.status).toBe(400);
+    expect(checkInPhotoService.upsertPhoto).not.toHaveBeenCalled();
+  });
+
+  it('rejects a RIFF container that is not WebP (e.g. WAV/AVI)', async () => {
+    // "RIFF" + size + "WAVE" must not pass the WebP signature check.
+    const res = await request(app)
+      .post('/2026-06-14/front')
+      .set('x-test-bytes', '524946460000000057415645');
     expect(res.status).toBe(400);
     expect(checkInPhotoService.upsertPhoto).not.toHaveBeenCalled();
   });

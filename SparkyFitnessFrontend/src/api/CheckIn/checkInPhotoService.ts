@@ -30,19 +30,18 @@ export const uploadCheckInPhoto = async (
 ): Promise<CheckInPhoto> => {
   const formData = new FormData();
   formData.append('photo', file);
-  const response = await fetch(
-    `/api/measurements/check-in-photos/${date}/${type}`,
+  // Routed through apiCall (not a raw fetch) so it shares the app's API base
+  // URL, cookie auth, and error handling. isFormData keeps apiCall from forcing
+  // a JSON Content-Type, letting the browser set the multipart boundary.
+  const response = await apiCall(
+    `/measurements/check-in-photos/${date}/${type}`,
     {
       method: 'POST',
       body: formData,
-      credentials: 'include',
+      isFormData: true,
     }
   );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error ?? 'Upload failed');
-  }
-  return response.json() as Promise<CheckInPhoto>;
+  return response as CheckInPhoto;
 };
 
 export const deleteCheckInPhoto = async (id: string): Promise<void> => {

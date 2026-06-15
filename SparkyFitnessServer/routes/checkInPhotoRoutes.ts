@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import checkInPhotoUpload, {
-  isAllowedImageBuffer,
+  getImageExtension,
 } from '../middleware/checkInPhotoUpload.js';
 import checkInPhotoService from '../services/checkInPhotoService.js';
 import { log } from '../config/logging.js';
@@ -164,9 +164,10 @@ router.post(
     next();
   },
   checkInPhotoUpload.single('photo'),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async (req: any, res: any) => {
-    if (!req.file) {
+  async (req, res) => {
+    // @ts-expect-error multer attaches req.file at runtime; it ships no types.
+    const file = req.file as { buffer: Buffer } | undefined;
+    if (!file) {
       res.status(400).json({ error: 'No photo file provided' });
       return;
     }
@@ -175,11 +176,13 @@ router.post(
       type: 'front' | 'back' | 'side';
     };
     // The multer fileFilter only trusts the client-supplied filename/mime type;
-    // verify the real bytes before anything is written to disk.
-    if (!isAllowedImageBuffer(req.file.buffer)) {
-      res
-        .status(400)
-        .json({ error: 'Uploaded file is not a valid image (jpeg, png, gif)' });
+    // verify the real bytes and derive the stored extension from them so the
+    // served Content-Type can never be spoofed by a mismatched filename.
+    const extension = getImageExtension(file.buffer);
+    if (!extension) {
+      res.status(400).json({
+        error: 'Uploaded file is not a valid image (jpeg, png, gif, webp)',
+      });
       return;
     }
     try {
@@ -187,8 +190,8 @@ router.post(
         req.userId,
         date,
         type,
-        req.file.originalname,
-        req.file.buffer
+        extension,
+        file.buffer
       );
       res.json(photo);
     } catch (err) {
