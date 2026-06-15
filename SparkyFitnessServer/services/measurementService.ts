@@ -696,7 +696,7 @@ async function processHealthData(
           const numericValue = parseFloat(value);
           if (isNaN(numericValue) || numericValue <= 0 || numericValue > 100) {
             errors.push({
-              error: `Invalid value for ${type}. Must be between 0 and 100.`,
+              error: `Invalid value for ${type}. Must be greater than 0 and at most 100.`,
               entry: dataEntry,
             });
             break;
@@ -1677,14 +1677,6 @@ async function upsertCheckInMeasurements(
     throw error;
   }
 }
-const ZERO_FILTERED_FIELDS = [
-  'weight',
-  'height',
-  'waist',
-  'neck',
-  'hips',
-  'body_fat_percentage',
-] as const;
 async function getCheckInMeasurements(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -1699,14 +1691,7 @@ async function getCheckInMeasurements(
         targetUserId,
         date
       );
-    if (!row) return {};
-
-    for (const field of ZERO_FILTERED_FIELDS) {
-      if (row[field] !== null && row[field] !== undefined && row[field] <= 0) {
-        row[field] = null;
-      }
-    }
-    return row;
+    return row || {};
   } catch (error) {
     log(
       'error',

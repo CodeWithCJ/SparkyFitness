@@ -4,7 +4,7 @@ import measurementRepository from '../models/measurementRepository.js';
 
 vi.mock('../models/measurementRepository');
 
-describe('Measurement Service - getCheckInMeasurements zero-value filtering', () => {
+describe('Measurement Service - getCheckInMeasurements', () => {
   const userId = 'user-123';
   const date = '2026-06-12';
 
@@ -42,39 +42,6 @@ describe('Measurement Service - getCheckInMeasurements zero-value filtering', ()
     expect(result.steps).toBe(5000);
   });
 
-  it('nullifies zero values for body measurement fields', async () => {
-    const row = {
-      id: '2',
-      user_id: userId,
-      entry_date: date,
-      weight: 0,
-      height: 0,
-      waist: 0,
-      neck: 0,
-      hips: 0,
-      body_fat_percentage: 0,
-      steps: 8000,
-    };
-    // @ts-expect-error mock
-    measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate.mockResolvedValue(
-      row
-    );
-
-    const result = await measurementService.getCheckInMeasurements(
-      userId,
-      userId,
-      date
-    );
-
-    expect(result.weight).toBeNull();
-    expect(result.height).toBeNull();
-    expect(result.waist).toBeNull();
-    expect(result.neck).toBeNull();
-    expect(result.hips).toBeNull();
-    expect(result.body_fat_percentage).toBeNull();
-    expect(result.steps).toBe(8000);
-  });
-
   it('returns empty object when no measurements exist', async () => {
     // @ts-expect-error mock
     measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate.mockResolvedValue(
@@ -90,22 +57,21 @@ describe('Measurement Service - getCheckInMeasurements zero-value filtering', ()
     expect(result).toEqual({});
   });
 
-  it('preserves valid values and only nullifies zeros', async () => {
-    const row = {
-      id: '3',
-      user_id: userId,
-      entry_date: date,
-      weight: 80,
-      height: 0,
-      waist: 85,
-      neck: null,
-      hips: 95,
-      body_fat_percentage: 0,
-      steps: null,
-    };
+  it('delegates to getLatestCheckInMeasurementsOnOrBeforeDate for per-field resolution', async () => {
     // @ts-expect-error mock
     measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate.mockResolvedValue(
-      row
+      {
+        id: '3',
+        user_id: userId,
+        entry_date: date,
+        weight: 80,
+        height: null,
+        waist: 85,
+        neck: null,
+        hips: 95,
+        body_fat_percentage: null,
+        steps: null,
+      }
     );
 
     const result = await measurementService.getCheckInMeasurements(
@@ -121,5 +87,8 @@ describe('Measurement Service - getCheckInMeasurements zero-value filtering', ()
     expect(result.hips).toBe(95);
     expect(result.body_fat_percentage).toBeNull();
     expect(result.steps).toBeNull();
+    expect(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).toHaveBeenCalledWith(userId, date);
   });
 });
