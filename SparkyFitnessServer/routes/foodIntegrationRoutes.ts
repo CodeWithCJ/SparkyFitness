@@ -947,7 +947,12 @@ router.get('/usda/search', authenticate, async (req, res, next) => {
     Math.max(1, parseInt(req.query.pageSize, 10) || 50)
   );
   try {
-    const data = await searchUsdaFoods(query, usdaApiKey, page, pageSize);
+    const data = await searchUsdaFoods(
+      query as string,
+      usdaApiKey,
+      page,
+      pageSize
+    );
     res.json(data);
   } catch (error) {
     next(error);
@@ -1001,7 +1006,7 @@ router.get('/usda/details', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Missing FDC ID' });
   }
   try {
-    const data = await getUsdaFoodDetails(fdcId, usdaApiKey);
+    const data = await getUsdaFoodDetails(fdcId as string, usdaApiKey);
     res.json(data);
   } catch (error) {
     next(error);
