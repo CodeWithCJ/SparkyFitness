@@ -120,7 +120,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { data: mostRecentHeightData } = useMostRecentMeasurement('height');
 
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] =
-    useState(false);
+    useState(true);
 
   const shouldConvertCustomMeasurement = useCallback((unit: string) => {
     const convertibleUnits = ['kg', 'lbs', 'st_lbs', 'cm', 'inches', 'ft_in'];
