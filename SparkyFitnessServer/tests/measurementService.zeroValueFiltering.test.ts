@@ -100,6 +100,6 @@ describe('Measurement Service - getCheckInMeasurements', () => {
     expect(result.steps).toBeNull();
     expect(
       measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
-    ).toHaveBeenCalledWith(userId, date, date);
+    ).toHaveBeenCalledWith(userId, date);
   });
 });
