@@ -195,7 +195,13 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
-                disabled={isPending || !targetDate || !targetMealType}
+                disabled={
+                  isPending ||
+                  !targetDate ||
+                  !targetMealType ||
+                  (source.date === targetDate &&
+                    source.mealType.toLowerCase() === targetMealType.toLowerCase())
+                }
               >
                 {isPending ? 'Copying...' : 'Copy'}
               </Button>
