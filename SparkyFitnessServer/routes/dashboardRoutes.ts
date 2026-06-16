@@ -7,6 +7,7 @@ import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone } from '@workspace/shared';
 const router = express.Router();
+router.use(authenticate);
 router.use(checkPermissionMiddleware('diary'));
 /**
  * @swagger
@@ -28,7 +29,7 @@ router.use(checkPermissionMiddleware('diary'));
  *       401:
  *         description: Authentication required.
  */
-router.get('/stats', authenticate, async (req, res, next) => {
+router.get('/stats', async (req, res, next) => {
   try {
     const actorUserId = req.originalUserId || req.userId;
     const userId = req.activeUserId || req.authenticatedUserId;
