@@ -327,18 +327,20 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
   try {
     const result = await client.query(
       `SELECT
-         (SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as id,
+         (SELECT id FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as id,
          $1 as user_id,
-         (SELECT entry_date FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as entry_date,
-         (SELECT weight FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND weight IS NOT NULL AND weight > 0 ORDER BY entry_date DESC LIMIT 1) as weight,
-         (SELECT neck FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND neck IS NOT NULL AND neck > 0 ORDER BY entry_date DESC LIMIT 1) as neck,
-         (SELECT waist FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND waist IS NOT NULL AND waist > 0 ORDER BY entry_date DESC LIMIT 1) as waist,
-         (SELECT hips FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND hips IS NOT NULL AND hips > 0 ORDER BY entry_date DESC LIMIT 1) as hips,
-         (SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND steps IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as steps,
-         (SELECT height FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND height IS NOT NULL AND height > 0 ORDER BY entry_date DESC LIMIT 1) as height,
-         (SELECT body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_fat_percentage IS NOT NULL AND body_fat_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_fat_percentage,
-         (SELECT created_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as created_at,
-         (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
+         (SELECT entry_date FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as entry_date,
+         (SELECT weight FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND weight IS NOT NULL AND weight > 0 ORDER BY entry_date DESC LIMIT 1) as weight,
+         (SELECT neck FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND neck IS NOT NULL AND neck > 0 ORDER BY entry_date DESC LIMIT 1) as neck,
+         (SELECT waist FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND waist IS NOT NULL AND waist > 0 ORDER BY entry_date DESC LIMIT 1) as waist,
+         (SELECT hips FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND hips IS NOT NULL AND hips > 0 ORDER BY entry_date DESC LIMIT 1) as hips,
+         (SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND steps IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as steps,
+         (SELECT height FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND height IS NOT NULL AND height > 0 ORDER BY entry_date DESC LIMIT 1) as height,
+         (SELECT body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) AND body_fat_percentage IS NOT NULL AND body_fat_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_fat_percentage,
+         (SELECT created_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as created_at,
+         (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as updated_at,
+         (SELECT created_by_user_id FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as created_by_user_id,
+         (SELECT updated_by_user_id FROM check_in_measurements WHERE user_id = $1 AND entry_date <= LEAST($2, CURRENT_DATE) ORDER BY entry_date DESC LIMIT 1) as updated_by_user_id`,
       [userId, date]
     );
     const row = result.rows[0];
