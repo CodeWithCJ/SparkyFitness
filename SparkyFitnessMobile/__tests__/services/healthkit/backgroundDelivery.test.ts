@@ -115,8 +115,8 @@ describe('setupBackgroundDeliveryForEnabledMetrics', () => {
   });
 
   it('uses the most aggressive frequency when metrics share an HK identifier', async () => {
-    // TotalCaloriesBurned (hourly) and BasalMetabolicRate (daily) both map to
-    // HKQuantityTypeIdentifierBasalEnergyBurned. Hourly should win.
+    // TotalCaloriesBurned (hourly) and BasalMetabolicRate (none) both map to
+    // HKQuantityTypeIdentifierBasalEnergyBurned. Hourly from TotalCalories should win.
     mockLoadHealthPreference.mockImplementation((key: string) => {
       if (key === 'syncTotalCaloriesEnabled') return Promise.resolve(true);
       if (key === 'syncBasalMetabolicRateEnabled') return Promise.resolve(true);
@@ -153,7 +153,10 @@ describe('disableBackgroundDeliveryForMetric', () => {
     );
   });
 
-  it('re-registers the remaining tier when a shared identifier is still needed', async () => {
+  it('disables the identifier when the only remaining metric sharing it has none frequency', async () => {
+    // BasalMetabolicRate (none) is still enabled after TotalCaloriesBurned is disabled.
+    // Since none-tier metrics do not register delivery, the identifier has no remaining
+    // active tier and should be fully disabled.
     mockLoadHealthPreference.mockImplementation((key: string) => {
       if (key === 'syncBasalMetabolicRateEnabled') return Promise.resolve(true);
       return Promise.resolve(false);
@@ -161,11 +164,10 @@ describe('disableBackgroundDeliveryForMetric', () => {
 
     await disableBackgroundDeliveryForMetric('TotalCaloriesBurned');
 
-    expect(mockDisableBgDelivery).not.toHaveBeenCalled();
-    expect(mockEnableBgDelivery).toHaveBeenCalledWith(
+    expect(mockDisableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBasalEnergyBurned',
-      UpdateFrequency.daily,
     );
+    expect(mockEnableBgDelivery).not.toHaveBeenCalled();
   });
 
   it('disables when the only remaining metric using the identifier has none frequency', async () => {

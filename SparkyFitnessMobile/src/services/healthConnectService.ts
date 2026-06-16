@@ -29,6 +29,7 @@ export const aggregateByDay = HealthConnectAggregation.aggregateByDay;
 
 // Android does not have a basal-energy aggregation equivalent; display uses RAW_FORMATTERS instead.
 export const getAggregatedBasalEnergyByDate = async (_start: Date, _end: Date): Promise<AggregatedHealthRecord[]> => [];
+export const getAggregatedBasalEnergyByDateDetailed = async (_start: Date, _end: Date): Promise<{ records: AggregatedHealthRecord[]; error?: string }> => ({ records: [] });
 
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedStepsByDateDetailed = HealthConnect.getAggregatedStepsByDateDetailed;

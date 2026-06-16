@@ -732,14 +732,20 @@ const CalculationSettings = () => {
                 </Label>
                 <Select
                   value={activityLevel}
-                  onValueChange={(
-                    value: 'not_much' | 'light' | 'moderate' | 'heavy'
-                  ) => setActivityLevel(value)}
+                  onValueChange={(value: ActivityLevel) =>
+                    setActivityLevel(value)
+                  }
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">
+                      {t(
+                        'settings.calorieGoalAdjustment.activityNone',
+                        'None (×1.0)'
+                      )}
+                    </SelectItem>
                     <SelectItem value="not_much">
                       {t(
                         'settings.calorieGoalAdjustment.activityNotMuch',

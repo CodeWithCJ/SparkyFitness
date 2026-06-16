@@ -84,6 +84,11 @@ export const getAggregatedFloorsClimbedByDateDetailed = (
   endDate: Date,
 ) => aggregateDetailed(HealthKit.getAggregatedFloorsClimbedByDate, startDate, endDate);
 
+export const getAggregatedBasalEnergyByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedBasalEnergyByDate, startDate, endDate);
+
 export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
 
 export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;

@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getDashboardStats } from '../services/DashboardService.js';
-import goalRepository from '../models/goalRepository.js';
+import goalService from '../services/goalService.js';
 import reportRepository from '../models/reportRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
-import adaptiveTdeeService from '../services/AdaptiveTdeeService.js';
 
-vi.mock('../models/goalRepository.js', () => ({
-  default: { getMostRecentGoalBeforeDate: vi.fn() },
+vi.mock('../services/goalService.js', () => ({
+  default: { getUserGoals: vi.fn() },
 }));
 
 vi.mock('../models/reportRepository.js', () => ({
@@ -46,10 +45,6 @@ vi.mock('../services/bmrService.js', () => ({
   },
 }));
 
-vi.mock('../services/AdaptiveTdeeService.js', () => ({
-  default: { calculateAdaptiveTdee: vi.fn() },
-}));
-
 const basePreferences = {
   activity_level: 'not_much',
   include_bmr_in_net_calories: false,
@@ -67,9 +62,7 @@ const baseMeasurements = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
-    calories: 2000,
-  });
+  vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
   vi.mocked(reportRepository.getNutritionData).mockResolvedValue([
     { calories: '1500' },
   ]);
@@ -87,33 +80,39 @@ beforeEach(() => {
   vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
     null
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  vi.mocked(adaptiveTdeeService.calculateAdaptiveTdee).mockResolvedValue(
-    null as any
-  );
 });
 
 describe('getDashboardStats includeCheckin gate', () => {
-  test('includeCheckin=true reads measurements, steps, and adaptive TDEE', async () => {
+  test('includeCheckin=true reads measurements, steps, and passes adjust=true to goalService', async () => {
     await getDashboardStats('user1', '2026-06-13', true);
 
+    expect(goalService.getUserGoals).toHaveBeenCalledWith(
+      'user1',
+      '2026-06-13',
+      undefined,
+      true
+    );
     expect(measurementRepository.getLatestMeasurement).toHaveBeenCalledWith(
       'user1'
     );
     expect(
       measurementRepository.getCheckInMeasurementsByDate
     ).toHaveBeenCalledWith('user1', '2026-06-13');
-    expect(adaptiveTdeeService.calculateAdaptiveTdee).toHaveBeenCalled();
   });
 
-  test('includeCheckin=false skips measurements, steps, and adaptive TDEE', async () => {
+  test('includeCheckin=false skips measurements, steps, and passes adjust=false to goalService', async () => {
     await getDashboardStats('user1', '2026-06-13', false);
 
+    expect(goalService.getUserGoals).toHaveBeenCalledWith(
+      'user1',
+      '2026-06-13',
+      undefined,
+      false
+    );
     expect(measurementRepository.getLatestMeasurement).not.toHaveBeenCalled();
     expect(
       measurementRepository.getCheckInMeasurementsByDate
     ).not.toHaveBeenCalled();
-    expect(adaptiveTdeeService.calculateAdaptiveTdee).not.toHaveBeenCalled();
   });
 
   test('includeCheckin=false zeroes out steps and step calories in response', async () => {

@@ -29,7 +29,7 @@ async function getDashboardStats(
       latestMeasurements,
       checkInMeasurements,
     ] = await Promise.all([
-      goalService.getUserGoals(userId, date, undefined, true),
+      goalService.getUserGoals(userId, date, undefined, includeCheckin),
       reportRepository.getNutritionData(userId, date, date, []),
       // @ts-expect-error TS(2554): Expected 6 arguments, but got 3.
       reportRepository.getExerciseEntries(userId, date, date),
