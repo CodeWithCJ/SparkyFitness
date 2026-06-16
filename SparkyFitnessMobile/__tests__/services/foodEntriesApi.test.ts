@@ -3,6 +3,7 @@ import {
   createFoodEntry,
   updateFoodEntry,
   deleteFoodEntry,
+  copyFoodEntries,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
@@ -435,6 +436,73 @@ describe('foodEntriesApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
 
       await expect(deleteFoodEntry('entry-1')).rejects.toThrow(
+        'Server configuration not found.'
+      );
+    });
+  });
+
+  describe('copyFoodEntries', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    const payload = {
+      sourceDate: '2024-06-15',
+      sourceMealType: 'breakfast',
+      targetDate: '2024-06-16',
+      targetMealType: 'lunch',
+    };
+
+    test('sends POST to /api/food-entries/copy with JSON body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await copyFoodEntries(payload);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/copy',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(payload),
+        })
+      );
+    });
+
+    test('resolves on success (returns void)', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([{ id: 'copied-1' }]),
+      });
+
+      await expect(copyFoodEntries(payload)).resolves.toBeUndefined();
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(copyFoodEntries(payload)).rejects.toThrow(
+        'Server error: 403 - Forbidden'
+      );
+    });
+
+    test('throws when no server config', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(copyFoodEntries(payload)).rejects.toThrow(
         'Server configuration not found.'
       );
     });
