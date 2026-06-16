@@ -6,6 +6,7 @@ import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { userAge } from '../utils/dateHelpers.js';
 import type {
   ExerciseSessionResponse,
@@ -19,6 +20,7 @@ import {
   computeCaloriesRemaining,
   computeCalorieProgress,
   computeTdeeAdjustment,
+  todayInZone,
 } from '@workspace/shared';
 import type { CalorieGoalAdjustmentMode } from '@workspace/shared';
 
@@ -215,6 +217,7 @@ export async function getDailySummary({
   date,
   includeCheckin,
 }: DailySummaryOptions) {
+  const today = todayInZone(await loadUserTimezone(targetUserId));
   // Each function acquires its own pool client, allowing true parallel execution.
   const [
     goals,
@@ -246,7 +249,7 @@ export async function getDailySummary({
     preferenceRepository.getUserPreferences(targetUserId),
     includeCheckin
       ? measurementRepository
-          .getLatestCheckInMeasurementsOnOrBeforeDate(targetUserId, date)
+          .getLatestCheckInMeasurementsOnOrBeforeDate(targetUserId, date, today)
           .catch((error: unknown) => {
             log(
               'warn',

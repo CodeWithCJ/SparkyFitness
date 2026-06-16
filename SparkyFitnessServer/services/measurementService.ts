@@ -8,6 +8,7 @@ import {
   instantHourMinuteWithOffset,
   isValidTimeZone,
   isDayString,
+  todayInZone,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import userRepository from '../models/userRepository.js';
@@ -1686,10 +1687,12 @@ async function getCheckInMeasurements(
   date: any
 ) {
   try {
+    const today = todayInZone(await loadUserTimezone(targetUserId));
     const row =
       await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         targetUserId,
-        date
+        date,
+        today
       );
     return row || {};
   } catch (error) {
@@ -1710,10 +1713,12 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
   date: any
 ) {
   try {
+    const today = todayInZone(await loadUserTimezone(targetUserId));
     const measurement =
       await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         targetUserId,
-        date
+        date,
+        today
       );
     return measurement || null;
   } catch (error) {
