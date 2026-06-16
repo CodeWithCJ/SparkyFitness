@@ -101,7 +101,6 @@ async function getUserGoalsForRange(
   let allMeasurements = [];
 
   if (adjust) {
-    const today = todayInZone(await loadUserTimezone(userId));
     [userProfile, userPreferences] = await Promise.all([
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
@@ -109,8 +108,7 @@ async function getUserGoalsForRange(
     const [initialMeasurement, rangeMeasurements] = await Promise.all([
       measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         userId,
-        startDate,
-        today
+        startDate
       ),
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,

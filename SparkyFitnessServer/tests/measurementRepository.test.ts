@@ -22,7 +22,7 @@ describe('measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate', () 
     vi.clearAllMocks();
   });
 
-  it('passes the caller-provided max visible date into the guarded query', async () => {
+  it('returns the row when data exists on or before the requested date', async () => {
     const row = {
       id: 'measurement-1',
       user_id: 'user-1',
@@ -34,26 +34,20 @@ describe('measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate', () 
     const result =
       await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         'user-1',
-        '2026-06-12',
         '2026-06-12'
       );
 
     expect(result).toEqual(row);
-    expect(mockClient.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE $2::date <= $3::date'),
-      ['user-1', '2026-06-12', '2026-06-12']
-    );
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
 
-  it('returns null when the requested date is beyond the visible cutoff', async () => {
-    mockClient.query.mockResolvedValue({ rows: [] });
+  it('returns null when no data exists', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: null }] });
 
     const result =
       await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         'user-1',
-        '2026-06-13',
-        '2026-06-12'
+        '2026-06-13'
       );
 
     expect(result).toBeNull();
