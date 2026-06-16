@@ -923,7 +923,7 @@ function AppContent() {
           <Stack.Screen
             name="MealTypeDetail"
             component={SafeMealTypeDetail}
-            options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? 'Meal')}
+            options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? 'Meal', { headerBackTitle: 'Diary' })}
           />
           <Stack.Screen
             name="ExerciseSearch"
