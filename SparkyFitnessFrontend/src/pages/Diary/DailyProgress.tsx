@@ -383,7 +383,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                         }
                       )}
                       {bmrSource === 'external' &&
-                        ` (${t('exercise.dailyProgress.bmrSourceExternal', 'from Health App')})`}
+                        ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                     </p>
                   )}
 
@@ -476,7 +476,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     }
                   )}
                   {bmrSource === 'external' &&
-                    ` (${t('exercise.dailyProgress.bmrSourceExternal', 'from Health App')})`}
+                    ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                 </div>
               )}
             </div>
@@ -721,6 +721,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               rawManualGoal={rawManualGoal}
               adjustedManualGoal={adjustedManualGoal}
               activityMultiplier={activityMultiplier}
+              bmrSource={bmrSource}
             />
           </div>
         </div>

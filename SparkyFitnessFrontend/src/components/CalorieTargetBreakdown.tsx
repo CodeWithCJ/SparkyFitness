@@ -45,6 +45,7 @@ interface CalorieTargetBreakdownProps {
   rawManualGoal: number;
   adjustedManualGoal: number;
   activityMultiplier: number;
+  bmrSource?: string;
 }
 
 export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
@@ -68,6 +69,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   rawManualGoal,
   adjustedManualGoal,
   activityMultiplier,
+  bmrSource,
 }) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
@@ -232,18 +234,27 @@ Calculated: ${bfp.toFixed(1)}%`;
           <div className="flex items-center justify-between font-medium text-foreground/85">
             <span>1. Basal Metabolic Rate (BMR)</span>
             <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-              {bmrAlgorithm}
+              {bmrSource === 'external' ? 'Health App' : bmrAlgorithm}
             </span>
           </div>
-          <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
-            {bmrMathText()}
-          </pre>
-          <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-            <span>Resting Metabolism (RMR/BMR):</span>
-            <span className="font-semibold text-foreground">
-              {displayBmrVal} {getEnergyUnitString(energyUnit)}
-            </span>
-          </div>
+          {bmrSource === 'external' ? (
+            <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+              BMR synced from your health app (Apple Health / Health Connect).
+              No formula applied.
+            </div>
+          ) : (
+            <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+              {bmrMathText()}
+            </pre>
+          )}
+          {bmrSource !== 'external' && (
+            <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
+              <span>Resting Metabolism (RMR/BMR):</span>
+              <span className="font-semibold text-foreground">
+                {displayBmrVal} {getEnergyUnitString(energyUnit)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Step 2: Body Fat Percentage */}
