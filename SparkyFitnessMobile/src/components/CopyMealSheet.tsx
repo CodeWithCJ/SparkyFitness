@@ -92,7 +92,15 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
     const handleDateChange = useCallback(({ date }: { date: DateType }) => {
       if (!date) return;
-      setTargetDate(toLocalDateString(new Date(date as string | number | Date)));
+      // The picker hands back a dayjs object; convert via its own toDate() rather
+      // than relying on Date coercion.
+      const jsDate =
+        date instanceof Date
+          ? date
+          : typeof date === 'object' && 'toDate' in date
+            ? date.toDate()
+            : new Date(date);
+      setTargetDate(toLocalDateString(jsDate));
     }, []);
 
     const dateValue = useMemo(() => {
