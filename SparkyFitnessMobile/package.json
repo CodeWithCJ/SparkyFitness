@@ -99,7 +99,8 @@
       "./jest.setup.js"
     ],
     "testPathIgnorePatterns": [
-      "__tests__/hooks/queryTestUtils\\.ts$"
+      "__tests__/hooks/queryTestUtils\\.ts$",
+      "__tests__/screens/helpers/"
     ],
     "moduleNameMapper": {
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",

@@ -436,8 +436,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
         }),
       ],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, headerTintColor, isPending]);
+  }, [navigation, headerTintColor, isPending, handleSave]);
 
   return (
     <FormScreenChrome
@@ -609,8 +608,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
         }),
       ],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, headerTintColor, isPending]);
+  }, [navigation, headerTintColor, isPending, handleSave]);
 
   return (
     <FormScreenChrome

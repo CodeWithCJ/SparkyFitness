@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodEntryViewScreen from '../../src/screens/FoodEntryViewScreen';
 import { useMealTypes } from '../../src/hooks';
@@ -148,6 +149,7 @@ const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodEntryViewScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
     setParams: jest.fn(),
@@ -296,8 +298,8 @@ describe('FoodEntryViewScreen', () => {
 
     expect(screen.getByText('1 serving · 1 cup per serving')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Edit'));
-    fireEvent.press(screen.getByText('Done'));
+    pressAction(screen, navigation, 'Edit');
+    pressAction(screen, navigation, 'Done');
 
     expect(mockUpdateEntry).toHaveBeenCalledWith(
       expect.objectContaining({

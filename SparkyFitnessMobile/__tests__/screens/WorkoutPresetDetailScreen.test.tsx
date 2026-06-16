@@ -52,6 +52,7 @@ function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
 
 describe('WorkoutPresetDetailScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     navigate: jest.fn(),
     goBack: jest.fn(),
   } as any;

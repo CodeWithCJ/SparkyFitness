@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -56,6 +57,7 @@ const buildRoute = (paramsOverrides: Record<string, unknown> = {}) => ({
 });
 
 const navigation = {
+  setOptions: jest.fn(),
   goBack: jest.fn(),
   navigate: jest.fn(),
   setParams: jest.fn(),
@@ -100,7 +102,7 @@ describe('EditBarcodeScreen', () => {
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
       expect(mockUpdateFood).toHaveBeenCalledWith('food-1', { barcode: '012345678905' });
@@ -132,7 +134,7 @@ describe('EditBarcodeScreen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Save'));
+      pressAction(screen, navigation, 'Save');
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
@@ -201,7 +203,7 @@ describe('EditBarcodeScreen', () => {
     const screen = renderScreen({ currentBarcode: '0012345678905' });
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
     // Save is disabled because the normalized value matches; nothing happens.
     expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
     expect(mockUpdateFood).not.toHaveBeenCalled();

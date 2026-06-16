@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,9 @@ import {
   createFoodVariant,
   type CreateFoodVariantPayload,
 } from '../services/api/foodsApi';
+import {
+  createNativeHeaderTextButtonItem,
+} from '../utils/nativeHeaderItems';
 import {
   type FoodInfoItem,
   foodItemToFoodInfo,
@@ -994,11 +997,152 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const isActionPending =
     isAddPending || isAddMealPending || isSavePending || isCreateVariantPending;
 
+  // Navigate to FoodForm in adjust-nutrition mode. Shared by the inline header
+  // edit button (Android) and the native header Edit item (iOS).
+  const handleAdjustNutrition = useCallback(() => {
+    // Build selectedUnitSelection from displayValues so FoodForm's
+    // variant-sync effect uses the current displayed nutrition rather
+    // than overwriting initialValues with DB variant defaults.
+    // Spread the existing variant's metadata (source, ai_confidence,
+    // custom_nutrients, etc.) then override only the nutrition fields
+    // with displayValues so FoodForm's variant-sync effect uses the
+    // current displayed nutrition, not DB variant defaults.
+    const displayVariant: FoodUnitVariant = {
+      ...(selectedUnitSelection?.variant ?? {}),
+      id: selectedUnitSelection?.variant.id,
+      serving_size: displayValues.servingSize,
+      serving_unit: displayValues.servingUnit,
+      calories: displayValues.calories,
+      protein: displayValues.protein,
+      carbs: displayValues.carbs,
+      fat: displayValues.fat,
+      dietary_fiber: displayValues.fiber,
+      saturated_fat: displayValues.saturatedFat,
+      sodium: displayValues.sodium,
+      sugars: displayValues.sugars,
+      trans_fat: displayValues.transFat,
+      potassium: displayValues.potassium,
+      calcium: displayValues.calcium,
+      iron: displayValues.iron,
+      cholesterol: displayValues.cholesterol,
+      vitamin_a: displayValues.vitaminA,
+      vitamin_c: displayValues.vitaminC,
+    };
+    const displayUnitSelection: FoodUnitSelectionResult | undefined =
+      selectedUnitSelection
+        ? { kind: selectedUnitSelection.kind, variant: displayVariant }
+        : undefined;
+    navigation.navigate('FoodForm', {
+      mode: 'adjust-entry-nutrition',
+      returnTo: 'FoodEntryAdd',
+      returnKey: route.key,
+      foodId: isLocalFood ? activeItem.id : undefined,
+      variantId: isLocalFood ? selectedVariantId : undefined,
+      customNutrients: isLocalFood ? (selectedCustomNutrients ?? null) : undefined,
+      availableUnitVariants: selectorVariants,
+      selectedUnitSelection: displayUnitSelection,
+      initialValues: {
+        name: adjustedValues?.name || activeItem.name,
+        brand: adjustedValues?.brand ?? activeItem.brand ?? '',
+        servingSize: String(displayValues.servingSize),
+        servingUnit: displayValues.servingUnit,
+        calories: String(displayValues.calories),
+        protein: String(displayValues.protein),
+        carbs: String(displayValues.carbs),
+        fat: String(displayValues.fat),
+        fiber: toFormString(displayValues.fiber),
+        saturatedFat: toFormString(displayValues.saturatedFat),
+        sodium: toFormString(displayValues.sodium),
+        sugars: toFormString(displayValues.sugars),
+        transFat: toFormString(displayValues.transFat),
+        potassium: toFormString(displayValues.potassium),
+        calcium: toFormString(displayValues.calcium),
+        iron: toFormString(displayValues.iron),
+        cholesterol: toFormString(displayValues.cholesterol),
+        vitaminA: toFormString(displayValues.vitaminA),
+        vitaminC: toFormString(displayValues.vitaminC),
+      },
+    });
+  }, [
+    navigation,
+    route.key,
+    isLocalFood,
+    activeItem.id,
+    activeItem.name,
+    activeItem.brand,
+    selectedVariantId,
+    selectedCustomNutrients,
+    selectorVariants,
+    selectedUnitSelection,
+    adjustedValues,
+    displayValues,
+  ]);
+
+  const showHeaderActions = activeItem.source !== 'meal';
+  const showSaveExternalAction = activeItem.source === 'external';
+
+  // iOS uses the native stack header (configured in App.tsx with the food
+  // name as the title). Drive the Edit / Save actions through native header
+  // items and hide the custom in-screen header below. Android keeps the
+  // custom header.
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      title: '',
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-entry-add-cancel',
+          tintColor: textPrimary,
+          onPress: () => navigation.goBack(),
+          disabled: isActionPending,
+        }),
+      ],
+      unstable_headerRightItems: showHeaderActions
+        ? () => {
+            const items = [
+              createNativeHeaderTextButtonItem({
+                label: 'Edit',
+                identifier: 'food-entry-add-edit',
+                tintColor: textPrimary,
+                accessibilityLabel: 'Adjust nutrition',
+                disabled: isActionPending,
+                onPress: () => handleAdjustNutrition(),
+              }),
+            ];
+            if (showSaveExternalAction) {
+              items.unshift(
+                createNativeHeaderTextButtonItem({
+                  label: 'Save',
+                  identifier: 'food-entry-add-save',
+                  tintColor: textPrimary,
+                  accessibilityLabel: 'Save Food',
+                  disabled: isActionPending,
+                  onPress: () => void handleSaveExternalFood(),
+                }),
+              );
+            }
+            return items;
+          }
+        : undefined,
+    });
+  }, [
+    navigation,
+    textPrimary,
+    showHeaderActions,
+    showSaveExternalAction,
+    isActionPending,
+    handleAdjustNutrition,
+    handleSaveExternalFood,
+  ]);
+
   return (
     <View
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1008,74 +1152,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
 
-        {activeItem.source !== 'meal' && (
+        {showHeaderActions && (
           <View className="flex-row items-center ml-auto gap-4 z-10">
             <TouchableOpacity
-              onPress={() => {
-                // Build selectedUnitSelection from displayValues so FoodForm's
-                // variant-sync effect uses the current displayed nutrition rather
-                // than overwriting initialValues with DB variant defaults.
-                // Spread the existing variant's metadata (source, ai_confidence,
-                // custom_nutrients, etc.) then override only the nutrition fields
-                // with displayValues so FoodForm's variant-sync effect uses the
-                // current displayed nutrition, not DB variant defaults.
-                const displayVariant: FoodUnitVariant = {
-                  ...(selectedUnitSelection?.variant ?? {}),
-                  id: selectedUnitSelection?.variant.id,
-                  serving_size: displayValues.servingSize,
-                  serving_unit: displayValues.servingUnit,
-                  calories: displayValues.calories,
-                  protein: displayValues.protein,
-                  carbs: displayValues.carbs,
-                  fat: displayValues.fat,
-                  dietary_fiber: displayValues.fiber,
-                  saturated_fat: displayValues.saturatedFat,
-                  sodium: displayValues.sodium,
-                  sugars: displayValues.sugars,
-                  trans_fat: displayValues.transFat,
-                  potassium: displayValues.potassium,
-                  calcium: displayValues.calcium,
-                  iron: displayValues.iron,
-                  cholesterol: displayValues.cholesterol,
-                  vitamin_a: displayValues.vitaminA,
-                  vitamin_c: displayValues.vitaminC,
-                };
-                const displayUnitSelection: FoodUnitSelectionResult | undefined =
-                  selectedUnitSelection
-                    ? { kind: selectedUnitSelection.kind, variant: displayVariant }
-                    : undefined;
-                navigation.navigate('FoodForm', {
-                  mode: 'adjust-entry-nutrition',
-                  returnTo: 'FoodEntryAdd',
-                  returnKey: route.key,
-                  foodId: isLocalFood ? activeItem.id : undefined,
-                  variantId: isLocalFood ? selectedVariantId : undefined,
-                  customNutrients: isLocalFood ? (selectedCustomNutrients ?? null) : undefined,
-                  availableUnitVariants: selectorVariants,
-                  selectedUnitSelection: displayUnitSelection,
-                  initialValues: {
-                    name: adjustedValues?.name || activeItem.name,
-                    brand: adjustedValues?.brand ?? activeItem.brand ?? '',
-                    servingSize: String(displayValues.servingSize),
-                    servingUnit: displayValues.servingUnit,
-                    calories: String(displayValues.calories),
-                    protein: String(displayValues.protein),
-                    carbs: String(displayValues.carbs),
-                    fat: String(displayValues.fat),
-                    fiber: toFormString(displayValues.fiber),
-                    saturatedFat: toFormString(displayValues.saturatedFat),
-                    sodium: toFormString(displayValues.sodium),
-                    sugars: toFormString(displayValues.sugars),
-                    transFat: toFormString(displayValues.transFat),
-                    potassium: toFormString(displayValues.potassium),
-                    calcium: toFormString(displayValues.calcium),
-                    iron: toFormString(displayValues.iron),
-                    cholesterol: toFormString(displayValues.cholesterol),
-                    vitaminA: toFormString(displayValues.vitaminA),
-                    vitaminC: toFormString(displayValues.vitaminC),
-                  },
-                });
-              }}
+              onPress={() => handleAdjustNutrition()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
               disabled={isActionPending}
@@ -1083,7 +1163,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               <Icon name="pencil" size={20} color={accentColor} />
             </TouchableOpacity>
 
-            {activeItem.source === 'external' && (
+            {showSaveExternalAction && (
               <TouchableOpacity
                 onPress={() => {
                   void handleSaveExternalFood();
@@ -1108,6 +1188,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           </View>
         )}
       </View>
+      )}
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-safe-or-4 gap-4">
         <FoodNutritionSummary

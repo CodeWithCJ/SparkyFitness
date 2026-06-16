@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EditLoggedMealScreen from '../../src/screens/EditLoggedMealScreen';
 import { useFoodEntryMealDetails } from '../../src/hooks/useFoodEntryMealDetails';
@@ -231,6 +232,7 @@ const buildIngredient = (overrides: Partial<MealIngredientDraft> = {}): MealIngr
 
 describe('EditLoggedMealScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
     push: jest.fn(),
@@ -297,7 +299,7 @@ describe('EditLoggedMealScreen', () => {
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
     fireEvent.press(screen.getByTestId('mealtype-mt-lunch'));
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     expect(mockUpdateMeal).toHaveBeenCalledTimes(1);
     const payload = mockUpdateMeal.mock.calls[0][0];
@@ -323,7 +325,7 @@ describe('EditLoggedMealScreen', () => {
 
     const screen = renderScreen();
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.meal_template_id).toBeNull();
@@ -339,7 +341,7 @@ describe('EditLoggedMealScreen', () => {
 
   it('disables Save when nothing has changed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 
@@ -359,7 +361,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(2);
@@ -390,7 +392,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(1);
@@ -410,7 +412,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods[1]).toEqual(expect.objectContaining({ food_id: 'food-9', quantity: 100 }));
@@ -424,7 +426,7 @@ describe('EditLoggedMealScreen', () => {
 
     expect(mockDeleteEntry).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(1);
     expect(payload.foods[0].food_id).toBe('food-1');
@@ -437,7 +439,7 @@ describe('EditLoggedMealScreen', () => {
     expect(mockDeleteEntry).not.toHaveBeenCalled();
     expect(mockConfirmAndDelete).not.toHaveBeenCalled();
     // An empty meal cannot be saved.
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 

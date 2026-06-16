@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
@@ -221,6 +222,7 @@ describe('ExerciseFormScreen — buildEditPayload', () => {
 
 describe('ExerciseFormScreen — create mode', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     replace: jest.fn(),
     dispatch: jest.fn(),
@@ -251,7 +253,7 @@ describe('ExerciseFormScreen — create mode', () => {
       </SafeAreaProvider>,
     );
 
-    fireEvent.press(screen.getByText('Save'));
+    pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
@@ -263,6 +265,7 @@ describe('ExerciseFormScreen — create mode', () => {
 
 describe('ExerciseFormScreen — edit mode', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     replace: jest.fn(),
     dispatch: jest.fn(),
@@ -300,7 +303,7 @@ describe('ExerciseFormScreen — edit mode', () => {
       </SafeAreaProvider>,
     );
 
-    fireEvent.press(screen.getByText('Save Changes'));
+    pressAction(screen, navigation, 'Save Changes');
 
     await waitFor(() => {
       expect(navigation.goBack).toHaveBeenCalled();
@@ -329,7 +332,7 @@ describe('ExerciseFormScreen — edit mode', () => {
     const nameInput = screen.getByPlaceholderText('e.g. Bulgarian Split Squat');
     fireEvent.changeText(nameInput, 'Bench Press 2');
 
-    fireEvent.press(screen.getByText('Save Changes'));
+    pressAction(screen, navigation, 'Save Changes');
 
     await waitFor(() => {
       expect(updateExerciseAsync).toHaveBeenCalledWith({

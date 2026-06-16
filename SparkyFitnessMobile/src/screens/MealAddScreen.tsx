@@ -412,8 +412,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         }),
       ],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, headerTintColor, isSaving, isEditMode, saveLabel]);
+  }, [navigation, headerTintColor, isSaving, isEditMode, saveLabel, handleSaveMeal]);
 
   const renderHeader = () => Platform.OS === 'ios' ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
