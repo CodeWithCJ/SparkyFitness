@@ -80,7 +80,7 @@ function computeAdaptiveTdeeFromData(
     nutritionData,
   } = data;
   const calculationDate = startOfDay(parseISO(calculationDateStr));
-  const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
+  const startDate = subDays(calculationDate, 90); // 90 days to allow for 7-day smoothing startup and tracking age calculation
 
   // Fallback Logic Prep
   const weightKg = parseFloat(String(latestMeasurement?.weight ?? '')) || 70;
@@ -278,16 +278,48 @@ function computeAdaptiveTdeeFromData(
   // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * 7700)
   // human body tissue is approx 7700 kcal per kg
   let adaptiveTdee = avgDailyIntake - dailyWeightChange * 7700;
-  // Safety Capping: +/- 1000 kcal from BMR-based fallback
-  const maxTdee = fallbackTdee + 1000;
-  const minTdee = Math.max(1200, fallbackTdee - 1000);
+  // Safety Capping: +/- 500 kcal from BMR-based fallback
+  const maxTdee = fallbackTdee + 500;
+  const minTdee = Math.max(1200, fallbackTdee - 500);
   adaptiveTdee = Math.min(Math.max(adaptiveTdee, minTdee), maxTdee);
 
-  const confidence = getConfidence(
+  // Find tracking age of weight logging (weightEntries is sorted by date ascending)
+  let trackingAgeWeeks = 0;
+  if (weightEntries.length > 0) {
+    const firstWeightDate = new Date(weightEntries[0]!.entry_date);
+    const trackingAgeDays = differenceInDays(calculationDate, firstWeightDate);
+    trackingAgeWeeks = trackingAgeDays / 7;
+  }
+
+  // Calculate maximum consecutive weight gap in the 28-day calculation window
+  let maxConsecutiveGap = 0;
+  let currentGap = 0;
+  for (const day of calculationWindow) {
+    if (day.actualWeight === null) {
+      currentGap++;
+      if (currentGap > maxConsecutiveGap) {
+        maxConsecutiveGap = currentGap;
+      }
+    } else {
+      currentGap = 0;
+    }
+  }
+
+  let confidence = getConfidence(
     filteredCalories.length,
     weightEntries.length,
     dayDiff
   );
+
+  // Downgrade confidence for recent trackers (tracking age < 6 weeks)
+  if (trackingAgeWeeks < 6) {
+    confidence = confidence === 'HIGH' ? 'MEDIUM' : 'LOW';
+  }
+
+  // Downgrade confidence for multi-day weight gaps (>= 3 consecutive days) in the calculation window
+  if (maxConsecutiveGap >= 3) {
+    confidence = confidence === 'HIGH' ? 'MEDIUM' : 'LOW';
+  }
 
   return {
     tdee: Math.round(adaptiveTdee),
@@ -316,7 +348,7 @@ async function calculateAdaptiveTdee(
     return cachedResult;
   }
   try {
-    const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
+    const startDate = subDays(calculationDate, 90); // 90 days to allow for 7-day smoothing startup and tracking age calculation
     const startDateStr = format(startDate, 'yyyy-MM-dd');
     const endDateStr = format(calculationDate, 'yyyy-MM-dd');
     // Fetch all necessary data in parallel
@@ -393,7 +425,7 @@ async function calculateAdaptiveTdeeRange(
 
   try {
     const earliestCalcDate = startCalculationDate;
-    const fetchStartDate = subDays(earliestCalcDate, 35);
+    const fetchStartDate = subDays(earliestCalcDate, 90);
     const fetchStartDateStr = format(fetchStartDate, 'yyyy-MM-dd');
 
     const [
