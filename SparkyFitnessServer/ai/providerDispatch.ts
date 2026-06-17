@@ -82,6 +82,22 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const DEFAULT_SCHEMA_NAME = 'structured_output';
 const MAX_DETAIL_BODY_CHARS = 500;
 
+const MAX_FETCH_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 2_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Gemini embeds the wait time in the error body: "Please retry in 11.69562819s"
+function parseRetryAfterMs(body: string): number | null {
+  const match = body.match(/retry in (\d+(?:\.\d+)?)s/i);
+  if (match) {
+    return Math.ceil(parseFloat(match[1]) * 1000) + 500;
+  }
+  return null;
+}
+
 type ProviderFamily = 'google' | 'openai' | 'anthropic' | 'ollama';
 
 // Providers whose vision APIs reject HEIC/HEIF (only Gemini accepts them).
@@ -635,28 +651,47 @@ async function performFetch(
   built: BuiltRequest,
   timeoutMs: number
 ): Promise<HttpOutcome> {
-  let response: Response;
-  try {
-    response = await fetch(built.url, {
-      method: 'POST',
-      headers: built.headers,
-      body: JSON.stringify(built.body),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (error) {
-    const name = (error as { name?: string } | null)?.name;
-    if (name === 'TimeoutError' || name === 'AbortError') {
-      return { error: timeoutError() };
+  let response: Response | undefined;
+
+  for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt++) {
+    try {
+      response = await fetch(built.url, {
+        method: 'POST',
+        headers: built.headers,
+        body: JSON.stringify(built.body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      const name = (error as { name?: string } | null)?.name;
+      if (name === 'TimeoutError' || name === 'AbortError') {
+        return { error: timeoutError() };
+      }
+      return {
+        error: {
+          ok: false,
+          category: 'upstream_error',
+          detail: `Failed to reach the AI service: ${(error as Error)?.message ?? 'unknown error'}`,
+        },
+      };
     }
-    return {
-      error: {
-        ok: false,
-        category: 'upstream_error',
-        detail: `Failed to reach the AI service: ${(error as Error)?.message ?? 'unknown error'}`,
-      },
-    };
+
+    if (response.status === 429 && attempt < MAX_FETCH_RETRIES) {
+      let body = '';
+      try {
+        body = await response.text();
+      } catch {
+        // best-effort
+      }
+      await sleep(
+        parseRetryAfterMs(body) ?? INITIAL_BACKOFF_MS * Math.pow(2, attempt)
+      );
+      continue;
+    }
+
+    break;
   }
-  return readResponse(response);
+
+  return readResponse(response!);
 }
 
 async function performOllama(
