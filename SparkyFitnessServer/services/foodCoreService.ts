@@ -491,6 +491,11 @@ async function deleteFoodVariant(authenticatedUserId: any, variantId: any) {
     if (!foodOwnerId) {
       throw new Error('Associated food not found.');
     }
+    if (foodOwnerId !== authenticatedUserId) {
+      throw new Error(
+        'Forbidden: You do not have permission to delete this food variant.'
+      );
+    }
     const success = await foodRepository.deleteFoodVariant(
       variantId,
       authenticatedUserId
