@@ -1,11 +1,4 @@
-import {
-  subDays,
-  format,
-  startOfDay,
-  eachDayOfInterval,
-  parseISO,
-  differenceInDays,
-} from 'date-fns';
+import { subDays, format, eachDayOfInterval, differenceInDays } from 'date-fns';
 import NodeCache from 'node-cache';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
@@ -14,7 +7,7 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, dayToPickerDate } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
   date_of_birth?: string | null;
@@ -79,7 +72,7 @@ function computeAdaptiveTdeeFromData(
     checkInMeasurements,
     nutritionData,
   } = data;
-  const calculationDate = startOfDay(parseISO(calculationDateStr));
+  const calculationDate = dayToPickerDate(calculationDateStr);
   const startDate = subDays(calculationDate, 90); // 90 days to allow for 7-day smoothing startup and tracking age calculation
 
   // Fallback Logic Prep
@@ -286,7 +279,9 @@ function computeAdaptiveTdeeFromData(
   // Find tracking age of weight logging (weightEntries is sorted by date ascending)
   let trackingAgeWeeks = 0;
   if (weightEntries.length > 0) {
-    const firstWeightDate = new Date(weightEntries[0]!.entry_date);
+    const firstWeightDate = dayToPickerDate(
+      String(weightEntries[0]!.entry_date)
+    );
     const trackingAgeDays = differenceInDays(calculationDate, firstWeightDate);
     trackingAgeWeeks = trackingAgeDays / 7;
   }
@@ -341,7 +336,7 @@ async function calculateAdaptiveTdee(
     const tz = await loadUserTimezone(userId);
     calculationDateStr = todayInZone(tz);
   }
-  const calculationDate = startOfDay(parseISO(calculationDateStr));
+  const calculationDate = dayToPickerDate(calculationDateStr);
   const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
   const cachedResult = tdeeCache.get(cacheKey) as AdaptiveTdeeResult;
   if (cachedResult) {
@@ -398,8 +393,8 @@ async function calculateAdaptiveTdeeRange(
   startDateStr: string,
   endDateStr: string
 ): Promise<Record<string, AdaptiveTdeeResult>> {
-  const startCalculationDate = startOfDay(parseISO(startDateStr));
-  const endCalculationDate = startOfDay(parseISO(endDateStr));
+  const startCalculationDate = dayToPickerDate(startDateStr);
+  const endCalculationDate = dayToPickerDate(endDateStr);
 
   const results: Record<string, AdaptiveTdeeResult> = {};
   const days = eachDayOfInterval({
