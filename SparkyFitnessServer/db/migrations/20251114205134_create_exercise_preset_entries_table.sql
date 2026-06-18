@@ -2,7 +2,7 @@
 
 -- Create exercise_preset_entries table
 CREATE TABLE exercise_preset_entries (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     workout_preset_id INTEGER REFERENCES workout_presets(id) ON DELETE SET NULL, -- Nullable FK to original preset
     name VARCHAR(255) NOT NULL,

@@ -1,5 +1,5 @@
 CREATE TABLE sleep_entries (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL,
     bedtime TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -18,7 +18,7 @@ CREATE INDEX idx_sleep_entries_entry_date ON sleep_entries(entry_date);
 
 
 CREATE TABLE sleep_entry_stages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entry_id UUID NOT NULL REFERENCES sleep_entries(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- Added user_id
     stage_type VARCHAR(50) NOT NULL,
