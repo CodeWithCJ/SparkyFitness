@@ -1,11 +1,8 @@
 import { getClient } from '../db/poolManager.js';
 async function checkFamilyAccessPermission(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  familyUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ownerUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  requiredPermissions: any
+  familyUserId: string,
+  ownerUserId: string,
+  requiredPermissions: string | string[]
 ) {
   const client = await getClient(familyUserId); // User-specific operation
   try {
@@ -32,8 +29,30 @@ async function checkFamilyAccessPermission(
     client.release();
   }
 }
+async function checkCopyPermissions(familyUserId: string, ownerUserId: string) {
+  const client = await getClient(familyUserId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT 1
+       FROM family_access
+       WHERE family_user_id = $1
+         AND owner_user_id = $2
+         AND is_active = TRUE
+         AND (access_end_date IS NULL OR access_end_date > NOW())
+         AND (
+           ((access_permissions->>'can_manage_diary')::boolean = TRUE OR (access_permissions->>'can manage diary')::boolean = TRUE)
+           AND
+           ((access_permissions->>'can_view_food_library')::boolean = TRUE OR (access_permissions->>'can view food library')::boolean = TRUE OR (access_permissions->>'food_list')::boolean = TRUE)
+         )`,
+      [familyUserId, ownerUserId]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFamilyAccessEntriesByOwner(ownerUserId: any) {
+async function getFamilyAccessEntriesByOwner(ownerUserId: string) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
@@ -54,7 +73,7 @@ async function getFamilyAccessEntriesByOwner(ownerUserId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFamilyAccessEntriesByUserId(userId: any) {
+async function getFamilyAccessEntriesByUserId(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -76,18 +95,12 @@ async function getFamilyAccessEntriesByUserId(userId: any) {
   }
 }
 async function createFamilyAccessEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ownerUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  familyUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  familyEmail: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessPermissions: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessEndDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  status: any
+  ownerUserId: string,
+  familyUserId: string,
+  familyEmail: string,
+  accessPermissions: Permissions,
+  accessEndDate: string | null,
+  status: string
 ) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
@@ -109,18 +122,12 @@ async function createFamilyAccessEntry(
   }
 }
 async function updateFamilyAccessEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ownerUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessPermissions: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessEndDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  isActive: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  status: any
+  id: string,
+  ownerUserId: string,
+  accessPermissions: Permissions,
+  accessEndDate: string | null,
+  isActive: boolean,
+  status: string
 ) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
@@ -141,7 +148,7 @@ async function updateFamilyAccessEntry(
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFamilyAccessEntry(id: any, ownerUserId: any) {
+async function deleteFamilyAccessEntry(id: string, ownerUserId: string) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
     const result = await client.query(
@@ -154,6 +161,7 @@ async function deleteFamilyAccessEntry(id: any, ownerUserId: any) {
   }
 }
 export { checkFamilyAccessPermission };
+export { checkCopyPermissions };
 export { getFamilyAccessEntriesByOwner };
 export { getFamilyAccessEntriesByUserId };
 export { createFamilyAccessEntry };
@@ -161,6 +169,7 @@ export { updateFamilyAccessEntry };
 export { deleteFamilyAccessEntry };
 export default {
   checkFamilyAccessPermission,
+  checkCopyPermissions,
   getFamilyAccessEntriesByOwner,
   getFamilyAccessEntriesByUserId,
   createFamilyAccessEntry,

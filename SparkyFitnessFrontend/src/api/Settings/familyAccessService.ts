@@ -22,14 +22,17 @@ export const loadFamilyAccess = async (): Promise<FamilyAccess[]> => {
     method: 'GET',
     suppress404Toast: true,
   });
+  console.log('Raw family access data', data);
   const transformedData: FamilyAccess[] = (data || []).map(
     (item: FamilyAccess) => ({
       id: item.id,
       owner_user_id: item.owner_user_id,
       owner_email: item.owner_email, // Map owner_email
+      owner_full_name: item.owner_full_name || null, // Map owner_full_name
       family_email: item.family_email,
       family_user_id: item.family_user_id,
       family_user_email: item.family_user_email, // Map family_user_email
+      family_full_name: item.family_full_name || null, // Map family_full_name
       access_permissions:
         typeof item.access_permissions === 'object'
           ? {
