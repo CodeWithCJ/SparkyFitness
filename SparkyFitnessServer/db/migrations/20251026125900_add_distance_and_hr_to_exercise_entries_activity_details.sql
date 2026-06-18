@@ -7,7 +7,7 @@ ALTER TABLE user_preferences
 ADD COLUMN default_distance_unit VARCHAR(20) NOT NULL DEFAULT 'km';
 
 CREATE TABLE exercise_entry_activity_details (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     exercise_entry_id UUID NOT NULL REFERENCES exercise_entries(id) ON DELETE CASCADE,
     provider_name TEXT NOT NULL,
     detail_type TEXT NOT NULL,

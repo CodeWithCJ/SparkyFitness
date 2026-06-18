@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useFamilyAccess } from '@/hooks/Settings/useFamilyAccess';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import {
@@ -53,6 +54,7 @@ const CopyFamilyEntryDialog = ({
 }: CopyFamilyEntryDialogProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { accessibleUsers } = useActiveUser();
   const { formatDate, formatDateInUserTimezone, loggingLevel } =
     usePreferences();
 
@@ -82,7 +84,7 @@ const CopyFamilyEntryDialog = ({
   const eligibleFamily = familyAccess.filter(
     (access) =>
       user &&
-      access.family_user_id === user.id && // Granted to active user
+      access.family_user_id === user.activeUserId && // Granted to active user
       access.is_active && // Share is active
       access.status === 'active' && // Rule approved
       access.access_permissions.can_manage_diary && // Manage permission check
@@ -93,16 +95,11 @@ const CopyFamilyEntryDialog = ({
   //console.log('[CopyFamilyEntryDialog] familyAccess:', familyAccess);
   //console.log('[CopyFamilyEntryDialog] eligibleFamily:', eligibleFamily);
 
-  // Auto-select first family member if none selected and data has loaded
-  if (eligibleFamily.length > 0 && !selectedFamilyMember) {
-    const firstMember = eligibleFamily[0];
-    if (firstMember) {
-      setSelectedFamilyMember(firstMember.owner_user_id);
-    }
-  }
+  const activeFamilyMember =
+    selectedFamilyMember || eligibleFamily[0]?.owner_user_id || '';
 
   const handleCopyClick = async () => {
-    if (!selectedFamilyMember) {
+    if (!activeFamilyMember) {
       toast({
         title: t('common.error', 'Error'),
         description: t(
@@ -139,10 +136,10 @@ const CopyFamilyEntryDialog = ({
       if (activeTab === 'from') {
         info(
           loggingLevel,
-          `Copying FROM family member ${selectedFamilyMember} (${formattedSourceDate} ${sourceMealTypeState}) to target (${formattedTargetDate} ${targetMealTypeState})`
+          `Copying FROM family member ${activeFamilyMember} (${formattedSourceDate} ${sourceMealTypeState}) to target (${formattedTargetDate} ${targetMealTypeState})`
         );
         await copyFromFamily({
-          familyUserId: selectedFamilyMember,
+          familyUserId: activeFamilyMember,
           sourceDate: formattedSourceDate,
           sourceMealType: sourceMealTypeState,
           targetDate: formattedTargetDate,
@@ -158,10 +155,10 @@ const CopyFamilyEntryDialog = ({
       } else {
         info(
           loggingLevel,
-          `Copying TO family member ${selectedFamilyMember} (${formattedTargetDate} ${targetMealTypeState}) from source (${formattedSourceDate} ${sourceMealTypeState})`
+          `Copying TO family member ${activeFamilyMember} (${formattedTargetDate} ${targetMealTypeState}) from source (${formattedSourceDate} ${sourceMealTypeState})`
         );
         await copyToFamily({
-          familyUserId: selectedFamilyMember,
+          familyUserId: activeFamilyMember,
           sourceDate: formattedSourceDate,
           sourceMealType: sourceMealTypeState,
           targetDate: formattedTargetDate,
@@ -247,7 +244,7 @@ const CopyFamilyEntryDialog = ({
                   {t('diary.copyFamilyMemberLabel', 'Family Member')}
                 </Label>
                 <Select
-                  value={selectedFamilyMember}
+                  value={activeFamilyMember}
                   onValueChange={setSelectedFamilyMember}
                 >
                   <SelectTrigger className="col-span-3">
@@ -259,11 +256,24 @@ const CopyFamilyEntryDialog = ({
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {eligibleFamily.map((access) => (
-                      <SelectItem key={access.id} value={access.owner_user_id}>
-                        {access.owner_full_name || access.owner_email}
-                      </SelectItem>
-                    ))}
+                    {eligibleFamily.map((access) => {
+                      const match = accessibleUsers.find(
+                        (u) => u.user_id === access.owner_user_id
+                      );
+                      const label =
+                        match?.full_name ||
+                        access.owner_full_name ||
+                        match?.email ||
+                        access.owner_email;
+                      return (
+                        <SelectItem
+                          key={access.id}
+                          value={access.owner_user_id}
+                        >
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -417,7 +427,7 @@ const CopyFamilyEntryDialog = ({
               disabled={
                 isCopyingFrom ||
                 isCopyingTo ||
-                !selectedFamilyMember ||
+                !activeFamilyMember ||
                 !sourceDate ||
                 !targetDate
               }

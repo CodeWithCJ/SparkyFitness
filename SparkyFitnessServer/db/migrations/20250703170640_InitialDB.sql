@@ -15,9 +15,11 @@ SET row_security = off;
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 -- Extensions
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- NOTE: pg_stat_statements, pgcrypto, and uuid-ossp have been intentionally
+-- removed. gen_random_uuid() is a PostgreSQL built-in since PG 13 and does
+-- not require any extension. This allows the app to run without superuser
+-- privileges on external/managed PostgreSQL clusters (e.g. CloudNativePG,
+-- Amazon RDS, Azure Flexible Server).
 
 -- Schemas
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -126,7 +128,7 @@ CREATE TABLE IF NOT EXISTS "public"."family_access" (
 );
 
 CREATE TABLE IF NOT EXISTS "public"."food_data_providers" (
-    "id" "uuid" DEFAULT uuid_generate_v4() NOT NULL,
+    "id" "uuid" DEFAULT gen_random_uuid() NOT NULL,
     "user_id" "uuid" NOT NULL,
     "provider_name" "text" NOT NULL,
     "provider_type" "text" NOT NULL,
