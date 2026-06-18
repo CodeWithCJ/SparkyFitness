@@ -455,7 +455,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             {!hideManualInput && (
               <button
                 onClick={() => {
-                  setShowManualInput((prev) => !prev);
+                  setShowManualInput((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setRefreshTrigger((r) => r + 1);
+                    }
+                    return next;
+                  });
                   engineInstance?.stop();
                 }}
                 className="bg-black/60 hover:bg-black/80 text-white pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10"
