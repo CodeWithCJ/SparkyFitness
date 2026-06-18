@@ -59,13 +59,13 @@ const FamilyAccessManager = () => {
     useToggleFamilyAccessMutation();
 
   const rulesICreated = familyAccess.filter(
-    (access) => user && access.owner_user_id === user.id
+    (access) => user && access.owner_user_id === user.activeUserId
   );
   const rulesGivenToMe = familyAccess.filter(
     (access) =>
       user &&
-      access.family_user_id === user.id &&
-      access.owner_user_id !== user.id
+      access.family_user_id === user.activeUserId &&
+      access.owner_user_id !== user.activeUserId
   );
 
   const resetForm = () => {
@@ -143,7 +143,7 @@ const FamilyAccessManager = () => {
       if (!editingAccess && foundUserId) {
         const existingAccess = familyAccess.find(
           (access) =>
-            access.owner_user_id === user.id &&
+            access.owner_user_id === user.activeUserId &&
             access.family_user_id === foundUserId
         );
         if (existingAccess) {
@@ -163,7 +163,7 @@ const FamilyAccessManager = () => {
       const status = foundUserId ? 'active' : 'pending';
 
       const accessData = {
-        owner_user_id: user.id,
+        owner_user_id: user.activeUserId,
         family_user_id: familyUserId,
         family_email: formData.family_email,
         access_permissions: {
