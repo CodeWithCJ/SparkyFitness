@@ -683,9 +683,18 @@ class TandoorService {
       food: {
         name: tandoorRecipe.name,
         brand: (() => {
-          if (!tandoorRecipe.source_url) return null;
+          const s = tandoorRecipe.source_url;
+          if (!s || typeof s !== 'string') return null;
+          const trimmed = s.trim();
+          if (
+            !trimmed ||
+            trimmed.toLowerCase() === 'null' ||
+            trimmed.toLowerCase() === 'undefined'
+          )
+            return null;
           try {
-            return new URL(tandoorRecipe.source_url).hostname;
+            const u = new URL(trimmed);
+            return u.hostname || null;
           } catch {
             return null;
           }
