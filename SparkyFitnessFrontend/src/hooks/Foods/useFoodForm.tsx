@@ -10,6 +10,7 @@ import {
   foodVariantsOptions,
   useSaveFoodMutation,
 } from '@/hooks/Foods/useFoodVariants';
+import { searchBarcodeV2Options } from '@/hooks/Foods/useFoodsV2';
 import { isUUID, deepClone } from '@/utils/foodSearch';
 import { error } from '@/utils/logging';
 import {
@@ -352,10 +353,14 @@ export function useCustomFoodForm({
   const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [savedFoodResult, setSavedFoodResult] = useState<Food | null>(null);
+  const [showBarcodeConflictConfirmation, setShowBarcodeConflictConfirmation] =
+    useState(false);
+  const [barcodeConflictFoodName, setBarcodeConflictFoodName] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
     is_quick_food: false,
+    barcode: '',
   });
 
   const initializeVariantState = useCallback(
@@ -382,7 +387,7 @@ export function useCustomFoodForm({
   );
 
   const resetForm = useCallback(() => {
-    setFormData({ name: '', brand: '', is_quick_food: false });
+    setFormData({ name: '', brand: '', is_quick_food: false, barcode: '' });
     const defaultVariant = createDefaultFormVariant(customNutrients);
     const grouped = groupEquivalentVariants([defaultVariant]);
     initializeVariantState(grouped, {
@@ -469,6 +474,7 @@ export function useCustomFoodForm({
         name: food.name || '',
         brand: food.brand || '',
         is_quick_food: food.is_quick_food || false,
+        barcode: food.barcode || '',
       });
 
       if (food.variants && food.variants.length > 0) {
@@ -490,7 +496,7 @@ export function useCustomFoodForm({
         loadExistingVariants();
       }
     } else if (initialVariants && initialVariants.length > 0) {
-      setFormData({ name: '', brand: '', is_quick_food: false });
+      setFormData({ name: '', brand: '', is_quick_food: false, barcode: '' });
       const mapped = initialVariants.map((variant) =>
         foodVariantToFormVariant({
           ...variant,
@@ -1025,8 +1031,19 @@ export function useCustomFoodForm({
       return false;
     }
 
+    const barcode = formData.barcode ? formData.barcode.trim() : '';
+    const BARCODE_REGEX = /^\d{8,14}$/;
+    if (barcode && !BARCODE_REGEX.test(barcode)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Barcode must be 8-14 digits.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     return true;
-  }, [variants]);
+  }, [variants, formData.barcode]);
 
   const persistFood = useCallback(async () => {
     if (!user) return;
@@ -1039,7 +1056,7 @@ export function useCustomFoodForm({
         brand: formData.brand,
         is_quick_food: formData.is_quick_food,
         is_custom: true,
-        barcode: food?.barcode,
+        barcode: formData.barcode.trim() || null,
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
       };
@@ -1084,11 +1101,36 @@ export function useCustomFoodForm({
     }
   }, [food, formData, onSave, resetForm, saveFood, user, variants]);
 
+  const handleBarcodeConflictConfirm = async () => {
+    setShowBarcodeConflictConfirmation(false);
+    await persistFood();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateBeforeSave()) {
       return;
+    }
+
+    const barcode = formData.barcode ? formData.barcode.trim() : '';
+    if (barcode) {
+      try {
+        const lookup = await queryClient.fetchQuery(
+          searchBarcodeV2Options(barcode)
+        );
+        if (
+          lookup?.source === 'local' &&
+          lookup?.food &&
+          lookup?.food?.id !== food?.id
+        ) {
+          setBarcodeConflictFoodName(lookup.food.name || 'another food');
+          setShowBarcodeConflictConfirmation(true);
+          return;
+        }
+      } catch (err) {
+        console.error('Barcode conflict check failed:', err);
+      }
     }
 
     await persistFood();
@@ -1147,5 +1189,9 @@ export function useCustomFoodForm({
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
+    showBarcodeConflictConfirmation,
+    setShowBarcodeConflictConfirmation,
+    barcodeConflictFoodName,
+    handleBarcodeConflictConfirm,
   };
 }

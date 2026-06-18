@@ -26,9 +26,11 @@ interface BarcodeScannerDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onBarcodeDetected: (barcode: string) => void;
-  selectedProviderId: string | null;
-  onProviderChange: (providerId: string) => void;
-  providers: DataProvider[];
+  selectedProviderId?: string | null;
+  onProviderChange?: (providerId: string) => void;
+  providers?: DataProvider[];
+  hideProvider?: boolean;
+  hideManualInput?: boolean;
 }
 
 export const BarcodeScannerDialog = ({
@@ -37,7 +39,9 @@ export const BarcodeScannerDialog = ({
   onBarcodeDetected,
   selectedProviderId,
   onProviderChange,
-  providers,
+  providers = [],
+  hideProvider = false,
+  hideManualInput = false,
 }: BarcodeScannerDialogProps) => {
   const { t } = useTranslation();
 
@@ -63,40 +67,42 @@ export const BarcodeScannerDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4 p-2 bg-muted/50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">
-              {t('enhancedFoodSearch.provider', 'Data Provider')}:
-            </span>
-          </div>
-          <Select
-            value={selectedProviderId || ''}
-            onValueChange={onProviderChange}
-          >
-            <SelectTrigger className="w-full sm:w-[200px] bg-background">
-              <SelectValue
-                placeholder={t(
-                  'enhancedFoodSearch.selectBarcodeProvider',
-                  'Select Provider'
-                )}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {barcodeProviders.length > 0 ? (
-                barcodeProviders.map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
-                    {provider.provider_name}
+        {!hideProvider && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4 p-2 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {t('enhancedFoodSearch.provider', 'Data Provider')}:
+              </span>
+            </div>
+            <Select
+              value={selectedProviderId || ''}
+              onValueChange={onProviderChange}
+            >
+              <SelectTrigger className="w-full sm:w-[200px] bg-background">
+                <SelectValue
+                  placeholder={t(
+                    'enhancedFoodSearch.selectBarcodeProvider',
+                    'Select Provider'
+                  )}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {barcodeProviders.length > 0 ? (
+                  barcodeProviders.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.id}>
+                      {provider.provider_name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>
+                    No active providers found
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" disabled>
-                  No active providers found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <Suspense fallback={<div>Loading camera module...</div>}>
           <BarcodeScanner
@@ -104,6 +110,7 @@ export const BarcodeScannerDialog = ({
             onClose={() => onOpenChange(false)}
             isActive={isOpen}
             cameraFacing="back"
+            hideManualInput={hideManualInput}
           />
         </Suspense>
       </DialogContent>
