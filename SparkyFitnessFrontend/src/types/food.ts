@@ -49,7 +49,7 @@ export interface Food {
   is_custom: boolean;
   user_id?: string;
   shared_with_public?: boolean;
-  barcode?: string;
+  barcode?: string | null;
   provider_external_id?: string;
   provider_type?:
     | 'openfoodfacts'
