@@ -1056,7 +1056,7 @@ export function useCustomFoodForm({
         brand: formData.brand,
         is_quick_food: formData.is_quick_food,
         is_custom: true,
-        barcode: formData.barcode ? formData.barcode.trim() : undefined,
+        barcode: formData.barcode.trim() || null,
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
       };
