@@ -12,6 +12,7 @@ import FoodUnitSelector from '@/components/FoodUnitSelector';
 import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
 import ConvertToMealDialog from '@/pages/Diary/ConvertToMealDialog';
 import EditMealFoodEntryDialog from './EditMealFoodEntryDialog';
+import CopyFamilyEntryDialog from '@/pages/Diary/CopyFamilyEntryDialog';
 import LogMealDialog from '@/pages/Diary/LogMealDialog';
 import { debug, info, error } from '@/utils/logging';
 import {
@@ -69,6 +70,9 @@ const Diary = () => {
   const [isConvertToMealDialogOpen, setIsConvertToMealDialogOpen] =
     useState(false);
   const [convertToMealSourceMealType, setConvertToMealSourceMealType] =
+    useState<string>('');
+  const [isCopyFamilyDialogOpen, setIsCopyFamilyDialogOpen] = useState(false);
+  const [copyFamilySourceMealType, setCopyFamilySourceMealType] =
     useState<string>('');
 
   const [selectedMealType, setSelectedMealType] = useState<string>('');
@@ -143,6 +147,12 @@ const Diary = () => {
     setCopySourceMealType(mealType);
     setIsCopyDialogOpen(true);
     debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
+  };
+
+  const handleCopyFamilyClick = (mealType: string) => {
+    setCopyFamilySourceMealType(mealType);
+    setIsCopyFamilyDialogOpen(true);
+    debug(loggingLevel, 'Opening family copy dialog for meal type:', mealType);
   };
 
   const handleCopyFoodEntries = async (
@@ -342,6 +352,7 @@ const Diary = () => {
                   }
                   getEntryNutrition={getEntryNutrition}
                   onCopyClick={handleCopyClick}
+                  onCopyFamilyClick={handleCopyFamilyClick}
                   onConvertToMealClick={handleConvertToMealClick}
                   energyUnit={energyUnit}
                   convertEnergy={convertEnergy}
@@ -422,6 +433,16 @@ const Diary = () => {
           onClose={() => setIsConvertToMealDialogOpen(false)}
           selectedDate={selectedDate}
           mealType={convertToMealSourceMealType}
+        />
+      )}
+
+      {/* Copy Family Entry Dialog */}
+      {isCopyFamilyDialogOpen && (
+        <CopyFamilyEntryDialog
+          isOpen={isCopyFamilyDialogOpen}
+          onClose={() => setIsCopyFamilyDialogOpen(false)}
+          sourceMealType={copyFamilySourceMealType}
+          currentDate={selectedDate}
         />
       )}
     </div>

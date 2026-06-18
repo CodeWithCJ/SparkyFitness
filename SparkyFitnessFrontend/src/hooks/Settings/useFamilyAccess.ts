@@ -16,10 +16,10 @@ export const useFamilyAccess = (userId?: string) => {
     queryKey: familyAccessKeys.lists(),
     queryFn: () => loadFamilyAccess(),
     enabled: !!userId,
+    staleTime: 0,
   });
 };
 
-// Nutze dies z.B. mit queryClient.fetchQuery(findUserByEmailOptions(email)) in deinem Submit-Handler
 export const findUserByEmailOptions = (email: string) => ({
   queryKey: familyAccessKeys.userSearch(email),
   queryFn: () => findUserByEmail(email),

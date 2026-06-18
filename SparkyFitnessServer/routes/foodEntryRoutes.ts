@@ -195,6 +195,178 @@ router.post(
 );
 /**
  * @swagger
+ * /food-entries/copy-from-user:
+ *   post:
+ *     summary: Copy food entries from a family member's diary to the active user's diary
+ *     tags: [Nutrition & Meals]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - familyUserId
+ *               - sourceDate
+ *               - sourceMealType
+ *               - targetDate
+ *               - targetMealType
+ *             properties:
+ *               familyUserId:
+ *                 type: string
+ *                 format: uuid
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               sourceMealType:
+ *                 type: string
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successfully copied entries
+ *       400:
+ *         description: Missing fields
+ *       403:
+ *         description: Forbidden
+ */
+router.post(
+  '/copy-from-user',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const {
+        familyUserId,
+        sourceDate,
+        sourceMealType,
+        targetDate,
+        targetMealType,
+      } = req.body;
+      if (
+        !familyUserId ||
+        !sourceDate ||
+        !sourceMealType ||
+        !targetDate ||
+        !targetMealType
+      ) {
+        return res.status(400).json({
+          error:
+            'familyUserId, sourceDate, sourceMealType, targetDate, and targetMealType are required.',
+        });
+      }
+      const copiedEntries = await foodEntryService.copyFoodEntriesFromUser(
+        req.userId,
+        req.originalUserId || req.userId,
+        familyUserId,
+        sourceDate,
+        sourceMealType,
+        targetDate,
+        targetMealType
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(201).json(copiedEntries);
+    } catch (error) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/copy-to-user:
+ *   post:
+ *     summary: Copy food entries from the active user's diary to a family member's diary
+ *     tags: [Nutrition & Meals]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - familyUserId
+ *               - sourceDate
+ *               - sourceMealType
+ *               - targetDate
+ *               - targetMealType
+ *             properties:
+ *               familyUserId:
+ *                 type: string
+ *                 format: uuid
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               sourceMealType:
+ *                 type: string
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successfully copied entries
+ *       400:
+ *         description: Missing fields
+ *       403:
+ *         description: Forbidden
+ */
+router.post(
+  '/copy-to-user',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const {
+        familyUserId,
+        sourceDate,
+        sourceMealType,
+        targetDate,
+        targetMealType,
+      } = req.body;
+      if (
+        !familyUserId ||
+        !sourceDate ||
+        !sourceMealType ||
+        !targetDate ||
+        !targetMealType
+      ) {
+        return res.status(400).json({
+          error:
+            'familyUserId, sourceDate, sourceMealType, targetDate, and targetMealType are required.',
+        });
+      }
+      const copiedEntries = await foodEntryService.copyFoodEntriesToUser(
+        req.userId,
+        req.originalUserId || req.userId,
+        familyUserId,
+        sourceDate,
+        sourceMealType,
+        targetDate,
+        targetMealType
+      );
+      clearUserTdeeCache(familyUserId);
+      res.status(201).json(copiedEntries);
+    } catch (error) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
  * /food-entries/copy-yesterday:
  *   post:
  *     summary: Copy food entries from yesterday's meal

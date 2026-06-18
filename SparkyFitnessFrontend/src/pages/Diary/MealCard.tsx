@@ -18,6 +18,7 @@ import {
   Utensils,
   ClipboardCopy,
   PlusCircle,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
@@ -88,6 +89,7 @@ interface MealCardProps {
   ) => Promise<void>;
   getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals;
   onCopyClick: (mealType: string) => void;
+  onCopyFamilyClick: (mealType: string) => void;
   onConvertToMealClick: (mealType: string) => void;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
@@ -108,6 +110,7 @@ const MealCard = ({
   onRemoveEntry,
   getEntryNutrition,
   onCopyClick,
+  onCopyFamilyClick,
   onConvertToMealClick,
   energyUnit,
   convertEnergy,
@@ -320,6 +323,13 @@ const MealCard = ({
                 title="Copy to another date"
               >
                 <ClipboardCopy className="w-4 h-4" />
+              </Button>
+              <Button
+                size="default"
+                onClick={() => onCopyFamilyClick(meal.type)}
+                title="Copy with Family"
+              >
+                <Users className="w-4 h-4" />
               </Button>
               <Button
                 size="default"
