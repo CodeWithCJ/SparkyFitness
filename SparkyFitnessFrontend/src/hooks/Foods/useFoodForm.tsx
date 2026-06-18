@@ -1120,9 +1120,9 @@ export function useCustomFoodForm({
           searchBarcodeV2Options(barcode)
         );
         if (
-          lookup.source === 'local' &&
-          lookup.food &&
-          lookup.food.id !== food?.id
+          lookup?.source === 'local' &&
+          lookup?.food &&
+          lookup?.food?.id !== food?.id
         ) {
           setBarcodeConflictFoodName(lookup.food.name || 'another food');
           setShowBarcodeConflictConfirmation(true);
