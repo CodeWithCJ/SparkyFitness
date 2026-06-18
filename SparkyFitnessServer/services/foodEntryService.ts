@@ -10,7 +10,7 @@ import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 
 import Papa from 'papaparse';
-import { isDayString } from '@workspace/shared/src/utils/timezone';
+import { isDayString } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import express from 'express';
 // Helper functions (already defined)
