@@ -39,6 +39,7 @@ import {
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
 import { todayInZone } from '@workspace/shared';
+import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -87,15 +88,30 @@ const Diary = () => {
   const { data: availableMealTypes, isLoading: mealTypesLoading } =
     useMealTypes();
   const { data: goals, isLoading: goalsLoading } = useDiaryGoals(selectedDate);
+  const { data: summaryData, isLoading: summaryLoading } =
+    useDailySummary(selectedDate);
   const { data: fetchedFoodEntries, isLoading: foodEntriesLoading } =
     useFoodEntries(selectedDate);
   const { data: foodEntryMeals, isLoading: foodEntryMealsLoading } =
     useFoodEntryMeals(selectedDate);
 
+  const effectiveGoals = goals
+    ? summaryData?.adjustedGoals
+      ? {
+          ...goals,
+          calories: summaryData.adjustedGoals.calories,
+          protein: summaryData.adjustedGoals.protein,
+          carbs: summaryData.adjustedGoals.carbs,
+          fat: summaryData.adjustedGoals.fat,
+        }
+      : goals
+    : undefined;
+
   const loading =
     customNutrientsLoading ||
     mealTypesLoading ||
     goalsLoading ||
+    summaryLoading ||
     foodEntriesLoading ||
     foodEntryMealsLoading;
 
@@ -307,12 +323,12 @@ const Diary = () => {
       />
 
       {/* Top Controls Section */}
-      {goals && (
+      {effectiveGoals && (
         <>
           <DiaryTopControls
             selectedDate={selectedDate}
             dayTotals={dayTotals as unknown as DayTotals}
-            goals={goals}
+            goals={effectiveGoals}
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
@@ -335,7 +351,7 @@ const Diary = () => {
                       mealTypeObj.name,
                       foodEntries,
                       foodEntryMeals ?? [],
-                      goals
+                      effectiveGoals
                     ),
                     selectedDate: selectedDate,
                   }}

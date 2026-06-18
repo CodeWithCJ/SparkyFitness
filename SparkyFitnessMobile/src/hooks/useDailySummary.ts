@@ -138,12 +138,13 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         waterIntake: { water_ml: data.waterIntake },
         stepCalories: data.stepCalories ?? 0,
         calorieBalance: data.calorieBalance,
+        adjustedGoals: data.adjustedGoals ?? null,
       };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance } = raw;
+      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance, adjustedGoals } = raw;
 
-      const calorieGoal = goals.calories || 0;
+      const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
       const exerciseStats = calculateExerciseStats(exerciseEntries);
       const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;
@@ -182,15 +183,15 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         remainingCalories,
         protein: {
           consumed: calculateProtein(foodEntries),
-          goal: goals.protein || 0,
+          goal: adjustedGoals?.protein ?? goals.protein ?? 0,
         },
         carbs: {
           consumed: calculateCarbs(foodEntries),
-          goal: goals.carbs || 0,
+          goal: adjustedGoals?.carbs ?? goals.carbs ?? 0,
         },
         fat: {
           consumed: calculateFat(foodEntries),
-          goal: goals.fat || 0,
+          goal: adjustedGoals?.fat ?? goals.fat ?? 0,
         },
         fiber: {
           consumed: calculateFiber(foodEntries),

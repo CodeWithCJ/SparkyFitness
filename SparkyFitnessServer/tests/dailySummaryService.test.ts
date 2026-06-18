@@ -212,9 +212,6 @@ describe('dailySummaryService', () => {
       includeCheckin: true,
     });
 
-    // Baseline goal from goalService.getUserGoals mock is 2000 kcal
-    // recomp is a 10% deficit under manual calculation method.
-    // 2000 * (1 - 0.10) = 1800 kcal
     expect(result.calorieBalance.goal).toBe(1800);
   });
 
@@ -236,12 +233,6 @@ describe('dailySummaryService', () => {
       calories: 1944,
     });
 
-    // bmr is mocked to 1800. activity multiplier for 'not_much' is 1.2.
-    // baselineTdee = 1800 * 1.2 = 2160
-    // recomp is 10% deficit -> 2160 * 0.9 = 1944.
-    // Safety floors:
-    // Mifflin-St Jeor rmr calculates to 1800 because bmrService.calculateBmr is mocked to return 1800.
-    // Target 1944 is >= 1800, so final target is 1944.
     const result = await getDailySummary({
       actorUserId,
       targetUserId,
@@ -261,7 +252,7 @@ describe('dailySummaryService', () => {
       include_bmr_in_net_calories: false,
       tdee_allow_negative_adjustment: false,
       timezone: 'UTC',
-      goal_mode: 'high_cut', // 20% deficit
+      goal_mode: 'high_cut',
       goal_mode_calculation_method: 'adaptive',
       goal_mode_custom_percentage: 0,
     });
@@ -270,9 +261,6 @@ describe('dailySummaryService', () => {
       calories: 1800,
     });
 
-    // bmr is mocked to 1800. activity multiplier is 1.2 -> baselineTdee = 2160.
-    // high_cut is 20% deficit -> 2160 * 0.8 = 1728.
-    // Since it falls below RMR (1800), adaptive mode auto-raises target to 1800.
     const result = await getDailySummary({
       actorUserId,
       targetUserId,
@@ -281,5 +269,52 @@ describe('dailySummaryService', () => {
     });
 
     expect(result.calorieBalance.goal).toBe(1800);
+  });
+
+  describe('adjustedGoals', () => {
+    test('returns null when raw and adjusted goals have the same calories', async () => {
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+
+      expect(result.adjustedGoals).toBeNull();
+    });
+
+    test('returns adjusted macros when goalService returns different adjusted values', async () => {
+      vi.mocked(goalService.getUserGoals).mockImplementation(
+        (_userId, _date, _endDate, adjust) => {
+          if (adjust) {
+            return Promise.resolve({
+              calories: 2340,
+              protein: 176,
+              carbs: 234,
+              fat: 78,
+            });
+          }
+          return Promise.resolve({
+            calories: 2000,
+            protein: 150,
+            carbs: 200,
+            fat: 67,
+          });
+        }
+      );
+
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+
+      expect(result.adjustedGoals).not.toBeNull();
+      expect(result.adjustedGoals!.calories).toBe(2340);
+      expect(result.adjustedGoals!.protein).toBe(176);
+      expect(result.adjustedGoals!.carbs).toBe(234);
+      expect(result.adjustedGoals!.fat).toBe(78);
+    });
   });
 });
