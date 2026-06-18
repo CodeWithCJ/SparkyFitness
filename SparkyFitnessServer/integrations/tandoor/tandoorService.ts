@@ -686,7 +686,7 @@ class TandoorService {
           const s = tandoorRecipe.source_url;
           if (!s || typeof s !== 'string') return null;
           const trimmed = s.trim();
-          if (!trimmed || trimmed.toLowerCase() === 'null') return null;
+          if (!trimmed || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'undefined') return null;
           try {
             const u = new URL(trimmed);
             return u.hostname || null;
