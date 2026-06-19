@@ -51,17 +51,17 @@ describe('measurementsApi', () => {
       );
     });
 
-    test('sends GET request to /api/measurements/check-in/:date', async () => {
+    test('sends GET request to the single-day range endpoint', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ entry_date: testDate, weight: 75 }),
+        json: () => Promise.resolve([{ entry_date: testDate, weight: 75 }]),
       });
 
       await fetchMeasurements(testDate);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/measurements/check-in/2024-06-15',
+        'https://example.com/api/measurements/check-in-measurements-range/2024-06-15/2024-06-15',
         expect.objectContaining({
           method: 'GET',
           headers: {
@@ -80,19 +80,19 @@ describe('measurementsApi', () => {
       });
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ entry_date: testDate }),
+        json: () => Promise.resolve([{ entry_date: testDate }]),
       });
 
       await fetchMeasurements(testDate);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/measurements/check-in/2024-06-15',
+        'https://example.com/api/measurements/check-in-measurements-range/2024-06-15/2024-06-15',
         expect.anything()
       );
     });
 
-    test('returns parsed JSON response on success', async () => {
-      const responseData = {
+    test('returns the single day row from the range response', async () => {
+      const row = {
         entry_date: testDate,
         weight: 75,
         neck: 38,
@@ -103,12 +103,38 @@ describe('measurementsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(responseData),
+        json: () => Promise.resolve([row]),
       });
 
       const result = await fetchMeasurements(testDate);
 
-      expect(result).toEqual(responseData);
+      expect(result).toEqual(row);
+    });
+
+    test('returns {} when no row exists for the date', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      const result = await fetchMeasurements(testDate);
+
+      expect(result).toEqual({});
+    });
+
+    test('returns the first row when the range returns more than one', async () => {
+      const firstRow = { entry_date: testDate, weight: 75 };
+      const secondRow = { entry_date: testDate, weight: 80 };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([firstRow, secondRow]),
+      });
+
+      const result = await fetchMeasurements(testDate);
+
+      expect(result).toEqual(firstRow);
     });
 
     test('throws error on non-OK response', async () => {

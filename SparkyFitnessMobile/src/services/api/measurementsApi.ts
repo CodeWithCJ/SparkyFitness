@@ -3,13 +3,15 @@ import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterCon
 
 /**
  * Fetches measurements for a given date.
+ *
+ * The `/check-in/:date` endpoint carries forward the latest value per field
+ * (intentional server behavior for the web editor). The mobile diary/editor
+ * need exactly what was recorded on this day, so query the range endpoint for
+ * a single day — a plain `WHERE entry_date = date` with no carry-forward.
  */
 export const fetchMeasurements = async (date: string): Promise<CheckInMeasurement> => {
-  return apiFetch<CheckInMeasurement>({
-    endpoint: `/api/measurements/check-in/${date}`,
-    serviceName: 'Measurements API',
-    operation: 'fetch measurements',
-  });
+  const rows = await fetchMeasurementsRange(date, date);
+  return (rows?.[0] ?? {}) as CheckInMeasurement;
 };
 
 /**
