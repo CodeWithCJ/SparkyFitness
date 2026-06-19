@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolCallOptions } from 'ai';
 import { buildChatbotTools } from '../tools/index.js';
+import { buildDevTools } from '../tools/devTools.js';
 
 // Registry handlers read only rawArgs (no abortSignal/messages), so a stub
 // satisfies the execute() signature.
@@ -16,18 +17,13 @@ interface RegistryTool {
   execute?: (args: unknown, options: ToolCallOptions) => Promise<any> | any;
 }
 
-// Re-publishes the in-process chatbot tool registry as MCP tools, reusing each
-// tool's zod-4 schema and execute() so MCP clients and the chatbot share one
-// surface with identical output text.
-export function registerRegistryTools(
+// Registers a name->tool map onto an McpServer, reusing each tool's zod-4 schema
+// and execute(). Shared by the registry and dev-tool registration so both wrap
+// the plain-string return into MCP { content: [...] } identically.
+function registerToolMap(
   mcpServer: McpServer,
-  userId: string,
-  tz: string
+  tools: Record<string, RegistryTool>
 ): void {
-  const tools = buildChatbotTools(userId, tz) as unknown as Record<
-    string,
-    RegistryTool
-  >;
   for (const [name, t] of Object.entries(tools)) {
     mcpServer.registerTool(
       name,
@@ -42,4 +38,30 @@ export function registerRegistryTools(
       }
     );
   }
+}
+
+// Re-publishes the in-process chatbot tool registry as MCP tools, reusing each
+// tool's zod-4 schema and execute() so MCP clients and the chatbot share one
+// surface with identical output text.
+export function registerRegistryTools(
+  mcpServer: McpServer,
+  userId: string,
+  tz: string
+): void {
+  const tools = buildChatbotTools(userId, tz) as unknown as Record<
+    string,
+    RegistryTool
+  >;
+  registerToolMap(mcpServer, tools);
+}
+
+// Registers the admin-only dev tools (kept out of buildChatbotTools so the
+// chatbot never sees them). The route gates this on DEV_TOOLS_ENABLED + an admin
+// caller, so non-admins never get these in tools/list.
+export function registerDevTools(mcpServer: McpServer, userId: string): void {
+  const tools = buildDevTools(userId) as unknown as Record<
+    string,
+    RegistryTool
+  >;
+  registerToolMap(mcpServer, tools);
 }
