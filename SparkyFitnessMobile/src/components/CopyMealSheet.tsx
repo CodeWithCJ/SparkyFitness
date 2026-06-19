@@ -20,7 +20,8 @@ import Button from './ui/Button';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { getMealTypeLabel } from '../constants/meals';
-import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { formatDateLabel } from '../utils/dateUtils';
+import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
@@ -92,28 +93,26 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
     const handleDateChange = useCallback(({ date }: { date: DateType }) => {
       if (!date) return;
-      // The picker hands back a dayjs object; convert via its own toDate(). A
-      // 'YYYY-MM-DD' string is parsed with local components so it does not shift
-      // a day in timezones behind UTC (new Date(str) would parse as UTC midnight).
+      // The picker hands back a dayjs object; convert it to a Date, then to a
+      // local YYYY-MM-DD day string via the shared helper so there is no
+      // timezone day shift. A YYYY-MM-DD string is parsed with the same helper.
       let jsDate: Date;
       if (date instanceof Date) {
         jsDate = date;
       } else if (typeof date === 'object' && 'toDate' in date) {
         jsDate = date.toDate();
       } else if (typeof date === 'string') {
-        const [year, month, day] = date.split('-').map(Number);
-        jsDate = new Date(year, month - 1, day);
+        jsDate = dayToPickerDate(date);
       } else {
         jsDate = new Date(date);
       }
-      setTargetDate(toLocalDateString(jsDate));
+      setTargetDate(localDateToDay(jsDate));
     }, []);
 
-    const dateValue = useMemo(() => {
-      if (!targetDate) return new Date();
-      const [year, month, day] = targetDate.split('-').map(Number);
-      return new Date(year, month - 1, day);
-    }, [targetDate]);
+    const dateValue = useMemo(
+      () => (targetDate ? dayToPickerDate(targetDate) : new Date()),
+      [targetDate],
+    );
 
     const handleCopy = useCallback(() => {
       if (!source || !targetDate || !targetMealType) return;
