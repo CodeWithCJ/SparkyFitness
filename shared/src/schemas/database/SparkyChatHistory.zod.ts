@@ -12,7 +12,7 @@ export const sparkyChatHistorySchema = z.object({
   created_at: z.date(),
   message: z.string().nullable(),
   response: z.string().nullable(),
-  parts: z.array(z.any()).optional().nullable(),
+  parts: z.array(z.unknown()).nullable(),
 });
 
 export const sparkyChatHistoryInitializerSchema = z.object({
@@ -26,7 +26,7 @@ export const sparkyChatHistoryInitializerSchema = z.object({
   created_at: z.date().optional(),
   message: z.string().optional().nullable(),
   response: z.string().optional().nullable(),
-  parts: z.array(z.any()).optional().nullable(),
+  parts: z.array(z.unknown()).optional().nullable(),
 });
 
 export const sparkyChatHistoryMutatorSchema = z.object({
@@ -40,7 +40,7 @@ export const sparkyChatHistoryMutatorSchema = z.object({
   created_at: z.date().optional(),
   message: z.string().optional().nullable(),
   response: z.string().optional().nullable(),
-  parts: z.array(z.any()).optional().nullable(),
+  parts: z.array(z.unknown()).optional().nullable(),
 });
 
 export type SparkyChatHistory = z.infer<typeof sparkyChatHistorySchema>;
