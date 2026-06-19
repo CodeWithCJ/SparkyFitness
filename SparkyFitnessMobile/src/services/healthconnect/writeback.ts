@@ -41,6 +41,18 @@ const loadWrittenIds = async (recordType: string, date: string): Promise<string[
 const saveWrittenIds = (recordType: string, date: string, ids: string[]): Promise<void> =>
   saveHealthPreference(writtenIdsKey(recordType, date), ids);
 
+// Content signature of the last successful write for a date, so an unchanged day can
+// be skipped entirely (no delete/insert) — Health Connect rate-limits writes, and
+// re-writing identical data every sync wastes that quota.
+const writtenSignatureKey = (recordType: string, date: string): string =>
+  `writeback${recordType}Sig:${date}`;
+
+const loadWrittenSignature = (recordType: string, date: string): Promise<string | null> =>
+  loadHealthPreference<string>(writtenSignatureKey(recordType, date));
+
+const saveWrittenSignature = (recordType: string, date: string, signature: string): Promise<void> =>
+  saveHealthPreference(writtenSignatureKey(recordType, date), signature);
+
 // Deterministic replace: delete the exact ids we wrote last run, then insert this
 // run's records (which carry brand-new, version-suffixed clientRecordIds — see
 // writebackMappers). We do NOT rely on Health Connect's clientRecordId+version
@@ -62,6 +74,27 @@ const replaceTrackedRecords = async (
 
 const recordIds = (records: HealthConnectRecord[]): string[] =>
   records.map((r) => r.metadata?.clientRecordId).filter((id): id is string => id != null);
+
+// Order-independent content signature for a run's records, excluding metadata: the
+// clientRecordId carries a per-run version suffix and clientRecordVersion changes
+// every run, so neither belongs in a *content* hash — we want to detect diary
+// changes, not the version stamp.
+const hashString = (value: string): string => {
+  let h = 5381;
+  for (let i = 0; i < value.length; i += 1) h = ((h << 5) + h + value.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+};
+
+const recordsSignature = (records: HealthConnectRecord[]): string => {
+  const projections = records
+    .map((r) => {
+      const content = { ...(r as unknown as Record<string, unknown>) };
+      delete content.metadata;
+      return JSON.stringify(content);
+    })
+    .sort();
+  return hashString(projections.join('|'));
+};
 
 // Active metrics that also hold a granted write permission. getGrantedPermissions is
 // queried once per run, not per metric/date.
@@ -94,8 +127,15 @@ const writeNutritionForDate = async (
     .map((entry) => foodEntryToNutritionRecord(entry, version))
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
+  const signature = recordsSignature(records);
+  if (signature === (await loadWrittenSignature('Nutrition', date))) {
+    addLog(`[Writeback] Nutrition ${date}: unchanged — skipped`, 'DEBUG');
+    return;
+  }
+
   await replaceTrackedRecords(await loadWrittenIds('Nutrition', date), 'Nutrition', records);
   await saveWrittenIds('Nutrition', date, recordIds(records));
+  await saveWrittenSignature('Nutrition', date, signature);
   addLog(`[Writeback] Nutrition ${date}: wrote ${records.length} record(s)`, 'INFO');
 };
 
@@ -108,8 +148,15 @@ const writeHydrationForDate = async (
   const record = waterMlToHydrationRecord(date, ml, version);
   const records = record ? [record] : [];
 
+  const signature = recordsSignature(records);
+  if (signature === (await loadWrittenSignature('Hydration', date))) {
+    addLog(`[Writeback] Hydration ${date}: unchanged — skipped`, 'DEBUG');
+    return;
+  }
+
   await replaceTrackedRecords(await loadWrittenIds('Hydration', date), 'Hydration', records);
   await saveWrittenIds('Hydration', date, recordIds(records));
+  await saveWrittenSignature('Hydration', date, signature);
   addLog(`[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`, 'INFO');
 };
 

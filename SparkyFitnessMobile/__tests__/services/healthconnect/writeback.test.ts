@@ -145,19 +145,33 @@ describe('writebackPhase', () => {
     expect(mockDelete).toHaveBeenCalledWith('Hydration', [], ['sparky-water-2026-06-01-1']);
   });
 
-  it('is idempotent — a second run deletes the first run\'s record', async () => {
+  it('makes no Health Connect writes on an unchanged second run', async () => {
     prefs({ writebackNutritionEnabled: true });
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1000);
     await writebackPhase(['2026-06-01']);
-    const firstId = mockInsert.mock.calls[0][0][0].metadata.clientRecordId;
-    expect(firstId).toBe('sparky-nutrition-fe1-1000');
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const deletesAfterFirst = mockDelete.mock.calls.length;
 
+    // Version differs (Date.now changed) but the day's content is identical → skip.
     nowSpy.mockReturnValue(2000);
     await writebackPhase(['2026-06-01']);
-    // Second run deletes exactly what the first run wrote, then inserts fresh.
-    expect(mockDelete).toHaveBeenLastCalledWith('Nutrition', [], ['sparky-nutrition-fe1-1000']);
-    expect(mockInsert.mock.calls[1][0][0].metadata.clientRecordId).toBe('sparky-nutrition-fe1-2000');
+    expect(mockInsert).toHaveBeenCalledTimes(1); // no new insert
+    expect(mockDelete.mock.calls.length).toBe(deletesAfterFirst); // no new delete
     nowSpy.mockRestore();
+  });
+
+  it("rewrites when the day's data changed", async () => {
+    prefs({ writebackNutritionEnabled: true });
+    await writebackPhase(['2026-06-01']);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+
+    // Diary changed (different calories) → different signature → re-write.
+    mockSummary.mockResolvedValue({
+      foodEntries: [{ ...foodEntry, calories: 999 }],
+      waterIntake: 500,
+    });
+    await writebackPhase(['2026-06-01']);
+    expect(mockInsert).toHaveBeenCalledTimes(2);
   });
 
   it('returns false (does not throw) on a Health Connect quota error', async () => {
