@@ -37,7 +37,7 @@
       "workoutPresetTab": "Preset Allenamento",
       "onlineTab": "Online",
       "addCustomTab": "Aggiungi Esercizio Personalizzato",
-      "importCSVTab": "Importa CSV",
+      "importCSVTab": "Importa Esercizi",
       "nameLabel": "Nome",
       "categoryLabel": "Categoria",
       "selectCategoryPlaceholder": "Seleziona una categoria",
@@ -184,7 +184,7 @@
       "needsReviewOwnershipItem": "Da rivedere",
       "allExercisesCount": "Tutti gli esercizi ({{totalExercisesCount}})",
       "itemsPerPageLabel": "Elementi per pagina:",
-      "levelDisplay": "Livello: {{livel}}",
+      "levelDisplay": "Livello: {{level}}",
       "forceDisplay": "Forza: {{force}}",
       "mechanicDisplay": "Meccanico: {{mechanic}}",
       "equipmentDisplay": "Attrezzatura: {{equipment}}",
@@ -363,7 +363,7 @@
     "nutritionixSource": "Nutritionix",
     "customSource": "Personalizzato",
     "activeCalories": "calorie attive",
-    "minutesUnit": "minuti",
+    "minutesUnit": "Minuti",
     "caloriesUnit": "calorie",
     "setsLabel": "Serie",
     "repsLabel": "Rapporti",
@@ -426,14 +426,14 @@
   "settings": {
     "profileInformation": {
       "title": "Informazioni sul profilo",
-      "description": "Gestisci le tue informazioni personali e l'immagine del tuo profilo",
+      "description": "Gestisci le tue informazioni personali e l'immagine del profilo",
       "changePhoto": "Cambia foto",
       "photoSize": "PNG, JPG fino a 5 MB",
-      "fullName": "Nome completo",
+      "fullName": "Nome Completo",
       "enterFullName": "Inserisci il tuo nome completo",
       "phoneNumber": "Numero di telefono",
       "enterPhoneNumber": "Inserisci il tuo numero di telefono",
-      "dateOfBirth": "Data di nascita",
+      "dateOfBirth": "Data di Nascita",
       "pickADate": "Scegli una data",
       "gender": "Genere",
       "selectGender": "Seleziona il sesso",
@@ -499,12 +499,54 @@
     "foodExerciseDataProviders": {
       "title": "Fornitori di dati relativi all'alimentazione e all'attività fisica",
       "description": "Configura fonti di dati esterne relative all'alimentazione e all'attività fisica e sincronizza i dati con Garmin Connect",
-      "invalidKeyLengthWarning": "Se viene visualizzato l'errore “Lunghezza chiave non valida”, assicurarsi che le chiavi di crittografia e di autenticazione JWT nelle variabili di ambiente del server siano a 64 caratteri esadecimali."
+      "invalidKeyLengthWarning": "Se viene visualizzato l'errore “Lunghezza chiave non valida”, assicurarsi che le chiavi di crittografia nelle variabili di ambiente del server siano a 64 caratteri esadecimali."
     },
     "aiService": {
       "title": "Servizio di intelligenza artificiale",
       "description": "Gestisci le impostazioni delle funzioni basate sull'intelligenza artificiale",
-      "invalidKeyLengthWarning": "Se viene visualizzato l'errore “Lunghezza chiave non valida”, assicurarsi che le chiavi di crittografia e di autenticazione JWT nelle variabili di ambiente del server siano a 64 caratteri esadecimali."
+      "invalidKeyLengthWarning": "Se viene visualizzato l'errore “Lunghezza chiave non valida”, assicurarsi che le chiavi di crittografia nelle variabili di ambiente del server siano a 64 caratteri esadecimali.",
+      "globalSettings": {
+        "title": "Configurazioni Generali servizio AI",
+        "description": "Le configurazioni generali del servizio Ai sono condivise fra tutti gli utenti. Gli utenti possono sovrascriverle con le proprie configurazioni.",
+        "allowUserConfig": "Permetti agli Utenti di Configurare i Servizi AI",
+        "addService": "Aggiungi Servizio",
+        "saveChanges": "Salva Cambiamenti",
+        "cancel": "Cancella",
+        "edit": "Modifica",
+        "delete": "Rimuovi",
+        "globalServices": "Servizi Globali",
+        "noServices": "Nessun servizio globale di AI configurato.",
+        "allowUserConfigDescription": "Quanto abilitato, gli utenti possono aggiungere e gestire le configurazione del proprio servizio AI. Quando disabilitato, gli utenti possono solo utilizzare le configurazioni globali del servizio AI.",
+        "syncFromEnv": "Sincronizza dal Sistema",
+        "addNewService": "Aggiungi un nuovo servizio globale AI",
+        "noServicesDescription": "Aggiungo un nuovo servizio globale di AI per fornire le impostazioni di default per tutti gli utenti.",
+        "serviceName": "Nome Servizio",
+        "serviceNamePlaceholder": "Organizzazione Servizio OpenAI",
+        "serviceType": "Tipo Servizio",
+        "apiKey": "Chiave API",
+        "apiKeyOptional": "Chiave API (Opzionale)",
+        "apiKeyPlaceholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "apiKeyPlaceholderOllama": "Non necessario per Ollama",
+        "customUrl": "URL Personalizzato",
+        "customUrlPlaceholderOllama": "http://localhost:11434",
+        "customUrlPlaceholder": "https://api.example.com/v1",
+        "useCustomModel": "Utilizza Nome Personalizzato Modello",
+        "model": "Modello",
+        "selectModel": "Seleziona un modello",
+        "customModelName": "Nome Modello Personalizzato",
+        "customModelNamePlaceholder": "Inserisi il nome personalizzato del modello",
+        "systemPrompt": "Prompt di Sistema (Istruzioni Aggiuntive)",
+        "systemPromptPlaceholder": "Istruzioni Aggiuntive per l'assistente AI...",
+        "setAsActive": "Imposta come servizio attivo",
+        "activeService": "Servizio attivo",
+        "global": "Globale",
+        "error": "Errore",
+        "success": "Successo",
+        "errorLoading": "Impossibile caricare i servizi AI globali",
+        "errorAdding": "Impossibile aggiungere il servizio globale di AI",
+        "successAdding": "Servizio globale di AI aggiunto con successo",
+        "errorUpdating": "Impossibile aggiornare il servizio globale di AI"
+      }
     },
     "apiKeyManagement": {
       "title": "Gestione delle chiavi API",
@@ -538,6 +580,30 @@
       "newPasswordsDoNotMatch": "Le nuove password non corrispondono",
       "passwordLengthError": "La password deve contenere almeno 6 caratteri",
       "enterNewEmailAddress": "Inserisci un nuovo indirizzo e-mail"
+    },
+    "customNutrients": {
+      "title": "Nutrienti Personalizzati",
+      "subtitle": "Gestisci la definizione dei tuoi nutrienti personalizzati"
+    },
+    "customMeals": {
+      "title": "Pasti Personalizzati",
+      "subtitle": "Crea e gestisci tipi di pasto personalizzati"
+    },
+    "dataManagement": {
+      "sectionTitle": "Gestione Dati",
+      "subtitle": "Esporta o gestisci i tuoi dati",
+      "title": "Esporta Dati",
+      "description": "Scarica tutto il tuo diario alimentare in formato CSV. Il file conterrà tutti i tuoi pasti con il dettaglio dei cibi, le porzioni ed i macronutrienti (calorie, proteine, carboidrati, grassi...).",
+      "delimiterLabel": "Formato separatore CSV",
+      "delimiterPlaceholder": "Separatore",
+      "semicolon": "Punto e virgola (;)",
+      "comma": "Virgola (,)",
+      "exportButton": "Esporta il mio diario (CSV)",
+      "exporting": "Elaborazione...",
+      "exportSuccess": "Esportazione completata con successo",
+      "exportSuccessDescription": "Il tuo diario è stato esportato con successo.",
+      "exportError": "Errore durante l'esportazione",
+      "exportErrorDescription": "Impossibile scaricare il tuo diario. Riprova più tardi per favore."
     }
   },
   "admin": {
@@ -1863,6 +1929,33 @@
     "fat": "Grasso",
     "saturatedFat": "Grassi saturi",
     "polyunsaturatedFat": "Grassi polinsaturi",
-    "monounsaturatedFat": "Grassi monoinsaturi"
+    "monounsaturatedFat": "Grassi monoinsaturi",
+    "transFat": "Grasso Trans",
+    "cholesterol": "Colesterolo",
+    "sodium": "Sodio",
+    "potassium": "Potassio",
+    "dietaryFiber": "Fibra Alimentare",
+    "fiber": "Fibra",
+    "sugars": "Zuccheri",
+    "vitaminA": "Vitamina A",
+    "vitaminC": "Vitamina C",
+    "calcium": "Calcio",
+    "iron": "Ferro",
+    "netCarbs": "Carboidrati Netti"
+  },
+  "sync": {
+    "syncAll": "Sincronizza tutti i servizi attivi",
+    "syncingAll": "Sincronizzazione di tutti i servizi...",
+    "noActiveProviders": "Nessun servizio attivo da sincronizzare.",
+    "syncCompleted_one": "Sincronizzazione di {{count}} servizio completata con successo.",
+    "syncCompleted_many": "Sincronizzazione di {{count}} servizi completata con successo.",
+    "syncCompleted_other": "Sincronizzazione di {{count}} servizi completata con successo.",
+    "syncFailed_one": "Impossibile sincronizzare {{count}} servizio.",
+    "syncFailed_many": "Impossibile sincronizzare {{count}} servizi.",
+    "syncFailed_other": "Impossibile sincronizzare {{count}} servizi."
+  },
+  "calculationSettings": {
+    "showNetCarbs": "Mostra carboidrati netti (carboidrati meno fibre)",
+    "showNetCarbsHint": "Quando abilitato, i riepiloghi dei carboidrati mostrano il totale dei carboidrati meno le fibre alimentari."
   }
 }
