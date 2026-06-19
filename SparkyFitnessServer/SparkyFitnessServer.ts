@@ -141,9 +141,8 @@ app.use(
             'x-api-key',
             'x-client-id',
             'x-requested-with',
-            // MCP StreamableHTTP clients: the SDK sends mcp-protocol-version on
-            // every post-init request, and mcp-session-id / Last-Event-ID if the
-            // endpoint becomes stateful. Browser MCP clients fail preflight without these.
+            // MCP StreamableHTTP headers; browser clients fail CORS preflight
+            // without them.
             'mcp-protocol-version',
             'mcp-session-id',
             'last-event-id',
@@ -157,15 +156,12 @@ app.use(
     );
   })
 );
-// External MCP endpoint — a self-contained chain mounted top-level (NOT under
-// /api) so it dodges the /api/auth interceptor and the /api cache-control
-// middleware. It must sit before the global 50mb JSON parser below: the
-// route-local 1mb parser caps this machine-facing JSON-RPC endpoint at the
-// standalone MCP server's limit instead of inheriting the 50mb photo-upload
-// budget (the global parser sets req._body first and would no-op the local
-// one). cookieParser runs here too because the global cookieParser is after
-// the 50mb parser, and authenticate dereferences req.cookies. Mounting before
-// the global auth gate means mcpRoutes ends the response, so auth runs once.
+// External MCP endpoint — a self-contained chain mounted top-level (not /api)
+// to skip the /api/auth interceptor and cache-control middleware. It sits
+// before the global 50mb parser so its route-local 1mb parser wins (the global
+// parser would set req._body first and no-op the local one). cookieParser is
+// local because the global one also runs after the 50mb parser, and
+// authenticate reads req.cookies.
 app.use(
   '/mcp',
   express.json({ limit: '1mb' }),

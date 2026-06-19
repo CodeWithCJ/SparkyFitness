@@ -8,22 +8,18 @@ import versionService from '../services/versionService.js';
 
 const router = express.Router();
 
-// Reported to MCP clients as the server version; sourced from package.json so
-// it tracks releases instead of drifting from a hardcoded literal.
+// Reported to MCP clients; sourced from package.json so it tracks releases.
 const SERVER_VERSION = versionService.getAppVersion();
 
 /**
- * Stateless StreamableHTTP MCP endpoint. Auth (the global gate plus the
- * route-local chain in SparkyFitnessServer.ts) has already populated
- * req.authenticatedUserId by the time this runs.
+ * Stateless StreamableHTTP MCP endpoint; auth has already run by here.
  *
- * Scope to authenticatedUserId — the logged-in actor — to match the in-process
- * chat path (chatService builds buildChatbotTools(authenticatedUserId, ...)).
- * Deliberately not req.userId/activeUserId, which would honor a delegation
+ * Scope to authenticatedUserId (the logged-in actor) to match the in-process
+ * chat path — not req.userId/activeUserId, which would honor a delegation
  * cookie and silently make MCP act as a delegated user.
  *
- * A fresh McpServer + transport is required per request: the stateless
- * transport is single-use (its _hasHandledRequest guard throws on reuse).
+ * A fresh McpServer + transport per request: the stateless transport is
+ * single-use (its _hasHandledRequest guard throws on reuse).
  */
 router.post('/', async (req, res) => {
   try {
@@ -41,8 +37,7 @@ router.post('/', async (req, res) => {
       enableJsonResponse: true,
     });
     transport.onerror = (e) => log('error', '[MCP] transport error', e);
-    // Single teardown path: McpServer.close() owns tearing down its transport,
-    // so we don't also call transport.close() (double-close). Log the rejection.
+    // McpServer.close() tears down its transport too, so don't double-close.
     res.on('close', () => {
       mcpServer.close().catch((e) => log('error', '[MCP] close error', e));
     });

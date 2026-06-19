@@ -9,9 +9,8 @@ import mcpRoutes from '../routes/mcpRoutes.js';
 import { buildChatbotTools } from '../ai/tools/index.js';
 import goalService from '../services/goalService.js';
 
-// buildChatbotTools composes every domain builder; the real foodEntryService
-// trips on a deep '@workspace/shared' subpath import at load time, and the
-// registry surface here never executes that tool.
+// buildChatbotTools loads every domain builder; real foodEntryService trips on
+// a deep '@workspace/shared' subpath import at load and isn't exercised here.
 vi.mock('../services/foodEntryService', () => ({ default: {} }));
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 // Pin the user's timezone so day-defaults are deterministic and no DB is hit.
@@ -35,9 +34,8 @@ const EXPECTED_TOOL_NAMES = Object.keys(
   buildChatbotTools('user', 'UTC')
 ).sort();
 
-// Mirrors authMiddleware's contract at the route boundary: valid creds set the
-// user IDs and continue; missing creds 401. The route reads authenticatedUserId
-// while the (production) global gate and RLS read userId, so set both.
+// Stands in for authMiddleware: valid creds set the user IDs, missing creds
+// 401. The route reads authenticatedUserId; set userId too to match production.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeAuthenticate(req: any, res: any, next: any) {
   if (req.headers.authorization === 'Bearer valid') {

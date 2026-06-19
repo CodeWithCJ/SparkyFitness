@@ -163,8 +163,7 @@ ingress:
   # -- Path prefixes routed directly to the server service. Default empty:
   # the frontend image's nginx already proxies /api/, /uploads/, /health-data,
   # and /mcp to the server, so a single rule "/" → frontend is enough. Set this
-  # list only if you want to bypass the frontend nginx hop for specific prefixes
-  # (include /mcp if external MCP clients should skip the frontend hop).
+  # list only if you want to bypass the frontend nginx hop for specific prefixes.
   # Example to bypass the frontend for backend traffic:
   #   serverPaths:
   #     - /api
