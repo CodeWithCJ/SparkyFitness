@@ -141,7 +141,14 @@ app.use(
             'x-api-key',
             'x-client-id',
             'x-requested-with',
+            // MCP StreamableHTTP clients: the SDK sends mcp-protocol-version on
+            // every post-init request, and mcp-session-id / Last-Event-ID if the
+            // endpoint becomes stateful. Browser MCP clients fail preflight without these.
+            'mcp-protocol-version',
+            'mcp-session-id',
+            'last-event-id',
           ],
+          exposedHeaders: ['mcp-session-id'],
           credentials: true,
           maxAge: 86400,
         });
