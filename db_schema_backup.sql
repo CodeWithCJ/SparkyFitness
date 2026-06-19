@@ -985,6 +985,23 @@ CREATE TABLE public.check_in_measurements (
 
 
 --
+-- Name: check_in_photos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.check_in_photos (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    check_in_measurement_id uuid,
+    entry_date date NOT NULL,
+    photo_type character varying(5) NOT NULL,
+    file_path text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY (ARRAY[('front'::character varying)::text, ('back'::character varying)::text, ('side'::character varying)::text])))
+);
+
+
+--
 -- Name: custom_categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2987,6 +3004,30 @@ ALTER TABLE ONLY public.backup_settings
 
 
 --
+-- Name: check_in_measurements check_in_measurements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_measurements
+    ADD CONSTRAINT check_in_measurements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: check_in_photos check_in_photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: check_in_photos check_in_photos_user_date_type_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_user_date_type_unique UNIQUE (user_id, entry_date, photo_type);
+
+
+--
 -- Name: daily_sleep_need daily_sleep_need_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4119,6 +4160,22 @@ ALTER TABLE ONLY public.check_in_measurements
 
 
 --
+-- Name: check_in_photos check_in_photos_check_in_measurement_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_check_in_measurement_id_fkey FOREIGN KEY (check_in_measurement_id) REFERENCES public.check_in_measurements(id) ON DELETE SET NULL;
+
+
+--
+-- Name: check_in_photos check_in_photos_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: custom_categories custom_categories_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5009,6 +5066,12 @@ ALTER TABLE public.api_key ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.check_in_measurements ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: check_in_photos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.check_in_photos ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: custom_categories; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -5176,6 +5239,13 @@ ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY modify_policy ON public.check_in_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: check_in_photos modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.check_in_photos USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -5613,6 +5683,13 @@ CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entr
 --
 
 CREATE POLICY select_policy ON public.check_in_measurements FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: check_in_photos select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.check_in_photos FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
