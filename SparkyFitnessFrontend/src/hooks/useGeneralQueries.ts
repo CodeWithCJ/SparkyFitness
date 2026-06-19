@@ -59,7 +59,7 @@ export const useLatestReleaseQuery = ({
   return useQuery({
     queryKey: generalKeys.githubVersion,
     queryFn: getLatestGithubRelease,
-    staleTime: 1000 * 60 * 60,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     enabled,
   });
 };

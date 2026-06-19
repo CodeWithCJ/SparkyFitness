@@ -10,9 +10,13 @@ import { useState } from 'react';
 
 interface IndexProps {
   onShowAboutDialog: () => void;
+  onShowNewReleaseDialog: () => void;
 }
 
-const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
+const Index: React.FC<IndexProps> = ({
+  onShowAboutDialog,
+  onShowNewReleaseDialog,
+}) => {
   const { user, loading: authLoading } = useAuth();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'Index: Component rendered (onboarding check).');
@@ -39,7 +43,12 @@ const Index: React.FC<IndexProps> = ({ onShowAboutDialog }) => {
   }
 
   // Render MainLayout if onboarding is complete
-  return <MainLayout onShowAboutDialog={onShowAboutDialog} />;
+  return (
+    <MainLayout
+      onShowAboutDialog={onShowAboutDialog}
+      onShowNewReleaseDialog={onShowNewReleaseDialog}
+    />
+  );
 };
 
 export default Index;

@@ -51,9 +51,13 @@ interface AddCompItem {
 
 interface MainLayoutProps {
   onShowAboutDialog: () => void;
+  onShowNewReleaseDialog: () => void;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({
+  onShowAboutDialog,
+  onShowNewReleaseDialog,
+}) => {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -475,14 +479,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
               <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
               <GitHubSponsorButton owner="CodeWithCJ" />
             </div>
-            <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
-              SparkyFitness v{appVersion?.version ?? ''}
-            </p>
+            <div className="flex items-center gap-2">
+              <p
+                className="cursor-pointer underline"
+                onClick={onShowAboutDialog}
+              >
+                SparkyFitness v{appVersion?.version ?? ''}
+              </p>
+              <span>•</span>
+              <p
+                className="cursor-pointer underline hover:text-foreground"
+                onClick={onShowNewReleaseDialog}
+              >
+                What's New
+              </p>
+            </div>
           </div>
         ) : (
           <div className="flex justify-center items-center gap-4">
             <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
               SparkyFitness v{appVersion?.version ?? ''}
+            </p>
+            <span>•</span>
+            <p
+              className="cursor-pointer underline hover:text-foreground"
+              onClick={onShowNewReleaseDialog}
+            >
+              What's New
             </p>
           </div>
         )}

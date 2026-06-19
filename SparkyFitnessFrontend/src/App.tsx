@@ -31,6 +31,8 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import OidcCallback from '@/components/OidcCallback';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useCurrentVersionQuery } from './hooks/useGeneralQueries';
+import { useQueryClient } from '@tanstack/react-query';
+import { generalKeys } from '@/api/keys/general';
 import {
   RootErrorBoundary,
   RouteErrorBoundary,
@@ -126,6 +128,12 @@ const Root = () => {
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const handleShowNewReleaseDialog = () => {
+    queryClient.invalidateQueries({ queryKey: generalKeys.githubVersion });
+    setShowNewReleaseDialog(true);
+  };
 
   const handleDismissRelease = (version: string) => {
     localStorage.setItem('dismissedReleaseVersion', version);
@@ -158,7 +166,12 @@ const Root = () => {
                     </div>
                   }
                 >
-                  <Outlet context={{ setShowAboutDialog }} />
+                  <Outlet
+                    context={{
+                      setShowAboutDialog,
+                      setShowNewReleaseDialog: handleShowNewReleaseDialog,
+                    }}
+                  />
                 </Suspense>
                 <ErrorBoundary
                   fallback={<ComponentFallback />}
@@ -220,11 +233,18 @@ const Root = () => {
 
 interface OutletContextType {
   setShowAboutDialog: (show: boolean) => void;
+  setShowNewReleaseDialog: (show: boolean) => void;
 }
 
 const IndexWrapper = () => {
-  const { setShowAboutDialog } = useOutletContext<OutletContextType>();
-  return <Index onShowAboutDialog={() => setShowAboutDialog(true)} />;
+  const { setShowAboutDialog, setShowNewReleaseDialog } =
+    useOutletContext<OutletContextType>();
+  return (
+    <Index
+      onShowAboutDialog={() => setShowAboutDialog(true)}
+      onShowNewReleaseDialog={() => setShowNewReleaseDialog(true)}
+    />
+  );
 };
 
 const ReportsWrapper = () => {
