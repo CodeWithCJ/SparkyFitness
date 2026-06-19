@@ -4,7 +4,7 @@ import {
   getLatestGithubRelease,
 } from '@/api/general';
 import { generalKeys } from '@/api/keys/general';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const useCurrentVersionQuery = () => {
   return useQuery({
@@ -62,4 +62,11 @@ export const useLatestReleaseQuery = ({
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled,
   });
+};
+
+export const useInvalidateGithubVersion = () => {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: generalKeys.githubVersion });
+  };
 };

@@ -71,6 +71,17 @@ const NewReleaseDialog: React.FC<NewReleaseDialogProps> = ({
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
 
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  const [prevVersion, setPrevVersion] = useState(releaseInfo?.version);
+
+  if (isOpen !== prevOpen || releaseInfo?.version !== prevVersion) {
+    setPrevOpen(isOpen);
+    setPrevVersion(releaseInfo?.version);
+    setHasReadFully(false);
+    setHasAcknowledged(false);
+    setConfirmationText('');
+  }
+
   const hasBreakingChange =
     releaseInfo?.releaseNotes?.toLowerCase().includes('breaking change') ??
     false;
@@ -96,10 +107,6 @@ const NewReleaseDialog: React.FC<NewReleaseDialogProps> = ({
 
   useEffect(() => {
     if (isOpen && releaseInfo) {
-      setHasReadFully(false);
-      setHasAcknowledged(false);
-      setConfirmationText('');
-
       // Check if container has no scrollbar (content is short)
       const timer = setTimeout(() => {
         const container = scrollContainerRef.current;

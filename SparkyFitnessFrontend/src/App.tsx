@@ -30,9 +30,10 @@ import {
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import OidcCallback from '@/components/OidcCallback';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useCurrentVersionQuery } from './hooks/useGeneralQueries';
-import { useQueryClient } from '@tanstack/react-query';
-import { generalKeys } from '@/api/keys/general';
+import {
+  useCurrentVersionQuery,
+  useInvalidateGithubVersion,
+} from './hooks/useGeneralQueries';
 import {
   RootErrorBoundary,
   RouteErrorBoundary,
@@ -128,10 +129,10 @@ const Root = () => {
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const invalidateGithubVersion = useInvalidateGithubVersion();
 
   const handleShowNewReleaseDialog = () => {
-    queryClient.invalidateQueries({ queryKey: generalKeys.githubVersion });
+    invalidateGithubVersion();
     setShowNewReleaseDialog(true);
   };
 
