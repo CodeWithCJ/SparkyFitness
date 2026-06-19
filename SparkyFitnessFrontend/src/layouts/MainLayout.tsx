@@ -505,7 +505,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               className="cursor-pointer underline hover:text-foreground"
               onClick={onShowNewReleaseDialog}
             >
-              What's New
+              {t("nav.whatsNew", "What's New")}
             </p>
           </div>
         )}
