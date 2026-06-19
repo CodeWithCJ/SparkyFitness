@@ -52,7 +52,6 @@ services:
       SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
-      SPARKY_FITNESS_MCP_URL: ${SPARKY_FITNESS_MCP_URL:-http://sparkyfitness-mcp:3001} # Pass MCP server URL if configured
     volumes:
       - ../SparkyFitnessServer:/app/SparkyFitnessServer:z
       - /app/SparkyFitnessServer/node_modules
@@ -105,6 +104,10 @@ services:
   #     - sparkyfitness-db
   #     - sparkyfitness-server
 
+  # DEPRECATED: the standalone MCP service is superseded by the in-process /mcp
+  # route on sparkyfitness-server (http://localhost:3010/mcp in local dev). This
+  # block is kept commented out only for the deprecation window; you do not need
+  # it to run MCP.
   # sparkyfitness-mcp:
   #   build:
   #     context: ..

@@ -1,3 +1,12 @@
+// ─── DEPRECATED ───────────────────────────────────────────────────────────────
+// This standalone MCP server is superseded by the in-process `/mcp` route on the
+// main SparkyFitnessServer, which reuses the chatbot tool registry (one shared
+// tool surface). Point new MCP clients at the main server's `/mcp` endpoint
+// instead. The Docker image `codewithcj/sparkyfitness_mcp:latest` is still
+// published during a deprecation window, so this package remains for now;
+// removal is tracked as a scheduled follow-up (Phase 3b). See README.md.
+// ──────────────────────────────────────────────────────────────────────────────
+
 import path from "path";
 import dotenv from "dotenv";
 

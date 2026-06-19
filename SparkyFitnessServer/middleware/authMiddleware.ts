@@ -3,6 +3,7 @@ import userRepository from '../models/userRepository.js';
 import { serializeSignedCookie } from 'better-call';
 import { auth } from '../auth.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { resolveIsAdmin } from '../utils/adminCheck.js';
 import {
   getCachedSession,
   setCachedSession,
@@ -176,26 +177,12 @@ const isAdmin = async (req: any, res: any, next: any) => {
   if (!req.userId) {
     return res.status(401).json({ error: 'Authentication required.' });
   }
-  // 1. Super-admin override
-  if (
-    process.env.SPARKY_FITNESS_ADMIN_EMAIL &&
-    req.user?.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL
-  ) {
+  // Admin predicate lives in utils/adminCheck.ts (checks the AUTHENTICATED user,
+  // never the context-switched one, to prevent privilege escalation).
+  if (await resolveIsAdmin(req.user, req.authenticatedUserId)) {
     return next();
   }
-  // 2. Native Better Auth Role Check
-  // We MUST check the role of the AUTHENTICATED user, not the ACTIVE user
-  // to prevent privilege escalation via context switching.
-  const userRole =
-    req.user?.role ||
-    (await userRepository.getUserRole(req.authenticatedUserId));
-  if (userRole === 'admin') {
-    return next();
-  }
-  log(
-    'warn',
-    `Admin Check: Access denied for User ${req.userId} (Role: ${userRole})`
-  );
+  log('warn', `Admin Check: Access denied for User ${req.userId}`);
   return res.status(403).json({ error: 'Admin access required.' });
 };
 export { authenticate };
