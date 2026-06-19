@@ -82,6 +82,18 @@ async function getSystemClient() {
   const client = await _getRawOwnerPool().connect();
   return client;
 }
+// node-pg counters for the app pool, for the admin-only dev tools. Guards
+// against an uninitialized pool.
+function getPoolStats() {
+  if (!appPoolInstance) {
+    return { totalCount: 0, idleCount: 0, waitingCount: 0 };
+  }
+  return {
+    totalCount: appPoolInstance.totalCount,
+    idleCount: appPoolInstance.idleCount,
+    waitingCount: appPoolInstance.waitingCount,
+  };
+}
 async function endPool() {
   if (ownerPoolInstance) {
     log('info', 'Ending existing owner database connection pool...');
@@ -110,11 +122,13 @@ export { endPool };
 export { resetPool };
 export { getClient };
 export { getSystemClient };
+export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };
 export default {
   endPool,
   resetPool,
   getClient,
   getSystemClient,
+  getPoolStats,
   getRawOwnerPool: _getRawOwnerPool,
 };
