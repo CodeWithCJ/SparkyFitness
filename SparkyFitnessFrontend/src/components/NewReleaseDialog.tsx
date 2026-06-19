@@ -100,17 +100,17 @@ const NewReleaseDialog: React.FC<NewReleaseDialogProps> = ({
       setHasAcknowledged(false);
       setConfirmationText('');
 
-      // Check if container has no scrollbar (content is short)
-      const timer = setTimeout(() => {
-        const container = scrollContainerRef.current;
-        if (container) {
-          if (container.scrollHeight <= container.clientHeight) {
-            setHasReadFully(true);
-          }
-        }
-      }, 100);
+      const container = scrollContainerRef.current;
+      if (!container) return;
 
-      return () => clearTimeout(timer);
+      const observer = new ResizeObserver(() => {
+        if (container.clientHeight > 0 && container.scrollHeight <= container.clientHeight) {
+          setHasReadFully(true);
+        }
+      });
+
+      observer.observe(container);
+      return () => observer.disconnect();
     }
   }, [isOpen, releaseInfo]);
 
