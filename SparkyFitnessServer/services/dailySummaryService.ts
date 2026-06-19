@@ -310,14 +310,32 @@ export async function getDailySummary({
     exerciseSessions as ExerciseSessionResponse[],
     stepCalories,
     goals,
-    (adjustedGoals as any)?.calories
-      ? parseFloat(String((adjustedGoals as any).calories))
-      : 2000,
+    Number((adjustedGoals as Record<string, unknown> | null)?.calories) || 2000,
     userProfile,
     userPreferences,
     measurements,
     externalBmr
   );
+
+  const rawGoalData = goals as Record<string, unknown> | null;
+  const adjustedGoalData = adjustedGoals as Record<string, unknown> | null;
+  const rawCalories = Number(rawGoalData?.calories) || 2000;
+  const adjCalories = Number(adjustedGoalData?.calories) || rawCalories;
+
+  const computedAdjustedGoals: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null =
+    adjCalories !== rawCalories
+      ? {
+          calories: Math.round(adjCalories),
+          protein: Math.round(Number(adjustedGoalData?.protein) || 0),
+          carbs: Math.round(Number(adjustedGoalData?.carbs) || 0),
+          fat: Math.round(Number(adjustedGoalData?.fat) || 0),
+        }
+      : null;
 
   return {
     goals,
@@ -326,5 +344,6 @@ export async function getDailySummary({
     waterIntake: parseFloat(waterResult?.water_ml) || 0,
     stepCalories,
     calorieBalance,
+    adjustedGoals: computedAdjustedGoals,
   };
 }

@@ -32,9 +32,11 @@ export interface FamilyAccess {
   id: string;
   owner_user_id: string;
   owner_email?: string; // Added owner_email
+  owner_full_name?: string | null; // Added owner_full_name
   family_email: string;
   family_user_id: string;
   family_user_email?: string; // Added family_user_email
+  family_full_name?: string | null; // Added family_full_name
   access_permissions: {
     can_manage_diary: boolean;
     can_view_food_library: boolean;

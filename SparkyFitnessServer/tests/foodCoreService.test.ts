@@ -188,3 +188,73 @@ describe('foodCoreService.updateFood', () => {
     expect(passedData.shared_with_public).toBe(false);
   });
 });
+
+describe('foodCoreService.deleteFoodVariant', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should successfully delete a food variant if authenticated user owns the parent food', async () => {
+    const variant = { id: 'variant-789', food_id: 'food-456' };
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodVariantById.mockResolvedValue(variant);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodOwnerId.mockResolvedValue(TEST_USER_ID);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.deleteFoodVariant.mockResolvedValue(true);
+
+    const result = await foodCoreService.deleteFoodVariant(
+      TEST_USER_ID,
+      'variant-789'
+    );
+
+    expect(foodRepository.getFoodVariantById).toHaveBeenCalledWith(
+      'variant-789',
+      TEST_USER_ID
+    );
+    expect(foodRepository.getFoodOwnerId).toHaveBeenCalledWith(
+      'food-456',
+      TEST_USER_ID
+    );
+    expect(foodRepository.deleteFoodVariant).toHaveBeenCalledWith(
+      'variant-789',
+      TEST_USER_ID
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should throw an error if variant is not found', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodVariantById.mockResolvedValue(null);
+
+    await expect(
+      foodCoreService.deleteFoodVariant(TEST_USER_ID, 'variant-789')
+    ).rejects.toThrow('Food variant not found.');
+  });
+
+  it('should throw an error if parent food is not found', async () => {
+    const variant = { id: 'variant-789', food_id: 'food-456' };
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodVariantById.mockResolvedValue(variant);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodOwnerId.mockResolvedValue(null);
+
+    await expect(
+      foodCoreService.deleteFoodVariant(TEST_USER_ID, 'variant-789')
+    ).rejects.toThrow('Associated food not found.');
+  });
+
+  it('should throw a Forbidden error if user does not own the parent food', async () => {
+    const variant = { id: 'variant-789', food_id: 'food-456' };
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodVariantById.mockResolvedValue(variant);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.getFoodOwnerId.mockResolvedValue('another-user-123');
+
+    await expect(
+      foodCoreService.deleteFoodVariant(TEST_USER_ID, 'variant-789')
+    ).rejects.toThrow(
+      'Forbidden: You do not have permission to delete this food variant.'
+    );
+  });
+});

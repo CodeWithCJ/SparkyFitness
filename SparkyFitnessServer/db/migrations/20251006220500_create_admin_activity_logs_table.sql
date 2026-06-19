@@ -1,7 +1,7 @@
 -- Migration to create admin_activity_logs table
 
 CREATE TABLE IF NOT EXISTS admin_activity_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     admin_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     target_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     action_type VARCHAR(255) NOT NULL,

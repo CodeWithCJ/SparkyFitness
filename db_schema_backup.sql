@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict MnDfCZua2AbHyHbfP3jmY5A6tLHzs46xu2mlpy8Bau6ZBPcMjGgwK8XgEr0zKcq
+\restrict BjzK8fRuMCiIpDtg2VVjc8WfrESe6YuucjzSqae0YDpyYMyRG3uuy3ahWGmcFfT
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.0
@@ -31,48 +31,6 @@ CREATE SCHEMA auth;
 --
 
 CREATE SCHEMA system;
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
--- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
-
-
---
--- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-
-
---
--- Name: EXTENSION "uuid-ossp"; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
 
 
 --
@@ -883,7 +841,7 @@ COMMENT ON TABLE public.account IS 'Better Auth account table - stores credentia
 --
 
 CREATE TABLE public.admin_activity_logs (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     admin_user_id uuid NOT NULL,
     target_user_id uuid,
     action_type character varying(255) NOT NULL,
@@ -1185,7 +1143,7 @@ COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded dur
 --
 
 CREATE TABLE public.exercise_entry_activity_details (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     exercise_entry_id uuid,
     provider_name text NOT NULL,
     detail_type text NOT NULL,
@@ -1251,7 +1209,7 @@ ALTER SEQUENCE public.exercise_entry_sets_id_seq OWNED BY public.exercise_entry_
 --
 
 CREATE TABLE public.exercise_preset_entries (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     workout_preset_id integer,
     name character varying(255) NOT NULL,
@@ -1300,7 +1258,7 @@ CREATE TABLE public.exercises (
 --
 
 CREATE TABLE public.external_data_providers (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     provider_name text NOT NULL,
     provider_type text NOT NULL,
@@ -1388,7 +1346,7 @@ CREATE TABLE public.family_access (
 --
 
 CREATE TABLE public.fasting_logs (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     start_time timestamp with time zone NOT NULL,
     end_time timestamp with time zone,
@@ -1453,11 +1411,25 @@ CREATE TABLE public.food_entries (
 
 
 --
+-- Name: COLUMN food_entries.source; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.source IS 'Provider that produced this entry (e.g. ''health_connect''). NULL for manual/web entries.';
+
+
+--
+-- Name: COLUMN food_entries.source_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.source_id IS 'Provider-stable record id for idempotent re-sync. NULL for manual/web entries.';
+
+
+--
 -- Name: food_entry_meals; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.food_entry_meals (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     meal_template_id uuid,
     entry_date date NOT NULL,
@@ -1992,7 +1964,7 @@ COMMENT ON TABLE public.session IS 'Better Auth session table';
 --
 
 CREATE TABLE public.sleep_entries (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     entry_date date NOT NULL,
     bedtime timestamp with time zone NOT NULL,
@@ -2029,7 +2001,7 @@ CREATE TABLE public.sleep_entries (
 --
 
 CREATE TABLE public.sleep_entry_stages (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     entry_id uuid NOT NULL,
     user_id uuid NOT NULL,
     stage_type character varying(50) NOT NULL,
@@ -5289,6 +5261,17 @@ CREATE POLICY modify_policy ON public.food_entry_meals USING (public.has_diary_a
 
 
 --
+-- Name: food_variants modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
+
+
+--
 -- Name: foods modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5364,6 +5347,30 @@ CREATE POLICY modify_policy ON public.water_intake_entries USING (public.has_dia
 --
 
 CREATE POLICY modify_policy ON public.workout_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: workout_preset_exercise_sets modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.workout_preset_exercise_sets USING ((EXISTS ( SELECT 1
+   FROM (public.workout_preset_exercises wpe
+     JOIN public.workout_presets wp ON ((wp.id = wpe.workout_preset_id)))
+  WHERE ((wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id) AND (public.current_user_id() = wp.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM (public.workout_preset_exercises wpe
+     JOIN public.workout_presets wp ON ((wp.id = wpe.workout_preset_id)))
+  WHERE ((wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id) AND (public.current_user_id() = wp.user_id)))));
+
+
+--
+-- Name: workout_preset_exercises modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.workout_preset_exercises USING ((EXISTS ( SELECT 1
+   FROM public.workout_presets wp
+  WHERE ((wp.id = workout_preset_exercises.workout_preset_id) AND (public.current_user_id() = wp.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.workout_presets wp
+  WHERE ((wp.id = workout_preset_exercises.workout_preset_id) AND (public.current_user_id() = wp.user_id)))));
 
 
 --
@@ -5587,43 +5594,10 @@ CREATE POLICY owner_policy ON public.workout_plan_template_assignments USING ((E
 
 
 --
--- Name: workout_preset_exercise_sets owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY owner_policy ON public.workout_preset_exercise_sets USING ((EXISTS ( SELECT 1
-   FROM public.workout_preset_exercises wpe
-  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id)))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.workout_preset_exercises wpe
-  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id))));
-
-
---
--- Name: workout_preset_exercises owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY owner_policy ON public.workout_preset_exercises USING ((EXISTS ( SELECT 1
-   FROM public.workout_presets wp
-  WHERE (wp.id = workout_preset_exercises.workout_preset_id)))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.workout_presets wp
-  WHERE (wp.id = workout_preset_exercises.workout_preset_id))));
-
-
---
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
---
--- Name: food_variants select_and_modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_and_modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
-
 
 --
 -- Name: exercise_entries select_exercise_preset_entry_linked_policy; Type: POLICY; Schema: public; Owner: -
@@ -5727,6 +5701,15 @@ CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.
 
 
 --
+-- Name: food_variants select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.food_variants FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.foods f
+  WHERE ((f.id = food_variants.food_id) AND public.has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text])))));
+
+
+--
 -- Name: foods select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5796,6 +5779,24 @@ CREATE POLICY select_policy ON public.water_intake_entries FOR SELECT USING (pub
 --
 
 CREATE POLICY select_policy ON public.workout_plan_templates FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_exercise_library'::text]));
+
+
+--
+-- Name: workout_preset_exercise_sets select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.workout_preset_exercise_sets FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.workout_preset_exercises wpe
+  WHERE (wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id))));
+
+
+--
+-- Name: workout_preset_exercises select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.workout_preset_exercises FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.workout_presets wp
+  WHERE (wp.id = workout_preset_exercises.workout_preset_id))));
 
 
 --
@@ -5972,24 +5973,6 @@ GRANT USAGE ON SCHEMA system TO "sparky uat";
 
 
 --
--- Name: FUNCTION armor(bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.armor(bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.armor(bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.armor(bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION armor(bytea, text[], text[]); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO "sparky uat";
-
-
---
 -- Name: FUNCTION authenticated_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6107,15 +6090,6 @@ GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky uat";
 
 
 --
--- Name: FUNCTION crypt(text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.crypt(text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.crypt(text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.crypt(text, text) TO "sparky uat";
-
-
---
 -- Name: FUNCTION current_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6125,82 +6099,12 @@ GRANT ALL ON FUNCTION public.current_user_id() TO "sparky uat";
 
 
 --
--- Name: FUNCTION dearmor(text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.dearmor(text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.dearmor(text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.dearmor(text) TO "sparky uat";
-
-
---
--- Name: FUNCTION decrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION decrypt_iv(bytea, bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION digest(bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.digest(bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.digest(bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.digest(bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION digest(text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.digest(text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.digest(text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.digest(text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION encrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION encrypt_iv(bytea, bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO "sparky uat";
-
-
---
 -- Name: FUNCTION find_user_by_email(p_email text); Type: ACL; Schema: public; Owner: -
 --
 
 GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
 GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky uat";
-
-
---
--- Name: FUNCTION fips_mode(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.fips_mode() TO "sparky uat";
 
 
 --
@@ -6219,42 +6123,6 @@ GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_uat;
 GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky uat";
 GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_uat;
-
-
---
--- Name: FUNCTION gen_random_bytes(integer); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO sparky_uat;
-GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO "sparky uat";
-
-
---
--- Name: FUNCTION gen_random_uuid(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.gen_random_uuid() TO sparky_uat;
-GRANT ALL ON FUNCTION public.gen_random_uuid() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.gen_random_uuid() TO "sparky uat";
-
-
---
--- Name: FUNCTION gen_salt(text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.gen_salt(text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.gen_salt(text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.gen_salt(text) TO "sparky uat";
-
-
---
--- Name: FUNCTION gen_salt(text, integer); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO sparky_uat;
-GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO "sparky uat";
 
 
 --
@@ -6321,24 +6189,6 @@ GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_
 
 
 --
--- Name: FUNCTION hmac(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION hmac(text, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.hmac(text, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.hmac(text, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.hmac(text, text, text) TO "sparky uat";
-
-
---
 -- Name: FUNCTION is_admin(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6354,211 +6204,6 @@ GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky uat";
-
-
---
--- Name: FUNCTION pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO "sparky uat";
-
-
---
--- Name: FUNCTION pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO "sparky uat";
-
-
---
--- Name: FUNCTION pg_stat_statements_reset(userid oid, dbid oid, queryid bigint, minmax_only boolean); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint, minmax_only boolean) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_armor_headers(text, OUT key text, OUT value text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_key_id(bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt(bytea, bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt(bytea, bytea, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_decrypt_bytea(bytea, bytea, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_encrypt(text, bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_encrypt(text, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_encrypt_bytea(bytea, bytea); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_pub_encrypt_bytea(bytea, bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_decrypt(bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_decrypt(bytea, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_decrypt_bytea(bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_decrypt_bytea(bytea, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_encrypt(text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_encrypt(text, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_encrypt_bytea(bytea, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO "sparky uat";
-
-
---
--- Name: FUNCTION pgp_sym_encrypt_bytea(bytea, text, text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO "sparky uat";
 
 
 --
@@ -6631,96 +6276,6 @@ GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky uat";
 GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
 GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_generate_v1(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_generate_v1() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_generate_v1() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_generate_v1() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_generate_v1mc(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_generate_v3(namespace uuid, name text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_generate_v4(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_generate_v4() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_generate_v4() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_generate_v4() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_generate_v5(namespace uuid, name text); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_nil(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_nil() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_nil() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_nil() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_ns_dns(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_ns_dns() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_ns_dns() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_ns_dns() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_ns_oid(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_ns_oid() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_ns_oid() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_ns_oid() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_ns_url(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_ns_url() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_ns_url() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_ns_url() TO "sparky uat";
-
-
---
--- Name: FUNCTION uuid_ns_x500(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.uuid_ns_x500() TO sparky_uat;
-GRANT ALL ON FUNCTION public.uuid_ns_x500() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.uuid_ns_x500() TO "sparky uat";
 
 
 --
@@ -7081,24 +6636,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky u
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
-
-
---
--- Name: TABLE pg_stat_statements; Type: ACL; Schema: public; Owner: -
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO "sparky uat";
-
-
---
--- Name: TABLE pg_stat_statements_info; Type: ACL; Schema: public; Owner: -
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO "sparky uat";
 
 
 --
@@ -7510,5 +7047,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MnDfCZua2AbHyHbfP3jmY5A6tLHzs46xu2mlpy8Bau6ZBPcMjGgwK8XgEr0zKcq
+\unrestrict BjzK8fRuMCiIpDtg2VVjc8WfrESe6YuucjzSqae0YDpyYMyRG3uuy3ahWGmcFfT
 

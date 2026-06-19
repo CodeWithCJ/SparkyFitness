@@ -218,3 +218,39 @@ export const deleteFoodEntryMeal = async (
   });
   return response;
 };
+
+export interface CopyFoodEntriesFromUserPayload {
+  familyUserId: string;
+  sourceDate: string;
+  sourceMealType: string;
+  targetDate: string;
+  targetMealType: string;
+}
+
+export interface CopyFoodEntriesToUserPayload {
+  familyUserId: string;
+  sourceDate: string;
+  sourceMealType: string;
+  targetDate: string;
+  targetMealType: string;
+}
+
+export const copyFoodEntriesFromUser = async (
+  payload: CopyFoodEntriesFromUserPayload
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-from-user', {
+    method: 'POST',
+    body: payload,
+  });
+  return response;
+};
+
+export const copyFoodEntriesToUser = async (
+  payload: CopyFoodEntriesToUserPayload
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-to-user', {
+    method: 'POST',
+    body: payload,
+  });
+  return response;
+};

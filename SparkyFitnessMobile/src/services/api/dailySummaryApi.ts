@@ -10,6 +10,7 @@ interface DailySummaryApiResponse {
   waterIntake: number;
   stepCalories?: number;
   calorieBalance?: CalorieBalance;
+  adjustedGoals?: { calories: number; protein: number; carbs: number; fat: number } | null;
 }
 
 export const fetchDailySummary = (date: string): Promise<DailySummaryApiResponse> =>

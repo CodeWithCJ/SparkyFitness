@@ -1,11 +1,4 @@
-import {
-  subDays,
-  format,
-  startOfDay,
-  eachDayOfInterval,
-  parseISO,
-  differenceInDays,
-} from 'date-fns';
+import { subDays, format, eachDayOfInterval, differenceInDays } from 'date-fns';
 import NodeCache from 'node-cache';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
@@ -14,7 +7,7 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, dayToPickerDate } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
   date_of_birth?: string | null;
@@ -79,8 +72,8 @@ function computeAdaptiveTdeeFromData(
     checkInMeasurements,
     nutritionData,
   } = data;
-  const calculationDate = startOfDay(parseISO(calculationDateStr));
-  const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
+  const calculationDate = dayToPickerDate(calculationDateStr);
+  const startDate = subDays(calculationDate, 90); // 90 days to allow for 7-day smoothing startup and tracking age calculation
 
   // Fallback Logic Prep
   const weightKg = parseFloat(String(latestMeasurement?.weight ?? '')) || 70;
@@ -278,16 +271,50 @@ function computeAdaptiveTdeeFromData(
   // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * 7700)
   // human body tissue is approx 7700 kcal per kg
   let adaptiveTdee = avgDailyIntake - dailyWeightChange * 7700;
-  // Safety Capping: +/- 1000 kcal from BMR-based fallback
-  const maxTdee = fallbackTdee + 1000;
-  const minTdee = Math.max(1200, fallbackTdee - 1000);
+  // Safety Capping: +/- 500 kcal from BMR-based fallback
+  const maxTdee = fallbackTdee + 500;
+  const minTdee = Math.max(1200, fallbackTdee - 500);
   adaptiveTdee = Math.min(Math.max(adaptiveTdee, minTdee), maxTdee);
 
-  const confidence = getConfidence(
+  // Find tracking age of weight logging (weightEntries is sorted by date ascending)
+  let trackingAgeWeeks = 0;
+  if (weightEntries.length > 0) {
+    const firstWeightDate = dayToPickerDate(
+      String(weightEntries[0]!.entry_date)
+    );
+    const trackingAgeDays = differenceInDays(calculationDate, firstWeightDate);
+    trackingAgeWeeks = trackingAgeDays / 7;
+  }
+
+  // Calculate maximum consecutive weight gap in the 28-day calculation window
+  let maxConsecutiveGap = 0;
+  let currentGap = 0;
+  for (const day of calculationWindow) {
+    if (day.actualWeight === null) {
+      currentGap++;
+      if (currentGap > maxConsecutiveGap) {
+        maxConsecutiveGap = currentGap;
+      }
+    } else {
+      currentGap = 0;
+    }
+  }
+
+  let confidence = getConfidence(
     filteredCalories.length,
     weightEntries.length,
     dayDiff
   );
+
+  // Downgrade confidence for recent trackers (tracking age < 6 weeks)
+  if (trackingAgeWeeks < 6) {
+    confidence = confidence === 'HIGH' ? 'MEDIUM' : 'LOW';
+  }
+
+  // Downgrade confidence for multi-day weight gaps (>= 3 consecutive days) in the calculation window
+  if (maxConsecutiveGap >= 3) {
+    confidence = confidence === 'HIGH' ? 'MEDIUM' : 'LOW';
+  }
 
   return {
     tdee: Math.round(adaptiveTdee),
@@ -309,14 +336,14 @@ async function calculateAdaptiveTdee(
     const tz = await loadUserTimezone(userId);
     calculationDateStr = todayInZone(tz);
   }
-  const calculationDate = startOfDay(parseISO(calculationDateStr));
+  const calculationDate = dayToPickerDate(calculationDateStr);
   const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
   const cachedResult = tdeeCache.get(cacheKey) as AdaptiveTdeeResult;
   if (cachedResult) {
     return cachedResult;
   }
   try {
-    const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
+    const startDate = subDays(calculationDate, 90); // 90 days to allow for 7-day smoothing startup and tracking age calculation
     const startDateStr = format(startDate, 'yyyy-MM-dd');
     const endDateStr = format(calculationDate, 'yyyy-MM-dd');
     // Fetch all necessary data in parallel
@@ -366,8 +393,8 @@ async function calculateAdaptiveTdeeRange(
   startDateStr: string,
   endDateStr: string
 ): Promise<Record<string, AdaptiveTdeeResult>> {
-  const startCalculationDate = startOfDay(parseISO(startDateStr));
-  const endCalculationDate = startOfDay(parseISO(endDateStr));
+  const startCalculationDate = dayToPickerDate(startDateStr);
+  const endCalculationDate = dayToPickerDate(endDateStr);
 
   const results: Record<string, AdaptiveTdeeResult> = {};
   const days = eachDayOfInterval({
@@ -393,7 +420,7 @@ async function calculateAdaptiveTdeeRange(
 
   try {
     const earliestCalcDate = startCalculationDate;
-    const fetchStartDate = subDays(earliestCalcDate, 35);
+    const fetchStartDate = subDays(earliestCalcDate, 90);
     const fetchStartDateStr = format(fetchStartDate, 'yyyy-MM-dd');
 
     const [

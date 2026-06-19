@@ -1,8 +1,12 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 vi.mock('../models/measurementRepository');
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn(),
+}));
 
 describe('Measurement Service - getCheckInMeasurements', () => {
   const userId = 'user-123';
@@ -10,6 +14,13 @@ describe('Measurement Service - getCheckInMeasurements', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T12:00:00Z'));
+    vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('returns resolved measurements from the repository', async () => {
