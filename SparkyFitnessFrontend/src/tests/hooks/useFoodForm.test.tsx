@@ -1338,4 +1338,73 @@ describe('useCustomFoodForm', () => {
       })
     );
   });
+
+  it('updates barcode field and performs validation/conflict checking', async () => {
+    mockFetchQuery.mockResolvedValue({
+      source: 'local',
+      food: { id: 'other-food-id', name: 'Other Food' },
+    });
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+      })
+    );
+
+    // Initial state
+    expect(result.current.formData.barcode).toBe('');
+
+    // Update barcode manually
+    act(() => {
+      result.current.updateField('barcode', '12345');
+    });
+    expect(result.current.formData.barcode).toBe('12345');
+
+    // Submit with invalid barcode (must fail validation)
+    await act(async () => {
+      await result.current.handleSubmit({
+        preventDefault: jest.fn(),
+      } as any);
+    });
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Validation Error',
+        description: 'Barcode must be 8-14 digits.',
+      })
+    );
+    expect(mockSaveFood).not.toHaveBeenCalled();
+
+    // Clear validation error and set valid barcode
+    mockToast.mockClear();
+    act(() => {
+      result.current.updateField('barcode', '123456789012');
+      result.current.updateField('name', 'Greek Yogurt');
+    });
+
+    // Submit with conflicting barcode
+    await act(async () => {
+      await result.current.handleSubmit({
+        preventDefault: jest.fn(),
+      } as any);
+    });
+
+    // It should trigger conflict check and set confirmation state, but not call saveFood yet
+    expect(mockFetchQuery).toHaveBeenCalled();
+    expect(result.current.showBarcodeConflictConfirmation).toBe(true);
+    expect(result.current.barcodeConflictFoodName).toBe('Other Food');
+    expect(mockSaveFood).not.toHaveBeenCalled();
+
+    // Confirm conflict and save
+    await act(async () => {
+      await result.current.handleBarcodeConflictConfirm();
+    });
+
+    expect(mockSaveFood).toHaveBeenCalledWith(
+      expect.objectContaining({
+        foodData: expect.objectContaining({
+          barcode: '123456789012',
+        }),
+      })
+    );
+  });
 });

@@ -8,6 +8,7 @@ import { RecentActivity } from './RecentActivity';
 import { CheckInTopRow } from './CheckInTopRow';
 import { useCheckInLogic } from '@/hooks/CheckIn/useCheckInLogic';
 import { useSearchParams } from 'react-router-dom';
+import { CheckInPhotos } from './CheckInPhotos';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -100,6 +101,8 @@ const CheckIn = () => {
         waist={waist}
         weight={weight}
       />
+
+      <CheckInPhotos selectedDate={selectedDate} />
 
       <RecentActivity
         convertMeasurement={convertMeasurement}

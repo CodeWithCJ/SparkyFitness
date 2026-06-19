@@ -22,6 +22,9 @@ export interface HealthMetric {
   enabled?: boolean; // Set to false to temporarily disable a metric
   backgroundDeliveryFrequency?: BackgroundDeliveryFrequency; // Default: 'daily'
   aggregationStrategy?: 'min-max-avg' | 'sum' | 'last';
+  // When true, background sync on iOS uses the aggregated helper instead of raw records.
+  // Android ignores this flag and always uses raw Health Connect records for this metric.
+  iosAggregatedSync?: boolean;
 }
 
 const ALL_HEALTH_METRICS: HealthMetric[] = [
@@ -35,7 +38,7 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
   { id: 'sleepSession', label: 'Sleep Session', stateKey: 'isSleepSessionSyncEnabled', preferenceKey: 'syncSleepSessionEnabled', recordType: 'SleepSession', unit: 'min', icon: require('../assets/icons/health-metrics/sleep_session.png'), permissions: [{ accessType: 'read', recordType: 'SleepSession' }], type: 'sleep_session', category: 'Common' },
   { id: 'stress', label: 'Stress', stateKey: 'isStressSyncEnabled', preferenceKey: 'syncStressEnabled', recordType: 'Stress', unit: 'level', icon: require('../assets/icons/health-metrics/stress.png'), permissions: [{ accessType: 'read', recordType: 'Stress' }], type: 'stress', platforms: ['ios'], category: 'Vitals', enabled: false },
   { id: 'basalBodyTemperature', label: 'Basal Body Temperature', stateKey: 'isBasalBodyTemperatureSyncEnabled', preferenceKey: 'syncBasalBodyTemperatureEnabled', recordType: 'BasalBodyTemperature', unit: 'celsius', icon: require('../assets/icons/health-metrics/basal_body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BasalBodyTemperature' }], type: 'basal_body_temperature', category: 'Vitals' },
-  { id: 'basalMetabolicRate', label: 'Basal Metabolic Rate', stateKey: 'isBasalMetabolicRateSyncEnabled', preferenceKey: 'syncBasalMetabolicRateEnabled', recordType: 'BasalMetabolicRate', unit: 'kcal', icon: require('../assets/icons/health-metrics/basal_metabolic_rate.png'), permissions: [{ accessType: 'read', recordType: 'BasalMetabolicRate' }], type: 'basal_metabolic_rate', category: 'Body Measurements' },
+  { id: 'basalMetabolicRate', label: 'Basal Metabolic Rate', stateKey: 'isBasalMetabolicRateSyncEnabled', preferenceKey: 'syncBasalMetabolicRateEnabled', recordType: 'BasalMetabolicRate', unit: 'kcal', icon: require('../assets/icons/health-metrics/basal_metabolic_rate.png'), permissions: [{ accessType: 'read', recordType: 'BasalMetabolicRate' }], type: 'basal_metabolic_rate', category: 'Body Measurements', backgroundDeliveryFrequency: 'none', iosAggregatedSync: true },
   { id: 'bloodGlucose', label: 'Blood Glucose', stateKey: 'isBloodGlucoseSyncEnabled', preferenceKey: 'syncBloodGlucoseEnabled', recordType: 'BloodGlucose', unit: 'mmol/L', icon: require('../assets/icons/health-metrics/blood_glucose.png'), permissions: [{ accessType: 'read', recordType: 'BloodGlucose' }], type: 'blood_glucose', category: 'Vitals', aggregationStrategy: 'min-max-avg' },
   { id: 'bodyFat', label: 'Body Fat', stateKey: 'isBodyFatSyncEnabled', preferenceKey: 'syncBodyFatEnabled', recordType: 'BodyFat', unit: '%', icon: require('../assets/icons/health-metrics/body_fat.png'), permissions: [{ accessType: 'read', recordType: 'BodyFat' }], type: 'body_fat', category: 'Body Measurements' },
   { id: 'bodyTemperature', label: 'Body Temperature', stateKey: 'isBodyTemperatureSyncEnabled', preferenceKey: 'syncBodyTemperatureEnabled', recordType: 'BodyTemperature', unit: 'celsius', icon: require('../assets/icons/health-metrics/body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }], type: 'body_temperature', category: 'Vitals' },

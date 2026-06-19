@@ -90,9 +90,15 @@ export const downloadDiaryExport = async (
   return response;
 };
 
-export const loadDiaryGoals = async (date: string): Promise<ExpandedGoals> => {
+export const loadDiaryGoals = async (
+  date: string,
+  adjust?: boolean
+): Promise<ExpandedGoals> => {
   // Adjust return type as needed
-  const response = await apiCall(`/goals/by-date/${date}`, {
+  const url = adjust
+    ? `/goals/by-date/${date}?adjust=true`
+    : `/goals/by-date/${date}`;
+  const response = await apiCall(url, {
     method: 'GET',
   });
   return response;
@@ -209,6 +215,42 @@ export const deleteFoodEntryMeal = async (
 ): Promise<unknown> => {
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
     method: 'DELETE',
+  });
+  return response;
+};
+
+export interface CopyFoodEntriesFromUserPayload {
+  familyUserId: string;
+  sourceDate: string;
+  sourceMealType: string;
+  targetDate: string;
+  targetMealType: string;
+}
+
+export interface CopyFoodEntriesToUserPayload {
+  familyUserId: string;
+  sourceDate: string;
+  sourceMealType: string;
+  targetDate: string;
+  targetMealType: string;
+}
+
+export const copyFoodEntriesFromUser = async (
+  payload: CopyFoodEntriesFromUserPayload
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-from-user', {
+    method: 'POST',
+    body: payload,
+  });
+  return response;
+};
+
+export const copyFoodEntriesToUser = async (
+  payload: CopyFoodEntriesToUserPayload
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-to-user', {
+    method: 'POST',
+    body: payload,
   });
   return response;
 };

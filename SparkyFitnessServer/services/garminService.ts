@@ -947,18 +947,9 @@ async function processGarminNutritionData(
     `[garminService] Processing Garmin nutrition data for user ${userId} from ${startDate} to ${endDate}. Days: ${nutritionData.length}`
   );
 
-  // Step 1: Idempotency — delete existing Garmin food entries for this date range
-  const deletedCount =
-    await foodEntryRepository.deleteFoodEntriesByProviderTypeAndDateRange(
-      userId,
-      'garmin',
-      startDate,
-      endDate
-    );
-  log(
-    'info',
-    `[garminService] Deleted ${deletedCount} existing Garmin food entries for date range.`
-  );
+  // Idempotency is handled by the (user_id, source, source_id) upsert on
+  // food_entries — no range-delete needed. Each entry gets a deterministic
+  // source_id derived from the Garmin payload so re-syncs update in place.
 
   // Resolve meal types once
   const allMealTypes = await mealTypeRepository.getAllMealTypes(userId);
@@ -970,6 +961,7 @@ async function processGarminNutritionData(
   let processedFoods = 0;
   let processedEntries = 0;
   const errors: string[] = [];
+  const syncedSourceIds: string[] = [];
 
   // Step 2: Process each day
   for (const dayLog of nutritionData) {
@@ -1002,7 +994,8 @@ async function processGarminNutritionData(
       const loggedFoods = mealDetail.loggedFoods;
       if (!Array.isArray(loggedFoods)) continue;
 
-      for (const loggedFood of loggedFoods) {
+      for (let foodIdx = 0; foodIdx < loggedFoods.length; foodIdx++) {
+        const loggedFood = loggedFoods[foodIdx];
         try {
           const foodMeta = loggedFood.foodMetaData;
           const nutritionContent = loggedFood.nutritionContent;
@@ -1052,7 +1045,10 @@ async function processGarminNutritionData(
           const foodId = food.id;
           const variantId = food.default_variant_id || food.default_variant?.id;
 
-          // Create food entry
+          // Deterministic key: date + meal + garmin food id + position within meal
+          const sourceId = `${mealDate}:${mappedMealType}:${garminFoodId}:${foodIdx}`;
+
+          // Upsert food entry via (user_id, source, source_id) unique index
           await foodEntryRepository.createFoodEntry(
             {
               user_id: userId,
@@ -1067,9 +1063,12 @@ async function processGarminNutritionData(
               food_name: foodMeta.foodName,
               brand_name: foodMeta.brandName || null,
               ...mappedNutrition,
+              source: 'garmin',
+              source_id: sourceId,
             },
             userId
           );
+          syncedSourceIds.push(sourceId);
           processedEntries++;
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
@@ -1083,16 +1082,36 @@ async function processGarminNutritionData(
     }
   }
 
+  // Remove entries that Garmin no longer returns (e.g. deleted from Garmin
+  // Connect). Only runs when we successfully processed at least one entry —
+  // an empty response (no subscription, API error) won't wipe existing data.
+  let removedStale = 0;
+  if (syncedSourceIds.length > 0) {
+    removedStale = await foodEntryRepository.deleteStaleProviderEntries(
+      userId,
+      'garmin',
+      startDate,
+      endDate,
+      syncedSourceIds
+    );
+    if (removedStale > 0) {
+      log(
+        'info',
+        `[garminService] Removed ${removedStale} stale Garmin entries no longer in payload.`
+      );
+    }
+  }
+
   log(
     'info',
-    `[garminService] Nutrition sync complete. Foods created: ${processedFoods}, Entries created: ${processedEntries}, Errors: ${errors.length}`
+    `[garminService] Nutrition sync complete. Foods created: ${processedFoods}, Entries created: ${processedEntries}, Removed: ${removedStale}, Errors: ${errors.length}`
   );
 
   return {
     message: 'Garmin nutrition diary sync completed.',
     processedFoods,
     processedEntries,
-    deletedEntries: deletedCount,
+    removedStale,
     errors,
   };
 }
@@ -1172,6 +1191,13 @@ async function syncGarminData(
             if (mapping) {
               const value = entry[key];
               if (value === null || value === undefined) continue;
+              if (
+                value === 0 &&
+                mapping.targetType === 'check_in' &&
+                (mapping.field === 'weight' ||
+                  mapping.field === 'body_fat_percentage')
+              )
+                continue;
               const type =
                 mapping.targetType === 'check_in'
                   ? mapping.field

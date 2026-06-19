@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
+import { toast } from '@/hooks/use-toast';
+import { getLocalTimeString } from './backupTimeUtils';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettings;
@@ -29,20 +31,6 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   backupLocation,
 }) => {
   const { t } = useTranslation();
-
-  const getLocalTimeString = (utcTimeStr?: string) => {
-    if (!utcTimeStr) return '02:00';
-    const [hours, minutes] = utcTimeStr.split(':').map(Number);
-    const date = new Date();
-    if (hours && minutes) {
-      date.setUTCHours(hours, minutes, 0, 0);
-    }
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
-  };
 
   const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
@@ -81,9 +69,35 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   };
 
   const handleSubmit = () => {
-    const [hours, minutes] = backupTime.split(':').map(Number);
+    const parts = backupTime.split(':').map(Number);
+    const hours = parts[0];
+    const minutes = parts[1];
+    if (
+      backupEnabled &&
+      (hours === undefined ||
+        minutes === undefined ||
+        isNaN(hours) ||
+        isNaN(minutes) ||
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59)
+    ) {
+      toast({
+        title: t(
+          'admin.backupSettings.invalidTimeTitle',
+          'Invalid backup time'
+        ),
+        description: t(
+          'admin.backupSettings.invalidTimeDescription',
+          'Please enter a valid time in HH:MM format before saving.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
     const localDate = new Date();
-    if (hours && minutes) {
+    if (hours !== undefined && minutes !== undefined) {
       localDate.setHours(hours, minutes, 0, 0);
     }
     const utcTime = localDate.toISOString().substring(11, 16);
@@ -106,7 +120,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   return (
     <div className="p-4 pt-0 space-y-6">
       <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2">
+        <label className="block text-foreground text-sm font-bold mb-2">
           {t(
             'admin.backupSettings.enableScheduledBackups',
             'Enable Scheduled Backups:'
@@ -118,7 +132,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
       {backupEnabled && (
         <>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
+            <label className="block text-foreground text-sm font-bold mb-2">
               {t('admin.backupSettings.backupDays', 'Backup Days:')}
             </label>
             <div className="flex flex-wrap gap-2">
@@ -130,7 +144,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
                     onChange={() => handleDayChange(day)}
                     className=" form-checkbox h-4 w-4 text-blue-600"
                   />
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-foreground">
                     {t(`common.${day.toLowerCase()}`, day)}
                   </span>
                 </label>
@@ -140,7 +154,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
 
           <div className="mb-4">
             <label
-              className="block text-gray-700 text-sm font-bold mb-2"
+              className="block text-foreground text-sm font-bold mb-2"
               htmlFor="backupTime"
             >
               {t('admin.backupSettings.backupTime', {
@@ -159,7 +173,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
+            <label className="block text-foreground text-sm font-bold mb-2">
               {t(
                 'admin.backupSettings.retentionDays',
                 'Keep backups for (days):'
@@ -177,17 +191,17 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
       )}
 
       <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2">
+        <label className="block text-foreground text-sm font-bold mb-2">
           {t('admin.backupSettings.backupLocation', 'Backup Location:')}
         </label>
-        <p className="text-gray-900 break-all">{backupLocation}</p>
+        <p className="text-foreground break-all">{backupLocation}</p>
       </div>
 
       <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2">
+        <label className="block text-foreground text-sm font-bold mb-2">
           {t('admin.backupSettings.lastBackupStatus', 'Last Backup Status:')}
         </label>
-        <p className="text-gray-900">
+        <p className="text-foreground">
           {getStatusText(
             initialSettings.lastBackupStatus,
             initialSettings.lastBackupTimestamp
@@ -249,7 +263,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
         </p>
         <div className="relative">
           {isRestoring && (
-            <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+            <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             </div>
           )}
@@ -258,7 +272,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             accept=".tar.gz"
             disabled={isRestoring}
             onChange={handleFileChange}
-            className="block w-full h-15 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 disabled:opacity-50"
+            className="block w-full h-15 text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 disabled:opacity-50"
           />
         </div>
       </div>

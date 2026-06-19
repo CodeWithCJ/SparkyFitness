@@ -5,7 +5,6 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
-import adaptiveTdeeService from './AdaptiveTdeeService.js';
 import { log } from '../config/logging.js';
 import { userAge } from '../utils/dateHelpers.js';
 import type {
@@ -71,6 +70,7 @@ function computeCalorieBalance(
   exerciseSessions: ExerciseSessionResponse[],
   stepCalories: number,
   goals: { calories?: number | null },
+  adjustedGoalCalories: number,
   userProfile: { date_of_birth?: string; gender?: string } | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userPreferences: Record<string, any> | null,
@@ -79,7 +79,7 @@ function computeCalorieBalance(
     height?: string | number;
     body_fat_percentage?: string | number;
   } | null,
-  adaptiveTdeeData: { tdee: number } | null
+  externalBmr: number | null
 ): CalorieBalance {
   // 1. Eaten calories — scale per-serving values by quantity/serving_size
   const eatenCalories = foodEntries.reduce((sum, e) => {
@@ -97,6 +97,7 @@ function computeCalorieBalance(
   let bmr = 0;
   const activityLevel = userPreferences?.activity_level || 'not_much';
   const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
+  const useExternalBmr = userPreferences?.use_external_bmr || false;
 
   if (userProfile && userPreferences) {
     const tz = userPreferences.timezone || 'UTC';
@@ -130,6 +131,26 @@ function computeCalorieBalance(
     }
   }
 
+  // 3b. External BMR override — when the user opts in and a synced resting/BMR value
+  // exists for the day, prefer it over the formula. Sanity-bounded so a bad sample
+  // can't zero out the target; otherwise we keep the formula ("Otherwise, the selected
+  // formula will be used.").
+  let bmrSource = 'formula';
+  if (
+    useExternalBmr &&
+    externalBmr !== null &&
+    externalBmr >= 600 &&
+    externalBmr <= 6000
+  ) {
+    bmr = externalBmr;
+    bmrSource = 'external';
+  }
+  log(
+    'debug',
+    `dailySummaryService: BMR source=${bmrSource} value=${Math.round(bmr)}` +
+      (useExternalBmr ? ` (externalAvailable=${externalBmr !== null})` : '')
+  );
+
   // 4. Resolve exercise calories (3-tier fallback)
   const resolved = resolveExerciseCalories(
     otherCalories,
@@ -142,8 +163,7 @@ function computeCalorieBalance(
   const totalBurned = exerciseCaloriesBurned + bmrCalories;
   const netCalories = eatenCalories - totalBurned;
 
-  // 5. Goal adjustment
-  const rawGoalCalories = parseFloat(String(goals?.calories ?? '')) || 2000;
+  // 5. Goal adjustment - calculated by goalService
   const adjustmentMode: CalorieGoalAdjustmentMode =
     (userPreferences?.calorie_goal_adjustment_mode as CalorieGoalAdjustmentMode) ||
     'dynamic';
@@ -152,22 +172,10 @@ function computeCalorieBalance(
   const allowNegativeAdjustment =
     userPreferences?.tdee_allow_negative_adjustment ?? false;
 
-  // Offset uses fixed 'not_much' baseline to prevent goal inversion when
-  // the user changes their activity level setting.
-  const baselineMaintenance = computeSparkyfitnessBurned(bmr, 'not_much');
-  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - baselineMaintenance : 0;
-
   // Actual TDEE baseline (for TDEE mode projection)
   const sparkyfitnessBurned = computeSparkyfitnessBurned(bmr, activityLevel);
 
-  // Effective goal — adaptive mode uses adaptive TDEE + offset with safety floor
-  let goalCalories = rawGoalCalories;
-  if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    goalCalories = Math.max(
-      1200,
-      Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
-    );
-  }
+  const goalCalories = adjustedGoalCalories;
 
   // TDEE mode adjustment
   let tdeeAdjustment = 0;
@@ -218,6 +226,7 @@ function computeCalorieBalance(
     net: Math.round(netCalories),
     progress: Math.round(progress),
     bmr: Math.round(bmr),
+    bmrSource: bmrSource as 'formula' | 'external',
     exerciseSource: resolved.source,
     tdeeProjection,
   };
@@ -232,6 +241,7 @@ export async function getDailySummary({
   // Each function acquires its own pool client, allowing true parallel execution.
   const [
     goals,
+    adjustedGoals,
     foodEntries,
     exerciseSessions,
     waterResult,
@@ -239,7 +249,8 @@ export async function getDailySummary({
     userPreferences,
     measurements,
   ] = await Promise.all([
-    goalService.getUserGoals(targetUserId, date),
+    goalService.getUserGoals(targetUserId, date, undefined, false),
+    goalService.getUserGoals(targetUserId, date, undefined, true),
     foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
     getExerciseEntriesByDateV2(targetUserId, date),
     includeCheckin
@@ -278,16 +289,16 @@ export async function getDailySummary({
       )
     : 0;
 
-  // Conditionally fetch adaptive TDEE only when the user's mode requires it
-  const adjustmentMode = userPreferences?.calorie_goal_adjustment_mode;
-  const adaptiveTdeeData =
-    adjustmentMode === 'adaptive' && includeCheckin
-      ? await adaptiveTdeeService
-          .calculateAdaptiveTdee(targetUserId, date)
+  // External BMR override — only when opted in AND checkin data is permitted
+  // (includeCheckin is the route's permission gate; the override must not bypass it).
+  const externalBmr =
+    userPreferences?.use_external_bmr && includeCheckin
+      ? await measurementRepository
+          .getExternalBmrForDate(targetUserId, date)
           .catch((error: unknown) => {
             log(
               'warn',
-              `Adaptive TDEE fetch failed for user ${targetUserId}:`,
+              `External BMR fetch failed for user ${targetUserId} on ${date}:`,
               error
             );
             return null;
@@ -299,12 +310,32 @@ export async function getDailySummary({
     exerciseSessions as ExerciseSessionResponse[],
     stepCalories,
     goals,
+    Number((adjustedGoals as Record<string, unknown> | null)?.calories) || 2000,
     userProfile,
     userPreferences,
     measurements,
-    // @ts-expect-error TS(2345): Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
-    adaptiveTdeeData
+    externalBmr
   );
+
+  const rawGoalData = goals as Record<string, unknown> | null;
+  const adjustedGoalData = adjustedGoals as Record<string, unknown> | null;
+  const rawCalories = Number(rawGoalData?.calories) || 2000;
+  const adjCalories = Number(adjustedGoalData?.calories) || rawCalories;
+
+  const computedAdjustedGoals: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null =
+    adjCalories !== rawCalories
+      ? {
+          calories: Math.round(adjCalories),
+          protein: Math.round(Number(adjustedGoalData?.protein) || 0),
+          carbs: Math.round(Number(adjustedGoalData?.carbs) || 0),
+          fat: Math.round(Number(adjustedGoalData?.fat) || 0),
+        }
+      : null;
 
   return {
     goals,
@@ -313,5 +344,6 @@ export async function getDailySummary({
     waterIntake: parseFloat(waterResult?.water_ml) || 0,
     stepCalories,
     calorieBalance,
+    adjustedGoals: computedAdjustedGoals,
   };
 }

@@ -76,7 +76,7 @@ BEGIN
             id, user_id, meal_template_id, meal_type, entry_date, name, description,
             created_at, created_by_user_id, updated_by_user_id
         ) VALUES (
-            uuid_generate_v4(), -- Generate a new UUID for the food_entry_meals entry
+            gen_random_uuid(), -- Generate a new UUID for the food_entry_meals entry
             old_aggregated_entry.user_id,
             old_aggregated_entry.meal_template_id,
             old_aggregated_entry.meal_type,
@@ -112,7 +112,7 @@ BEGIN
                     vitamin_a, vitamin_c, calcium, iron, glycemic_index,
                     created_at, created_by_user_id, updated_by_user_id
                 ) VALUES (
-                    uuid_generate_v4(),
+                    gen_random_uuid(),
                     old_aggregated_entry.user_id,
                     (meal_template_foods->>'food_id')::UUID,
                     (meal_template_foods->>'variant_id')::UUID,

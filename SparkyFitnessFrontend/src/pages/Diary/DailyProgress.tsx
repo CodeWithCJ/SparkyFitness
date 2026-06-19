@@ -30,11 +30,24 @@ import {
   useDailySteps,
   useAdaptiveTdee,
   useDailySummary,
+  useMostRecentWeightQuery,
+  useMostRecentHeightQuery,
+  useMostRecentBodyFatQuery,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfileQuery } from '@/hooks/Settings/useProfile';
+import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
+import {
+  calculateAge,
+  computeCalorieTarget,
+  calculateBmr,
+} from '@workspace/shared';
+import { ACTIVITY_MULTIPLIERS } from '@/utils/calorieCalculations';
+import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
@@ -46,7 +59,22 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     convertEnergy,
     weightUnit,
     bmrAlgorithm,
+    bodyFatAlgorithm,
+    goalMode,
+    goalModeCalculationMethod,
+    goalModeCustomPercentage,
+    activityLevel,
+    timezone,
   } = usePreferences();
+
+  const { user } = useAuth();
+  const { data: userProfile } = useProfileQuery(user?.id);
+  const { data: weightData } = useMostRecentWeightQuery();
+  const { data: heightData } = useMostRecentHeightQuery();
+  const { data: bodyFatData } = useMostRecentBodyFatQuery();
+  const { data: waistData } = useMostRecentMeasurement('waist');
+  const { data: neckData } = useMostRecentMeasurement('neck');
+  const { data: hipsData } = useMostRecentMeasurement('hips');
 
   const isLeanMassBmr =
     bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
@@ -104,6 +132,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   // inputs to the selected date and use timezone-aware age.
   const calorieBalance = summaryData.calorieBalance;
   const bmr = calorieBalance.bmr;
+  const bmrSource = calorieBalance.bmrSource ?? 'formula';
   const exerciseSource = calorieBalance.exerciseSource;
   const tdeeProjection = calorieBalance.tdeeProjection;
 
@@ -161,11 +190,90 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     ),
   };
 
+  const displayWeight = weightData?.weight || 70;
+  const displayHeight = heightData?.height || 170;
+  const displayBodyFat = bodyFatData?.body_fat_percentage ?? 0;
+  const displayWaist = waistData?.waist;
+  const displayNeck = neckData?.neck;
+  const displayHips = hipsData?.hips;
+  const displayGender = (userProfile?.gender || 'male') as 'male' | 'female';
+  const displayAge = userProfile?.date_of_birth
+    ? calculateAge(userProfile.date_of_birth, timezone)
+    : 30;
+
+  const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
+
+  const rawManualGoal = summaryData?.goals?.calories || 2000;
+
+  // Offset uses user's actual activity multiplier to match goalService server calculations
+  const baselineMaintenance =
+    bmr > 0 ? Math.round(bmr * activityMultiplier) : 0;
+  const calorieGoalOffset = bmr > 0 ? rawManualGoal - baselineMaintenance : 0;
+
+  let adjustedManualGoal = rawManualGoal;
+  if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
+    adjustedManualGoal = Math.max(
+      1200,
+      Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+    );
+  }
+
+  const previewResult = computeCalorieTarget({
+    goalMode,
+    calculationMethod: goalModeCalculationMethod,
+    customPercentage: goalModeCustomPercentage,
+    bmr,
+    activityLevelMultiplier: activityMultiplier,
+    adaptiveTdee: adaptiveTdeeData ? adaptiveTdeeData.tdee : null,
+    adaptiveTdeeFallback: adaptiveTdeeData ? adaptiveTdeeData.isFallback : true,
+    adaptiveTdeeDaysOfData: adaptiveTdeeData
+      ? (adaptiveTdeeData.daysOfData ?? 0)
+      : 0,
+    weightKg: displayWeight || 70,
+    heightCm: displayHeight || 170,
+    age: displayAge,
+    gender: displayGender,
+    bodyFatPercentage: displayBodyFat,
+    bmrAlgorithm,
+    currentGoalCalories: adjustedManualGoal,
+    calculateBmrFn: calculateBmr,
+  });
+
   debug(loggingLevel, 'DailyProgress: Calculated values', {
     date: selectedDate,
     raw: { eatenCalories, totalCaloriesBurned, netCalories },
     display,
   });
+
+  const daysOfCalorieLogs = adaptiveTdeeData?.daysOfData ?? 0;
+
+  const getTargetFallbackNotice = () => {
+    const fallbackVal = Math.round(
+      convertEnergy(bmr * activityMultiplier, 'kcal', energyUnit)
+    );
+    const unitStr = getEnergyUnitString(energyUnit);
+
+    if (!adaptiveTdeeData) {
+      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to insufficient data.`;
+    }
+
+    if (adaptiveTdeeData.isFallback) {
+      const reason = adaptiveTdeeData.fallbackReason?.toLowerCase() || '';
+      if (reason.includes('weight')) {
+        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because weight logs are missing (requires at least 2 weight logs spanning 7+ days).`;
+      }
+      if (reason.includes('calorie')) {
+        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because calorie logs are missing (requires at least 7 days with ≥200 kcal).`;
+      }
+      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
+    }
+
+    if (daysOfCalorieLogs < 14) {
+      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until 14 days of calorie logs are reached (currently ${daysOfCalorieLogs}/14 days logged).`;
+    }
+
+    return '';
+  };
 
   return (
     <Card className="h-full">
@@ -274,6 +382,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
+                      {bmrSource === 'external' &&
+                        ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                     </p>
                   )}
 
@@ -365,6 +475,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
+                  {bmrSource === 'external' &&
+                    ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                 </div>
               )}
             </div>
@@ -488,6 +600,16 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   </span>
                 </div>
               )}
+
+              {!adaptiveTdeeData.isFallback &&
+                (adaptiveTdeeData.daysOfData ?? 0) < 14 && (
+                  <div className="flex items-start gap-1 mt-1 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
+                    <Info className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <span className="text-[10px] text-blue-700 dark:text-blue-300">
+                      {getTargetFallbackNotice()}
+                    </span>
+                  </div>
+                )}
             </div>
           )}
 
@@ -575,6 +697,32 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               <span>{Math.round(calorieProgress)}%</span>
             </div>
             <Progress value={calorieProgress} className="h-2" />
+          </div>
+
+          {/* Calorie Math Breakdown Dropdown */}
+          <div className="pt-3 border-t border-border/40 space-y-2.5">
+            <CalorieTargetBreakdown
+              previewResult={previewResult}
+              adaptiveTdeeData={adaptiveTdeeData}
+              bmrAlgorithm={bmrAlgorithm}
+              bodyFatAlgorithm={bodyFatAlgorithm}
+              displayWeight={displayWeight}
+              displayHeight={displayHeight}
+              displayAge={displayAge}
+              displayGender={displayGender}
+              displayBodyFat={displayBodyFat}
+              displayWaist={displayWaist ?? undefined}
+              displayNeck={displayNeck ?? undefined}
+              displayHips={displayHips ?? undefined}
+              goalMode={goalMode}
+              goalModeCalculationMethod={goalModeCalculationMethod}
+              goalModeCustomPercentage={goalModeCustomPercentage}
+              calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
+              rawManualGoal={rawManualGoal}
+              adjustedManualGoal={adjustedManualGoal}
+              activityMultiplier={activityMultiplier}
+              bmrSource={bmrSource}
+            />
           </div>
         </div>
       </CardContent>

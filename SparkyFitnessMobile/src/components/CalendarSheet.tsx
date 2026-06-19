@@ -10,6 +10,7 @@ import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
+import Icon from './Icon';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
 // presentation. No-op on Android.
@@ -100,6 +101,10 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
             mode="single"
             date={dateValue}
             onChange={handleChange}
+            components={{
+              IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
+              IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
+            }}
             styles={{
               selected: { backgroundColor: accentPrimary },
               selected_label: { color: '#FFFFFF' },
@@ -109,8 +114,6 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
               month_selector_label: { color: textPrimary, fontWeight: '600' },
               year_selector_label: { color: textPrimary, fontWeight: '600' },
               disabled_label: { color: textMuted },
-              button_prev_image: { tintColor: textSecondary },
-              button_next_image: { tintColor: textSecondary },
               month_label: { color: textPrimary },
               year_label: { color: textPrimary },
               selected_month: { backgroundColor: accentPrimary },

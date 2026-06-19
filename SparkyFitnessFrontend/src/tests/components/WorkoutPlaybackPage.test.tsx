@@ -21,6 +21,10 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParams],
 }));
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({ weightUnit: 'kg' }),
+}));
+
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
   useCreatePresetSessionMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockCreatePresetSession(...args),

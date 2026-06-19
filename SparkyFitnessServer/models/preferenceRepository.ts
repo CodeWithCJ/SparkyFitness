@@ -35,10 +35,15 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         barcode_fallback_open_food_facts = COALESCE($31, barcode_fallback_open_food_facts),
         show_net_carbs = COALESCE($32, show_net_carbs),
         ai_assisted_conversions = COALESCE($33, ai_assisted_conversions),
+        goal_mode = COALESCE($34, goal_mode),
+        goal_mode_calculation_method = COALESCE($35, goal_mode_calculation_method),
+        goal_mode_custom_percentage = COALESCE($36, goal_mode_custom_percentage),
+        use_external_bmr = COALESCE($37, use_external_bmr),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
       RETURNING *`,
+
       [
         preferenceData.date_format,
         preferenceData.default_weight_unit,
@@ -73,6 +78,10 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.barcode_fallback_open_food_facts,
         preferenceData.show_net_carbs,
         preferenceData.ai_assisted_conversions,
+        preferenceData.goal_mode,
+        preferenceData.goal_mode_calculation_method,
+        preferenceData.goal_mode_custom_percentage,
+        preferenceData.use_external_bmr,
       ]
     );
     return result.rows[0];
@@ -150,6 +159,10 @@ async function upsertUserPreferences(preferenceData: any) {
        first_day_of_week, barcode_fallback_open_food_facts,
        show_net_carbs,
        ai_assisted_conversions,
+       goal_mode,
+       goal_mode_calculation_method,
+       goal_mode_custom_percentage,
+       use_external_bmr,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -166,6 +179,10 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($31, true),
        COALESCE($32, false),
        COALESCE($33, true),
+       COALESCE($34, 'maintain'),
+       COALESCE($35, 'manual'),
+       COALESCE($36, 0),
+       COALESCE($37, false),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -199,6 +216,10 @@ async function upsertUserPreferences(preferenceData: any) {
        barcode_fallback_open_food_facts = COALESCE(EXCLUDED.barcode_fallback_open_food_facts, user_preferences.barcode_fallback_open_food_facts),
        show_net_carbs = COALESCE(EXCLUDED.show_net_carbs, user_preferences.show_net_carbs),
        ai_assisted_conversions = COALESCE(EXCLUDED.ai_assisted_conversions, user_preferences.ai_assisted_conversions),
+       goal_mode = COALESCE(EXCLUDED.goal_mode, user_preferences.goal_mode),
+       goal_mode_calculation_method = COALESCE(EXCLUDED.goal_mode_calculation_method, user_preferences.goal_mode_calculation_method),
+       goal_mode_custom_percentage = COALESCE(EXCLUDED.goal_mode_custom_percentage, user_preferences.goal_mode_custom_percentage),
+       use_external_bmr = COALESCE(EXCLUDED.use_external_bmr, user_preferences.use_external_bmr),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
@@ -236,6 +257,10 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.barcode_fallback_open_food_facts,
         preferenceData.show_net_carbs,
         preferenceData.ai_assisted_conversions,
+        preferenceData.goal_mode,
+        preferenceData.goal_mode_calculation_method,
+        preferenceData.goal_mode_custom_percentage,
+        preferenceData.use_external_bmr,
       ]
     );
     return result.rows[0];

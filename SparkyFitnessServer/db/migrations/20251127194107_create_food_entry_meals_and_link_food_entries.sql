@@ -1,6 +1,6 @@
 -- Create the food_entry_meals table
 CREATE TABLE food_entry_meals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     meal_template_id UUID REFERENCES meals(id) ON DELETE SET NULL,
     meal_type VARCHAR(50) NOT NULL,

@@ -130,6 +130,7 @@
       "activeCalories": "Active Calories: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "Steps: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "BMR: {{bmr}} cal",
+      "bmrSourceExternal": "Health App",
       "totalCaloriesBurned": "Total: {{totalCaloriesBurned}} cal",
       "goal": "goal",
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",
@@ -499,7 +500,7 @@
     },
     "calculationSettings": {
       "title": "Calculation Settings",
-      "description": "Manage BMR and Body Fat calculation preferences"
+      "description": "Manage BMR formulas, body fat algorithms, daily energy adjustments, goal deficit modes, and safety floors."
     },
     "familyAccess": {
       "title": "Family Access",
@@ -1135,7 +1136,23 @@
     "measurementDeletedSuccessfully": "Measurement deleted successfully",
     "failedToDeleteMeasurement": "Failed to delete measurement",
     "failedToLoadRecentMeasurements": "Failed to load recent measurements",
-    "enterCustomCategory": "Enter {{categoryName}}"
+    "enterCustomCategory": "Enter {{categoryName}}",
+    "photos": {
+      "title": "Progress Photos",
+      "subtitle": "Upload front, back, and side photos to track your physique over time.",
+      "addPhotos": "Add progress photos",
+      "front": "Front",
+      "back": "Back",
+      "side": "Side",
+      "tapToUpload": "Tap to upload",
+      "upload": "Upload",
+      "replace": "Replace",
+      "uploadSuccess": "Photo saved",
+      "uploadError": "Upload failed",
+      "tooLarge": "Image is too large (max 10 MB).",
+      "deleteSuccess": "Photo removed",
+      "deleteError": "Failed to remove photo"
+    }
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Sleep Timeline",

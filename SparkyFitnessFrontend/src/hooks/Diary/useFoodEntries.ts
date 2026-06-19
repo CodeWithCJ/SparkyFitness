@@ -18,6 +18,10 @@ import {
   loadDiaryGoals,
   downloadDiaryExport,
   DownloadDiaryExportOptions,
+  copyFoodEntriesFromUser,
+  copyFoodEntriesToUser,
+  type CopyFoodEntriesFromUserPayload,
+  type CopyFoodEntriesToUserPayload,
 } from '@/api/Diary/foodEntryService';
 
 import { goalKeys } from '@/api/keys/goals';
@@ -38,11 +42,11 @@ export const useFoodEntries = (date: string) => {
   });
 };
 
-export const useDiaryGoals = (date: string) => {
+export const useDiaryGoals = (date: string, adjust = true) => {
   const { t } = useTranslation();
   return useQuery({
-    queryKey: goalKeys.daily.byDate(date),
-    queryFn: () => loadDiaryGoals(date),
+    queryKey: goalKeys.daily.byDate(date, undefined, adjust),
+    queryFn: () => loadDiaryGoals(date, adjust),
     enabled: !!date,
     meta: {
       errorMessage: t('diary.goalsLoadError', 'Failed to load daily goals.'),
@@ -254,5 +258,47 @@ export const useDownloadDiaryExport = () => {
   return useMutation({
     mutationFn: (options?: DownloadDiaryExportOptions) =>
       downloadDiaryExport(options),
+  });
+};
+
+export const useCopyFoodEntriesFromUserMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: (payload: CopyFoodEntriesFromUserPayload) =>
+      copyFoodEntriesFromUser(payload),
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t(
+        'diary.copyFamilyFromSuccess',
+        'Entries copied from family successfully.'
+      ),
+      errorMessage: t(
+        'diary.copyFamilyFromError',
+        'Failed to copy entries from family.'
+      ),
+    },
+  });
+};
+
+export const useCopyFoodEntriesToUserMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: (payload: CopyFoodEntriesToUserPayload) =>
+      copyFoodEntriesToUser(payload),
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t(
+        'diary.copyFamilyToSuccess',
+        'Entries copied to family successfully.'
+      ),
+      errorMessage: t(
+        'diary.copyFamilyToError',
+        'Failed to copy entries to family.'
+      ),
+    },
   });
 };

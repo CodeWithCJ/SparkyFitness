@@ -16,6 +16,9 @@ export interface UserPreferences {
   water_display_unit?: 'ml' | 'oz' | 'liter';
 
   include_bmr_in_net_calories?: boolean;
+  /** When on, override the formula BMR with the synced Apple Health Resting Energy /
+   *  Health Connect BasalMetabolicRate value for the day (mobile-only toggle). */
+  use_external_bmr?: boolean;
   show_net_carbs?: boolean;
   calorie_goal_adjustment_mode?: string;
   auto_scale_open_food_facts_imports?: boolean;

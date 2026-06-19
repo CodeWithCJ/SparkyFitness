@@ -29,6 +29,7 @@ interface BarcodeScannerProps {
   onClose: () => void;
   isActive: boolean;
   cameraFacing: 'front' | 'back';
+  hideManualInput?: boolean;
 }
 
 interface AdvancedMediaTrackConstraints extends MediaTrackConstraintSet {
@@ -45,6 +46,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   onClose,
   isActive,
   cameraFacing,
+  hideManualInput,
 }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -450,20 +452,28 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         {/* Right Side Controls */}
         <div className="absolute top-4 right-4 flex flex-col space-y-3 z-30 pointer-events-none">
           <div className="flex flex-col space-y-3 pointer-events-auto items-end">
-            <button
-              onClick={() => {
-                setShowManualInput((prev) => !prev);
-                engineInstance?.stop();
-              }}
-              className="bg-black/60 hover:bg-black/80 text-white pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10"
-            >
-              <span className="text-xs font-medium">
-                {showManualInput
-                  ? t('barcodeScanner.buttons.camera', 'Camera')
-                  : t('barcodeScanner.buttons.manual', 'Enter Scan Code')}
-              </span>
-              <Keyboard className="w-4 h-4" />
-            </button>
+            {!hideManualInput && (
+              <button
+                onClick={() => {
+                  setShowManualInput((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setRefreshTrigger((r) => r + 1);
+                    }
+                    return next;
+                  });
+                  engineInstance?.stop();
+                }}
+                className="bg-black/60 hover:bg-black/80 text-white pl-4 pr-2 py-2 rounded-full transition-colors backdrop-blur-sm flex items-center space-x-2 border border-white/10"
+              >
+                <span className="text-xs font-medium">
+                  {showManualInput
+                    ? t('barcodeScanner.buttons.camera', 'Camera')
+                    : t('barcodeScanner.buttons.manual', 'Enter Scan Code')}
+                </span>
+                <Keyboard className="w-4 h-4" />
+              </button>
+            )}
 
             {!showManualInput && (
               <button

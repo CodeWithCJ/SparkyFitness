@@ -8,6 +8,7 @@ import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
 import { WRITEBACK_METRICS, type WritebackMetric } from '../WritebackMetrics';
+import HealthSourceLabel from '../components/HealthSourceLabel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -464,16 +465,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
                 : formatRelativeTime(null))
               : ' '}
           </Text>
-          {Platform.OS === 'ios' && (
-            <Text className="text-text-muted text-center text-xs mb-2">
-              <Text className="font-bold">Source:</Text> Apple Health
-            </Text>
-          )}
-          {Platform.OS === 'android' && (
-            <Text className="text-text-muted text-center text-xs mb-2">
-              <Text className="font-bold">Source:</Text> Health Connect
-            </Text>
-          )}
+          <HealthSourceLabel className="text-center mb-2" />
         </View>
 
         {/* Health Disclaimer */}

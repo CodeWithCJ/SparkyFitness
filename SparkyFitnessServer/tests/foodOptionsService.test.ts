@@ -361,12 +361,19 @@ describe('processFoodOptionsRequest', () => {
     });
 
     it('returns upstream_error when the API returns a non-OK status', async () => {
-      mockFetch('Rate limit exceeded', { ok: false, status: 429 });
-      const result = await runFoodOptions();
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.category).toBe('upstream_error');
-        expect(result.error).toContain('status 429');
+      vi.useFakeTimers();
+      try {
+        mockFetch('Rate limit exceeded', { ok: false, status: 429 });
+        const promise = runFoodOptions();
+        await vi.runAllTimersAsync();
+        const result = await promise;
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.category).toBe('upstream_error');
+          expect(result.error).toContain('status 429');
+        }
+      } finally {
+        vi.useRealTimers();
       }
     });
 

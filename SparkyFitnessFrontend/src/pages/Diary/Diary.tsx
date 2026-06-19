@@ -12,6 +12,7 @@ import FoodUnitSelector from '@/components/FoodUnitSelector';
 import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
 import ConvertToMealDialog from '@/pages/Diary/ConvertToMealDialog';
 import EditMealFoodEntryDialog from './EditMealFoodEntryDialog';
+import CopyFamilyEntryDialog from '@/pages/Diary/CopyFamilyEntryDialog';
 import LogMealDialog from '@/pages/Diary/LogMealDialog';
 import { debug, info, error } from '@/utils/logging';
 import {
@@ -38,6 +39,7 @@ import {
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
 import { todayInZone } from '@workspace/shared';
+import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -70,6 +72,9 @@ const Diary = () => {
     useState(false);
   const [convertToMealSourceMealType, setConvertToMealSourceMealType] =
     useState<string>('');
+  const [isCopyFamilyDialogOpen, setIsCopyFamilyDialogOpen] = useState(false);
+  const [copyFamilySourceMealType, setCopyFamilySourceMealType] =
+    useState<string>('');
 
   const [selectedMealType, setSelectedMealType] = useState<string>('');
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
@@ -83,15 +88,30 @@ const Diary = () => {
   const { data: availableMealTypes, isLoading: mealTypesLoading } =
     useMealTypes();
   const { data: goals, isLoading: goalsLoading } = useDiaryGoals(selectedDate);
+  const { data: summaryData, isLoading: summaryLoading } =
+    useDailySummary(selectedDate);
   const { data: fetchedFoodEntries, isLoading: foodEntriesLoading } =
     useFoodEntries(selectedDate);
   const { data: foodEntryMeals, isLoading: foodEntryMealsLoading } =
     useFoodEntryMeals(selectedDate);
 
+  const effectiveGoals = goals
+    ? summaryData?.adjustedGoals
+      ? {
+          ...goals,
+          calories: summaryData.adjustedGoals.calories,
+          protein: summaryData.adjustedGoals.protein,
+          carbs: summaryData.adjustedGoals.carbs,
+          fat: summaryData.adjustedGoals.fat,
+        }
+      : goals
+    : undefined;
+
   const loading =
     customNutrientsLoading ||
     mealTypesLoading ||
     goalsLoading ||
+    summaryLoading ||
     foodEntriesLoading ||
     foodEntryMealsLoading;
 
@@ -143,6 +163,12 @@ const Diary = () => {
     setCopySourceMealType(mealType);
     setIsCopyDialogOpen(true);
     debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
+  };
+
+  const handleCopyFamilyClick = (mealType: string) => {
+    setCopyFamilySourceMealType(mealType);
+    setIsCopyFamilyDialogOpen(true);
+    debug(loggingLevel, 'Opening family copy dialog for meal type:', mealType);
   };
 
   const handleCopyFoodEntries = async (
@@ -297,12 +323,12 @@ const Diary = () => {
       />
 
       {/* Top Controls Section */}
-      {goals && (
+      {effectiveGoals && (
         <>
           <DiaryTopControls
             selectedDate={selectedDate}
             dayTotals={dayTotals as unknown as DayTotals}
-            goals={goals}
+            goals={effectiveGoals}
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
@@ -325,7 +351,7 @@ const Diary = () => {
                       mealTypeObj.name,
                       foodEntries,
                       foodEntryMeals ?? [],
-                      goals
+                      effectiveGoals
                     ),
                     selectedDate: selectedDate,
                   }}
@@ -342,6 +368,7 @@ const Diary = () => {
                   }
                   getEntryNutrition={getEntryNutrition}
                   onCopyClick={handleCopyClick}
+                  onCopyFamilyClick={handleCopyFamilyClick}
                   onConvertToMealClick={handleConvertToMealClick}
                   energyUnit={energyUnit}
                   convertEnergy={convertEnergy}
@@ -422,6 +449,16 @@ const Diary = () => {
           onClose={() => setIsConvertToMealDialogOpen(false)}
           selectedDate={selectedDate}
           mealType={convertToMealSourceMealType}
+        />
+      )}
+
+      {/* Copy Family Entry Dialog */}
+      {isCopyFamilyDialogOpen && (
+        <CopyFamilyEntryDialog
+          isOpen={isCopyFamilyDialogOpen}
+          onClose={() => setIsCopyFamilyDialogOpen(false)}
+          sourceMealType={copyFamilySourceMealType}
+          currentDate={selectedDate}
         />
       )}
     </div>

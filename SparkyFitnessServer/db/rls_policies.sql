@@ -24,6 +24,7 @@ BEGIN
   FOR table_name IN SELECT unnest(ARRAY[
     'ai_service_settings',
     'check_in_measurements',
+    'check_in_photos',
     'custom_categories',
     'custom_measurements',
     'exercise_entries',
@@ -349,6 +350,7 @@ WITH CHECK (admin_user_id = current_user_id() AND is_admin());
 
 -- Diary access tables
 SELECT create_diary_policy('check_in_measurements');
+SELECT create_diary_policy('check_in_photos');
 SELECT create_diary_policy('custom_categories');
 SELECT create_diary_policy('custom_measurements');
 SELECT create_diary_policy('exercise_entries');
@@ -424,12 +426,20 @@ WITH CHECK (has_diary_access(user_id));
 CREATE POLICY delete_policy ON public.food_entries FOR DELETE TO PUBLIC
 USING (has_diary_access(user_id));
 
-CREATE POLICY select_and_modify_policy ON public.food_variants FOR ALL TO PUBLIC
+CREATE POLICY select_policy ON public.food_variants FOR SELECT TO PUBLIC
 USING (
   EXISTS (
     SELECT 1 FROM public.foods f
     WHERE f.id = food_variants.food_id
       AND has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library', 'can_manage_diary'])
+  )
+);
+CREATE POLICY modify_policy ON public.food_variants FOR ALL TO PUBLIC
+USING (
+  EXISTS (
+    SELECT 1 FROM public.foods f
+    WHERE f.id = food_variants.food_id
+      AND has_diary_access(f.user_id)
   )
 )
 WITH CHECK (
@@ -462,13 +472,35 @@ CREATE POLICY owner_policy ON public.workout_plan_template_assignments FOR ALL T
 USING (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND current_user_id() = wpt.user_id))
 WITH CHECK (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND current_user_id() = wpt.user_id));
 
-CREATE POLICY owner_policy ON public.workout_preset_exercise_sets FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.workout_preset_exercises wpe WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id))
-WITH CHECK (EXISTS (SELECT 1 FROM public.workout_preset_exercises wpe WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id));
+CREATE POLICY select_policy ON public.workout_preset_exercise_sets FOR SELECT TO PUBLIC
+USING (EXISTS (SELECT 1 FROM public.workout_preset_exercises wpe WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id));
+CREATE POLICY modify_policy ON public.workout_preset_exercise_sets FOR ALL TO PUBLIC
+USING (EXISTS (
+  SELECT 1 FROM public.workout_preset_exercises wpe
+  JOIN public.workout_presets wp ON wp.id = wpe.workout_preset_id
+  WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id
+    AND current_user_id() = wp.user_id
+))
+WITH CHECK (EXISTS (
+  SELECT 1 FROM public.workout_preset_exercises wpe
+  JOIN public.workout_presets wp ON wp.id = wpe.workout_preset_id
+  WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id
+    AND current_user_id() = wp.user_id
+));
 
-CREATE POLICY owner_policy ON public.workout_preset_exercises FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workout_preset_exercises.workout_preset_id))
-WITH CHECK (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workout_preset_exercises.workout_preset_id));
+CREATE POLICY select_policy ON public.workout_preset_exercises FOR SELECT TO PUBLIC
+USING (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workout_preset_exercises.workout_preset_id));
+CREATE POLICY modify_policy ON public.workout_preset_exercises FOR ALL TO PUBLIC
+USING (EXISTS (
+  SELECT 1 FROM public.workout_presets wp
+  WHERE wp.id = workout_preset_exercises.workout_preset_id
+    AND current_user_id() = wp.user_id
+))
+WITH CHECK (EXISTS (
+  SELECT 1 FROM public.workout_presets wp
+  WHERE wp.id = workout_preset_exercises.workout_preset_id
+    AND current_user_id() = wp.user_id
+));
 
 SELECT create_owner_policy('user_ignored_updates');
 SELECT create_owner_policy('fasting_logs');

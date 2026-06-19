@@ -945,32 +945,6 @@ async function getFoodEntriesBatch(
   }
 }
 
-async function deleteFoodEntriesByProviderTypeAndDateRange(
-  userId: string,
-  providerType: string,
-  startDate: string,
-  endDate: string
-) {
-  const client = await getClient(userId);
-  try {
-    const result = await client.query(
-      `DELETE FROM food_entries
-       WHERE user_id = $1
-         AND entry_date BETWEEN $2 AND $3
-         AND food_id IN (
-           SELECT id FROM foods
-           WHERE provider_type = $4
-             AND user_id = $1
-         )
-       RETURNING id`,
-      [userId, startDate, endDate, providerType]
-    );
-    return result.rows.length;
-  } finally {
-    client.release();
-  }
-}
-
 // Most recent food entries with catalog name/brand. Backs the chatbot
 // sparky_get_recent_food_entries tool.
 async function getRecentFoodEntries(userId: string, limit: number) {
@@ -1028,11 +1002,37 @@ async function getFoodUsage(
   }
 }
 
+async function deleteStaleProviderEntries(
+  userId: string,
+  source: string,
+  startDate: string,
+  endDate: string,
+  activeSourceIds: string[]
+) {
+  if (activeSourceIds.length === 0) return 0;
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM food_entries
+       WHERE user_id = $1
+         AND source = $2
+         AND entry_date BETWEEN $3 AND $4
+         AND source_id IS NOT NULL
+         AND source_id != ALL($5)
+       RETURNING id`,
+      [userId, source, startDate, endDate, activeSourceIds]
+    );
+    return result.rows.length;
+  } finally {
+    client.release();
+  }
+}
+
 export { createFoodEntry };
 export { getFoodEntryOwnerId };
 export { updateFoodEntry };
 export { deleteFoodEntry };
-export { deleteFoodEntriesByProviderTypeAndDateRange };
+export { deleteStaleProviderEntries };
 export { getFoodEntriesByDate };
 export { getFoodEntriesByDateAndMealType };
 export { getFoodEntriesByDateRange };
@@ -1049,7 +1049,7 @@ export default {
   getFoodEntryOwnerId,
   updateFoodEntry,
   deleteFoodEntry,
-  deleteFoodEntriesByProviderTypeAndDateRange,
+  deleteStaleProviderEntries,
   getFoodEntriesByDate,
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,

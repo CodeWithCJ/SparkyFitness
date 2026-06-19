@@ -49,6 +49,7 @@ export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCa
 export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
 export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
 export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
+export const getAggregatedBasalEnergyByDate = HealthKit.getAggregatedBasalEnergyByDate;
 
 const aggregateDetailed = async (
   fetchRecords: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>,
@@ -82,6 +83,11 @@ export const getAggregatedFloorsClimbedByDateDetailed = (
   startDate: Date,
   endDate: Date,
 ) => aggregateDetailed(HealthKit.getAggregatedFloorsClimbedByDate, startDate, endDate);
+
+export const getAggregatedBasalEnergyByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => aggregateDetailed(HealthKit.getAggregatedBasalEnergyByDate, startDate, endDate);
 
 export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
 
@@ -147,6 +153,12 @@ async function processMetric(
     dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
   } else if (type === 'TotalCaloriesBurned') {
     dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
+  } else if (type === 'BasalMetabolicRate') {
+    // iOS BMR override source: last-complete-day Resting Energy, stamped with the day it
+    // applies to (D+1). Emits aggregated { date, value, type: 'basal_metabolic_rate' }
+    // records, which transformHealthRecords normalizes (adds unit + source) like the other
+    // aggregated metrics below.
+    dataToTransform = await HealthKit.getAggregatedBasalEnergyByDate(startDate, endDate);
   } else {
     // For other types, read raw records
     const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);

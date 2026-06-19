@@ -694,9 +694,9 @@ async function processHealthData(
         case 'body_fat_percentage':
         case 'body_fat': {
           const numericValue = parseFloat(value);
-          if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
+          if (isNaN(numericValue) || numericValue <= 0 || numericValue > 100) {
             errors.push({
-              error: `Invalid value for ${type}. Must be between 0 and 100.`,
+              error: `Invalid value for ${type}. Must be greater than 0 and at most 100.`,
               entry: dataEntry,
             });
             break;
@@ -1686,12 +1686,12 @@ async function getCheckInMeasurements(
   date: any
 ) {
   try {
-    const measurement =
-      await measurementRepository.getCheckInMeasurementsByDate(
+    const row =
+      await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         targetUserId,
         date
       );
-    return measurement || {};
+    return row || {};
   } catch (error) {
     log(
       'error',
@@ -1787,17 +1787,8 @@ async function updateCheckInMeasurements(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deleteCheckInMeasurements(authenticatedUserId: any, id: any) {
   try {
-    const entryOwnerId =
-      // @ts-expect-error TS(2551): Property 'getCheckInMeasurementOwnerId' does not e... Remove this comment to see the full error message
-      await measurementRepository.getCheckInMeasurementOwnerId(id);
-    if (!entryOwnerId) {
-      throw new Error('Check-in measurement not found.');
-    }
-    if (entryOwnerId !== authenticatedUserId) {
-      throw new Error(
-        'Forbidden: You do not have permission to delete this check-in measurement.'
-      );
-    }
+    // deleteCheckInMeasurements is scoped by user_id, so it already enforces
+    // both existence and ownership; no separate owner pre-check is needed.
     const success = await measurementRepository.deleteCheckInMeasurements(
       id,
       authenticatedUserId

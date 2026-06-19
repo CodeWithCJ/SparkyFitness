@@ -1,14 +1,15 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { Plus } from 'lucide-react';
+import { Plus, Camera } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import { BarcodeScannerDialog } from './BarcodeScannerDialog';
 import type { Food, FoodVariant } from '@/types/food';
 
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
@@ -60,7 +61,6 @@ const CustomFoodForm = ({
     variantErrors,
     loading,
     showSyncConfirmation,
-    setShowSyncConfirmation,
     loadedVariants,
     conversionBaseVariants,
     hasTrustedCompatibilityBase,
@@ -74,12 +74,18 @@ const CustomFoodForm = ({
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
+    showBarcodeConflictConfirmation,
+    setShowBarcodeConflictConfirmation,
+    barcodeConflictFoodName,
+    handleBarcodeConflictConfirm,
   } = useCustomFoodForm({
     food,
     initialVariants,
     onSave,
     aiEstimatesAvailable,
   });
+
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   // The food's default variant is the AI estimation source. Lookup by flag
   // rather than by position — submit-time validation guarantees exactly one.
@@ -178,6 +184,33 @@ const CustomFoodForm = ({
                   value={formData.brand}
                   onChange={(e) => updateField('brand', e.target.value)}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <Label htmlFor="barcode">Barcode</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="barcode"
+                    placeholder="e.g. 012345678905"
+                    value={formData.barcode}
+                    onChange={(e) => updateField('barcode', e.target.value)}
+                    maxLength={14}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="flex items-center gap-1.5 shrink-0"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Scan</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Standard barcodes are 8 to 14 digits.
+                </p>
               </div>
             </div>
 
@@ -295,10 +328,41 @@ const CustomFoodForm = ({
       {showSyncConfirmation && (
         <ConfirmationDialog
           open={showSyncConfirmation}
-          onOpenChange={setShowSyncConfirmation}
-          onConfirm={handleSyncConfirmation}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleSyncConfirmation(false);
+            }
+          }}
+          onConfirm={() => handleSyncConfirmation(true)}
           title="Sync Past Entries?"
           description="Do you want to update all your past diary entries for this food with the new nutritional information?"
+        />
+      )}
+
+      {showBarcodeConflictConfirmation && (
+        <ConfirmationDialog
+          open={showBarcodeConflictConfirmation}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowBarcodeConflictConfirmation(false);
+            }
+          }}
+          onConfirm={handleBarcodeConflictConfirm}
+          title="Barcode already in use"
+          description={`This barcode is already attached to "${barcodeConflictFoodName}". Attach it to "${formData.name}" anyway?`}
+        />
+      )}
+
+      {showBarcodeScanner && (
+        <BarcodeScannerDialog
+          isOpen={showBarcodeScanner}
+          onOpenChange={setShowBarcodeScanner}
+          onBarcodeDetected={(scannedBarcode) => {
+            updateField('barcode', scannedBarcode);
+            setShowBarcodeScanner(false);
+          }}
+          hideProvider
+          hideManualInput
         />
       )}
     </>
