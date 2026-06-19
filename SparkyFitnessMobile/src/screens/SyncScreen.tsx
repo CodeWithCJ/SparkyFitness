@@ -6,6 +6,8 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
+import HealthDataWriteback from '../components/HealthDataWriteback';
+import { WRITEBACK_METRICS, type WritebackMetric } from '../WritebackMetrics';
 import HealthSourceLabel from '../components/HealthSourceLabel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -75,6 +77,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
+  const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});
   const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
   const [isSyncOnOpenEnabled, setIsSyncOnOpenEnabled] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
@@ -118,8 +121,15 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       newHealthMetricStates[metric.stateKey] = enabled === true;
     }
 
+    const newWritebackStates: Record<string, boolean> = {};
+    for (const metric of WRITEBACK_METRICS) {
+      const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+      newWritebackStates[metric.id] = enabled === true;
+    }
+
     setSelectedTimeRange(initialTimeRange);
     setHealthMetricStates(newHealthMetricStates);
+    setWritebackStates(newWritebackStates);
 
     if (initialized) {
       await refreshEnabledMetricPermissions(newHealthMetricStates);
@@ -258,6 +268,42 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
     refreshSubscriptions();
     setHealthDataRefreshKey(k => k + 1);
+  };
+
+  const handleToggleWriteback = async (
+    metric: WritebackMetric,
+    newValue: boolean
+  ): Promise<void> => {
+    setWritebackStates(prev => ({ ...prev, [metric.id]: newValue }));
+    await saveHealthPreference(metric.preferenceKey, newValue);
+    if (!newValue) {
+      return;
+    }
+    // Enabling: request the write permission; revert the toggle if denied.
+    try {
+      const granted = await requestHealthPermissions([metric.permission]);
+      if (!granted) {
+        Alert.alert(
+          'Permission Denied',
+          `Please grant ${metric.label.toLowerCase()} write permission in ${healthSettingsName}.`
+        );
+        setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
+        await saveHealthPreference(metric.preferenceKey, false);
+        addLog(`Writeback permission denied: ${metric.label}.`, 'WARNING');
+      } else {
+        addLog(`${metric.label} writeback enabled and write permission granted.`, 'INFO');
+      }
+    } catch (permissionError) {
+      const errorMessage =
+        permissionError instanceof Error ? permissionError.message : String(permissionError);
+      Alert.alert(
+        'Permission Error',
+        `Failed to request ${metric.label.toLowerCase()} write permission: ${errorMessage}`
+      );
+      setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
+      await saveHealthPreference(metric.preferenceKey, false);
+      addLog(`Writeback permission request error for ${metric.label}: ${errorMessage}`, 'ERROR');
+    }
   };
 
   const handleToggleAllMetrics = async (): Promise<void> => {
@@ -441,6 +487,11 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           handleToggleAllMetrics={handleToggleAllMetrics}
           healthData={healthData}
           isLoadingHealthData={isLoadingHealthData}
+        />
+
+        <HealthDataWriteback
+          writebackStates={writebackStates}
+          handleToggleWriteback={handleToggleWriteback}
         />
 
         {/* Health Data Report — Android only */}

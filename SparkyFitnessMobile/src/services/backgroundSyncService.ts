@@ -2,6 +2,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
+import { runWriteback } from './healthconnect/writeback';
 import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import {
@@ -286,6 +287,16 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   } else {
     await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
+  }
+
+  // Outbound phase: SparkyFitness diary → Health Connect (Android-only; iOS no-op).
+  // Runs regardless of inbound results and in its own try/catch so a writeback
+  // failure never affects the inbound sync or its cursor above.
+  try {
+    await runWriteback();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(`[Background Sync] Writeback phase failed: ${message}`, 'ERROR');
   }
 };
 

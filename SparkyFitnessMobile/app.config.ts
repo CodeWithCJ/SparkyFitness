@@ -52,6 +52,10 @@ const androidPermissions = [
   'android.permission.health.READ_WHEELCHAIR_PUSHES',
   'android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND',
   'android.permission.health.READ_HEALTH_DATA_HISTORY',
+  // Writeback (Sparky → Health Connect): nutrition + water. Production feature,
+  // so these live in the base list (not the dev-only writes below).
+  'android.permission.health.WRITE_NUTRITION',
+  'android.permission.health.WRITE_HYDRATION',
 ];
 
 const devAndroidPermissions = [
@@ -71,7 +75,7 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_FLOORS_CLIMBED',
   'android.permission.health.WRITE_HEART_RATE',
   'android.permission.health.WRITE_HEIGHT',
-  'android.permission.health.WRITE_HYDRATION',
+  // WRITE_HYDRATION moved to the base androidPermissions list (writeback feature).
   'android.permission.health.WRITE_LEAN_BODY_MASS',
   'android.permission.health.WRITE_INTERMENSTRUAL_BLEEDING',
   'android.permission.health.WRITE_MENSTRUATION',
