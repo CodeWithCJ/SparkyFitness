@@ -92,14 +92,20 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
     const handleDateChange = useCallback(({ date }: { date: DateType }) => {
       if (!date) return;
-      // The picker hands back a dayjs object; convert via its own toDate() rather
-      // than relying on Date coercion.
-      const jsDate =
-        date instanceof Date
-          ? date
-          : typeof date === 'object' && 'toDate' in date
-            ? date.toDate()
-            : new Date(date);
+      // The picker hands back a dayjs object; convert via its own toDate(). A
+      // 'YYYY-MM-DD' string is parsed with local components so it does not shift
+      // a day in timezones behind UTC (new Date(str) would parse as UTC midnight).
+      let jsDate: Date;
+      if (date instanceof Date) {
+        jsDate = date;
+      } else if (typeof date === 'object' && 'toDate' in date) {
+        jsDate = date.toDate();
+      } else if (typeof date === 'string') {
+        const [year, month, day] = date.split('-').map(Number);
+        jsDate = new Date(year, month - 1, day);
+      } else {
+        jsDate = new Date(date);
+      }
       setTargetDate(toLocalDateString(jsDate));
     }, []);
 
