@@ -74,11 +74,30 @@ body:
         - Other
 
   - type: textarea
-    id: logs
+    id: docker_setup
     attributes:
-      label: Relevant logs or screenshots
-      description: Paste any relevant logs or attach screenshots. Docker logs can be grabbed with `docker compose logs`.
+      label: Docker Compose & Environment Configuration
+      description: For setup or deployment-related issues, please paste your `docker-compose.yml` and redacted `.env` configurations (do NOT include sensitive passwords or keys).
+      placeholder: |
+        # docker-compose.yml snippet
+        ...
+        # Redacted .env snippet
+        ...
+      render: yaml
+
+  - type: textarea
+    id: runtime_logs
+    attributes:
+      label: Runtime Logs (Server, Web, or Mobile)
+      description: For runtime errors, please paste console output or stack traces from the affected component (server, browser console, or mobile/Expo logs).
+      placeholder: Paste logs or stack traces here...
       render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Screen Recordings
+      description: Drag and drop or paste any screenshots or screen recordings that visually show the issue.
 
   - type: textarea
     id: extra
