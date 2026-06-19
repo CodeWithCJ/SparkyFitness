@@ -31,8 +31,8 @@ const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 function isVersionNewer(latest: string, current: string): boolean {
   const latestClean = latest.replace(/^v/, '');
   const currentClean = current.replace(/^v/, '');
-  const latestParts = latestClean.split('.').map(Number);
-  const currentParts = currentClean.split('.').map(Number);
+  const latestParts = latestClean.split('.').map(p => parseInt(p, 10) || 0);
+  const currentParts = currentClean.split('.').map(p => parseInt(p, 10) || 0);
 
   for (let i = 0; i < Math.max(latestParts.length, currentParts.length); i++) {
     const latestPart = latestParts[i] || 0;
