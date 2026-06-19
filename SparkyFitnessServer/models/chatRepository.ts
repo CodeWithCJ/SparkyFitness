@@ -314,7 +314,6 @@ async function clearAllChatHistory(userId: string) {
 async function saveChatHistory(
   historyData: Partial<SparkyChatHistory> & {
     messageType?: 'user' | 'assistant';
-    parts?: any[];
   }
 ) {
   const client = await getClient(historyData.user_id); // User-specific operation
