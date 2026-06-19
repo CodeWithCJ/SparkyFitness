@@ -19,7 +19,8 @@ It is no longer the recommended way to run MCP.
 Use the main server's `/mcp` endpoint:
 
 - Production: `https://<your-host>/mcp`
-- Local dev: `http://localhost:3010/mcp`
+- Local dev: `http://localhost:8080/mcp` (the frontend Vite dev proxy forwards
+  `/mcp` to the server; `http://localhost:3010/mcp` hits the server directly)
 
 stdio-only MCP clients (that cannot speak Streamable HTTP) can bridge to the
 HTTP endpoint with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):

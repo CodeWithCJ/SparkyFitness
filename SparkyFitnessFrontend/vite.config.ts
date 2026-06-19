@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
           target: target,
           changeOrigin: true,
         },
+        '/mcp': {
+          target: target,
+          changeOrigin: true,
+        },
         '/uploads': {
           target: target,
           changeOrigin: true,
