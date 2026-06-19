@@ -30,7 +30,10 @@ import {
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import OidcCallback from '@/components/OidcCallback';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useCurrentVersionQuery } from './hooks/useGeneralQueries';
+import {
+  useCurrentVersionQuery,
+  useInvalidateGithubVersion,
+} from './hooks/useGeneralQueries';
 import {
   RootErrorBoundary,
   RouteErrorBoundary,
@@ -126,6 +129,12 @@ const Root = () => {
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
+  const invalidateGithubVersion = useInvalidateGithubVersion();
+
+  const handleShowNewReleaseDialog = () => {
+    invalidateGithubVersion();
+    setShowNewReleaseDialog(true);
+  };
 
   const handleDismissRelease = (version: string) => {
     localStorage.setItem('dismissedReleaseVersion', version);
@@ -158,7 +167,12 @@ const Root = () => {
                     </div>
                   }
                 >
-                  <Outlet context={{ setShowAboutDialog }} />
+                  <Outlet
+                    context={{
+                      setShowAboutDialog,
+                      setShowNewReleaseDialog: handleShowNewReleaseDialog,
+                    }}
+                  />
                 </Suspense>
                 <ErrorBoundary
                   fallback={<ComponentFallback />}
@@ -202,6 +216,11 @@ const Root = () => {
                   }}
                 >
                   <NewReleaseDialog
+                    key={
+                      showNewReleaseDialog
+                        ? latestRelease?.version || 'open'
+                        : 'closed'
+                    }
                     isOpen={showNewReleaseDialog}
                     onClose={() => setShowNewReleaseDialog(false)}
                     releaseInfo={latestRelease}
@@ -220,11 +239,18 @@ const Root = () => {
 
 interface OutletContextType {
   setShowAboutDialog: (show: boolean) => void;
+  setShowNewReleaseDialog: (show: boolean) => void;
 }
 
 const IndexWrapper = () => {
-  const { setShowAboutDialog } = useOutletContext<OutletContextType>();
-  return <Index onShowAboutDialog={() => setShowAboutDialog(true)} />;
+  const { setShowAboutDialog, setShowNewReleaseDialog } =
+    useOutletContext<OutletContextType>();
+  return (
+    <Index
+      onShowAboutDialog={() => setShowAboutDialog(true)}
+      onShowNewReleaseDialog={() => setShowNewReleaseDialog(true)}
+    />
+  );
 };
 
 const ReportsWrapper = () => {

@@ -113,6 +113,7 @@
     "react-i18next": "^16.5.8",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
+    "react-markdown": "^10.1.0",
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.12.0",
     "recharts": "3.8.0",

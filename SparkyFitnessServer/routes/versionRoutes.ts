@@ -33,7 +33,9 @@ router.get('/current', (req, res) => {
  */
 router.get('/latest-github', async (req, res) => {
   try {
-    const latestRelease = await versionService.getLatestGitHubRelease();
+    const bypassCache = req.query.bypassCache === 'true';
+    const latestRelease =
+      await versionService.getLatestGitHubRelease(bypassCache);
     res.json(latestRelease);
   } catch (error) {
     console.error('Error fetching latest GitHub release:', error);
