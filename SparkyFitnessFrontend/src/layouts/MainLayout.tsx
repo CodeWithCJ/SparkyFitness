@@ -480,33 +480,40 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               <GitHubSponsorButton owner="CodeWithCJ" />
             </div>
             <div className="flex items-center gap-2">
-              <p
-                className="cursor-pointer underline"
+              <button
+                type="button"
+                className="cursor-pointer underline bg-transparent border-0 p-0 text-inherit font-normal text-sm"
                 onClick={onShowAboutDialog}
               >
                 SparkyFitness v{appVersion?.version ?? ''}
-              </p>
+              </button>
               <span>•</span>
-              <p
-                className="cursor-pointer underline hover:text-foreground"
+              <button
+                type="button"
+                className="cursor-pointer underline hover:text-foreground bg-transparent border-0 p-0 text-inherit font-normal text-sm"
                 onClick={onShowNewReleaseDialog}
               >
                 What's New
-              </p>
+              </button>
             </div>
           </div>
         ) : (
           <div className="flex justify-center items-center gap-4">
-            <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
+            <button
+              type="button"
+              className="cursor-pointer underline bg-transparent border-0 p-0 text-inherit font-normal text-sm"
+              onClick={onShowAboutDialog}
+            >
               SparkyFitness v{appVersion?.version ?? ''}
-            </p>
+            </button>
             <span>•</span>
-            <p
-              className="cursor-pointer underline hover:text-foreground"
+            <button
+              type="button"
+              className="cursor-pointer underline hover:text-foreground bg-transparent border-0 p-0 text-inherit font-normal text-sm"
               onClick={onShowNewReleaseDialog}
             >
               What's New
-            </p>
+            </button>
           </div>
         )}
       </footer>

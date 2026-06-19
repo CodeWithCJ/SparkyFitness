@@ -216,6 +216,11 @@ const Root = () => {
                   }}
                 >
                   <NewReleaseDialog
+                    key={
+                      showNewReleaseDialog
+                        ? latestRelease?.version || 'open'
+                        : 'closed'
+                    }
                     isOpen={showNewReleaseDialog}
                     onClose={() => setShowNewReleaseDialog(false)}
                     releaseInfo={latestRelease}

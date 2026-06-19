@@ -51,7 +51,7 @@ const formatGithubReleaseNotes = (notes: string): string => {
   // 3. Convert @username mentions to [@username](https://github.com/username)
   // Avoid matching email addresses by requiring @ to be preceded by non-alphanumeric/start
   formatted = formatted.replace(
-    /(^|[^a-zA-Z0-9_])@([a-zA-Z0-9-]+)/g,
+    /(^|[^a-zA-Z0-9_[])@([a-zA-Z0-9-]+)/g,
     '$1[@$2](https://github.com/$2)'
   );
 
@@ -70,17 +70,6 @@ const NewReleaseDialog: React.FC<NewReleaseDialogProps> = ({
   const [hasReadFully, setHasReadFully] = useState(false);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
-
-  const [prevOpen, setPrevOpen] = useState(isOpen);
-  const [prevVersion, setPrevVersion] = useState(releaseInfo?.version);
-
-  if (isOpen !== prevOpen || releaseInfo?.version !== prevVersion) {
-    setPrevOpen(isOpen);
-    setPrevVersion(releaseInfo?.version);
-    setHasReadFully(false);
-    setHasAcknowledged(false);
-    setConfirmationText('');
-  }
 
   const hasBreakingChange =
     releaseInfo?.releaseNotes?.toLowerCase().includes('breaking change') ??
