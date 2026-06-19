@@ -1,8 +1,13 @@
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Camera, Upload, Trash2, ImageIcon } from 'lucide-react';
+import { Camera, Upload, Trash2, ImageIcon, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   useCheckInPhotos,
   type PhotoType,
@@ -165,34 +170,67 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
     [photos]
   );
 
+  const hasPhotos = photos.length > 0;
+  // Expanded toggle only matters when there are no photos. Once a photo exists
+  // the section is always shown so existing photos are never hidden behind a
+  // collapse. Tracking expansion separately keeps the section compact for the
+  // (common) users who don't use the feature.
+  const [open, setOpen] = useState(false);
+  const expanded = hasPhotos || open;
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('checkIn.photos.title', 'Progress Photos')}</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {t(
-            'checkIn.photos.subtitle',
-            'Upload front, back, and side photos to track your physique over time.'
+      <Collapsible open={expanded} onOpenChange={setOpen}>
+        <CardHeader className={expanded ? undefined : 'py-3'}>
+          {/* When collapsed, the whole header is the trigger so a single compact
+              row is all that's rendered. When expanded (or photos exist) the
+              chevron is hidden and the full header/subtitle show as before. */}
+          <CollapsibleTrigger
+            asChild
+            disabled={hasPhotos}
+            className="group disabled:cursor-default"
+          >
+            <div className="flex items-center justify-between gap-2 cursor-pointer">
+              <CardTitle>
+                {t('checkIn.photos.title', 'Progress Photos')}
+              </CardTitle>
+              {!hasPhotos && (
+                <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                  {t('checkIn.photos.addPhotos', 'Add progress photos')}
+                  <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                </span>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          {expanded && (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'checkIn.photos.subtitle',
+                'Upload front, back, and side photos to track your physique over time.'
+              )}
+            </p>
           )}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          {PHOTO_TYPES.map(({ type, labelKey, defaultLabel }) => (
-            <PhotoSlot
-              key={type}
-              type={type}
-              label={t(labelKey, defaultLabel)}
-              photo={photoMap.get(type)}
-              date={selectedDate}
-              onUpload={uploadPhoto}
-              onDelete={deletePhoto}
-              isUploading={isUploading && uploadingType === type}
-              disabled={isUploading || isDeleting}
-            />
-          ))}
-        </div>
-      </CardContent>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              {PHOTO_TYPES.map(({ type, labelKey, defaultLabel }) => (
+                <PhotoSlot
+                  key={type}
+                  type={type}
+                  label={t(labelKey, defaultLabel)}
+                  photo={photoMap.get(type)}
+                  date={selectedDate}
+                  onUpload={uploadPhoto}
+                  onDelete={deletePhoto}
+                  isUploading={isUploading && uploadingType === type}
+                  disabled={isUploading || isDeleting}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };

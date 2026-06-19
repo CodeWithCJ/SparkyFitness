@@ -3031,6 +3031,30 @@ ALTER TABLE ONLY public.backup_settings
 
 
 --
+-- Name: check_in_measurements check_in_measurements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_measurements
+    ADD CONSTRAINT check_in_measurements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: check_in_photos check_in_photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: check_in_photos check_in_photos_user_date_type_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_photos
+    ADD CONSTRAINT check_in_photos_user_date_type_unique UNIQUE (user_id, entry_date, photo_type);
+
+
+--
 -- Name: daily_sleep_need daily_sleep_need_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 

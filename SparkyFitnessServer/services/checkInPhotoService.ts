@@ -13,8 +13,25 @@ import type {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const resolveFilePath = (relativePath: string) =>
-  path.join(__dirname, '..', relativePath);
+// Mirror the uploads-root resolution used elsewhere (SparkyFitnessServer.ts,
+// routes/exerciseRoutes.ts, utils/imageDownloader.ts, services/backupService.ts)
+// so a custom uploads location is honored instead of always writing under
+// SparkyFitnessServer/uploads.
+const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, '..', 'uploads');
+
+// Stored file_path values are rooted at the logical 'uploads/' directory
+// (e.g. 'uploads/check-in/<user>/<date>/front.jpg') so records stay portable
+// across deployments. Resolve them against the configured uploads root,
+// stripping the leading 'uploads' segment. resolveFilePath('uploads') therefore
+// returns baseUploadsDir, keeping the path-traversal guard in getPhotoFileById
+// correct under a custom uploads directory.
+const resolveFilePath = (relativePath: string) => {
+  const segments = relativePath.split(/[/\\]/).filter(Boolean);
+  if (segments[0] === 'uploads') segments.shift();
+  return path.join(baseUploadsDir, ...segments);
+};
 
 const safeUnlink = async (absolutePath: string) => {
   try {

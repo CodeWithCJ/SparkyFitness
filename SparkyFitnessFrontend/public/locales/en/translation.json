@@ -1139,6 +1139,7 @@
     "photos": {
       "title": "Progress Photos",
       "subtitle": "Upload front, back, and side photos to track your physique over time.",
+      "addPhotos": "Add progress photos",
       "front": "Front",
       "back": "Back",
       "side": "Side",
