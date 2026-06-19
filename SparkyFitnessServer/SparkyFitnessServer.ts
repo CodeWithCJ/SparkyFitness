@@ -89,6 +89,7 @@ import { toNodeHandler } from 'better-auth/node';
 import freeExerciseDBService from './integrations/freeexercisedb/FreeExerciseDBService.js';
 import { downloadImage } from './utils/imageDownloader.js';
 import authRoutes from './routes/authRoutes.js';
+import mcpRoutes from './routes/mcpRoutes.js';
 import identityRoutes from './routes/identityRoutes.js';
 import oidcSettingsRoutes from './routes/oidcSettingsRoutes.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
@@ -142,7 +143,13 @@ app.use(
             'x-api-key',
             'x-client-id',
             'x-requested-with',
+            // MCP StreamableHTTP headers; browser clients fail CORS preflight
+            // without them.
+            'mcp-protocol-version',
+            'mcp-session-id',
+            'last-event-id',
           ],
+          exposedHeaders: ['mcp-session-id'],
           credentials: true,
           maxAge: 86400,
         });
@@ -150,6 +157,19 @@ app.use(
       req
     );
   })
+);
+// External MCP endpoint — a self-contained chain mounted top-level (not /api)
+// to skip the /api/auth interceptor and cache-control middleware. It sits
+// before the global 50mb parser so its route-local 1mb parser wins (the global
+// parser would set req._body first and no-op the local one). cookieParser is
+// local because the global one also runs after the 50mb parser, and
+// authenticate reads req.cookies.
+app.use(
+  '/mcp',
+  express.json({ limit: '1mb' }),
+  cookieParser(),
+  authenticate,
+  mcpRoutes
 );
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
