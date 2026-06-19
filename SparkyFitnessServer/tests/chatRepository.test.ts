@@ -69,3 +69,43 @@ describe('chatRepository.upsertAiServiceSetting', () => {
     expect(params[5]).toBeNull(); // $6 → model_name explicitly cleared
   });
 });
+
+describe('chatRepository.getChatHistoryByUserId', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    };
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  it('queries the most recent 50 messages and returns them chronologically', async () => {
+    const mockRows = [
+      {
+        id: '1',
+        content: 'hello',
+        message_type: 'user',
+        created_at: '2026-06-19T10:00:00Z',
+      },
+      {
+        id: '2',
+        content: 'hi',
+        message_type: 'assistant',
+        created_at: '2026-06-19T10:01:00Z',
+      },
+    ];
+    mockClient.query.mockResolvedValue({ rows: mockRows });
+
+    const result = await chatRepository.getChatHistoryByUserId('user-1');
+
+    expect(mockClient.query).toHaveBeenCalledWith(
+      'SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC',
+      ['user-1']
+    );
+    expect(result).toEqual(mockRows);
+  });
+});
