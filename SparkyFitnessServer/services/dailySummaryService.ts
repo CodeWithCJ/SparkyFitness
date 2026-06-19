@@ -78,7 +78,8 @@ function computeCalorieBalance(
     weight?: string | number;
     height?: string | number;
     body_fat_percentage?: string | number;
-  } | null
+  } | null,
+  externalBmr: number | null
 ): CalorieBalance {
   // 1. Eaten calories — scale per-serving values by quantity/serving_size
   const eatenCalories = foodEntries.reduce((sum, e) => {
@@ -96,6 +97,7 @@ function computeCalorieBalance(
   let bmr = 0;
   const activityLevel = userPreferences?.activity_level || 'not_much';
   const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
+  const useExternalBmr = userPreferences?.use_external_bmr || false;
 
   if (userProfile && userPreferences) {
     const tz = userPreferences.timezone || 'UTC';
@@ -128,6 +130,26 @@ function computeCalorieBalance(
       );
     }
   }
+
+  // 3b. External BMR override — when the user opts in and a synced resting/BMR value
+  // exists for the day, prefer it over the formula. Sanity-bounded so a bad sample
+  // can't zero out the target; otherwise we keep the formula ("Otherwise, the selected
+  // formula will be used.").
+  let bmrSource = 'formula';
+  if (
+    useExternalBmr &&
+    externalBmr !== null &&
+    externalBmr >= 600 &&
+    externalBmr <= 6000
+  ) {
+    bmr = externalBmr;
+    bmrSource = 'external';
+  }
+  log(
+    'debug',
+    `dailySummaryService: BMR source=${bmrSource} value=${Math.round(bmr)}` +
+      (useExternalBmr ? ` (externalAvailable=${externalBmr !== null})` : '')
+  );
 
   // 4. Resolve exercise calories (3-tier fallback)
   const resolved = resolveExerciseCalories(
@@ -204,6 +226,7 @@ function computeCalorieBalance(
     net: Math.round(netCalories),
     progress: Math.round(progress),
     bmr: Math.round(bmr),
+    bmrSource: bmrSource as 'formula' | 'external',
     exerciseSource: resolved.source,
     tdeeProjection,
   };
@@ -266,6 +289,22 @@ export async function getDailySummary({
       )
     : 0;
 
+  // External BMR override — only when opted in AND checkin data is permitted
+  // (includeCheckin is the route's permission gate; the override must not bypass it).
+  const externalBmr =
+    userPreferences?.use_external_bmr && includeCheckin
+      ? await measurementRepository
+          .getExternalBmrForDate(targetUserId, date)
+          .catch((error: unknown) => {
+            log(
+              'warn',
+              `External BMR fetch failed for user ${targetUserId} on ${date}:`,
+              error
+            );
+            return null;
+          })
+      : null;
+
   const calorieBalance = computeCalorieBalance(
     foodEntries,
     exerciseSessions as ExerciseSessionResponse[],
@@ -274,7 +313,8 @@ export async function getDailySummary({
     Number((adjustedGoals as Record<string, unknown> | null)?.calories) || 2000,
     userProfile,
     userPreferences,
-    measurements
+    measurements,
+    externalBmr
   );
 
   const rawGoalData = goals as Record<string, unknown> | null;

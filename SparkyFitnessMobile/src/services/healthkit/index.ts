@@ -321,6 +321,37 @@ const queryTotalCalories = async (
   }
 };
 
+// Query function for basal (resting) energy only — the iOS analogue of a BMR rate.
+// Apple's Basal/Resting Energy is a cumulative, wear-dependent daily total, so callers
+// must only sum COMPLETE days (see getAggregatedBasalEnergyByDate) to avoid partial-day
+// under-reporting.
+const queryBasalEnergy = async (
+  dayStart: Date,
+  dayEnd: Date
+): Promise<AggregationQueryResult | null> => {
+  try {
+    const basalStats = await queryStatisticsForQuantity(
+      'HKQuantityTypeIdentifierBasalEnergyBurned',
+      ['cumulativeSum'],
+      { filter: { date: { startDate: dayStart, endDate: dayEnd } }, unit: 'kcal' }
+    );
+    const basal = basalStats?.sumQuantity?.quantity || 0;
+    if (basal > 0) {
+      return { value: Math.round(basal), hasData: true };
+    }
+    return { value: 0, hasData: false };
+  } catch (error) {
+    if (isDatabaseInaccessibleError(error)) {
+      databaseInaccessibleCount++;
+      addLog('[HealthKitService] Basal energy query failed: database inaccessible (device likely locked)', 'WARNING');
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to query basal energy: ${message}`, 'ERROR');
+    }
+    return null;
+  }
+};
+
 const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
   steps: {
     identifier: 'HKQuantityTypeIdentifierStepCount',
@@ -484,6 +515,71 @@ export const getAggregatedDistanceByDate = (startDate: Date, endDate: Date) =>
 
 export const getAggregatedFloorsClimbedByDate = (startDate: Date, endDate: Date) =>
   getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.floorsClimbed);
+
+/**
+ * Aggregates Apple Health Resting/Basal Energy for the BMR override.
+ *
+ * Unlike the other aggregators, this:
+ *  - sums ONLY fully-elapsed days (excludes today's partial, wear-dependent total), and
+ *  - stamps each complete day D's value with D+1 as its `date` (the day it should apply
+ *    to). This lets the server do an exact-date lookup: today's summary picks up
+ *    yesterday's complete resting energy, mirroring Cronometer's prior-complete-day import.
+ *
+ * Emits records of type `basal_metabolic_rate` so the server stores/reads them the same
+ * way as Android's Health Connect BasalMetabolicRate.
+ */
+export const getAggregatedBasalEnergyByDate = async (
+  startDate: Date,
+  endDate: Date
+): Promise<AggregatedHealthRecord[]> => {
+  if (!isHealthKitAvailable) {
+    addLog('[HealthKitService] HealthKit not available for basal energy aggregation', 'DEBUG');
+    return [];
+  }
+
+  const results: AggregatedHealthRecord[] = [];
+  const deviceTz = getDeviceTimezone();
+
+  // Start of the current local day — any day whose end reaches into today is "incomplete".
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0);
+
+  while (currentDate < startOfToday) {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Only consider days that are fully within [startDate, endDate] and fully elapsed.
+    if (dayEnd >= startDate && dayEnd <= endDate && dayEnd < startOfToday) {
+      try {
+        const queryResult = await queryBasalEnergy(dayStart, dayEnd);
+        if (queryResult && queryResult.hasData) {
+          // Stamp with the FOLLOWING day (D+1) — the day this resting energy applies to.
+          const effectiveDate = new Date(dayStart);
+          effectiveDate.setDate(effectiveDate.getDate() + 1);
+          effectiveDate.setHours(0, 0, 0, 0);
+          results.push({
+            date: toLocalDateString(effectiveDate),
+            value: queryResult.value,
+            type: 'basal_metabolic_rate',
+            record_timezone: deviceTz,
+          });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[HealthKitService] Failed to get aggregated basal energy: ${message}`, 'ERROR');
+      }
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return results;
+};
 
 // ============================================================================
 // Record Handlers - modular handlers for different HealthKit record types

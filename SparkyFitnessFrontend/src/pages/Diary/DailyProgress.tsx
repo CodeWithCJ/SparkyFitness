@@ -132,6 +132,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   // inputs to the selected date and use timezone-aware age.
   const calorieBalance = summaryData.calorieBalance;
   const bmr = calorieBalance.bmr;
+  const bmrSource = calorieBalance.bmrSource ?? 'formula';
   const exerciseSource = calorieBalance.exerciseSource;
   const tdeeProjection = calorieBalance.tdeeProjection;
 
@@ -381,6 +382,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
+                      {bmrSource === 'external' &&
+                        ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                     </p>
                   )}
 
@@ -472,6 +475,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
+                  {bmrSource === 'external' &&
+                    ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
                 </div>
               )}
             </div>
@@ -716,6 +721,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               rawManualGoal={rawManualGoal}
               adjustedManualGoal={adjustedManualGoal}
               activityMultiplier={activityMultiplier}
+              bmrSource={bmrSource}
             />
           </div>
         </div>

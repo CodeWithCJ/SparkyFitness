@@ -164,6 +164,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         net: Math.round(netCalories),
         progress: calorieGoal > 0 ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100)) : 0,
         bmr: 0,
+        bmrSource: 'formula' as const,
         exerciseSource: 'none',
         tdeeProjection: null,
       };

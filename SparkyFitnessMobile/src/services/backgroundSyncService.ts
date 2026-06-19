@@ -1,6 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
@@ -15,6 +15,7 @@ import {
   getAggregatedTotalCaloriesByDateDetailed,
   getAggregatedDistanceByDateDetailed,
   getAggregatedFloorsClimbedByDateDetailed,
+  getAggregatedBasalEnergyByDateDetailed,
   alignToLocalDayStart,
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
@@ -82,6 +83,13 @@ async function processBackgroundMetric(
     readError = result.error;
   } else if (type === 'FloorsClimbed') {
     const result = await getAggregatedFloorsClimbedByDateDetailed(aggregatedStartDate, endDate);
+    dataToTransform = result.records;
+    readError = result.error;
+  } else if (type === 'BasalMetabolicRate' && metric.iosAggregatedSync && Platform.OS === 'ios') {
+    // iOS: use aggregated resting-energy API (complete days only, stamped D+1).
+    // Android stays in the raw-record branch below — Health Connect BMR records
+    // carry basalMetabolicRate.inKilocaloriesPerDay and must not use this path.
+    const result = await getAggregatedBasalEnergyByDateDetailed(aggregatedStartDate, endDate);
     dataToTransform = result.records;
     readError = result.error;
   } else {

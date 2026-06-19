@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import type { ActivityLevel } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
 import { useTranslation } from 'react-i18next';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -102,9 +103,9 @@ const CalculationSettings = () => {
     useState<number>(contextExerciseCaloriePercentage ?? 100);
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
     useState<boolean>(contextTdeeAllowNegativeAdjustment ?? false);
-  const [activityLevel, setActivityLevel] = useState<
-    'not_much' | 'light' | 'moderate' | 'heavy'
-  >(contextActivityLevel || 'not_much');
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>(
+    contextActivityLevel || 'not_much'
+  );
   const [goalMode, setGoalMode] = useState<GoalMode>(
     contextGoalMode || 'maintain'
   );
@@ -731,14 +732,20 @@ const CalculationSettings = () => {
                 </Label>
                 <Select
                   value={activityLevel}
-                  onValueChange={(
-                    value: 'not_much' | 'light' | 'moderate' | 'heavy'
-                  ) => setActivityLevel(value)}
+                  onValueChange={(value: ActivityLevel) =>
+                    setActivityLevel(value)
+                  }
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">
+                      {t(
+                        'settings.calorieGoalAdjustment.activityNone',
+                        'None (×1.0)'
+                      )}
+                    </SelectItem>
                     <SelectItem value="not_much">
                       {t(
                         'settings.calorieGoalAdjustment.activityNotMuch',

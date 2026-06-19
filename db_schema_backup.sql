@@ -2357,6 +2357,7 @@ CREATE TABLE public.user_preferences (
     goal_mode character varying(50) DEFAULT 'maintain'::character varying NOT NULL,
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
+    use_external_bmr boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
