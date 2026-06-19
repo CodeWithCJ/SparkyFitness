@@ -11,7 +11,7 @@ import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterCon
  */
 export const fetchMeasurements = async (date: string): Promise<CheckInMeasurement> => {
   const rows = await fetchMeasurementsRange(date, date);
-  return (rows[0] ?? {}) as CheckInMeasurement;
+  return (rows?.[0] ?? {}) as CheckInMeasurement;
 };
 
 /**
