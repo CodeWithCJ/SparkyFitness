@@ -1,52 +1,52 @@
 {
-  "nav": {
-    "diary": "Күнделік",
-    "checkin": "Тіркелу",
-    "reports": "Есептер",
-    "foods": "Тағамдар",
-    "goals": "Мақсаттар",
-    "settings": "Параметрлер",
-    "admin": "Әкімші"
-  },
-  "aboutDialog": {
-    "title": "SparkyFitness туралы",
-    "description1": "SparkyFitness: Отбасыларға арналған. Жасанды интеллект негізінде. Тамақ, фитнес, су және денсаулықты бақылаңыз.",
-    "applicationVersion": "Қолданба нұсқасы: ",
-    "joinDiscord": "Discord-тағы қауымдастығымызға қосылыңыз: ",
-    "discordLink": "discord.gg/vcnMT5cPEA",
-    "moreInfoVisit": "Қосымша ақпарат алу үшін мына мекенжайға кіріңіз ",
-    "githubRepo": "GitHub репозиториясы",
-    "technologiesUsed": "Қолданылған технологиялар:",
-    "frontend": "Фронтенд:",
-    "backend": "Бэкенд:",
-    "externalApis": "Сыртқы API-лар:",
-    "wgerApi": "Wger API (жаттығу деректері)",
-    "foodDataApis": "Тағам деректерінің API-лары:",
-    "nutritionixApi": "Nutritionix API",
-    "fatsecretApi": "FatSecret API",
-    "openFoodFactsApi": "Open Food Facts API",
-    "gotIt": "Түсіндім",
-    "close": "Жабу"
-  },
-  "exercise": {
-    "title": "Жаттығулар",
-    "addExerciseDialog": {
-      "title": "Жаттығуды қосу",
-      "description": "Деректер қорыңызға жаңа жаттығуды қосыңыз: оны өзіңіздің талаптарыңызға сай жасап немесе сыртқы дереккөзден импорттаңыз.",
-      "myExercisesTab": "Менің жаттығуларым",
-      "workoutPresetTab": "Жаттығу алдын ала баптамасы",
-      "onlineTab": "Онлайн",
-      "addCustomTab": "Жекешелендіруді қосу",
-      "importCSVTab": "CSV-ді импорттау",
-      "nameLabel": "Аты",
-      "categoryLabel": "Категория",
-      "selectCategoryPlaceholder": "Категорияны таңдаңыз",
-      "categoryGeneral": "Жалпы",
-      "categoryStrength": "Күш",
-      "categoryCardio": "Кардио",
-      "categoryYoga": "Йога",
-      "caloriesPerHourLabel": "Каллория/сағатына",
-      "caloriesPerHourHint": "Жүйе есептеген сағаттық калорияларды ({{newExerciseCalories}} кал/сағ) пайдалану үшін бос қалдырыңыз."
+    "nav": {
+        "diary": "Күнделік",
+        "checkin": "Тіркелу",
+        "reports": "Есептер",
+        "foods": "Тағамдар",
+        "goals": "Мақсаттар",
+        "settings": "Параметрлер",
+        "admin": "Әкімші"
+    },
+    "aboutDialog": {
+        "title": "SparkyFitness туралы",
+        "description1": "SparkyFitness: Отбасыларға арналған. Жасанды интеллект негізінде. Тамақ, фитнес, су және денсаулықты бақылаңыз.",
+        "applicationVersion": "Қолданба нұсқасы: ",
+        "joinDiscord": "Discord-тағы қауымдастығымызға қосылыңыз: ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "Қосымша ақпарат алу үшін мына мекенжайға кіріңіз ",
+        "githubRepo": "GitHub репозиториясы",
+        "technologiesUsed": "Қолданылған технологиялар:",
+        "frontend": "Фронтенд:",
+        "backend": "Бэкенд:",
+        "externalApis": "Сыртқы API-лар:",
+        "wgerApi": "Wger API (жаттығу деректері)",
+        "foodDataApis": "Тағам деректерінің API-лары:",
+        "nutritionixApi": "Nutritionix API",
+        "fatsecretApi": "FatSecret API",
+        "openFoodFactsApi": "Open Food Facts API",
+        "gotIt": "Түсіндім",
+        "close": "Жабу"
+    },
+    "exercise": {
+        "title": "Жаттығулар",
+        "addExerciseDialog": {
+            "title": "Жаттығуды қосу",
+            "description": "Деректер қорыңызға жаңа жаттығуды қосыңыз: оны өзіңіздің талаптарыңызға сай жасап немесе сыртқы дереккөзден импорттаңыз.",
+            "myExercisesTab": "Менің жаттығуларым",
+            "workoutPresetTab": "Жаттығу алдын ала баптамасы",
+            "onlineTab": "Онлайн",
+            "addCustomTab": "Жекешелендіруді қосу",
+            "importCSVTab": "CSV-ді импорттау",
+            "nameLabel": "Аты",
+            "categoryLabel": "Категория",
+            "selectCategoryPlaceholder": "Категорияны таңдаңыз",
+            "categoryGeneral": "Жалпы",
+            "categoryStrength": "Күш",
+            "categoryCardio": "Кардио",
+            "categoryYoga": "Йога",
+            "caloriesPerHourLabel": "Каллория/сағатына",
+            "caloriesPerHourHint": "Жүйе есептеген сағаттық калорияларды ({{newExerciseCalories}} кал/сағ) пайдалану үшін бос қалдырыңыз."
+        }
     }
-  }
 }
