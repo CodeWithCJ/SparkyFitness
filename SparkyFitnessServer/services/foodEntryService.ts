@@ -983,31 +983,18 @@ async function createFoodEntryMeal(
     const isLegacyClient = clientMealModelVersion < 2;
     const useLegacyServingMath =
       isLegacyClient && (mealData.unit || 'serving') === 'serving';
-    // 1. Create the parent food_entry_meals record with quantity and unit.
-    const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
-      {
-        user_id: mealData.user_id || authenticatedUserId, // Use target user ID
-        meal_template_id: mealData.meal_template_id || null,
-        meal_type_id: mealData.meal_type_id || null,
-        meal_type: mealData.meal_type,
-        entry_date: mealData.entry_date,
-        name: mealData.name,
-        description: mealData.description,
-        quantity: mealData.quantity || 1.0, // Default to 1.0
-        unit: mealData.unit || 'serving', // Default to 'serving'
-        legacy_serving_unit_math: useLegacyServingMath,
-      },
-      actingUserId
-    );
-    const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
+
     let foodsToProcess = mealData.foods || [];
     let mealServingSize = 1.0; // Default per-serving quantity
     let mealTotalServings = 1.0; // Default yield count
-    // If a meal_template id is provided fetch the template for serving size
+    let description = mealData.description || null;
+    let name = mealData.name;
+
+    // If a meal_template id is provided fetch the template for serving size and foods.
     if (mealData.meal_template_id) {
       log(
         'info',
-        `Fetching meal template ${mealData.meal_template_id} for serving size and foods.`
+        `Fetching meal template ${mealData.meal_template_id} for serving size, name, description, and foods.`
       );
       const mealTemplate = await mealService.getMealById(
         authenticatedUserId,
@@ -1016,6 +1003,12 @@ async function createFoodEntryMeal(
       if (mealTemplate) {
         mealServingSize = mealTemplate.serving_size || 1.0;
         mealTotalServings = mealTemplate.total_servings || 1.0;
+        if (!name && mealTemplate.name) {
+          name = mealTemplate.name;
+        }
+        if (!description && mealTemplate.description) {
+          description = mealTemplate.description;
+        }
         log(
           'info',
           `Meal template serving: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'} × ${mealTotalServings} servings`
@@ -1036,9 +1029,27 @@ async function createFoodEntryMeal(
           'warn',
           `Meal template ${mealData.meal_template_id} not found when creating food entry meal.`
         );
-        // Continue without template data
       }
     }
+
+    // 1. Create the parent food_entry_meals record with quantity, unit, name, and description.
+    const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
+      {
+        user_id: mealData.user_id || authenticatedUserId, // Use target user ID
+        meal_template_id: mealData.meal_template_id || null,
+        meal_type_id: mealData.meal_type_id || null,
+        meal_type: mealData.meal_type,
+        entry_date: mealData.entry_date,
+        name: name,
+        description: description,
+        quantity: mealData.quantity || 1.0, // Default to 1.0
+        unit: mealData.unit || 'serving', // Default to 'serving'
+        legacy_serving_unit_math: useLegacyServingMath,
+      },
+      actingUserId
+    );
+    const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
+
     // Calculate portion multiplier.
     //   - Uniform model (new clients): consumed_quantity / (serving_size × total_servings).
     //   - Legacy model (old clients, unit='serving'): multiplier = consumed_quantity.
@@ -1072,14 +1083,22 @@ async function createFoodEntryMeal(
         );
         continue;
       }
+      const variantId = foodItem.variant_id || food.default_variant?.id;
+      if (!variantId) {
+        log(
+          'warn',
+          `No variant ID found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
+        );
+        continue;
+      }
       const variant = await foodRepository.getFoodVariantById(
-        foodItem.variant_id,
+        variantId,
         authenticatedUserId
       );
       if (!variant) {
         log(
           'warn',
-          `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
+          `Food variant with ID ${variantId} not found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
         );
         continue;
       }
@@ -1117,7 +1136,7 @@ async function createFoodEntryMeal(
         meal_type_id: resolvedMealTypeId,
         quantity: scaledQuantity, // SCALED quantity
         unit: foodItem.unit,
-        variant_id: foodItem.variant_id,
+        variant_id: variantId,
         entry_date: mealData.entry_date,
         food_entry_meal_id: newFoodEntryMeal.id, // Link to the new food_entry_meals ID
         ...snapshot,
@@ -1237,14 +1256,22 @@ async function updateFoodEntryMeal(
         );
         continue;
       }
+      const variantId = foodItem.variant_id || food.default_variant?.id;
+      if (!variantId) {
+        log(
+          'warn',
+          `No variant ID found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
+        );
+        continue;
+      }
       const variant = await foodRepository.getFoodVariantById(
-        foodItem.variant_id,
+        variantId,
         authenticatedUserId
       );
       if (!variant) {
         log(
           'warn',
-          `Food variant with ID ${foodItem.variant_id} not found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
+          `Food variant with ID ${variantId} not found for food ${foodItem.food_id} when updating food entry meal. Skipping.`
         );
         continue;
       }
@@ -1282,7 +1309,7 @@ async function updateFoodEntryMeal(
         meal_type_id: resolvedMealTypeId,
         quantity: scaledQuantity, // SCALED quantity
         unit: foodItem.unit,
-        variant_id: foodItem.variant_id,
+        variant_id: variantId,
         entry_date: updatedMealData.entry_date,
         food_entry_meal_id: foodEntryMealId, // Link to the existing food_entry_meals ID
         ...snapshot,
