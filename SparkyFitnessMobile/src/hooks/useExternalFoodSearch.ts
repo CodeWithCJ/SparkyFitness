@@ -6,7 +6,7 @@ import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { RateLimiter } from '../utils/rateLimiter';
 
-const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie', 'tandoor', 'norish', 'yazio']);
+const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie', 'tandoor', 'norish', 'yazio', 'swissfood']);
 
 // Open Food Facts allows 10 req/min; use 8 for headroom
 const offRateLimiter = new RateLimiter(8, 60_000);
@@ -24,7 +24,7 @@ export function useExternalFoodSearch(
   const query = useInfiniteQuery({
     queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId, autoScale),
     queryFn: async ({ signal, pageParam }) => {
-      if (providerType !== 'openfoodfacts' && !providerId) {
+      if (providerType !== 'openfoodfacts' && providerType !== 'swissfood' && !providerId) {
         return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
       }
       if (providerType === 'openfoodfacts') {
