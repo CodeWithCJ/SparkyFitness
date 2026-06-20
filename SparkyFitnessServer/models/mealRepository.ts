@@ -136,10 +136,6 @@ async function getMeals(userId: any, filter = 'all') {
     if (filter === 'mine') {
       query += ' AND user_id = $1';
       queryParams.push(userId);
-    } else if (filter === 'all') {
-      // 'all' means user's own meals and public meals
-      query += ' AND (user_id = $1 OR is_public = TRUE)';
-      queryParams.push(userId);
     }
     // For 'family' and 'public' filters, separate functions will be called in mealService
     query += ' ORDER BY name ASC';
@@ -901,7 +897,7 @@ async function getFamilyMeals(userId: any) {
       `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.serving_size, m.serving_unit, m.total_servings, m.created_at, m.updated_at
        FROM meals m
        JOIN family_access fa ON m.user_id = fa.owner_user_id
-       WHERE fa.family_user_id = $1 AND fa.is_active = TRUE AND (fa.access_permissions->>'food_list')::boolean = TRUE
+       WHERE fa.family_user_id = $1 AND fa.is_active = TRUE
        ORDER BY m.name ASC`,
       [userId]
     );
