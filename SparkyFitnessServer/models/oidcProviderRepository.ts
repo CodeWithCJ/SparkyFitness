@@ -80,6 +80,11 @@ async function getOidcProviders() {
         signing_algorithm: config.signing_algorithm || 'RS256',
         profile_signing_algorithm: config.profile_signing_algorithm || 'none',
         timeout: config.timeout || 30000,
+        userInfoEndpoint: row.userinfo_endpoint,
+        jwksEndpoint: row.jwks_endpoint,
+        tokenEndpoint: row.token_endpoint,
+        authorizationEndpoint: row.authorization_endpoint,
+        discoveryEndpoint: row.discovery_endpoint,
         ...config,
         // Force correct redirectURI for Better Auth
         redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`,
@@ -91,11 +96,19 @@ async function getOidcProviders() {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getOidcProviderById(id: any) {
+  if (!id) return null;
   const client = await getSystemClient();
   try {
+    const cleanId = id.startsWith('oidc-') ? id.replace('oidc-', '') : id;
+    const prefixedId = id.startsWith('oidc-') ? id : `oidc-${id}`;
+
     const result = await client.query(
-      'SELECT * FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1',
-      [id]
+      `SELECT * FROM "sso_provider" 
+       WHERE id::text = $1 
+          OR provider_id = $1 
+          OR provider_id = $2 
+          OR provider_id = $3`,
+      [id, cleanId, prefixedId]
     );
     const row = result.rows[0];
     if (!row) return null;
@@ -119,6 +132,11 @@ async function getOidcProviderById(id: any) {
       signing_algorithm: config.signing_algorithm || 'RS256',
       profile_signing_algorithm: config.profile_signing_algorithm || 'none',
       timeout: config.timeout || 30000,
+      userInfoEndpoint: row.userinfo_endpoint,
+      jwksEndpoint: row.jwks_endpoint,
+      tokenEndpoint: row.token_endpoint,
+      authorizationEndpoint: row.authorization_endpoint,
+      discoveryEndpoint: row.discovery_endpoint,
       ...config,
       // Force correct redirectURI for Better Auth
       redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`,

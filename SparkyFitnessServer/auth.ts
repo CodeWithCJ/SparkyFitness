@@ -557,12 +557,19 @@ const auth = betterAuth({
             const { default: oidcProviderRepository } = await import(repoPath);
 
             try {
-              const { rows: accounts } = await client.query(
-                'SELECT provider_id FROM "account" WHERE user_id = $1 AND provider_id LIKE \'oidc-%\'',
-                [session.userId]
-              );
+              const activeOidcIds =
+                await oidcProviderRepository.getActiveOidcProviderIds();
+              let query =
+                'SELECT provider_id FROM "account" WHERE user_id = $1 AND (provider_id LIKE \'oidc-%\'';
+              const queryParams = [session.userId];
+              if (activeOidcIds.length > 0) {
+                query += ' OR provider_id = ANY($2::text[])';
+                queryParams.push(activeOidcIds);
+              }
+              query += ')';
+              const { rows: accounts } = await client.query(query, queryParams);
               for (const acc of accounts) {
-                const providerId = acc.provider_id.replace('oidc-', '');
+                const providerId = acc.provider_id;
                 const provider =
                   await oidcProviderRepository.getOidcProviderById(providerId);
                 if (provider && provider.admin_group) {
@@ -573,7 +580,8 @@ const auth = betterAuth({
                   await syncUserGroups(
                     { pool: authPool, userRepository, oidcProviderRepository },
                     session.userId,
-                    provider.admin_group
+                    provider.admin_group,
+                    provider.provider_id
                   );
                 }
               }
