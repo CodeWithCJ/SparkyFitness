@@ -17,6 +17,8 @@ const ICON_MAP = {
   // Actions
   'copy': { sf: 'doc.on.doc', ion: 'copy-outline' },
   'paste': { sf: 'doc.on.clipboard', ion: 'clipboard-outline' },
+  'eye': { sf: 'eye', ion: 'eye-outline' },
+  'eye-off': { sf: 'eye.slash', ion: 'eye-off-outline' },
   'add-circle': { sf: 'plus.circle', ion: 'add-circle-outline' },
   'remove-circle': { sf: 'minus.circle', ion: 'remove-circle-outline' },
   'checkmark': { sf: 'checkmark', ion: 'checkmark' },

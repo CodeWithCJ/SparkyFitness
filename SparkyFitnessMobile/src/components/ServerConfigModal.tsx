@@ -81,6 +81,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [apiKey, setApiKey] = useState('');
   const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showHeaders, setShowHeaders] = useState<Record<number, boolean>>({});
+
+  const toggleShowHeader = (index: number) => {
+    setShowHeaders(prev => ({ ...prev, [index]: !prev[index] }));
+  };
   const [loading, setLoading] = useState(false);
 
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
@@ -103,6 +110,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setEmailOtpSent(false);
     setEmail('');
     setPassword('');
+    setShowPassword(false);
+    setShowApiKey(false);
+    setShowHeaders({});
 
     setAdvancedExpanded(false);
     chevronRotation.value = -90;
@@ -504,13 +514,25 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                     </View>
                     <View className="mb-4">
                       <Text className="text-sm mb-2 text-text-secondary">Password</Text>
-                      <FormInput
-                        placeholder="Password"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                        autoComplete="password"
-                      />
+                      <View className="flex-row items-center">
+                        <FormInput
+                          className="flex-1 rounded-lg"
+                          placeholder="Password"
+                          value={password}
+                          onChangeText={setPassword}
+                          secureTextEntry={!showPassword}
+                          autoComplete="password"
+                          style={{ paddingRight: 40 }}
+                        />
+                        <Button
+                          variant="ghost"
+                          onPress={() => setShowPassword(!showPassword)}
+                          accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                          className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                        >
+                          <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
+                        </Button>
+                      </View>
                     </View>
                   </>
                 )}
@@ -525,16 +547,24 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         placeholder="Uds3d8i..."
                         value={apiKey}
                         onChangeText={setApiKey}
-                        secureTextEntry
-                        style={{ paddingRight: 40 }}
+                        secureTextEntry={!showApiKey}
+                        style={{ paddingRight: 75 }}
                       />
                       <Button
                         variant="ghost"
                         onPress={async () => setApiKey(await Clipboard.getString())}
                         accessibilityLabel="Paste API key from clipboard"
-                        className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                        className="absolute right-9 p-2 py-2 px-2 rounded-lg"
                       >
                         <Icon name="paste" size={20} color={textSecondary} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onPress={() => setShowApiKey(!showApiKey)}
+                        accessibilityLabel={showApiKey ? "Hide API key" : "Show API key"}
+                        className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                      >
+                        <Icon name={showApiKey ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
                       </Button>
                     </View>
                   </View>
@@ -597,15 +627,26 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                             <Icon name="remove-circle" size={18} color="#ef4444" />
                           </Button>
                         </View>
-                        <FormInput
-                          placeholder="Value"
-                          value={header.value}
-                          onChangeText={(text) => handleChangeHeader(index, 'value', text)}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          secureTextEntry
-                          style={{ fontSize: 14 }}
-                        />
+                        <View className="flex-row items-center">
+                          <FormInput
+                            className="flex-1 rounded-lg"
+                            placeholder="Value"
+                            value={header.value}
+                            onChangeText={(text) => handleChangeHeader(index, 'value', text)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            secureTextEntry={!showHeaders[index]}
+                            style={{ fontSize: 14, paddingRight: 40 }}
+                          />
+                          <Button
+                            variant="ghost"
+                            onPress={() => toggleShowHeader(index)}
+                            accessibilityLabel={showHeaders[index] ? "Hide header value" : "Show header value"}
+                            className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                          >
+                            <Icon name={showHeaders[index] ? 'eye-off' : 'eye'} size={18} color={textSecondary} />
+                          </Button>
+                        </View>
                       </View>
                     ))}
                   </View>

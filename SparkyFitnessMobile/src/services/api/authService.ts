@@ -236,7 +236,7 @@ export const login = async (
   const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
     method: 'POST',
     credentials: 'include',
-    headers: getJsonHeaders(),
+    headers: await getMfaHeaders(baseUrl),
     body: JSON.stringify({ email, password }),
   });
 
