@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
@@ -41,6 +41,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
+  const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
@@ -53,6 +54,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       }
     }, [])
   );
+
+  // Re-tapping the active Dashboard tab acts as a quick return to
+  // today's summary and the top of the screen.
+  useEffect(() => {
+    return navigation.addListener('tabPress', () => {
+      if (navigation.isFocused()) {
+        setSelectedDate(getTodayDate());
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+  }, [navigation]);
 
   const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
   const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));
@@ -203,6 +215,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"

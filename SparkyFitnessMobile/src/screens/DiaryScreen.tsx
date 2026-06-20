@@ -36,6 +36,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const lastKnownToday = useRef(getTodayDate());
+  const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
 
@@ -48,6 +49,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       }
     }, [])
   );
+
+  // Re-tapping the active Diary tab acts as a quick return to today's
+  // entries and the top of the screen.
+  useEffect(() => {
+    return navigation.addListener('tabPress', () => {
+      if (navigation.isFocused()) {
+        setSelectedDate(getTodayDate());
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+  }, [navigation]);
 
   useEffect(() => {
     navigation.setParams({ selectedDate });
@@ -160,6 +172,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
@@ -225,7 +238,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             onNextDay={goToNextDay}
             onToday={goToToday}
             onDatePress={openCalendar}
-            showDateAlways
             skipSafeAreaTop
           />
         ) : !isConnectionLoading && (
