@@ -98,6 +98,14 @@ const getJsonHeaders = (): Record<string, string> => ({
 
 const trustedOriginCache = new Map<string, string | null>();
 
+export const _clearTrustedOriginCache = (): void => {
+  trustedOriginCache.clear();
+};
+
+export const _setTrustedOriginCache = (url: string, origin: string | null): void => {
+  trustedOriginCache.set(normalizeUrl(url), origin);
+};
+
 type NetworkingModule = {
   clearCookies: (callback: (result: boolean) => void) => void;
 };
@@ -236,7 +244,7 @@ export const login = async (
   const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
     method: 'POST',
     credentials: 'include',
-    headers: getJsonHeaders(),
+    headers: await getMfaHeaders(baseUrl),
     body: JSON.stringify({ email, password }),
   });
 
