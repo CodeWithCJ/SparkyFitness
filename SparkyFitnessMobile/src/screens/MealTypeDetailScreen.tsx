@@ -52,7 +52,10 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
     onSuccess: () => copySheetRef.current?.dismiss(),
   });
-  const canCopy = isConnected && entries.length > 0;
+  // "other" is a synthetic bucket that aggregates every non-standard meal type,
+  // so it has no single real meal type to copy from (the server would match
+  // nothing). Only offer copy for concrete meal types.
+  const canCopy = isConnected && entries.length > 0 && mealType !== 'other';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

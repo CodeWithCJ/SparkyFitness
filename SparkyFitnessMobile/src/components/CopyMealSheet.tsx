@@ -133,9 +133,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
-        <BottomSheetScrollView contentContainerClassName="px-5 pb-safe-or-8">
+        <BottomSheetScrollView contentContainerClassName="pb-safe-or-8">
           {source && (
-            <>
+            <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
                   Copy {getMealTypeLabel(source.mealType)}
@@ -218,7 +218,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               >
                 {isPending ? 'Copying...' : 'Copy'}
               </Button>
-            </>
+            </View>
           )}
         </BottomSheetScrollView>
       </BottomSheetModal>
