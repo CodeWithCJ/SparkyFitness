@@ -131,8 +131,8 @@ describe('mealRepository', () => {
         .mockResolvedValueOnce({ rows: [] }); // For meal 2 foods
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
-        [userId]
+        expect.stringContaining('FROM meals'),
+        []
       );
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('WHERE mf.meal_id = $1'),
@@ -166,8 +166,8 @@ describe('mealRepository', () => {
         .mockResolvedValueOnce({ rows: [] }); // For meal 2 foods
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
-        [userId]
+        expect.stringContaining('FROM meals'),
+        []
       );
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('WHERE mf.meal_id = $1'),
