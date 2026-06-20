@@ -2,7 +2,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
-import { runWriteback } from './healthconnect/writeback';
+import { runWriteback } from './writeback';
 import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import {
@@ -45,6 +45,17 @@ const BACKGROUND_TASK_NAME = 'healthDataSync';
 // whose event timestamps fall before lastSyncedTime are still picked up. The server
 // upserts by record identity, so duplicates are harmless.
 const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// Nutrition is frequently logged after the fact (a meal eaten yesterday, entered today).
+// HealthKit/Health Connect predicates filter on the sample's *event* time, so a meal whose
+// event time predates the normal sync window would be silently missed. Give Nutrition a
+// day-aligned rolling lookback independent of lastSyncedTime. Safe because nutrition upserts
+// by (source, source_id) — re-reading the same records every sync is idempotent and free
+// server-side (no range-delete). Nutrition-scoped; other raw-record windows are unchanged.
+const NUTRITION_LOOKBACK_DAYS = 2;
+
+const nutritionLookbackStart = (endDate: Date): Date =>
+  alignToLocalDayStart(new Date(endDate.getTime() - NUTRITION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
 
 interface BackgroundMetricResult {
   data: HealthDataPayload;
@@ -94,8 +105,12 @@ async function processBackgroundMetric(
     dataToTransform = result.records;
     readError = result.error;
   } else {
-    // All other metrics: read raw records
-    const result = await readHealthRecordsDetailed(type, sessionStartDate, endDate);
+    // All other metrics: read raw records. Nutrition widens to its rolling lookback
+    // (or keeps the session window if that already reaches further back).
+    const rawStartDate = type === 'Nutrition'
+      ? new Date(Math.min(sessionStartDate.getTime(), nutritionLookbackStart(endDate).getTime()))
+      : sessionStartDate;
+    const result = await readHealthRecordsDetailed(type, rawStartDate, endDate);
     const rawRecords = result.records;
     readError = result.error;
     if (!rawRecords || rawRecords.length === 0) return { data: [], error: readError };
@@ -289,9 +304,10 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   }
 
-  // Outbound phase: SparkyFitness diary → Health Connect (Android-only; iOS no-op).
-  // Runs regardless of inbound results and in its own try/catch so a writeback
-  // failure never affects the inbound sync or its cursor above.
+  // Outbound phase: SparkyFitness diary → OS health store (Health Connect on
+  // Android, HealthKit on iOS; resolved via ./writeback). Runs regardless of
+  // inbound results and in its own try/catch so a writeback failure never affects
+  // the inbound sync or its cursor above.
   try {
     await runWriteback();
   } catch (error) {

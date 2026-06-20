@@ -1,8 +1,10 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// Health Connect writeback metrics (Sparky → HC). Kept separate from the read
+// Writeback metrics (Sparky → OS health store). Kept separate from the read
 // HealthMetrics list: those drive background-delivery subscriptions and inbound
-// sync, whereas these are outbound, opt-in, and Android-only. Off by default.
+// sync, whereas these are outbound and opt-in. Supported on both platforms — Health
+// Connect on Android (healthconnect/writeback.ts) and HealthKit on iOS
+// (healthkit/writeback.ts), resolved via the top-level ./writeback shim. Off by default.
 //
 // Mirrors the read metrics' shape (icon + category) so the UI can group them in
 // the same accordion style. We start with Nutrition + Hydration; a follow-up PR
@@ -14,7 +16,8 @@ export type WritebackMetricId = 'nutrition' | 'hydration';
 export interface WritebackMetric {
   id: WritebackMetricId;
   label: string;
-  /** loadHealthPreference/saveHealthPreference key (under the @HealthConnect prefix). */
+  /** loadHealthPreference/saveHealthPreference key (under the @HealthConnect prefix on
+   *  Android, @HealthKit on iOS — the platform-resolved preferences module owns it). */
   preferenceKey: string;
   recordType: 'Nutrition' | 'Hydration';
   permission: { accessType: 'write'; recordType: 'Nutrition' | 'Hydration' };

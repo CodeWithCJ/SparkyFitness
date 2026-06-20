@@ -146,7 +146,7 @@ export type SparkyMealType = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
  */
 export interface TransformedNutritionEntry extends RecordTimezoneMetadata {
   type: 'Nutrition';
-  source: typeof HEALTH_CONNECT_SOURCE;
+  source: typeof HEALTHKIT_SOURCE | typeof HEALTH_CONNECT_SOURCE;
   /** Stable Health Connect record id, used for idempotent re-sync. */
   source_id?: string;
   /** Instant the food was consumed; the server derives the day from this + offset. */

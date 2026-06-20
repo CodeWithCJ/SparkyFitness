@@ -4,11 +4,34 @@ import {
   TransformOutput,
   TransformedRecord,
   TransformedExerciseSession,
+  TransformedNutritionEntry,
+  SparkyMealType,
   AggregatedSleepSession,
   RecordTimezoneMetadata,
   HEALTHKIT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from './dataAggregation';
+import { G_TO_MG, G_TO_MCG, tidyNumber } from '../healthconnect/dataTransformation';
+import { DIETARY_HK_MAP, DIETARY_ENERGY_IDENTIFIER } from './writebackMappers';
+
+// ============================================================================
+// Own-app exclusion (read/write feedback-loop guard)
+// ============================================================================
+
+// HealthKit returns DietaryWater samples written by *this* app too. If hydration
+// writeback is on, re-importing them would duplicate diary water (and compound every
+// sync). We skip records whose source bundle id is our own. The bundle id is injected
+// from the service layer (setOwnBundleId) so this pure module needs no
+// expo-application / healthkit import. Mirrors Android's setOwnPackageName guard.
+let ownBundleId: string | null = null;
+export const setOwnBundleId = (id: string | null): void => {
+  ownBundleId = id;
+};
+
+const isOwnRecord = (rec: Record<string, unknown>): boolean => {
+  if (!ownBundleId) return false;
+  return (rec.sourceBundleId as string | undefined) === ownBundleId;
+};
 
 // ============================================================================
 // Transformer Infrastructure
@@ -87,6 +110,104 @@ export const extractTimezoneMetadata = (rec: Record<string, unknown>): RecordTim
 };
 
 // ============================================================================
+// Dietary nutrient reverse mapping (HealthKit Food correlation → Sparky columns)
+// ============================================================================
+
+// Read inverse of the writeback's DIETARY_HK_MAP. Reversing the same map the write
+// side builds guarantees read and write agree on every column's storage unit (they can
+// never drift). Energy maps to the `calories` column; each mapped nutrient maps to its
+// Sparky column in that column's storage unit (g for macros, mg/mcg for micros).
+// `trans_fat` stays absent — it has no HealthKit identifier, consistent with writeback.
+interface NutrientColumn {
+  column: string;
+  /** Unit Sparky stores this column in — 'kcal' for energy, else 'g' | 'mg' | 'mcg'. */
+  unit: string;
+}
+
+const NUTRIENT_BY_IDENTIFIER: Record<string, NutrientColumn> = {
+  [DIETARY_ENERGY_IDENTIFIER]: { column: 'calories', unit: 'kcal' },
+};
+for (const [column, { identifier, unit }] of Object.entries(DIETARY_HK_MAP)) {
+  NUTRIENT_BY_IDENTIFIER[identifier] = { column, unit };
+}
+
+// HealthKit returns each correlation sample in the source app's *preferred* unit
+// (correlation queries take no unit param), so the read mapper must be unit-aware.
+// Mass nutrients normalize through grams; energy through kilocalories.
+const MASS_TO_GRAMS: Record<string, number> = {
+  g: 1,
+  mg: 1e-3,
+  mcg: 1e-6,
+  'µg': 1e-6,
+  ug: 1e-6,
+  kg: 1e3,
+  oz: 28.349523125,
+  lb: 453.59237,
+};
+
+// HealthKit energy unit symbols: 'kcal' (kilocalorie) and 'Cal' (large/food Calorie) are
+// both 1 kcal — 'Cal' is what MyFitnessPal/Cronometer samples come back as. 'cal' is the
+// small calorie (1/1000 kcal), same convention HC's extractEnergyKcal uses for inCalories.
+const ENERGY_TO_KCAL: Record<string, number> = {
+  kcal: 1,
+  Cal: 1,
+  cal: 1e-3,
+  kJ: 1 / 4.184,
+  J: 1 / 4184,
+};
+
+// grams → the column's storage unit, keyed by that storage unit string. Built from the
+// same G_TO_MG / G_TO_MCG factors the HC read and HealthKit write directions use.
+const GRAMS_TO_STORAGE: Record<string, number> = {
+  g: 1,
+  mg: G_TO_MG,
+  mcg: G_TO_MCG,
+};
+
+/** One dietary quantity sample contained in a HealthKit Food correlation. */
+export interface DietarySampleInput {
+  quantityType: string;
+  quantity: number;
+  unit: string;
+}
+
+/**
+ * Map one contained dietary quantity sample to its Sparky column + value, converting
+ * from HealthKit's returned unit to the column's storage unit. Returns null when:
+ *  - the quantity type isn't a column Sparky stores (water, trans fat, fiber subtypes…),
+ *  - the value is non-positive (mirrors HC's "0/absent → unknown" omission), or
+ *  - the returned unit is unrecognized — we warn and skip rather than guess a conversion.
+ */
+export const mapDietarySample = (
+  sample: DietarySampleInput,
+): { column: string; value: number } | null => {
+  const mapping = NUTRIENT_BY_IDENTIFIER[sample.quantityType];
+  if (!mapping) return null; // not a column Sparky stores
+
+  const { quantity } = sample;
+  if (quantity == null || isNaN(quantity) || quantity <= 0) return null; // omit non-positive
+
+  const unit = (sample.unit ?? '').trim();
+
+  if (mapping.unit === 'kcal') {
+    const factor = ENERGY_TO_KCAL[unit];
+    if (factor == null) {
+      addLog(`[HealthKitService] Unknown dietary energy unit '${sample.unit}' for ${sample.quantityType}; skipping sample`, 'WARNING');
+      return null;
+    }
+    return { column: mapping.column, value: tidyNumber(quantity * factor) };
+  }
+
+  const toGrams = MASS_TO_GRAMS[unit];
+  if (toGrams == null) {
+    addLog(`[HealthKitService] Unknown dietary mass unit '${sample.unit}' for ${sample.quantityType}; skipping sample`, 'WARNING');
+    return null;
+  }
+  const storageFactor = GRAMS_TO_STORAGE[mapping.unit] ?? 1;
+  return { column: mapping.column, value: tidyNumber(quantity * toGrams * storageFactor) };
+};
+
+// ============================================================================
 // Value Transformers - extract value and date from raw records
 // ============================================================================
 
@@ -117,6 +238,7 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
   },
 
   Hydration: (rec) => {
+    if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
     const value = extractNestedValue(rec, 'volume', 'inLiters');
     const date = getDateString(rec.startTime);
     return value !== null && date ? { value, date } : null;
@@ -227,11 +349,21 @@ const SIMPLE_VALUE_TYPES_START_TIME = [
   'CyclingSpeed', 'CyclingPower', 'CyclingCadence', 'CyclingFunctionalThresholdPower',
   'EnvironmentalAudioExposure', 'HeadphoneAudioExposure',
   'AppleMoveTime', 'AppleExerciseTime', 'AppleStandTime',
-  'DietaryFatTotal', 'DietaryProtein', 'DietarySodium',
 ];
 
 SIMPLE_VALUE_TYPES_START_TIME.forEach(type => {
   VALUE_TRANSFORMERS[type] = createSimpleValueTransformer(true);
+});
+
+// Dietary nutrient reads share the simple-value shape but must drop the samples Sparky
+// itself wrote: with nutrition writeback on, HealthKit returns our own nutrient samples
+// and re-importing them would duplicate diary nutrition (and compound every sync). Same
+// feedback-loop guard as Hydration. Mirrors Android's setOwnPackageName guard.
+const DIETARY_READ_TYPES = ['DietaryFatTotal', 'DietaryProtein', 'DietarySodium'];
+
+DIETARY_READ_TYPES.forEach(type => {
+  const base = createSimpleValueTransformer(true);
+  VALUE_TRANSFORMERS[type] = (rec, metricConfig) => (isOwnRecord(rec) ? null : base(rec, metricConfig));
 });
 
 // Qualitative record types - pass raw value with warning
@@ -278,7 +410,67 @@ const ACTIVITY_MAP: Record<number, string> = {
   83: 'Transition', 84: 'Underwater Diving',
 } as const;
 
+// Food correlations carry only an instant, not a meal label, so we infer the meal type
+// from the local time of day (fallback 'snacks'; the server also defaults to snacks).
+const mealTypeFromInstant = (date: Date): SparkyMealType => {
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 11) return 'breakfast';
+  if (hour >= 11 && hour < 15) return 'lunch';
+  if (hour >= 17 && hour < 22) return 'dinner';
+  return 'snacks';
+};
+
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
+  // One HealthKit Food correlation → one Sparky food entry. The handler in index.ts
+  // has already normalized the correlation to a plain record with `objects`
+  // (contained dietary quantity samples), `metadataFoodType`, `uuid`, `startDate`,
+  // `sourceBundleId`, and `metadata.HKTimeZone`. Mirrors Android's Nutrition transformer
+  // so the upload path is identical.
+  Nutrition: (rec, _record, _metricConfig, output) => {
+    if (isOwnRecord(rec)) return; // don't re-import nutrition Sparky wrote
+
+    // The server keys idempotent re-sync on source_id; an id-less record would create a
+    // duplicate entry on every sync, so skip it.
+    const uuid = rec.uuid as string | undefined;
+    if (!uuid) return;
+
+    const startDate = rec.startDate as string | undefined;
+    if (!startDate) return;
+
+    const objects = rec.objects as { quantityType?: string; quantity?: number; unit?: string }[] | undefined;
+    if (!Array.isArray(objects) || objects.length === 0) return;
+
+    // Send only the instant (timestamp) plus tz metadata, never a pre-bucketed day
+    // string: the server derives the calendar day from the instant + timezone.
+    const entry: TransformedNutritionEntry = {
+      type: 'Nutrition',
+      source: HEALTHKIT_SOURCE,
+      source_id: uuid,
+      timestamp: startDate,
+      food_name: (rec.metadataFoodType as string) || 'Apple Health food',
+      meal_type: mealTypeFromInstant(new Date(startDate)),
+      ...extractTimezoneMetadata(rec),
+    };
+
+    let hasNutrient = false;
+    for (const obj of objects) {
+      // A Food correlation may contain CategorySamples too — skip anything that isn't a
+      // dietary quantity sample before mapping.
+      if (!obj || typeof obj.quantityType !== 'string') continue;
+      const mapped = mapDietarySample({
+        quantityType: obj.quantityType,
+        quantity: obj.quantity as number,
+        unit: obj.unit as string,
+      });
+      if (!mapped) continue;
+      (entry as unknown as Record<string, unknown>)[mapped.column] = mapped.value;
+      hasNutrient = true;
+    }
+
+    if (!hasNutrient) return; // no recognized positive nutrients — drop the entry
+    output.push(entry);
+  },
+
   BloodPressure: (rec, _record, metricConfig, output) => {
     const { unit, type } = metricConfig;
     if (!rec.time) return;

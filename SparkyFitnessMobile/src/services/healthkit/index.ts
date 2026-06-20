@@ -5,6 +5,7 @@ import {
   isHealthDataAvailable,
   queryCategorySamples,
   queryWorkoutSamples,
+  queryCorrelationSamples,
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
@@ -15,6 +16,7 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString } from './dataAggregation';
+import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -125,6 +127,7 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'Height': 'HKQuantityTypeIdentifierHeight',
   'BodyFat': 'HKQuantityTypeIdentifierBodyFatPercentage',
   'BloodPressure': 'BloodPressure', // Special case, handled separately
+  'Nutrition': 'Nutrition', // Special case (writeback only) — handled separately
   'BloodPressureSystolic': 'HKQuantityTypeIdentifierBloodPressureSystolic',
   'BloodPressureDiastolic': 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'BodyTemperature': 'HKQuantityTypeIdentifierBodyTemperature',
@@ -227,6 +230,20 @@ export const requestHealthPermissions = async (
           readPermissionsSet.add('HKWorkoutTypeIdentifier');
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
+        }
+      } else if (p.recordType === 'Nutrition') {
+        // HealthKit authorizes the *contents* of a Food correlation, not the correlation
+        // type itself — passing HKCorrelationTypeIdentifierFood to requestAuthorization
+        // raises an NSInvalidArgumentException. So both directions request only the
+        // contained dietary quantity types: read auth on each lets queryCorrelationSamples
+        // return the correlation (symmetric with how writeback saves a correlation with
+        // write auth on the contained types only). Read and write accumulate into separate
+        // Sets, so the two Nutrition perms (read from HealthMetrics, write from
+        // WritebackMetrics) never clobber.
+        if (p.accessType === 'read') {
+          DIETARY_WRITE_IDENTIFIERS.forEach((identifier) => readPermissionsSet.add(identifier));
+        } else if (p.accessType === 'write') {
+          DIETARY_WRITE_IDENTIFIERS.forEach((identifier) => writePermissionsSet.add(identifier));
         }
       }
       else if (SUPPORTED_HK_TYPES.has(healthkitIdentifier)) {
@@ -856,6 +873,11 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
         endTime: s.endDate,
         time: s.startDate,
         value: s.quantity,
+        // Origin app's bundle id, for the writeback feedback-loop guard (Hydration
+        // transformer skips records this app wrote). Nested under sourceRevision.source
+        // — there is no pre-flattened source field, so this path is read directly.
+        sourceBundleId: (s as unknown as { sourceRevision?: { source?: { bundleIdentifier?: string } } })
+          .sourceRevision?.source?.bundleIdentifier,
       };
       // Forward timezone metadata so the transform layer can attach it to output records
       const tz = (s as unknown as { metadataTimeZone?: string }).metadataTimeZone;
@@ -865,6 +887,164 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
       return transform(baseRecord, s.quantity);
     });
   };
+};
+
+// HealthKit has no single "nutrition record" — each nutrient is an independent quantity
+// sample. Some apps group a meal's samples into an HKCorrelationTypeIdentifierFood
+// correlation (carrying a food name + stable uuid); others (Cronometer, MyFitnessPal) write
+// only loose per-nutrient samples with no correlation. We read BOTH: correlations for named
+// entries, plus loose samples grouped by (source, event-instant) into one entry per food.
+// Loose samples already contained in a correlation are excluded so nothing double-counts.
+// Keeps HealthKit I/O here; the per-nutrient unit mapping is pure in dataTransformation.ts.
+
+// Build the normalized record the Nutrition transformer consumes from a contained-sample
+// list. `foodLabel` is the correlation's food name, or the source app's name for loose groups.
+const toNutritionRecord = (params: {
+  objects: { quantityType?: string; quantity?: number; unit?: string }[];
+  foodLabel?: string;
+  uuid?: string;
+  startIso: string;
+  sourceBundleId?: string;
+  timeZone?: string;
+}): Record<string, unknown> => {
+  const record: Record<string, unknown> = {
+    objects: params.objects,
+    metadataFoodType: params.foodLabel,
+    uuid: params.uuid,
+    startDate: params.startIso,
+    sourceBundleId: params.sourceBundleId,
+  };
+  // Normalize the flattened metadataTimeZone into metadata.HKTimeZone so the transform
+  // layer's extractTimezoneMetadata finds it — same hop createQuantityHandler does.
+  if (params.timeZone) {
+    record.metadata = { HKTimeZone: params.timeZone };
+  }
+  return record;
+};
+
+const toIsoString = (date: string | Date): string =>
+  typeof date === 'string' ? date : new Date(date).toISOString();
+
+interface LooseGroup {
+  bundleId?: string;
+  startIso: string;
+  timeZone?: string;
+  objects: { quantityType: string; quantity: number; unit: string }[];
+}
+
+// Reconstruct per-food entries from LOOSE dietary samples — those NOT contained in any Food
+// correlation. A source's samples are grouped by event instant (one logged food = one shared
+// timestamp). `correlationUuids` are the contained-sample UUIDs to skip so we never
+// double-count nutrients that the correlation read already returned.
+const readLooseNutrition = async (
+  startDate: Date,
+  endDate: Date,
+  correlationUuids: Set<string>,
+): Promise<Record<string, unknown>[]> => {
+  const groups = new Map<string, LooseGroup>();
+  // Filter to the window natively (limit: 0 = all in-window samples) instead of taking the
+  // most recent QUERY_LIMIT samples across all history and discarding out-of-window ones —
+  // a large or old dietary history would otherwise silently drop valid in-window samples.
+  const dateFilter = { date: { startDate, endDate } };
+
+  for (const identifier of DIETARY_WRITE_IDENTIFIERS) {
+    const samples = await queryQuantitySamples(
+      identifier as Parameters<typeof queryQuantitySamples>[0],
+      { filter: dateFilter, limit: 0, ascending: false },
+    );
+    if (!Array.isArray(samples)) continue;
+
+    for (const s of samples) {
+      const sample = s as unknown as {
+        uuid?: string;
+        startDate: string | Date;
+        quantity: number;
+        unit: string;
+        metadataTimeZone?: string;
+        sourceRevision?: { source?: { bundleIdentifier?: string } };
+      };
+      if (!isInDateRange(new Date(sample.startDate), startDate, endDate)) continue;
+      if (sample.uuid && correlationUuids.has(sample.uuid)) continue; // already in a correlation
+
+      const bundleId = sample.sourceRevision?.source?.bundleIdentifier;
+      const startIso = toIsoString(sample.startDate);
+      const key = `${bundleId ?? 'unknown'}|${startIso}`;
+
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          bundleId,
+          startIso,
+          timeZone: sample.metadataTimeZone,
+          objects: [],
+        };
+        groups.set(key, group);
+      }
+      group.objects.push({ quantityType: identifier, quantity: sample.quantity, unit: sample.unit });
+    }
+  }
+
+  // Loose samples carry no food name (the source's display name is unreachable — Nitro's
+  // SourceProxy shadows it), so leave foodLabel unset; the transformer falls back to
+  // "Apple Health food", matching Health Connect's "Health Connect food" parity.
+  return Array.from(groups.values()).map(group =>
+    toNutritionRecord({
+      objects: group.objects,
+      // Synthetic but stable idempotency key: same source + instant re-reads to the same
+      // entry, so re-syncing upserts in place (server keys on (user, source, source_id)).
+      uuid: `${group.bundleId ?? 'unknown'}:${group.startIso}`,
+      startIso: group.startIso,
+      sourceBundleId: group.bundleId,
+      timeZone: group.timeZone,
+    }),
+  );
+};
+
+const handleNutrition: RecordHandler = async (_identifier, startDate, endDate) => {
+  // Filter to the window natively (limit: 0 = all in-window correlations) instead of taking
+  // the most recent QUERY_LIMIT across all history and discarding out-of-window ones — a
+  // large or old food history would otherwise silently drop valid in-window correlations.
+  const dateFilter = { date: { startDate, endDate } };
+
+  // 1. Named Food correlations (e.g. LoseIt). Collect contained-sample UUIDs so the loose
+  //    read below doesn't double-count the same nutrients.
+  const correlations = await queryCorrelationSamples('HKCorrelationTypeIdentifierFood', {
+    filter: dateFilter,
+    limit: 0,
+    ascending: false,
+  });
+  // Belt-and-suspenders alongside the native filter: keep the exact [startDate, endDate]
+  // guard in JS since the native predicate matches on sample-interval overlap.
+  const inRange = correlations.filter(c => isInDateRange(new Date(c.startDate), startDate, endDate));
+
+  const correlationUuids = new Set<string>();
+  const correlationRecords = inRange.map(c => {
+    const correlation = c as unknown as {
+      uuid?: string;
+      startDate: string | Date;
+      metadataFoodType?: string;
+      metadataTimeZone?: string;
+      sourceRevision?: { source?: { bundleIdentifier?: string } };
+      objects?: { uuid?: string; quantityType?: string; quantity?: number; unit?: string }[];
+    };
+    const objects = correlation.objects ?? [];
+    for (const o of objects) {
+      if (o.uuid) correlationUuids.add(o.uuid);
+    }
+    return toNutritionRecord({
+      objects: objects.map(o => ({ quantityType: o.quantityType, quantity: o.quantity, unit: o.unit })),
+      foodLabel: correlation.metadataFoodType,
+      uuid: correlation.uuid,
+      startIso: toIsoString(correlation.startDate),
+      sourceBundleId: correlation.sourceRevision?.source?.bundleIdentifier,
+      timeZone: correlation.metadataTimeZone,
+    });
+  });
+
+  // 2. Loose per-nutrient samples (Cronometer, MyFitnessPal), grouped into per-food entries.
+  const looseRecords = await readLooseNutrition(startDate, endDate, correlationUuids);
+
+  return [...correlationRecords, ...looseRecords];
 };
 
 // Registry mapping record types to their handlers
@@ -878,6 +1058,7 @@ const RECORD_HANDLERS: Record<string, RecordHandler> = {
   'Workout': handleWorkout,
   'ExerciseSession': handleWorkout,
   'BloodPressure': handleBloodPressure,
+  'Nutrition': handleNutrition,
 };
 
 // Read health records from HealthKit
