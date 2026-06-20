@@ -7,8 +7,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off } from 'lucide-react';
-import { decodeYazioAppId, getProviderTypes } from '@/utils/settings';
+import { Trash2, Edit, Lock, RefreshCw, Link2Off } from 'lucide-react';
+import { decodeYazioAppId } from '@/utils/settings';
+import { useExternalProviderTypesQuery } from '@/hooks/Settings/useExternalProviderSettings';
 import SyncRangeDialog from './SyncRangeDialog';
 
 import {
@@ -33,8 +34,9 @@ import {
 } from '@/hooks/Integrations/useIntegrations';
 import {
   useDeleteExternalProviderMutation,
-  useToggleProviderPublicSharingMutation,
   useToggleProviderStatusMutation,
+  useUpdateGlobalProvider,
+  useDeleteGlobalProvider,
 } from '@/hooks/Settings/useExternalProviderSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -44,6 +46,7 @@ interface ProviderCardProps {
   provider: ExternalDataProvider;
   isLoading: boolean;
   startEditing: (provider: ExternalDataProvider) => void;
+  isAdminMode?: boolean;
 }
 
 const PROVIDER_PORTALS: Record<string, { label: string; url: string }> = {
@@ -90,8 +93,10 @@ export const ProviderCard = ({
   provider,
   isLoading,
   startEditing,
+  isAdminMode = false,
 }: ProviderCardProps) => {
   const { user } = useAuth();
+  const { data: providerTypes } = useExternalProviderTypesQuery();
   const yazioDisplay = decodeYazioAppId(provider.app_id);
   const {
     defaultFoodDataProviderId,
@@ -154,15 +159,16 @@ export const ProviderCard = ({
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
 
-  const { isPending: isToggleSharingPending } =
-    useToggleProviderPublicSharingMutation();
-
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
   const { mutateAsync: toggleProviderActiveStatus, isPending: statusPending } =
     useToggleProviderStatusMutation();
   const { mutateAsync: deleteExternalProvider, isPending: deletePending } =
     useDeleteExternalProviderMutation();
+  const { mutateAsync: updateGlobalProvider, isPending: globalUpdatePending } =
+    useUpdateGlobalProvider();
+  const { mutateAsync: deleteGlobalProvider, isPending: globalDeletePending } =
+    useDeleteGlobalProvider();
 
   const executeSync = (startDate: string, endDate: string) => {
     switch (provider.provider_type) {
@@ -199,6 +205,8 @@ export const ProviderCard = ({
     isLoading ||
     statusPending ||
     deletePending ||
+    globalUpdatePending ||
+    globalDeletePending ||
     isConnectFitbitPending ||
     isConnectGoogleHealthPending ||
     isConnectPolarPending ||
@@ -216,58 +224,70 @@ export const ProviderCard = ({
     isSyncGoogleHealthPending ||
     isSyncPolarPending ||
     isSyncStravaPending ||
-    isSyncHevyPending ||
-    isToggleSharingPending;
+    isSyncHevyPending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
     try {
-      const data = await toggleProviderActiveStatus({
-        id: providerId,
-        isActive,
-      });
-      if (
-        data &&
-        data.is_active &&
-        (data.provider_type === 'openfoodfacts' ||
-          data.provider_type === 'nutritionix' ||
-          data.provider_type === 'fatsecret' ||
-          data.provider_type === 'mealie' ||
-          data.provider_type === 'tandoor' ||
-          data.provider_type === 'norish' ||
-          data.provider_type === 'usda' ||
-          data.provider_type === 'yazio')
-      ) {
-        setDefaultFoodDataProviderId(data.id);
-      } else if (data && defaultFoodDataProviderId === data.id) {
-        setDefaultFoodDataProviderId(null);
-      }
-      if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
-        setDefaultBarcodeProviderId(null);
-        saveAllPreferences({ defaultBarcodeProviderId: null });
+      if (isAdminMode) {
+        await updateGlobalProvider({
+          id: providerId,
+          data: { is_active: isActive },
+        });
+      } else {
+        const data = await toggleProviderActiveStatus({
+          id: providerId,
+          isActive,
+        });
+        if (
+          data &&
+          data.is_active &&
+          (data.provider_type === 'openfoodfacts' ||
+            data.provider_type === 'nutritionix' ||
+            data.provider_type === 'fatsecret' ||
+            data.provider_type === 'mealie' ||
+            data.provider_type === 'tandoor' ||
+            data.provider_type === 'norish' ||
+            data.provider_type === 'usda' ||
+            data.provider_type === 'yazio')
+        ) {
+          setDefaultFoodDataProviderId(data.id);
+        } else if (data && defaultFoodDataProviderId === data.id) {
+          setDefaultFoodDataProviderId(null);
+        }
+        if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
+          setDefaultBarcodeProviderId(null);
+          saveAllPreferences({ defaultBarcodeProviderId: null });
+        }
       }
     } catch (error: unknown) {
-      console.error(error);
+      // error handling is already managed by hooks/toast
     }
   };
 
   const handleDeleteProvider = async (providerId: string) => {
     if (
-      !confirm('Are you sure you want to delete this external data provider?')
-    )
-      return;
-
-    try {
-      await deleteExternalProvider(providerId);
-      if (defaultFoodDataProviderId === providerId) {
-        setDefaultFoodDataProviderId(null);
-        saveAllPreferences({ defaultFoodDataProviderId: null });
+      window.confirm(
+        isAdminMode
+          ? 'Are you sure you want to delete this global provider? All users will lose access to it.'
+          : 'Are you sure you want to delete this external data provider connection?'
+      )
+    ) {
+      try {
+        if (isAdminMode) {
+          await deleteGlobalProvider(providerId);
+        } else {
+          await deleteExternalProvider(providerId);
+          if (defaultFoodDataProviderId === providerId) {
+            setDefaultFoodDataProviderId(null);
+          }
+          if (defaultBarcodeProviderId === providerId) {
+            setDefaultBarcodeProviderId(null);
+            saveAllPreferences({ defaultBarcodeProviderId: null });
+          }
+        }
+      } catch (error: unknown) {
+        // error handling is managed by hooks/toast
       }
-      if (defaultBarcodeProviderId === providerId) {
-        setDefaultBarcodeProviderId(null);
-        saveAllPreferences({ defaultBarcodeProviderId: null });
-      }
-    } catch (error: unknown) {
-      console.error(error);
     }
   };
 
@@ -355,17 +375,18 @@ export const ProviderCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h4 className="font-medium">{provider.provider_name}</h4>
-          {(provider.visibility === 'private' ||
-            provider.user_id === user?.id) && (
-            <span title="Private">
-              <Lock className="h-3 w-3 text-muted-foreground" />
+          {provider.is_public && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
+              Global
             </span>
           )}
-          {provider.shared_with_public && (
-            <span title="Shared with Family">
-              <Share2 className="h-3 w-3 text-green-500" />
-            </span>
-          )}
+          {!provider.is_public &&
+            (provider.visibility === 'private' ||
+              provider.user_id === user?.id) && (
+              <span title="Private">
+                <Lock className="h-3 w-3 text-muted-foreground" />
+              </span>
+            )}
         </div>
         <div className="flex items-center gap-2">
           {config?.hasToken ? (
@@ -391,9 +412,10 @@ export const ProviderCard = ({
             </Button>
           ) : null}
 
-          {provider.user_id === user?.id ? (
+          {isAdminMode ||
+          (!provider.is_public && provider.user_id === user?.id) ? (
             <>
-              {config?.hasToken && config.disconnect && (
+              {!isAdminMode && config?.hasToken && config.disconnect && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -426,20 +448,23 @@ export const ProviderCard = ({
               Read-only
             </div>
           )}
-          <Switch
-            checked={provider.is_active}
-            onCheckedChange={(checked) =>
-              handleToggleActive(provider.id, checked)
-            }
-            disabled={loading}
-          />
+          {(isAdminMode ||
+            (!provider.is_public && provider.user_id === user?.id)) && (
+            <Switch
+              checked={provider.is_active}
+              onCheckedChange={(checked) =>
+                handleToggleActive(provider.id, checked)
+              }
+              disabled={loading}
+            />
+          )}
         </div>
       </div>
 
       <div>
         <p className="text-sm text-muted-foreground">
-          {getProviderTypes().find((t) => t.value === provider.provider_type)
-            ?.label || provider.provider_type}
+          {providerTypes?.find((t) => t.id === provider.provider_type)
+            ?.display_name || provider.provider_type}
           {provider.base_url && (
             <>
               {' - URL: '}

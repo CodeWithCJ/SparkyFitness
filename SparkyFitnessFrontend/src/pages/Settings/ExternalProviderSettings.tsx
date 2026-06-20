@@ -22,25 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 export interface ExternalDataProvider {
   id: string;
   provider_name: string;
-  provider_type:
-    | 'openfoodfacts'
-    | 'nutritionix'
-    | 'fatsecret'
-    | 'wger'
-    | 'mealie'
-    | 'free-exercise-db'
-    | 'withings'
-    | 'garmin'
-    | 'tandoor'
-    | 'norish'
-    | 'usda'
-    | 'fitbit'
-    | 'googlehealth'
-    | 'polar'
-    | 'hevy'
-    | 'yazio'
-    | 'strava'
-    | 'swissfood';
+  provider_type: string;
   app_id: string | null;
   app_key: string | null;
   yazio_client_id?: string | null;
@@ -50,7 +32,11 @@ export interface ExternalDataProvider {
   base_url: string | null;
   user_id?: string;
   visibility: 'private' | 'public' | 'family';
-  shared_with_public?: boolean;
+  is_public?: boolean;
+  is_strictly_private?: boolean;
+  categories?: string[];
+  required_fields?: string[];
+  field_labels?: Record<string, string>;
   last_sync_at?: string; // Generic last sync for providers that don't have specific fields
   sync_frequency?: 'hourly' | 'daily' | 'manual';
   has_token?: boolean;
@@ -69,11 +55,9 @@ export interface ExternalDataProvider {
   strava_token_expires?: string | null;
   googlehealth_last_sync_at?: string | null;
   googlehealth_token_expires?: string | null;
-  is_strictly_private?: boolean | null;
   sort_order?: number;
+  supports_barcode?: boolean;
 }
-
-const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda', 'fatsecret', 'yazio'];
 
 const ExternalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -92,7 +76,7 @@ const ExternalProviderSettings = () => {
   const { data: providers = [] } = useExternalProviders(user?.activeUserId);
 
   const barcodeProviders = providers.filter(
-    (p) => p.is_active && BARCODE_PROVIDER_TYPES.includes(p.provider_type)
+    (p) => p.is_active && p.supports_barcode
   );
 
   const handleAddProviderSuccess = () => {

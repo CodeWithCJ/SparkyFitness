@@ -13,6 +13,10 @@ export const externalProviderTypesSchema = z.object({
   description: z.string().nullable(),
   created_at: z.date().nullable(),
   is_strictly_private: z.boolean().nullable(),
+  categories: z.array(z.string()).nullable().optional(),
+  required_fields: z.array(z.string()).nullable().optional(),
+  field_labels: z.record(z.string(), z.string()).nullable().optional(),
+  supports_barcode: z.boolean().nullable().optional(),
 });
 
 export const externalProviderTypesInitializerSchema = z.object({
@@ -21,6 +25,10 @@ export const externalProviderTypesInitializerSchema = z.object({
   description: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
   is_strictly_private: z.boolean().optional().nullable(),
+  categories: z.array(z.string()).optional().nullable(),
+  required_fields: z.array(z.string()).optional().nullable(),
+  field_labels: z.record(z.string(), z.string()).optional().nullable(),
+  supports_barcode: z.boolean().optional().nullable(),
 });
 
 export const externalProviderTypesMutatorSchema = z.object({
@@ -29,6 +37,10 @@ export const externalProviderTypesMutatorSchema = z.object({
   description: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
   is_strictly_private: z.boolean().optional().nullable(),
+  categories: z.array(z.string()).optional().nullable(),
+  required_fields: z.array(z.string()).optional().nullable(),
+  field_labels: z.record(z.string(), z.string()).optional().nullable(),
+  supports_barcode: z.boolean().optional().nullable(),
 });
 
 export type ExternalProviderTypes = z.infer<typeof externalProviderTypesSchema>;

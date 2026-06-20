@@ -1,5 +1,6 @@
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import { getDefaultModel } from '../ai/config.js';
 import {
@@ -61,8 +62,37 @@ async function handleAiServiceSettings(
       if (!result) {
         throw new Error('AI service setting not found.');
       }
-      const { _encrypted_api_key, _api_key_iv, _api_key_tag, ...safeSetting } =
-        result as Record<string, unknown>;
+
+      // Sync active state to user_preferences
+      if (serviceData.is_active !== undefined) {
+        const currentPrefs =
+          await preferenceRepository.getUserPreferences(authenticatedUserId);
+        if (serviceData.is_active) {
+          await preferenceRepository.updateUserPreferences(
+            authenticatedUserId,
+            {
+              active_ai_service_id: result.id,
+            }
+          );
+        } else if (
+          currentPrefs &&
+          currentPrefs.active_ai_service_id === result.id
+        ) {
+          await preferenceRepository.updateUserPreferences(
+            authenticatedUserId,
+            {
+              active_ai_service_id: null,
+            }
+          );
+        }
+      }
+
+      const {
+        encrypted_api_key: _encrypted_api_key,
+        api_key_iv: _api_key_iv,
+        api_key_tag: _api_key_tag,
+        ...safeSetting
+      } = result as Record<string, unknown>;
       return {
         message: 'AI service settings saved successfully.',
         setting: safeSetting,

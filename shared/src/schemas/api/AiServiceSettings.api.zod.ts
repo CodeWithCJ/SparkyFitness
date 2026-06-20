@@ -9,6 +9,7 @@ import {
 export const aiServiceSettingsResponseSchema = aiServiceSettingsSchema
   .extend({
     source: z.string().optional(),
+    creator_name: z.string().nullable().optional(),
   })
   .omit({
     encrypted_api_key: true,

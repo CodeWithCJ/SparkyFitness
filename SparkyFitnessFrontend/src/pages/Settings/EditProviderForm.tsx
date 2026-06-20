@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
-import { getProviderTypes } from '@/utils/settings';
+import { useExternalProviderTypesQuery } from '@/hooks/Settings/useExternalProviderSettings';
 
 interface EditProviderFormProps {
   provider: ExternalDataProvider;
@@ -23,6 +23,7 @@ interface EditProviderFormProps {
   onSubmit: (providerId: string) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
+  isAdminMode?: boolean;
 }
 
 export const EditProviderForm = ({
@@ -32,7 +33,9 @@ export const EditProviderForm = ({
   onSubmit,
   onCancel,
   loading,
+  isAdminMode = false,
 }: EditProviderFormProps) => {
+  const { data: providerTypes } = useExternalProviderTypesQuery();
   return (
     <form
       onSubmit={(e) => {
@@ -75,11 +78,18 @@ export const EditProviderForm = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {getProviderTypes().map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
+              {(providerTypes || [])
+                .map((type) => ({
+                  value: type.id,
+                  label: type.display_name,
+                  is_strictly_private: type.is_strictly_private,
+                }))
+                .filter((type) => !isAdminMode || !type.is_strictly_private)
+                .map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -861,6 +871,7 @@ export const EditProviderForm = ({
         />
         <Label>Activate this provider</Label>
       </div>
+      {/* Public sharing switch removed */}
       <div className="flex gap-2">
         <Button type="submit" disabled={loading}>
           Save Changes

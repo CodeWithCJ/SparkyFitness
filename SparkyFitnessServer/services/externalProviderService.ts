@@ -117,14 +117,13 @@ async function getExternalDataProviders(userId: any) {
         applyRuntimeAvailability({
           ...redactCredentialsForNonOwner(p, userId),
 
-          visibility:
-            p.user_id === userId
+          visibility: p.is_public
+            ? 'public'
+            : p.user_id === userId
               ? 'private'
-              : p.shared_with_public
-                ? 'public'
-                : 'family',
+              : 'family',
 
-          shared_with_public: !!p.shared_with_public,
+          is_public: !!p.is_public,
 
           has_token:
             p.encrypted_access_token !== null &&
@@ -166,13 +165,12 @@ async function getExternalDataProvidersForUser(
       redactCredentialsForNonOwner(
         applyRuntimeAvailability({
           ...p,
-          visibility:
-            p.user_id === authenticatedUserId
+          visibility: p.is_public
+            ? 'public'
+            : p.user_id === authenticatedUserId
               ? 'private'
-              : p.shared_with_public
-                ? 'public'
-                : 'family',
-          shared_with_public: !!p.shared_with_public,
+              : 'family',
+          is_public: !!p.is_public,
           has_token:
             p.encrypted_access_token !== null &&
             p.encrypted_access_token !== undefined,
@@ -199,6 +197,7 @@ async function createExternalDataProvider(
 ) {
   try {
     providerData.user_id = authenticatedUserId;
+    providerData.is_public = false; // Regular users cannot create global public providers
     if (providerData.provider_type === 'openfoodfacts') {
       // OFF authenticated access requires a username/password pair. Reject
       // half-configured credentials so the settings page can't land in a
@@ -207,14 +206,6 @@ async function createExternalDataProvider(
       if (!!providerData.app_id !== !!providerData.app_key) {
         throw badRequest(
           'Open Food Facts credentials must include both a username and a password.'
-        );
-      }
-      if (
-        providerData.shared_with_public === true &&
-        (providerData.app_id || providerData.app_key)
-      ) {
-        throw badRequest(
-          'Open Food Facts credentials cannot be stored on a provider row that is shared publicly. Remove credentials or disable public sharing first.'
         );
       }
     }
@@ -262,31 +253,21 @@ async function updateExternalDataProvider(
         'Forbidden: You do not have permission to update this external data provider.'
       );
     }
+    // Users cannot change private providers to public
+    if (updateData.is_public !== undefined) {
+      delete updateData.is_public;
+    }
     // Fetch current provider once — used for several guards and to know whether
     // we need to invalidate the OFF session cache after the update.
     const existingProvider =
       await externalProviderRepository.getExternalDataProviderById(providerId);
 
-    // Only allow owner to set shared_with_public
-    if (updateData.shared_with_public === true) {
-      if (existingProvider && existingProvider.is_strictly_private) {
-        throw new Error(
-          `Forbidden: ${existingProvider.provider_name} connection is strictly private and cannot be shared publicly.`
-        );
-      }
-    }
-
     // Mutual exclusion: an OFF row cannot simultaneously be shared publicly
-    // and hold credentials. Check both directions to cover TOCTOU.
+    // and hold credentials. Since user providers are private, they cannot be shared.
     const isOpenFoodFacts =
       existingProvider?.provider_type === 'openfoodfacts' ||
       updateData.provider_type === 'openfoodfacts';
     if (isOpenFoodFacts) {
-      const nextSharedWithPublic =
-        updateData.shared_with_public !== undefined
-          ? updateData.shared_with_public
-          : existingProvider?.shared_with_public;
-
       // Resolve post-update credential state:
       //   - explicit null means "clear"
       //   - undefined means "leave as-is"
@@ -305,7 +286,6 @@ async function updateExternalDataProvider(
         updateData.app_key,
         existingProvider?.app_key
       );
-      const willHaveCredentials = !!(nextAppId || nextAppKey);
 
       // Reject half-configured credentials: OFF authenticated access needs
       // both username and password, so any post-update state with exactly one
@@ -314,12 +294,6 @@ async function updateExternalDataProvider(
       if (!!nextAppId !== !!nextAppKey) {
         throw badRequest(
           'Open Food Facts credentials must include both a username and a password.'
-        );
-      }
-
-      if (nextSharedWithPublic === true && willHaveCredentials) {
-        throw badRequest(
-          'Open Food Facts credentials cannot be stored on a provider row that is shared publicly. Remove credentials or disable public sharing first.'
         );
       }
     }
@@ -504,6 +478,9 @@ async function getActiveOpenFoodFactsProviderId(userId: any) {
     return null;
   }
 }
+async function getExternalProviderTypes() {
+  return externalProviderRepository.getExternalProviderTypes();
+}
 
 export { getExternalDataProviders };
 export { getExternalDataProvidersForUser };
@@ -511,6 +488,7 @@ export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderDetails };
 export { deleteExternalDataProvider };
+export { getExternalProviderTypes };
 export default {
   getExternalDataProviders,
   getExternalDataProvidersForUser,
@@ -519,4 +497,5 @@ export default {
   getExternalDataProviderDetails,
   deleteExternalDataProvider,
   getActiveOpenFoodFactsProviderId,
+  getExternalProviderTypes,
 };

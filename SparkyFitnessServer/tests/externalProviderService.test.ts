@@ -34,7 +34,7 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
           id: PROVIDER_ID,
           user_id: OWNER,
           provider_type: 'openfoodfacts',
-          shared_with_public: true,
+          is_public: true,
           is_active: true,
           is_strictly_private: false,
           app_id: 'username',
@@ -77,7 +77,7 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
           id: PROVIDER_ID,
           user_id: OWNER,
           provider_type: 'openfoodfacts',
-          shared_with_public: false,
+          is_public: false,
           is_active: true,
           is_strictly_private: false,
           app_id: 'username',
@@ -109,7 +109,7 @@ describe('getExternalDataProviders - runtime availability', () => {
         provider_name: 'YAZIO',
         app_id: 'user@example.com',
         app_key: 'password',
-        shared_with_public: false,
+        is_public: false,
         is_active: true,
         encrypted_access_token: null,
       },
@@ -135,7 +135,7 @@ describe('getExternalDataProviders - runtime availability', () => {
         provider_name: 'YAZIO',
         app_id: yazioAppId,
         app_key: yazioAppKey,
-        shared_with_public: false,
+        is_public: false,
         is_active: true,
         encrypted_access_token: null,
       },
@@ -160,22 +160,6 @@ describe('createExternalDataProvider - mutual exclusion', () => {
     await expect(promise).rejects.toThrow(pattern);
     await expect(promise).rejects.toMatchObject({ statusCode: 400 });
   };
-
-  it('rejects shared_with_public=true on an OFF row carrying credentials', async () => {
-    await expectBadRequest(
-      externalProviderService.createExternalDataProvider(OWNER, {
-        provider_type: 'openfoodfacts',
-        provider_name: 'OFF',
-        shared_with_public: true,
-        app_id: 'me',
-        app_key: 'pw',
-      }),
-      /cannot be stored on a provider row that is shared/
-    );
-    expect(
-      externalProviderRepository.createExternalDataProvider
-    ).not.toHaveBeenCalled();
-  });
 
   it('rejects an OFF row with only app_id populated', async () => {
     await expectBadRequest(
@@ -203,25 +187,6 @@ describe('createExternalDataProvider - mutual exclusion', () => {
     expect(
       externalProviderRepository.createExternalDataProvider
     ).not.toHaveBeenCalled();
-  });
-
-  it('allows public sharing of an OFF row without credentials', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    externalProviderRepository.createExternalDataProvider.mockResolvedValue({
-      id: PROVIDER_ID,
-    });
-    await externalProviderService.createExternalDataProvider(OWNER, {
-      provider_type: 'openfoodfacts',
-      provider_name: 'OFF',
-      shared_with_public: true,
-    });
-    expect(
-      externalProviderRepository.createExternalDataProvider
-    ).toHaveBeenCalled();
-    expect(invalidateOpenFoodFactsSession).toHaveBeenCalledWith(
-      OWNER,
-      PROVIDER_ID
-    );
   });
 
   it('rejects a YAZIO row without provider client credentials', async () => {
@@ -313,49 +278,12 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     });
   });
 
-  it('rejects setting credentials on a row that is currently shared_with_public', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
-      id: PROVIDER_ID,
-      provider_type: 'openfoodfacts',
-      shared_with_public: true,
-      app_id: null,
-      app_key: null,
-    });
-
-    await expectBadRequest(
-      externalProviderService.updateExternalDataProvider(OWNER, PROVIDER_ID, {
-        app_id: 'me',
-        app_key: 'pw',
-      }),
-      /cannot be stored on a provider row that is shared/
-    );
-  });
-
-  it('rejects flipping shared_with_public=true on a row that already has credentials', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
-      id: PROVIDER_ID,
-      provider_type: 'openfoodfacts',
-      shared_with_public: false,
-      app_id: 'me',
-      app_key: 'pw',
-    });
-
-    await expectBadRequest(
-      externalProviderService.updateExternalDataProvider(OWNER, PROVIDER_ID, {
-        shared_with_public: true,
-      }),
-      /cannot be stored on a provider row that is shared/
-    );
-  });
-
   it('merges newly entered YAZIO client credentials with existing stored login credentials', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'yazio',
-      shared_with_public: false,
+      is_public: false,
       app_id: 'user@example.com',
       app_key: 'password',
     });
@@ -401,7 +329,7 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'yazio',
-      shared_with_public: false,
+      is_public: false,
       app_id: existingAppId,
       app_key: existingAppKey,
     });
@@ -438,7 +366,7 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'openfoodfacts',
-      shared_with_public: false,
+      is_public: false,
       app_id: null,
       app_key: null,
     });
@@ -463,7 +391,7 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'openfoodfacts',
-      shared_with_public: false,
+      is_public: false,
       app_id: null,
       app_key: null,
     });
@@ -484,7 +412,7 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'openfoodfacts',
-      shared_with_public: false,
+      is_public: false,
       app_id: 'me',
       app_key: 'pw',
     });
@@ -500,37 +428,12 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('allows clearing credentials via explicit null on a public OFF row', async () => {
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
-      id: PROVIDER_ID,
-      provider_type: 'openfoodfacts',
-      shared_with_public: true,
-      app_id: 'me',
-      app_key: 'pw',
-    });
-
-    await externalProviderService.updateExternalDataProvider(
-      OWNER,
-      PROVIDER_ID,
-      { app_id: null, app_key: null }
-    );
-
-    expect(
-      externalProviderRepository.updateExternalDataProvider
-    ).toHaveBeenCalledWith(
-      PROVIDER_ID,
-      OWNER,
-      expect.objectContaining({ app_id: null, app_key: null })
-    );
-  });
-
   it('does not invalidate OFF session for non-OFF providers', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
       id: PROVIDER_ID,
       provider_type: 'usda',
-      shared_with_public: false,
+      is_public: false,
     });
 
     await externalProviderService.updateExternalDataProvider(

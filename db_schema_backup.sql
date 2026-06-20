@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict BjzK8fRuMCiIpDtg2VVjc8WfrESe6YuucjzSqae0YDpyYMyRG3uuy3ahWGmcFfT
+\restrict latWcymJ5jLQTMuxBZ7lYHMjOy6NDN4WK9hOkbMYocOXKYkMbmFQaKk8L8BYNwU
 
 -- Dumped from database version 18.3
--- Dumped by pg_dump version 18.0
+-- Dumped by pg_dump version 18.4 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -869,6 +869,7 @@ CREATE TABLE public.ai_service_settings (
     api_key_iv text,
     api_key_tag text,
     is_public boolean DEFAULT false NOT NULL,
+    shared_with_public boolean DEFAULT false NOT NULL,
     CONSTRAINT check_public_settings_user_id_null CHECK ((((is_public = true) AND (user_id IS NULL)) OR ((is_public = false) AND (user_id IS NOT NULL))))
 );
 
@@ -997,7 +998,7 @@ CREATE TABLE public.check_in_photos (
     file_path text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY (ARRAY[('front'::character varying)::text, ('back'::character varying)::text, ('side'::character varying)::text])))
+    CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY ((ARRAY['front'::character varying, 'back'::character varying, 'side'::character varying])::text[])))
 );
 
 
@@ -1276,7 +1277,7 @@ CREATE TABLE public.exercises (
 
 CREATE TABLE public.external_data_providers (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     provider_name text NOT NULL,
     provider_type text NOT NULL,
     app_id text,
@@ -1296,7 +1297,6 @@ CREATE TABLE public.external_data_providers (
     encrypted_garth_dump text,
     garth_dump_iv text,
     garth_dump_tag text,
-    shared_with_public boolean DEFAULT false NOT NULL,
     encrypted_access_token text,
     access_token_iv text,
     access_token_tag text,
@@ -1307,7 +1307,8 @@ CREATE TABLE public.external_data_providers (
     last_sync_at timestamp with time zone,
     sync_frequency text DEFAULT 'manual'::text,
     oauth_state text,
-    sort_order integer
+    sort_order integer,
+    is_public boolean DEFAULT false NOT NULL
 );
 
 
@@ -1334,7 +1335,11 @@ CREATE TABLE public.external_provider_types (
     display_name character varying(100) NOT NULL,
     description text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    is_strictly_private boolean DEFAULT false
+    is_strictly_private boolean DEFAULT true,
+    categories character varying(50)[],
+    required_fields character varying(50)[],
+    field_labels jsonb,
+    supports_barcode boolean DEFAULT false NOT NULL
 );
 
 
@@ -2375,6 +2380,7 @@ CREATE TABLE public.user_preferences (
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
     use_external_bmr boolean DEFAULT false NOT NULL,
+    active_ai_service_id uuid,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -2985,6 +2991,14 @@ ALTER TABLE ONLY public.account
 
 ALTER TABLE ONLY public.admin_activity_logs
     ADD CONSTRAINT admin_activity_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_service_settings ai_service_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_service_settings
+    ADD CONSTRAINT ai_service_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -3762,6 +3776,13 @@ CREATE UNIQUE INDEX idx_exercises_user_source_source_id_unique ON public.exercis
 
 
 --
+-- Name: idx_external_data_providers_is_public; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_external_data_providers_is_public ON public.external_data_providers USING btree (is_public);
+
+
+--
 -- Name: idx_food_entries_food_entry_meal_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3948,6 +3969,13 @@ CREATE UNIQUE INDEX sleep_entry_stages_entry_natural_key_idx ON public.sleep_ent
 --
 
 CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING btree (((id IS NOT NULL)));
+
+
+--
+-- Name: unique_global_provider_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX unique_global_provider_type ON public.external_data_providers USING btree (provider_type) WHERE (is_public = true);
 
 
 --
@@ -4816,6 +4844,14 @@ ALTER TABLE ONLY public.user_oidc_links
 
 
 --
+-- Name: user_preferences user_preferences_active_ai_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_preferences
+    ADD CONSTRAINT user_preferences_active_ai_service_id_fkey FOREIGN KEY (active_ai_service_id) REFERENCES public.ai_service_settings(id) ON DELETE SET NULL;
+
+
+--
 -- Name: user_water_containers user_water_containers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5043,7 +5079,7 @@ CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FO
 -- Name: ai_service_settings ai_service_settings_select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT USING (((is_public = true) OR ((is_public = false) AND (user_id = public.current_user_id()))));
+CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT USING ((((is_public = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (user_id = public.current_user_id()))));
 
 
 --
@@ -5094,6 +5130,13 @@ ALTER TABLE public.daily_sleep_need ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.day_classification_cache ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: external_data_providers delete_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY delete_policy ON public.external_data_providers FOR DELETE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
 
 --
 -- Name: food_entries delete_policy; Type: POLICY; Schema: public; Owner: -
@@ -5179,6 +5222,13 @@ ALTER TABLE public.foods ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.goal_presets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: external_data_providers insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY insert_policy ON public.external_data_providers FOR INSERT WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
 
 --
 -- Name: family_access insert_policy; Type: POLICY; Schema: public; Owner: -
@@ -5307,13 +5357,6 @@ CREATE POLICY modify_policy ON public.exercise_preset_entries USING (public.has_
 --
 
 CREATE POLICY modify_policy ON public.exercises USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
-
-
---
--- Name: external_data_providers modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY modify_policy ON public.external_data_providers USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
 
 
 --
@@ -5751,9 +5794,9 @@ CREATE POLICY select_policy ON public.exercises FOR SELECT USING (public.has_lib
 -- Name: external_data_providers select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING (((public.current_user_id() = user_id) OR ((EXISTS ( SELECT 1
+CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING ((((is_public = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (public.current_user_id() = user_id)) OR ((is_public = false) AND public.has_family_access(user_id, 'share_external_providers'::text) AND (EXISTS ( SELECT 1
    FROM public.external_provider_types ept
-  WHERE (((ept.id)::text = external_data_providers.provider_type) AND (ept.is_strictly_private = false)))) AND (shared_with_public OR public.has_family_access_or(user_id, ARRAY['can_view_food_library'::text, 'can_view_exercise_library'::text])))));
+  WHERE (((ept.id)::text = external_data_providers.provider_type) AND (ept.is_strictly_private = false)))))));
 
 
 --
@@ -5906,6 +5949,13 @@ ALTER TABLE public.sleep_need_calculations ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: external_data_providers update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY update_policy ON public.external_data_providers FOR UPDATE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin()))) WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
 
 --
 -- Name: food_entries update_policy; Type: POLICY; Schema: public; Owner: -
@@ -6425,6 +6475,15 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky uat";
+
+
+--
+-- Name: TABLE check_in_photos; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_uat;
 
 
 --
@@ -7124,5 +7183,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BjzK8fRuMCiIpDtg2VVjc8WfrESe6YuucjzSqae0YDpyYMyRG3uuy3ahWGmcFfT
+\unrestrict latWcymJ5jLQTMuxBZ7lYHMjOy6NDN4WK9hOkbMYocOXKYkMbmFQaKk8L8BYNwU
 

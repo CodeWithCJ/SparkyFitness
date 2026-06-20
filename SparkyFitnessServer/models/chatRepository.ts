@@ -141,22 +141,19 @@ async function getAiServiceSettingsByUserId(userId: string) {
   try {
     // Get user-specific settings
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
-    // Get global settings (all authenticated users can read)
+    // Get global settings (admin-created, all authenticated users can read)
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
-    // Combine results: user settings first, then public settings
-    // Add is_public flag to distinguish them
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Combine results: user settings first, then global settings
     const userSettings = userResult.rows.map((row: any) => ({
       ...row,
       is_public: false,
     }));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const publicSettings = globalResult.rows.map((row: any) => ({
       ...row,
       is_public: true,
@@ -169,29 +166,54 @@ async function getAiServiceSettingsByUserId(userId: string) {
 async function getActiveAiServiceSetting(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Priority 0: check if user has active_ai_service_id in user_preferences
+    const prefResult = await client.query(
+      'SELECT active_ai_service_id FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    if (prefResult.rows.length > 0 && prefResult.rows[0].active_ai_service_id) {
+      const activeId = prefResult.rows[0].active_ai_service_id;
+      const settingResult = await client.query(
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, u.name as creator_name
+         FROM ai_service_settings ai
+         LEFT JOIN public."user" u ON ai.user_id = u.id
+         WHERE ai.id = $1`,
+        [activeId]
+      );
+      if (settingResult.rows.length > 0) {
+        const setting = settingResult.rows[0];
+        const source = setting.is_public ? 'global' : 'user';
+        log(
+          'debug',
+          `Using preferred AI service setting for user ${userId}: ${setting.id} (source: ${source})`
+        );
+        return { ...setting, source };
+      }
+    }
+
     // Priority 1: User-specific active setting
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
     if (userResult.rows.length > 0) {
       const setting = userResult.rows[0];
       log(
         'debug',
-        `Using user-specific AI service setting for user ${userId}: ${setting.id}`
+        `Using user-specific AI service setting fallback for user ${userId}: ${setting.id}`
       );
       return { ...setting, source: 'user' };
     }
     // Priority 2: Database global active setting
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
     if (globalResult.rows.length > 0) {
       const setting = globalResult.rows[0];
       log(
         'debug',
-        `Using global database AI service setting for user ${userId}: ${setting.id}`
+        `Using global database AI service setting fallback for user ${userId}: ${setting.id}`
       );
       return { ...setting, source: 'global' };
     }

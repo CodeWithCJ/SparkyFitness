@@ -3,6 +3,7 @@ import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import authService from '../services/authService.js';
 import userRepository from '../models/userRepository.js';
 import chatRepository from '../models/chatRepository.js';
+import externalProviderRepository from '../models/externalProviderRepository.js';
 import { log } from '../config/logging.js';
 import { logAdminAction } from '../services/authService.js';
 import { auth } from '../auth.js';
@@ -761,4 +762,252 @@ router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @swagger
+ * /admin/external-data-providers/global:
+ *   get:
+ *     summary: Get all global external data providers
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of global external data providers
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/external-data-providers/global', async (req, res, next) => {
+  try {
+    const providers =
+      await externalProviderRepository.getGlobalExternalDataProviders();
+    res.status(200).json(providers);
+  } catch (error) {
+    log('error', 'Error fetching global external data providers:', error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/external-data-providers/global:
+ *   post:
+ *     summary: Create a new global external data provider
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               provider_name:
+ *                 type: string
+ *               provider_type:
+ *                 type: string
+ *               app_id:
+ *                 type: string
+ *               app_key:
+ *                 type: string
+ *               base_url:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: Global external data provider created
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/external-data-providers/global', async (req, res, next) => {
+  try {
+    const {
+      provider_name,
+      provider_type,
+      app_id,
+      app_key,
+      base_url,
+      is_active,
+    } = req.body;
+    if (!provider_name || !provider_type) {
+      return res
+        .status(400)
+        .json({ error: 'provider_name and provider_type are required.' });
+    }
+    const providerData = {
+      provider_name,
+      provider_type,
+      app_id: app_id || null,
+      app_key: app_key || null,
+      base_url: base_url || null,
+      is_active: is_active || false,
+      user_id: req.userId,
+    };
+    const result =
+      await externalProviderRepository.createGlobalExternalDataProvider(
+        providerData
+      );
+
+    await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_CREATED', {
+      providerId: result.id,
+      providerName: provider_name,
+    });
+    res.status(201).json(result);
+  } catch (error) {
+    log('error', 'Error creating global external data provider:', error);
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/external-data-providers/global/{id}:
+ *   put:
+ *     summary: Update a global external data provider
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               provider_name:
+ *                 type: string
+ *               provider_type:
+ *                 type: string
+ *               app_id:
+ *                 type: string
+ *               app_key:
+ *                 type: string
+ *               base_url:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Global external data provider updated
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Provider not found
+ */
+router.put('/external-data-providers/global/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      provider_name,
+      provider_type,
+      app_id,
+      app_key,
+      base_url,
+      is_active,
+    } = req.body;
+    const updateData = {
+      provider_name,
+      provider_type,
+      app_id: app_id !== undefined ? app_id : undefined,
+      app_key: app_key !== undefined ? app_key : undefined,
+      base_url,
+      is_active,
+    };
+    const result =
+      await externalProviderRepository.updateGlobalExternalDataProvider(
+        id,
+        updateData
+      );
+    if (!result) {
+      return res
+        .status(404)
+        .json({ error: 'Global external data provider not found.' });
+    }
+
+    await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_UPDATED', {
+      providerId: id,
+      providerName: provider_name || result.provider_name,
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    log(
+      'error',
+      `Error updating global external data provider ${req.params.id}:`,
+      error
+    );
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/external-data-providers/global/{id}:
+ *   delete:
+ *     summary: Delete a global external data provider
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Global external data provider deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Provider not found
+ */
+router.delete('/external-data-providers/global/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const success =
+      await externalProviderRepository.deleteGlobalExternalDataProvider(id);
+    if (success) {
+      await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_DELETED', {
+        providerId: id,
+      });
+      res.status(200).json({
+        message: 'Global external data provider deleted successfully.',
+      });
+    } else {
+      res
+        .status(404)
+        .json({ error: 'Global external data provider not found.' });
+    }
+  } catch (error) {
+    log(
+      'error',
+      `Error deleting global external data provider ${req.params.id}:`,
+      error
+    );
+    next(error);
+  }
+});
+
 export default router;

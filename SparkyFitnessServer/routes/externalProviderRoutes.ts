@@ -96,6 +96,14 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+router.get('/types', authenticate, async (req, res, next) => {
+  try {
+    const types = await externalProviderService.getExternalProviderTypes();
+    res.status(200).json(types);
+  } catch (error) {
+    next(error);
+  }
+});
 /**
  * @swagger
  * /external-providers/user/{targetUserId}:

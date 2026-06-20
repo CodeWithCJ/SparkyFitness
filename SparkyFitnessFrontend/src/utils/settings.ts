@@ -77,44 +77,37 @@ export const decodeYazioAppId = (value?: string | null) => {
 };
 
 export const validateProvider = (
-  provider: Partial<ExternalDataProvider>
+  provider: Partial<ExternalDataProvider>,
+  providerTypes?: Array<{
+    id: string;
+    required_fields?: string[] | null;
+    field_labels?: Record<string, string> | null;
+  }>
 ): string | null => {
   if (!provider.provider_name) return 'Please fill in the provider name';
 
-  const requiredFields =
-    providerRequirements[provider.provider_type || ''] || [];
+  let requiredFields = providerRequirements[provider.provider_type || ''] || [];
+  let fieldLabels = providerFieldLabels[provider.provider_type || ''] || {};
+
+  if (providerTypes && provider.provider_type) {
+    const dynamicType = providerTypes.find(
+      (t) => t.id === provider.provider_type
+    );
+    if (dynamicType) {
+      requiredFields = dynamicType.required_fields || [];
+      fieldLabels = dynamicType.field_labels || {};
+    }
+  }
 
   for (const field of requiredFields) {
     if (!provider[field as keyof ExternalDataProvider]) {
-      const label =
-        providerFieldLabels[provider.provider_type || '']?.[field] || field;
+      const label = fieldLabels[field] || field;
       return `Please provide ${label} for ${provider.provider_type}`;
     }
   }
 
   return null;
 };
-
-export const getProviderTypes = () => [
-  { value: 'openfoodfacts', label: 'OpenFoodFacts' },
-  { value: 'nutritionix', label: 'Nutritionix' },
-  { value: 'fatsecret', label: 'FatSecret' },
-  { value: 'wger', label: 'Wger (Exercise)' },
-  { value: 'free-exercise-db', label: 'Free Exercise DB' },
-  { value: 'mealie', label: 'Mealie' },
-  { value: 'tandoor', label: 'Tandoor' },
-  { value: 'norish', label: 'Norish' },
-  { value: 'withings', label: 'Withings' },
-  { value: 'garmin', label: 'Garmin' },
-  { value: 'fitbit', label: 'Fitbit' },
-  { value: 'googlehealth', label: 'Google Health' },
-  { value: 'polar', label: 'Polar Flow' },
-  { value: 'strava', label: 'Strava' },
-  { value: 'hevy', label: 'Hevy' },
-  { value: 'usda', label: 'USDA' },
-  { value: 'yazio', label: 'YAZIO' },
-  { value: 'swissfood', label: 'Swiss Food Database' },
-];
 
 export const getInitials = (name: string | null) => {
   if (!name) return 'U';
@@ -129,22 +122,9 @@ export const getInitials = (name: string | null) => {
 export const getProviderCategory = (
   provider: DataProvider
 ): ('food' | 'exercise' | 'other')[] => {
-  switch (provider.provider_type.toLowerCase()) {
-    case 'wger':
-    case 'free-exercise-db': // Added free-exercise-db
-      return ['exercise'];
-    case 'fatsecret':
-    case 'openfoodfacts':
-    case 'mealie':
-    case 'tandoor':
-    case 'norish':
-    case 'usda':
-    case 'yazio':
-    case 'swissfood':
-      return ['food'];
-    case 'nutritionix':
-      return ['food', 'exercise'];
-    default:
-      return ['other'];
-  }
+  return (
+    provider.categories && provider.categories.length > 0
+      ? provider.categories
+      : ['other']
+  ) as ('food' | 'exercise' | 'other')[];
 };

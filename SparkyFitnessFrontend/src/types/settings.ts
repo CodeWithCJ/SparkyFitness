@@ -1,5 +1,6 @@
 export interface UserPreferencesChat {
   auto_clear_history: string;
+  active_ai_service_id?: string | null;
 }
 
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -16,6 +17,10 @@ export interface DataProvider {
   is_strictly_private?: boolean;
   base_url?: string;
   app_key: string;
+  categories?: string[];
+  required_fields?: string[];
+  field_labels?: Record<string, string>;
+  supports_barcode?: boolean;
 }
 
 export interface WaterContainer {

@@ -1,6 +1,7 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall } from '@/api/api';
 import { DataProvider } from '@/types/settings';
+import { ExternalProviderTypes } from '@workspace/shared';
 
 export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
   return apiCall('/external-providers', {
@@ -8,13 +9,11 @@ export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
   });
 };
 
-export const toggleProviderPublicSharing = async (
-  id: string,
-  sharedWithPublic: boolean
-) => {
-  return apiCall(`/external-providers/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ shared_with_public: sharedWithPublic }),
+export const getExternalProviderTypes = async (): Promise<
+  ExternalProviderTypes[]
+> => {
+  return apiCall('/external-providers/types', {
+    method: 'GET',
   });
 };
 
@@ -533,6 +532,50 @@ export const deleteExternalProvider = async (
   providerId: string
 ): Promise<void> => {
   return apiCall(`/external-providers/${providerId}`, {
+    method: 'DELETE',
+  });
+};
+
+export interface CreateGlobalProviderPayload {
+  provider_name: string;
+  provider_type: string;
+  app_id?: string | null;
+  app_key?: string | null;
+  base_url?: string | null;
+  is_active: boolean;
+}
+
+export const getGlobalExternalProviders = async (): Promise<
+  ExternalDataProvider[]
+> => {
+  return apiCall('/admin/external-data-providers/global', {
+    method: 'GET',
+  });
+};
+
+export const createGlobalExternalProvider = async (
+  payload: CreateGlobalProviderPayload
+): Promise<ExternalProviderResponse> => {
+  return apiCall('/admin/external-data-providers/global', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateGlobalExternalProvider = async (
+  providerId: string,
+  providerData: Partial<CreateGlobalProviderPayload>
+): Promise<ExternalDataProvider> => {
+  return apiCall(`/admin/external-data-providers/global/${providerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(providerData),
+  });
+};
+
+export const deleteGlobalExternalProvider = async (
+  providerId: string
+): Promise<void> => {
+  return apiCall(`/admin/external-data-providers/global/${providerId}`, {
     method: 'DELETE',
   });
 };

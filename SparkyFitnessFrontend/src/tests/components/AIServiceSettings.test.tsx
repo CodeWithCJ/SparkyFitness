@@ -169,7 +169,7 @@ window.confirm = mockConfirm;
 const mockUserServices: AiServiceSettingsResponse[] = [
   {
     id: 'user-service1',
-    user_id: '',
+    user_id: 'user1',
     service_name: 'My OpenAI',
     service_type: 'openai',
     custom_url: null,
