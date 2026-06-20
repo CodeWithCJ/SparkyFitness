@@ -400,12 +400,28 @@ const NUTRITION_DIRECT_COLUMNS = [
   'iron',
 ] as const;
 
-// Provider tag for Health Connect-sourced foods. Foods are reused per name via
-// (provider_type, provider_external_id); the diary entry is keyed by (source,
-// source_id) — the same provider model the Garmin nutrition sync uses.
-const HEALTH_CONNECT_PROVIDER_TYPE = 'health_connect';
+// Maps the client's display label (dataEntry.source) to a stable provider tag
+// used for food deduplication and diary entry source. Unknown/missing values
+// fall back to 'health_connect' so existing Android data is byte-for-byte
+// unchanged (Android sends 'Health Connect').
+const PROVIDER_TYPE_BY_SOURCE: Record<string, string> = {
+  'Health Connect': 'health_connect',
+  HealthKit: 'healthkit',
+};
 
-// Ingest a single Health Connect NutritionRecord as a food entry.
+function resolveProvider(source: string | undefined): {
+  providerType: string;
+  fallbackName: string;
+} {
+  const providerType =
+    PROVIDER_TYPE_BY_SOURCE[source ?? ''] ?? 'health_connect';
+  const fallbackName =
+    providerType === 'healthkit' ? 'HealthKit food' : 'Health Connect food';
+  return { providerType, fallbackName };
+}
+
+// Ingest a single health-platform NutritionRecord (Health Connect or HealthKit)
+// as a food entry.
 //
 // A NutritionRecord is a *consumed amount*, not a per-serving food definition, so
 // the food/variant is just a labelled container: we reuse one food per name
@@ -425,9 +441,10 @@ async function ingestNutritionFoodEntry(
   actingUserId: any,
   parsedDate: string
 ) {
+  const { providerType, fallbackName } = resolveProvider(dataEntry.source);
   const trimmedName =
     typeof dataEntry.food_name === 'string' ? dataEntry.food_name.trim() : '';
-  const foodName = trimmedName || 'Health Connect food';
+  const foodName = trimmedName || fallbackName;
   // Named records reuse one food per name; nameless ones key off the record id so
   // each gets its own (hidden) food instead of collapsing onto a single shared
   // 'Health Connect food' row whose variant would churn on every sync.
@@ -446,7 +463,7 @@ async function ingestNutritionFoodEntry(
   let food = await foodRepository.findFoodByProviderExternalId(
     userId,
     providerExternalId,
-    HEALTH_CONNECT_PROVIDER_TYPE
+    providerType
   );
   let variantId = food?.default_variant_id ?? food?.default_variant?.id;
   if (food && variantId) {
@@ -461,9 +478,9 @@ async function ingestNutritionFoodEntry(
       user_id: userId,
       is_custom: false,
       // Hidden from food search (these are diary-only provider entries, and the
-      // generic 'Health Connect food' name would otherwise clutter results).
+      // generic fallback food name would otherwise clutter results).
       is_quick_food: true,
-      provider_type: HEALTH_CONNECT_PROVIDER_TYPE,
+      provider_type: providerType,
       provider_external_id: providerExternalId,
       shared_with_public: false,
       // food_variants.source is constrained to manual|ai_estimate|imported.
@@ -490,9 +507,9 @@ async function ingestNutritionFoodEntry(
       serving_unit: 'serving',
       food_name: foodName,
       ...nutrients,
-      // Idempotency key. Tagged with the provider (not the client's display
+      // Idempotency key. Tagged with the provider tag (not the client's display
       // label) so it stays consistent with the food's provider_type.
-      source: HEALTH_CONNECT_PROVIDER_TYPE,
+      source: providerType,
       source_id: dataEntry.source_id || null,
     },
     actingUserId

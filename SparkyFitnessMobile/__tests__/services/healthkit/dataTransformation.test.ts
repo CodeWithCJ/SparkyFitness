@@ -1,6 +1,6 @@
-import { transformHealthRecords, extractTimezoneMetadata, setOwnBundleId } from '../../../src/services/healthkit/dataTransformation';
+import { transformHealthRecords, extractTimezoneMetadata, setOwnBundleId, mapDietarySample } from '../../../src/services/healthkit/dataTransformation';
 
-import type { TransformOutput, TransformedRecord, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
+import type { TransformOutput, TransformedRecord, TransformedExerciseSession, AggregatedSleepSession, TransformedNutritionEntry } from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -729,5 +729,162 @@ describe('own-app exclusion (writeback feedback-loop guard)', () => {
     const records = [{ startTime: '2024-01-15T08:00:00Z', value: 12, sourceBundleId: 'com.sparky.app' }];
     const result = transformHealthRecords(records, { recordType: 'DietaryProtein', unit: 'g', type: 'protein' });
     expect(result).toHaveLength(1);
+  });
+});
+
+describe('mapDietarySample (dietary reverse mapper)', () => {
+  test('maps protein in grams to the protein column unchanged', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 12, unit: 'g' }))
+      .toEqual({ column: 'protein', value: 12 });
+  });
+
+  test('maps energy in kcal to the calories column', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 200, unit: 'kcal' }))
+      .toEqual({ column: 'calories', value: 200 });
+  });
+
+  test('treats Cal (food Calorie) as kcal — the unit MFP/Cronometer return', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 500, unit: 'Cal' }))
+      .toEqual({ column: 'calories', value: 500 });
+  });
+
+  test('treats lowercase cal as the small calorie (1/1000 kcal)', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 1000, unit: 'cal' }))
+      .toEqual({ column: 'calories', value: 1 });
+  });
+
+  test('converts kJ energy to kcal', () => {
+    const result = mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 1000, unit: 'kJ' });
+    expect(result?.column).toBe('calories');
+    expect(result?.value).toBeCloseTo(239.006, 2);
+  });
+
+  test('converts ounces of a macro to grams', () => {
+    const result = mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 1, unit: 'oz' });
+    expect(result?.column).toBe('protein');
+    expect(result?.value).toBeCloseTo(28.3495, 3);
+  });
+
+  test('keeps mg-stored micros in mg when returned in mg', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietarySodium', quantity: 500, unit: 'mg' }))
+      .toEqual({ column: 'sodium', value: 500 });
+  });
+
+  test('converts grams of a mg-stored micro to mg', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietarySodium', quantity: 0.5, unit: 'g' }))
+      .toEqual({ column: 'sodium', value: 500 });
+  });
+
+  test('maps vitamin A in mcg to the mcg-stored column unchanged', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryVitaminA', quantity: 120, unit: 'mcg' }))
+      .toEqual({ column: 'vitamin_a', value: 120 });
+  });
+
+  test('returns null for an unknown unit (never guesses a conversion)', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 10, unit: 'banana' })).toBeNull();
+  });
+
+  test('omits non-positive values', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 0, unit: 'g' })).toBeNull();
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: -5, unit: 'g' })).toBeNull();
+  });
+
+  test('returns null for identifiers Sparky does not store (trans fat, water)', () => {
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryFatTrans', quantity: 5, unit: 'g' })).toBeNull();
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryWater', quantity: 250, unit: 'mL' })).toBeNull();
+  });
+});
+
+describe('Nutrition correlation transformer', () => {
+  afterEach(() => setOwnBundleId(null));
+
+  const NUTRITION_CONFIG = { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' };
+
+  // Mirrors the normalized record the index.ts correlation handler emits. Local-time
+  // startDate (no 'Z') keeps the meal-of-day heuristic deterministic across timezones.
+  const normalizedCorrelation = (overrides: Record<string, unknown> = {}) => ({
+    uuid: 'corr-1',
+    startDate: '2024-01-15T08:00:00',
+    metadataFoodType: 'Greek Yogurt',
+    sourceBundleId: 'com.other.app',
+    metadata: { HKTimeZone: 'America/New_York' },
+    objects: [
+      { quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 150, unit: 'kcal' },
+      { quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 12, unit: 'g' },
+      { quantityType: 'HKQuantityTypeIdentifierDietarySodium', quantity: 200, unit: 'mg' },
+    ],
+    ...overrides,
+  });
+
+  test('folds a correlation into a HealthKit nutrition entry', () => {
+    const result = transformHealthRecords([normalizedCorrelation()], NUTRITION_CONFIG) as TransformedNutritionEntry[];
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: 'Nutrition',
+      source: 'HealthKit',
+      source_id: 'corr-1',
+      timestamp: '2024-01-15T08:00:00',
+      food_name: 'Greek Yogurt',
+      calories: 150,
+      protein: 12,
+      sodium: 200,
+      record_timezone: 'America/New_York',
+    });
+  });
+
+  test('infers meal type from the local hour', () => {
+    const mealAt = (time: string) =>
+      (transformHealthRecords([normalizedCorrelation({ startDate: `2024-01-15T${time}` })], NUTRITION_CONFIG)[0] as TransformedNutritionEntry).meal_type;
+    expect(mealAt('08:00:00')).toBe('breakfast');
+    expect(mealAt('12:30:00')).toBe('lunch');
+    expect(mealAt('19:00:00')).toBe('dinner');
+    expect(mealAt('23:00:00')).toBe('snacks');
+    expect(mealAt('15:30:00')).toBe('snacks');
+  });
+
+  test('falls back to "Apple Health food" when the correlation has no food type', () => {
+    const result = transformHealthRecords([normalizedCorrelation({ metadataFoodType: undefined })], NUTRITION_CONFIG) as TransformedNutritionEntry[];
+    expect(result[0].food_name).toBe('Apple Health food');
+  });
+
+  test('skips correlations this app wrote (own-record guard)', () => {
+    setOwnBundleId('com.sparky.app');
+    const result = transformHealthRecords([normalizedCorrelation({ sourceBundleId: 'com.sparky.app' })], NUTRITION_CONFIG);
+    expect(result).toHaveLength(0);
+  });
+
+  test('skips correlations without a uuid (no idempotency key)', () => {
+    const result = transformHealthRecords([normalizedCorrelation({ uuid: undefined })], NUTRITION_CONFIG);
+    expect(result).toHaveLength(0);
+  });
+
+  test('skips category objects but keeps quantity nutrients', () => {
+    const result = transformHealthRecords([normalizedCorrelation({
+      objects: [
+        { value: 1 }, // CategorySample — no quantityType
+        { quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 8, unit: 'g' },
+      ],
+    })], NUTRITION_CONFIG) as TransformedNutritionEntry[];
+    expect(result).toHaveLength(1);
+    expect(result[0].protein).toBe(8);
+    expect(result[0].calories).toBeUndefined();
+  });
+
+  test('drops a correlation with no objects', () => {
+    const result = transformHealthRecords([normalizedCorrelation({ objects: [] })], NUTRITION_CONFIG);
+    expect(result).toHaveLength(0);
+  });
+
+  test('drops a correlation whose objects yield no recognized nutrients', () => {
+    const result = transformHealthRecords([normalizedCorrelation({
+      objects: [{ quantityType: 'HKQuantityTypeIdentifierDietaryWater', quantity: 250, unit: 'mL' }],
+    })], NUTRITION_CONFIG);
+    expect(result).toHaveLength(0);
+  });
+
+  test('omits timezone metadata when the correlation carries none', () => {
+    const result = transformHealthRecords([normalizedCorrelation({ metadata: undefined })], NUTRITION_CONFIG) as TransformedNutritionEntry[];
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBeUndefined();
   });
 });

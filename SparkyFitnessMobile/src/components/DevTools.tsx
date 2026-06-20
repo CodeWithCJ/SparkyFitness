@@ -3,6 +3,8 @@ import { View, Text, ActivityIndicator, Pressable, Platform } from 'react-native
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
+import { diagnoseNutritionSources } from '../services/healthkit/nutritionSourceDiagnostic';
+import { initHealthConnect, requestHealthPermissions } from '../services/healthConnectService';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
@@ -12,6 +14,33 @@ import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedP
 const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  const handleDiagnoseNutrition = async () => {
+    setIsDiagnosing(true);
+    try {
+      // Ensure HealthKit's availability flag is set in this JS session — requestHealthPermissions
+      // bails with "Health App Not Available" if init hasn't run (e.g. after a Fast Refresh
+      // reset the module without re-firing App startup).
+      await initHealthConnect();
+      // HealthKit only returns OTHER apps' dietary data with read authorization (it always
+      // returns this app's own writes regardless). Request read first so the probe is
+      // self-contained — otherwise it reports only Sparky's own writeback foods. Grant every
+      // nutrition type in the iOS sheet, then it queries.
+      await requestHealthPermissions([{ accessType: 'read', recordType: 'Nutrition' }]);
+      const summary = await diagnoseNutritionSources(14);
+      Toast.show({
+        type: summary.looseTotal === 0 ? 'success' : 'info',
+        text1: 'Nutrition Sources',
+        text2: `${summary.correlationCount} food correlations, ${summary.looseTotal} loose samples. See Logs for details.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Diagnostic failed: ${message}` });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
 
   const handleTriggerSync = async () => {
     setIsSyncing(true);
@@ -171,6 +200,20 @@ const DevTools: React.FC = () => {
               onPress={handleCheckBackgroundPermissions}
             >
               <Text className="text-white text-base font-bold">Check BG Permission</Text>
+            </Button>
+          )}
+          {Platform.OS === 'ios' && (
+            <Button
+              variant="primary"
+              className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+              onPress={handleDiagnoseNutrition}
+              disabled={isDiagnosing}
+            >
+              {isDiagnosing ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text className="text-white text-base font-bold">Diagnose Nutrition Sources</Text>
+              )}
             </Button>
           )}
         </View>

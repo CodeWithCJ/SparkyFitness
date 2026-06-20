@@ -252,4 +252,138 @@ describe('processHealthData Nutrition ingestion', () => {
     expect(foodRepository.createFood).not.toHaveBeenCalled();
     expect(foodRepository.createFoodEntry).not.toHaveBeenCalled();
   });
+
+  it('tags HealthKit entries with healthkit provider and uses HealthKit food as fallback name', async () => {
+    const hkRecord = {
+      type: 'Nutrition',
+      source: 'HealthKit',
+      source_id: 'hk-corr-uuid-1',
+      timestamp: '2024-01-15T08:00:00.000Z',
+      food_name: '',
+      meal_type: 'breakfast',
+      calories: 300,
+      protein: 25,
+    };
+
+    (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue(
+      null
+    );
+    (foodRepository.createFood as any).mockResolvedValue({
+      id: 'food-hk-1',
+      default_variant_id: 'variant-hk-1',
+    });
+    (foodRepository.createFoodEntry as any).mockResolvedValue({
+      id: 'entry-hk-1',
+    });
+
+    await measurementService.processHealthData([hkRecord], 'user-1', 'user-1');
+
+    // Lookup uses the healthkit provider tag, not health_connect.
+    const [, , lookupProviderType] = (
+      foodRepository.findFoodByProviderExternalId as any
+    ).mock.calls[0];
+    expect(lookupProviderType).toBe('healthkit');
+
+    // Created food is tagged healthkit; nameless record uses 'HealthKit food'.
+    const createFoodArg = (foodRepository.createFood as any).mock.calls[0][0];
+    expect(createFoodArg).toMatchObject({
+      name: 'HealthKit food',
+      provider_type: 'healthkit',
+      is_quick_food: true,
+      source: 'imported',
+    });
+
+    // Diary entry source is the healthkit provider tag.
+    const entryArg = (foodRepository.createFoodEntry as any).mock.calls[0][0];
+    expect(entryArg).toMatchObject({
+      source: 'healthkit',
+      source_id: 'hk-corr-uuid-1',
+      food_id: 'food-hk-1',
+      variant_id: 'variant-hk-1',
+      calories: 300,
+    });
+  });
+
+  it('Health Connect source is unchanged — still tags health_connect for all three uses', async () => {
+    const hcRecord = {
+      ...baseRecord,
+      source: 'Health Connect',
+      source_id: 'hc-regression-1',
+      food_name: 'Oats',
+    };
+
+    (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue(
+      null
+    );
+    (foodRepository.createFood as any).mockResolvedValue({
+      id: 'food-hc-r',
+      default_variant_id: 'variant-hc-r',
+    });
+    (foodRepository.createFoodEntry as any).mockResolvedValue({
+      id: 'entry-hc-r',
+    });
+
+    await measurementService.processHealthData([hcRecord], 'user-1', 'user-1');
+
+    const [, , lookupProviderType] = (
+      foodRepository.findFoodByProviderExternalId as any
+    ).mock.calls[0];
+    expect(lookupProviderType).toBe('health_connect');
+
+    const createFoodArg = (foodRepository.createFood as any).mock.calls[0][0];
+    expect(createFoodArg).toMatchObject({
+      name: 'Oats',
+      provider_type: 'health_connect',
+    });
+
+    const entryArg = (foodRepository.createFoodEntry as any).mock.calls[0][0];
+    expect(entryArg).toMatchObject({
+      source: 'health_connect',
+      source_id: 'hc-regression-1',
+    });
+  });
+
+  it('unknown or missing source falls back to health_connect and Health Connect food', async () => {
+    const unknownSourceRecord = {
+      type: 'Nutrition',
+      source: undefined,
+      source_id: 'unknown-src-1',
+      timestamp: '2024-01-15T09:00:00.000Z',
+      food_name: '',
+      calories: 50,
+    };
+
+    (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue(
+      null
+    );
+    (foodRepository.createFood as any).mockResolvedValue({
+      id: 'food-unk',
+      default_variant_id: 'variant-unk',
+    });
+    (foodRepository.createFoodEntry as any).mockResolvedValue({
+      id: 'entry-unk',
+    });
+
+    await measurementService.processHealthData(
+      [unknownSourceRecord],
+      'user-1',
+      'user-1'
+    );
+
+    const [, , lookupProviderType] = (
+      foodRepository.findFoodByProviderExternalId as any
+    ).mock.calls[0];
+    expect(lookupProviderType).toBe('health_connect');
+
+    const createFoodArg = (foodRepository.createFood as any).mock.calls[0][0];
+    expect(createFoodArg).toMatchObject({
+      name: 'Health Connect food',
+      provider_type: 'health_connect',
+    });
+
+    const entryArg = (foodRepository.createFoodEntry as any).mock.calls[0][0];
+    expect(entryArg).toMatchObject({
+      source: 'health_connect',
+    });
+  });
 });

@@ -55,6 +55,14 @@ export const alignToLocalDayStart = (date: Date): Date => {
   return aligned;
 };
 
+// Nutrition's day-aligned rolling lookback (see processMetric). Independent of the
+// requested sync window so retroactively-logged meals — event time in the past, entered
+// today — are still picked up. Nutrition-scoped; idempotent via (source, source_id) upsert.
+const NUTRITION_LOOKBACK_DAYS = 2;
+
+const nutritionLookbackStart = (endDate: Date): Date =>
+  alignToLocalDayStart(new Date(endDate.getTime() - NUTRITION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
+
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
@@ -172,8 +180,14 @@ async function processMetric(
     // aggregated metrics below.
     dataToTransform = await HealthKit.getAggregatedBasalEnergyByDate(startDate, endDate);
   } else {
-    // For other types, read raw records
-    const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
+    // For other types, read raw records. Nutrition is frequently logged after the fact,
+    // so it widens to a day-aligned rolling lookback (or keeps the requested window if
+    // that already reaches further back). Idempotent: nutrition upserts by (source,
+    // source_id), so re-reading the same correlations every sync is free server-side.
+    const rawStartDate = type === 'Nutrition'
+      ? new Date(Math.min(startDate.getTime(), nutritionLookbackStart(endDate).getTime()))
+      : startDate;
+    const rawRecords = await HealthKit.readHealthRecords(type, rawStartDate, endDate);
 
     if (!rawRecords || rawRecords.length === 0) {
       return { data: [] };

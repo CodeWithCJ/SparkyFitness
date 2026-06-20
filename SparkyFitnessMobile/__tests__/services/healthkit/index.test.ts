@@ -15,6 +15,7 @@ import {
   queryQuantitySamples,
   queryWorkoutSamples,
   queryCategorySamples,
+  queryCorrelationSamples,
 } from '@kingstinct/react-native-healthkit';
 
 import { toLocalDateString } from '../../../src/services/healthkit/dataAggregation';
@@ -30,6 +31,7 @@ const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
 const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
+const mockQueryCorrelationSamples = queryCorrelationSamples as jest.Mock;
 
 describe('getSyncStartDate', () => {
   test('day-based durations return midnight (00:00:00.000)', () => {
@@ -1174,6 +1176,205 @@ describe('readHealthRecords', () => {
       );
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('Nutrition records (correlations + loose fallback)', () => {
+    // jest.clearAllMocks() (outer beforeEach) does NOT reset implementations, so default
+    // both nutrition queries to empty here — otherwise a prior test's quantity-sample
+    // implementation would leak into the loose read.
+    beforeEach(() => {
+      mockQueryCorrelationSamples.mockResolvedValue([]);
+      mockQueryQuantitySamples.mockResolvedValue([]);
+    });
+
+    const correlation = (overrides: Record<string, unknown> = {}) => ({
+      uuid: 'corr-1',
+      startDate: '2024-01-15T08:00:00Z',
+      endDate: '2024-01-15T08:00:00Z',
+      metadataFoodType: 'Greek Yogurt',
+      metadataTimeZone: 'America/New_York',
+      sourceRevision: { source: { bundleIdentifier: 'com.other.app' } },
+      objects: [
+        { uuid: 'c-energy', quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 150, unit: 'kcal' },
+        { uuid: 'c-protein', quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 12, unit: 'g' },
+      ],
+      ...overrides,
+    });
+
+    // Return loose quantity samples per identifier (a single fn serves every identifier
+    // query, so key off the requested identifier to model distinct nutrients).
+    const looseByIdentifier = (
+      map: Record<string, { uuid: string; startDate: string; quantity: number; unit: string; source: { bundleIdentifier?: string } }[]>,
+    ) => (identifier: string) => Promise.resolve(map[identifier]?.map(s => ({
+      uuid: s.uuid,
+      startDate: s.startDate,
+      quantity: s.quantity,
+      unit: s.unit,
+      sourceRevision: { source: s.source },
+    })) ?? []);
+
+    test('normalizes a Food correlation into a record the transformer consumes', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([correlation()]);
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Asserting NON-empty guards against the handler's try/catch swallowing an
+      // undefined queryCorrelationSamples mock to [] (a green-but-meaningless test).
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'corr-1',
+        startDate: '2024-01-15T08:00:00Z',
+        metadataFoodType: 'Greek Yogurt',
+        sourceBundleId: 'com.other.app',
+        metadata: { HKTimeZone: 'America/New_York' },
+      });
+      expect((result[0] as { objects: unknown[] }).objects).toHaveLength(2);
+      // The window must be pushed into the native query (limit: 0 = all in-window),
+      // not applied as a post-filter over the most-recent QUERY_LIMIT across all history.
+      expect(mockQueryCorrelationSamples).toHaveBeenCalledWith(
+        'HKCorrelationTypeIdentifierFood',
+        expect.objectContaining({
+          ascending: false,
+          limit: 0,
+          filter: { date: { startDate: new Date('2024-01-15T00:00:00Z'), endDate: new Date('2024-01-15T23:59:59Z') } },
+        }),
+      );
+    });
+
+    test('filters correlations outside the date range', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({ uuid: 'before', startDate: '2024-01-14T23:00:00Z' }),
+        correlation({ uuid: 'in', startDate: '2024-01-15T12:00:00Z' }),
+        correlation({ uuid: 'after', startDate: '2024-01-17T01:00:00Z' }),
+      ]);
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-16T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as { uuid: string }).uuid).toBe('in');
+    });
+
+    test('omits metadata when the correlation has no timezone', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({ metadataTimeZone: undefined }),
+      ]);
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as { metadata?: unknown }).metadata).toBeUndefined();
+    });
+
+    test('groups loose samples by (source, instant) into one entry (no food name)', async () => {
+      await initHealthConnect();
+      const mfp = { bundleIdentifier: 'com.myfitnesspal.mfp' };
+      mockQueryQuantitySamples.mockImplementation(looseByIdentifier({
+        'HKQuantityTypeIdentifierDietaryEnergyConsumed': [
+          { uuid: 'e1', startDate: '2024-01-15T12:30:00Z', quantity: 500, unit: 'Cal', source: mfp },
+        ],
+        'HKQuantityTypeIdentifierDietaryProtein': [
+          { uuid: 'p1', startDate: '2024-01-15T12:30:00Z', quantity: 30, unit: 'g', source: mfp },
+        ],
+      }));
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'com.myfitnesspal.mfp:2024-01-15T12:30:00Z',
+        startDate: '2024-01-15T12:30:00Z',
+        sourceBundleId: 'com.myfitnesspal.mfp',
+      });
+      // Loose samples have no food name; the transformer fills in "Apple Health food".
+      expect((result[0] as { metadataFoodType?: string }).metadataFoodType).toBeUndefined();
+      expect((result[0] as { objects: unknown[] }).objects).toHaveLength(2);
+      // The loose per-identifier read must also page within the native date window.
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          ascending: false,
+          limit: 0,
+          filter: { date: { startDate: new Date('2024-01-15T00:00:00Z'), endDate: new Date('2024-01-15T23:59:59Z') } },
+        }),
+      );
+    });
+
+    test('splits loose samples from different instants into separate entries', async () => {
+      await initHealthConnect();
+      const cron = { bundleIdentifier: 'CRONOMETER-GOLD' };
+      mockQueryQuantitySamples.mockImplementation(looseByIdentifier({
+        'HKQuantityTypeIdentifierDietaryProtein': [
+          { uuid: 'a', startDate: '2024-01-15T08:00:00Z', quantity: 10, unit: 'g', source: cron },
+          { uuid: 'b', startDate: '2024-01-15T19:00:00Z', quantity: 25, unit: 'g', source: cron },
+        ],
+      }));
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result.map(r => (r as { uuid: string }).uuid).sort()).toEqual([
+        'CRONOMETER-GOLD:2024-01-15T08:00:00Z',
+        'CRONOMETER-GOLD:2024-01-15T19:00:00Z',
+      ]);
+    });
+
+    test('excludes loose samples already contained in a correlation (no double-count)', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-1',
+          startDate: '2024-01-15T08:00:00Z',
+          sourceRevision: { source: { bundleIdentifier: 'com.fitnow.loseit' } },
+          objects: [
+            { uuid: 'shared-protein', quantityType: 'HKQuantityTypeIdentifierDietaryProtein', quantity: 10, unit: 'g' },
+          ],
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(looseByIdentifier({
+        'HKQuantityTypeIdentifierDietaryProtein': [
+          // Same UUID as the correlation's contained sample → must be skipped.
+          { uuid: 'shared-protein', startDate: '2024-01-15T08:00:00Z', quantity: 10, unit: 'g', source: { bundleIdentifier: 'com.fitnow.loseit' } },
+          { uuid: 'loose-protein', startDate: '2024-01-15T12:30:00Z', quantity: 20, unit: 'g', source: { bundleIdentifier: 'com.myfitnesspal.mfp' } },
+        ],
+      }));
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // One correlation entry + one loose entry; the shared-protein loose sample is excluded.
+      expect(result).toHaveLength(2);
+      const ids = result.map(r => (r as { uuid: string }).uuid);
+      expect(ids).toContain('corr-1');
+      expect(ids).toContain('com.myfitnesspal.mfp:2024-01-15T12:30:00Z');
+      const looseEntry = result.find(r => (r as { sourceBundleId?: string }).sourceBundleId === 'com.myfitnesspal.mfp');
+      expect((looseEntry as { objects: unknown[] }).objects).toHaveLength(1);
     });
   });
 });

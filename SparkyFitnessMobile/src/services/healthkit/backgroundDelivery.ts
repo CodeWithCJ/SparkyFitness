@@ -94,6 +94,16 @@ function resolveHKIdentifiers(recordType: string): string[] {
     ].filter(Boolean);
   }
 
+  // Nutrition has no single observable HK type — HEALTHKIT_TYPE_MAP['Nutrition'] is the
+  // writeback sentinel 'Nutrition', not a real type the native call would accept. Observe
+  // DietaryEnergyConsumed as a best-effort trigger: most foods include energy, so a new
+  // food typically trips it promptly. This is an optimization, NOT correctness — macro-only
+  // foods with no energy won't fire it and are instead caught by the daily delivery and the
+  // next foreground/manual sync (which use Nutrition's rolling lookback window).
+  if (recordType === 'Nutrition') {
+    return ['HKQuantityTypeIdentifierDietaryEnergyConsumed'];
+  }
+
   const identifier = HEALTHKIT_TYPE_MAP[recordType];
   if (!identifier || identifier === 'BloodPressure') {
     return [];
