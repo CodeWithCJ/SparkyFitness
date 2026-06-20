@@ -12,6 +12,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "SparkyFitness reads Health data (such as activity, workouts, and body measurements) to display it in the app and sync it to your self-hosted SparkyFitness server.",
+          "NSHealthUpdateUsageDescription": "SparkyFitness writes the nutrition and hydration you log in the app to Apple Health, keeping the two in sync.",
           "background": true
         }
       ],

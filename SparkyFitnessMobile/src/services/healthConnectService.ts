@@ -15,7 +15,7 @@ import {
 import { SyncDuration } from './healthconnect/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
-import { runWriteback } from './healthconnect/writeback';
+import { runWriteback } from './writeback';
 import * as Application from 'expo-application';
 
 const METRIC_FETCH_CONCURRENCY = 3;

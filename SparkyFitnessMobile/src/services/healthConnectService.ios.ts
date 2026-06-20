@@ -1,3 +1,4 @@
+import { currentAppSource } from '@kingstinct/react-native-healthkit';
 import * as HealthKit from './healthkit/index';
 import * as HealthKitAggregation from './healthkit/dataAggregation';
 import * as HealthKitTransformation from './healthkit/dataTransformation';
@@ -15,9 +16,20 @@ import {
 import { SyncDuration } from './healthkit/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
+import { runWriteback } from './writeback';
 
 const METRIC_FETCH_CONCURRENCY = 3;
 const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
+
+// Tell the read transformers which bundle id is "us" so they skip HealthKit records
+// this app wrote (hydration writeback feedback-loop guard). Parallels Android's
+// setOwnPackageName. currentAppSource() is a native call, so guard it — a failure just
+// disables the guard rather than crashing module load.
+try {
+  HealthKitTransformation.setOwnBundleId(currentAppSource().bundleIdentifier);
+} catch {
+  // HealthKit unavailable (e.g. unsupported device) — guard stays off.
+}
 
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
@@ -242,6 +254,16 @@ export const syncHealthData = async (
       addLog(`[HealthKitService] Error processing ${type}: ${message}`, 'ERROR');
       syncErrors.push({ type, error: message });
     }
+  }
+
+  // Outbound phase: SparkyFitness diary → HealthKit. Runs before the inbound result
+  // is returned, in its own try/catch so a writeback failure never affects the inbound
+  // sync outcome.
+  try {
+    await runWriteback();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthKitService] Writeback phase failed: ${message}`, 'ERROR');
   }
 
   if (allTransformedData.length > 0) {

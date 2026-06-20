@@ -15,6 +15,7 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString } from './dataAggregation';
+import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -125,6 +126,7 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'Height': 'HKQuantityTypeIdentifierHeight',
   'BodyFat': 'HKQuantityTypeIdentifierBodyFatPercentage',
   'BloodPressure': 'BloodPressure', // Special case, handled separately
+  'Nutrition': 'Nutrition', // Special case (writeback only) — handled separately
   'BloodPressureSystolic': 'HKQuantityTypeIdentifierBloodPressureSystolic',
   'BloodPressureDiastolic': 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'BodyTemperature': 'HKQuantityTypeIdentifierBodyTemperature',
@@ -227,6 +229,13 @@ export const requestHealthPermissions = async (
           readPermissionsSet.add('HKWorkoutTypeIdentifier');
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
+        }
+      } else if (p.recordType === 'Nutrition') {
+        // Writeback only: HealthKit requires share auth on EACH dietary quantity type
+        // written, so request the full set (energy + mapped nutrients). There is no
+        // read path — dietary nutrition is not read on iOS.
+        if (p.accessType === 'write') {
+          DIETARY_WRITE_IDENTIFIERS.forEach((identifier) => writePermissionsSet.add(identifier));
         }
       }
       else if (SUPPORTED_HK_TYPES.has(healthkitIdentifier)) {
@@ -856,6 +865,11 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
         endTime: s.endDate,
         time: s.startDate,
         value: s.quantity,
+        // Origin app's bundle id, for the writeback feedback-loop guard (Hydration
+        // transformer skips records this app wrote). Nested under sourceRevision.source
+        // — there is no pre-flattened source field, so this path is read directly.
+        sourceBundleId: (s as unknown as { sourceRevision?: { source?: { bundleIdentifier?: string } } })
+          .sourceRevision?.source?.bundleIdentifier,
       };
       // Forward timezone metadata so the transform layer can attach it to output records
       const tz = (s as unknown as { metadataTimeZone?: string }).metadataTimeZone;

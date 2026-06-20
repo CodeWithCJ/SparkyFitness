@@ -23,9 +23,9 @@ const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMe
   );
 
 /**
- * Opt-in toggles for writing SparkyFitness diary data out to Health Connect.
- * Grouped into accordion categories to match the read "Health Data to Sync" card.
- * Android-only (Health Connect); renders nothing on iOS.
+ * Opt-in toggles for writing SparkyFitness diary data out to the OS health store
+ * (Health Connect on Android, Apple Health on iOS). Grouped into accordion categories
+ * to match the read "Health Data to Sync" card. Mobile-only; renders nothing elsewhere.
  */
 const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   writebackStates,
@@ -37,10 +37,11 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
-  if (Platform.OS !== 'android') {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     return null;
   }
 
+  const storeName = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
   const grouped = groupByCategory(WRITEBACK_METRICS);
 
   const toggleCategory = (category: string) => {
@@ -74,9 +75,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-1 text-text-primary">Write to Health Connect</Text>
+      <Text className="text-lg font-bold mb-1 text-text-primary">Write to {storeName}</Text>
       <Text className="text-sm text-text-muted mb-3">
-        Syncs the data you log in SparkyFitness out to Health Connect, keeping the two in sync.
+        Syncs the data you log in SparkyFitness out to {storeName}, keeping the two in sync.
       </Text>
       {WRITEBACK_CATEGORY_ORDER.map((category) => {
         const metricsInCategory = grouped[category];

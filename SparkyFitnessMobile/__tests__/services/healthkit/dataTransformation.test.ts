@@ -1,4 +1,4 @@
-import { transformHealthRecords, extractTimezoneMetadata } from '../../../src/services/healthkit/dataTransformation';
+import { transformHealthRecords, extractTimezoneMetadata, setOwnBundleId } from '../../../src/services/healthkit/dataTransformation';
 
 import type { TransformOutput, TransformedRecord, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
 
@@ -687,5 +687,47 @@ describe('extractTimezoneMetadata', () => {
   test('returns empty object when metadata is null', () => {
     const rec = { metadata: null };
     expect(extractTimezoneMetadata(rec as unknown as Record<string, unknown>)).toEqual({});
+  });
+});
+
+describe('own-app exclusion (writeback feedback-loop guard)', () => {
+  // ownBundleId is module-level state; reset it so it doesn't leak into other tests.
+  afterEach(() => setOwnBundleId(null));
+
+  test('skips dietary nutrient samples this app wrote, keeps external ones', () => {
+    setOwnBundleId('com.sparky.app');
+    const records = [
+      { startTime: '2024-01-15T08:00:00Z', value: 12, sourceBundleId: 'com.sparky.app' }, // ours
+      { startTime: '2024-01-15T12:00:00Z', value: 20, sourceBundleId: 'com.other.app' }, // external
+    ];
+    const result = transformHealthRecords(records, { recordType: 'DietaryProtein', unit: 'g', type: 'protein' });
+    expect(result).toHaveLength(1);
+    expect((result[0] as TransformOutput & { value: number }).value).toBe(20);
+  });
+
+  test('applies the guard to every dietary read type', () => {
+    setOwnBundleId('com.sparky.app');
+    const own = [{ startTime: '2024-01-15T08:00:00Z', value: 5, sourceBundleId: 'com.sparky.app' }];
+    for (const recordType of ['DietaryFatTotal', 'DietaryProtein', 'DietarySodium']) {
+      const result = transformHealthRecords(own, { recordType, unit: 'g', type: 'nutrient' });
+      expect(result).toHaveLength(0);
+    }
+  });
+
+  test('skips own Hydration samples but keeps external ones', () => {
+    setOwnBundleId('com.sparky.app');
+    const records = [
+      { startTime: '2024-01-15T08:00:00Z', volume: { inLiters: 0.5 }, sourceBundleId: 'com.sparky.app' },
+      { startTime: '2024-01-15T12:00:00Z', volume: { inLiters: 0.25 }, sourceBundleId: 'com.other.app' },
+    ];
+    const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'L', type: 'water' });
+    expect(result).toHaveLength(1);
+    expect((result[0] as TransformOutput & { value: number }).value).toBe(0.25);
+  });
+
+  test('keeps own dietary samples when no own bundle id is set', () => {
+    const records = [{ startTime: '2024-01-15T08:00:00Z', value: 12, sourceBundleId: 'com.sparky.app' }];
+    const result = transformHealthRecords(records, { recordType: 'DietaryProtein', unit: 'g', type: 'protein' });
+    expect(result).toHaveLength(1);
   });
 });

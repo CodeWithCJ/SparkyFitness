@@ -48,9 +48,21 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
   queryWorkoutSamples: jest.fn(),
-  saveQuantitySample: jest.fn().mockResolvedValue(true),
-  saveCategorySample: jest.fn().mockResolvedValue(true),
+  // Writeback saves return the persisted sample (orchestrator reads .uuid off it);
+  // a bare `true` would make UUID-tracking assertions silently test nothing.
+  saveQuantitySample: jest.fn().mockResolvedValue({ uuid: 'hk-quantity-uuid' }),
+  saveCategorySample: jest.fn().mockResolvedValue({ uuid: 'hk-category-uuid' }),
+  saveCorrelationSample: jest.fn().mockResolvedValue({
+    uuid: 'hk-correlation-uuid',
+    objects: [{ uuid: 'hk-object-uuid', quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed' }],
+  }),
   saveWorkoutSample: jest.fn().mockResolvedValue({}),
+  deleteObjects: jest.fn().mockResolvedValue(0),
+  // Default sharingAuthorized (2) so unrelated suites touching the healthkit module
+  // don't change behavior; the writeback partial-auth test overrides per-type.
+  authorizationStatusFor: jest.fn(() => 2),
+  currentAppSource: jest.fn(() => ({ bundleIdentifier: 'com.sparkyfitness.mobile', name: 'SparkyFitness' })),
+  AuthorizationStatus: { notDetermined: 0, sharingDenied: 1, sharingAuthorized: 2 },
   HKQuantityTypeIdentifier: {
     stepCount: 'HKQuantityTypeIdentifierStepCount',
     activeEnergyBurned: 'HKQuantityTypeIdentifierActiveEnergyBurned',

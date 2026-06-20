@@ -11,6 +11,25 @@ import {
 import { toLocalDateString } from './dataAggregation';
 
 // ============================================================================
+// Own-app exclusion (read/write feedback-loop guard)
+// ============================================================================
+
+// HealthKit returns DietaryWater samples written by *this* app too. If hydration
+// writeback is on, re-importing them would duplicate diary water (and compound every
+// sync). We skip records whose source bundle id is our own. The bundle id is injected
+// from the service layer (setOwnBundleId) so this pure module needs no
+// expo-application / healthkit import. Mirrors Android's setOwnPackageName guard.
+let ownBundleId: string | null = null;
+export const setOwnBundleId = (id: string | null): void => {
+  ownBundleId = id;
+};
+
+const isOwnRecord = (rec: Record<string, unknown>): boolean => {
+  if (!ownBundleId) return false;
+  return (rec.sourceBundleId as string | undefined) === ownBundleId;
+};
+
+// ============================================================================
 // Transformer Infrastructure
 // ============================================================================
 
@@ -117,6 +136,7 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
   },
 
   Hydration: (rec) => {
+    if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
     const value = extractNestedValue(rec, 'volume', 'inLiters');
     const date = getDateString(rec.startTime);
     return value !== null && date ? { value, date } : null;
@@ -227,11 +247,21 @@ const SIMPLE_VALUE_TYPES_START_TIME = [
   'CyclingSpeed', 'CyclingPower', 'CyclingCadence', 'CyclingFunctionalThresholdPower',
   'EnvironmentalAudioExposure', 'HeadphoneAudioExposure',
   'AppleMoveTime', 'AppleExerciseTime', 'AppleStandTime',
-  'DietaryFatTotal', 'DietaryProtein', 'DietarySodium',
 ];
 
 SIMPLE_VALUE_TYPES_START_TIME.forEach(type => {
   VALUE_TRANSFORMERS[type] = createSimpleValueTransformer(true);
+});
+
+// Dietary nutrient reads share the simple-value shape but must drop the samples Sparky
+// itself wrote: with nutrition writeback on, HealthKit returns our own nutrient samples
+// and re-importing them would duplicate diary nutrition (and compound every sync). Same
+// feedback-loop guard as Hydration. Mirrors Android's setOwnPackageName guard.
+const DIETARY_READ_TYPES = ['DietaryFatTotal', 'DietaryProtein', 'DietarySodium'];
+
+DIETARY_READ_TYPES.forEach(type => {
+  const base = createSimpleValueTransformer(true);
+  VALUE_TRANSFORMERS[type] = (rec, metricConfig) => (isOwnRecord(rec) ? null : base(rec, metricConfig));
 });
 
 // Qualitative record types - pass raw value with warning
