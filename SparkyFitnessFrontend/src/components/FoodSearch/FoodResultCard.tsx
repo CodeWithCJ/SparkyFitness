@@ -111,6 +111,7 @@ const FoodResultCard = ({
                   </Badge>
                 )}
               {!isOnline &&
+                item.user_id &&
                 item.user_id === activeUserId &&
                 !(isFood
                   ? foodItem.shared_with_public
