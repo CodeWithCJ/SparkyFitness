@@ -99,6 +99,28 @@ export const deleteFoodEntry = async (id: string): Promise<void> => {
   });
 };
 
+export interface CopyFoodEntriesPayload {
+  sourceDate: string;
+  sourceMealType: string;
+  targetDate: string;
+  targetMealType: string;
+}
+
+/**
+ * Copies the food entries from one date/meal type into another date/meal type.
+ * Meal types are matched by name (case-insensitive) server-side. The source
+ * entries are left untouched.
+ */
+export const copyFoodEntries = async (payload: CopyFoodEntriesPayload): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy',
+    serviceName: 'Food Entries API',
+    operation: 'copy food entries',
+    method: 'POST',
+    body: payload,
+  });
+};
+
 /**
  * Fetches food entries for a given date.
  */

@@ -6,10 +6,12 @@ import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
+import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection } from '../hooks';
+import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
@@ -27,6 +29,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -45,6 +48,14 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     [summary?.foodEntries, mealType],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
+
+  const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
+    onSuccess: () => copySheetRef.current?.dismiss(),
+  });
+  // "other" is a synthetic bucket that aggregates every non-standard meal type,
+  // so it has no single real meal type to copy from (the server would match
+  // nothing). Only offer copy for concrete meal types.
+  const canCopy = isConnected && entries.length > 0 && mealType !== 'other';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -154,11 +165,23 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
+        <View className="flex-1" />
+        {canCopy && (
+          <TouchableOpacity
+            onPress={() => copySheetRef.current?.present(date, mealType)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Copy meal to another day"
+          >
+            <Icon name="copy" size={20} color={accentColor} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {renderContent()}
 
       <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+      <CopyMealSheet ref={copySheetRef} isPending={isCopying} onCopy={copyMeal} />
     </View>
   );
 };
