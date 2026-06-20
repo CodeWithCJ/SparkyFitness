@@ -24,9 +24,11 @@ async function syncUserGroups(
       'SELECT provider_id, id_token, access_token FROM "account" WHERE user_id = $1 ORDER BY updated_at DESC',
       [userId]
     );
-    const activeOidcIds = oidcProviderRepository
-      ? await oidcProviderRepository.getActiveOidcProviderIds()
-      : [];
+    const activeOidcIds =
+      oidcProviderRepository &&
+      typeof oidcProviderRepository.getActiveOidcProviderIds === 'function'
+        ? await oidcProviderRepository.getActiveOidcProviderIds()
+        : [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const oidcAccount = allAccounts.find(
       (a: any) =>

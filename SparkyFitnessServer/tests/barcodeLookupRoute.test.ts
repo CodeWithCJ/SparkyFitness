@@ -40,12 +40,14 @@ describe('GET /food-crud/barcode/:barcode', () => {
   });
   it('should return 400 for barcode with letters', async () => {
     const res = await request(app).get('/food-crud/barcode/abc12345');
+    console.log('DEBUG abc12345 status:', res.statusCode, 'body:', res.body);
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toMatch(/Invalid barcode format/);
     expect(foodService.lookupBarcode).not.toHaveBeenCalled();
   });
   it('should return 400 for barcode shorter than 8 digits', async () => {
     const res = await request(app).get('/food-crud/barcode/1234567');
+    console.log('DEBUG 1234567 status:', res.statusCode, 'body:', res.body);
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toMatch(/Invalid barcode format/);
   });

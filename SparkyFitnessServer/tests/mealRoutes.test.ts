@@ -7,7 +7,7 @@ import mealService from '../services/mealService.js';
 import errorHandler from '../middleware/errorHandler.js';
 import { v4 as uuidv4 } from 'uuid';
 // Mock middleware and service
-vi.mock('../services/mealService');
+vi.mock('../services/mealService.js');
 vi.mock('../middleware/authMiddleware', () => ({
   authenticate: vi.fn((req, res, next) => {
     req.userId = 'testUserId';
