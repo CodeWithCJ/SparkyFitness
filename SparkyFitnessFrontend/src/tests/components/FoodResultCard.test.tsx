@@ -86,4 +86,55 @@ describe('FoodResultCard', () => {
 
     expect(screen.queryByText(/AI /i)).not.toBeInTheDocument();
   });
+
+  it('renders Private badge for meals owned by active user', () => {
+    render(
+      <FoodResultCard
+        item={{
+          id: 'meal-1',
+          user_id: 'user-1',
+          name: 'My Meal',
+          is_public: false,
+        }}
+        isMeal={true}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.getByText(/Private/i)).toBeInTheDocument();
+  });
+
+  it('renders Public badge for meals marked is_public', () => {
+    render(
+      <FoodResultCard
+        item={{
+          id: 'meal-1',
+          user_id: 'user-1',
+          name: 'Some Meal',
+          is_public: true,
+        }}
+        isMeal={true}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.getByText(/Public/i)).toBeInTheDocument();
+  });
+
+  it('renders Family badge for meals owned by other user', () => {
+    render(
+      <FoodResultCard
+        item={{
+          id: 'meal-1',
+          user_id: 'user-2',
+          name: 'Some Meal',
+          is_public: false,
+        }}
+        isMeal={true}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.getByText(/Family/i)).toBeInTheDocument();
+  });
 });

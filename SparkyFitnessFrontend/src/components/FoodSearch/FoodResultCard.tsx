@@ -110,21 +110,28 @@ const FoodResultCard = ({
                     estimate
                   </Badge>
                 )}
-              {isFood && !isOnline && foodItem.user_id === activeUserId && (
-                <Badge variant="outline" className="text-xs">
-                  {t('enhancedFoodSearch.private', 'Private')}
-                </Badge>
-              )}
-              {isFood && !isOnline && foodItem.shared_with_public && (
-                <Badge variant="outline" className="text-xs">
-                  <Share2 className="h-3 w-3 mr-1" />
-                  {t('enhancedFoodSearch.public', 'Public')}
-                </Badge>
-              )}
-              {isFood &&
-                !isOnline &&
-                foodItem.user_id !== activeUserId &&
-                !foodItem.shared_with_public && (
+              {!isOnline &&
+                item.user_id === activeUserId &&
+                !(isFood
+                  ? foodItem.shared_with_public
+                  : mealItem.is_public) && (
+                  <Badge variant="outline" className="text-xs">
+                    {t('enhancedFoodSearch.private', 'Private')}
+                  </Badge>
+                )}
+              {!isOnline &&
+                (isFood ? foodItem.shared_with_public : mealItem.is_public) && (
+                  <Badge variant="outline" className="text-xs">
+                    <Share2 className="h-3 w-3 mr-1" />
+                    {t('enhancedFoodSearch.public', 'Public')}
+                  </Badge>
+                )}
+              {!isOnline &&
+                item.user_id &&
+                item.user_id !== activeUserId &&
+                !(isFood
+                  ? foodItem.shared_with_public
+                  : mealItem.is_public) && (
                   <Badge variant="outline" className="text-xs">
                     {t('enhancedFoodSearch.family', 'Family')}
                   </Badge>
