@@ -40,7 +40,7 @@ describe('oidcEnvConfig', () => {
           issuer_url: 'http://issuer.com',
           client_id: 'test-client',
           client_secret: 'test-secret',
-          provider_id: 'test-slug',
+          provider_id: 'oidc-env',
           scope: 'openid email profile',
           is_env_configured: true,
         })

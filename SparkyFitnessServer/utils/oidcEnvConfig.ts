@@ -40,7 +40,7 @@ function getEnvOidcConfig() {
     issuer_url: issuer.replace(/\/$/, ''),
     client_id: clientId,
     client_secret: clientSecret,
-    provider_id: slug,
+    provider_id: 'oidc-env',
     display_name: name || slug,
     domain: domain || `${slug}.env`,
     logo_url: logoUrl || null,
