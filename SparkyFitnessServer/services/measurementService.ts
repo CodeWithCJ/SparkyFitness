@@ -416,7 +416,7 @@ function resolveProvider(source: string | undefined): {
   const providerType =
     PROVIDER_TYPE_BY_SOURCE[source ?? ''] ?? 'health_connect';
   const fallbackName =
-    providerType === 'healthkit' ? 'HealthKit food' : 'Health Connect food';
+    providerType === 'healthkit' ? 'Apple Health food' : 'Health Connect food';
   return { providerType, fallbackName };
 }
 

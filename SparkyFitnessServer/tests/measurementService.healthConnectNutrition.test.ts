@@ -253,7 +253,7 @@ describe('processHealthData Nutrition ingestion', () => {
     expect(foodRepository.createFoodEntry).not.toHaveBeenCalled();
   });
 
-  it('tags HealthKit entries with healthkit provider and uses HealthKit food as fallback name', async () => {
+  it('tags HealthKit entries with healthkit provider and uses Apple Health food as fallback name', async () => {
     const hkRecord = {
       type: 'Nutrition',
       source: 'HealthKit',
@@ -284,10 +284,10 @@ describe('processHealthData Nutrition ingestion', () => {
     ).mock.calls[0];
     expect(lookupProviderType).toBe('healthkit');
 
-    // Created food is tagged healthkit; nameless record uses 'HealthKit food'.
+    // Created food is tagged healthkit; nameless record uses 'Apple Health food'.
     const createFoodArg = (foodRepository.createFood as any).mock.calls[0][0];
     expect(createFoodArg).toMatchObject({
-      name: 'HealthKit food',
+      name: 'Apple Health food',
       provider_type: 'healthkit',
       is_quick_food: true,
       source: 'imported',

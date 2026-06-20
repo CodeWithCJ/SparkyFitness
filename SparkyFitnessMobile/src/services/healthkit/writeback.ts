@@ -26,6 +26,7 @@ import {
 } from './writebackMappers';
 import { WRITEBACK_METRICS, type WritebackMetric } from '../../WritebackMetrics';
 import { getMealTypeLabel } from '../../constants/meals';
+import { runTasksInBatches } from '../../utils/concurrency';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -40,6 +41,12 @@ type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 // tracked-UUID map key for the correlation objects themselves (deleteObjects is scoped
 // to one type, so we delete the correlation UUIDs under this key too).
 const FOOD_CORRELATION_TYPE = 'HKCorrelationTypeIdentifierFood' as const;
+
+// Each date's writeback is independent (its own per-day range delete + save), so we run
+// them with bounded concurrency to shrink wall-clock under iOS's time-boxed background
+// task. Matches METRIC_FETCH_CONCURRENCY in the sync orchestrator — enough overlap to
+// hide network latency without flooding HealthKit/the server with parallel work.
+const WRITEBACK_DATE_CONCURRENCY = 3;
 
 // HKAuthorizationStatus.sharingAuthorized. HealthKit reliably reports SHARE/write
 // status (only READ status is hidden), so this is the iOS analogue of Android's
@@ -332,13 +339,17 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   // Traceability marker stamped into written samples' metadata (no clientRecordId on iOS).
   const version = Date.now();
 
-  for (const date of dates) {
+  // One worker per date. The metrics within a date stay sequential (they write distinct
+  // sample types to the same day, so there's nothing to gain from racing them), but
+  // distinct dates run concurrently. Each worker swallows its own errors so one failed
+  // date never aborts the others.
+  const writeForDate = async (date: string): Promise<void> => {
     let summary: DailySummary;
     try {
       summary = await fetchDailySummary(date); // once per date, shared by both metrics
     } catch (error) {
       addLog(`[Writeback] Failed to load summary for ${date}: ${message(error)}`, 'ERROR');
-      continue;
+      return;
     }
     for (const metric of writable) {
       try {
@@ -351,7 +362,9 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
         addLog(`[Writeback] Failed ${metric.label} for ${date}: ${message(error)}`, 'ERROR');
       }
     }
-  }
+  };
+
+  await runTasksInBatches(dates, WRITEBACK_DATE_CONCURRENCY, writeForDate);
   return true;
 };
 
