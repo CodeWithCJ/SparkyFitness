@@ -3,6 +3,9 @@ import type { ExternalDataProvider } from './ExternalProviderSettings';
 import {
   useExternalProviders,
   useUpdateExternalProviderMutation,
+  useGlobalExternalProviders,
+  useUpdateGlobalProvider,
+  type CreateGlobalProviderPayload,
 } from '@/hooks/Settings/useExternalProviderSettings';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useMemo, useState } from 'react';
@@ -35,6 +38,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface ExternalProviderListProps {
   showAddForm: boolean;
+  isAdminMode?: boolean;
 }
 
 interface SortableProviderRowProps {
@@ -89,7 +93,10 @@ const SortableProviderRow = ({
   );
 };
 
-const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
+const ExternalProviderList = ({
+  showAddForm,
+  isAdminMode = false,
+}: ExternalProviderListProps) => {
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
 
@@ -102,13 +109,24 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     saveAllPreferences,
   } = usePreferences();
 
-  const { data: providers = [], isLoading: providersLoading } =
-    useExternalProviders(user?.activeUserId);
+  const { data: userProviders = [], isLoading: userProvidersLoading } =
+    useExternalProviders(isAdminMode ? undefined : user?.activeUserId);
+
+  const { data: globalProviders = [], isLoading: globalProvidersLoading } =
+    useGlobalExternalProviders(isAdminMode);
+
+  const providers = isAdminMode ? globalProviders : userProviders;
+  const providersLoading = isAdminMode
+    ? globalProvidersLoading
+    : userProvidersLoading;
 
   const { mutateAsync: updateExternalProvider, isPending: updatePending } =
     useUpdateExternalProviderMutation();
 
-  const loading = providersLoading || updatePending;
+  const { mutateAsync: updateGlobalProvider, isPending: globalUpdatePending } =
+    useUpdateGlobalProvider();
+
+  const loading = providersLoading || updatePending || globalUpdatePending;
 
   const [optimisticProviders, setOptimisticProviders] = useState<
     ExternalDataProvider[] | null
@@ -288,35 +306,42 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     };
 
     try {
-      const data = await updateExternalProvider({
-        id: providerId,
-        data: providerUpdateData,
-      });
+      if (isAdminMode) {
+        await updateGlobalProvider({
+          id: providerId,
+          data: providerUpdateData as unknown as Partial<CreateGlobalProviderPayload>,
+        });
+      } else {
+        const data = await updateExternalProvider({
+          id: providerId,
+          data: providerUpdateData,
+        });
+
+        if (
+          data &&
+          data.is_active &&
+          (data.provider_type === 'openfoodfacts' ||
+            data.provider_type === 'nutritionix' ||
+            data.provider_type === 'fatsecret' ||
+            data.provider_type === 'mealie' ||
+            data.provider_type === 'tandoor' ||
+            data.provider_type === 'norish' ||
+            data.provider_type === 'usda' ||
+            data.provider_type === 'yazio')
+        ) {
+          setDefaultFoodDataProviderId(data.id);
+        } else if (data && defaultFoodDataProviderId === data.id) {
+          setDefaultFoodDataProviderId(null);
+        }
+
+        if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
+          setDefaultBarcodeProviderId(null);
+          saveAllPreferences({ defaultBarcodeProviderId: null });
+        }
+      }
 
       setEditData({});
       setEditingProvider(null);
-
-      if (
-        data &&
-        data.is_active &&
-        (data.provider_type === 'openfoodfacts' ||
-          data.provider_type === 'nutritionix' ||
-          data.provider_type === 'fatsecret' ||
-          data.provider_type === 'mealie' ||
-          data.provider_type === 'tandoor' ||
-          data.provider_type === 'norish' ||
-          data.provider_type === 'usda' ||
-          data.provider_type === 'yazio')
-      ) {
-        setDefaultFoodDataProviderId(data.id);
-      } else if (data && defaultFoodDataProviderId === data.id) {
-        setDefaultFoodDataProviderId(null);
-      }
-
-      if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
-        setDefaultBarcodeProviderId(null);
-        saveAllPreferences({ defaultBarcodeProviderId: null });
-      }
     } catch (error: unknown) {
       console.error('Error updating external data provider:', error);
     }
@@ -396,6 +421,38 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         <p className="text-sm">
           Add your first data provider to enable search from external sources.
         </p>
+      </div>
+    );
+  }
+
+  if (isAdminMode) {
+    return (
+      <div className="space-y-4">
+        {displayProviders.map((provider) => (
+          <div
+            key={provider.id}
+            className="border rounded-lg p-4 bg-background"
+          >
+            {editingProvider === provider.id ? (
+              <EditProviderForm
+                provider={provider}
+                editData={editData}
+                setEditData={setEditData}
+                onSubmit={handleUpdateProvider}
+                onCancel={cancelEditing}
+                loading={loading}
+                isAdminMode={true}
+              />
+            ) : (
+              <ProviderCard
+                provider={provider}
+                isLoading={loading}
+                startEditing={startEditing}
+                isAdminMode={true}
+              />
+            )}
+          </div>
+        ))}
       </div>
     );
   }

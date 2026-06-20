@@ -2,7 +2,7 @@
   "expo": {
     "name": "SparkyFitnessMobile",
     "slug": "sparkyfitnessmobile",
-    "version": "1.4.3",
+    "version": "1.4.4",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",

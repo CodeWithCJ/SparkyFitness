@@ -7,10 +7,10 @@ async function getExternalDataProviders(userId: any) {
   try {
     const result = await client.query(
       `SELECT edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, 
-              edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency, edp.sort_order,
+              edp.is_public, edp.encrypted_access_token, edp.sync_frequency, edp.sort_order,
               edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
               edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
-              ept.is_strictly_private
+              ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
        ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`,
@@ -72,13 +72,13 @@ async function getExternalDataProvidersByUserId(
   try {
     const result = await client.query(
       `SELECT
-        edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, edp.shared_with_public, edp.sync_frequency,
+        edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, edp.is_public, edp.sync_frequency,
         edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
         edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
         edp.token_expires_at, edp.external_user_id,
         edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
         edp.encrypted_access_token, -- Include encrypted_access_token
-        ept.is_strictly_private
+        ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
         FROM external_data_providers edp
         LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
         WHERE edp.user_id = $1
@@ -141,7 +141,7 @@ async function getExternalDataProvidersByUserId(
           provider_name: row.provider_name,
           provider_type: row.provider_type,
           user_id: row.user_id,
-          shared_with_public: row.shared_with_public,
+          is_public: row.is_public,
           app_id: decryptedAppId,
           app_key: decryptedAppKey,
           token_expires_at: row.token_expires_at,
@@ -152,6 +152,9 @@ async function getExternalDataProvidersByUserId(
           sync_frequency: row.sync_frequency,
           has_token: !!row.encrypted_access_token, // Add has_token property
           is_strictly_private: !!row.is_strictly_private,
+          categories: row.categories,
+          required_fields: row.required_fields,
+          field_labels: row.field_labels,
         };
       })
     );
@@ -203,7 +206,7 @@ async function createExternalDataProvider(providerData: any) {
     }
     const result = await client.query(
       `INSERT INTO external_data_providers (
-        provider_name, provider_type, user_id, is_active, base_url, shared_with_public,
+        provider_name, provider_type, user_id, is_active, base_url, is_public,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
@@ -216,7 +219,7 @@ async function createExternalDataProvider(providerData: any) {
         user_id,
         is_active,
         base_url,
-        providerData.shared_with_public || false,
+        providerData.is_public || false,
         encryptedAppId,
         appIdIv,
         appIdTag,
@@ -241,7 +244,7 @@ async function createExternalDataProvider(providerData: any) {
 // double as OFF username / password for providers of type `openfoodfacts`. For
 // other providers they are API credential fields. Callers must honor the
 // mutual-exclusion rule between populated OFF credentials and
-// `shared_with_public` — see externalProviderService.
+// `is_public` — see externalProviderService.
 //
 // updateExternalDataProvider: passing `updateData.app_id === null` (and
 // similarly `app_key === null`) is an explicit request to CLEAR the stored
@@ -293,7 +296,7 @@ async function updateExternalDataProvider(
         provider_type = COALESCE($2, provider_type),
         is_active = COALESCE($3, is_active),
         base_url = COALESCE($4, base_url),
-        shared_with_public = COALESCE($5, shared_with_public),
+        is_public = COALESCE($5, is_public),
         encrypted_app_id = CASE WHEN $19 THEN NULL ELSE COALESCE($6, encrypted_app_id) END,
         app_id_iv = CASE WHEN $19 THEN NULL ELSE COALESCE($7, app_id_iv) END,
         app_id_tag = CASE WHEN $19 THEN NULL ELSE COALESCE($8, app_id_tag) END,
@@ -315,7 +318,7 @@ async function updateExternalDataProvider(
         updateData.provider_type,
         updateData.is_active,
         updateData.base_url,
-        updateData.shared_with_public,
+        updateData.is_public,
         encryptedAppId,
         appIdIv,
         appIdTag,
@@ -345,12 +348,12 @@ async function getExternalDataProviderById(providerId: any) {
   try {
     const result = await client.query(
       `SELECT
-        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.is_active, edp.base_url, edp.shared_with_public, edp.sync_frequency,
+        edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.is_active, edp.base_url, edp.is_public, edp.sync_frequency,
         edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
         edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
         edp.token_expires_at, edp.external_user_id,
         edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
-        ept.is_strictly_private
+        ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
       FROM external_data_providers edp
       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
       WHERE edp.id = $1`,
@@ -411,7 +414,7 @@ async function getExternalDataProviderById(providerId: any) {
       provider_name: data.provider_name,
       provider_type: data.provider_type,
       user_id: data.user_id,
-      shared_with_public: data.shared_with_public,
+      is_public: data.is_public,
       is_active: data.is_active,
       base_url: data.base_url,
       sync_frequency: data.sync_frequency,
@@ -421,6 +424,10 @@ async function getExternalDataProviderById(providerId: any) {
       external_user_id: data.external_user_id,
       garth_dump: decryptedGarthDump,
       is_strictly_private: !!data.is_strictly_private,
+      categories: data.categories,
+      required_fields: data.required_fields,
+      field_labels: data.field_labels,
+      supports_barcode: !!data.supports_barcode,
     };
   } finally {
     client.release();
@@ -442,9 +449,9 @@ async function getExternalDataProviderByUserIdAndProviderName(
       `SELECT
         edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.sync_frequency, edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
         edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
-        edp.token_expires_at, edp.external_user_id, edp.is_active, edp.base_url, edp.shared_with_public, edp.updated_at,
+        edp.token_expires_at, edp.external_user_id, edp.is_active, edp.base_url, edp.updated_at,
         edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
-        ept.is_strictly_private
+        ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
       FROM external_data_providers edp
       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
       WHERE edp.provider_name = $1`,
@@ -506,7 +513,7 @@ async function getExternalDataProviderByUserIdAndProviderName(
       provider_name: data.provider_name,
       provider_type: data.provider_type,
       user_id: data.user_id,
-      shared_with_public: data.shared_with_public,
+      is_public: data.is_public,
       is_active: data.is_active,
       base_url: data.base_url,
       sync_frequency: data.sync_frequency,
@@ -517,6 +524,10 @@ async function getExternalDataProviderByUserIdAndProviderName(
       garth_dump: decryptedGarthDump,
       updated_at: data.updated_at, // Include updated_at
       is_strictly_private: !!data.is_strictly_private,
+      categories: data.categories,
+      required_fields: data.required_fields,
+      field_labels: data.field_labels,
+      supports_barcode: !!data.supports_barcode,
     };
   } finally {
     client.release();
@@ -576,7 +587,7 @@ async function getProvidersByType(providerType: any) {
   try {
     const result = await client.query(
       `SELECT
-        id, user_id, provider_name, provider_type, is_active, base_url, shared_with_public,
+        id, user_id, provider_name, provider_type, is_active, base_url, is_public,
         encrypted_app_id, app_id_iv, app_id_tag,
         encrypted_app_key, app_key_iv, app_key_tag,
         token_expires_at, external_user_id,
@@ -614,6 +625,219 @@ async function getActiveProvidersByTypes(
     client.release();
   }
 }
+async function getExternalProviderTypes() {
+  const client = await getSystemClient(); // System-level read operation
+  try {
+    const result = await client.query(
+      'SELECT id, display_name, description, is_strictly_private, categories, required_fields, field_labels, supports_barcode FROM external_provider_types ORDER BY display_name ASC',
+      []
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+// ─── Admin global provider CRUD ───────────────────────────────────────────────
+
+async function getGlobalExternalDataProviders() {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT edp.id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url,
+              edp.is_public, edp.sync_frequency, edp.sort_order,
+              edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
+              edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
+              ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
+       FROM external_data_providers edp
+       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       WHERE edp.is_public = TRUE
+       ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`
+    );
+    const providers = await Promise.all(
+      result.rows.map(async (row: any) => {
+        let decryptedAppId = null;
+        let decryptedAppKey = null;
+        if (row.encrypted_app_id && row.app_id_iv && row.app_id_tag) {
+          try {
+            decryptedAppId = await decrypt(
+              row.encrypted_app_id,
+              row.app_id_iv,
+              row.app_id_tag,
+              ENCRYPTION_KEY
+            );
+          } catch (e) {
+            log(
+              'error',
+              'Error decrypting app_id for global provider:',
+              row.id,
+              e
+            );
+          }
+        }
+        if (row.encrypted_app_key && row.app_key_iv && row.app_key_tag) {
+          try {
+            decryptedAppKey = await decrypt(
+              row.encrypted_app_key,
+              row.app_key_iv,
+              row.app_key_tag,
+              ENCRYPTION_KEY
+            );
+          } catch (e) {
+            log(
+              'error',
+              'Error decrypting app_key for global provider:',
+              row.id,
+              e
+            );
+          }
+        }
+        return {
+          ...row,
+          app_id: decryptedAppId,
+          app_key: decryptedAppKey,
+          is_public: true,
+        };
+      })
+    );
+    return providers;
+  } finally {
+    client.release();
+  }
+}
+
+async function createGlobalExternalDataProvider(providerData: any) {
+  if (!providerData.user_id) {
+    throw new Error(
+      'user_id is required to create a global external data provider.'
+    );
+  }
+  const client = await getSystemClient();
+  try {
+    let encryptedAppId = null,
+      appIdIv = null,
+      appIdTag = null;
+    let encryptedAppKey = null,
+      appKeyIv = null,
+      appKeyTag = null;
+    if (providerData.app_id) {
+      const e = await encrypt(providerData.app_id, ENCRYPTION_KEY);
+      encryptedAppId = e.encryptedText;
+      appIdIv = e.iv;
+      appIdTag = e.tag;
+    }
+    if (providerData.app_key) {
+      const e = await encrypt(providerData.app_key, ENCRYPTION_KEY);
+      encryptedAppKey = e.encryptedText;
+      appKeyIv = e.iv;
+      appKeyTag = e.tag;
+    }
+    const result = await client.query(
+      `INSERT INTO external_data_providers (
+        provider_name, provider_type, user_id, is_active, base_url, is_public,
+        encrypted_app_id, app_id_iv, app_id_tag,
+        encrypted_app_key, app_key_iv, app_key_tag,
+        sync_frequency, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, $9, $10, $11, $12, now(), now()) RETURNING id`,
+      [
+        providerData.provider_name,
+        providerData.provider_type,
+        providerData.user_id,
+        providerData.is_active ?? false,
+        providerData.base_url || null,
+        encryptedAppId,
+        appIdIv,
+        appIdTag,
+        encryptedAppKey,
+        appKeyIv,
+        appKeyTag,
+        providerData.sync_frequency || 'manual',
+      ]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function updateGlobalExternalDataProvider(id: any, updateData: any) {
+  const client = await getSystemClient();
+  try {
+    let encryptedAppId = null,
+      appIdIv = null,
+      appIdTag = null;
+    let encryptedAppKey = null,
+      appKeyIv = null,
+      appKeyTag = null;
+    let clearAppId = false,
+      clearAppKey = false;
+    if (updateData.app_id === null) {
+      clearAppId = true;
+    } else if (updateData.app_id !== undefined) {
+      const e = await encrypt(updateData.app_id, ENCRYPTION_KEY);
+      encryptedAppId = e.encryptedText;
+      appIdIv = e.iv;
+      appIdTag = e.tag;
+    }
+    if (updateData.app_key === null) {
+      clearAppKey = true;
+    } else if (updateData.app_key !== undefined) {
+      const e = await encrypt(updateData.app_key, ENCRYPTION_KEY);
+      encryptedAppKey = e.encryptedText;
+      appKeyIv = e.iv;
+      appKeyTag = e.tag;
+    }
+    const result = await client.query(
+      `UPDATE external_data_providers SET
+        provider_name = COALESCE($1, provider_name),
+        provider_type = COALESCE($2, provider_type),
+        is_active = COALESCE($3, is_active),
+        base_url = COALESCE($4, base_url),
+        encrypted_app_id = CASE WHEN $5 THEN NULL ELSE COALESCE($6, encrypted_app_id) END,
+        app_id_iv = CASE WHEN $5 THEN NULL ELSE COALESCE($7, app_id_iv) END,
+        app_id_tag = CASE WHEN $5 THEN NULL ELSE COALESCE($8, app_id_tag) END,
+        encrypted_app_key = CASE WHEN $9 THEN NULL ELSE COALESCE($10, encrypted_app_key) END,
+        app_key_iv = CASE WHEN $9 THEN NULL ELSE COALESCE($11, app_key_iv) END,
+        app_key_tag = CASE WHEN $9 THEN NULL ELSE COALESCE($12, app_key_tag) END,
+        sync_frequency = COALESCE($13, sync_frequency),
+        updated_at = now()
+      WHERE id = $14 AND is_public = TRUE
+      RETURNING *`,
+      [
+        updateData.provider_name,
+        updateData.provider_type,
+        updateData.is_active,
+        updateData.base_url,
+        clearAppId,
+        encryptedAppId,
+        appIdIv,
+        appIdTag,
+        clearAppKey,
+        encryptedAppKey,
+        appKeyIv,
+        appKeyTag,
+        updateData.sync_frequency,
+        id,
+      ]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteGlobalExternalDataProvider(id: any) {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      'DELETE FROM external_data_providers WHERE id = $1 AND is_public = TRUE RETURNING id',
+      [id]
+    );
+    return result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
+
 export { getExternalDataProviders };
 export { getExternalDataProvidersByUserId };
 export { getActiveProvidersByTypes };
@@ -625,6 +849,11 @@ export { deleteExternalDataProvider };
 export { getExternalDataProviderByUserIdAndProviderName };
 export { updateProviderLastSync };
 export { getProvidersByType };
+export { getExternalProviderTypes };
+export { getGlobalExternalDataProviders };
+export { createGlobalExternalDataProvider };
+export { updateGlobalExternalDataProvider };
+export { deleteGlobalExternalDataProvider };
 export default {
   getExternalDataProviders,
   getExternalDataProvidersByUserId,
@@ -637,4 +866,9 @@ export default {
   getExternalDataProviderByUserIdAndProviderName,
   updateProviderLastSync,
   getProvidersByType,
+  getExternalProviderTypes,
+  getGlobalExternalDataProviders,
+  createGlobalExternalDataProvider,
+  updateGlobalExternalDataProvider,
+  deleteGlobalExternalDataProvider,
 };

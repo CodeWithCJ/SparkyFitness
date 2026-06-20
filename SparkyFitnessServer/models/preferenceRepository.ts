@@ -40,10 +40,10 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         goal_mode_custom_percentage = COALESCE($36, goal_mode_custom_percentage),
         use_external_bmr = COALESCE($37, use_external_bmr),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
+        active_ai_service_id = CASE WHEN $39 THEN $38 ELSE active_ai_service_id END,
         updated_at = now()
       WHERE user_id = $29
       RETURNING *`,
-
       [
         preferenceData.date_format,
         preferenceData.default_weight_unit,
@@ -82,6 +82,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.goal_mode_calculation_method,
         preferenceData.goal_mode_custom_percentage,
         preferenceData.use_external_bmr,
+        preferenceData.active_ai_service_id,
+        'active_ai_service_id' in preferenceData,
       ]
     );
     return result.rows[0];
@@ -163,6 +165,7 @@ async function upsertUserPreferences(preferenceData: any) {
        goal_mode_calculation_method,
        goal_mode_custom_percentage,
        use_external_bmr,
+       active_ai_service_id,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -183,6 +186,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($35, 'manual'),
        COALESCE($36, 0),
        COALESCE($37, false),
+       $38,
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -221,6 +225,7 @@ async function upsertUserPreferences(preferenceData: any) {
        goal_mode_custom_percentage = COALESCE(EXCLUDED.goal_mode_custom_percentage, user_preferences.goal_mode_custom_percentage),
        use_external_bmr = COALESCE(EXCLUDED.use_external_bmr, user_preferences.use_external_bmr),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
+       active_ai_service_id = CASE WHEN $39 THEN EXCLUDED.active_ai_service_id ELSE user_preferences.active_ai_service_id END,
        updated_at = now()
      RETURNING *`,
       [
@@ -261,6 +266,8 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.goal_mode_calculation_method,
         preferenceData.goal_mode_custom_percentage,
         preferenceData.use_external_bmr,
+        preferenceData.active_ai_service_id,
+        'active_ai_service_id' in preferenceData,
       ]
     );
     return result.rows[0];

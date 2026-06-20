@@ -27,6 +27,7 @@ import {
   useAddAIService,
   useUpdateAIService,
   useDeleteAIService,
+  useUpdateUserAIPreferences,
 } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { AiServiceSettingsResponse } from '@workspace/shared';
@@ -54,8 +55,10 @@ const AIServiceSettings = () => {
     useUpdateAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteAIService();
+  const { mutateAsync: updatePreferences, isPending: isUpdatingPrefs } =
+    useUpdateUserAIPreferences();
 
-  const loading = isAdding || isUpdating || isDeleting;
+  const loading = isAdding || isUpdating || isDeleting || isUpdatingPrefs;
 
   const [newService, setNewService] =
     useState<CreateAiServiceSettingsFormInput>({
@@ -307,7 +310,10 @@ const AIServiceSettings = () => {
     try {
       await updateService({ serviceId, serviceData: serviceToUpdate });
       setEditingService(null);
-      setEditData({ showCustomModelInput: false, custom_model_name: '' });
+      setEditData({
+        showCustomModelInput: false,
+        custom_model_name: '',
+      });
       // Success toast is handled by the mutation meta
     } catch (error: unknown) {
       // Check for 403 errors and show appropriate message
@@ -425,6 +431,27 @@ const AIServiceSettings = () => {
       return;
     }
 
+    const isOwner = originalService.user_id === user?.id;
+
+    if (!isOwner) {
+      try {
+        await updatePreferences({
+          active_ai_service_id: isActive ? serviceId : null,
+          auto_clear_history: preferencesData?.auto_clear_history || 'never',
+        });
+        toast({
+          title: t('settings.aiService.userSettings.success'),
+          description: isActive
+            ? t('settings.aiService.userSettings.serviceActivated')
+            : t('settings.aiService.userSettings.serviceDeactivated'),
+        });
+        return;
+      } catch (error) {
+        console.error('Error updating active AI service preference:', error);
+        return;
+      }
+    }
+
     if (originalService.is_public) {
       toast({
         title: t('settings.aiService.userSettings.error'),
@@ -454,9 +481,7 @@ const AIServiceSettings = () => {
           ? t('settings.aiService.userSettings.serviceActivated')
           : t('settings.aiService.userSettings.serviceDeactivated'),
       });
-      // Success toast for update is handled by the mutation meta, but we add a specific one for toggle
     } catch (error) {
-      // Error toast is handled by the mutation meta
       console.error('Error updating AI service status:', error);
     }
   };
@@ -503,7 +528,10 @@ const AIServiceSettings = () => {
 
   const cancelEditing = () => {
     setEditingService(null);
-    setEditData({ showCustomModelInput: false, custom_model_name: '' });
+    setEditData({
+      showCustomModelInput: false,
+      custom_model_name: '',
+    });
   };
 
   const openDeleteDialog = (serviceId: string) => {
@@ -581,26 +609,39 @@ const AIServiceSettings = () => {
               <div className="space-y-4">
                 {services
                   .filter((service) => isUserConfigAllowed || service.is_public)
-                  .map((service) => (
-                    <UserServiceListItem
-                      key={service.id}
-                      service={service}
-                      isEditing={editingService === service.id}
-                      editData={editData}
-                      onEditDataChange={(data) =>
-                        setEditData((prev) => ({ ...prev, ...data }))
-                      }
-                      onStartEdit={() => startEditing(service)}
-                      onCancelEdit={cancelEditing}
-                      onUpdate={() => handleUpdateService(service.id)}
-                      onDelete={() => openDeleteDialog(service.id)}
-                      onToggleActive={(isActive) =>
-                        handleToggleActive(service.id, isActive)
-                      }
-                      loading={loading}
-                      isUserConfigAllowed={isUserConfigAllowed}
-                    />
-                  ))}
+                  .map((service) => {
+                    const isOwner = service.user_id === user?.id;
+                    const isActive = preferencesData?.active_ai_service_id
+                      ? service.id === preferencesData.active_ai_service_id
+                      : service.is_active;
+
+                    const resolvedService = {
+                      ...service,
+                      is_active: isActive,
+                    };
+
+                    return (
+                      <UserServiceListItem
+                        key={service.id}
+                        service={resolvedService}
+                        isEditing={editingService === service.id}
+                        editData={editData}
+                        onEditDataChange={(data) =>
+                          setEditData((prev) => ({ ...prev, ...data }))
+                        }
+                        onStartEdit={() => startEditing(service)}
+                        onCancelEdit={cancelEditing}
+                        onUpdate={() => handleUpdateService(service.id)}
+                        onDelete={() => openDeleteDialog(service.id)}
+                        onToggleActive={(isActive) =>
+                          handleToggleActive(service.id, isActive)
+                        }
+                        loading={loading}
+                        isUserConfigAllowed={isUserConfigAllowed}
+                        isOwner={isOwner}
+                      />
+                    );
+                  })}
               </div>
             </>
           )}

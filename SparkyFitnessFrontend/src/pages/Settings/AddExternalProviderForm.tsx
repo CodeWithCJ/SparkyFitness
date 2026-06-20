@@ -21,11 +21,14 @@ import {
   useLoginGarminMutation,
   useSyncHevyMutation,
 } from '@/hooks/Integrations/useIntegrations';
-import { useCreateExternalProviderMutation } from '@/hooks/Settings/useExternalProviderSettings';
+import {
+  useCreateExternalProviderMutation,
+  useExternalProviderTypesQuery,
+  useCreateGlobalProvider,
+} from '@/hooks/Settings/useExternalProviderSettings';
 import {
   encodeYazioAppId,
   encodeYazioAppKey,
-  getProviderTypes,
   validateProvider,
 } from '@/utils/settings';
 import { ProviderSpecificFields } from './ProviderSpecificFields';
@@ -35,23 +38,28 @@ interface AddExternalProviderFormProps {
   showAddForm: boolean;
   setShowAddForm: (show: boolean) => void;
   onAddSuccess: () => void;
-  onGarminMfaRequired: (clientState: string) => void; // New prop for MFA handling
+  onGarminMfaRequired?: (clientState: string) => void; // New prop for MFA handling
+  isAdminMode?: boolean;
 }
 
 const AddExternalProviderForm = ({
   showAddForm,
   setShowAddForm,
   onAddSuccess,
-  onGarminMfaRequired,
+  onGarminMfaRequired = () => {},
+  isAdminMode = false,
 }: AddExternalProviderFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: providerTypes } = useExternalProviderTypesQuery();
   const { mutateAsync: syncHevyData, isPending: isSyncingHevy } =
     useSyncHevyMutation();
   const { mutateAsync: loginGarmin, isPending: isLoggingInGarmin } =
     useLoginGarminMutation();
   const { mutateAsync: createExternalProvider, isPending: isCreatingProvider } =
     useCreateExternalProviderMutation();
+  const { mutateAsync: createGlobalProvider, isPending: isCreatingGlobal } =
+    useCreateGlobalProvider();
 
   const { mutateAsync: handleConnectFitbit, isPending: isConnectingFitbit } =
     useConnectFitbitMutation();
@@ -68,6 +76,7 @@ const AddExternalProviderForm = ({
     isSyncingHevy ||
     isLoggingInGarmin ||
     isCreatingProvider ||
+    isCreatingGlobal ||
     isConnectingFitbit ||
     isConnectingPolar ||
     isConnectingStrava ||
@@ -88,6 +97,7 @@ const AddExternalProviderForm = ({
       garmin_token_expires: '',
     }
   );
+
   const [fullSyncOnConnect, setFullSyncOnConnect] = useState(false);
 
   const connectionHandlers: Record<string, (id: string) => Promise<void>> = {
@@ -106,7 +116,7 @@ const AddExternalProviderForm = ({
       return;
     }
 
-    const validationError = validateProvider(newProvider);
+    const validationError = validateProvider(newProvider, providerTypes);
     if (validationError) {
       toast({
         title: 'Error',
@@ -160,16 +170,27 @@ const AddExternalProviderForm = ({
               )
             : newProvider.app_key || null;
 
-        createdProvider = await createExternalProvider({
-          user_id: user.id,
-          provider_name: newProvider.provider_name || '',
-          provider_type: newProvider.provider_type || '',
-          app_id: appId,
-          app_key: appKey,
-          is_active: newProvider.is_active || false,
-          base_url: newProvider.base_url || null,
-          sync_frequency: newProvider.sync_frequency || null,
-        });
+        if (isAdminMode) {
+          createdProvider = await createGlobalProvider({
+            provider_name: newProvider.provider_name || '',
+            provider_type: newProvider.provider_type || '',
+            app_id: appId,
+            app_key: appKey,
+            base_url: newProvider.base_url || null,
+            is_active: newProvider.is_active || false,
+          });
+        } else {
+          createdProvider = await createExternalProvider({
+            user_id: user.id,
+            provider_name: newProvider.provider_name || '',
+            provider_type: newProvider.provider_type || '',
+            app_id: appId,
+            app_key: appKey,
+            is_active: newProvider.is_active || false,
+            base_url: newProvider.base_url || null,
+            sync_frequency: newProvider.sync_frequency || null,
+          });
+        }
       }
 
       if (newProvider.provider_type === 'hevy' && newProvider.is_active) {
@@ -279,11 +300,18 @@ const AddExternalProviderForm = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getProviderTypes().map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {(providerTypes || [])
+                    .map((type) => ({
+                      value: type.id,
+                      label: type.display_name,
+                      is_strictly_private: type.is_strictly_private,
+                    }))
+                    .filter((type) => !isAdminMode || !type.is_strictly_private)
+                    .map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -311,6 +339,8 @@ const AddExternalProviderForm = ({
             />
             <Label htmlFor="new_is_active">Activate this provider</Label>
           </div>
+
+          {/* Public sharing switch removed */}
 
           <div className="flex gap-2">
             <Button disabled={isAnyIntegrationPending} type="submit">
