@@ -42,9 +42,9 @@ export const deleteMealPlanTemplate = async (
   templateId: string,
   currentClientDate?: string
 ): Promise<void> => {
-  let url = `/meal-plan-templates/${templateId}?userId=${userId}`;
+  const params = new URLSearchParams({ userId });
   if (currentClientDate) {
-    url += `&currentClientDate=${currentClientDate}`;
+    params.append('currentClientDate', currentClientDate);
   }
-  await api.delete(url);
+  await api.delete(`/meal-plan-templates/${templateId}?${params.toString()}`);
 };
