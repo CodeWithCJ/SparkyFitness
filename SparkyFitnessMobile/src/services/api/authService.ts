@@ -98,6 +98,14 @@ const getJsonHeaders = (): Record<string, string> => ({
 
 const trustedOriginCache = new Map<string, string | null>();
 
+export const _clearTrustedOriginCache = (): void => {
+  trustedOriginCache.clear();
+};
+
+export const _setTrustedOriginCache = (url: string, origin: string | null): void => {
+  trustedOriginCache.set(normalizeUrl(url), origin);
+};
+
 type NetworkingModule = {
   clearCookies: (callback: (result: boolean) => void) => void;
 };

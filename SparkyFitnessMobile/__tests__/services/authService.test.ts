@@ -12,6 +12,8 @@ import {
   verifyEmailOtp,
   logout,
   clearAuthCookies,
+  _clearTrustedOriginCache,
+  _setTrustedOriginCache,
 } from '../../src/services/api/authService';
 import { clearSessionToken, ServerConfig } from '../../src/services/storage';
 
@@ -29,6 +31,7 @@ describe('authService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     global.fetch = mockFetch;
+    _clearTrustedOriginCache();
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -123,6 +126,12 @@ describe('authService', () => {
   describe('login', () => {
     const serverUrl = 'https://login-test.example.com';
 
+    beforeEach(() => {
+      _setTrustedOriginCache('https://login-test.example.com', 'https://login-test.example.com');
+      _setTrustedOriginCache('https://trailing-slash.example.com', 'https://trailing-slash.example.com');
+      _setTrustedOriginCache('http://localhost:3000', 'http://localhost:3000');
+    });
+
     test('returns success with session token and user on successful login', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -205,7 +214,10 @@ describe('authService', () => {
         expect.objectContaining({
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://login-test.example.com',
+          },
           body: JSON.stringify({ email: 'u@t.com', password: 'p' }),
         }),
       );
