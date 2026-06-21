@@ -80,7 +80,7 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
   try {
     // Try to get setting (can be user-specific or global)
     const result = await client.query(
-      'SELECT * FROM ai_service_settings WHERE id = $1',
+      'SELECT * FROM ai_service_settings WHERE id = $1 AND is_active = TRUE',
       [id]
     );
     const setting = result.rows[0];
@@ -177,7 +177,7 @@ async function getActiveAiServiceSetting(userId: string) {
         `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, u.name as creator_name
          FROM ai_service_settings ai
          LEFT JOIN public."user" u ON ai.user_id = u.id
-         WHERE ai.id = $1`,
+         WHERE ai.id = $1 AND ai.is_active = TRUE`,
         [activeId]
       );
       if (settingResult.rows.length > 0) {

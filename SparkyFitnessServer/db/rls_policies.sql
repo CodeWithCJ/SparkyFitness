@@ -404,13 +404,13 @@ DROP POLICY IF EXISTS delete_policy ON public.external_data_providers;
 -- SELECT: admin-global (authenticated users), own, or explicit family delegation
 CREATE POLICY select_policy ON public.external_data_providers FOR SELECT TO PUBLIC
 USING (
-  -- Admin-created global providers: all authenticated users can see them
-  (is_public = TRUE AND authenticated_user_id() IS NOT NULL)
+  -- Admin-created global providers: all authenticated users can see them if active
+  (is_public = TRUE AND is_active = TRUE AND authenticated_user_id() IS NOT NULL)
   -- Owner always sees their own providers
   OR (is_public = FALSE AND current_user_id() = user_id)
   OR (
-    -- Explicit family delegation: share_external_providers permission, non-strictly-private only
-    is_public = FALSE AND has_family_access(user_id, 'share_external_providers') AND EXISTS (
+    -- Explicit family delegation: share_external_providers permission, non-strictly-private only, must be active
+    is_public = FALSE AND is_active = TRUE AND has_family_access(user_id, 'share_external_providers') AND EXISTS (
       SELECT 1 FROM public.external_provider_types ept
       WHERE ept.id = external_data_providers.provider_type
       AND ept.is_strictly_private = FALSE

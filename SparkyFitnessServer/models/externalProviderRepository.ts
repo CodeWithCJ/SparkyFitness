@@ -13,8 +13,11 @@ async function getExternalDataProviders(userId: any) {
               ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       WHERE edp.user_id = $1 
+          OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+          OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
        ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`,
-      []
+      [userId]
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
     const providers = await Promise.all(
@@ -311,7 +314,7 @@ async function updateExternalDataProvider(
         sync_frequency = COALESCE($18, sync_frequency),
         sort_order = COALESCE($21, sort_order),
         updated_at = now()
-      WHERE id = $17
+      WHERE id = $17 AND user_id = $22
       RETURNING *`,
       [
         updateData.provider_name,
@@ -335,6 +338,7 @@ async function updateExternalDataProvider(
         clearAppId,
         clearAppKey,
         updateData.sort_order,
+        userId,
       ]
     );
     return result.rows[0];
@@ -454,8 +458,12 @@ async function getExternalDataProviderByUserIdAndProviderName(
         ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
       FROM external_data_providers edp
       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
-      WHERE edp.provider_name = $1`,
-      [providerName]
+      WHERE edp.provider_name = $1 AND (
+        edp.user_id = $2
+        OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+        OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+      )`,
+      [providerName, userId]
     );
     const data = result.rows[0];
     if (!data) {
@@ -534,6 +542,29 @@ async function getExternalDataProviderByUserIdAndProviderName(
   }
 }
 
+async function checkExternalDataProviderAccess(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const checkAccess = await client.query(
+      `SELECT 1 FROM external_data_providers edp
+       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       WHERE edp.id = $1 AND (
+         edp.user_id = $2
+         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+       )`,
+      [providerId, userId]
+    );
+    return checkAccess.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
 async function checkExternalDataProviderOwnership(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerId: any,
@@ -543,8 +574,9 @@ async function checkExternalDataProviderOwnership(
   const client = await getClient(userId); // User-specific operation
   try {
     const checkOwnership = await client.query(
-      'SELECT 1 FROM external_data_providers WHERE id = $1',
-      [providerId]
+      `SELECT 1 FROM external_data_providers
+       WHERE id = $1 AND user_id = $2`,
+      [providerId, userId]
     );
     return checkOwnership.rowCount > 0;
   } finally {
@@ -557,8 +589,8 @@ async function deleteExternalDataProvider(id: any, userId: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'DELETE FROM external_data_providers WHERE id = $1 RETURNING id',
-      [id]
+      'DELETE FROM external_data_providers WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
     );
     return result.rowCount > 0;
   } finally {
@@ -613,11 +645,17 @@ async function getActiveProvidersByTypes(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT id, provider_type, provider_name
-       FROM external_data_providers
-       WHERE user_id = $1 AND is_active = TRUE
-         AND provider_type = ANY($2::text[])
-       ORDER BY sort_order ASC NULLS LAST, created_at DESC`,
+      `SELECT edp.id, edp.provider_type, edp.provider_name
+       FROM external_data_providers edp
+       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       WHERE (
+         edp.user_id = $1
+         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+       )
+       AND edp.is_active = TRUE
+       AND edp.provider_type = ANY($2::text[])
+       ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`,
       [userId, providerTypes]
     );
     return result.rows;
@@ -845,6 +883,7 @@ export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderById };
 export { checkExternalDataProviderOwnership };
+export { checkExternalDataProviderAccess };
 export { deleteExternalDataProvider };
 export { getExternalDataProviderByUserIdAndProviderName };
 export { updateProviderLastSync };
@@ -862,6 +901,7 @@ export default {
   updateExternalDataProvider,
   getExternalDataProviderById,
   checkExternalDataProviderOwnership,
+  checkExternalDataProviderAccess,
   deleteExternalDataProvider,
   getExternalDataProviderByUserIdAndProviderName,
   updateProviderLastSync,
