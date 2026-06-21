@@ -11,7 +11,6 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExternalProviders } from '../hooks/useExternalProviders';
-import { BARCODE_PROVIDER_TYPES } from '../types/externalProviders';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
@@ -32,7 +31,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   const { preferences } = usePreferences();
   const { providers } = useExternalProviders();
   const { providers: barcodeProviders } = useExternalProviders({
-    filterSet: BARCODE_PROVIDER_TYPES,
+    supportsBarcode: true,
   });
 
   const providerOptions = useMemo(

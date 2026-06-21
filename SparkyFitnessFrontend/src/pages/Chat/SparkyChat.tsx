@@ -48,8 +48,7 @@ const SparkyChat = () => {
   // Chatbot is available if the user has any service they can actually use:
   // - their own active service
   // - an admin global (is_public) service
-  const usableServices =
-    services?.filter((service) => service.is_active || service.is_public) ?? [];
+  const usableServices = services?.filter((service) => service.is_active) ?? [];
 
   const hasEnabledServices = usableServices.length > 0;
 

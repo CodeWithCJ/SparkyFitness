@@ -564,7 +564,7 @@ describe('externalProviderRepository.getActiveProvidersByTypes', () => {
     expect(sql).toContain('is_active = TRUE');
     expect(sql).toContain('provider_type = ANY($2::text[])');
     expect(sql).toContain(
-      'ORDER BY sort_order ASC NULLS LAST, created_at DESC'
+      'ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC'
     );
     expect(params).toEqual(['user-1', ['usda', 'openfoodfacts']]);
     expect(mockClient.release).toHaveBeenCalled();

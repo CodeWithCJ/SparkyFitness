@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict latWcymJ5jLQTMuxBZ7lYHMjOy6NDN4WK9hOkbMYocOXKYkMbmFQaKk8L8BYNwU
+\restrict An5z6sBcQOfgBzFVi36YAdXlYU7MpGLD8Uc07KOvjAzQTJeORZ2n2hmwBNeQou9
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -164,33 +164,9 @@ CREATE FUNCTION public.create_default_external_data_providers(p_user_id uuid) RE
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  -- Insert default 'free-exercise-db' provider
-  INSERT INTO public.external_data_providers (
-    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
-  ) VALUES (
-    p_user_id, 'Free Exercise DB', 'free-exercise-db', TRUE, FALSE, now(), now()
-  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
-
-  -- Insert default 'wger' provider
-  INSERT INTO public.external_data_providers (
-    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
-  ) VALUES (
-    p_user_id, 'Wger', 'wger', TRUE, FALSE, now(), now()
-  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
-
-  -- Insert default 'openfoodfacts' provider
-  INSERT INTO public.external_data_providers (
-    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
-  ) VALUES (
-    p_user_id, 'Open Food Facts', 'openfoodfacts', TRUE, FALSE, now(), now()
-  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
-
-  -- Insert default 'swissfood' provider
-  INSERT INTO public.external_data_providers (
-    user_id, provider_name, provider_type, is_active, shared_with_public, created_at, updated_at
-  ) VALUES (
-    p_user_id, 'Swiss Food Database', 'swissfood', TRUE, FALSE, now(), now()
-  ) ON CONFLICT (user_id, provider_name) DO NOTHING;
+  -- No-op: default providers are now instance-level global records (is_public = TRUE).
+  -- See create_global_default_providers() for the one-time seeding logic.
+  NULL;
 END;
 $$;
 
@@ -210,6 +186,45 @@ BEGIN
     USING (has_diary_access(user_id))
     WITH CHECK (has_diary_access(user_id));
   ', table_name, table_name);
+END;
+$$;
+
+
+--
+-- Name: create_global_default_providers(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_global_default_providers(p_admin_user_id uuid) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Free Exercise DB
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, is_public, created_at, updated_at
+  ) VALUES (
+    p_admin_user_id, 'Free Exercise DB', 'free-exercise-db', TRUE, TRUE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO UPDATE SET is_public = TRUE;
+
+  -- Wger
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, is_public, created_at, updated_at
+  ) VALUES (
+    p_admin_user_id, 'Wger', 'wger', TRUE, TRUE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO UPDATE SET is_public = TRUE;
+
+  -- Open Food Facts
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, is_public, created_at, updated_at
+  ) VALUES (
+    p_admin_user_id, 'Open Food Facts', 'openfoodfacts', TRUE, TRUE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO UPDATE SET is_public = TRUE;
+
+  -- Swiss Food Database
+  INSERT INTO public.external_data_providers (
+    user_id, provider_name, provider_type, is_active, is_public, created_at, updated_at
+  ) VALUES (
+    p_admin_user_id, 'Swiss Food Database', 'swissfood', TRUE, TRUE, now(), now()
+  ) ON CONFLICT (user_id, provider_name) DO UPDATE SET is_public = TRUE;
 END;
 $$;
 
@@ -484,13 +499,13 @@ CREATE FUNCTION public.handle_new_user() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
-  -- Ensure onboarding_status exists (using ON CONFLICT to avoid errors if app-level init already did this)
+  -- Ensure onboarding_status exists
   INSERT INTO public.onboarding_status (user_id)
   VALUES (new.id)
   ON CONFLICT (user_id) DO NOTHING;
 
-  -- Create default external data providers
-  PERFORM public.create_default_external_data_providers(new.id);
+  -- NOTE: default external data providers are now global (is_public = TRUE).
+  -- They are seeded once when the first admin is created; no per-user rows needed.
 
   RETURN new;
 END;
@@ -654,6 +669,26 @@ BEGIN
   -- Remove the default goal (NULL goal_date) to avoid conflicts
   DELETE FROM public.user_goals
   WHERE user_id = p_user_id AND goal_date IS NULL;
+END;
+$$;
+
+
+--
+-- Name: seed_global_providers_for_first_admin(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.seed_global_providers_for_first_admin() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Only seed if this user is the admin (first ever user)
+  IF NEW.role = 'admin' AND NOT EXISTS (
+    SELECT 1 FROM public.external_data_providers WHERE is_public = TRUE LIMIT 1
+  ) THEN
+    PERFORM public.create_global_default_providers(NEW.id);
+    RAISE NOTICE 'Global default providers seeded for first admin: %', NEW.id;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -869,7 +904,6 @@ CREATE TABLE public.ai_service_settings (
     api_key_iv text,
     api_key_tag text,
     is_public boolean DEFAULT false NOT NULL,
-    shared_with_public boolean DEFAULT false NOT NULL,
     CONSTRAINT check_public_settings_user_id_null CHECK ((((is_public = true) AND (user_id IS NULL)) OR ((is_public = false) AND (user_id IS NOT NULL))))
 );
 
@@ -4007,6 +4041,13 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 
 
 --
+-- Name: user seed_global_providers_on_first_admin; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT ON public."user" FOR EACH ROW EXECUTE FUNCTION public.seed_global_providers_for_first_admin();
+
+
+--
 -- Name: mood_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5794,7 +5835,7 @@ CREATE POLICY select_policy ON public.exercises FOR SELECT USING (public.has_lib
 -- Name: external_data_providers select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING ((((is_public = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (public.current_user_id() = user_id)) OR ((is_public = false) AND public.has_family_access(user_id, 'share_external_providers'::text) AND (EXISTS ( SELECT 1
+CREATE POLICY select_policy ON public.external_data_providers FOR SELECT USING ((((is_public = true) AND (is_active = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (public.current_user_id() = user_id)) OR ((is_public = false) AND (is_active = true) AND public.has_family_access(user_id, 'share_external_providers'::text) AND (EXISTS ( SELECT 1
    FROM public.external_provider_types ept
   WHERE (((ept.id)::text = external_data_providers.provider_type) AND (ept.is_strictly_private = false)))))));
 
@@ -6163,6 +6204,15 @@ GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky uat
 
 
 --
+-- Name: FUNCTION create_global_default_providers(p_admin_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO sparky_uat;
+
+
+--
 -- Name: FUNCTION create_library_policy(table_name text, shared_column text, permissions text[]); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6331,6 +6381,15 @@ GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky uat";
+
+
+--
+-- Name: FUNCTION seed_global_providers_for_first_admin(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky uat";
+GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO sparky_uat;
 
 
 --
@@ -7183,5 +7242,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict latWcymJ5jLQTMuxBZ7lYHMjOy6NDN4WK9hOkbMYocOXKYkMbmFQaKk8L8BYNwU
+\unrestrict An5z6sBcQOfgBzFVi36YAdXlYU7MpGLD8Uc07KOvjAzQTJeORZ2n2hmwBNeQou9
 

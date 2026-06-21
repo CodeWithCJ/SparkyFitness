@@ -330,8 +330,10 @@ const ExternalProviderList = ({
             data.provider_type === 'yazio')
         ) {
           setDefaultFoodDataProviderId(data.id);
+          saveAllPreferences({ defaultFoodDataProviderId: data.id });
         } else if (data && defaultFoodDataProviderId === data.id) {
           setDefaultFoodDataProviderId(null);
+          saveAllPreferences({ defaultFoodDataProviderId: null });
         }
 
         if (data && !data.is_active && defaultBarcodeProviderId === data.id) {

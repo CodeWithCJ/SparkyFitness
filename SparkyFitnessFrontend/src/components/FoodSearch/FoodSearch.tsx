@@ -109,6 +109,7 @@ const EnhancedFoodSearch = ({
     convertEnergy,
     getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
+    saveAllPreferences,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -621,6 +622,7 @@ const EnhancedFoodSearch = ({
             onValueChange={(value) => {
               setManualProviderId(value);
               setDefaultFoodDataProviderId(value);
+              saveAllPreferences({ defaultFoodDataProviderId: value });
             }}
           >
             <SelectTrigger className="w-[180px]">

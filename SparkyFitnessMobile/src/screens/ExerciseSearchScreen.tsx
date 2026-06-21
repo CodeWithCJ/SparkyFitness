@@ -22,7 +22,6 @@ import { useServerConnection, useExternalProviders, useSuggestedExercises, useEx
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
-import { EXERCISE_PROVIDER_TYPES } from '../types/externalProviders';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -69,7 +68,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     refetch: refetchProviders,
   } = useExternalProviders({
     enabled: isConnected && activeTab === 'online',
-    filterSet: EXERCISE_PROVIDER_TYPES,
+    category: 'exercise',
   });
 
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
