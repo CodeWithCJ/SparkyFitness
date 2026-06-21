@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import {
   useServerConnection,
@@ -15,6 +16,7 @@ import {
   useWidgetSync,
   useCustomNutrients,
   useNutrientDisplayPreferences,
+  fastingRootQueryKey,
 } from '../hooks';
 import type { StepsRange } from '../hooks';
 import CalorieRingCard from '../components/CalorieRingCard';
@@ -29,6 +31,7 @@ import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
+import FastingCard from '../components/FastingCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -48,6 +51,7 @@ type DashboardScreenProps = CompositeScreenProps<
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
+  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
@@ -118,10 +122,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
   }, [rawWeightData, weightUnit]);
 
-  // progressTrackOverfillColor used for MacroCard overfill indicator
-  const [progressTrackOverfillColor] = useCSSVariable([
+  // CSS variable macro colors are theme-aware (lower saturation than hardcoded hex)
+  const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
+    '--color-macro-protein',
+    '--color-macro-carbs',
+    '--color-macro-fat',
+    '--color-macro-fiber',
     '--color-progress-overfill',
-  ]) as [string];
+  ]) as [string, string, string, string, string];
 
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
@@ -138,9 +146,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchSteps(),
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
+      // FastingCard owns its own queries; nudge them on pull-to-refresh.
+      queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
     ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs]);
+  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
 
   // Render content based on state
   const renderContent = () => {
@@ -256,69 +266,84 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             progressPercent={progress / 100}
           />
         )}
-        {/* Macros Section — driven by nutrient display preferences (summary/mobile) */}
-        {summary.foodEntries.length > 0 && summaryNutrients.length > 0 ? (
-          <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
-            <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
-            <View className="flex-row flex-wrap justify-between">
-              {summaryNutrients.map((nutrientKey) => {
-                // Resolve display metadata: predefined first, then custom nutrient definitions.
-                const meta = NUTRIENT_META[nutrientKey];
-                const customDef = !meta
-                  ? customNutrients.find((cn) => cn.name === nutrientKey)
-                  : undefined;
-                const label = meta?.label ?? customDef?.name ?? nutrientKey;
-                const unit = meta?.unit ?? customDef?.unit ?? '';
-                const color = meta?.color ?? CUSTOM_NUTRIENT_DEFAULT_COLOR;
+        {/* Macros Section — driven by nutrient display preferences (summary/mobile).
+            Only the 4 core macros (with goals) and user-defined custom nutrients are
+            shown here. Other enabled nutrients (sodium, sugars, etc.) belong in a
+            detail view, not the at-a-glance dashboard grid. */}
+        {summary.foodEntries.length > 0 && summaryNutrients.length > 0 ? (() => {
+          const CORE_MACROS = new Set(['protein', 'carbs', 'fat', 'dietary_fiber']);
+          const customNutrientNames = new Set(customNutrients.map((cn) => cn.name));
+          const dashboardNutrients = summaryNutrients.filter(
+            (key) => CORE_MACROS.has(key) || customNutrientNames.has(key),
+          );
+          if (dashboardNutrients.length === 0) return null;
+          return (
+            <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+              <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+              <View className="flex-row flex-wrap justify-between">
+                {dashboardNutrients.map((nutrientKey) => {
+                  // Resolve display label and unit.
+                  const meta = NUTRIENT_META[nutrientKey];
+                  const customDef = !meta
+                    ? customNutrients.find((cn) => cn.name === nutrientKey)
+                    : undefined;
+                  const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                  const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
-                // Resolve consumed value.
-                let consumed: number;
-                if (nutrientKey === 'carbs' && showNetCarbs) {
-                  consumed = getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed);
-                } else if (nutrientKey === 'protein') {
-                  consumed = summary.protein.consumed;
-                } else if (nutrientKey === 'carbs') {
-                  consumed = summary.carbs.consumed;
-                } else if (nutrientKey === 'fat') {
-                  consumed = summary.fat.consumed;
-                } else if (nutrientKey === 'dietary_fiber') {
-                  consumed = summary.fiber.consumed;
-                } else {
-                  // Standard nutrient from food entry fields, or custom nutrient total.
-                  consumed = summary.customNutrientTotals[nutrientKey] ?? 0;
-                }
+                  // Use theme-aware CSS variable colors for the 4 core macros;
+                  // fall back to NUTRIENT_META color or default for custom nutrients.
+                  let color: string;
+                  if (nutrientKey === 'protein') color = proteinColor;
+                  else if (nutrientKey === 'carbs') color = carbsColor;
+                  else if (nutrientKey === 'fat') color = fatColor;
+                  else if (nutrientKey === 'dietary_fiber') color = fiberColor;
+                  else color = meta?.color ?? CUSTOM_NUTRIENT_DEFAULT_COLOR;
 
-                // Resolve goal value.
-                let goal: number;
-                if (nutrientKey === 'protein') {
-                  goal = summary.protein.goal;
-                } else if (nutrientKey === 'carbs') {
-                  goal = summary.carbs.goal;
-                } else if (nutrientKey === 'fat') {
-                  goal = summary.fat.goal;
-                } else if (nutrientKey === 'dietary_fiber') {
-                  goal = summary.fiber.goal;
-                } else {
-                  goal = 0; // Standard micronutrients and custom nutrients have no goal tracked yet.
-                }
+                  // Resolve consumed value.
+                  let consumed: number;
+                  if (nutrientKey === 'carbs' && showNetCarbs) {
+                    consumed = getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed);
+                  } else if (nutrientKey === 'protein') {
+                    consumed = summary.protein.consumed;
+                  } else if (nutrientKey === 'carbs') {
+                    consumed = summary.carbs.consumed;
+                  } else if (nutrientKey === 'fat') {
+                    consumed = summary.fat.consumed;
+                  } else if (nutrientKey === 'dietary_fiber') {
+                    consumed = summary.fiber.consumed;
+                  } else {
+                    consumed = summary.customNutrientTotals[nutrientKey] ?? 0;
+                  }
 
-                const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+                  // Resolve goal. Core macros use their tracked goals; custom
+                  // nutrients use their per-nutrient goal when one is set. When a
+                  // custom nutrient has no goal, `goal` stays undefined and
+                  // MacroCard hides the "/0".
+                  let goal: number | undefined;
+                  if (nutrientKey === 'protein') goal = summary.protein.goal || undefined;
+                  else if (nutrientKey === 'carbs') goal = summary.carbs.goal || undefined;
+                  else if (nutrientKey === 'fat') goal = summary.fat.goal || undefined;
+                  else if (nutrientKey === 'dietary_fiber') goal = summary.fiber.goal || undefined;
+                  else goal = summary.customNutrientGoals[nutrientKey] || undefined;
 
-                return (
-                  <MacroCard
-                    key={nutrientKey}
-                    label={displayLabel}
-                    consumed={consumed}
-                    goal={goal}
-                    color={color}
-                    overfillColor={progressTrackOverfillColor}
-                    unit={unit}
-                  />
-                );
-              })}
+                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+
+                  return (
+                    <MacroCard
+                      key={nutrientKey}
+                      label={displayLabel}
+                      consumed={consumed}
+                      goal={goal}
+                      color={color}
+                      overfillColor={progressTrackOverfillColor}
+                      unit={unit}
+                    />
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        ) : null}
+          );
+        })() : null}
 
         {summary.foodEntries.length === 0 && (
           <Pressable
@@ -352,6 +377,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           activeContainerId={activeWaterContainer?.id}
           onSelectContainer={selectWaterContainer}
         />
+
+        {/* Fasting is "now"-based, so the card is deliberately date-independent —
+            it always reflects the current/active fast regardless of the date
+            navigator. Do not wire it to `selectedDate`. */}
+        <FastingCard navigation={navigation} />
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />

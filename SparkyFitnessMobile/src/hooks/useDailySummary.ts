@@ -113,6 +113,16 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         exerciseEntries,
         calorieBalance: resolvedCalorieBalance,
         customNutrientTotals: calculateCustomNutrientTotals(foodEntries),
+        // Per-custom-nutrient goals (keyed by name, matching customNutrientTotals).
+        // Normalized to numbers; absent/zero goals are simply not tracked.
+        customNutrientGoals: goals.custom_nutrients
+          ? Object.fromEntries(
+              Object.entries(goals.custom_nutrients).map(([name, v]) => [
+                name,
+                typeof v === 'number' ? v : parseFloat(String(v)) || 0,
+              ]),
+            )
+          : ({} as Record<string, number>),
       };
     },
     enabled,

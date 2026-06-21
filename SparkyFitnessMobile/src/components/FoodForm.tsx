@@ -612,13 +612,24 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
   const updateCustomNutrient = (name: string, text: string) => {
     if (!DECIMAL_INPUT_REGEX.test(text)) return;
-    setCustomNutrientForm((prev) => ({ ...prev, [name]: text }));
+    // Build the next form from one consistent snapshot so the edited field and
+    // every other field are read from the same object — no per-field stale reads.
+    const nextForm = { ...customNutrientForm, [name]: text };
+    setCustomNutrientForm(nextForm);
     if (!onCustomNutrientsChange) return;
     const numeric: Record<string, number> = {};
     for (const def of customNutrientDefs) {
-      const raw = def.name === name ? text : (customNutrientForm[def.name] ?? '');
-      const parsed = parseDecimalInput(raw);
+      const parsed = parseDecimalInput(nextForm[def.name] ?? '');
       numeric[def.name] = Number.isFinite(parsed) ? parsed : 0;
+    }
+    // Preserve any stored custom-nutrient values that no longer have a matching
+    // definition (e.g. the definition was deleted) so editing a food doesn't
+    // silently drop them.
+    for (const [key, raw] of Object.entries(nextForm)) {
+      if (!(key in numeric)) {
+        const parsed = parseDecimalInput(raw);
+        numeric[key] = Number.isFinite(parsed) ? parsed : 0;
+      }
     }
     onCustomNutrientsChange(numeric);
   };

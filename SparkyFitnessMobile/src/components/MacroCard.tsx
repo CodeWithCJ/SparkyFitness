@@ -7,7 +7,7 @@ import { useCSSVariable } from 'uniwind';
 interface MacroCardProps {
   label: string;
   consumed: number;
-  goal: number;
+  goal?: number;
   color: string;
   overfillColor: string;
   unit?: string;
@@ -15,7 +15,7 @@ interface MacroCardProps {
 
 const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, overfillColor, unit = 'g' }) => {
   const [barWidth, setBarWidth] = useState(0);
-  const progress = goal > 0 ? consumed / goal : 0;
+  const progress = goal && goal > 0 ? consumed / goal : 0;
   const barHeight = 8;
   const borderRadius = 4;
   const trackColor = useCSSVariable('--color-progress-track') as string;
@@ -65,7 +65,9 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-medium text-text-primary">{label}</Text>
         <Text className="text-xs text-text-secondary">
-          {Math.round(consumed)}{unit} / {Math.round(goal)}{unit}
+          {goal && goal > 0
+            ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
+            : `${Math.round(consumed)}${unit}`}
         </Text>
       </View>
       {/* Progress bar container */}
