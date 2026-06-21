@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict An5z6sBcQOfgBzFVi36YAdXlYU7MpGLD8Uc07KOvjAzQTJeORZ2n2hmwBNeQou9
+\restrict lc3qZTmVwHjRhLrsOKT3sCB2eXezhIy0E6bqayfJo7AE849JFdcIoihKSr3lZF1
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -4044,7 +4044,7 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 -- Name: user seed_global_providers_on_first_admin; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT ON public."user" FOR EACH ROW EXECUTE FUNCTION public.seed_global_providers_for_first_admin();
+CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT OR UPDATE OF role ON public."user" FOR EACH ROW EXECUTE FUNCTION public.seed_global_providers_for_first_admin();
 
 
 --
@@ -7242,5 +7242,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict An5z6sBcQOfgBzFVi36YAdXlYU7MpGLD8Uc07KOvjAzQTJeORZ2n2hmwBNeQou9
+\unrestrict lc3qZTmVwHjRhLrsOKT3sCB2eXezhIy0E6bqayfJo7AE849JFdcIoihKSr3lZF1
 

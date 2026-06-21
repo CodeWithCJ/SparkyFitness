@@ -176,10 +176,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+
+
 DROP TRIGGER IF EXISTS seed_global_providers_on_first_admin ON public."user";
+
 CREATE TRIGGER seed_global_providers_on_first_admin
-  AFTER INSERT ON public."user"
+  AFTER INSERT OR UPDATE OF role ON public."user"
   FOR EACH ROW EXECUTE FUNCTION public.seed_global_providers_for_first_admin();
+
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- 5. Seed global providers for EXISTING installations.

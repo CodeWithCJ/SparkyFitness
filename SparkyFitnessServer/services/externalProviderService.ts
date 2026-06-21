@@ -388,12 +388,12 @@ async function getExternalDataProviderDetails(
   providerId: any
 ) {
   try {
-    const isOwner =
-      await externalProviderRepository.checkExternalDataProviderOwnership(
+    const hasAccess =
+      await externalProviderRepository.checkExternalDataProviderAccess(
         providerId,
         authenticatedUserId
       );
-    if (!isOwner) {
+    if (!hasAccess) {
       throw new Error(
         'Forbidden: You do not have permission to access this external data provider.'
       );

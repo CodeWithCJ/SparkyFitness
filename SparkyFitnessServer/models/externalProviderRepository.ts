@@ -542,6 +542,29 @@ async function getExternalDataProviderByUserIdAndProviderName(
   }
 }
 
+async function checkExternalDataProviderAccess(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const checkAccess = await client.query(
+      `SELECT 1 FROM external_data_providers edp
+       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
+       WHERE edp.id = $1 AND (
+         edp.user_id = $2
+         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
+         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
+       )`,
+      [providerId, userId]
+    );
+    return checkAccess.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}
 async function checkExternalDataProviderOwnership(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerId: any,
@@ -551,13 +574,8 @@ async function checkExternalDataProviderOwnership(
   const client = await getClient(userId); // User-specific operation
   try {
     const checkOwnership = await client.query(
-      `SELECT 1 FROM external_data_providers edp
-       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
-       WHERE edp.id = $1 AND (
-         edp.user_id = $2
-         OR (edp.is_public = TRUE AND edp.is_active = TRUE)
-         OR (edp.is_public = FALSE AND edp.is_active = TRUE AND public.has_family_access(edp.user_id, 'share_external_providers') AND ept.is_strictly_private = FALSE)
-       )`,
+      `SELECT 1 FROM external_data_providers
+       WHERE id = $1 AND user_id = $2`,
       [providerId, userId]
     );
     return checkOwnership.rowCount > 0;
@@ -865,6 +883,7 @@ export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderById };
 export { checkExternalDataProviderOwnership };
+export { checkExternalDataProviderAccess };
 export { deleteExternalDataProvider };
 export { getExternalDataProviderByUserIdAndProviderName };
 export { updateProviderLastSync };
@@ -882,6 +901,7 @@ export default {
   updateExternalDataProvider,
   getExternalDataProviderById,
   checkExternalDataProviderOwnership,
+  checkExternalDataProviderAccess,
   deleteExternalDataProvider,
   getExternalDataProviderByUserIdAndProviderName,
   updateProviderLastSync,
