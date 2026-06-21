@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Canvas, Path, Circle as SkiaCircle, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,15 +24,30 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
 
   const animatedProgress = useSharedValue(0);
 
+  // Latest progress kept in a ref so the focus effect can read it without
+  // re-firing the entrance animation whenever progress changes (e.g. a
+  // per-second timer tick).
+  const progressRef = useRef(progressCapped);
+  progressRef.current = progressCapped;
+
+  // Replay the 0 -> current entrance animation each time the screen regains focus.
   useFocusEffect(
     useCallback(() => {
       animatedProgress.value = 0;
-      animatedProgress.value = withTiming(progressCapped, {
+      animatedProgress.value = withTiming(progressRef.current, {
         duration: 500,
         easing: Easing.out(Easing.cubic),
       });
-    }, [progressCapped, animatedProgress])
+    }, [animatedProgress])
   );
+
+  // Smoothly follow subsequent progress changes without resetting to zero.
+  useEffect(() => {
+    animatedProgress.value = withTiming(progressCapped, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [progressCapped, animatedProgress]);
 
   const oval = useMemo(() => ({
     x: center - radius,

@@ -119,6 +119,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
+      <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (

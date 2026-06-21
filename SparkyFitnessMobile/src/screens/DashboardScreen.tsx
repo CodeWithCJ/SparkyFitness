@@ -2,12 +2,14 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange, useWidgetSync } from '../hooks';
+import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange, useWidgetSync, fastingRootQueryKey } from '../hooks';
 import type { StepsRange } from '../hooks';
 import CalorieRingCard from '../components/CalorieRingCard';
+import FastingCard from '../components/FastingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -38,6 +40,7 @@ type DashboardScreenProps = CompositeScreenProps<
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
@@ -121,9 +124,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
+    await Promise.all([
+      refetch(),
+      refetchPreferences(),
+      refetchMeasurements(),
+      refetchSteps(),
+      // The fasting card owns its own queries; nudge them so a pull also
+      // refreshes the current/last fast.
+      queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
+    ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps]);
+  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, queryClient]);
 
   // Render content based on state
   const renderContent = () => {
@@ -288,6 +299,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             <Text className="text-text-muted text-sm text-center mb-4">Tap to add food</Text>
           </Pressable>
         )}
+
+        {/* Fasting is "now"-based, so the card is deliberately date-independent —
+            it always reflects the current/active fast regardless of the date
+            navigator. Do not wire it to `selectedDate`. */}
+        <FastingCard navigation={navigation} />
 
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
           (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (

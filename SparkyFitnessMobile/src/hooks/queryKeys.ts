@@ -74,3 +74,9 @@ export const workoutPresetsLibraryQueryKey = (searchTerm: string) =>
 
 export const activeAiServiceSettingQueryKey = ['ai-service-settings', 'active'] as const;
 export const userAiConfigAllowedQueryKey = ['ai-service-settings', 'allow-user-ai-config'] as const;
+
+export const fastingRootQueryKey = ['fasting'] as const;
+export const fastingCurrentQueryKey = ['fasting', 'current'] as const;
+export const fastingStatsQueryKey = ['fasting', 'stats'] as const;
+export const fastingHistoryQueryKey = (limit: number, offset: number) =>
+  ['fasting', 'history', limit, offset] as const;

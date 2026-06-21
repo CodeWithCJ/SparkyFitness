@@ -8,6 +8,7 @@ import {
   ensureNotificationPermission,
   fireRestCompleteHaptic,
   initNotifications,
+  scheduleFastGoalNotification,
   scheduleRestNotification,
 } from '../../src/services/notifications';
 
@@ -56,6 +57,17 @@ describe('notifications service', () => {
       await initNotifications();
       expect(mockSetChannel).toHaveBeenCalledWith(
         'workout-timer',
+        expect.objectContaining({
+          importance: Notifications.AndroidImportance.HIGH,
+        }),
+      );
+    });
+
+    it('creates a dedicated fasting Android channel', async () => {
+      Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'fasting',
         expect.objectContaining({
           importance: Notifications.AndroidImportance.HIGH,
         }),
@@ -128,6 +140,44 @@ describe('notifications service', () => {
       mockGetPerms.mockResolvedValue({ status: 'granted' } as any);
       mockSchedule.mockRejectedValue(new Error('boom'));
       expect(await scheduleRestNotification('Squat', 60)).toBeNull();
+    });
+  });
+
+  describe('scheduleFastGoalNotification', () => {
+    it('schedules a DATE-trigger notification on the fasting channel for a future target', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'granted' } as any);
+      mockSchedule.mockResolvedValue('fast-goal-id' as any);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      const id = await scheduleFastGoalNotification(target);
+
+      expect(id).toBe('fast-goal-id');
+      expect(mockSchedule).toHaveBeenCalledWith({
+        content: expect.objectContaining({ title: 'Fasting goal reached' }),
+        trigger: expect.objectContaining({
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          channelId: 'fasting',
+        }),
+      });
+    });
+
+    it('returns null and schedules nothing for a past target', async () => {
+      const target = new Date(Date.now() - 60 * 1000).toISOString();
+      const id = await scheduleFastGoalNotification(target);
+      expect(id).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('returns null when permission is denied', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'denied' } as any);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('returns null on an invalid date string', async () => {
+      expect(await scheduleFastGoalNotification('not-a-date')).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
     });
   });
 

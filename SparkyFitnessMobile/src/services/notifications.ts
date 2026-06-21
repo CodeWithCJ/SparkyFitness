@@ -5,6 +5,7 @@ import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
 
 const CHANNEL_ID = 'workout-timer';
+const FASTING_CHANNEL_ID = 'fasting';
 
 let initialized = false;
 let hasShownDeniedToast = false;
@@ -26,6 +27,11 @@ export async function initNotifications(): Promise<void> {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
         name: 'Workout timer',
+        importance: Notifications.AndroidImportance.HIGH,
+        enableVibrate: true,
+      });
+      await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
+        name: 'Fasting',
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
@@ -82,6 +88,42 @@ export async function scheduleRestNotification(
     return id;
   } catch (err) {
     addLog(`scheduleRestNotification failed: ${(err as Error).message}`, 'ERROR');
+    return null;
+  }
+}
+
+/**
+ * Schedules a local notification to fire at a fast's goal (target end) time.
+ * Returns the scheduled notification id, or `null` when the target is already
+ * past / invalid, or notification permission was denied.
+ */
+export async function scheduleFastGoalNotification(
+  targetEndTime: string,
+): Promise<string | null> {
+  const target = new Date(targetEndTime);
+  if (Number.isNaN(target.getTime()) || target.getTime() <= Date.now()) {
+    return null;
+  }
+
+  const granted = await ensureNotificationPermission();
+  if (!granted) return null;
+
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Fasting goal reached',
+        body: "You've hit your fasting goal. Great work!",
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: target,
+        channelId: FASTING_CHANNEL_ID,
+      },
+    });
+    return id;
+  } catch (err) {
+    addLog(`scheduleFastGoalNotification failed: ${(err as Error).message}`, 'ERROR');
     return null;
   }
 }
