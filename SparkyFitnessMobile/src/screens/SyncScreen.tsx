@@ -29,6 +29,8 @@ import {
   stopObservers,
 } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
+import { removeAllWrittenData } from '../services/writeback';
+import Toast from 'react-native-toast-message';
 import {
   tryClaimAutoSync,
   isForegroundAutoSyncWindowOpen,
@@ -306,6 +308,44 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
   };
 
+  // Rollback: delete everything SparkyFitness wrote to the OS health store and turn
+  // writeback off. removeAllWrittenData also clears local tracking + the prefs, so we
+  // reset the toggles locally to match.
+  const handleRemoveWritebackData = (): void => {
+    const storeName = isAndroid ? 'Health Connect' : 'Apple Health';
+    Alert.alert(
+      `Remove ${storeName} data`,
+      `Delete all nutrition and hydration records SparkyFitness wrote to ${storeName}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeAllWrittenData();
+              setWritebackStates({});
+              Toast.show({
+                type: 'success',
+                text1: 'Removed',
+                text2: `Deleted SparkyFitness data from ${storeName}.`,
+              });
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              addLog(`[SyncScreen] Failed to remove writeback data: ${errorMessage}`, 'ERROR');
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: `Could not remove data from ${storeName}.`,
+              });
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleToggleAllMetrics = async (): Promise<void> => {
     const newValue = !isAllMetricsEnabled;
 
@@ -492,6 +532,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         <HealthDataWriteback
           writebackStates={writebackStates}
           handleToggleWriteback={handleToggleWriteback}
+          onRemoveData={handleRemoveWritebackData}
         />
 
         {/* Health Data Report — Android only */}

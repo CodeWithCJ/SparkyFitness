@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Switch, Image, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import CollapsibleSection from './CollapsibleSection';
+import Button from './ui/Button';
 import {
   WRITEBACK_METRICS,
   WRITEBACK_CATEGORY_ORDER,
@@ -11,6 +12,8 @@ import {
 interface HealthDataWritebackProps {
   writebackStates: Record<string, boolean>;
   handleToggleWriteback: (metric: WritebackMetric, newValue: boolean) => void;
+  /** Confirm + delete all SparkyFitness-written records from the OS health store. */
+  onRemoveData: () => void;
 }
 
 const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMetric[]> =>
@@ -30,6 +33,7 @@ const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMe
 const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   writebackStates,
   handleToggleWriteback,
+  onRemoveData,
 }) => {
   const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
@@ -96,6 +100,11 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
           </CollapsibleSection>
         );
       })}
+      <Button variant="ghost" onPress={onRemoveData} className="mt-2 py-1 px-0 self-start">
+        <Text className="text-sm font-medium text-text-danger-subtle">
+          Remove SparkyFitness data from {storeName}
+        </Text>
+      </Button>
     </View>
   );
 };

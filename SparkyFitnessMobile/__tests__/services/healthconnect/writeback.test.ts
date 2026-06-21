@@ -1,6 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   insertRecords,
   deleteRecordsByUuids,
+  deleteRecordsByTimeRange,
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
@@ -13,11 +15,13 @@ import {
 const {
   writebackPhase,
   runWriteback,
+  removeAllWrittenData,
 } = require('../../../src/services/healthconnect/writeback.ts');
 
 jest.mock('react-native-health-connect', () => ({
   insertRecords: jest.fn().mockResolvedValue([]),
   deleteRecordsByUuids: jest.fn().mockResolvedValue(undefined),
+  deleteRecordsByTimeRange: jest.fn().mockResolvedValue(undefined),
   getGrantedPermissions: jest.fn(),
   RecordingMethod: { RECORDING_METHOD_MANUAL_ENTRY: 3 },
 }));
@@ -30,6 +34,7 @@ jest.mock('../../../src/utils/loggedMealCollapse', () => ({
 jest.mock('../../../src/services/healthconnect/preferences', () => ({
   loadHealthPreference: jest.fn(),
   saveHealthPreference: jest.fn(),
+  HEALTH_PREFERENCE_PREFIX: '@HealthConnect',
 }));
 jest.mock('../../../src/services/healthconnect/index', () => ({
   isQuotaExceededError: jest.fn(() => false),
@@ -42,6 +47,7 @@ jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const mockInsert = insertRecords as jest.Mock;
 const mockDelete = deleteRecordsByUuids as jest.Mock;
+const mockDeleteByRange = deleteRecordsByTimeRange as jest.Mock;
 const mockGranted = getGrantedPermissions as jest.Mock;
 const mockSummary = fetchDailySummary as jest.Mock;
 const mockLoadPref = loadHealthPreference as jest.Mock;
@@ -200,5 +206,30 @@ describe('runWriteback (cursor)', () => {
     (isQuotaExceededError as jest.Mock).mockReturnValue(true);
     await runWriteback();
     expect(mockSaveCursor).not.toHaveBeenCalled();
+  });
+});
+
+describe('removeAllWrittenData (cleanup)', () => {
+  it('deletes every written record type, clears tracking, and disables writeback', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-01', JSON.stringify(['x']));
+    await AsyncStorage.setItem('@HealthConnect:writebackHydrationSig:2026-06-01', '"sig"');
+    await AsyncStorage.setItem('@HealthConnect:syncDuration', '"daily"'); // unrelated — must survive
+
+    await removeAllWrittenData();
+
+    // Deletes our record types over an all-time ("before now") range.
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Nutrition', expect.objectContaining({ operator: 'before' }));
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Hydration', expect.objectContaining({ operator: 'before' }));
+
+    // Tracking keys cleared; unrelated preference kept.
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthConnect:writebackNutritionIds:2026-06-01');
+    expect(remaining).not.toContain('@HealthConnect:writebackHydrationSig:2026-06-01');
+    expect(remaining).toContain('@HealthConnect:syncDuration');
+
+    // Writeback turned off (true rollback).
+    expect(mockSavePref).toHaveBeenCalledWith('writebackNutritionEnabled', false);
+    expect(mockSavePref).toHaveBeenCalledWith('writebackHydrationEnabled', false);
   });
 });

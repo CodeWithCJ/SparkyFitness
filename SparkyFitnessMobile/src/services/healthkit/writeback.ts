@@ -9,10 +9,11 @@ import {
   type ObjectTypeIdentifier,
   type SampleTypeIdentifierWriteable,
 } from '@kingstinct/react-native-healthkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
-import { loadHealthPreference, saveHealthPreference } from './preferences';
+import { loadHealthPreference, saveHealthPreference, HEALTH_PREFERENCE_PREFIX } from './preferences';
 import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
   foodEntryToNutrientSamples,
@@ -377,4 +378,44 @@ export const runWriteback = async (): Promise<void> => {
   const dates = computeWritebackDates(await loadLastWritebackTime());
   const completed = await writebackPhase(dates);
   if (completed) await saveLastWritebackTime();
+};
+
+/**
+ * Rollback: delete every sample SparkyFitness wrote to HealthKit (all metrics, all
+ * dates), clear our per-date tracking, and turn writeback off. HealthKit only lets an
+ * app delete samples it saved, so other apps' and manually-entered data are untouched.
+ * Deletes by the tracked UUIDs (the same mechanism the per-day replace uses); clearing
+ * the tracking keys is required, else change-detection would treat a later re-enable as
+ * "unchanged" and never re-populate HealthKit.
+ */
+export const removeAllWrittenData = async (): Promise<void> => {
+  const keys = await AsyncStorage.getAllKeys();
+  const isWriteback = (k: string): boolean => k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`);
+
+  // Nutrition tracking is a per-date Record<healthKitType, uuid[]> (incl. the food
+  // correlation UUIDs); delete each grouped by type.
+  for (const key of keys.filter((k) => isWriteback(k) && k.includes('NutritionUuids:'))) {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) await deleteTrackedByType(JSON.parse(raw) as Record<string, string[]>);
+  }
+
+  // Hydration tracking is a per-date uuid[] of DietaryWater samples.
+  for (const key of keys.filter((k) => isWriteback(k) && k.includes('HydrationUuids:'))) {
+    const raw = await AsyncStorage.getItem(key);
+    const uuids = raw ? (JSON.parse(raw) as string[]) : [];
+    if (uuids.length === 0) continue;
+    try {
+      await deleteObjects(DIETARY_WATER_IDENTIFIER, { uuids });
+    } catch (error) {
+      addLog(`[Writeback] Failed to delete ${uuids.length} water record(s): ${message(error)}`, 'WARNING');
+    }
+  }
+
+  const trackingKeys = keys.filter(
+    (k) => isWriteback(k) && (k.includes('Uuids:') || k.includes('Sig:')),
+  );
+  if (trackingKeys.length > 0) await AsyncStorage.multiRemove(trackingKeys);
+
+  await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
+  addLog('[Writeback] Removed all SparkyFitness data from Apple Health', 'INFO');
 };

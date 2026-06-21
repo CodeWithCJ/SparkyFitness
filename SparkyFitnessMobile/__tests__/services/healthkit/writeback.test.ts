@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   saveCorrelationSample,
   saveQuantitySample,
@@ -9,7 +10,11 @@ import {
   loadHealthPreference,
   saveHealthPreference,
 } from '../../../src/services/healthkit/preferences';
-import { writebackPhase, runWriteback } from '../../../src/services/healthkit/writeback';
+import {
+  writebackPhase,
+  runWriteback,
+  removeAllWrittenData,
+} from '../../../src/services/healthkit/writeback';
 
 jest.mock('../../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
@@ -20,6 +25,7 @@ jest.mock('../../../src/utils/loggedMealCollapse', () => ({
 jest.mock('../../../src/services/healthkit/preferences', () => ({
   loadHealthPreference: jest.fn(),
   saveHealthPreference: jest.fn(),
+  HEALTH_PREFERENCE_PREFIX: '@HealthKit',
 }));
 jest.mock('../../../src/services/storage', () => ({
   loadLastWritebackTime: jest.fn().mockResolvedValue(null),
@@ -277,5 +283,36 @@ describe('runWriteback (cursor)', () => {
     await runWriteback();
     expect(mockSaveCorrelation).not.toHaveBeenCalled();
     expect(mockSaveCursor).toHaveBeenCalled(); // skipped without holding the cursor
+  });
+});
+
+describe('removeAllWrittenData (cleanup)', () => {
+  it('deletes tracked samples by type, clears tracking, and disables writeback', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackNutritionUuids:2026-06-01',
+      JSON.stringify({ [ENERGY]: ['u1'], [FOOD_CORRELATION]: ['c1'] }),
+    );
+    await AsyncStorage.setItem('@HealthKit:writebackHydrationUuids:2026-06-01', JSON.stringify(['w1']));
+    await AsyncStorage.setItem('@HealthKit:writebackNutritionSig:2026-06-01', '"sig"');
+    await AsyncStorage.setItem('@HealthKit:syncDuration', '"daily"'); // unrelated — must survive
+
+    await removeAllWrittenData();
+
+    // Deletes by the tracked UUIDs, grouped by HealthKit type.
+    expect(mockDeleteObjects).toHaveBeenCalledWith(ENERGY, { uuids: ['u1'] });
+    expect(mockDeleteObjects).toHaveBeenCalledWith(FOOD_CORRELATION, { uuids: ['c1'] });
+    expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, { uuids: ['w1'] });
+
+    // Tracking keys cleared; unrelated preference kept.
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthKit:writebackNutritionUuids:2026-06-01');
+    expect(remaining).not.toContain('@HealthKit:writebackHydrationUuids:2026-06-01');
+    expect(remaining).not.toContain('@HealthKit:writebackNutritionSig:2026-06-01');
+    expect(remaining).toContain('@HealthKit:syncDuration');
+
+    // Writeback turned off.
+    expect(mockSavePref).toHaveBeenCalledWith('writebackNutritionEnabled', false);
+    expect(mockSavePref).toHaveBeenCalledWith('writebackHydrationEnabled', false);
   });
 });

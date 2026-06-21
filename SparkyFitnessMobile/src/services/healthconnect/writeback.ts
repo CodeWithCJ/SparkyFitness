@@ -1,13 +1,15 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   insertRecords,
   deleteRecordsByUuids,
+  deleteRecordsByTimeRange,
   getGrantedPermissions,
   type HealthConnectRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
-import { loadHealthPreference, saveHealthPreference } from './preferences';
+import { loadHealthPreference, saveHealthPreference, HEALTH_PREFERENCE_PREFIX } from './preferences';
 import { isQuotaExceededError } from './index';
 import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
@@ -219,4 +221,35 @@ export const runWriteback = async (): Promise<void> => {
   const dates = computeWritebackDates(await loadLastWritebackTime());
   const completed = await writebackPhase(dates);
   if (completed) await saveLastWritebackTime();
+};
+
+/**
+ * Rollback: delete every record SparkyFitness wrote to Health Connect (all metrics,
+ * all dates), clear our per-date tracking, and turn writeback off. Health Connect
+ * only lets an app delete records it authored (by dataOrigin), so other apps' and
+ * manually-entered data are never touched; the 30-day window is read-only, so the
+ * all-time delete reaches historic records too. Clearing the tracking keys is
+ * required — otherwise change-detection would treat a later re-enable as "unchanged"
+ * and never re-populate Health Connect.
+ */
+export const removeAllWrittenData = async (): Promise<void> => {
+  const recordTypes = Array.from(new Set(WRITEBACK_METRICS.map((m) => m.recordType)));
+  const endTime = new Date().toISOString();
+  for (const recordType of recordTypes) {
+    await deleteRecordsByTimeRange(recordType, { operator: 'before', endTime });
+  }
+
+  const keys = await AsyncStorage.getAllKeys();
+  const trackingKeys = keys.filter(
+    (k) =>
+      k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`) &&
+      (k.includes('Ids:') || k.includes('Sig:')),
+  );
+  if (trackingKeys.length > 0) await AsyncStorage.multiRemove(trackingKeys);
+
+  await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
+  addLog(
+    `[Writeback] Removed all SparkyFitness data from Health Connect (${recordTypes.join(', ')})`,
+    'INFO',
+  );
 };
