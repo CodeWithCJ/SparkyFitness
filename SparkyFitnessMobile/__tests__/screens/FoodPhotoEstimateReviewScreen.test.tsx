@@ -9,6 +9,15 @@ jest.mock('react-native-toast-message', () => ({
   default: { show: jest.fn() },
 }));
 
+// FoodForm uses useServerConnection + useCustomNutrients which call react-query.
+// Mock them as inert so the form renders without a QueryClientProvider.
+jest.mock('../../src/hooks', () => ({
+  useServerConnection: () => ({ isConnected: true, isLoading: false }),
+}));
+jest.mock('../../src/hooks/useCustomNutrients', () => ({
+  useCustomNutrients: () => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() }),
+}));
+
 // FoodForm (rendered inside this screen) gates its inline AI estimate flow on
 // these hooks. They all call react-query — without a QueryClientProvider in
 // the test setup they'd crash. Mock them as inert.
