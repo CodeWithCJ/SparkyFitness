@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,7 @@ import {
   cancelScheduledNotification,
   scheduleFastGoalNotification,
 } from '../services/notifications';
+import { addLog } from '../services/LogService';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import {
   fastingCurrentQueryKey,
@@ -157,52 +158,59 @@ export async function cancelFastGoalNotification(): Promise<void> {
 export async function reconcileFastGoalNotification(
   currentFast: FastingLog | null,
 ): Promise<void> {
-  let stored = await readStoredGoalNotification();
-
-  // No active fast → cancel any scheduled goal notification.
-  if (!currentFast || currentFast.status !== 'ACTIVE') {
-    if (stored) await clearStoredGoalNotification(stored.notificationId);
-    return;
-  }
-
-  // A stored notification belonging to a different fast is stale — drop it.
-  if (stored && stored.fastId !== currentFast.id) {
-    await clearStoredGoalNotification(stored.notificationId);
-    stored = null;
-  }
-
-  const target = currentFast.target_end_time;
-
-  // Elapsed-only fast (no goal) → never schedule; drop a lingering id if the
-  // target was cleared on this same fast.
-  if (!target) {
-    if (stored) await clearStoredGoalNotification(stored.notificationId);
-    return;
-  }
-
-  // A stored notification whose target no longer matches the active fast's
-  // target (e.g. the goal was edited on web / another device) is stale — drop
-  // it so we reschedule for the new target time.
-  if (stored && stored.target !== target) {
-    await clearStoredGoalNotification(stored.notificationId);
-    stored = null;
-  }
-
-  // Already scheduled for this exact fast + target → idempotent no-op.
-  if (stored && stored.fastId === currentFast.id && stored.target === target) return;
-
-  if (schedulingLock.has(currentFast.id)) return;
-  schedulingLock.add(currentFast.id);
+  // Callers fire this with `void`, so a thrown error (from notification
+  // scheduling or AsyncStorage) would surface as an unhandled rejection.
+  // Contain it here.
   try {
-    const notificationId = await scheduleFastGoalNotification(target);
-    if (notificationId) {
-      await AsyncStorage.setItem(
-        GOAL_NOTIF_STORAGE_KEY,
-        JSON.stringify({ fastId: currentFast.id, target, notificationId }),
-      );
+    let stored = await readStoredGoalNotification();
+
+    // No active fast → cancel any scheduled goal notification.
+    if (!currentFast || currentFast.status !== 'ACTIVE') {
+      if (stored) await clearStoredGoalNotification(stored.notificationId);
+      return;
     }
-  } finally {
-    schedulingLock.delete(currentFast.id);
+
+    // A stored notification belonging to a different fast is stale — drop it.
+    if (stored && stored.fastId !== currentFast.id) {
+      await clearStoredGoalNotification(stored.notificationId);
+      stored = null;
+    }
+
+    const target = currentFast.target_end_time;
+
+    // Elapsed-only fast (no goal) → never schedule; drop a lingering id if the
+    // target was cleared on this same fast.
+    if (!target) {
+      if (stored) await clearStoredGoalNotification(stored.notificationId);
+      return;
+    }
+
+    // A stored notification whose target no longer matches the active fast's
+    // target (e.g. the goal was edited on web / another device) is stale — drop
+    // it so we reschedule for the new target time.
+    if (stored && stored.target !== target) {
+      await clearStoredGoalNotification(stored.notificationId);
+      stored = null;
+    }
+
+    // Already scheduled for this exact fast + target → idempotent no-op.
+    if (stored && stored.fastId === currentFast.id && stored.target === target) return;
+
+    if (schedulingLock.has(currentFast.id)) return;
+    schedulingLock.add(currentFast.id);
+    try {
+      const notificationId = await scheduleFastGoalNotification(target);
+      if (notificationId) {
+        await AsyncStorage.setItem(
+          GOAL_NOTIF_STORAGE_KEY,
+          JSON.stringify({ fastId: currentFast.id, target, notificationId }),
+        );
+      }
+    } finally {
+      schedulingLock.delete(currentFast.id);
+    }
+  } catch (error) {
+    addLog(`Failed to reconcile fast goal notification: ${error}`, 'ERROR');
   }
 }
 
@@ -223,14 +231,13 @@ export function useFastingGoalReconciler(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, currentFast?.id, currentFast?.target_end_time, currentFast?.status]);
 
-  const currentRef = useRef(currentFast);
-  currentRef.current = currentFast;
-
+  // On resume, refetch so a fast started/edited on another device is seen. The
+  // fresh data then flows through the effect above, which reconciles the goal
+  // notification — no need to reconcile here against stale pre-refetch data.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       refetch();
-      void reconcileFastGoalNotification(currentRef.current ?? null);
     });
     return () => subscription.remove();
   }, [refetch]);
