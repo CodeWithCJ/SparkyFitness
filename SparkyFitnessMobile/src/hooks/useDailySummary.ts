@@ -5,6 +5,7 @@ import {
   calculateCarbs,
   calculateFat,
   calculateFiber,
+  calculateCustomNutrientTotals,
 } from '../services/api/foodEntriesApi';
 import { calculateExerciseStats } from '../utils/workoutSession';
 import { fetchDailySummary } from '../services/api/dailySummaryApi';
@@ -111,6 +112,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         foodEntries,
         exerciseEntries,
         calorieBalance: resolvedCalorieBalance,
+        customNutrientTotals: calculateCustomNutrientTotals(foodEntries),
       };
     },
     enabled,

@@ -145,6 +145,7 @@ export interface SaveFoodPayload {
   is_default?: boolean;
   barcode?: string | null;
   provider_type?: string | null;
+  custom_nutrients?: Record<string, string | number>;
 }
 
 /**

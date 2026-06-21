@@ -166,3 +166,22 @@ export const calculateProtein = (entries: FoodEntry[]): number => calculateMacro
 export const calculateCarbs = (entries: FoodEntry[]): number => calculateMacro(entries, 'carbs');
 export const calculateFat = (entries: FoodEntry[]): number => calculateMacro(entries, 'fat');
 export const calculateFiber = (entries: FoodEntry[]): number => calculateMacro(entries, 'dietary_fiber');
+
+/**
+ * Aggregates all custom nutrient values across food entries.
+ * Uses the same (value * quantity) / serving_size formula as calculateMacro.
+ * Returns a map of nutrient name → total consumed value.
+ */
+export const calculateCustomNutrientTotals = (entries: FoodEntry[]): Record<string, number> => {
+  const totals: Record<string, number> = {};
+  for (const entry of entries) {
+    if (!entry.custom_nutrients || entry.serving_size === 0) continue;
+    for (const [name, rawValue] of Object.entries(entry.custom_nutrients)) {
+      const value = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+      if (isNaN(value)) continue;
+      const scaled = (value * entry.quantity) / entry.serving_size;
+      totals[name] = (totals[name] ?? 0) + scaled;
+    }
+  }
+  return totals;
+};

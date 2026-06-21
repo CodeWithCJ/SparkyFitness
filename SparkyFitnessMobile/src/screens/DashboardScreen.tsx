@@ -5,7 +5,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange, useWidgetSync } from '../hooks';
+import {
+  useServerConnection,
+  useDailySummary,
+  usePreferences,
+  useMeasurements,
+  useWaterIntakeMutation,
+  useMeasurementsRange,
+  useWidgetSync,
+  useCustomNutrients,
+  useNutrientDisplayPreferences,
+} from '../hooks';
 import type { StepsRange } from '../hooks';
 import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
@@ -24,6 +34,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { NUTRIENT_META, CUSTOM_NUTRIENT_DEFAULT_COLOR } from '../constants/nutrients';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
   { key: '7d', label: '7d' },
@@ -94,6 +105,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
+  const { customNutrients, refetch: refetchCustomNutrients } = useCustomNutrients({ enabled: isConnected });
+  const { summaryNutrients, refetch: refetchNutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
+
   useWidgetSync(summary);
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
@@ -104,14 +118,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
   }, [rawWeightData, weightUnit]);
 
-  // Get macro colors from CSS variables (theme-aware)
-  const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-    '--color-macro-fiber',
+  // progressTrackOverfillColor used for MacroCard overfill indicator
+  const [progressTrackOverfillColor] = useCSSVariable([
     '--color-progress-overfill',
-  ]) as [string, string, string, string, string];
+  ]) as [string];
 
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
@@ -121,9 +131,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
+    await Promise.all([
+      refetch(),
+      refetchPreferences(),
+      refetchMeasurements(),
+      refetchSteps(),
+      refetchCustomNutrients(),
+      refetchNutrientPrefs(),
+    ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps]);
+  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs]);
 
   // Render content based on state
   const renderContent = () => {
@@ -209,9 +226,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     const { eaten, burned, remaining, goal, progress } = summary.calorieBalance;
     const showNetCarbs = preferences.show_net_carbs === true;
-    const carbsConsumed = showNetCarbs
-      ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
-      : summary.carbs.consumed;
 
     return (
       <ScrollView
@@ -242,39 +256,66 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             progressPercent={progress / 100}
           />
         )}
-        {/* Macros Section - 2x2 grid in one card */}
-        {summary.foodEntries.length > 0 ? (
+        {/* Macros Section — driven by nutrient display preferences (summary/mobile) */}
+        {summary.foodEntries.length > 0 && summaryNutrients.length > 0 ? (
           <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
             <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
             <View className="flex-row flex-wrap justify-between">
-            <MacroCard
-              label="Protein"
-              consumed={summary.protein.consumed}
-              goal={summary.protein.goal}
-              color={proteinColor}
-              overfillColor={progressTrackOverfillColor}
-            />
-            <MacroCard
-              label={showNetCarbs ? 'Net Carbs' : 'Carbs'}
-              consumed={carbsConsumed}
-              goal={summary.carbs.goal}
-              color={carbsColor}
-              overfillColor={progressTrackOverfillColor}
-            />
-            <MacroCard
-              label="Fat"
-              consumed={summary.fat.consumed}
-              goal={summary.fat.goal}
-              color={fatColor}
-              overfillColor={progressTrackOverfillColor}
-            />
-            <MacroCard
-              label="Fiber"
-              consumed={summary.fiber.consumed}
-              goal={summary.fiber.goal}
-              color={fiberColor}
-              overfillColor={progressTrackOverfillColor}
-            />
+              {summaryNutrients.map((nutrientKey) => {
+                // Resolve display metadata: predefined first, then custom nutrient definitions.
+                const meta = NUTRIENT_META[nutrientKey];
+                const customDef = !meta
+                  ? customNutrients.find((cn) => cn.name === nutrientKey)
+                  : undefined;
+                const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                const unit = meta?.unit ?? customDef?.unit ?? '';
+                const color = meta?.color ?? CUSTOM_NUTRIENT_DEFAULT_COLOR;
+
+                // Resolve consumed value.
+                let consumed: number;
+                if (nutrientKey === 'carbs' && showNetCarbs) {
+                  consumed = getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed);
+                } else if (nutrientKey === 'protein') {
+                  consumed = summary.protein.consumed;
+                } else if (nutrientKey === 'carbs') {
+                  consumed = summary.carbs.consumed;
+                } else if (nutrientKey === 'fat') {
+                  consumed = summary.fat.consumed;
+                } else if (nutrientKey === 'dietary_fiber') {
+                  consumed = summary.fiber.consumed;
+                } else {
+                  // Standard nutrient from food entry fields, or custom nutrient total.
+                  consumed = summary.customNutrientTotals[nutrientKey] ?? 0;
+                }
+
+                // Resolve goal value.
+                let goal: number;
+                if (nutrientKey === 'protein') {
+                  goal = summary.protein.goal;
+                } else if (nutrientKey === 'carbs') {
+                  goal = summary.carbs.goal;
+                } else if (nutrientKey === 'fat') {
+                  goal = summary.fat.goal;
+                } else if (nutrientKey === 'dietary_fiber') {
+                  goal = summary.fiber.goal;
+                } else {
+                  goal = 0; // Standard micronutrients and custom nutrients have no goal tracked yet.
+                }
+
+                const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+
+                return (
+                  <MacroCard
+                    key={nutrientKey}
+                    label={displayLabel}
+                    consumed={consumed}
+                    goal={goal}
+                    color={color}
+                    overfillColor={progressTrackOverfillColor}
+                    unit={unit}
+                  />
+                );
+              })}
             </View>
           </View>
         ) : null}

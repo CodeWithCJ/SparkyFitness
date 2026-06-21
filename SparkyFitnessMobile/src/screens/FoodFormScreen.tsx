@@ -585,6 +585,8 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
+  const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
+
   const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
   // Holds the equivalent-save function for the current submit so onSuccess can
   // fire it after the food+entry are both confirmed, without a separate pre-save.
@@ -645,6 +647,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
       is_default: true,
       barcode: resolvedBarcode,
       provider_type: providerType ?? null,
+      custom_nutrients: Object.keys(customNutrientValues).length > 0 ? customNutrientValues : undefined,
     };
 
     const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
@@ -776,6 +779,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
             : undefined
         }
         equivalents={{ items: equivalentDraft, onChange: setEquivalentDraft }}
+        onCustomNutrientsChange={setCustomNutrientValues}
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
@@ -1552,8 +1556,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
-      custom_nutrients:
-        snapshot?.custom_nutrients ?? currentCustomNutrients ?? undefined,
+      custom_nutrients: currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
     }),
     [currentCustomNutrients],
   );
@@ -1796,6 +1799,8 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
           onChange: setEquivalentDraft,
           disabled: isDraftSelection,
         }}
+        customNutrients={currentCustomNutrients}
+        onCustomNutrientsChange={setCurrentCustomNutrients}
       />
     </View>
   );
