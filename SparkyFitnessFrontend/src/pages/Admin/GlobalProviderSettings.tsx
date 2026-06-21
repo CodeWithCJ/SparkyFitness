@@ -20,23 +20,14 @@ const GlobalProviderSettings = () => {
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem
         value="global-provider-settings"
-        className="border rounded-lg px-6 bg-card"
+        className="border rounded-lg"
       >
-        <AccordionTrigger className="hover:no-underline py-4">
-          <div className="flex items-center gap-3 text-left">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
-              <Database className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Global Data Providers
-              </h2>
-              <p className="text-sm text-muted-foreground font-normal mt-0.5">
-                Configure instance-level API keys and endpoints for food and
-                exercise libraries.
-              </p>
-            </div>
-          </div>
+        <AccordionTrigger
+          className="flex items-center gap-2 p-4 hover:no-underline"
+          description="Configure instance-level API keys and endpoints for food and exercise libraries."
+        >
+          <Database className="h-5 w-5" />
+          Global Data Providers
         </AccordionTrigger>
         <AccordionContent className="pt-2 pb-6 space-y-6">
           <div className="text-sm text-muted-foreground bg-muted/40 border p-4 rounded-lg leading-relaxed">
