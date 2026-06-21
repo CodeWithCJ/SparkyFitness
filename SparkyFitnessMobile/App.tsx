@@ -51,6 +51,7 @@ import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
+import FastingDetailScreen from './src/screens/FastingDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
@@ -156,6 +157,7 @@ const SafeWorkoutAdd = withErrorBoundary(WorkoutAddScreen, 'WorkoutAdd', { canGo
 const SafeActivityAdd = withErrorBoundary(ActivityAddScreen, 'ActivityAdd', { canGoBack: true });
 const SafeWorkoutDetail = withErrorBoundary(WorkoutDetailScreen, 'WorkoutDetail', { canGoBack: true });
 const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDetail', { canGoBack: true });
+const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail', { canGoBack: true });
 const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
@@ -923,6 +925,14 @@ function AppContent() {
           <Stack.Screen
             name="ActivityDetail"
             component={SafeActivityDetail}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="FastingDetail"
+            component={SafeFastingDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,
