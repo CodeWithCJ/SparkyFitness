@@ -392,22 +392,30 @@ export const removeAllWrittenData = async (): Promise<void> => {
   const keys = await AsyncStorage.getAllKeys();
   const isWriteback = (k: string): boolean => k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`);
 
+  // Batch-read the tracking values (multiGet, one roundtrip) and isolate each key in
+  // its own try/catch so a failed delete or corrupt JSON never aborts the rest of the
+  // cleanup, the tracking-key clear, or the toggle reset below.
+
   // Nutrition tracking is a per-date Record<healthKitType, uuid[]> (incl. the food
   // correlation UUIDs); delete each grouped by type.
-  for (const key of keys.filter((k) => isWriteback(k) && k.includes('NutritionUuids:'))) {
-    const raw = await AsyncStorage.getItem(key);
-    if (raw) await deleteTrackedByType(JSON.parse(raw) as Record<string, string[]>);
+  const nutritionKeys = keys.filter((k) => isWriteback(k) && k.includes('NutritionUuids:'));
+  for (const [key, raw] of await AsyncStorage.multiGet(nutritionKeys)) {
+    if (!raw) continue;
+    try {
+      await deleteTrackedByType(JSON.parse(raw) as Record<string, string[]>);
+    } catch (error) {
+      addLog(`[Writeback] Failed to delete nutrition records for ${key}: ${message(error)}`, 'WARNING');
+    }
   }
 
   // Hydration tracking is a per-date uuid[] of DietaryWater samples.
-  for (const key of keys.filter((k) => isWriteback(k) && k.includes('HydrationUuids:'))) {
-    const raw = await AsyncStorage.getItem(key);
-    const uuids = raw ? (JSON.parse(raw) as string[]) : [];
-    if (uuids.length === 0) continue;
+  const hydrationKeys = keys.filter((k) => isWriteback(k) && k.includes('HydrationUuids:'));
+  for (const [key, raw] of await AsyncStorage.multiGet(hydrationKeys)) {
     try {
-      await deleteObjects(DIETARY_WATER_IDENTIFIER, { uuids });
+      const uuids = raw ? (JSON.parse(raw) as string[]) : [];
+      if (uuids.length > 0) await deleteObjects(DIETARY_WATER_IDENTIFIER, { uuids });
     } catch (error) {
-      addLog(`[Writeback] Failed to delete ${uuids.length} water record(s): ${message(error)}`, 'WARNING');
+      addLog(`[Writeback] Failed to delete water records for ${key}: ${message(error)}`, 'WARNING');
     }
   }
 

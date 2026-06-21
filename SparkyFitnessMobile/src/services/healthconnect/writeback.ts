@@ -235,8 +235,14 @@ export const runWriteback = async (): Promise<void> => {
 export const removeAllWrittenData = async (): Promise<void> => {
   const recordTypes = Array.from(new Set(WRITEBACK_METRICS.map((m) => m.recordType)));
   const endTime = new Date().toISOString();
+  // Best-effort per type: a failed delete (e.g. permission revoked for one type) must
+  // not abort the rest, the tracking-key clear, or the toggle reset below.
   for (const recordType of recordTypes) {
-    await deleteRecordsByTimeRange(recordType, { operator: 'before', endTime });
+    try {
+      await deleteRecordsByTimeRange(recordType, { operator: 'before', endTime });
+    } catch (error) {
+      addLog(`[Writeback] Failed to delete ${recordType} records: ${message(error)}`, 'ERROR');
+    }
   }
 
   const keys = await AsyncStorage.getAllKeys();
