@@ -47,19 +47,25 @@ const PAGE_KEY = 'diary';
 
 /**
  * Safety net: if the grid ever throws (e.g. a layout/measurement feedback loop
- * trips React's max update depth), we reset the saved layout to default and
- * fall back to a plain stacked view so the diary still works.
+ * trips React's max update depth), we render a safe plain stacked view so the
+ * diary still works. We deliberately do NOT delete the saved layout here --
+ * a transient render error should not destroy the user's customization. The
+ * fallback offers a manual "Reset layout" button if they want defaults.
  */
 class GridErrorBoundary extends Component<
-  { onError: () => void; fallback: ReactNode; children: ReactNode },
+  {
+    onError: (error: unknown) => void;
+    fallback: ReactNode;
+    children: ReactNode;
+  },
   { hasError: boolean }
 > {
   state = { hasError: false };
   static getDerivedStateFromError() {
     return { hasError: true };
   }
-  componentDidCatch() {
-    this.props.onError();
+  componentDidCatch(error: unknown) {
+    this.props.onError(error);
   }
   render() {
     return this.state.hasError ? this.props.fallback : this.props.children;
@@ -69,7 +75,7 @@ class GridErrorBoundary extends Component<
 const DiaryWidgetGridInner = ({ widgets }: DiaryWidgetGridProps) => {
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
-  const { saved, save, reset } = useDashboardLayout(PAGE_KEY);
+  const { saved, save, reset, isLoading } = useDashboardLayout(PAGE_KEY);
   const { width, containerRef, mounted } = useContainerWidth();
 
   // Layout editing is a personal action; when viewing someone else's profile
@@ -114,15 +120,9 @@ const DiaryWidgetGridInner = ({ widgets }: DiaryWidgetGridProps) => {
 
   const handleMeasure = useCallback((key: string, px: number) => {
     const rows = pxToRows(px);
-    setMeasuredRows((prev) => {
-      if (prev[key] === rows) return prev;
-      console.log(
-        `[DiaryGrid] measure  ${key.padEnd(28)} px=${Math.round(px)
-          .toString()
-          .padStart(4)}  rows=${rows}  (was ${prev[key] ?? '—'})`
-      );
-      return { ...prev, [key]: rows };
-    });
+    setMeasuredRows((prev) =>
+      prev[key] === rows ? prev : { ...prev, [key]: rows }
+    );
   }, []);
 
   // Apply measured heights over the base layout (which keeps the user-managed
@@ -131,21 +131,6 @@ const DiaryWidgetGridInner = ({ widgets }: DiaryWidgetGridProps) => {
     () => applyAutoHeights(layouts, measuredRows),
     [layouts, measuredRows]
   );
-
-  // TEMP DEBUG: log how the lg breakpoint groups into rows and the final
-  // (equalized) height per widget, so we can see whether same-row widgets share
-  // a `y` and end up the same height.
-  useEffect(() => {
-    const byRow = new Map<number, string[]>();
-    for (const it of displayLayouts.lg) {
-      const label = `${it.i.replace('meal:', 'm:').slice(0, 12)}(meas=${measuredRows[it.i] ?? '—'}→h=${it.h})`;
-      byRow.set(it.y, [...(byRow.get(it.y) ?? []), label]);
-    }
-    const flat = [...byRow.entries()]
-      .map(([y, items]) => `y=${y}: ${items.join('  ')}`)
-      .join('\n');
-    console.log('[DiaryGrid] lg layout:\n' + flat);
-  }, [displayLayouts, measuredRows]);
 
   // react-grid-layout fires onDragStop/onResizeStop BEFORE the onLayoutChange
   // that carries the moved layout. So we flag a pending save on stop and let
@@ -258,45 +243,52 @@ const DiaryWidgetGridInner = ({ widgets }: DiaryWidgetGridProps) => {
       )}
 
       <div ref={containerRef}>
-        {mounted && (
-          <Responsive
-            className="layout"
-            layouts={displayLayouts as unknown as ResponsiveLayouts}
-            breakpoints={GRID_BREAKPOINTS}
-            cols={GRID_COLS}
-            width={width}
-            rowHeight={GRID_ROW_HEIGHT}
-            margin={[16, GRID_MARGIN_Y]}
-            containerPadding={[0, 0]}
-            dragConfig={{
-              enabled: effectiveEditMode,
-              handle: '.widget-drag-handle',
-            }}
-            // Width-only resize: height is content-driven (auto-grow), so we
-            // expose just the east handle and never a vertical one.
-            resizeConfig={{ enabled: effectiveEditMode, handles: ['e'] }}
-            onLayoutChange={handleLayoutChange}
-            onDragStop={markPendingSave}
-            onResizeStop={markPendingSave}
-          >
-            {visibleWidgets.map((w) => (
-              <div key={w.key}>
-                <WidgetFrame
-                  widgetKey={w.key}
-                  title={w.title}
-                  editMode={effectiveEditMode}
-                  isMax={maximized === w.key}
-                  onToggleMax={() =>
-                    setMaximized((cur) => (cur === w.key ? null : w.key))
-                  }
-                  onHide={() => hideWidget(w.key)}
-                  onMeasure={handleMeasure}
-                >
-                  {w.render()}
-                </WidgetFrame>
-              </div>
-            ))}
-          </Responsive>
+        {/* Wait for the saved layout to settle before rendering, so we don't
+            flash the default layout and then re-arrange to the custom one.
+            On error/blank the query still settles with null -> defaults. */}
+        {isLoading ? (
+          <div className="h-[60vh] animate-pulse rounded-lg bg-muted/30" />
+        ) : (
+          mounted && (
+            <Responsive
+              className="layout"
+              layouts={displayLayouts as unknown as ResponsiveLayouts}
+              breakpoints={GRID_BREAKPOINTS}
+              cols={GRID_COLS}
+              width={width}
+              rowHeight={GRID_ROW_HEIGHT}
+              margin={[16, GRID_MARGIN_Y]}
+              containerPadding={[0, 0]}
+              dragConfig={{
+                enabled: effectiveEditMode,
+                handle: '.widget-drag-handle',
+              }}
+              // Width-only resize: height is content-driven (auto-grow), so we
+              // expose just the east handle and never a vertical one.
+              resizeConfig={{ enabled: effectiveEditMode, handles: ['e'] }}
+              onLayoutChange={handleLayoutChange}
+              onDragStop={markPendingSave}
+              onResizeStop={markPendingSave}
+            >
+              {visibleWidgets.map((w) => (
+                <div key={w.key}>
+                  <WidgetFrame
+                    widgetKey={w.key}
+                    title={w.title}
+                    editMode={effectiveEditMode}
+                    isMax={maximized === w.key}
+                    onToggleMax={() =>
+                      setMaximized((cur) => (cur === w.key ? null : w.key))
+                    }
+                    onHide={() => hideWidget(w.key)}
+                    onMeasure={handleMeasure}
+                  >
+                    {w.render()}
+                  </WidgetFrame>
+                </div>
+              ))}
+            </Responsive>
+          )
         )}
       </div>
 
@@ -332,16 +324,29 @@ const DiaryWidgetGrid = ({ widgets }: DiaryWidgetGridProps) => {
   const { reset } = useDashboardLayout(PAGE_KEY);
   const { t } = useTranslation();
 
+  const handleResetLayout = () => {
+    reset();
+    window.location.reload();
+  };
+
   return (
     <GridErrorBoundary
-      onError={reset}
+      onError={(error) =>
+        console.error('Diary widget layout render error:', error)
+      }
       fallback={
         <div className="space-y-4">
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
-            {t(
-              'diary.widgets.layoutResetNotice',
-              'The customizable layout hit an error and was reset to default. Reload the page to use it again.'
-            )}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+            <span>
+              {t(
+                'diary.widgets.layoutErrorNotice',
+                'The customizable layout hit an error, so a simple view is shown. Your saved layout is kept.'
+              )}
+            </span>
+            <Button variant="outline" size="sm" onClick={handleResetLayout}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {t('diary.widgets.resetLayout', 'Reset layout')}
+            </Button>
           </div>
           {widgets.map((w) => (
             <div key={w.key}>{w.render()}</div>

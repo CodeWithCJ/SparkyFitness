@@ -316,8 +316,9 @@ const Diary = () => {
     );
   };
 
-  const visibleMealTypes = (availableMealTypes ?? []).filter(
-    (meal) => meal.is_visible
+  const visibleMealTypes = useMemo(
+    () => (availableMealTypes ?? []).filter((meal) => meal.is_visible),
+    [availableMealTypes]
   );
 
   // Build the ordered widget registry: energy, nutrition, water, one card per
