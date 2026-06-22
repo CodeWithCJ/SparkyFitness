@@ -1705,7 +1705,7 @@ async def get_nutrition_diary(request_data: NutritionDiaryRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        garmin.login(json.loads(tokens_string))
 
         dates = get_dates_in_range(start_date, end_date)
         nutrition_data = []
