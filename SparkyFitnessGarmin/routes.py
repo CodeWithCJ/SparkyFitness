@@ -173,7 +173,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        garmin.login(json.loads(tokens_string))
 
         # Initialize health_data as a dictionary where each key is a metric type and the value is a list of daily entries
         health_data = {metric: [] for metric in ALL_HEALTH_METRICS}
