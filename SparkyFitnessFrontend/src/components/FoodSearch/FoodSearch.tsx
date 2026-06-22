@@ -1,8 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Loader2, Camera, BookText } from 'lucide-react';
+import { Search, Plus, Loader2, Camera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -45,6 +52,10 @@ import { getProviderCategory } from '@/utils/settings.ts';
 
 type FoodDataForBackend = Omit<CSVData, 'id'>;
 
+// Stable empty fallback so the providers reference does not change each render
+// (an inline [] default would re-run the online search effect during loading).
+const EMPTY_PROVIDERS: DataProvider[] = [];
+
 export type ExternalResultWrapper =
   | {
       provider_type: 'openfoodfacts';
@@ -86,10 +97,20 @@ export type ExternalResultWrapper =
 
 interface EnhancedFoodSearchProps {
   onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
+  // When set, only online provider results are shown (used by the Foods page to
+  // import a food from an external provider). No local foods, meals, or recents.
   hideDatabaseTab?: boolean;
+  // When set, the saved-meals section is hidden (e.g. building a meal, where a
+  // meal cannot contain another meal).
   hideMealTab?: boolean;
   mealType?: string;
 }
+
+const SectionHeader = ({ children }: { children: ReactNode }) => (
+  <div className="px-1 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">
+    {children}
+  </div>
+);
 
 const EnhancedFoodSearch = ({
   onFoodSelect,
@@ -114,17 +135,26 @@ const EnhancedFoodSearch = ({
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const getInitialActiveTab = () => {
-    if (!hideDatabaseTab) return 'database';
-    if (!hideMealTab) return 'meal';
-    return 'online';
-  };
+  // Display modes derived from the embedding context.
+  const onlineOnly = hideDatabaseTab;
+  const showLocalFoods = !onlineOnly;
+  const showMeals = !hideMealTab && !onlineOnly;
 
-  const [activeTab, setActiveTab] = useState<
-    'database' | 'meal' | 'online' | 'barcode'
-  >(getInitialActiveTab());
+  const [searchTerm, setSearchTerm] = useState('');
+  // Debounced term for the local-food query so it does not refetch on every
+  // keystroke (meals and online have their own debounced effects).
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setDebouncedSearchTerm('');
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [isMealLoading, setIsMealLoading] = useState(false);
+
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Food | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
@@ -134,7 +164,6 @@ const EnhancedFoodSearch = ({
   const [showAddFoodDialog, setShowAddFoodDialog] = useState(false);
   const [showImportFromCsvDialog, setShowImportFromCsvDialog] = useState(false);
   const isSearchEmpty = !searchTerm.trim();
-  const isDatabaseTab = activeTab === 'database';
 
   const [manualProviderId, setManualProviderId] = useState<string | null>(null);
   const [isOnlineLoading, setIsOnlineLoading] = useState(false);
@@ -145,32 +174,35 @@ const EnhancedFoodSearch = ({
 
   const queryClient = useQueryClient();
   const { data: customNutrients } = useCustomNutrients();
-  const { data: foodDataProviders = [] } = useExternalProvidersQuery();
+  const { data: foodDataProviders = EMPTY_PROVIDERS } =
+    useExternalProvidersQuery();
   const { data: recentTopData, isFetching: isFetchingRecent } =
     useRecentAndTopFoodsQuery(
       itemDisplayLimit,
       mealType,
-      isDatabaseTab && isSearchEmpty
+      showLocalFoods && isSearchEmpty
     );
   const { mutateAsync: importCsvMutation } = useImportCsvMutation();
   const { data: searchData, isFetching: isFetchingSearch } =
     useDatabaseFoodSearchQuery(
-      searchTerm,
+      debouncedSearchTerm,
       foodDisplayLimit,
       mealType,
-      isDatabaseTab && !isSearchEmpty
+      showLocalFoods && !!debouncedSearchTerm.trim()
     );
 
   const recentFoods = recentTopData?.recentFoods || [];
   const topFoods = recentTopData?.topFoods || [];
   const foods = searchData?.searchResults || [];
-  const loading = isFetchingRecent || isFetchingSearch || isOnlineLoading;
 
   const selectedFoodDataProvider =
     manualProviderId ||
     defaultFoodDataProviderId ||
     foodDataProviders[0]?.id ||
     null;
+  const selectedProviderName =
+    foodDataProviders.find((p) => p.id === selectedFoodDataProvider)
+      ?.provider_name ?? '';
 
   // Barcode provider: prefer explicit user selection, then the dedicated barcode
   // provider preference (set in External Provider Settings → Default Barcode Provider),
@@ -186,26 +218,213 @@ const EnhancedFoodSearch = ({
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
 
+  // --- Local meals: searched alongside foods, guarded against stale resolves ---
+
+  const mealSearchSeq = useRef(0);
   const handleMealSearch = useCallback(
     async (term: string) => {
-      const results = await queryClient.fetchQuery(
-        mealSearchOptions('all', term)
-      );
-      setMeals(results);
+      const seq = ++mealSearchSeq.current;
+      setIsMealLoading(true);
+      try {
+        const results = await queryClient.fetchQuery(
+          mealSearchOptions('all', term)
+        );
+        if (seq === mealSearchSeq.current) {
+          setMeals(results);
+        }
+      } catch {
+        if (seq === mealSearchSeq.current) {
+          setMeals([]);
+        }
+      } finally {
+        if (seq === mealSearchSeq.current) {
+          setIsMealLoading(false);
+        }
+      }
     },
     [queryClient]
   );
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (activeTab === 'meal') {
-        handleMealSearch(searchTerm);
-      }
-    }, 500);
 
+  useEffect(() => {
+    // Invalidate any in-flight meal search immediately, so a slow prior request
+    // can't flash stale results during the new debounce window.
+    mealSearchSeq.current += 1;
+    if (!showMeals || isSearchEmpty) {
+      setMeals([]);
+      setIsMealLoading(false);
+      return;
+    }
+    setMeals([]);
+    setIsMealLoading(true);
+    const handler = setTimeout(() => {
+      handleMealSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm, showMeals, isSearchEmpty, handleMealSearch]);
+
+  // --- Online provider search (per-provider handlers) ---
+
+  // Each handler returns its mapped results rather than setting state, so the
+  // online effect can discard a stale resolve via its `active` flag.
+  const searchHandlers = useMemo<
+    Record<
+      string,
+      (
+        term: string,
+        providerId: string,
+        provider: DataProvider
+      ) => Promise<ExternalResultWrapper[]>
+    >
+  >(
+    () => ({
+      openfoodfacts: async (term) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options(
+            'openfoodfacts',
+            term,
+            undefined,
+            undefined,
+            autoScaleOpenFoodFactsImports
+          )
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'openfoodfacts' as const,
+          food,
+        }));
+      },
+      nutritionix: async (term, id) => {
+        const data: NutritionixItem[] = await queryClient.fetchQuery(
+          searchNutritionixOptions(term, id)
+        );
+        return data.map((item) => ({
+          provider_type: 'nutritionix' as const,
+          raw: item,
+          food: convertNutritionixToFood(item),
+        }));
+      },
+      fatsecret: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('fatsecret', term, id)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'fatsecret' as const,
+          food,
+        }));
+      },
+      usda: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('usda', term, id, foodDisplayLimit)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'usda' as const,
+          food,
+        }));
+      },
+      mealie: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('mealie', term, id)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'mealie' as const,
+          food,
+        }));
+      },
+      tandoor: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('tandoor', term, id)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'tandoor' as const,
+          food,
+        }));
+      },
+      yazio: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('yazio', term, id, foodDisplayLimit)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'yazio' as const,
+          food,
+        }));
+      },
+      norish: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('norish', term, id)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'norish' as const,
+          food,
+        }));
+      },
+      swissfood: async (term, id) => {
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options('swissfood', term, id)
+        );
+        return data.foods.map((food: Food) => ({
+          provider_type: 'swissfood' as const,
+          food,
+        }));
+      },
+    }),
+    [queryClient, autoScaleOpenFoodFactsImports, foodDisplayLimit]
+  );
+
+  // Online results stream in alongside local results, using the default
+  // provider. Online searches start at 3 characters to limit provider calls.
+  useEffect(() => {
+    const term = searchTerm.trim();
+    if (term.length < 3) {
+      setExternalResults([]);
+      setHasOnlineSearchBeenPerformed(false);
+      setIsOnlineLoading(false);
+      return;
+    }
+    const provider = foodDataProviders.find(
+      (p) => p.id === selectedFoodDataProvider
+    );
+    const providerSearch = provider
+      ? searchHandlers[provider.provider_type]
+      : undefined;
+    if (!provider || !providerSearch) {
+      setExternalResults([]);
+      setIsOnlineLoading(false);
+      return;
+    }
+    let active = true;
+    const handler = setTimeout(async () => {
+      setIsOnlineLoading(true);
+      setSearchProviderId(provider.id);
+      setHasOnlineSearchBeenPerformed(true);
+      try {
+        const results = await providerSearch(term, provider.id, provider);
+        if (active) setExternalResults(results);
+      } catch {
+        if (active) {
+          setExternalResults([]);
+          toast({
+            title: t('common.error'),
+            description: t(
+              'enhancedFoodSearch.onlineSearchFailed',
+              'Failed to search the online provider.'
+            ),
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        if (active) setIsOnlineLoading(false);
+      }
+    }, 600);
     return () => {
+      active = false;
       clearTimeout(handler);
     };
-  }, [searchTerm, activeTab, handleMealSearch]);
+  }, [
+    searchTerm,
+    selectedFoodDataProvider,
+    foodDataProviders,
+    searchHandlers,
+    t,
+  ]);
 
   const searchBarcode = async (barcode: string) => {
     setIsOnlineLoading(true);
@@ -246,7 +465,6 @@ const EnhancedFoodSearch = ({
         } as ExternalResultWrapper;
 
         setExternalResults([mapped]);
-        setActiveTab('online');
         setHasOnlineSearchBeenPerformed(true);
 
         toast({
@@ -295,154 +513,6 @@ const EnhancedFoodSearch = ({
   const handleImportFromCSV = async (foodDataArray: FoodDataForBackend[]) => {
     await importCsvMutation(foodDataArray);
     setShowImportFromCsvDialog(false);
-  };
-
-  const searchHandlers: Record<
-    string,
-    (term: string, providerId: string, provider: DataProvider) => Promise<void>
-  > = {
-    openfoodfacts: async (term) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options(
-          'openfoodfacts',
-          term,
-          undefined,
-          undefined,
-          autoScaleOpenFoodFactsImports
-        )
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'openfoodfacts' as const,
-          food,
-        }))
-      );
-    },
-    nutritionix: async (term, id) => {
-      const data: NutritionixItem[] = await queryClient.fetchQuery(
-        searchNutritionixOptions(term, id)
-      );
-      setExternalResults(
-        data.map((item) => ({
-          provider_type: 'nutritionix',
-          raw: item,
-          food: convertNutritionixToFood(item),
-        }))
-      );
-    },
-    fatsecret: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('fatsecret', term, id)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'fatsecret' as const,
-          food,
-        }))
-      );
-    },
-    usda: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('usda', term, id, foodDisplayLimit)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'usda' as const,
-          food,
-        }))
-      );
-    },
-    mealie: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('mealie', term, id)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'mealie' as const,
-          food,
-        }))
-      );
-    },
-    tandoor: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('tandoor', term, id)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'tandoor' as const,
-          food,
-        }))
-      );
-    },
-    yazio: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('yazio', term, id, foodDisplayLimit)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'yazio' as const,
-          food,
-        }))
-      );
-    },
-    norish: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('norish', term, id)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'norish' as const,
-          food,
-        }))
-      );
-    },
-    swissfood: async (term, id) => {
-      const data = await queryClient.fetchQuery(
-        searchFoodsV2Options('swissfood', term, id)
-      );
-      setExternalResults(
-        data.foods.map((food: Food) => ({
-          provider_type: 'swissfood' as const,
-          food,
-        }))
-      );
-    },
-  };
-
-  const handleSearch = async () => {
-    setIsOnlineLoading(true);
-    setExternalResults([]);
-    setMeals([]);
-
-    if (!searchTerm.trim()) {
-      setIsOnlineLoading(false);
-      return;
-    }
-
-    if (activeTab === 'meal') {
-      await handleMealSearch(searchTerm);
-    } else if (activeTab === 'online') {
-      setHasOnlineSearchBeenPerformed(true);
-      const provider = foodDataProviders.find(
-        (p) => p.id === selectedFoodDataProvider
-      );
-
-      if (provider && searchHandlers[provider.provider_type]) {
-        setSearchProviderId(provider.id);
-        const searchHandler = searchHandlers[provider.provider_type];
-        if (searchHandler)
-          await searchHandler(searchTerm, provider.id, provider);
-      } else {
-        toast({
-          title: t('common.error'),
-          description: 'Provider not supported',
-          variant: 'destructive',
-        });
-      }
-    } else if (activeTab === 'barcode') {
-      await searchBarcode(searchTerm);
-    }
-    setIsOnlineLoading(false);
   };
 
   const handleNutritionixEdit = async (item: NutritionixItem) => {
@@ -538,42 +608,25 @@ const EnhancedFoodSearch = ({
     getEnergyUnitString,
     customNutrients: customNutrients || [],
   };
+
+  // --- Derived render state ---
+
+  const foodProviderOptions = foodDataProviders.filter(
+    (provider) =>
+      getProviderCategory(provider).includes('food') && provider.is_active
+  );
+  const isDebouncePending =
+    !isSearchEmpty && debouncedSearchTerm !== searchTerm;
+  const localPending = isFetchingSearch || isMealLoading || isDebouncePending;
+  const noLocalResults = foods.length === 0 && meals.length === 0;
+  const showLocalEmpty =
+    showLocalFoods && !isSearchEmpty && !localPending && noLocalResults;
+  const showLocalSpinner =
+    showLocalFoods && !isSearchEmpty && localPending && noLocalResults;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-        {!hideDatabaseTab && (
-          <Button
-            variant={activeTab === 'database' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('database')}
-          >
-            {t('enhancedFoodSearch.database', 'Database')}
-          </Button>
-        )}
-        {!hideMealTab && (
-          <Button
-            variant={activeTab === 'meal' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('meal')}
-          >
-            <BookText className="w-4 h-4 mr-2" />
-            {t('enhancedFoodSearch.meals', 'Meals')}
-          </Button>
-        )}
-        <Button
-          variant={activeTab === 'online' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('online')}
-        >
-          {t('enhancedFoodSearch.online', 'Online')}
-        </Button>
-        <Button
-          variant={activeTab === 'barcode' ? 'default' : 'outline'}
-          onClick={() => {
-            setActiveTab('barcode');
-            setShowBarcodeScanner(true);
-          }}
-        >
-          <Camera className="w-4 h-4 mr-2" />{' '}
-          {t('enhancedFoodSearch.scanBarcode', 'Scan Barcode')}
-        </Button>
         <Button
           onClick={() => setShowAddFoodDialog(true)}
           className="whitespace-nowrap"
@@ -584,39 +637,39 @@ const EnhancedFoodSearch = ({
         <Button
           onClick={() => setShowImportFromCsvDialog(true)}
           className="whitespace-nowrap"
+          variant="outline"
         >
           <Plus className="w-4 h-4 mr-2" />{' '}
           {t('enhancedFoodSearch.importFromCSV', 'Import from CSV')}
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => setShowBarcodeScanner(true)}
+          className="whitespace-nowrap"
+        >
+          <Camera className="w-4 h-4 mr-2" />{' '}
+          {t('enhancedFoodSearch.scanBarcode', 'Scan Barcode')}
+        </Button>
       </div>
 
       <div className="flex space-x-2 items-center">
-        <Input
-          placeholder={t(
-            'enhancedFoodSearch.searchFoodsPlaceholder',
-            'Search for foods...'
-          )}
-          value={searchTerm}
-          autoFocus
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (
-              e.key === 'Enter' &&
-              (activeTab === 'online' || activeTab === 'barcode')
-            ) {
-              handleSearch();
-            }
-          }}
-          className="flex-1"
-        />
-        <Button onClick={handleSearch} disabled={loading}>
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Search className="w-4 h-4" />
-          )}
-        </Button>
-        {activeTab === 'online' && (
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder={t(
+              'enhancedFoodSearch.searchFoodsPlaceholder',
+              'Search for foods...'
+            )}
+            value={searchTerm}
+            autoFocus
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {(isOnlineLoading || localPending) && (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        )}
+        {foodProviderOptions.length > 0 && (
           <Select
             value={selectedFoodDataProvider || ''}
             onValueChange={(value) => {
@@ -634,138 +687,166 @@ const EnhancedFoodSearch = ({
               />
             </SelectTrigger>
             <SelectContent>
-              {foodDataProviders
-                .filter(
-                  (provider) =>
-                    getProviderCategory(provider).includes('food') &&
-                    provider.is_active
-                )
-                .map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
-                    {' '}
-                    {provider.provider_name}{' '}
-                  </SelectItem>
-                ))}
+              {foodProviderOptions.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  {' '}
+                  {provider.provider_name}{' '}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}
       </div>
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
-        {loading && (
-          <div className="text-center py-8 text-gray-500">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-            {t('enhancedFoodSearch.searchingFoods', 'Searching foods...')}
-          </div>
-        )}
-
-        {!loading && activeTab === 'database' && searchTerm.trim() === '' && (
+        {/* Landing: recent + top foods (local mode, empty query) */}
+        {showLocalFoods && isSearchEmpty && (
           <>
-            {recentFoods.map((food: Food) => (
-              <FoodResultCard
-                key={food.id}
-                item={food}
-                nutrientConfig={nutrientConfig}
-                onCardClick={() => onFoodSelect(food, 'food')}
-              />
-            ))}
-
-            {topFoods.map((food: Food) => (
-              <FoodResultCard
-                key={food.id}
-                item={food}
-                nutrientConfig={nutrientConfig}
-                onCardClick={() => onFoodSelect(food, 'food')}
-              />
-            ))}
-
-            {recentFoods.length === 0 && topFoods.length === 0 && (
+            {isFetchingRecent && (
               <div className="text-center py-8 text-gray-500">
-                {t(
-                  'enhancedFoodSearch.noRecentOrTopFoods',
-                  'No recent or top foods found. Start logging foods to see them here.'
-                )}
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                {t('enhancedFoodSearch.searchingFoods', 'Searching foods...')}
               </div>
+            )}
+            {!isFetchingRecent && (
+              <>
+                {recentFoods.map((food: Food) => (
+                  <FoodResultCard
+                    key={food.id}
+                    item={food}
+                    nutrientConfig={nutrientConfig}
+                    onCardClick={() => onFoodSelect(food, 'food')}
+                  />
+                ))}
+                {topFoods.map((food: Food) => (
+                  <FoodResultCard
+                    key={food.id}
+                    item={food}
+                    nutrientConfig={nutrientConfig}
+                    onCardClick={() => onFoodSelect(food, 'food')}
+                  />
+                ))}
+                {recentFoods.length === 0 && topFoods.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    {t(
+                      'enhancedFoodSearch.noRecentOrTopFoods',
+                      'No recent or top foods found. Start logging foods to see them here.'
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
 
-        {!loading &&
-          activeTab === 'database' &&
-          searchTerm.trim() !== '' &&
-          foods.length === 0 &&
-          meals.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              {t('enhancedFoodSearch.noItemsFoundInDatabase', {
-                searchTerm,
-                defaultValue: `No items found in your database for "${searchTerm}".`,
-              })}
-            </div>
-          )}
+        {/* Online-only mode prompt (e.g. Foods page import) */}
+        {onlineOnly && isSearchEmpty && (
+          <div className="text-center py-8 text-gray-500">
+            {t(
+              'enhancedFoodSearch.searchOnlineToImport',
+              'Search to find foods from your online provider.'
+            )}
+          </div>
+        )}
 
-        {!loading &&
-          (activeTab === 'online' || activeTab === 'barcode') &&
-          !hasOnlineSearchBeenPerformed && (
-            <div className="text-center py-8 text-gray-500">
-              {t(
-                'enhancedFoodSearch.clickSearchIconOnline',
-                'Click the search icon to search online.'
-              )}
-            </div>
-          )}
+        {/* Search results */}
+        {!isSearchEmpty && (
+          <>
+            {/* Local foods */}
+            {showLocalFoods && foods.length > 0 && (
+              <>
+                <SectionHeader>
+                  {t('enhancedFoodSearch.yourFoods', 'Your Foods')}
+                </SectionHeader>
+                {foods.map((food: Food) => (
+                  <FoodResultCard
+                    key={food.id}
+                    item={food}
+                    nutrientConfig={nutrientConfig}
+                    onCardClick={() => onFoodSelect(food, 'food')}
+                  />
+                ))}
+              </>
+            )}
 
-        {!loading &&
-          (activeTab === 'online' || activeTab === 'barcode') &&
-          hasOnlineSearchBeenPerformed &&
-          externalResults.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              {t(
-                'enhancedFoodSearch.noFoodsFoundOnline',
-                'No foods found from the selected online provider.'
-              )}
-            </div>
-          )}
+            {/* Local meals */}
+            {showMeals && meals.length > 0 && (
+              <>
+                <SectionHeader>
+                  {t('enhancedFoodSearch.yourMeals', 'Your Meals')}
+                </SectionHeader>
+                {meals.map((meal) => (
+                  <FoodResultCard
+                    key={`meal-${meal.id}`}
+                    item={meal}
+                    isMeal={true}
+                    nutrientConfig={nutrientConfig}
+                    onCardClick={() => onFoodSelect(meal, 'meal')}
+                  />
+                ))}
+              </>
+            )}
 
-        {(activeTab === 'online' || activeTab === 'barcode') &&
-          externalResults.length > 0 &&
-          externalResults.map((result) => (
-            <FoodResultCard
-              key={`${result.provider_type}-${result.food.provider_external_id}`}
-              item={result.food}
-              isOnline={true}
-              providerLabel={result.provider_type.toUpperCase()}
-              nutrientConfig={nutrientConfig}
-              onEditClick={() => {
-                if (result.provider_type === 'nutritionix') {
-                  handleNutritionixEdit(result.raw);
-                } else {
-                  handleExternalFoodEdit(result.food);
-                }
-              }}
-            />
-          ))}
+            {/* Local loading / empty */}
+            {showLocalSpinner && (
+              <div className="text-center py-8 text-gray-500">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                {t('enhancedFoodSearch.searchingFoods', 'Searching foods...')}
+              </div>
+            )}
+            {showLocalEmpty && (
+              <div className="text-center py-6 text-gray-500">
+                {showMeals
+                  ? t(
+                      'enhancedFoodSearch.noSavedFoodsOrMeals',
+                      'No saved foods or meals found.'
+                    )
+                  : t(
+                      'enhancedFoodSearch.noSavedFoods',
+                      'No saved foods found.'
+                    )}
+              </div>
+            )}
 
-        {activeTab === 'meal' &&
-          meals.map((meal) => (
-            <FoodResultCard
-              key={meal.id}
-              item={meal}
-              isMeal={true}
-              nutrientConfig={nutrientConfig}
-              onCardClick={() => onFoodSelect(meal, 'meal')}
-            />
-          ))}
-
-        {activeTab === 'database' &&
-          searchTerm.trim() !== '' &&
-          foods.map((food: Food) => (
-            <FoodResultCard
-              key={food.id}
-              item={food}
-              nutrientConfig={nutrientConfig}
-              onCardClick={() => onFoodSelect(food, 'food')}
-            />
-          ))}
+            {/* Online provider results */}
+            {selectedProviderName && (
+              <>
+                <SectionHeader>{selectedProviderName}</SectionHeader>
+                {isOnlineLoading && externalResults.length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                  </div>
+                )}
+                {externalResults.map((result) => (
+                  <FoodResultCard
+                    key={`${result.provider_type}-${result.food.provider_external_id}`}
+                    item={result.food}
+                    isOnline={true}
+                    providerLabel={result.provider_type.toUpperCase()}
+                    nutrientConfig={nutrientConfig}
+                    onEditClick={() => {
+                      if (result.provider_type === 'nutritionix') {
+                        handleNutritionixEdit(result.raw);
+                      } else {
+                        handleExternalFoodEdit(result.food);
+                      }
+                    }}
+                  />
+                ))}
+                {!isOnlineLoading &&
+                  hasOnlineSearchBeenPerformed &&
+                  externalResults.length === 0 && (
+                    <div className="text-center py-6 text-gray-500">
+                      {t(
+                        'enhancedFoodSearch.noFoodsFoundOnline',
+                        'No foods found from the selected online provider.'
+                      )}
+                    </div>
+                  )}
+              </>
+            )}
+          </>
+        )}
       </div>
       <FoodFormDialog
         isOpen={showEditDialog}
