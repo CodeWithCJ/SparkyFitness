@@ -1,6 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   insertRecords,
   deleteRecordsByUuids,
+  deleteRecordsByTimeRange,
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
@@ -13,11 +15,13 @@ import {
 const {
   writebackPhase,
   runWriteback,
+  removeWrittenData,
 } = require('../../../src/services/healthconnect/writeback.ts');
 
 jest.mock('react-native-health-connect', () => ({
   insertRecords: jest.fn().mockResolvedValue([]),
   deleteRecordsByUuids: jest.fn().mockResolvedValue(undefined),
+  deleteRecordsByTimeRange: jest.fn().mockResolvedValue(undefined),
   getGrantedPermissions: jest.fn(),
   RecordingMethod: { RECORDING_METHOD_MANUAL_ENTRY: 3 },
 }));
@@ -30,6 +34,7 @@ jest.mock('../../../src/utils/loggedMealCollapse', () => ({
 jest.mock('../../../src/services/healthconnect/preferences', () => ({
   loadHealthPreference: jest.fn(),
   saveHealthPreference: jest.fn(),
+  HEALTH_PREFERENCE_PREFIX: '@HealthConnect',
 }));
 jest.mock('../../../src/services/healthconnect/index', () => ({
   isQuotaExceededError: jest.fn(() => false),
@@ -42,6 +47,7 @@ jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const mockInsert = insertRecords as jest.Mock;
 const mockDelete = deleteRecordsByUuids as jest.Mock;
+const mockDeleteByRange = deleteRecordsByTimeRange as jest.Mock;
 const mockGranted = getGrantedPermissions as jest.Mock;
 const mockSummary = fetchDailySummary as jest.Mock;
 const mockLoadPref = loadHealthPreference as jest.Mock;
@@ -200,5 +206,51 @@ describe('runWriteback (cursor)', () => {
     (isQuotaExceededError as jest.Mock).mockReturnValue(true);
     await runWriteback();
     expect(mockSaveCursor).not.toHaveBeenCalled();
+  });
+});
+
+describe('removeWrittenData (cleanup)', () => {
+  it('full purge: deletes all-time, clears all tracking, disables writeback', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-01', JSON.stringify(['x']));
+    await AsyncStorage.setItem('@HealthConnect:writebackHydrationSig:2026-06-15', '"sig"');
+    await AsyncStorage.setItem('@HealthConnect:syncDuration', '"daily"'); // unrelated — must survive
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: true });
+
+    // All-time = "before now" per record type.
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Nutrition', expect.objectContaining({ operator: 'before' }));
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Hydration', expect.objectContaining({ operator: 'before' }));
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthConnect:writebackNutritionIds:2026-06-01');
+    expect(remaining).not.toContain('@HealthConnect:writebackHydrationSig:2026-06-15');
+    expect(remaining).toContain('@HealthConnect:syncDuration');
+
+    expect(mockSavePref).toHaveBeenCalledWith('writebackNutritionEnabled', false);
+    expect(mockSavePref).toHaveBeenCalledWith('writebackHydrationEnabled', false);
+  });
+
+  it('date range: deletes "between", clears only in-range tracking, keeps writeback on', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-10', JSON.stringify(['in']));
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-20', JSON.stringify(['out']));
+
+    const result = await removeWrittenData({ from: '2026-06-08', to: '2026-06-12' });
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Nutrition', expect.objectContaining({ operator: 'between' }));
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthConnect:writebackNutritionIds:2026-06-10'); // in range → cleared
+    expect(remaining).toContain('@HealthConnect:writebackNutritionIds:2026-06-20'); // out of range → kept
+    expect(mockSavePref).not.toHaveBeenCalledWith('writebackNutritionEnabled', false); // toggles untouched
+  });
+
+  it('reports partial failure (ok=false) when a delete throws', async () => {
+    await AsyncStorage.clear();
+    mockDeleteByRange.mockRejectedValueOnce(new Error('permission revoked'));
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
   });
 });

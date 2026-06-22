@@ -13,6 +13,18 @@ import type { ImageSourcePropType } from 'react-native';
 
 export type WritebackMetricId = 'nutrition' | 'hydration';
 
+/** Inclusive local-calendar-day range (YYYY-MM-DD) for a targeted writeback removal.
+ *  `null` removal means "all time" (full purge). */
+export interface WritebackDateRange {
+  from: string;
+  to: string;
+}
+
+/** Result of a removal: `ok` is false if any record-type delete failed (partial). */
+export interface WritebackRemovalResult {
+  ok: boolean;
+}
+
 export interface WritebackMetric {
   id: WritebackMetricId;
   label: string;

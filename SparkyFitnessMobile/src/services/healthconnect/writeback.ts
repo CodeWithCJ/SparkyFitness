@@ -1,13 +1,15 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   insertRecords,
   deleteRecordsByUuids,
+  deleteRecordsByTimeRange,
   getGrantedPermissions,
   type HealthConnectRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
-import { loadHealthPreference, saveHealthPreference } from './preferences';
+import { loadHealthPreference, saveHealthPreference, HEALTH_PREFERENCE_PREFIX } from './preferences';
 import { isQuotaExceededError } from './index';
 import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
@@ -15,7 +17,12 @@ import {
   waterMlToHydrationRecord,
   computeWritebackDates,
 } from './writebackMappers';
-import { WRITEBACK_METRICS, type WritebackMetric } from '../../WritebackMetrics';
+import {
+  WRITEBACK_METRICS,
+  type WritebackMetric,
+  type WritebackDateRange,
+  type WritebackRemovalResult,
+} from '../../WritebackMetrics';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -219,4 +226,67 @@ export const runWriteback = async (): Promise<void> => {
   const dates = computeWritebackDates(await loadLastWritebackTime());
   const completed = await writebackPhase(dates);
   if (completed) await saveLastWritebackTime();
+};
+
+// Local-calendar-day bounds, as instants, for a Health Connect between-filter.
+const dayStartInstant = (day: string): string => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+};
+const dayEndInstant = (day: string): string => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
+};
+
+// Our per-date tracking keys (writeback{Type}Ids/Sig:{YYYY-MM-DD}), optionally
+// restricted to a date range by the key's trailing day.
+const trackingKeysToClear = (keys: readonly string[], range: WritebackDateRange | null): string[] =>
+  keys.filter((k) => {
+    if (!k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`)) return false;
+    if (!k.includes('Ids:') && !k.includes('Sig:')) return false;
+    if (!range) return true;
+    const day = k.slice(k.lastIndexOf(':') + 1);
+    return day >= range.from && day <= range.to;
+  });
+
+/**
+ * Delete records SparkyFitness wrote to Health Connect. `range` null = full purge
+ * (all time) — also turns writeback off, a true rollback; a date range removes just
+ * that window and leaves writeback on. Health Connect only lets an app delete records
+ * it authored (by dataOrigin), so other apps' and manual data are never touched, and
+ * the 30-day window is read-only so historic records are reached. Clearing the tracking
+ * keys is required, else change-detection would treat a later re-write as "unchanged".
+ * Best-effort per record type; returns ok=false if any delete failed (partial).
+ */
+export const removeWrittenData = async (
+  range: WritebackDateRange | null,
+): Promise<WritebackRemovalResult> => {
+  const recordTypes = Array.from(new Set(WRITEBACK_METRICS.map((m) => m.recordType)));
+  const filter = range
+    ? { operator: 'between' as const, startTime: dayStartInstant(range.from), endTime: dayEndInstant(range.to) }
+    : { operator: 'before' as const, endTime: new Date().toISOString() };
+
+  let ok = true;
+  for (const recordType of recordTypes) {
+    try {
+      await deleteRecordsByTimeRange(recordType, filter);
+    } catch (error) {
+      ok = false;
+      addLog(`[Writeback] Failed to delete ${recordType} records: ${message(error)}`, 'ERROR');
+    }
+  }
+
+  const keys = await AsyncStorage.getAllKeys();
+  const toClear = trackingKeysToClear(keys, range);
+  if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
+
+  if (!range) {
+    await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
+  }
+
+  addLog(
+    `[Writeback] Removed SparkyFitness data from Health Connect (${range ? `${range.from}..${range.to}` : 'all time'})`,
+    'INFO',
+  );
+  return { ok };
 };

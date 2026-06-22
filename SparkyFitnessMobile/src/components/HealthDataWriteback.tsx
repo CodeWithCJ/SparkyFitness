@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, Switch, Image, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import CollapsibleSection from './CollapsibleSection';
+import Button from './ui/Button';
+import BottomSheetPicker from './BottomSheetPicker';
 import {
   WRITEBACK_METRICS,
   WRITEBACK_CATEGORY_ORDER,
@@ -11,7 +13,14 @@ import {
 interface HealthDataWritebackProps {
   writebackStates: Record<string, boolean>;
   handleToggleWriteback: (metric: WritebackMetric, newValue: boolean) => void;
+  /** Delete all SparkyFitness-written records (full purge — caller confirms). */
+  onRemoveAllData: () => void;
+  /** Open the date-range picker to remove a window of records. */
+  onRemoveDateRange: () => void;
 }
+
+// Remove-scope choices shown in the bottom-sheet menu.
+type RemoveScope = 'all' | 'range';
 
 const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMetric[]> =>
   metrics.reduce(
@@ -30,6 +39,8 @@ const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMe
 const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   writebackStates,
   handleToggleWriteback,
+  onRemoveAllData,
+  onRemoveDateRange,
 }) => {
   const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
@@ -96,6 +107,22 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
           </CollapsibleSection>
         );
       })}
+      <BottomSheetPicker<RemoveScope>
+        value={'' as RemoveScope}
+        title={`Remove from ${storeName}`}
+        options={[
+          { label: 'All time', value: 'all' },
+          { label: 'Pick a date range…', value: 'range' },
+        ]}
+        onSelect={(scope) => (scope === 'all' ? onRemoveAllData() : onRemoveDateRange())}
+        renderTrigger={({ onPress }) => (
+          <Button variant="ghost" onPress={onPress} className="mt-2 py-1 px-0 self-start">
+            <Text className="text-sm font-medium text-text-danger-subtle">
+              Remove SparkyFitness data from {storeName}
+            </Text>
+          </Button>
+        )}
+      />
     </View>
   );
 };
