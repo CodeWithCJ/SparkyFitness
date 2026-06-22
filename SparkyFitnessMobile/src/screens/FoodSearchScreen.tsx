@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   SectionList,
   TextInput,
+  Keyboard,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -430,7 +431,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           title="Online provider"
           renderTrigger={({ onPress }) => (
             <Pressable
-              onPress={onPress}
+              onPress={() => {
+                // Drop the search keyboard first so the sheet isn't hidden
+                // behind it as it animates up.
+                Keyboard.dismiss();
+                onPress();
+              }}
               className="px-4 py-2 bg-surface flex-row items-center justify-between"
               accessibilityRole="button"
               accessibilityLabel={`Online provider ${section.title}, tap to change`}
