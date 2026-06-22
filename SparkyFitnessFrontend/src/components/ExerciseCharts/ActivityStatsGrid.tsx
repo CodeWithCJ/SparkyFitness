@@ -8,6 +8,7 @@ import {
   FaFire,
   FaHeartbeat,
   FaRunning,
+  FaTint,
 } from 'react-icons/fa';
 
 interface ActivityStatsGridProps {
@@ -18,6 +19,7 @@ interface ActivityStatsGridProps {
   calories: string | null;
   heartRate: string | null;
   cadence: string | null;
+  waterLoss: string | null;
 }
 
 export const ActivityStatsGrid = ({
@@ -28,6 +30,7 @@ export const ActivityStatsGrid = ({
   calories,
   heartRate,
   cadence,
+  waterLoss,
 }: ActivityStatsGridProps) => {
   const { t } = useTranslation();
 
@@ -121,6 +124,19 @@ export const ActivityStatsGrid = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{cadence}</div>
+          </CardContent>
+        </Card>
+      )}
+      {waterLoss !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.waterLoss', 'Water Loss')}
+            </CardTitle>
+            <FaTint className="h-5 w-5 text-cyan-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{waterLoss}</div>
           </CardContent>
         </Card>
       )}

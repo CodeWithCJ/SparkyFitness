@@ -1179,7 +1179,8 @@ CREATE TABLE public.exercise_entries (
     avg_heart_rate integer,
     exercise_preset_entry_id uuid,
     sort_order integer DEFAULT 0,
-    steps integer
+    steps integer,
+    water_estimated integer
 );
 
 
@@ -1188,6 +1189,13 @@ CREATE TABLE public.exercise_entries (
 --
 
 COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded during this activity, sourced from Garmin or other providers.';
+
+
+--
+-- Name: COLUMN exercise_entries.water_estimated; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.water_estimated IS 'Estimated water loss in ml during this activity, sourced from Garmin or other providers.';
 
 
 --
@@ -2429,6 +2437,7 @@ CREATE TABLE public.user_preferences (
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
     use_external_bmr boolean DEFAULT false NOT NULL,
+    add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     active_ai_service_id uuid,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),

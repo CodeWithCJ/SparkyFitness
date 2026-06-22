@@ -492,7 +492,9 @@
       "milliliters": "Milliliters (ml)",
       "fluidOunces": "Fluid Ounces (oz)",
       "cups": "Cups",
-      "saveWaterDisplayUnit": "Save Water Display Unit"
+      "saveWaterDisplayUnit": "Save Water Display Unit",
+      "addExerciseWater": "Add exercise water loss to daily goal",
+      "addExerciseWaterHint": "Increases your daily water goal by the estimated sweat loss from activities."
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
@@ -1594,6 +1596,8 @@
       "totalAscent": "Total Ascent",
       "calories": "Calories",
       "heartRate": "Heart Rate",
+      "cadence": "Cadence",
+      "waterLoss": "Water Loss",
       "runningDynamics": "Running Dynamics",
       "xAxis": "X-Axis:",
       "timeOfDay": "Time of Day",

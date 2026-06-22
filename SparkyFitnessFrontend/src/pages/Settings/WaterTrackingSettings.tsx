@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Save, Droplet } from 'lucide-react';
 import WaterContainerManager from './WaterContainerManager';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
@@ -20,8 +21,13 @@ import { toast } from '@/hooks/use-toast';
 export const WaterTrackingSettings = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { water_display_unit, saveAllPreferences, setWaterDisplayUnit } =
-    usePreferences();
+  const {
+    water_display_unit,
+    saveAllPreferences,
+    setWaterDisplayUnit,
+    addExerciseWaterToGoal,
+    setAddExerciseWaterToGoal,
+  } = usePreferences();
   const [localWaterUnit, setLocalWaterUnit] = useState(water_display_unit);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -101,6 +107,31 @@ export const WaterTrackingSettings = () => {
                 'Save Water Display Unit'
               )}
         </Button>
+        <Separator />
+        <div className="flex items-center justify-between py-2">
+          <div className="space-y-0.5">
+            <Label htmlFor="add-exercise-water-to-goal">
+              {t(
+                'settings.waterTracking.addExerciseWater',
+                'Add exercise water loss to daily goal'
+              )}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'settings.waterTracking.addExerciseWaterHint',
+                'Increases your daily water goal by the estimated sweat loss from activities.'
+              )}
+            </p>
+          </div>
+          <Switch
+            id="add-exercise-water-to-goal"
+            checked={addExerciseWaterToGoal}
+            onCheckedChange={(checked) => {
+              setAddExerciseWaterToGoal(checked);
+              saveAllPreferences({ addExerciseWaterToGoal: checked });
+            }}
+          />
+        </div>
         <Separator />
         <WaterContainerManager />
       </AccordionContent>

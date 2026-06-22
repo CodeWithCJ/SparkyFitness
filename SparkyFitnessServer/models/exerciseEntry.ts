@@ -298,6 +298,10 @@ async function _updateExerciseEntryWithClient(
       updateData.secondary_muscles || currentEntry.secondary_muscles,
     instructions: updateData.instructions || currentEntry.instructions,
     images: updateData.images || currentEntry.images,
+    water_estimated:
+      updateData.water_estimated !== undefined
+        ? updateData.water_estimated
+        : currentEntry.water_estimated,
   };
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
@@ -351,8 +355,9 @@ async function _updateExerciseEntryWithClient(
       images = $23,
       sort_order = $24,
       steps = $25,
+      water_estimated = $26,
       updated_at = now()
-    WHERE id = $26 AND user_id = $27
+    WHERE id = $27 AND user_id = $28
     RETURNING id`,
     [
       mergedData.exercise_id,
@@ -384,6 +389,7 @@ async function _updateExerciseEntryWithClient(
       mergedData.images ? JSON.stringify(mergedData.images) : null,
       mergedData.sort_order || 0,
       mergedData.steps || null,
+      mergedData.water_estimated || null,
       id,
       userId,
     ]
@@ -513,8 +519,8 @@ async function _createExerciseEntryWithClient(
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) RETURNING id`,
+           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -543,6 +549,7 @@ async function _createExerciseEntryWithClient(
           exercisePresetEntryId, // New parameter
           entryData.sort_order || 0,
           entryData.steps || null,
+          entryData.water_estimated || null,
         ]
       );
       newEntryId = entryResult.rows[0].id;
@@ -1371,6 +1378,46 @@ async function getExerciseUsage(
   }
 }
 
+async function getWaterEstimatedSumForDate(
+  userId: string,
+  date: string
+): Promise<number> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT COALESCE(SUM(water_estimated), 0) as total FROM exercise_entries WHERE user_id = $1 AND entry_date = $2 AND water_estimated IS NOT NULL',
+      [userId, date]
+    );
+    return parseInt(result.rows[0].total, 10);
+  } finally {
+    client.release();
+  }
+}
+
+async function getWaterEstimatedSumForDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<Record<string, number>> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') as date, COALESCE(SUM(water_estimated), 0) as total
+       FROM exercise_entries
+       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 AND water_estimated IS NOT NULL
+       GROUP BY entry_date`,
+      [userId, startDate, endDate]
+    );
+    const map: Record<string, number> = {};
+    for (const row of result.rows) {
+      map[row.date] = parseInt(row.total, 10);
+    }
+    return map;
+  } finally {
+    client.release();
+  }
+}
+
 export { upsertExerciseEntryData };
 export { _createExerciseEntryWithClient };
 export { createExerciseEntry };
@@ -1390,6 +1437,8 @@ export { getDailyExerciseTotalsRange };
 export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
 export { getExerciseUsage };
+export { getWaterEstimatedSumForDate };
+export { getWaterEstimatedSumForDateRange };
 export default {
   upsertExerciseEntryData,
   _createExerciseEntryWithClient,
@@ -1413,4 +1462,6 @@ export default {
   getExerciseDiaryRange,
   getRecentExerciseEntries,
   getExerciseUsage,
+  getWaterEstimatedSumForDate,
+  getWaterEstimatedSumForDateRange,
 };

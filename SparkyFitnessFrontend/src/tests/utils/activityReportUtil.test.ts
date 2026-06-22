@@ -22,6 +22,7 @@ import {
   extractElevationGain,
   getActivityIcon,
   getEventTypeLabel,
+  readActivityStats,
 } from '@/utils/activityReportUtil';
 import { ActivityDetailsResponse } from '@/types/exercises';
 import { ChartDataPoint } from '@/types/reports';
@@ -510,5 +511,59 @@ describe('getEventTypeLabel – hide uncategorized events', () => {
 
   it('returns typeKey for a valid object event type', () => {
     expect(getEventTypeLabel({ typeKey: 'race' })).toBe('race');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. readActivityStats – waterEstimated extraction
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('readActivityStats – waterEstimated', () => {
+  it('extracts waterEstimated from Garmin activity data', () => {
+    const activityData = {
+      activity: {
+        activity: {
+          waterEstimated: 4358,
+          distance: 7.16,
+          duration: 285,
+          calories: 2001,
+          averageHR: 134,
+          activityName: 'Hiking',
+          activityType: { typeKey: 'hiking' },
+        },
+      },
+    } as unknown as ActivityDetailsResponse;
+
+    const stats = readActivityStats(activityData);
+    expect(stats.waterEstimated).toBe(4358);
+  });
+
+  it('returns null when waterEstimated is absent', () => {
+    const activityData = {
+      activity: {
+        activity: {
+          distance: 5.0,
+          duration: 30,
+          calories: 300,
+        },
+      },
+    } as unknown as ActivityDetailsResponse;
+
+    const stats = readActivityStats(activityData);
+    expect(stats.waterEstimated).toBeNull();
+  });
+
+  it('returns null when waterEstimated is 0', () => {
+    const activityData = {
+      activity: {
+        activity: {
+          waterEstimated: 0,
+          distance: 2.0,
+        },
+      },
+    } as unknown as ActivityDetailsResponse;
+
+    const stats = readActivityStats(activityData);
+    expect(stats.waterEstimated).toBeNull();
   });
 });
