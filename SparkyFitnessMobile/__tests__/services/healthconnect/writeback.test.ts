@@ -15,7 +15,7 @@ import {
 const {
   writebackPhase,
   runWriteback,
-  removeAllWrittenData,
+  removeWrittenData,
 } = require('../../../src/services/healthconnect/writeback.ts');
 
 jest.mock('react-native-health-connect', () => ({
@@ -209,27 +209,48 @@ describe('runWriteback (cursor)', () => {
   });
 });
 
-describe('removeAllWrittenData (cleanup)', () => {
-  it('deletes every written record type, clears tracking, and disables writeback', async () => {
+describe('removeWrittenData (cleanup)', () => {
+  it('full purge: deletes all-time, clears all tracking, disables writeback', async () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-01', JSON.stringify(['x']));
-    await AsyncStorage.setItem('@HealthConnect:writebackHydrationSig:2026-06-01', '"sig"');
+    await AsyncStorage.setItem('@HealthConnect:writebackHydrationSig:2026-06-15', '"sig"');
     await AsyncStorage.setItem('@HealthConnect:syncDuration', '"daily"'); // unrelated — must survive
 
-    await removeAllWrittenData();
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: true });
 
-    // Deletes our record types over an all-time ("before now") range.
+    // All-time = "before now" per record type.
     expect(mockDeleteByRange).toHaveBeenCalledWith('Nutrition', expect.objectContaining({ operator: 'before' }));
     expect(mockDeleteByRange).toHaveBeenCalledWith('Hydration', expect.objectContaining({ operator: 'before' }));
 
-    // Tracking keys cleared; unrelated preference kept.
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain('@HealthConnect:writebackNutritionIds:2026-06-01');
-    expect(remaining).not.toContain('@HealthConnect:writebackHydrationSig:2026-06-01');
+    expect(remaining).not.toContain('@HealthConnect:writebackHydrationSig:2026-06-15');
     expect(remaining).toContain('@HealthConnect:syncDuration');
 
-    // Writeback turned off (true rollback).
     expect(mockSavePref).toHaveBeenCalledWith('writebackNutritionEnabled', false);
     expect(mockSavePref).toHaveBeenCalledWith('writebackHydrationEnabled', false);
+  });
+
+  it('date range: deletes "between", clears only in-range tracking, keeps writeback on', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-10', JSON.stringify(['in']));
+    await AsyncStorage.setItem('@HealthConnect:writebackNutritionIds:2026-06-20', JSON.stringify(['out']));
+
+    const result = await removeWrittenData({ from: '2026-06-08', to: '2026-06-12' });
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteByRange).toHaveBeenCalledWith('Nutrition', expect.objectContaining({ operator: 'between' }));
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthConnect:writebackNutritionIds:2026-06-10'); // in range → cleared
+    expect(remaining).toContain('@HealthConnect:writebackNutritionIds:2026-06-20'); // out of range → kept
+    expect(mockSavePref).not.toHaveBeenCalledWith('writebackNutritionEnabled', false); // toggles untouched
+  });
+
+  it('reports partial failure (ok=false) when a delete throws', async () => {
+    await AsyncStorage.clear();
+    mockDeleteByRange.mockRejectedValueOnce(new Error('permission revoked'));
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
   });
 });

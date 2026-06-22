@@ -13,7 +13,7 @@ import {
 import {
   writebackPhase,
   runWriteback,
-  removeAllWrittenData,
+  removeWrittenData,
 } from '../../../src/services/healthkit/writeback';
 
 jest.mock('../../../src/services/api/dailySummaryApi', () => ({
@@ -286,33 +286,53 @@ describe('runWriteback (cursor)', () => {
   });
 });
 
-describe('removeAllWrittenData (cleanup)', () => {
-  it('deletes tracked samples by type, clears tracking, and disables writeback', async () => {
+describe('removeWrittenData (cleanup)', () => {
+  it('full purge: range-deletes each type all-time, clears tracking, disables writeback', async () => {
     await AsyncStorage.clear();
-    await AsyncStorage.setItem(
-      '@HealthKit:writebackNutritionUuids:2026-06-01',
-      JSON.stringify({ [ENERGY]: ['u1'], [FOOD_CORRELATION]: ['c1'] }),
-    );
-    await AsyncStorage.setItem('@HealthKit:writebackHydrationUuids:2026-06-01', JSON.stringify(['w1']));
-    await AsyncStorage.setItem('@HealthKit:writebackNutritionSig:2026-06-01', '"sig"');
+    await AsyncStorage.setItem('@HealthKit:writebackNutritionUuids:2026-06-01', JSON.stringify({ [ENERGY]: ['u1'] }));
+    await AsyncStorage.setItem('@HealthKit:writebackHydrationSig:2026-06-15', '"sig"');
     await AsyncStorage.setItem('@HealthKit:syncDuration', '"daily"'); // unrelated — must survive
 
-    await removeAllWrittenData();
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: true });
 
-    // Deletes by the tracked UUIDs, grouped by HealthKit type.
-    expect(mockDeleteObjects).toHaveBeenCalledWith(ENERGY, { uuids: ['u1'] });
-    expect(mockDeleteObjects).toHaveBeenCalledWith(FOOD_CORRELATION, { uuids: ['c1'] });
-    expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, { uuids: ['w1'] });
+    // Predicate (range) delete per sample type — catches orphans, not just tracked UUIDs.
+    const allTime = { date: expect.objectContaining({ endDate: expect.any(Date) }) };
+    expect(mockDeleteObjects).toHaveBeenCalledWith(ENERGY, allTime);
+    expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, allTime);
+    expect(mockDeleteObjects).toHaveBeenCalledWith(FOOD_CORRELATION, allTime);
 
-    // Tracking keys cleared; unrelated preference kept.
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain('@HealthKit:writebackNutritionUuids:2026-06-01');
-    expect(remaining).not.toContain('@HealthKit:writebackHydrationUuids:2026-06-01');
-    expect(remaining).not.toContain('@HealthKit:writebackNutritionSig:2026-06-01');
+    expect(remaining).not.toContain('@HealthKit:writebackHydrationSig:2026-06-15');
     expect(remaining).toContain('@HealthKit:syncDuration');
 
-    // Writeback turned off.
     expect(mockSavePref).toHaveBeenCalledWith('writebackNutritionEnabled', false);
     expect(mockSavePref).toHaveBeenCalledWith('writebackHydrationEnabled', false);
+  });
+
+  it('date range: range-deletes with start+end, clears only in-range tracking, keeps writeback on', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('@HealthKit:writebackNutritionUuids:2026-06-10', JSON.stringify({ [ENERGY]: ['in'] }));
+    await AsyncStorage.setItem('@HealthKit:writebackNutritionUuids:2026-06-20', JSON.stringify({ [ENERGY]: ['out'] }));
+
+    const result = await removeWrittenData({ from: '2026-06-08', to: '2026-06-12' });
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteObjects).toHaveBeenCalledWith(
+      WATER,
+      { date: expect.objectContaining({ startDate: expect.any(Date), endDate: expect.any(Date) }) },
+    );
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).not.toContain('@HealthKit:writebackNutritionUuids:2026-06-10'); // in range → cleared
+    expect(remaining).toContain('@HealthKit:writebackNutritionUuids:2026-06-20'); // out of range → kept
+    expect(mockSavePref).not.toHaveBeenCalledWith('writebackNutritionEnabled', false);
+  });
+
+  it('reports partial failure (ok=false) when a delete throws', async () => {
+    await AsyncStorage.clear();
+    mockDeleteObjects.mockRejectedValueOnce(new Error('denied'));
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
   });
 });

@@ -25,7 +25,12 @@ import {
   type NutrientSampleDescriptor,
   type WaterSampleDescriptor,
 } from './writebackMappers';
-import { WRITEBACK_METRICS, type WritebackMetric } from '../../WritebackMetrics';
+import {
+  WRITEBACK_METRICS,
+  type WritebackMetric,
+  type WritebackDateRange,
+  type WritebackRemovalResult,
+} from '../../WritebackMetrics';
 import { getMealTypeLabel } from '../../constants/meals';
 import { runTasksInBatches } from '../../utils/concurrency';
 
@@ -380,50 +385,70 @@ export const runWriteback = async (): Promise<void> => {
   if (completed) await saveLastWritebackTime();
 };
 
+// Every HealthKit sample type writeback creates: the nutrient quantity types, water,
+// and the food correlation itself (deleteObjects is scoped to one type per call).
+const WRITEBACK_DELETE_TYPES: SampleTypeIdentifierWriteable[] = [
+  ...new Set<SampleTypeIdentifierWriteable>([
+    ...DIETARY_WRITE_IDENTIFIERS,
+    DIETARY_WATER_IDENTIFIER,
+    FOOD_CORRELATION_TYPE as SampleTypeIdentifierWriteable,
+  ]),
+];
+
+// Our per-date tracking keys (writeback{Type}{Uuids,Sig}:{YYYY-MM-DD}), optionally
+// restricted to a date range by the key's trailing day.
+const trackingKeysToClear = (keys: readonly string[], range: WritebackDateRange | null): string[] =>
+  keys.filter((k) => {
+    if (!k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`)) return false;
+    if (!k.includes('Uuids:') && !k.includes('Sig:')) return false;
+    if (!range) return true;
+    const day = k.slice(k.lastIndexOf(':') + 1);
+    return day >= range.from && day <= range.to;
+  });
+
+const localDayDate = (day: string, endOfDay: boolean): Date => {
+  const [y, m, d] = day.split('-').map(Number);
+  return endOfDay ? new Date(y, m - 1, d, 23, 59, 59, 999) : new Date(y, m - 1, d, 0, 0, 0, 0);
+};
+
 /**
- * Rollback: delete every sample SparkyFitness wrote to HealthKit (all metrics, all
- * dates), clear our per-date tracking, and turn writeback off. HealthKit only lets an
- * app delete samples it saved, so other apps' and manually-entered data are untouched.
- * Deletes by the tracked UUIDs (the same mechanism the per-day replace uses); clearing
- * the tracking keys is required, else change-detection would treat a later re-enable as
- * "unchanged" and never re-populate HealthKit.
+ * Delete samples SparkyFitness wrote to HealthKit. `range` null = full purge (all
+ * time) — also turns writeback off, a true rollback; a date range removes just that
+ * window and leaves writeback on. Deletes by date range per sample type (a predicate
+ * delete, like Health Connect) rather than tracked UUIDs, so it also reaches records
+ * orphaned by a lost tracking key (per review). HealthKit only deletes samples we
+ * saved, so other apps' and manual data are untouched. Best-effort per type; returns
+ * ok=false if any delete failed. Clearing the tracking keys is required, else
+ * change-detection would treat a later re-write as "unchanged".
  */
-export const removeAllWrittenData = async (): Promise<void> => {
+export const removeWrittenData = async (
+  range: WritebackDateRange | null,
+): Promise<WritebackRemovalResult> => {
+  const dateFilter = range
+    ? { startDate: localDayDate(range.from, false), endDate: localDayDate(range.to, true) }
+    : { endDate: new Date() };
+
+  let ok = true;
+  for (const type of WRITEBACK_DELETE_TYPES) {
+    try {
+      await deleteObjects(type, { date: dateFilter });
+    } catch (error) {
+      ok = false;
+      addLog(`[Writeback] Failed to delete ${type} records: ${message(error)}`, 'WARNING');
+    }
+  }
+
   const keys = await AsyncStorage.getAllKeys();
-  const isWriteback = (k: string): boolean => k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`);
+  const toClear = trackingKeysToClear(keys, range);
+  if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
-  // Batch-read the tracking values (multiGet, one roundtrip) and isolate each key in
-  // its own try/catch so a failed delete or corrupt JSON never aborts the rest of the
-  // cleanup, the tracking-key clear, or the toggle reset below.
-
-  // Nutrition tracking is a per-date Record<healthKitType, uuid[]> (incl. the food
-  // correlation UUIDs); delete each grouped by type.
-  const nutritionKeys = keys.filter((k) => isWriteback(k) && k.includes('NutritionUuids:'));
-  for (const [key, raw] of await AsyncStorage.multiGet(nutritionKeys)) {
-    if (!raw) continue;
-    try {
-      await deleteTrackedByType(JSON.parse(raw) as Record<string, string[]>);
-    } catch (error) {
-      addLog(`[Writeback] Failed to delete nutrition records for ${key}: ${message(error)}`, 'WARNING');
-    }
+  if (!range) {
+    await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
   }
 
-  // Hydration tracking is a per-date uuid[] of DietaryWater samples.
-  const hydrationKeys = keys.filter((k) => isWriteback(k) && k.includes('HydrationUuids:'));
-  for (const [key, raw] of await AsyncStorage.multiGet(hydrationKeys)) {
-    try {
-      const uuids = raw ? (JSON.parse(raw) as string[]) : [];
-      if (uuids.length > 0) await deleteObjects(DIETARY_WATER_IDENTIFIER, { uuids });
-    } catch (error) {
-      addLog(`[Writeback] Failed to delete water records for ${key}: ${message(error)}`, 'WARNING');
-    }
-  }
-
-  const trackingKeys = keys.filter(
-    (k) => isWriteback(k) && (k.includes('Uuids:') || k.includes('Sig:')),
+  addLog(
+    `[Writeback] Removed SparkyFitness data from Apple Health (${range ? `${range.from}..${range.to}` : 'all time'})`,
+    'INFO',
   );
-  if (trackingKeys.length > 0) await AsyncStorage.multiRemove(trackingKeys);
-
-  await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
-  addLog('[Writeback] Removed all SparkyFitness data from Apple Health', 'INFO');
+  return { ok };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
@@ -7,7 +7,7 @@ import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
-import { WRITEBACK_METRICS, type WritebackMetric } from '../WritebackMetrics';
+import { WRITEBACK_METRICS, type WritebackMetric, type WritebackDateRange } from '../WritebackMetrics';
 import HealthSourceLabel from '../components/HealthSourceLabel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -29,7 +29,8 @@ import {
   stopObservers,
 } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
-import { removeAllWrittenData } from '../services/writeback';
+import { removeWrittenData } from '../services/writeback';
+import DateRangeSheet, { type DateRangeSheetRef } from '../components/DateRangeSheet';
 import Toast from 'react-native-toast-message';
 import {
   tryClaimAutoSync,
@@ -80,6 +81,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});
+  const dateRangeSheetRef = useRef<DateRangeSheetRef>(null);
   const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
   const [isSyncOnOpenEnabled, setIsSyncOnOpenEnabled] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
@@ -308,39 +310,48 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Rollback: delete everything SparkyFitness wrote to the OS health store and turn
-  // writeback off. removeAllWrittenData also clears local tracking + the prefs, so we
-  // reset the toggles locally to match.
+  const writebackStoreName = isAndroid ? 'Health Connect' : 'Apple Health';
+
+  // Delete written data, then surface the outcome honestly: success, a warning when
+  // some records couldn't be deleted (partial), or an error if it threw. A full purge
+  // (range === null) is a rollback, so reset the toggles locally to match the prefs.
+  const doRemoveWritebackData = async (range: WritebackDateRange | null): Promise<void> => {
+    try {
+      const { ok } = await removeWrittenData(range);
+      if (range === null) setWritebackStates({});
+      if (ok) {
+        Toast.show({
+          type: 'success',
+          text1: 'Removed',
+          text2: `Deleted SparkyFitness data from ${writebackStoreName}.`,
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Partially removed',
+          text2: `Some records couldn't be deleted from ${writebackStoreName}.`,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`[SyncScreen] Failed to remove writeback data: ${errorMessage}`, 'ERROR');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: `Could not remove data from ${writebackStoreName}.`,
+      });
+    }
+  };
+
+  // Offer a full purge (all time, also turns writeback off) or a date-range removal.
   const handleRemoveWritebackData = (): void => {
-    const storeName = isAndroid ? 'Health Connect' : 'Apple Health';
     Alert.alert(
-      `Remove ${storeName} data`,
-      `Delete all nutrition and hydration records SparkyFitness wrote to ${storeName}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.`,
+      `Remove ${writebackStoreName} data`,
+      `Delete records SparkyFitness wrote to ${writebackStoreName}. Your SparkyFitness diary and records from other apps are not affected.`,
       [
+        { text: 'All time', style: 'destructive', onPress: () => doRemoveWritebackData(null) },
+        { text: 'Pick a date range…', onPress: () => dateRangeSheetRef.current?.present() },
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeAllWrittenData();
-              setWritebackStates({});
-              Toast.show({
-                type: 'success',
-                text1: 'Removed',
-                text2: `Deleted SparkyFitness data from ${storeName}.`,
-              });
-            } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              addLog(`[SyncScreen] Failed to remove writeback data: ${errorMessage}`, 'ERROR');
-              Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: `Could not remove data from ${storeName}.`,
-              });
-            }
-          },
-        },
       ],
       { cancelable: true }
     );
@@ -533,6 +544,10 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           writebackStates={writebackStates}
           handleToggleWriteback={handleToggleWriteback}
           onRemoveData={handleRemoveWritebackData}
+        />
+        <DateRangeSheet
+          ref={dateRangeSheetRef}
+          onConfirm={(from, to) => doRemoveWritebackData({ from, to })}
         />
 
         {/* Health Data Report — Android only */}
