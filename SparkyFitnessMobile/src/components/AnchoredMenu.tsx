@@ -61,7 +61,6 @@ const AnchoredMenu: React.FC<Props> = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      statusBarTranslucent
     >
       <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">
         <View

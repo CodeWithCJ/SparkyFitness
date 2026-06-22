@@ -121,7 +121,6 @@ const EnhancedFoodSearch = ({
   const { t } = useTranslation();
   const {
     defaultFoodDataProviderId,
-    setDefaultFoodDataProviderId,
     defaultBarcodeProviderId,
     itemDisplayLimit,
     foodDisplayLimit,
@@ -130,7 +129,6 @@ const EnhancedFoodSearch = ({
     convertEnergy,
     getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
-    saveAllPreferences,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -672,10 +670,10 @@ const EnhancedFoodSearch = ({
         {foodProviderOptions.length > 0 && (
           <Select
             value={selectedFoodDataProvider || ''}
+            // Temporary view-only switch: peek at another provider's results
+            // without changing the saved default provider.
             onValueChange={(value) => {
               setManualProviderId(value);
-              setDefaultFoodDataProviderId(value);
-              saveAllPreferences({ defaultFoodDataProviderId: value });
             }}
           >
             <SelectTrigger className="w-[180px]">

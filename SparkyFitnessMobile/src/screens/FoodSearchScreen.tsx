@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   SectionList,
   TextInput,
@@ -12,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import MealLibraryRow from '../components/MealLibraryRow';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import {
   useServerConnection,
@@ -103,17 +105,34 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // (no separate Online tab). Provider is the user's default.
   const { providers } = useExternalProviders({ enabled: isConnected });
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const hasUserSelectedProvider = useRef(false);
 
-  // No manual provider selector on this screen; just keep the selected provider
-  // synced to the user's default (or the first available) as providers load.
+  // Sync to the user's default (or first) provider until the user taps the
+  // online section header to peek at a different provider's results.
   React.useEffect(() => {
     if (providers.length === 0) return;
+    if (
+      hasUserSelectedProvider.current &&
+      providers.some((provider) => provider.id === selectedProvider)
+    ) {
+      return;
+    }
     const defaultId = preferences?.default_food_data_provider_id;
     const defaultProvider = defaultId
       ? providers.find((provider) => provider.id === defaultId)
       : undefined;
     setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-  }, [preferences?.default_food_data_provider_id, providers]);
+  }, [preferences?.default_food_data_provider_id, providers, selectedProvider]);
+
+  const providerOptions = useMemo(
+    () => providers.map((p) => ({ label: p.provider_name, value: p.id })),
+    [providers],
+  );
+  // Temporary peek at another provider; does not change the saved default.
+  const handleSelectProvider = useCallback((id: string) => {
+    hasUserSelectedProvider.current = true;
+    setSelectedProvider(id);
+  }, []);
 
   const selectedProviderType = useMemo(
     () => providers.find((p) => p.id === selectedProvider)?.provider_type ?? '',
@@ -398,8 +417,35 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
   };
 
-  const renderResultSectionHeader = ({ section }: { section: ResultSection }) =>
-    section.title ? renderSectionHeaderTitle(section.title) : null;
+  const renderResultSectionHeader = ({ section }: { section: ResultSection }) => {
+    if (!section.title) return null;
+    // The online section header doubles as a provider switcher so the user can
+    // peek at another provider's results without changing their default.
+    if (section.kind === 'online' && providerOptions.length > 1) {
+      return (
+        <BottomSheetPicker
+          value={selectedProvider ?? ''}
+          options={providerOptions}
+          onSelect={handleSelectProvider}
+          title="Online provider"
+          renderTrigger={({ onPress }) => (
+            <Pressable
+              onPress={onPress}
+              className="px-4 py-2 bg-surface flex-row items-center justify-between"
+              accessibilityRole="button"
+              accessibilityLabel={`Online provider ${section.title}, tap to change`}
+            >
+              <Text className="text-text-muted text-xs font-semibold uppercase">
+                {section.title}
+              </Text>
+              <Icon name="chevron-down" size={16} color={textMuted} />
+            </Pressable>
+          )}
+        />
+      );
+    }
+    return renderSectionHeaderTitle(section.title);
+  };
 
   const renderResultSectionFooter = ({ section }: { section: ResultSection }) => {
     if (section.kind !== 'online') return null;
