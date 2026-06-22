@@ -15,10 +15,14 @@ interface MacroCardProps {
 
 const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, overfillColor, unit = 'g' }) => {
   const [barWidth, setBarWidth] = useState(0);
-  const progress = goal && goal > 0 ? consumed / goal : 0;
+  const hasGoal = !!(goal && goal > 0);
+  const progress = hasGoal ? consumed / (goal as number) : 0;
   const barHeight = 8;
   const borderRadius = 4;
-  const trackColor = useCSSVariable('--color-progress-track') as string;
+  const [trackColor, neutralFillColor] = useCSSVariable([
+    '--color-progress-track',
+    '--color-text-muted',
+  ]) as [string, string];
 
   const animatedProgress = useSharedValue(0);
 
@@ -85,18 +89,37 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
               backgroundColor: trackColor,
             }}
           >
-            <Animated.View
-              style={[
-                { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
-                fillStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
-                overflowStyle,
-              ]}
-            />
+            {hasGoal ? (
+              <>
+                <Animated.View
+                  style={[
+                    { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                    fillStyle,
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                    overflowStyle,
+                  ]}
+                />
+              </>
+            ) : (
+              // No goal to track against: show a full-width neutral bar so the
+              // logged value still reads as "recorded" without implying a goal
+              // was met (which a full nutrient-colored bar would suggest).
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  height: barHeight,
+                  width: barWidth,
+                  backgroundColor: neutralFillColor,
+                  opacity: 0.5,
+                }}
+              />
+            )}
           </View>
         )}
       </View>

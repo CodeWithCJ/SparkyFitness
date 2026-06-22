@@ -1018,6 +1018,17 @@
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
+    "dailyEnergyGoal": "Daily Energy Goal",
+    "waterIntake": "Water Intake",
+    "exercise": "Exercise",
+    "widgets": {
+      "layout": "Customize layout",
+      "done": "Done",
+      "resetLayout": "Reset layout",
+      "maximize": "Maximize",
+      "restore": "Restore",
+      "hide": "Hide"
+    },
     "nutrientLabels": {
       "cal": "cal",
       "protein": "protein",

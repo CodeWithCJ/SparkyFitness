@@ -69,6 +69,7 @@ export type RootStackParamList = {
         date?: string;
         adjustedValues?: FoodFormData;
         adjustedUnitSelection?: FoodUnitSelectionResult;
+        adjustedCustomNutrients?: Record<string, string | number> | null;
         pendingEquivalents?: EquivalentUnit[];
         selectedVariantOverride?: FoodUnitVariant;
         pickerMode?: FoodPickerMode;
@@ -80,6 +81,7 @@ export type RootStackParamList = {
     entry: FoodEntry;
     adjustedValues?: FoodFormData;
     adjustedUnitSelection?: FoodUnitSelectionResult;
+    adjustedCustomNutrients?: Record<string, string | number> | null;
   };
   MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
   FoodForm:

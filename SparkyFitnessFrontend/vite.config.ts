@@ -9,6 +9,13 @@ export default defineConfig(({ mode }) => {
   const backendHost = process.env.VITE_BACKEND_HOST || 'localhost';
   const target = `http://${backendHost}:3010`;
   return {
+    // react-grid-layout reads process.env["NODE_ENV"] at runtime, but the
+    // browser has no `process`. Shim just the env object so it resolves in both
+    // dev and the production/Docker build (where mode === 'production'). Client
+    // code here uses import.meta.env, so nothing else is affected.
+    define: {
+      'process.env': JSON.stringify({ NODE_ENV: mode }),
+    },
     server: {
       host: '::',
       port: 8080,

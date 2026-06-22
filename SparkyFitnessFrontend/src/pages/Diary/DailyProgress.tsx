@@ -702,6 +702,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           {/* Calorie Math Breakdown Dropdown */}
           <div className="pt-3 border-t border-border/40 space-y-2.5">
             <CalorieTargetBreakdown
+              asDialog
               previewResult={previewResult}
               adaptiveTdeeData={adaptiveTdeeData}
               bmrAlgorithm={bmrAlgorithm}

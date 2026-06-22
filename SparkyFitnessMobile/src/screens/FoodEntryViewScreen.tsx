@@ -22,7 +22,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { useMealTypes, usePreferences } from '../hooks';
+import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
@@ -130,6 +130,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     selectedVariantId: string | undefined;
     quantityText: string;
     adjustedValues: FoodFormData | null;
+    // Custom-nutrient overrides returned from the adjust screen. `undefined`
+    // means "not adjusted" (fall back to the variant/entry snapshot).
+    adjustedCustomNutrients: Record<string, string | number> | null | undefined;
   }
 
   const initialDate = normalizeDate(entry.entry_date);
@@ -140,6 +143,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     selectedVariantId: entry.variant_id,
     quantityText: String(entry.quantity),
     adjustedValues: null,
+    adjustedCustomNutrients: undefined,
   });
 
   const {
@@ -149,6 +153,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     selectedVariantId,
     quantityText,
     adjustedValues,
+    adjustedCustomNutrients,
   } = editState;
   const updateEdit = useCallback(
     (patch: Partial<EditState>) => setEditState((prev) => ({ ...prev, ...patch })),
@@ -276,6 +281,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [createdVariantOverride, entry, selectedVariantId, variants]);
 
   const selectedCustomNutrients = useMemo(() => {
+    // Edits from the adjust screen take priority over the stored snapshot.
+    if (adjustedCustomNutrients !== undefined) {
+      return adjustedCustomNutrients;
+    }
+
     if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
       return createdVariantOverride.custom_nutrients ?? null;
     }
@@ -294,7 +304,38 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     }
 
     return undefined;
-  }, [createdVariantOverride, entry, selectedVariantId, variants]);
+  }, [adjustedCustomNutrients, createdVariantOverride, entry, selectedVariantId, variants]);
+
+  // User-defined custom nutrients to surface alongside the standard "show more"
+  // rows — mirrors FoodNutritionSummary so the entry view matches the library
+  // food view. Values come from the entry/variant custom_nutrients snapshot and
+  // are scaled by servings via renderNutrientValue like every other row.
+  const { isConnected } = useServerConnection();
+  const { customNutrients: customNutrientDefs } = useCustomNutrients({ enabled: isConnected });
+  const customNutrientRows = useMemo(() => {
+    const rows: { label: string; value: number; unit: string }[] = [];
+    const seen = new Set<string>();
+    for (const def of customNutrientDefs) {
+      const rawValue = selectedCustomNutrients?.[def.name];
+      const value =
+        rawValue == null
+          ? 0
+          : typeof rawValue === 'number'
+            ? rawValue
+            : parseFloat(String(rawValue));
+      rows.push({ label: def.name, value: isNaN(value) ? 0 : value, unit: def.unit });
+      seen.add(def.name);
+    }
+    if (selectedCustomNutrients) {
+      for (const [name, rawValue] of Object.entries(selectedCustomNutrients)) {
+        if (seen.has(name)) continue;
+        const value = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+        if (isNaN(value)) continue;
+        rows.push({ label: name, value, unit: '' });
+      }
+    }
+    return rows;
+  }, [customNutrientDefs, selectedCustomNutrients]);
 
   const displayValues = useMemo(() => {
     if (!adjustedValues) return activeVariant;
@@ -333,12 +374,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
   const adjustedFromNav = route.params?.adjustedValues;
   const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
+  const adjustedCustomNutrientsFromNav = route.params?.adjustedCustomNutrients;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
 
   useEffect(() => {
-    if (!adjustedFromNav && !adjustedUnitSelectionFromNav) {
+    if (
+      !adjustedFromNav &&
+      !adjustedUnitSelectionFromNav &&
+      adjustedCustomNutrientsFromNav === undefined
+    ) {
       return;
     }
 
@@ -369,6 +415,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
     updateEdit({
       ...(adjustedFromNav ? { adjustedValues: adjustedFromNav } : {}),
+      ...(adjustedCustomNutrientsFromNav !== undefined
+        ? { adjustedCustomNutrients: adjustedCustomNutrientsFromNav }
+        : {}),
       ...(nextServingSize !== previousServingSize
         ? { quantityText: String(nextServingSize) }
         : {}),
@@ -376,10 +425,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     navigation.setParams({
       adjustedValues: undefined,
       adjustedUnitSelection: undefined,
+      adjustedCustomNutrients: undefined,
     });
   }, [
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
+    adjustedCustomNutrientsFromNav,
     entry.food_id,
     navigation,
     updateEdit,
@@ -395,6 +446,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       updateEdit({
         selectedVariantId: variantId,
         adjustedValues: null,
+        adjustedCustomNutrients: undefined,
         ...(variant ? { quantityText: String(variant.serving_size) } : {}),
       });
     },
@@ -519,6 +571,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           selectedVariantId: mergedEntry.variant_id,
           quantityText: String(mergedEntry.quantity),
           adjustedValues: null,
+          adjustedCustomNutrients: undefined,
         });
       },
     });
@@ -556,6 +609,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       payload.cholesterol = displayValues.cholesterol;
       payload.vitamin_a = displayValues.vitaminA;
       payload.vitamin_c = displayValues.vitaminC;
+    }
+
+    // Persist custom-nutrient edits made on the adjust screen.
+    if (adjustedCustomNutrients !== undefined) {
+      payload.custom_nutrients = adjustedCustomNutrients ?? null;
     }
 
     if (Object.keys(payload).length === 0) {
@@ -642,7 +700,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       showNetCarbs: useNetCarbsInList,
       carbs: useNetCarbsInList ? displayValues.carbs : undefined,
     });
-  const hasAdditional = additionalNutrients.length > 0;
+  const hasAdditional = additionalNutrients.length > 0 || customNutrientRows.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
   const renderNutrientValue = (value: number, unit: string) =>
     isEditing
@@ -896,7 +954,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
         {(primaryNutrients.length > 0 || hasAdditional) && (
           <Animated.View layout={LinearTransition.duration(300)} className="my-2 gap-2">
-            {primaryNutrients.length > 0 && (
+            {(primaryNutrients.length > 0 || customNutrientRows.length > 0) && (
               <View className="rounded-xl">
                 {primaryNutrients.map((nutrient, index) => {
                   const isLastVisible =
@@ -927,7 +985,25 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                       <View
                         key={nutrient.label}
                         className={`flex-row justify-between py-1 ${
-                          index < additionalNutrients.length - 1
+                          index < additionalNutrients.length - 1 ||
+                          customNutrientRows.length > 0
+                            ? 'border-b border-border-subtle'
+                            : ''
+                        }`}
+                      >
+                        <Text className="text-text-secondary text-sm">
+                          {nutrient.label}
+                        </Text>
+                        <Text className="text-text-primary text-sm">
+                          {renderNutrientValue(nutrient.value, nutrient.unit)}
+                        </Text>
+                      </View>
+                    ))}
+                    {customNutrientRows.map((nutrient, index) => (
+                      <View
+                        key={`custom-${nutrient.label}`}
+                        className={`flex-row justify-between py-1 ${
+                          index < customNutrientRows.length - 1
                             ? 'border-b border-border-subtle'
                             : ''
                         }`}

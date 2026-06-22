@@ -901,6 +901,11 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   // the user may be creating a variant for the first time from an unsaved entry.
   const canUpdateVariant = !!(foodId && customNutrients !== undefined);
   const [updateFoodToggle, setUpdateFoodToggle] = useState(false);
+  // Editable custom-nutrient values for this entry, seeded from the entry's
+  // snapshot. Mirrors EditFoodMode so the fields populate and edits round-trip.
+  const [currentCustomNutrients, setCurrentCustomNutrients] = useState<
+    Record<string, string | number> | null | undefined
+  >(customNutrients);
 
   // Equivalent units — only fetched/shown when we have a real saved food.
   const { variants } = useFoodVariants(foodId ?? '', { enabled: !!foodId });
@@ -977,9 +982,9 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
-      custom_nutrients: snapshot?.custom_nutrients ?? customNutrients ?? undefined,
+      custom_nutrients: currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
     }),
-    [customNutrients],
+    [currentCustomNutrients],
   );
 
   const handleUnitSelectionChange = useCallback(
@@ -1116,7 +1121,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
               queryClient,
               foodId,
               variantId: nextVariantId,
-              customNutrients,
+              customNutrients: currentCustomNutrients,
               data,
               variantInitialValues: initialValues,
               foodInitialValues: initialValues,
@@ -1217,7 +1222,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
                 queryClient,
                 foodId,
                 variantId: matchingDbVariant.id,
-                customNutrients,
+                customNutrients: currentCustomNutrients,
                 data,
                 variantInitialValues: dbVariantValues,
                 foodInitialValues: initialValues,
@@ -1312,6 +1317,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       ...CommonActions.setParams({
         adjustedValues: data,
         adjustedUnitSelection: nextUnitSelection,
+        adjustedCustomNutrients: currentCustomNutrients ?? null,
         // For external foods on the FoodEntryAdd path, return equivalents so
         // FoodEntryAddScreen can persist them after the food is saved.
         pendingEquivalents:
@@ -1359,6 +1365,8 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           onChange: setEquivalentDraft,
           disabled: isDraftSelection,
         } : undefined}
+        customNutrients={currentCustomNutrients}
+        onCustomNutrientsChange={setCurrentCustomNutrients}
       >
         {canUpdateVariant && (
           <View className="bg-surface rounded-xl p-4 shadow-sm">

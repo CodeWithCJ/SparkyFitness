@@ -1,6 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calculator, ChevronDown, Info } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { getGoalModeDeficit } from '@workspace/shared';
@@ -26,6 +34,8 @@ interface AdaptiveTdeeData {
 
 interface CalorieTargetBreakdownProps {
   title?: string;
+  /** Render as a modal popup instead of an inline expander (for height-locked widgets). */
+  asDialog?: boolean;
   previewResult: CalorieTargetResult;
   adaptiveTdeeData: AdaptiveTdeeData | null | undefined;
   bmrAlgorithm: string;
@@ -50,6 +60,7 @@ interface CalorieTargetBreakdownProps {
 
 export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   title,
+  asDialog = false,
   previewResult,
   adaptiveTdeeData,
   bmrAlgorithm,
@@ -212,92 +223,181 @@ Calculated: ${bfp.toFixed(1)}%`;
     return '';
   };
 
-  return (
-    <details className="group">
-      <summary className="flex items-center justify-between cursor-pointer py-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-semibold">
-        <span className="flex items-center gap-1.5 font-sans">
-          <Calculator className="w-3.5 h-3.5 text-muted-foreground/80" />
-          <span>
-            {title ||
-              t(
-                'diary.calculateExplanation.todayTarget',
-                "How today's target is calculated"
-              )}
+  const triggerLabel =
+    title ||
+    t(
+      'diary.calculateExplanation.todayTarget',
+      "How today's target is calculated"
+    );
+
+  const body = (
+    <div className="mt-3 space-y-4 pl-1 text-[11px] text-muted-foreground/90 leading-relaxed border-l border-border/60 ml-1.5 text-left font-sans">
+      {/* Step 1: BMR/RMR Calculation */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between font-medium text-foreground/85">
+          <span>1. Basal Metabolic Rate (BMR)</span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+            {bmrSource === 'external' ? 'Health App' : bmrAlgorithm}
           </span>
-        </span>
-        <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180 text-muted-foreground/60" />
-      </summary>
-
-      <div className="mt-3 space-y-4 pl-1 text-[11px] text-muted-foreground/90 leading-relaxed border-l border-border/60 ml-1.5 text-left font-sans">
-        {/* Step 1: BMR/RMR Calculation */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between font-medium text-foreground/85">
-            <span>1. Basal Metabolic Rate (BMR)</span>
-            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-              {bmrSource === 'external' ? 'Health App' : bmrAlgorithm}
-            </span>
-          </div>
-          {bmrSource === 'external' ? (
-            <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
-              BMR synced from your health app (Apple Health / Health Connect).
-              No formula applied.
-            </div>
-          ) : (
-            <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
-              {bmrMathText()}
-            </pre>
-          )}
-          {bmrSource !== 'external' && (
-            <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-              <span>Resting Metabolism (RMR/BMR):</span>
-              <span className="font-semibold text-foreground">
-                {displayBmrVal} {getEnergyUnitString(energyUnit)}
-              </span>
-            </div>
-          )}
         </div>
-
-        {/* Step 2: Body Fat Percentage */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between font-medium text-foreground/85">
-            <span>2. Body Fat Percentage</span>
-            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-              {bodyFatAlgorithm}
-            </span>
+        {bmrSource === 'external' ? (
+          <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+            BMR synced from your health app (Apple Health / Health Connect). No
+            formula applied.
           </div>
+        ) : (
           <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
-            {bodyFatMathText()}
+            {bmrMathText()}
           </pre>
+        )}
+        {bmrSource !== 'external' && (
           <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
-            <span>Current Body Fat:</span>
+            <span>Resting Metabolism (RMR/BMR):</span>
             <span className="font-semibold text-foreground">
-              {displayBodyFat !== undefined && displayBodyFat > 0
-                ? `${displayBodyFat.toFixed(1)}%`
-                : 'No measurement'}
+              {displayBmrVal} {getEnergyUnitString(energyUnit)}
             </span>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Step 3: Adaptive TDEE (Expenditure) */}
-        {isAdaptiveMethod && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between font-medium text-foreground/85">
-              <span>3. Adaptive TDEE (Expenditure)</span>
-              <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-                {previewResult.insufficientHistory
-                  ? 'Fallback Estimate'
-                  : 'Adaptive TDEE'}
-              </span>
+      {/* Step 2: Body Fat Percentage */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between font-medium text-foreground/85">
+          <span>2. Body Fat Percentage</span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+            {bodyFatAlgorithm}
+          </span>
+        </div>
+        <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+          {bodyFatMathText()}
+        </pre>
+        <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
+          <span>Current Body Fat:</span>
+          <span className="font-semibold text-foreground">
+            {displayBodyFat !== undefined && displayBodyFat > 0
+              ? `${displayBodyFat.toFixed(1)}%`
+              : 'No measurement'}
+          </span>
+        </div>
+      </div>
+
+      {/* Step 3: Adaptive TDEE (Expenditure) */}
+      {isAdaptiveMethod && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between font-medium text-foreground/85">
+            <span>3. Adaptive TDEE (Expenditure)</span>
+            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+              {previewResult.insufficientHistory
+                ? 'Fallback Estimate'
+                : 'Adaptive TDEE'}
+            </span>
+          </div>
+          <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
+            <div className="font-semibold text-foreground/90">
+              Formula: Average Daily Calories - (Daily Weight Change in kg ×
+              7700 kcal)
             </div>
-            <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
-              <div className="font-semibold text-foreground/90">
-                Formula: Average Daily Calories - (Daily Weight Change in kg ×
-                7700 kcal)
+            {previewResult.insufficientHistory ? (
+              <div className="space-y-2 mt-1">
+                <p className="font-semibold text-amber-600 dark:text-amber-400">
+                  Status: Bypassed raw calculation (
+                  {Math.round(
+                    convertEnergy(
+                      adaptiveTdeeData?.tdee || 0,
+                      'kcal',
+                      energyUnit
+                    )
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}) due to insufficient
+                  history.
+                </p>
+
+                <div className="bg-muted/20 dark:bg-muted/10 p-2 rounded border border-border/30 space-y-1.5 mt-1 text-[10px]">
+                  <span className="font-semibold text-foreground/80 block border-b border-border/40 pb-1 mb-1">
+                    Adaptive TDEE checklist to transition from fallback:
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span>• Weight Logs (2+ entries spanning 7+ days)</span>
+                    <span
+                      className={
+                        hasWeightFallback
+                          ? 'text-red-500 font-semibold'
+                          : 'text-green-600 font-semibold'
+                      }
+                    >
+                      {hasWeightFallback
+                        ? '❌ Missing (Check-In weight logs)'
+                        : '✓ Met'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      • Calorie Logs for TDEE calculation (7+ days ≥ 200 kcal)
+                    </span>
+                    <span
+                      className={
+                        hasCalorieFallback
+                          ? 'text-red-500 font-semibold'
+                          : 'text-green-600 font-semibold'
+                      }
+                    >
+                      {hasCalorieFallback
+                        ? `❌ Missing (${daysOfCalorieLogs}/7 days logged)`
+                        : `✓ Met (${daysOfCalorieLogs}/7 days logged)`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      • Calorie Logs for target budget stability (14+ days ≥ 200
+                      kcal)
+                    </span>
+                    <span
+                      className={
+                        daysOfCalorieLogs >= 14
+                          ? 'text-green-600 font-semibold'
+                          : 'text-amber-600 font-semibold'
+                      }
+                    >
+                      {daysOfCalorieLogs >= 14
+                        ? `✓ Met (${daysOfCalorieLogs}/14 days logged)`
+                        : `⚠️ Missing (${daysOfCalorieLogs}/14 days logged)`}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-muted-foreground/90 font-medium">
+                  Using fallback BMR × Activity Multiplier:
+                </p>
+                <p className="pl-2 text-muted-foreground/80">
+                  Math: BMR ({displayBmrVal} kcal) × activity multiplier (
+                  {activityMultiplier.toFixed(3)}) ={' '}
+                  {Math.round(
+                    convertEnergy(
+                      previewResult.rmr * activityMultiplier,
+                      'kcal',
+                      energyUnit
+                    )
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}
+                </p>
               </div>
-              {previewResult.insufficientHistory ? (
-                <div className="space-y-2 mt-1">
-                  <p className="font-semibold text-amber-600 dark:text-amber-400">
-                    Status: Bypassed raw calculation (
+            ) : (
+              <div className="space-y-1 mt-1">
+                <p>Status: Active (calculated baseline from logs).</p>
+                <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                  <li>
+                    Average daily calorie intake:{' '}
+                    {Math.round(
+                      convertEnergy(
+                        adaptiveTdeeData?.avgIntake || 0,
+                        'kcal',
+                        energyUnit
+                      )
+                    )}{' '}
+                    {getEnergyUnitString(energyUnit)}
+                  </li>
+                  <li>
+                    Calculated Expenditure (TDEE):{' '}
                     {Math.round(
                       convertEnergy(
                         adaptiveTdeeData?.tdee || 0,
@@ -305,272 +405,221 @@ Calculated: ${bfp.toFixed(1)}%`;
                         energyUnit
                       )
                     )}{' '}
-                    {getEnergyUnitString(energyUnit)}) due to insufficient
-                    history.
-                  </p>
-
-                  <div className="bg-muted/20 dark:bg-muted/10 p-2 rounded border border-border/30 space-y-1.5 mt-1 text-[10px]">
-                    <span className="font-semibold text-foreground/80 block border-b border-border/40 pb-1 mb-1">
-                      Adaptive TDEE checklist to transition from fallback:
-                    </span>
-                    <div className="flex items-center justify-between">
-                      <span>• Weight Logs (2+ entries spanning 7+ days)</span>
-                      <span
-                        className={
-                          hasWeightFallback
-                            ? 'text-red-500 font-semibold'
-                            : 'text-green-600 font-semibold'
-                        }
-                      >
-                        {hasWeightFallback
-                          ? '❌ Missing (Check-In weight logs)'
-                          : '✓ Met'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>
-                        • Calorie Logs for TDEE calculation (7+ days ≥ 200 kcal)
-                      </span>
-                      <span
-                        className={
-                          hasCalorieFallback
-                            ? 'text-red-500 font-semibold'
-                            : 'text-green-600 font-semibold'
-                        }
-                      >
-                        {hasCalorieFallback
-                          ? `❌ Missing (${daysOfCalorieLogs}/7 days logged)`
-                          : `✓ Met (${daysOfCalorieLogs}/7 days logged)`}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>
-                        • Calorie Logs for target budget stability (14+ days ≥
-                        200 kcal)
-                      </span>
-                      <span
-                        className={
-                          daysOfCalorieLogs >= 14
-                            ? 'text-green-600 font-semibold'
-                            : 'text-amber-600 font-semibold'
-                        }
-                      >
-                        {daysOfCalorieLogs >= 14
-                          ? `✓ Met (${daysOfCalorieLogs}/14 days logged)`
-                          : `⚠️ Missing (${daysOfCalorieLogs}/14 days logged)`}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="mt-2 text-muted-foreground/90 font-medium">
-                    Using fallback BMR × Activity Multiplier:
-                  </p>
-                  <p className="pl-2 text-muted-foreground/80">
-                    Math: BMR ({displayBmrVal} kcal) × activity multiplier (
-                    {activityMultiplier.toFixed(3)}) ={' '}
-                    {Math.round(
-                      convertEnergy(
-                        previewResult.rmr * activityMultiplier,
-                        'kcal',
-                        energyUnit
-                      )
-                    )}{' '}
                     {getEnergyUnitString(energyUnit)}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1 mt-1">
-                  <p>Status: Active (calculated baseline from logs).</p>
-                  <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
-                    <li>
-                      Average daily calorie intake:{' '}
-                      {Math.round(
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Target Calculation */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between font-medium text-foreground/85">
+          <span>
+            {isAdaptiveMethod ? '4' : '3'}. Daily Calorie Goal calculation
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+            {isAdaptiveMethod
+              ? previewResult.insufficientHistory
+                ? 'Fallback Estimate (Adaptive TDEE unavailable)'
+                : 'Adaptive TDEE'
+              : `${goalModeCalculationMethod} Method`}
+          </span>
+        </div>
+        <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
+          <div>
+            <span className="font-medium">Baseline TDEE (Expenditure):</span>{' '}
+            {isAdaptiveMethod ? (
+              previewResult.insufficientHistory ? (
+                <span>
+                  BMR ({displayBmrVal}) × Activity Multiplier (
+                  {activityMultiplier.toFixed(3)}) ={' '}
+                  {Math.round(
+                    convertEnergy(
+                      previewResult.rmr * activityMultiplier,
+                      'kcal',
+                      energyUnit
+                    )
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)} (Fallback used: not enough
+                  history [&lt;14 days]; raw calculation of{' '}
+                  {adaptiveTdeeData
+                    ? Math.round(
                         convertEnergy(
-                          adaptiveTdeeData?.avgIntake || 0,
+                          adaptiveTdeeData.tdee ?? 0,
                           'kcal',
                           energyUnit
                         )
-                      )}{' '}
-                      {getEnergyUnitString(energyUnit)}
-                    </li>
-                    <li>
-                      Calculated Expenditure (TDEE):{' '}
-                      {Math.round(
-                        convertEnergy(
-                          adaptiveTdeeData?.tdee || 0,
-                          'kcal',
-                          energyUnit
-                        )
-                      )}{' '}
-                      {getEnergyUnitString(energyUnit)}
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Target Calculation */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between font-medium text-foreground/85">
-            <span>
-              {isAdaptiveMethod ? '4' : '3'}. Daily Calorie Goal calculation
-            </span>
-            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
-              {isAdaptiveMethod
-                ? previewResult.insufficientHistory
-                  ? 'Fallback Estimate (Adaptive TDEE unavailable)'
-                  : 'Adaptive TDEE'
-                : `${goalModeCalculationMethod} Method`}
-            </span>
-          </div>
-          <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
-            <div>
-              <span className="font-medium">Baseline TDEE (Expenditure):</span>{' '}
-              {isAdaptiveMethod ? (
-                previewResult.insufficientHistory ? (
-                  <span>
-                    BMR ({displayBmrVal}) × Activity Multiplier (
-                    {activityMultiplier.toFixed(3)}) ={' '}
-                    {Math.round(
-                      convertEnergy(
-                        previewResult.rmr * activityMultiplier,
-                        'kcal',
-                        energyUnit
                       )
-                    )}{' '}
-                    {getEnergyUnitString(energyUnit)} (Fallback used: not enough
-                    history [&lt;14 days]; raw calculation of{' '}
-                    {adaptiveTdeeData
-                      ? Math.round(
-                          convertEnergy(
-                            adaptiveTdeeData.tdee ?? 0,
-                            'kcal',
-                            energyUnit
-                          )
-                        )
-                      : 0}{' '}
-                    {getEnergyUnitString(energyUnit)} bypassed)
-                  </span>
-                ) : (
-                  <span>
-                    Adaptive TDEE (Expenditure) ={' '}
+                    : 0}{' '}
+                  {getEnergyUnitString(energyUnit)} bypassed)
+                </span>
+              ) : (
+                <span>
+                  Adaptive TDEE (Expenditure) ={' '}
+                  {Math.round(
+                    convertEnergy(
+                      previewResult.baselineTdee,
+                      'kcal',
+                      energyUnit
+                    )
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}
+                </span>
+              )
+            ) : (
+              <span>
+                {calorieGoalAdjustmentMode === 'adaptive' ? (
+                  <>
+                    Adaptive Manual Calorie Goal ={' '}
                     {Math.round(
-                      convertEnergy(
-                        previewResult.baselineTdee,
-                        'kcal',
-                        energyUnit
-                      )
+                      convertEnergy(adjustedManualGoal, 'kcal', energyUnit)
                     )}{' '}
                     {getEnergyUnitString(energyUnit)}
-                  </span>
-                )
-              ) : (
-                <span>
-                  {calorieGoalAdjustmentMode === 'adaptive' ? (
-                    <>
-                      Adaptive Manual Calorie Goal ={' '}
-                      {Math.round(
-                        convertEnergy(adjustedManualGoal, 'kcal', energyUnit)
-                      )}{' '}
-                      {getEnergyUnitString(energyUnit)}
-                    </>
-                  ) : (
-                    <>
-                      Manual Daily Calorie Goal ={' '}
-                      {Math.round(
-                        convertEnergy(rawManualGoal, 'kcal', energyUnit)
-                      )}{' '}
-                      {getEnergyUnitString(energyUnit)}
-                    </>
-                  )}
-                </span>
-              )}
-            </div>
-            <div>
-              <span className="font-medium">Goal Deficit:</span>{' '}
-              {goalMode === 'maintain' ? (
-                <span>Maintain (0% deficit)</span>
-              ) : (
-                <span>
-                  {goalMode} Deficit (-{Math.round(deficitPct * 100)}%) = -
-                  {Math.round(
-                    convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}
-                </span>
-              )}
-            </div>
-            <div>
-              <span className="font-medium">Target Cap Safety Floors:</span>
-              <ul className="list-disc pl-4 space-y-0.5 text-[9px] mt-0.5">
-                <li>
-                  RMR Floor: {displayBmrVal} {getEnergyUnitString(energyUnit)}
-                </li>
-                <li>
-                  Clinical Absolute Floor:{' '}
-                  {Math.round(
-                    convertEnergy(absoluteSafetyFloor, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}
-                </li>
-                <li>
-                  Effective Safety Floor:{' '}
-                  {Math.round(
-                    convertEnergy(targetSafetyFloor, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}
-                </li>
-              </ul>
-            </div>
-            {isAdaptiveMethod && (
-              <div className="text-[10px] text-gray-500 italic mt-0.5">
-                {previewResult.finalTarget === Math.round(targetSafetyFloor) &&
-                Math.round(targetBaseline * (1 - deficitPct)) <
-                  targetSafetyFloor ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">
-                    ⚠️ Daily budget was automatically raised to safety floor
-                    limit.
-                  </span>
+                  </>
                 ) : (
-                  <span className="text-green-600 dark:text-green-400">
-                    ✓ Target is in safe range above metabolic safety floor.
-                  </span>
+                  <>
+                    Manual Daily Calorie Goal ={' '}
+                    {Math.round(
+                      convertEnergy(rawManualGoal, 'kcal', energyUnit)
+                    )}{' '}
+                    {getEnergyUnitString(energyUnit)}
+                  </>
                 )}
-              </div>
+              </span>
             )}
-            {!isAdaptiveMethod &&
-              previewResult.finalTarget < targetSafetyFloor && (
-                <div className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5">
-                  ⚠️ Warning: Calorie budget is below the recommended safety
-                  floor (
-                  {Math.round(
-                    convertEnergy(targetSafetyFloor, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}).
-                </div>
-              )}
-            {isAdaptiveMethod && daysOfCalorieLogs < 14 && (
-              <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-[9px]">
-                <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-                <span className="text-yellow-700 dark:text-yellow-300">
-                  {getTargetFallbackNotice()}
-                </span>
-              </div>
-            )}
-            <div className="pt-1 border-t border-border/40 font-bold text-foreground/90 mt-1 flex justify-between items-center text-[10px]">
-              <span>Final Energy Budget Target:</span>
-              <span className="text-primary text-xs font-semibold">
+          </div>
+          <div>
+            <span className="font-medium">Goal Deficit:</span>{' '}
+            {goalMode === 'maintain' ? (
+              <span>Maintain (0% deficit)</span>
+            ) : (
+              <span>
+                {goalMode} Deficit (-{Math.round(deficitPct * 100)}%) = -
                 {Math.round(
-                  convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+                  convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
                 )}{' '}
                 {getEnergyUnitString(energyUnit)}
               </span>
+            )}
+          </div>
+          <div>
+            <span className="font-medium">Target Cap Safety Floors:</span>
+            <ul className="list-disc pl-4 space-y-0.5 text-[9px] mt-0.5">
+              <li>
+                RMR Floor: {displayBmrVal} {getEnergyUnitString(energyUnit)}
+              </li>
+              <li>
+                Clinical Absolute Floor:{' '}
+                {Math.round(
+                  convertEnergy(absoluteSafetyFloor, 'kcal', energyUnit)
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
+              </li>
+              <li>
+                Effective Safety Floor:{' '}
+                {Math.round(
+                  convertEnergy(targetSafetyFloor, 'kcal', energyUnit)
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
+              </li>
+            </ul>
+          </div>
+          {isAdaptiveMethod && (
+            <div className="text-[10px] text-gray-500 italic mt-0.5">
+              {previewResult.finalTarget === Math.round(targetSafetyFloor) &&
+              Math.round(targetBaseline * (1 - deficitPct)) <
+                targetSafetyFloor ? (
+                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ Daily budget was automatically raised to safety floor
+                  limit.
+                </span>
+              ) : (
+                <span className="text-green-600 dark:text-green-400">
+                  ✓ Target is in safe range above metabolic safety floor.
+                </span>
+              )}
             </div>
+          )}
+          {!isAdaptiveMethod &&
+            previewResult.finalTarget < targetSafetyFloor && (
+              <div className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5">
+                ⚠️ Warning: Calorie budget is below the recommended safety floor
+                (
+                {Math.round(
+                  convertEnergy(targetSafetyFloor, 'kcal', energyUnit)
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}).
+              </div>
+            )}
+          {isAdaptiveMethod && daysOfCalorieLogs < 14 && (
+            <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-[9px]">
+              <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <span className="text-yellow-700 dark:text-yellow-300">
+                {getTargetFallbackNotice()}
+              </span>
+            </div>
+          )}
+          <div className="pt-1 border-t border-border/40 font-bold text-foreground/90 mt-1 flex justify-between items-center text-[10px]">
+            <span>Final Energy Budget Target:</span>
+            <span className="text-primary text-xs font-semibold">
+              {Math.round(
+                convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+              )}{' '}
+              {getEnergyUnitString(energyUnit)}
+            </span>
           </div>
         </div>
       </div>
-    </details>
+    </div>
+  );
+
+  if (!asDialog) {
+    return (
+      <details className="group">
+        <summary className="flex items-center justify-between cursor-pointer py-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-semibold">
+          <span className="flex items-center gap-1.5 font-sans">
+            <Calculator className="w-3.5 h-3.5 text-muted-foreground/80" />
+            <span>{triggerLabel}</span>
+          </span>
+          <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180 text-muted-foreground/60" />
+        </summary>
+        {body}
+      </details>
+    );
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between cursor-pointer py-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-semibold"
+        >
+          <span className="flex items-center gap-1.5 font-sans">
+            <Calculator className="w-3.5 h-3.5 text-muted-foreground/80" />
+            <span>{triggerLabel}</span>
+          </span>
+          <Info className="w-3.5 h-3.5 text-muted-foreground/60" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-1.5 text-sm">
+            <Calculator className="h-4 w-4" />
+            {triggerLabel}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {t(
+              'diary.calculateExplanation.dialogDescription',
+              'Step-by-step breakdown of how your daily energy target is calculated.'
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        {body}
+      </DialogContent>
+    </Dialog>
   );
 };

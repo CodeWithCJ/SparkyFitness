@@ -7,8 +7,7 @@ import Icon from './Icon';
 import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
-import { useCustomNutrients } from '../hooks';
-import { useServerConnection } from '../hooks';
+import { useCustomNutrients, useServerConnection } from '../hooks';
 
 interface FoodNutritionSummaryProps {
   name: string;
