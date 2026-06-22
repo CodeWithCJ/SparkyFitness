@@ -2222,6 +2222,21 @@ CREATE TABLE public.user_allergen_preferences (
 
 
 --
+-- Name: user_dashboard_layouts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_dashboard_layouts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    page_key text NOT NULL,
+    layout jsonb NOT NULL,
+    hidden jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3441,6 +3456,22 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 ALTER TABLE ONLY public.user_allergen_preferences
     ADD CONSTRAINT user_allergen_preferences_user_id_allergen_name_key UNIQUE (user_id, allergen_name);
+
+
+--
+-- Name: user_dashboard_layouts user_dashboard_layouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_dashboard_layouts
+    ADD CONSTRAINT user_dashboard_layouts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_dashboard_layouts user_dashboard_layouts_user_page_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_dashboard_layouts
+    ADD CONSTRAINT user_dashboard_layouts_user_page_unique UNIQUE (user_id, page_key);
 
 
 --
@@ -4829,6 +4860,14 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 
 --
+-- Name: user_dashboard_layouts user_dashboard_layouts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_dashboard_layouts
+    ADD CONSTRAINT user_dashboard_layouts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_custom_nutrients user_custom_nutrients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5663,6 +5702,13 @@ CREATE POLICY owner_policy ON public.user_allergen_preferences USING ((user_id =
 
 
 --
+-- Name: user_dashboard_layouts owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_dashboard_layouts USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: user_custom_nutrients owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6010,6 +6056,12 @@ CREATE POLICY update_policy ON public.food_entries FOR UPDATE USING (public.has_
 --
 
 ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_dashboard_layouts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_dashboard_layouts ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_custom_nutrients; Type: ROW SECURITY; Schema: public; Owner: -
@@ -6885,6 +6937,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sp
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky uat";
+
+
+--
+-- Name: TABLE user_dashboard_layouts; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky uat";
 
 
 --
