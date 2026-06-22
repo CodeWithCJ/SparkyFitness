@@ -343,18 +343,22 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Offer a full purge (all time, also turns writeback off) or a date-range removal.
-  const handleRemoveWritebackData = (): void => {
+  // Full purge → confirm (it's destructive and turns writeback off).
+  const handleRemoveAllData = (): void => {
     Alert.alert(
-      `Remove ${writebackStoreName} data`,
-      `Delete records SparkyFitness wrote to ${writebackStoreName}. Your SparkyFitness diary and records from other apps are not affected.`,
+      `Remove all ${writebackStoreName} data`,
+      `Delete every nutrition and hydration record SparkyFitness wrote to ${writebackStoreName}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.`,
       [
-        { text: 'All time', style: 'destructive', onPress: () => doRemoveWritebackData(null) },
-        { text: 'Pick a date range…', onPress: () => dateRangeSheetRef.current?.present() },
         { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => doRemoveWritebackData(null) },
       ],
       { cancelable: true }
     );
+  };
+
+  // Date range → the picker's own confirm button is the commit point.
+  const handleRemoveDateRange = (): void => {
+    dateRangeSheetRef.current?.present();
   };
 
   const handleToggleAllMetrics = async (): Promise<void> => {
@@ -543,7 +547,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         <HealthDataWriteback
           writebackStates={writebackStates}
           handleToggleWriteback={handleToggleWriteback}
-          onRemoveData={handleRemoveWritebackData}
+          onRemoveAllData={handleRemoveAllData}
+          onRemoveDateRange={handleRemoveDateRange}
         />
         <DateRangeSheet
           ref={dateRangeSheetRef}
