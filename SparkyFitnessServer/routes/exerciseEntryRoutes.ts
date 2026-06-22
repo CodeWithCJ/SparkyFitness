@@ -15,6 +15,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, '../uploads');
 // Function to sanitize filename
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sanitizeFilename = (filename: any) => {
@@ -25,7 +28,7 @@ const exerciseEntryStorage = multer.diskStorage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   destination: (req: any, file: any, cb: any) => {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const dir = path.join(__dirname, `../uploads/exercise_entries/${today}`);
+    const dir = path.join(baseUploadsDir, `exercise_entries/${today}`);
     fs.mkdir(dir, { recursive: true }, (err) => {
       if (err) return cb(err);
       cb(null, dir);
