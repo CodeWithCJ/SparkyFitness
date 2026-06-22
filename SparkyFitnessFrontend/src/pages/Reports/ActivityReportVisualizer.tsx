@@ -15,7 +15,10 @@ import {
   formatDuration,
 } from '@/utils/activityReportUtil';
 import { info } from '@/utils/logging';
-import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import {
+  convertMlToSelectedUnit,
+  getEnergyUnitString,
+} from '@/utils/nutritionCalculations';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityReportLapTable from './ActivityReportLapTable';
@@ -54,6 +57,7 @@ const ActivityReportVisualizer = ({
     loggingLevel,
     energyUnit,
     convertEnergy,
+    water_display_unit,
   } = usePreferences();
 
   const allChartData = activityData
@@ -204,6 +208,11 @@ const ActivityReportVisualizer = ({
       ? `${stats.cadence.toFixed(0)} spm`
       : null;
 
+  const waterLossFormatted =
+    stats.waterEstimated != null && stats.waterEstimated > 0
+      ? `${convertMlToSelectedUnit(stats.waterEstimated, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 1)} ${water_display_unit}`
+      : null;
+
   const getXAxisDataKey = () => {
     switch (effectiveXAxisMode) {
       case 'activityDuration':
@@ -317,6 +326,7 @@ const ActivityReportVisualizer = ({
                 calories={caloriesFormatted}
                 heartRate={heartRateFormatted}
                 cadence={cadenceFormatted}
+                waterLoss={waterLossFormatted}
               />
             </div>
 

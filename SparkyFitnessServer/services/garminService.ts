@@ -820,6 +820,9 @@ async function processGarminSimpleActivity(
     steps: Math.round(
       activity.steps || activity.totalSteps || activity.stepCount || 0
     ),
+    water_estimated: activity.waterEstimated
+      ? Math.round(activity.waterEstimated)
+      : null,
   };
   const newEntry = await exerciseEntryRepository.createExerciseEntry(
     userId,

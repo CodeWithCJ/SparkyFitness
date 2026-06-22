@@ -334,6 +334,8 @@ export interface ActivityStats {
   pace: number | null;
   /** metres */
   ascent: number | null;
+  /** ml */
+  waterEstimated: number | null;
   activityName: string | null;
   activityTypeKey: string | null;
 }
@@ -436,6 +438,8 @@ export function readActivityStats(
     pos(a['elevationGain']) ??
     pos(a['total_elevation_gain']);
 
+  const waterEstimated = pos(a['waterEstimated']);
+
   // activity name / type
   const activityName =
     (a['activityName'] as string | undefined) ??
@@ -456,6 +460,7 @@ export function readActivityStats(
     cadence,
     pace,
     ascent,
+    waterEstimated,
     activityName,
     activityTypeKey,
   };
