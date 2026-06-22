@@ -250,11 +250,17 @@ in
       script = ''
         set -euo pipefail
         # Create/Update the privileged owner role with a login password and the
-        # CREATEROLE privilege the backend needs to provision the app role.
+        # CREATEROLE privilege the backend needs to provision the app role. The
+        # password is passed as a psql variable and referenced as a quoted SQL
+        # literal (:'passwd') so values with quotes are escaped safely. psql only
+        # interpolates variables for SQL read from stdin/-f, not -c, so pipe the
+        # statement in on stdin.
         if psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${cfg.database.user}'" | grep -q 1; then
-          psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD" -c "ALTER ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd'"
+          printf '%s\n' "ALTER ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd';" \
+            | psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD"
         else
-          psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD" -c "CREATE ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd'"
+          printf '%s\n' "CREATE ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd';" \
+            | psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD"
         fi
 
         # Create the database owned by that role if it does not exist yet.
