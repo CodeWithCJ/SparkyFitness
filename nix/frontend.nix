@@ -13,7 +13,7 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "sparkyfitness-frontend";
-  version = "0.17.0";
+  version = (lib.importJSON ../SparkyFitnessFrontend/package.json).version;
 
   src = lib.cleanSource ../.;
 

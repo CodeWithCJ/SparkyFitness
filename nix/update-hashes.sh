@@ -47,7 +47,7 @@ update_one() {
     return 1
   fi
 
-  sed -i -E "s|(hash = \")[^\"]*(\";)|\1${got}\2|" "$file"
+  sed -E "s|(hash = \")[^\"]*(\";)|\1${got}\2|" "$file" >"$file.tmp" && mv "$file.tmp" "$file"
   echo "   ${pkg}: ${got}"
 }
 

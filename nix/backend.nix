@@ -18,7 +18,7 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "sparkyfitness-server";
-  version = "0.17.0";
+  version = (lib.importJSON ../SparkyFitnessServer/package.json).version;
 
   # The whole monorepo is the source: the server depends on the `@workspace/shared`
   # workspace package and resolves it through a relative symlink at runtime.

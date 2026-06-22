@@ -252,9 +252,9 @@ in
         # Create/Update the privileged owner role with a login password and the
         # CREATEROLE privilege the backend needs to provision the app role.
         if psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${cfg.database.user}'" | grep -q 1; then
-          psql -c "ALTER ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD '$SPARKY_FITNESS_DB_PASSWORD'"
+          psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD" -c "ALTER ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd'"
         else
-          psql -c "CREATE ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD '$SPARKY_FITNESS_DB_PASSWORD'"
+          psql -v passwd="$SPARKY_FITNESS_DB_PASSWORD" -c "CREATE ROLE \"${cfg.database.user}\" WITH LOGIN CREATEROLE PASSWORD :'passwd'"
         fi
 
         # Create the database owned by that role if it does not exist yet.
