@@ -173,7 +173,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.client.loads(tokens_string)
+        garmin.login(tokens_string)
 
         # Initialize health_data as a dictionary where each key is a metric type and the value is a list of daily entries
         health_data = {metric: [] for metric in ALL_HEALTH_METRICS}
@@ -1508,7 +1508,7 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.client.loads(tokens_string)
+        garmin.login(tokens_string)
 
         logger.info(
             f"Fetching activities for user {user_id} from {start_date} to {end_date} with activity type {activity_type}"
@@ -1705,7 +1705,7 @@ async def get_nutrition_diary(request_data: NutritionDiaryRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.client.loads(tokens_string)
+        garmin.login(tokens_string)
 
         dates = get_dates_in_range(start_date, end_date)
         nutrition_data = []
