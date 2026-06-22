@@ -8,7 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure the upload directory exists
-const uploadDir = path.join(__dirname, '..', 'uploads', 'oidc');
+const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
+  : path.join(__dirname, '..', 'uploads');
+const uploadDir = path.join(baseUploadsDir, 'oidc');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
