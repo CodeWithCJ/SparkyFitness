@@ -1508,7 +1508,7 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        garmin.login(json.loads(tokens_string))
 
         logger.info(
             f"Fetching activities for user {user_id} from {start_date} to {end_date} with activity type {activity_type}"
