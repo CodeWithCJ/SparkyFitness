@@ -29,6 +29,7 @@ export interface CreateFoodEntryPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  custom_nutrients?: Record<string, string | number> | null;
   // Meal entry
   meal_id?: string;
 }
@@ -72,6 +73,7 @@ export interface UpdateFoodEntryPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  custom_nutrients?: Record<string, string | number> | null;
 }
 
 /**

@@ -203,6 +203,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       vitaminC: toFormString(item.vitaminC),
     };
   });
+  // Custom-nutrient overrides returned from the adjust screen. `undefined`
+  // means "not adjusted" (fall back to the variant/item snapshot).
+  const [adjustedCustomNutrients, setAdjustedCustomNutrients] = useState<
+    Record<string, string | number> | null | undefined
+  >(undefined);
   const [savedFoodOverride, setSavedFoodOverride] =
     useState<FoodInfoItem | null>(null);
   const [selectedVariantOverride, setSelectedVariantOverride] =
@@ -376,6 +381,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   );
 
   const selectedCustomNutrients = useMemo(() => {
+    // Edits from the adjust screen take priority over the stored snapshot.
+    if (adjustedCustomNutrients !== undefined) {
+      return adjustedCustomNutrients;
+    }
+
     if (selectedVariantOverride) {
       return selectedVariantOverride.custom_nutrients ?? null;
     }
@@ -393,6 +403,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
     return undefined;
   }, [
+    adjustedCustomNutrients,
     activeItem.customNutrients,
     activeItem.variantId,
     isLocalFood,
@@ -487,13 +498,18 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const adjustedFromNav = route.params?.adjustedValues;
   const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
+  const adjustedCustomNutrientsFromNav = route.params?.adjustedCustomNutrients;
   const pendingEquivalentsFromNav = route.params?.pendingEquivalents;
   useEffect(() => {
     servingSizeRef.current = displayValues.servingSize;
   }, [displayValues.servingSize]);
 
   useEffect(() => {
-    if (!adjustedFromNav && !adjustedUnitSelectionFromNav) {
+    if (
+      !adjustedFromNav &&
+      !adjustedUnitSelectionFromNav &&
+      adjustedCustomNutrientsFromNav === undefined
+    ) {
       return;
     }
 
@@ -543,6 +559,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       setAdjustedValues(adjustedFromNav);
     }
 
+    if (adjustedCustomNutrientsFromNav !== undefined) {
+      setAdjustedCustomNutrients(adjustedCustomNutrientsFromNav);
+    }
+
     if (nextServingSize !== previousServingSize) {
       setQuantityText(String(nextServingSize));
     }
@@ -550,10 +570,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     navigation.setParams({
       adjustedValues: undefined,
       adjustedUnitSelection: undefined,
+      adjustedCustomNutrients: undefined,
     });
   }, [
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
+    adjustedCustomNutrientsFromNav,
     externalUnitVariants,
     isLocalFood,
     localUnitVariants,
@@ -697,6 +719,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             cholesterol: displayValues.cholesterol,
             vitamin_a: displayValues.vitaminA,
             vitamin_c: displayValues.vitaminC,
+            ...(selectedCustomNutrients !== undefined
+              ? { custom_nutrients: selectedCustomNutrients }
+              : {}),
           };
         }
         return { ...base, food_id: activeItem.id, variant_id: selectedVariantId };

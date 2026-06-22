@@ -607,7 +607,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
         Object.entries(next).every(([k, v]) => prev[k] === v);
       return sameKeys ? prev : next;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customNutrientsProp]);
 
   const updateCustomNutrient = (name: string, text: string) => {
