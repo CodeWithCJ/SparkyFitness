@@ -9,6 +9,14 @@ import { fetchDailyGoals } from '../../src/services/api/goalsApi';
 import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
 import { createTestQueryClient } from '../hooks/queryTestUtils';
 
+jest.mock('../../src/hooks', () => ({
+  useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
+  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false })),
+}));
+jest.mock('../../src/hooks/useCustomNutrients', () => ({
+  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+}));
 jest.mock('../../src/hooks/useAddFoodEntry', () => ({
   useAddFoodEntry: jest.fn(),
 }));

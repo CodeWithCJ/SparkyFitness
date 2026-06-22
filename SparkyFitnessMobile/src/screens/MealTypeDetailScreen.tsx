@@ -132,8 +132,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
         <FoodNutritionSummary
           name={label}
           brand={formatDateLabel(date)}
-          values={nutrition}
+          values={nutrition.values}
           showNetCarbs={showNetCarbs}
+          customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}
         />
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">

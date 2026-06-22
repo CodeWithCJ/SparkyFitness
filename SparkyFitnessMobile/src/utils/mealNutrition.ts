@@ -1,6 +1,7 @@
 import { MEAL_TYPES } from '../constants/meals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
+import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
 export type MealTypeKey = (typeof MEAL_TYPES)[number] | 'other';
 
@@ -73,24 +74,34 @@ function optionalSum(entries: FoodEntry[], field: keyof FoodEntry): number | und
   return hasValue ? Math.round(sumField(entries, field)) : undefined;
 }
 
-export function calculateMealNutrition(entries: FoodEntry[]): FoodDisplayValues {
+/** Result type for calculateMealNutrition — standard display values plus custom nutrient aggregates. */
+export interface MealNutrition {
+  values: FoodDisplayValues;
+  /** Aggregated custom nutrient totals across all entries (name → total consumed). */
+  customNutrients: Record<string, number>;
+}
+
+export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
   return {
-    servingSize: 1,
-    servingUnit: 'meal',
-    calories: Math.round(sumField(entries, 'calories')),
-    protein: Math.round(sumField(entries, 'protein')),
-    carbs: Math.round(sumField(entries, 'carbs')),
-    fat: Math.round(sumField(entries, 'fat')),
-    fiber: optionalSum(entries, 'dietary_fiber'),
-    saturatedFat: optionalSum(entries, 'saturated_fat'),
-    sodium: optionalSum(entries, 'sodium'),
-    sugars: optionalSum(entries, 'sugars'),
-    transFat: optionalSum(entries, 'trans_fat'),
-    potassium: optionalSum(entries, 'potassium'),
-    calcium: optionalSum(entries, 'calcium'),
-    iron: optionalSum(entries, 'iron'),
-    cholesterol: optionalSum(entries, 'cholesterol'),
-    vitaminA: optionalSum(entries, 'vitamin_a'),
-    vitaminC: optionalSum(entries, 'vitamin_c'),
+    values: {
+      servingSize: 1,
+      servingUnit: 'meal',
+      calories: Math.round(sumField(entries, 'calories')),
+      protein: Math.round(sumField(entries, 'protein')),
+      carbs: Math.round(sumField(entries, 'carbs')),
+      fat: Math.round(sumField(entries, 'fat')),
+      fiber: optionalSum(entries, 'dietary_fiber'),
+      saturatedFat: optionalSum(entries, 'saturated_fat'),
+      sodium: optionalSum(entries, 'sodium'),
+      sugars: optionalSum(entries, 'sugars'),
+      transFat: optionalSum(entries, 'trans_fat'),
+      potassium: optionalSum(entries, 'potassium'),
+      calcium: optionalSum(entries, 'calcium'),
+      iron: optionalSum(entries, 'iron'),
+      cholesterol: optionalSum(entries, 'cholesterol'),
+      vitaminA: optionalSum(entries, 'vitamin_a'),
+      vitaminC: optionalSum(entries, 'vitamin_c'),
+    },
+    customNutrients: calculateCustomNutrientTotals(entries),
   };
 }

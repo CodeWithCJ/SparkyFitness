@@ -7,7 +7,9 @@ import FormInput from './FormInput';
 import Icon from './Icon';
 import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
 import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
+import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { usePreferences } from '../hooks/usePreferences';
+import { useServerConnection } from '../hooks';
 import { useUserAiConfigAllowed } from '../hooks/useUserAiConfigAllowed';
 import { requestAiUnitConversion } from '../services/api/aiConversionApi';
 import Toast from 'react-native-toast-message';
@@ -87,6 +89,10 @@ export interface FoodFormProps {
   };
   headerChildren?: React.ReactNode;
   children?: React.ReactNode;
+  /** Initial custom nutrient values (key = nutrient name, value = amount). */
+  customNutrients?: Record<string, string | number> | null;
+  /** Called whenever the user changes a custom nutrient value. */
+  onCustomNutrientsChange?: (values: Record<string, number>) => void;
 }
 
 type NumericFoodFormField =
@@ -566,11 +572,67 @@ const FoodForm: React.FC<FoodFormProps> = ({
   equivalents,
   headerChildren,
   children,
+  customNutrients: customNutrientsProp,
+  onCustomNutrientsChange,
 }) => {
   const [form, setForm] = useState<FoodFormData>(() =>
     buildDisplayFormState(initialValues),
   );
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
+
+  const { isConnected } = useServerConnection();
+  const { customNutrients: customNutrientDefs } = useCustomNutrients({ enabled: isConnected });
+
+  const [customNutrientForm, setCustomNutrientForm] = useState<Record<string, string>>(() => {
+    if (!customNutrientsProp) return {};
+    const initial: Record<string, string> = {};
+    for (const [name, value] of Object.entries(customNutrientsProp)) {
+      const n = Number(value) || 0;
+      initial[name] = formatFoodFormNumber(n, 'nutrient') || '';
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    setCustomNutrientForm((prev) => {
+      const next: Record<string, string> = {};
+      if (customNutrientsProp) {
+        for (const [name, value] of Object.entries(customNutrientsProp)) {
+          const n = Number(value) || 0;
+          next[name] = formatFoodFormNumber(n, 'nutrient') || '';
+        }
+      }
+      const sameKeys =
+        Object.keys(prev).length === Object.keys(next).length &&
+        Object.entries(next).every(([k, v]) => prev[k] === v);
+      return sameKeys ? prev : next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customNutrientsProp]);
+
+  const updateCustomNutrient = (name: string, text: string) => {
+    if (!DECIMAL_INPUT_REGEX.test(text)) return;
+    // Build the next form from one consistent snapshot so the edited field and
+    // every other field are read from the same object — no per-field stale reads.
+    const nextForm = { ...customNutrientForm, [name]: text };
+    setCustomNutrientForm(nextForm);
+    if (!onCustomNutrientsChange) return;
+    const numeric: Record<string, number> = {};
+    for (const def of customNutrientDefs) {
+      const parsed = parseDecimalInput(nextForm[def.name] ?? '');
+      numeric[def.name] = Number.isFinite(parsed) ? parsed : 0;
+    }
+    // Preserve any stored custom-nutrient values that no longer have a matching
+    // definition (e.g. the definition was deleted) so editing a food doesn't
+    // silently drop them.
+    for (const [key, raw] of Object.entries(nextForm)) {
+      if (!(key in numeric)) {
+        const parsed = parseDecimalInput(raw);
+        numeric[key] = Number.isFinite(parsed) ? parsed : 0;
+      }
+    }
+    onCustomNutrientsChange(numeric);
+  };
 
   // AI gate for the inline AI estimate flow inside FoodUnitSelectorSheet.
   // Re-checked on every render so flipping the preference live takes effect.
@@ -1497,6 +1559,38 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 {renderNumericField('Vitamin C', 'vitaminC', 'mg', false, 'potassium')}
                 {renderNumericField('Potassium', 'potassium', 'mg')}
               </View>
+              {Array.from({ length: Math.ceil(customNutrientDefs.length / 2) }, (_, rowIndex) => {
+                const first = customNutrientDefs[rowIndex * 2];
+                const second = customNutrientDefs[rowIndex * 2 + 1];
+                return (
+                  <View key={first.name} className="flex-row gap-3">
+                    <View className="gap-1.5 flex-1">
+                      <Text className="text-text-secondary text-sm font-medium">
+                        {first.name}{first.unit ? ` (${first.unit})` : ''}
+                      </Text>
+                      <FormInput
+                        placeholder="0"
+                        value={customNutrientForm[first.name] ?? ''}
+                        onChangeText={(v) => updateCustomNutrient(first.name, v)}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                    {second ? (
+                      <View className="gap-1.5 flex-1">
+                        <Text className="text-text-secondary text-sm font-medium">
+                          {second.name}{second.unit ? ` (${second.unit})` : ''}
+                        </Text>
+                        <FormInput
+                          placeholder="0"
+                          value={customNutrientForm[second.name] ?? ''}
+                          onChangeText={(v) => updateCustomNutrient(second.name, v)}
+                          keyboardType="decimal-pad"
+                        />
+                      </View>
+                    ) : <View className="flex-1" />}
+                  </View>
+                );
+              })}
             </>
           )}
         </View>

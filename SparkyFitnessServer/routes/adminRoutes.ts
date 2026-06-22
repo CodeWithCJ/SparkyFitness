@@ -4,6 +4,10 @@ import authService from '../services/authService.js';
 import userRepository from '../models/userRepository.js';
 import chatRepository from '../models/chatRepository.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
+import {
+  CreateGlobalExternalDataProviderBodySchema,
+  UpdateGlobalExternalDataProviderBodySchema,
+} from '../schemas/externalProviderSchemas.js';
 import { log } from '../config/logging.js';
 import { logAdminAction } from '../services/authService.js';
 import { auth } from '../auth.js';
@@ -12,6 +16,15 @@ const router = express.Router();
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
 router.use(authenticate);
 router.use(isAdmin);
+
+// Validates a provider_type value against the external_provider_types lookup
+// table. The set of valid types is dynamic (extended via migrations), so this
+// is checked at runtime rather than with a static Zod enum.
+async function isValidProviderType(providerType: string): Promise<boolean> {
+  const types = await externalProviderRepository.getExternalProviderTypes();
+  return types.some((t: { id: string }) => t.id === providerType);
+}
+
 /**
  * @swagger
  * /admin/users:
@@ -829,6 +842,15 @@ router.get('/external-data-providers/global', async (req, res, next) => {
  */
 router.post('/external-data-providers/global', async (req, res, next) => {
   try {
+    const bodyResult = CreateGlobalExternalDataProviderBodySchema.safeParse(
+      req.body
+    );
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyResult.error.flatten().fieldErrors,
+      });
+    }
     const {
       provider_name,
       provider_type,
@@ -836,11 +858,12 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
-    } = req.body;
-    if (!provider_name || !provider_type) {
+    } = bodyResult.data;
+
+    if (!(await isValidProviderType(provider_type))) {
       return res
         .status(400)
-        .json({ error: 'provider_name and provider_type are required.' });
+        .json({ error: `Invalid provider_type: '${provider_type}'.` });
     }
     const providerData = {
       provider_name,
@@ -916,6 +939,15 @@ router.post('/external-data-providers/global', async (req, res, next) => {
 router.put('/external-data-providers/global/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const bodyResult = UpdateGlobalExternalDataProviderBodySchema.safeParse(
+      req.body
+    );
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyResult.error.flatten().fieldErrors,
+      });
+    }
     const {
       provider_name,
       provider_type,
@@ -923,7 +955,17 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       app_key,
       base_url,
       is_active,
-    } = req.body;
+    } = bodyResult.data;
+
+    // Only validate provider_type when the caller is changing it.
+    if (
+      provider_type !== undefined &&
+      !(await isValidProviderType(provider_type))
+    ) {
+      return res
+        .status(400)
+        .json({ error: `Invalid provider_type: '${provider_type}'.` });
+    }
     const updateData = {
       provider_name,
       provider_type,

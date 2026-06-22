@@ -34,6 +34,8 @@ export {
   fastingCurrentQueryKey,
   fastingStatsQueryKey,
   fastingHistoryQueryKey,
+  customNutrientsQueryKey,
+  nutrientDisplayPreferencesQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -103,3 +105,6 @@ export {
 } from './useFasting';
 export { useFastingTimer } from './useFastingTimer';
 export type { FastTimerValues } from './useFastingTimer';
+export { useCustomNutrients } from './useCustomNutrients';
+export type { UserCustomNutrient } from './useCustomNutrients';
+export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';

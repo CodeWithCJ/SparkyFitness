@@ -95,7 +95,7 @@ describe('mealNutrition', () => {
       }),
     ]);
 
-    expect(nutrition).toMatchObject({
+    expect(nutrition.values).toMatchObject({
       servingSize: 1,
       servingUnit: 'meal',
       calories: 450,
@@ -105,6 +105,6 @@ describe('mealNutrition', () => {
       fiber: 8,
       sodium: 300,
     });
-    expect(nutrition.calcium).toBeUndefined();
+    expect(nutrition.values.calcium).toBeUndefined();
   });
 });

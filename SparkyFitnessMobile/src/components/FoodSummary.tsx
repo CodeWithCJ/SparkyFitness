@@ -30,7 +30,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const totalCalories = calculateMealNutrition(entries).calories;
+  const totalCalories = calculateMealNutrition(entries).values.calories;
   const headerContent = (
     <>
       <Icon name={config.icon} size={18} color={accentPrimary} />

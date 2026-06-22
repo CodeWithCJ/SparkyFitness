@@ -80,3 +80,6 @@ export const fastingCurrentQueryKey = ['fasting', 'current'] as const;
 export const fastingStatsQueryKey = ['fasting', 'stats'] as const;
 export const fastingHistoryQueryKey = (limit: number, offset: number) =>
   ['fasting', 'history', limit, offset] as const;
+
+export const customNutrientsQueryKey = ['customNutrients'] as const;
+export const nutrientDisplayPreferencesQueryKey = ['nutrientDisplayPreferences'] as const;

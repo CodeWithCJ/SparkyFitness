@@ -7,6 +7,8 @@ import Icon from './Icon';
 import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
+import { useCustomNutrients } from '../hooks';
+import { useServerConnection } from '../hooks';
 
 interface FoodNutritionSummaryProps {
   name: string;
@@ -23,6 +25,8 @@ interface FoodNutritionSummaryProps {
   // enabled.
   showNetCarbs?: boolean;
   provider_verified?: boolean;
+  /** Raw custom nutrient values for this food/variant (key = nutrient name, value = amount per serving). */
+  customNutrients?: Record<string, string | number> | null;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -34,9 +38,12 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   goalsLoading,
   showNetCarbs = false,
   provider_verified = false,
+  customNutrients,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
+  const { isConnected } = useServerConnection();
+  const { customNutrients: customNutrientDefs } = useCustomNutrients({ enabled: isConnected });
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
@@ -55,6 +62,34 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
     [values, useNetCarbs],
   );
 
+  // Build custom nutrient rows: show ALL user-defined custom nutrients (from defs),
+  // using values from the prop when available and 0 otherwise. Also include any
+  // prop values not covered by the current user definitions.
+  const customNutrientRows = useMemo((): NutrientDisplayItem[] => {
+    const rows: NutrientDisplayItem[] = [];
+    const seen = new Set<string>();
+
+    for (const def of customNutrientDefs) {
+      const rawValue = customNutrients?.[def.name];
+      const value = rawValue == null
+        ? 0
+        : typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+      rows.push({ label: def.name, value: isNaN(value) ? 0 : value, unit: def.unit });
+      seen.add(def.name);
+    }
+
+    if (customNutrients) {
+      for (const [name, rawValue] of Object.entries(customNutrients)) {
+        if (seen.has(name)) continue;
+        const value = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
+        if (isNaN(value)) continue;
+        rows.push({ label: name, value, unit: '' });
+      }
+    }
+
+    return rows;
+  }, [customNutrients, customNutrientDefs]);
+
   const renderRow = (nutrient: NutrientDisplayItem, showBorder: boolean) => (
     <View
       key={nutrient.label}
@@ -68,7 +103,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
     </View>
   );
 
-  const hasAdditional = additionalNutrients.length > 0;
+  const hasAdditional = additionalNutrients.length > 0 || customNutrientRows.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
   const layoutTransition = LinearTransition.duration(250);
 
@@ -111,7 +146,10 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
               layout={layoutTransition}
             >
               {additionalNutrients.map((nutrient, index) =>
-                renderRow(nutrient, index < additionalNutrients.length - 1),
+                renderRow(nutrient, index < additionalNutrients.length - 1 || customNutrientRows.length > 0),
+              )}
+              {customNutrientRows.map((nutrient, index) =>
+                renderRow(nutrient, index < customNutrientRows.length - 1),
               )}
             </Animated.View>
           ) : null}

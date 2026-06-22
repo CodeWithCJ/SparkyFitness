@@ -185,6 +185,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           brand={food.brand}
           values={displayValues}
           showNetCarbs={showNetCarbs}
+          customNutrients={selectedCustomNutrients}
         />
 
         <View className="bg-surface rounded-xl p-4">

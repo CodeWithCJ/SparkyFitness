@@ -28,4 +28,8 @@ export interface DailySummary {
   foodEntries: FoodEntry[];
   exerciseEntries: ExerciseSessionResponse[];
   calorieBalance: CalorieBalance;
+  /** Pre-aggregated custom nutrient totals for the day (name → consumed value). */
+  customNutrientTotals: Record<string, number>;
+  /** Per-custom-nutrient goals (name → goal value); empty when none are set. */
+  customNutrientGoals: Record<string, number>;
 }

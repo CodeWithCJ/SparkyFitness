@@ -58,11 +58,15 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
-// FoodForm now queries the active AI service + user-AI-config policy + user
-// preferences to gate the inline AI estimate flow inside the unit selector
-// sheet. Those hooks use react-query under the hood, which would require a
-// QueryClientProvider. Mock them as inert so the form renders cleanly in
-// unit-test isolation.
+// FoodForm queries server connection + custom nutrient defs + AI service
+// settings via react-query. Mock all of them as inert so the form renders
+// cleanly in unit-test isolation without a QueryClientProvider.
+jest.mock('../../src/hooks', () => ({
+  useServerConnection: () => ({ isConnected: true, isLoading: false }),
+}));
+jest.mock('../../src/hooks/useCustomNutrients', () => ({
+  useCustomNutrients: () => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() }),
+}));
 jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
   useActiveAiServiceSetting: () => ({
     data: mockActiveAiServiceSetting,
