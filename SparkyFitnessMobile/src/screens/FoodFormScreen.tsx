@@ -1363,6 +1363,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   };
 
   const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const submitRequestRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -1380,7 +1381,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           label: 'Update Values',
           identifier: 'food-adjust-save',
           tintColor: headerTintColor,
-          onPress: () => { /* submit handled by FoodForm */ },
+          onPress: () => submitRequestRef.current?.(),
           fontWeight: '600',
         }),
       ],
@@ -1406,6 +1407,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
       <FoodForm
         onSubmit={handleSubmit}
+        submitRequestRef={submitRequestRef}
         initialValues={initialValues}
         submitLabel="Update Values"
         hideSubmitButton={Platform.OS === 'ios'}

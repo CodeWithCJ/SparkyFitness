@@ -373,7 +373,11 @@ export function NativeTabsLayout({
   );
 }
 
-export function FallbackTabsLayout({ rememberActiveTab, getLastActiveTab }: TabTrackingProps) {
+export function FallbackTabsLayout({
+  onAddPress,
+  rememberActiveTab,
+  getLastActiveTab,
+}: { onAddPress?: () => void } & TabTrackingProps) {
   const AddScreen = React.useCallback(
     () => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />,
     [getLastActiveTab],
@@ -413,7 +417,7 @@ export function FallbackTabsLayout({ rememberActiveTab, getLastActiveTab }: TabT
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            // FAB handled in CustomTabBar
+            onAddPress?.();
           },
         }}
       />
@@ -440,6 +444,7 @@ export function TabsLayout({
   }
   return (
     <FallbackTabsLayout
+      onAddPress={onAddPress}
       rememberActiveTab={rememberActiveTab}
       getLastActiveTab={getLastActiveTab}
     />

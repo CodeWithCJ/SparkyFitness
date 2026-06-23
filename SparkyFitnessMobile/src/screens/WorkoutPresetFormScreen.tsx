@@ -172,6 +172,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
@@ -224,6 +225,9 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
       // Error toast handled in useCreateWorkoutPreset.
     }
   };
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
 
@@ -245,7 +249,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
           label: 'Save',
           identifier: 'preset-create-save',
           tintColor: presetHeaderTintColor,
-          onPress: () => void handleSave(),
+          onPress: () => void handleSaveRef.current?.(),
           disabled: isPending,
           fontWeight: '600',
         }),
@@ -370,6 +374,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   }, [isPreferencesLoading, populateFromPreset, preset, weightUnit]);
 
   const { updatePresetAsync, isPending } = useUpdateWorkoutPreset();
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
@@ -415,6 +420,9 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       // Error toast handled in useUpdateWorkoutPreset.
     }
   };
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
 
@@ -436,7 +444,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
           label: 'Save Changes',
           identifier: 'preset-edit-save',
           tintColor: presetHeaderTintColor,
-          onPress: () => void handleSave(),
+          onPress: () => void handleSaveRef.current?.(),
           disabled: isPending,
           fontWeight: '600',
         }),

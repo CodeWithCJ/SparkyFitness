@@ -1,5 +1,5 @@
-import React, { useLayoutEffect } from 'react';
-import { Platform, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useLayoutEffect } from 'react';
+import { Alert, Platform, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -8,6 +8,7 @@ import Icon from '../components/Icon';
 import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
   useDeleteWorkoutPreset,
   usePreferences,
@@ -104,17 +105,47 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     },
   });
 
-  const handleStartWorkout = () => {
+  const navigateToPresetWorkout = useCallback(() => {
     navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
-  };
+  }, [navigation, preset]);
 
-  const handleEdit = () => {
+  const handleStartWorkout = useCallback(async () => {
+    const draft = await loadActiveDraft();
+    if (!draft) {
+      navigateToPresetWorkout();
+      return;
+    }
+
+    Alert.alert(
+      'Draft in Progress',
+      `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Resume Draft',
+          onPress: () => {
+            navigation.navigate(draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd');
+          },
+        },
+        {
+          text: 'Discard & Continue',
+          style: 'destructive',
+          onPress: async () => {
+            await clearDraft();
+            navigateToPresetWorkout();
+          },
+        },
+      ],
+    );
+  }, [navigateToPresetWorkout, navigation]);
+
+  const handleEdit = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
       mode: 'edit-preset',
       preset,
       returnKey: route.key,
     });
-  };
+  }, [navigation, preset, route.key]);
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;

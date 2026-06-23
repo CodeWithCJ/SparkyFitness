@@ -1,9 +1,11 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
 import { usePreferences } from '../../src/hooks';
+import { loadActiveDraft } from '../../src/services/workoutDraftService';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/hooks', () => ({
@@ -17,7 +19,13 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: jest.fn(() => 0),
 }));
 
+jest.mock('../../src/services/workoutDraftService', () => ({
+  loadActiveDraft: jest.fn(),
+  clearDraft: jest.fn(),
+}));
+
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -83,17 +91,62 @@ describe('WorkoutPresetDetailScreen', () => {
       isError: false,
       refetch: jest.fn(),
     } as any);
+    mockLoadActiveDraft.mockResolvedValue(null);
   });
 
-  it('navigates to WorkoutAdd with the preset and popCount=2 on Start workout', () => {
+  it('navigates to WorkoutAdd with the preset and popCount=2 on Start workout', async () => {
     const preset = buildPreset();
     const screen = renderScreen(preset);
 
     fireEvent.press(screen.getByText('Start workout'));
-    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
-      preset,
-      popCount: 2,
+    await waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
+        preset,
+        popCount: 2,
+      });
     });
+  });
+
+  it('prompts to resume an active draft before starting a preset workout', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    mockLoadActiveDraft.mockResolvedValue({
+      type: 'workout',
+      name: 'Draft',
+      nameManuallySet: true,
+      entryDate: '2026-06-23',
+      exercises: [
+        {
+          clientId: 'draft-exercise',
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          exerciseCategory: null,
+          images: [],
+          sets: [
+            {
+              clientId: 'draft-set',
+              weight: '100',
+              reps: '5',
+              restTime: 90,
+            },
+          ],
+        },
+      ],
+    });
+    const screen = renderScreen(buildPreset());
+
+    fireEvent.press(screen.getByText('Start workout'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Draft in Progress',
+        expect.any(String),
+        expect.any(Array),
+      );
+    });
+
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    buttons.find((button) => button.text === 'Resume Draft')?.onPress?.();
+    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
   });
 
   it('renders preset name, description, and exercise count', () => {

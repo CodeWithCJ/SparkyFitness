@@ -122,9 +122,54 @@ type TabStateSnapshot = {
   routes: Array<{
     name: string;
     params?: unknown;
+    state?: TabStateSnapshot;
   }>;
 };
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
+
+function findRouteState(
+  state: TabStateSnapshot | undefined,
+  routeName: string,
+): TabStateSnapshot | undefined {
+  if (!state) return undefined;
+
+  const activeRoute = state.routes[state.index ?? 0];
+  if (activeRoute?.name === routeName && activeRoute.state) {
+    return activeRoute.state;
+  }
+
+  for (const route of state.routes) {
+    if (route.name === routeName && route.state) {
+      return route.state;
+    }
+    const nested = findRouteState(route.state, routeName);
+    if (nested) return nested;
+  }
+
+  return undefined;
+}
+
+function findRouteParams<T extends object>(
+  state: TabStateSnapshot | undefined,
+  routeName: string,
+): T | undefined {
+  if (!state) return undefined;
+
+  const activeRoute = state.routes[state.index ?? 0];
+  if (activeRoute?.name === routeName) {
+    return activeRoute.params as T | undefined;
+  }
+
+  for (const route of state.routes) {
+    if (route.name === routeName) {
+      return route.params as T | undefined;
+    }
+    const nested = findRouteParams<T>(route.state, routeName);
+    if (nested) return nested;
+  }
+
+  return undefined;
+}
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
 
@@ -303,21 +348,20 @@ function AppContent() {
 
   const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
-    const state =
+    const rootOrTabState =
       navigation?.getState() ??
       (rootNavigationRef.isReady()
-        ? (rootNavigationRef
-            .getRootState()
-            .routes.find((route) => route.name === 'Tabs')
-            ?.state as TabStateSnapshot | undefined)
+        ? (rootNavigationRef.getRootState() as TabStateSnapshot | undefined)
         : undefined);
-    if (!state) return undefined;
 
-    const activeRoute = state.routes[state.index ?? 0];
+    const tabState =
+      rootOrTabState?.routes?.some((route) => route.name === 'Tabs')
+        ? findRouteState(rootOrTabState, 'Tabs')
+        : rootOrTabState;
+    const diaryState = findRouteState(tabState, 'Diary');
     const diaryParams =
-      activeRoute.name === 'Diary'
-        ? (activeRoute.params as { selectedDate?: string } | undefined)
-        : undefined;
+      findRouteParams<{ selectedDate?: string }>(diaryState, 'DiaryRoot') ??
+      findRouteParams<{ selectedDate?: string }>(tabState, 'Diary');
 
     return diaryParams?.selectedDate;
   }, []);
@@ -913,7 +957,7 @@ function AppContent() {
           <Stack.Screen
             name="FoodEntryView"
             component={SafeFoodEntryView}
-            options={({ route }) => createStackScreenOptions(route.params.entry.food_name ?? 'Food Entry')}
+            options={({ route }) => createStackScreenOptions(route.params.entry.food_name ?? 'Food Entry', { headerBackTitle: 'Diary' })}
           />
           <Stack.Screen
             name="EditLoggedMeal"
@@ -955,6 +999,7 @@ function AppContent() {
                 ? {
                     ...iosSmallHeaderOptions,
                     title: route.params?.session?.name ?? 'Workout',
+                    headerBackTitle: 'Diary',
                     gestureEnabled: true,
                   }
                 : {
@@ -966,7 +1011,7 @@ function AppContent() {
           <Stack.Screen
             name="ActivityDetail"
             component={SafeActivityDetail}
-            options={({ route }) => createStackScreenOptions(route.params.session.name ?? 'Activity')}
+            options={({ route }) => createStackScreenOptions(route.params.session.name ?? 'Activity', { headerBackTitle: 'Diary' })}
           />
           <Stack.Screen
             name="FastingDetail"
