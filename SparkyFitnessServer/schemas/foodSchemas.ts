@@ -54,9 +54,16 @@ export const NormalizedFoodSchema = z.object({
 export type NormalizedFood = z.infer<typeof NormalizedFoodSchema>;
 
 export const PaginationSchema = z.object({
-  page: z.number(),
-  pageSize: z.number(),
-  totalCount: z.number(),
+  // Some providers (for example Open Food Facts) return pagination fields as
+  // strings. Coerce the numerics so a string page/pageSize/totalCount does not
+  // fail response validation. .int() keeps the integer intent explicit and (in
+  // zod v4, where z.coerce.number() already rejects NaN) rejects non-numeric
+  // junk. Value-range constraints are intentionally omitted so a provider that
+  // reports a 0 does not reintroduce a hard failure. hasMore stays a strict
+  // boolean.
+  page: z.coerce.number().int(),
+  pageSize: z.coerce.number().int(),
+  totalCount: z.coerce.number().int(),
   hasMore: z.boolean(),
 });
 
