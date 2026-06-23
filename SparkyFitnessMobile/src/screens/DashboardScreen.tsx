@@ -37,7 +37,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { NUTRIENT_META, CUSTOM_NUTRIENT_DEFAULT_COLOR } from '../constants/nutrients';
+import { NUTRIENT_META } from '../constants/nutrients';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
   { key: '7d', label: '7d' },
@@ -291,13 +291,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;
-                  // fall back to NUTRIENT_META color or default for custom nutrients.
+                  // custom nutrients fall back to the app accent color.
                   let color: string;
                   if (nutrientKey === 'protein') color = proteinColor;
                   else if (nutrientKey === 'carbs') color = carbsColor;
                   else if (nutrientKey === 'fat') color = fatColor;
                   else if (nutrientKey === 'dietary_fiber') color = fiberColor;
-                  else color = meta?.color ?? CUSTOM_NUTRIENT_DEFAULT_COLOR;
+                  else color = accentColor;
 
                   // Resolve consumed value.
                   let consumed: number;
