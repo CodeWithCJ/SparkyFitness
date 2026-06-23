@@ -64,7 +64,14 @@ ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS active_ai_service_i
 
 
 
--- Drop old policies that depend on the old column
+-- Drop old policies that depend on the old column.
+-- The migration chain creates these policies with the external_data_providers_*
+-- prefix (20251021025423, 20251023120500); rls_policies.sql later renames them to
+-- the generic names below. Both sets must be dropped so DROP COLUMN succeeds on a
+-- fresh install (where only the prefixed names exist yet) as well as on an existing
+-- install (where applyRlsPolicies has already renamed them).
+DROP POLICY IF EXISTS external_data_providers_select_policy ON public.external_data_providers;
+DROP POLICY IF EXISTS external_data_providers_modify_policy ON public.external_data_providers;
 DROP POLICY IF EXISTS select_policy ON public.external_data_providers;
 DROP POLICY IF EXISTS modify_policy ON public.external_data_providers;
 DROP POLICY IF EXISTS insert_policy ON public.external_data_providers;
