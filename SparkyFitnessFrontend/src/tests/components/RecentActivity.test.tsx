@@ -9,11 +9,14 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockPreferences = {
+  weightUnit: 'kg',
+  measurementUnit: 'cm',
+  measurementDecimalPlaces: 0,
+};
+
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({
-    weightUnit: 'kg',
-    measurementUnit: 'cm',
-  }),
+  usePreferences: () => mockPreferences,
 }));
 
 const baseMeasurement: CombinedMeasurement = {
@@ -186,5 +189,33 @@ describe('RecentActivity', () => {
     );
 
     expect(screen.getByText('abc')).toBeInTheDocument();
+  });
+
+  it('respects measurementDecimalPlaces preference', () => {
+    mockPreferences.measurementDecimalPlaces = 1;
+
+    const measurements: CombinedMeasurement[] = [
+      {
+        ...baseMeasurement,
+        display_name: 'BMI',
+        value: '23.700000762939453',
+        custom_categories: {
+          id: 'cat5',
+          name: 'BMI',
+          measurement_type: 'N/A',
+          frequency: 'daily',
+          data_type: null,
+          display_name: 'BMI',
+        },
+      },
+    ];
+
+    render(
+      <RecentActivity {...defaultProps} recentMeasurements={measurements} />
+    );
+
+    expect(screen.getByText('23.7')).toBeInTheDocument();
+
+    mockPreferences.measurementDecimalPlaces = 0;
   });
 });

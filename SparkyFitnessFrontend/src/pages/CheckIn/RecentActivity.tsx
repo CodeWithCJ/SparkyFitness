@@ -44,6 +44,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   const {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
+    measurementDecimalPlaces,
   } = usePreferences();
   const { t } = useTranslation();
 
@@ -103,7 +104,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                     const val =
                       measurement.value === '' || isNaN(num)
                         ? measurement.value
-                        : Math.round(num);
+                        : Number(num.toFixed(measurementDecimalPlaces));
                     displayString = `${val} ${unit}`.trim();
                   }
                 } else if (measurement.type === 'standard') {
@@ -130,7 +131,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                     const val =
                       measurement.value === '' || isNaN(num)
                         ? measurement.value
-                        : Math.round(num);
+                        : Number(num.toFixed(measurementDecimalPlaces));
                     displayString = `${val} ${unit}`.trim();
                   }
                 } else if (measurement.type === 'stress') {
