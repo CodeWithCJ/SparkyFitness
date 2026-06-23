@@ -11,7 +11,7 @@ import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import HealthSourceLabel from '../components/HealthSourceLabel';
+import HealthSourceLabel, { healthSourceName } from '../components/HealthSourceLabel';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { preferencesQueryKey } from '../hooks/queryKeys';
@@ -35,6 +35,9 @@ const activityLevelOptions = [
   { label: 'Moderately Active (x1.55)', value: 'moderate' },
   { label: 'Very Active (x1.725)', value: 'heavy' },
 ];
+
+// Apple Health and Health Connect use different terms for the same baseline-energy value.
+const bmrMetricName = Platform.OS === 'ios' ? 'Resting Energy' : 'BMR';
 
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
@@ -350,7 +353,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
-              Use BMR from Health Apps
+              Use {bmrMetricName} from {healthSourceName}
             </Text>
             <Switch
               onValueChange={handleExternalBmrToggle}
@@ -360,8 +363,8 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
-            Uses Apple Health Resting Energy or Health Connect BMR when available. Otherwise,
-            the selected formula will be used.
+            Uses {healthSourceName} {bmrMetricName} when available. Otherwise, the selected
+            formula will be used.
           </Text>
           {normalized.useExternalBmr && (
             <View className="mt-3">
