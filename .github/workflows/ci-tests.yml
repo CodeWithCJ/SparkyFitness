@@ -28,6 +28,7 @@ jobs:
       mobile: ${{ steps.filter.outputs.mobile }}
       server: ${{ steps.filter.outputs.server }}
       garmin: ${{ steps.filter.outputs.garmin }}
+      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,6 +46,14 @@ jobs:
               - 'SparkyFitnessServer/**'
             garmin:
               - 'SparkyFitnessGarmin/**'
+            # Files whose change can break a fresh-install migration run.
+            migrations:
+              - 'SparkyFitnessServer/db/migrations/**'
+              - 'SparkyFitnessServer/db/rls_policies.sql'
+              - 'SparkyFitnessServer/db/grantPermissions.ts'
+              - 'SparkyFitnessServer/utils/dbMigrations.ts'
+              - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
+              - 'SparkyFitnessServer/tests/migrate.script.ts'
 
   frontend-tests:
     name: Frontend Tests
@@ -172,6 +181,61 @@ jobs:
           name: server-coverage
           path: SparkyFitnessServer/coverage/
           retention-days: 7
+
+  migration-check:
+    name: Fresh-install Migrations
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessServer
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sparky_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # First run applies every migration against empty DB
+      # Second run reapplies the always reapplied rls policies, simulating restart
+      - name: Apply migrations on an empty database (twice = restart simulation)
+        run: pnpm run test:migrations && pnpm run test:migrations
+        env:
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: postgres
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
 
   garmin-tests:
     name: Garmin Tests
