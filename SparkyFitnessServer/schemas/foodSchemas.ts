@@ -54,9 +54,14 @@ export const NormalizedFoodSchema = z.object({
 export type NormalizedFood = z.infer<typeof NormalizedFoodSchema>;
 
 export const PaginationSchema = z.object({
-  page: z.number(),
-  pageSize: z.number(),
-  totalCount: z.number(),
+  // Some providers (e.g. Open Food Facts' legacy cgi/search.pl endpoint) report
+  // these pagination values as strings, and the same field can switch between a
+  // string and a number across requests. Coerce them so any provider that sends
+  // string-typed numeric pagination is normalized rather than failing response
+  // validation. `hasMore` stays a strict boolean.
+  page: z.coerce.number(),
+  pageSize: z.coerce.number(),
+  totalCount: z.coerce.number(),
   hasMore: z.boolean(),
 });
 
