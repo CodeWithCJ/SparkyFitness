@@ -1,7 +1,9 @@
 import React from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
+  StatusBar,
   View,
   Text,
   useWindowDimensions,
@@ -49,7 +51,15 @@ const AnchoredMenu: React.FC<Props> = ({
   // Drop the menu just below the trigger and align its edge to the trigger's,
   // picking left- vs right-anchoring by which half of the screen the trigger is
   // in so the menu never runs off-screen.
-  const top = anchor.y + anchor.height + 6;
+  //
+  // The anchor is measured in the app's content window, which (under Android
+  // edge-to-edge) sits below the status bar, while this Modal overlay renders in
+  // screen-absolute space. Add the status-bar height back so the menu lands
+  // under the trigger instead of riding up and clipping it. iOS reports no
+  // StatusBar.currentHeight, so it stays 0 there (already correct).
+  const statusBarOffset =
+    Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
+  const top = anchor.y + anchor.height + 6 + statusBarOffset;
   const isLeftHalf = anchor.x + anchor.width / 2 < screenWidth / 2;
   const menuStyle = isLeftHalf
     ? { top, left: Math.max(8, anchor.x), minWidth }
