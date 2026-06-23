@@ -467,6 +467,7 @@
       "kilograms": "Kilograms (kg)",
       "pounds": "Pounds (lbs)",
       "measurementUnit": "Measurement Unit",
+      "measurementDecimalPlaces": "Measurement Decimal Places",
       "centimeters": "Centimeters (cm)",
       "inches": "Inches (in)",
       "distanceUnit": "Distance Unit",

@@ -2436,6 +2436,7 @@ CREATE TABLE public.user_preferences (
     goal_mode character varying(50) DEFAULT 'maintain'::character varying NOT NULL,
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
+    measurement_decimal_places integer DEFAULT 0 NOT NULL,
     use_external_bmr boolean DEFAULT false NOT NULL,
     add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     active_ai_service_id uuid,
