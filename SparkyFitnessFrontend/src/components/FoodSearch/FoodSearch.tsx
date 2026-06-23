@@ -389,8 +389,13 @@ const EnhancedFoodSearch = ({
       return;
     }
     let active = true;
+    // Show the online section as loading the moment the term changes, rather
+    // than waiting out the 600ms debounce. Otherwise the previous provider's
+    // results linger in the ~300ms gap between the local debounce settling and
+    // this timeout firing, reading as if they belong to the new term. The
+    // < 3 char / no-provider guards above already prevent a spurious spinner.
+    setIsOnlineLoading(true);
     const handler = setTimeout(async () => {
-      setIsOnlineLoading(true);
       setSearchProviderId(provider.id);
       setHasOnlineSearchBeenPerformed(true);
       try {
