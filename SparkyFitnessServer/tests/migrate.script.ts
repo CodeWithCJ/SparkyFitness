@@ -4,18 +4,26 @@ import { applyRlsPolicies } from '../utils/applyRlsPolicies.js';
 import { endPool } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 
-async function run() {
-  await applyMigrations();
-  await applyRlsPolicies();
-  log('info', 'Migration check completed successfully.');
-}
-
 // Ending the pools releases the DB handles so the process exits naturally with
 // the exit code set below, rather than calling process.exit() (see the
-// n/no-process-exit lint rule).
-run()
-  .catch((error) => {
+// n/no-process-exit lint rule). endPool() runs in finally and is itself guarded
+// so a failure closing the pool can't surface as an unhandled rejection.
+async function run() {
+  try {
+    await applyMigrations();
+    await applyRlsPolicies();
+    log('info', 'Migration check completed successfully.');
+  } catch (error) {
     log('error', 'Migration check failed:', error);
     process.exitCode = 1;
-  })
-  .finally(() => endPool());
+  } finally {
+    try {
+      await endPool();
+    } catch (error) {
+      log('error', 'Failed to close database pool:', error);
+      process.exitCode = 1;
+    }
+  }
+}
+
+run();

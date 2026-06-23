@@ -47,6 +47,8 @@ jobs:
             garmin:
               - 'SparkyFitnessGarmin/**'
             # Files whose change can break a fresh-install migration run.
+            # Includes the jobs' own execution path (workflow + script) so a
+            # change there can't break migration CI while the jobs gate out.
             migrations:
               - 'SparkyFitnessServer/db/migrations/**'
               - 'SparkyFitnessServer/db/rls_policies.sql'
@@ -54,6 +56,8 @@ jobs:
               - 'SparkyFitnessServer/utils/dbMigrations.ts'
               - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
               - 'SparkyFitnessServer/tests/migrate.script.ts'
+              - 'SparkyFitnessServer/package.json'
+              - '.github/workflows/ci-tests.yml'
 
   frontend-tests:
     name: Frontend Tests
@@ -309,6 +313,12 @@ jobs:
 
           # Phase 1: apply the base branch's migrations to the empty database.
           # rm -rf first so migrations added only by this PR are absent at base.
+          # Only the SQL (db/migrations + rls_policies.sql) is swapped to base;
+          # the runner itself (dbMigrations.ts/grantPermissions.ts/applyRlsPolicies.ts
+          # + test:migrations) stays at HEAD. So this validates HEAD's runner
+          # applying the PR's new migrations onto a base-SQL schema, not a faithful
+          # base-deployment rebuild. Runner regressions are caught by the
+          # fresh-install job above; this job targets schema-dependent migrations.
           rm -rf db/migrations db/rls_policies.sql
           git checkout "${BASE_SHA}" -- db/migrations db/rls_policies.sql
           pnpm run test:migrations
