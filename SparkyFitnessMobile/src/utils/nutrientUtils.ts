@@ -14,3 +14,13 @@ export const getNetCarbsValue = (
   const fiberValue = Number(dietaryFiber) || 0;
   return Math.max(0, carbsValue - fiberValue);
 };
+
+/** Adds/removes a nutrient key from a visible_nutrients list, idempotently. */
+export const toggleNutrientVisibility = (
+  current: string[],
+  name: string,
+  enabled: boolean,
+): string[] =>
+  enabled
+    ? current.includes(name) ? current : [...current, name]
+    : current.filter((n) => n !== name);

@@ -57,6 +57,7 @@
       --color-cat-pink:          hsl(340, 75%, 55%);
       --color-cat-violet:        hsl(265, 70%, 60%);
       --color-cat-orange:        hsl(22, 92%, 65%);
+      --color-cat-green:         hsl(124, 54%, 38%);
 
       --color-progress-track:    hsl(218, 29%, 92%);
       --color-progress-overfill: hsl(215, 28%, 17%);
@@ -117,6 +118,7 @@
       --color-cat-pink:          hsl(340, 50%, 60%);
       --color-cat-violet:        hsl(265, 50%, 60%);
       --color-cat-orange:        hsl(22, 55%, 60%);
+      --color-cat-green:         hsl(125, 24%, 53%);
 
       --color-progress-track:    hsl(218, 41%, 23%);
       --color-progress-overfill: hsl(357, 66%, 65%);
@@ -177,6 +179,7 @@
       --color-cat-pink:          hsl(340, 50%, 60%);
       --color-cat-violet:        hsl(265, 50%, 60%);
       --color-cat-orange:        hsl(22, 55%, 60%);
+      --color-cat-green:         hsl(125, 24%, 53%);
 
       --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);

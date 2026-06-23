@@ -32,7 +32,7 @@ export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
 };
 
 interface SettingsRowProps {
-  icon: IconName;
+  icon?: IconName;
   title: string;
   subtitle?: React.ReactNode;
   onPress?: () => void;
@@ -70,12 +70,14 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
 
   const content = (
     <>
-      <View
-        className="w-10 h-10 rounded-lg items-center justify-center mr-3"
-        style={{ backgroundColor: tileBg }}
-      >
-        <Icon name={icon} size={22} color={tintColor} weight='semibold' />
-      </View>
+      {icon ? (
+        <View
+          className="w-10 h-10 rounded-lg items-center justify-center mr-3"
+          style={{ backgroundColor: tileBg }}
+        >
+          <Icon name={icon} size={22} color={tintColor} weight='semibold' />
+        </View>
+      ) : null}
       <View className="flex-1 mr-2">
         <Text
           className="text-base font-semibold text-text-primary"
