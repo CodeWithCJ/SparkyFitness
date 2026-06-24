@@ -34,6 +34,7 @@ import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFastingCardVisible } from '../services/fastingCardVisibility';
+import { useHydrationCardVisible } from '../services/hydrationCardVisibility';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -138,6 +139,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const fastingCardVisible = useFastingCardVisible();
+  const hydrationCardVisible = useHydrationCardVisible();
   const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -367,18 +369,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           />
         )}
 
-        <HydrationGauge
-          consumed={summary.waterConsumed}
-          goal={summary.waterGoal}
-          unit={waterUnit}
-          containerVolume={servingVolume}
-          onIncrement={isContainersLoaded ? incrementWater : undefined}
-          onDecrement={isContainersLoaded ? decrementWater : undefined}
-          disableDecrement={summary.waterConsumed <= 0}
-          containers={waterContainers}
-          activeContainerId={activeWaterContainer?.id}
-          onSelectContainer={selectWaterContainer}
-        />
+        {/* Hydration card visibility is a local app setting toggled from
+            Dashboard Settings. */}
+        {hydrationCardVisible && (
+          <HydrationGauge
+            consumed={summary.waterConsumed}
+            goal={summary.waterGoal}
+            unit={waterUnit}
+            containerVolume={servingVolume}
+            onIncrement={isContainersLoaded ? incrementWater : undefined}
+            onDecrement={isContainersLoaded ? decrementWater : undefined}
+            disableDecrement={summary.waterConsumed <= 0}
+            containers={waterContainers}
+            activeContainerId={activeWaterContainer?.id}
+            onSelectContainer={selectWaterContainer}
+          />
+        )}
 
         {/* Fasting is "now"-based, so the card is deliberately date-independent —
             it always reflects the current/active fast regardless of the date

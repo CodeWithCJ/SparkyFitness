@@ -20,6 +20,10 @@ import {
   useFastingCardVisible,
   setFastingCardVisible,
 } from '../services/fastingCardVisibility';
+import {
+  useHydrationCardVisible,
+  setHydrationCardVisible,
+} from '../services/hydrationCardVisibility';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
@@ -48,6 +52,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
   ]) as [string, string, string];
 
   const fastingCardVisible = useFastingCardVisible();
+  const hydrationCardVisible = useHydrationCardVisible();
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -185,6 +190,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
 
 
         <SettingsRowGroup>
+          <SettingsRow
+            title="Hydration"
+            subtitle="Show the hydration card on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={hydrationCardVisible}
+                onValueChange={setHydrationCardVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
           <SettingsRow
             title="Fasting"
             subtitle="Show the fasting card on the Dashboard"
