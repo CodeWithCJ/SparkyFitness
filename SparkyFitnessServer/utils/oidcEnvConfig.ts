@@ -22,7 +22,9 @@ function getEnvOidcConfig() {
   const issuer = process.env[ENV_ISSUER]?.trim();
   const clientId = process.env[ENV_CLIENT_ID]?.trim();
   const clientSecret = process.env[ENV_CLIENT_SECRET]?.trim();
-  const slug = process.env[ENV_PROVIDER_SLUG]?.trim();
+  const rawSlug = process.env[ENV_PROVIDER_SLUG]?.trim();
+  const slug =
+    rawSlug && /^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(rawSlug) ? rawSlug : undefined;
   const name = process.env[ENV_PROVIDER_NAME]?.trim();
   const scope = process.env[ENV_SCOPE]?.trim();
   const logoUrl = process.env[ENV_LOGO_URL]?.trim();
