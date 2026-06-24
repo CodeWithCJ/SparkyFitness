@@ -73,7 +73,6 @@ async function upsertEnvOidcProvider() {
     const result = await client.query(
       `SELECT provider_id FROM "sso_provider"
        WHERE additional_config::jsonb->>'is_env_configured' = 'true'
-       AND issuer = $1
        AND provider_id != $2`,
       [config.issuer_url, config.provider_id]
     );
