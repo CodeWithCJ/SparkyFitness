@@ -199,10 +199,12 @@ const NutritionChartsGrid = ({
                   </div>
                 </CardHeader>
                 <CardContent
-                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
                 >
                   <div
-                    className={(isMaximized ? 'h-full' : 'h-48') + ' min-w-0'}
+                    className={
+                      (isMaximized ? 'grow min-h-0' : 'h-48') + ' min-w-0'
+                    }
                   >
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}

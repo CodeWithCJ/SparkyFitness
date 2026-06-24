@@ -341,9 +341,9 @@ const SleepAnalyticsCharts = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent
-                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
                 >
-                  <div className={isMaximized ? 'h-full' : 'h-48'}>
+                  <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       height="100%"
@@ -426,9 +426,9 @@ const SleepAnalyticsCharts = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent
-                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
                 >
-                  <div className={isMaximized ? 'h-full' : 'h-48'}>
+                  <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       height="100%"
@@ -531,9 +531,9 @@ const SleepAnalyticsCharts = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent
-                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
                 >
-                  <div className={isMaximized ? 'h-full' : 'h-48'}>
+                  <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       height="100%"
@@ -651,9 +651,9 @@ const SleepAnalyticsCharts = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent
-                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
                 >
-                  <div className={isMaximized ? 'h-full' : 'h-48'}>
+                  <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
                       height="100%"
