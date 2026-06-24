@@ -59,22 +59,36 @@ function getEnvOidcConfig() {
   };
 }
 /**
- * Upserts the env-configured OIDC provider into sso_provider and syncs Better Auth.
- * No-op if env config is incomplete. Safe to call on every startup.
+ * Upserts the env-configured OIDC provider, or removes it if OIDC is disabled
+ * or env config is incomplete. Safe to call on every startup.
+ * - If config is valid and SPARKY_FITNESS_OIDC_AUTH_ENABLED=true: upserts provider
+ * - If config is invalid or OIDC_AUTH_ENABLED=false: removes any oidc provider configured in the env file
+ * - Stale providers (slug changed) are cleaned up before the new one is created
  */
 async function upsertEnvOidcProvider() {
   const config = getEnvOidcConfig();
-  if (!config) {
+  const { getSystemClient } = await import('../db/poolManager.js');
+  // if oidc is disabled or env config missing -> delete env configured oidc provider
+  if (!config || process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED !== 'true') {
+    const client = await getSystemClient();
+    try {
+      await client.query(
+        `DELETE FROM "sso_provider"
+       WHERE additional_config::jsonb->>'is_env_configured' = 'true'`
+      );
+    } finally {
+      client.release();
+    }
     return;
   }
-  const { getSystemClient } = await import('../db/poolManager.js');
+  // removes env configured providers if slug doesn't match
   const client = await getSystemClient();
   try {
     const result = await client.query(
       `SELECT provider_id FROM "sso_provider"
        WHERE additional_config::jsonb->>'is_env_configured' = 'true'
-       AND provider_id != $2`,
-      [config.issuer_url, config.provider_id]
+       AND provider_id != $1`,
+      [config.provider_id]
     );
     for (const row of result.rows) {
       await oidcProviderRepository.deleteOidcProvider(row.provider_id);
@@ -86,6 +100,7 @@ async function upsertEnvOidcProvider() {
   } finally {
     client.release();
   }
+  // create or update the current env provider
   const existing = await oidcProviderRepository.getOidcProviderById(
     config.provider_id
   );
