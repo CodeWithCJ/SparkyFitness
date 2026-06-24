@@ -32,6 +32,7 @@ import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
+import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFastingCardVisible } from '../services/fastingCardVisibility';
 import { useHydrationCardVisible } from '../services/hydrationCardVisibility';
@@ -386,10 +387,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           />
         )}
 
-        {/* Fasting is "now"-based, so the card is deliberately date-independent —
-            it always reflects the current/active fast regardless of the date
-            navigator. Do not wire it to `selectedDate`. Visibility is a local
-            app setting toggled from Dashboard Settings. */}
+        {/* Goal-notification reconciliation is owned here (headless, always
+            mounted) so it survives the card being hidden. Fasting is "now"-based,
+            so the card is deliberately date-independent — it always reflects the
+            current/active fast regardless of the date navigator. Do not wire it
+            to `selectedDate`. Visibility is a local app setting toggled from
+            Dashboard Settings. */}
+        <FastingGoalReconciler />
         {fastingCardVisible && <FastingCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
