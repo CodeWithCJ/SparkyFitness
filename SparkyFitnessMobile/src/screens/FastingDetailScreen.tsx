@@ -65,8 +65,8 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
   const endFastSheetRef = useRef<EndFastSheetRef>(null);
 
-  // Read-only here — the dashboard `FastingCard` is the single owner of
-  // goal-notification reconciliation.
+  // Read-only here — the dashboard `FastingGoalReconciler` is the single owner
+  // of goal-notification reconciliation.
   const { data: currentFast, isLoading } = useCurrentFast();
   const { data: stats } = useFastingStats();
 

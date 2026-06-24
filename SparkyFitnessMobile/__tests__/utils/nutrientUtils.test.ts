@@ -1,4 +1,7 @@
-import { getNetCarbsValue } from '../../src/utils/nutrientUtils';
+import {
+  getNetCarbsValue,
+  toggleNutrientVisibility,
+} from '../../src/utils/nutrientUtils';
 
 describe('getNetCarbsValue', () => {
   it('subtracts fiber from carbs when both are positive', () => {
@@ -35,5 +38,42 @@ describe('getNetCarbsValue', () => {
   it('handles NaN inputs as zero (numeric fallback)', () => {
     expect(getNetCarbsValue(Number.NaN, 5)).toBe(0);
     expect(getNetCarbsValue(30, Number.NaN)).toBe(30);
+  });
+});
+
+describe('toggleNutrientVisibility', () => {
+  it('adds the nutrient when enabled', () => {
+    expect(toggleNutrientVisibility(['protein'], 'magnesium', true)).toEqual([
+      'protein',
+      'magnesium',
+    ]);
+  });
+
+  it('removes the nutrient when disabled', () => {
+    expect(
+      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', false),
+    ).toEqual(['protein']);
+  });
+
+  it('is idempotent when enabling an already-present nutrient', () => {
+    expect(
+      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', true),
+    ).toEqual(['protein', 'magnesium']);
+  });
+
+  it('is idempotent when disabling an absent nutrient', () => {
+    expect(toggleNutrientVisibility(['protein'], 'magnesium', false)).toEqual([
+      'protein',
+    ]);
+  });
+
+  it('preserves standard entries when toggling a custom name', () => {
+    const standards = ['calories', 'protein', 'carbs', 'fat'];
+
+    const added = toggleNutrientVisibility(standards, 'magnesium', true);
+    expect(added).toEqual(['calories', 'protein', 'carbs', 'fat', 'magnesium']);
+
+    const removed = toggleNutrientVisibility(added, 'magnesium', false);
+    expect(removed).toEqual(standards);
   });
 });

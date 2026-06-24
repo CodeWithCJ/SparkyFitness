@@ -56,6 +56,7 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
+import DashboardSettingsScreen from './src/screens/DashboardSettingsScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
 import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
@@ -90,9 +91,14 @@ import {
 import { initializeTheme } from './src/services/themeService';
 import { initializeHaptics } from './src/services/haptics';
 import { initializeSounds } from './src/services/sounds';
+import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
+import { initializeHydrationCardVisibility } from './src/services/hydrationCardVisibility';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
-import { initNotifications } from './src/services/notifications';
+import {
+  initNotifications,
+  initializeNotificationsEnabled,
+} from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -163,6 +169,7 @@ const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
+const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
 const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
 const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
@@ -434,6 +441,9 @@ function AppContent() {
     initializeTheme();
     initializeHaptics();
     initializeSounds();
+    initializeNotificationsEnabled();
+    initializeFastingCardVisibility();
+    initializeHydrationCardVisibility();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
@@ -972,6 +982,13 @@ function AppContent() {
           <Stack.Screen
             name="FoodSettings"
             component={SafeFoodSettings}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="DashboardSettings"
+            component={SafeDashboardSettings}
             options={{
               headerShown: false,
             }}

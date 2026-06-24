@@ -108,10 +108,11 @@ const ICON_MAP = {
   'health-data-sync': { sf: 'heart', ion: 'heart-outline' },
   'calorie-settings': { sf: 'flame', ion: 'flame-outline' },
   'food-search-settings': { sf: 'magnifyingglass', ion: 'search-outline' },
+  'dashboard-settings': { sf: 'square.grid.2x2', ion: 'grid-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
   'about': { sf: 'info.circle', ion: 'information-circle-outline' },
-  'sparkle': { sf: 'sparkles', ion: 'sparkles-outline' },
+  'whats-new': { sf: 'gift', ion: 'gift-outline' },
 
   // AI features
   'sparkles': { sf: 'sparkles', ion: 'sparkles' },

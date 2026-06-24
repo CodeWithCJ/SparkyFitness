@@ -19,10 +19,9 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   const progress = hasGoal ? consumed / (goal as number) : 0;
   const barHeight = 8;
   const borderRadius = 4;
-  const [trackColor, neutralFillColor] = useCSSVariable([
+  const [trackColor] = useCSSVariable([
     '--color-progress-track',
-    '--color-text-muted',
-  ]) as [string, string];
+  ]) as [string];
 
   const animatedProgress = useSharedValue(0);
 
@@ -65,7 +64,7 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   }));
 
   return (
-    <View className="w-[48%] p-1 mb-2">
+    <View className="w-[48%] p-1">
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-medium text-text-primary">{label}</Text>
         <Text className="text-xs text-text-secondary">
@@ -74,55 +73,37 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
             : `${Math.round(consumed)}${unit}`}
         </Text>
       </View>
-      {/* Progress bar container */}
-      <View
-        className="h-2"
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-      >
-        {barWidth > 0 && (
-          <View
-            style={{
-              width: barWidth,
-              height: barHeight,
-              borderRadius,
-              overflow: 'hidden',
-              backgroundColor: trackColor,
-            }}
-          >
-            {hasGoal ? (
-              <>
-                <Animated.View
-                  style={[
-                    { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
-                    fillStyle,
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
-                    overflowStyle,
-                  ]}
-                />
-              </>
-            ) : (
-              // No goal to track against: show a full-width neutral bar so the
-              // logged value still reads as "recorded" without implying a goal
-              // was met (which a full nutrient-colored bar would suggest).
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  height: barHeight,
-                  width: barWidth,
-                  backgroundColor: neutralFillColor,
-                  opacity: 0.5,
-                }}
+      {hasGoal && (
+        <View
+          className="h-2"
+          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+        >
+          {barWidth > 0 && (
+            <View
+              style={{
+                width: barWidth,
+                height: barHeight,
+                borderRadius,
+                overflow: 'hidden',
+                backgroundColor: trackColor,
+              }}
+            >
+              <Animated.View
+                style={[
+                  { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                  fillStyle,
+                ]}
               />
-            )}
-          </View>
-        )}
-      </View>
+              <Animated.View
+                style={[
+                  { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                  overflowStyle,
+                ]}
+              />
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 };

@@ -7,11 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Icon from './Icon';
 import FastingProtocolSheet, { type FastingProtocolSheetRef } from './FastingProtocolSheet';
-import {
-  useCurrentFast,
-  useFastingHistory,
-  useFastingGoalReconciler,
-} from '../hooks/useFasting';
+import { useCurrentFast, useFastingHistory } from '../hooks/useFasting';
 import { useFastingTimer } from '../hooks/useFastingTimer';
 import { formatLastFast } from '../utils/fasting';
 import {
@@ -41,12 +37,11 @@ function presetIdForType(type: string | null | undefined): string {
 const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
 
-  const { data: currentFast, isLoading, refetch } = useCurrentFast();
+  // Read-only here — goal-notification reconciliation is owned by the
+  // always-mounted `FastingGoalReconciler` so it keeps running when this card is
+  // hidden via the dashboard visibility setting.
+  const { data: currentFast, isLoading } = useCurrentFast();
   const { data: history } = useFastingHistory(1);
-
-  // Single owner of goal-notification reconciliation (the card is always mounted
-  // on the Dashboard). The detail screen's `useCurrentFast` is read-only.
-  useFastingGoalReconciler(currentFast, isLoading, refetch);
 
   const isActive = !!currentFast && currentFast.status === 'ACTIVE';
   const timer = useFastingTimer(

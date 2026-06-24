@@ -32,12 +32,15 @@ import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
+import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useFastingCardVisible } from '../services/fastingCardVisibility';
+import { useHydrationCardVisible } from '../services/hydrationCardVisibility';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { NUTRIENT_META, CUSTOM_NUTRIENT_DEFAULT_COLOR } from '../constants/nutrients';
+import { NUTRIENT_META } from '../constants/nutrients';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
   { key: '7d', label: '7d' },
@@ -136,6 +139,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
+  const fastingCardVisible = useFastingCardVisible();
+  const hydrationCardVisible = useHydrationCardVisible();
   const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -291,13 +296,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;
-                  // fall back to NUTRIENT_META color or default for custom nutrients.
+                  // custom nutrients fall back to the app accent color.
                   let color: string;
                   if (nutrientKey === 'protein') color = proteinColor;
                   else if (nutrientKey === 'carbs') color = carbsColor;
                   else if (nutrientKey === 'fat') color = fatColor;
                   else if (nutrientKey === 'dietary_fiber') color = fiberColor;
-                  else color = meta?.color ?? CUSTOM_NUTRIENT_DEFAULT_COLOR;
+                  else color = accentColor;
 
                   // Resolve consumed value.
                   let consumed: number;
@@ -365,23 +370,31 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           />
         )}
 
-        <HydrationGauge
-          consumed={summary.waterConsumed}
-          goal={summary.waterGoal}
-          unit={waterUnit}
-          containerVolume={servingVolume}
-          onIncrement={isContainersLoaded ? incrementWater : undefined}
-          onDecrement={isContainersLoaded ? decrementWater : undefined}
-          disableDecrement={summary.waterConsumed <= 0}
-          containers={waterContainers}
-          activeContainerId={activeWaterContainer?.id}
-          onSelectContainer={selectWaterContainer}
-        />
+        {/* Hydration card visibility is a local app setting toggled from
+            Dashboard Settings. */}
+        {hydrationCardVisible && (
+          <HydrationGauge
+            consumed={summary.waterConsumed}
+            goal={summary.waterGoal}
+            unit={waterUnit}
+            containerVolume={servingVolume}
+            onIncrement={isContainersLoaded ? incrementWater : undefined}
+            onDecrement={isContainersLoaded ? decrementWater : undefined}
+            disableDecrement={summary.waterConsumed <= 0}
+            containers={waterContainers}
+            activeContainerId={activeWaterContainer?.id}
+            onSelectContainer={selectWaterContainer}
+          />
+        )}
 
-        {/* Fasting is "now"-based, so the card is deliberately date-independent —
-            it always reflects the current/active fast regardless of the date
-            navigator. Do not wire it to `selectedDate`. */}
-        <FastingCard navigation={navigation} />
+        {/* Goal-notification reconciliation is owned here (headless, always
+            mounted) so it survives the card being hidden. Fasting is "now"-based,
+            so the card is deliberately date-independent — it always reflects the
+            current/active fast regardless of the date navigator. Do not wire it
+            to `selectedDate`. Visibility is a local app setting toggled from
+            Dashboard Settings. */}
+        <FastingGoalReconciler />
+        {fastingCardVisible && <FastingCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />

@@ -181,7 +181,7 @@ const PhotoMockup: React.FC = () => {
             backgroundColor: catOrange,
           }}
         >
-          <Icon name="sparkle" size={12} color="#FFFFFF" weight="semibold" />
+          <Icon name="whats-new" size={12} color="#FFFFFF" weight="semibold" />
         </View>
       </View>
 

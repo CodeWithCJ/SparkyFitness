@@ -97,11 +97,11 @@ export function useEndFast() {
 //
 // The goal notification is driven by *observed* active-fast state (not just the
 // start mutation) so a fast started on the web / another device still notifies.
-// Reconciliation must run in exactly ONE mounted place — the always-on-Dashboard
-// `FastingCard` via `useFastingGoalReconciler` — so the dashboard and detail
-// consumers never race to double-schedule. A single record (keyed by fast id +
-// target time) is persisted; a module-level lock guards the schedule path
-// against concurrent calls.
+// Reconciliation must run in exactly ONE mounted place — the always-mounted
+// `FastingGoalReconciler` on the Dashboard via `useFastingGoalReconciler` — so
+// the card and detail consumers never race to double-schedule. A single record
+// (keyed by fast id + target time) is persisted; a module-level lock guards the
+// schedule path against concurrent calls.
 // ---------------------------------------------------------------------------
 
 const GOAL_NOTIF_STORAGE_KEY = '@Fasting:goalNotificationId';
@@ -216,9 +216,9 @@ export async function reconcileFastGoalNotification(
 
 /**
  * Single-owner reconciler. Mount this in exactly one always-present place (the
- * dashboard `FastingCard`). Reconciles whenever the observed active-fast
- * identity/target/status changes, and again on app resume (refetching so a
- * fast started elsewhere is seen).
+ * dashboard `FastingGoalReconciler`). Reconciles whenever the observed
+ * active-fast identity/target/status changes, and again on app resume
+ * (refetching so a fast started elsewhere is seen).
  */
 export function useFastingGoalReconciler(
   currentFast: FastingLog | null | undefined,
