@@ -334,19 +334,19 @@ const SleepAnalyticsCharts = ({
             title={t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader>
                   <CardTitle>
                     {t('sleepAnalyticsCharts.sleepStages', 'Sleep Stages')}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div
-                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
-                  >
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                >
+                  <div className={isMaximized ? 'h-full' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -416,7 +416,7 @@ const SleepAnalyticsCharts = ({
             )}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader>
                   <CardTitle>
                     {t(
@@ -425,13 +425,13 @@ const SleepAnalyticsCharts = ({
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div
-                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
-                  >
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                >
+                  <div className={isMaximized ? 'h-full' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -524,19 +524,19 @@ const SleepAnalyticsCharts = ({
             title={t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader>
                   <CardTitle>
                     {t('sleepAnalyticsCharts.sleepDebt', 'Sleep Debt')}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div
-                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
-                  >
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                >
+                  <div className={isMaximized ? 'h-full' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -641,7 +641,7 @@ const SleepAnalyticsCharts = ({
             )}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader>
                   <CardTitle>
                     {t(
@@ -650,13 +650,13 @@ const SleepAnalyticsCharts = ({
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div
-                    className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}
-                  >
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                >
+                  <div className={isMaximized ? 'h-full' : 'h-48'}>
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}

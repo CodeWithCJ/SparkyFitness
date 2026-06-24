@@ -399,16 +399,18 @@ const NutritionPeriodSummary = ({
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 p-0">
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''} flex-1 min-h-0 p-0`}
+                >
                   <div
                     className={
-                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-full') +
+                      (isMaximized ? 'h-full' : 'h-full') +
                       ' min-w-0 w-full px-4 pb-4'
                     }
                   >
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -539,19 +541,17 @@ const NutritionPeriodSummary = ({
       {showCumulativeChart && (
         <ZoomableChart title={chartTitle}>
           {(isMaximized, zoomLevel) => (
-            <Card>
+            <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{chartTitle}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-64') + ' min-w-0'
-                  }
-                >
+              <CardContent
+                className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+              >
+                <div className={(isMaximized ? 'h-full' : 'h-64') + ' min-w-0'}>
                   <ResponsiveContainer
                     width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    height="100%"
                     minWidth={0}
                     minHeight={0}
                     debounce={100}

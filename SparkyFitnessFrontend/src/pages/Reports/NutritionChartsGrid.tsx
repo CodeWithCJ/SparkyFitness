@@ -186,7 +186,7 @@ const NutritionChartsGrid = ({
             title={`${chart.label} (${chart.unit})`}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm">
@@ -198,16 +198,15 @@ const NutritionChartsGrid = ({
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent
+                  className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                >
                   <div
-                    className={
-                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') +
-                      ' min-w-0'
-                    }
+                    className={(isMaximized ? 'h-full' : 'h-48') + ' min-w-0'}
                   >
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
