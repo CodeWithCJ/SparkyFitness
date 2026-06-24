@@ -44,7 +44,7 @@ export const ActivityCadenceChart = ({
           >
             <ResponsiveContainer
               width={`${100 * zoomLevel}%`}
-              height={isMaximized ? `${100 * zoomLevel}%` : 300 * zoomLevel}
+              height={isMaximized ? '100%' : 300 * zoomLevel}
               minWidth={0}
               minHeight={0}
               debounce={100}

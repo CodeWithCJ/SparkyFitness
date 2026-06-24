@@ -41,7 +41,10 @@ export const TrainingVolumeByMuscleGroupChart = ({
             minHeight={0}
             debounce={100}
           >
-            <BarChart data={data}>
+            <BarChart
+              data={data}
+              margin={{ top: 20, right: 30, bottom: 20, left: 20 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="muscle" />
               <YAxis
@@ -54,6 +57,7 @@ export const TrainingVolumeByMuscleGroupChart = ({
                   angle: -90,
                   position: 'insideLeft',
                   offset: 10,
+                  style: { textAnchor: 'middle' },
                 }}
               />
               <Tooltip

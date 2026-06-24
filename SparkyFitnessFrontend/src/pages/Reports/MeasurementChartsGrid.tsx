@@ -248,23 +248,24 @@ const MeasurementChartsGrid = ({
             title={`${t(metric.titleKey, metric.defaultTitle)} (${metric.unit})`}
           >
             {(isMaximized, zoomLevel) => (
-              <Card>
+              <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center">
                     {metric.icon && metric.icon}
                     {t(metric.titleKey, metric.defaultTitle)} ({metric.unit})
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent
+                  className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
+                >
                   <div
                     className={
-                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') +
-                      ' min-w-0'
+                      (isMaximized ? 'grow min-h-0' : 'h-48') + ' min-w-0'
                     }
                   >
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -340,22 +341,22 @@ const MeasurementChartsGrid = ({
       {/* Steps Chart */}
       <ZoomableChart title={t('reports.dailySteps', 'Daily Steps')}>
         {(isMaximized, zoomLevel) => (
-          <Card>
+          <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Activity className="w-5 h-5 mr-2" />
                 {t('reports.dailySteps', 'Daily Steps')}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent
+              className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
+            >
               <div
-                className={
-                  (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-80') + ' min-w-0'
-                }
+                className={(isMaximized ? 'grow min-h-0' : 'h-80') + ' min-w-0'}
               >
                 <ResponsiveContainer
                   width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                  height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                  height="100%"
                   minWidth={0}
                   minHeight={0}
                   debounce={100}

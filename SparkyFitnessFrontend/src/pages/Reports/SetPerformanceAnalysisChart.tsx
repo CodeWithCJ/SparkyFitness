@@ -79,15 +79,17 @@ const SetPerformanceAnalysisChart = ({
   return (
     <ZoomableChart title={chartTitle}>
       {(isMaximized, zoomLevel) => (
-        <Card>
+        <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">{chartTitle}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}>
+          <CardContent
+            className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
+          >
+            <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
               <ResponsiveContainer
                 width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                height="100%"
                 minWidth={0}
                 minHeight={0}
                 debounce={100}

@@ -26,7 +26,7 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
   };
 
   const handleZoomOut = () => {
-    setZoomLevel((prev) => Math.max(prev - 0.25, 0.5));
+    setZoomLevel((prev) => Math.max(prev - 0.25, 1));
   };
 
   const resetZoom = () => {
@@ -53,7 +53,7 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
             variant="outline"
             size="sm"
             onClick={handleZoomOut}
-            disabled={zoomLevel <= 0.5}
+            disabled={zoomLevel <= 1}
             className="p-1 h-8 w-8"
           >
             <ZoomOut className="h-3 w-3" />
@@ -93,7 +93,7 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
                 variant="outline"
                 size="sm"
                 onClick={handleZoomOut}
-                disabled={zoomLevel <= 0.5}
+                disabled={zoomLevel <= 1}
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
@@ -117,7 +117,7 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
               </Button>
             </div>
           </div>
-          <div className="w-full h-[calc(100%-110px)] overflow-auto">
+          <div className="w-full flex-1 min-h-0 overflow-auto">
             {maximizedChildren}
           </div>
         </DialogContent>
