@@ -693,7 +693,7 @@ async function getCheckInMeasurementsByDateRange(
     );
     log(
       'debug',
-      `[measurementRepository] getCheckInMeasurementsByDateRange returning: ${JSON.stringify(result.rows)}`
+      `[measurementRepository] getCheckInMeasurementsByDateRange returning ${result.rows.length} row(s)`
     );
     return result.rows;
   } finally {

@@ -41,7 +41,7 @@ interface ChatMessage {
 }
 
 import { generateText, streamText, stepCountIs } from 'ai';
-import type { UIMessageChunk } from 'ai';
+import type { JSONValue, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -409,6 +409,42 @@ You are a multimodal AI. When the user provides an image (photo of food, meal, o
 Be precise with data extraction and call the correct tools in the correct order.`;
 }
 
+// OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
+// (per @ai-sdk/openai), and the adapter forwards the field without gating, so
+// other models may reject it. Mirror the adapter's own family check.
+const RETENTION_24H_MODEL_PREFIXES = [
+  'gpt-5.1',
+  'gpt-5.2',
+  'gpt-5.3',
+  'gpt-5.4',
+  'gpt-5.5',
+];
+
+// OpenAI auto-caches the system+tools prefix; a stable per-user prompt cache key
+// maximizes hit-rate routing (safe on all OpenAI models), and 24h retention keeps
+// that prefix warm for users who return later in the day (supported models only).
+// Gemini 2.5 implicit-caches the same prefix with no flag, and Anthropic caching
+// is set on the tools (see ai/tools/index.ts) — so only the canonical OpenAI
+// service type needs request-level providerOptions. The OpenAI-compatible service
+// types (groq, mistral, openrouter, ollama, openai_compatible, custom) share the
+// `openai` providerOptions namespace via createOpenAI(), so gate strictly to the
+// canonical 'openai' type to avoid injecting prompt_cache_* into backends that
+// may reject it.
+export function buildChatProviderOptions(
+  serviceType: string,
+  userId: string,
+  modelName: string
+): Record<string, Record<string, JSONValue>> | undefined {
+  if (serviceType !== 'openai') return undefined;
+  const openai: Record<string, JSONValue> = {
+    promptCacheKey: `sparky-chat-${userId}`,
+  };
+  if (RETENTION_24H_MODEL_PREFIXES.some((p) => modelName.startsWith(p))) {
+    openai.promptCacheRetention = '24h';
+  }
+  return { openai };
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -486,6 +522,12 @@ async function processChatMessage(
 
     const { systemPromptContent, tools } =
       await prepareChatContext(authenticatedUserId);
+
+    const chatProviderOptions = buildChatProviderOptions(
+      aiService.service_type,
+      authenticatedUserId,
+      modelName
+    );
 
     // Map conversation history messages to CoreMessage format
     const conversationMessages = messages.map((msg: ChatMessage) => {
@@ -615,6 +657,7 @@ async function processChatMessage(
         Parameters<typeof generateText>[0]['messages']
       >,
       tools,
+      providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(50),
       maxRetries: 5,
       onStepFinish({ toolCalls }) {
@@ -632,6 +675,12 @@ async function processChatMessage(
         }
       },
     });
+
+    const usage = result.totalUsage ?? result.usage;
+    log(
+      'info',
+      `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0}`
+    );
 
     // Save history dynamically to DB (replacing frontend client-side saves)
     const lastUserMsg = incomingMessages[incomingMessages.length - 1];
@@ -908,6 +957,12 @@ async function processChatMessageStream(
     const { systemPromptContent, tools } =
       await prepareChatContext(authenticatedUserId);
 
+    const chatProviderOptions = buildChatProviderOptions(
+      aiService.service_type,
+      authenticatedUserId,
+      modelName
+    );
+
     const conversationMessages = messages.map((msg: ChatMessage) => {
       // If parts or content is an array of parts (text + images), pass them through
       const partsSource = Array.isArray(msg.parts)
@@ -1010,9 +1065,16 @@ async function processChatMessageStream(
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
+      providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(50),
       maxRetries: 5,
-      onFinish: async ({ text, finishReason }) => {
+      onFinish: async ({ text, finishReason, usage, totalUsage }) => {
+        const observedUsage = totalUsage ?? usage;
+        log(
+          'info',
+          `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0}`
+        );
+
         // Get the last user message from conversationMessages to ensure parts are captured
         const lastUserMessage = [...conversationMessages]
           .reverse()

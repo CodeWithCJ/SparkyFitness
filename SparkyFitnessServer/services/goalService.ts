@@ -48,7 +48,6 @@ async function getUserGoalsForRange(
   endDate: string,
   adjust = false
 ) {
-  console.log('getUserGoalsForRange called with adjust=', adjust);
   const explicitGoals = await goalRepository.getGoalsInRange(
     userId,
     startDate,

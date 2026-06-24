@@ -441,6 +441,23 @@ describe('chatService', () => {
         'Error [DB_ERROR]: A database error occurred.'
       );
     });
+
+    it('forwards a per-user OpenAI prompt cache key into the blocking model call', async () => {
+      // The pure builder is unit-tested separately; this guards that the
+      // blocking call site actually wires providerOptions into generateText.
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(
+        model.doGenerateCalls[0].providerOptions?.openai?.promptCacheKey
+      ).toBe(`sparky-chat-${actorUserId}`);
+    });
   });
 
   describe('processChatMessageStream (empty completion handling)', () => {
@@ -603,6 +620,34 @@ describe('chatService', () => {
           content: 'Show my goal timeline',
         })
       );
+    });
+
+    it('forwards a per-user OpenAI prompt cache key into the streaming model call', async () => {
+      // Mirrors the blocking-path guard: the streaming call site must also wire
+      // providerOptions into streamText (the two paths diverge subtly).
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Hi!' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      expect(
+        model.doStreamCalls[0].providerOptions?.openai?.promptCacheKey
+      ).toBe(`sparky-chat-${actorUserId}`);
     });
   });
 });
