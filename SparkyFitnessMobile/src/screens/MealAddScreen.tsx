@@ -386,7 +386,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
   const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
 
   useLayoutEffect(() => {

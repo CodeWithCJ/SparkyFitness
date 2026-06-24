@@ -101,7 +101,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const headerTintColor = useCSSVariable('--color-text-primary') as string;
+  const headerTintColor = useCSSVariable('--color-accent-primary') as string;
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();

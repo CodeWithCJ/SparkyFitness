@@ -107,10 +107,9 @@ import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
-import { navigateToLastActiveTab, NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
+import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
-import WhatsNewBanner from './src/components/WhatsNewBanner';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
@@ -281,8 +280,8 @@ function AppContent() {
     '--color-text-primary',
   ]) as [string, string, string, string];
   const iosSmallHeaderOptions = useMemo(
-    () => createIOSSmallNativeHeaderOptions(textPrimary),
-    [textPrimary],
+    () => createIOSSmallNativeHeaderOptions(primary, textPrimary),
+    [primary, textPrimary],
   );
   const createStackScreenOptions = useCallback(
     (
@@ -486,12 +485,11 @@ function AppContent() {
     if (!rootNavigationRef.isReady()) return;
 
     const navigateBackToPreviousTab = () => {
-      if (navigateToLastActiveTab(lastActiveTabRef.current)) return;
       if (!rootNavigationRef.isReady()) return;
 
       rootNavigationRef.dispatch(
         CommonActions.navigate('Tabs', {
-          screen: 'Dashboard',
+          screen: lastActiveTabRef.current,
         }),
       );
     };
@@ -798,14 +796,11 @@ function AppContent() {
           />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
             {() => (
-              <>
-                <WhatsNewBanner />
-                <TabsLayout
-                  onAddPress={() => addSheetRef.current?.present()}
-                  rememberActiveTab={rememberActiveTab}
-                  getLastActiveTab={getLastActiveTab}
-                />
-              </>
+              <TabsLayout
+                onAddPress={() => addSheetRef.current?.present()}
+                rememberActiveTab={rememberActiveTab}
+                getLastActiveTab={getLastActiveTab}
+              />
             )}
           </Stack.Screen>
           <Stack.Screen

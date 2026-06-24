@@ -744,7 +744,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     });
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -1362,7 +1362,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     navigation.goBack();
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
@@ -1833,7 +1833,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;

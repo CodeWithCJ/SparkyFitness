@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +24,11 @@ import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { addDays, getTodayDate } from '../utils/dateUtils';
-import { setNativeHeaderDatePickerHandlers } from '../utils/nativeHeaderDatePicker';
+import {
+  setNativeHeaderDatePickerOptions,
+  type NativeHeaderDatePickerNavigation,
+} from '../utils/nativeHeaderDatePicker';
+import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
 import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import HydrationGauge from '../components/HydrationGauge';
@@ -90,27 +94,31 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   }, [navigation]);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
+  const usesNativeTabs = shouldUseNativeIOSTabs();
+  const nativeHeaderActionColor = useCSSVariable('--color-accent-primary') as string;
   const syncNativeHeaderDatePicker = useCallback(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeTabs) return;
 
-    const handlers = {
-      selectedDate,
-      onPreviousDate: goToPreviousDay,
-      onDatePress: openCalendar,
-      onNextDate: goToNextDay,
-    };
-
-    setNativeHeaderDatePickerHandlers('Dashboard', handlers);
-
-    (navigation as unknown as {
-      setParams: (params: {
-        selectedDate: string;
-        onPreviousDate: () => void;
-        onDatePress: () => void;
-        onNextDate: () => void;
-      }) => void;
-    }).setParams(handlers);
-  }, [goToNextDay, goToPreviousDay, navigation, openCalendar, selectedDate]);
+    setNativeHeaderDatePickerOptions(
+      navigation as unknown as NativeHeaderDatePickerNavigation,
+      {
+        selectedDate,
+        onPreviousDate: goToPreviousDay,
+        onDatePress: openCalendar,
+        onNextDate: goToNextDay,
+        tintColor: nativeHeaderActionColor || '#0A84FF',
+        accessibilityLabel: 'Choose dashboard date',
+      },
+    );
+  }, [
+    goToNextDay,
+    goToPreviousDay,
+    nativeHeaderActionColor,
+    navigation,
+    openCalendar,
+    selectedDate,
+    usesNativeTabs,
+  ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
@@ -163,7 +171,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const fastingCardVisible = useFastingCardVisible();
   const hydrationCardVisible = useHydrationCardVisible();
-  const topSafeAreaStyle = Platform.OS === 'ios' ? undefined : { paddingTop: insets.top };
+  const topSafeAreaStyle = usesNativeTabs ? undefined : { paddingTop: insets.top };
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -196,7 +204,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     if (!isConnectionLoading && !isConnected) {
       return (
         <View className="flex-1">
-          {Platform.OS !== 'ios' && (
+          {!usesNativeTabs && (
             <View className="px-4 pt-4 pb-5">
               <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
             </View>
@@ -218,7 +226,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1">
           {!isConnectionLoading && isConnected && (
-            Platform.OS !== 'ios' ? (
+            !usesNativeTabs ? (
               <DateNavigator
                 title="Dashboard"
                 selectedDate={selectedDate}
@@ -242,7 +250,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
         <View className="flex-1">
-          {Platform.OS !== 'ios' && (
+          {!usesNativeTabs && (
             <DateNavigator
               title="Dashboard"
               selectedDate={selectedDate}
@@ -292,13 +300,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         }}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
-        {Platform.OS !== 'ios' && (
+        {!usesNativeTabs && (
           <DateNavigator
             title="Dashboard"
             selectedDate={selectedDate}

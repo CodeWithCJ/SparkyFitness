@@ -1,26 +1,32 @@
 import type { NativeStackHeaderItem, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
-export function createIOSNativeHeaderOptions(tintColor: string): NativeStackNavigationOptions {
+export function createIOSNativeHeaderOptions(
+  actionTintColor: string,
+  titleColor: string = actionTintColor,
+): NativeStackNavigationOptions {
   return {
     headerShown: true,
     headerLargeTitleEnabled: true,
     headerLargeTitleShadowVisible: false,
-    headerTintColor: tintColor,
+    headerTintColor: actionTintColor,
     headerTitleStyle: {
-      color: tintColor,
+      color: titleColor,
       fontWeight: '600',
     },
     headerLargeTitleStyle: {
-      color: tintColor,
+      color: titleColor,
       fontWeight: '700',
     },
     animation: 'default',
   };
 }
 
-export function createIOSSmallNativeHeaderOptions(tintColor: string): NativeStackNavigationOptions {
+export function createIOSSmallNativeHeaderOptions(
+  actionTintColor: string,
+  titleColor: string = actionTintColor,
+): NativeStackNavigationOptions {
   return {
-    ...createIOSNativeHeaderOptions(tintColor),
+    ...createIOSNativeHeaderOptions(actionTintColor, titleColor),
     headerLargeTitleEnabled: false,
   };
 }

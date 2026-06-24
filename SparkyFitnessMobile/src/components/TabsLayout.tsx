@@ -1,10 +1,10 @@
 import React from 'react';
-import { Platform, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CommonActions, useFocusEffect, useNavigation, type NavigationAction } from '@react-navigation/native';
+import { View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
-import { createNativeStackNavigator, type NativeStackHeaderItem } from '@react-navigation/native-stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { createIOSNativeHeaderOptions } from '../utils/nativeHeaderItems';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -12,52 +12,27 @@ import DiaryScreen from '../screens/DiaryScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import type { TabParamList } from '../types/navigation';
-import type { AppleIcon, TabRole } from 'react-native-bottom-tabs';
+import type { AppleIcon } from 'react-native-bottom-tabs';
 import { withErrorBoundary } from './ScreenErrorBoundary';
 import ActiveWorkoutBar from './ActiveWorkoutBar';
 import CustomTabBar from './CustomTabBar';
-import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
-import { getNativeHeaderDatePickerHandlers, type NativeHeaderDatePickerKey } from '../utils/nativeHeaderDatePicker';
+import WhatsNewBanner, {
+  WhatsNewBannerContent,
+  useWhatsNewBannerState,
+} from './WhatsNewBanner';
+import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
 
 export const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as const;
 export type NonAddTabName = typeof NON_ADD_TABS[number];
 const ADD_TAB_ICON: AppleIcon = { sfSymbol: 'plus' };
-const IOS_SEARCH_ROLE_MIN_VERSION = 26;
-
-let tabsNavigation: { dispatch: (action: NavigationAction) => void; getState: () => { key?: string } } | null = null;
 
 type TabTrackingProps = {
   rememberActiveTab: (routeName: string) => void;
   getLastActiveTab: () => NonAddTabName;
 };
 
-function getIOSMajorVersion() {
-  if (Platform.OS !== 'ios') return null;
-
-  const version = Platform.Version;
-  if (typeof version === 'number') return Math.trunc(version);
-
-  const major = Number.parseInt(version, 10);
-  return Number.isFinite(major) ? major : null;
-}
-
-function supportsSeparateAddTabButton() {
-  const majorVersion = getIOSMajorVersion();
-  return majorVersion !== null && majorVersion >= IOS_SEARCH_ROLE_MIN_VERSION;
-}
-
 function resolveColor(value: string, fallback: string) {
   return value && value !== 'unset' ? value : fallback;
-}
-
-export function navigateToLastActiveTab(targetTab: NonAddTabName) {
-  if (!tabsNavigation) return false;
-
-  tabsNavigation.dispatch({
-    ...CommonActions.navigate(targetTab),
-    target: tabsNavigation.getState().key,
-  });
-  return true;
 }
 
 const AddRedirectScreen = ({ getLastActiveTab }: { getLastActiveTab: () => NonAddTabName }) => {
@@ -89,20 +64,10 @@ const NativeTab = createNativeBottomTabNavigator<TabParamList>();
 const FallbackTab = createBottomTabNavigator<TabParamList>();
 
 type DashboardStackParamList = {
-  DashboardRoot: {
-    selectedDate?: string;
-    onPreviousDate?: () => void;
-    onDatePress?: () => void;
-    onNextDate?: () => void;
-  } | undefined;
+  DashboardRoot: undefined;
 };
 type DiaryStackParamList = {
-  DiaryRoot: {
-    selectedDate?: string;
-    onPreviousDate?: () => void;
-    onDatePress?: () => void;
-    onNextDate?: () => void;
-  } | undefined;
+  DiaryRoot: { selectedDate?: string } | undefined;
 };
 type LibraryStackParamList = { LibraryRoot: undefined };
 type SettingsStackParamList = { SettingsRoot: undefined };
@@ -112,76 +77,59 @@ const DiaryStack = createNativeStackNavigator<DiaryStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
-function createDateHeaderItems({
-  handlerKey,
-  selectedDate,
-  onPreviousDate,
-  onPress,
-  onNextDate,
-  tintColor,
-  accessibilityLabel,
-}: {
-  handlerKey: NativeHeaderDatePickerKey;
-  selectedDate?: string;
-  onPreviousDate?: () => void;
-  onPress?: () => void;
-  onNextDate?: () => void;
-  tintColor: string;
-  accessibilityLabel: string;
-}): NativeStackHeaderItem[] {
-  const latestHandlers = () => getNativeHeaderDatePickerHandlers(handlerKey);
-  const displayDate = selectedDate ?? latestHandlers()?.selectedDate ?? getTodayDate();
-
-  return [
-    {
-      type: 'button',
-      // Keep icon actions title-less so iOS doesn't reserve title width and
-      // collapse the date picker on longer headers like "Dashboard".
-      label: '',
-      icon: { type: 'sfSymbol', name: 'chevron.left' },
-      onPress: () => (latestHandlers()?.onPreviousDate ?? onPreviousDate)?.(),
-      tintColor,
-      accessibilityLabel: `${accessibilityLabel}: previous day`,
-      identifier: 'date-picker-previous',
-      sharesBackground: true,
-      disabled: false,
-    },
-    {
-      type: 'button',
-      // Keep this label-only: UIBarButtonItem often prioritizes the SF Symbol
-      // and hides text when both label and icon are supplied on iOS 26.
-      label: `${formatDateLabel(displayDate)} ▾`,
-      onPress: () => (latestHandlers()?.onDatePress ?? onPress)?.(),
-      tintColor,
-      labelStyle: { fontSize: 15, fontWeight: '600', color: tintColor },
-      accessibilityLabel,
-      identifier: 'date-picker',
-      sharesBackground: true,
-    },
-    {
-      type: 'button',
-      label: '',
-      icon: { type: 'sfSymbol', name: 'chevron.right' },
-      onPress: () => (latestHandlers()?.onNextDate ?? onNextDate)?.(),
-      tintColor,
-      accessibilityLabel: `${accessibilityLabel}: next day`,
-      identifier: 'date-picker-next',
-      sharesBackground: true,
-      disabled: false,
-    },
-  ];
+function useIOSHeaderColors() {
+  const [accentPrimary, textPrimary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string];
+  return {
+    action: resolveColor(accentPrimary, '#0A84FF'),
+    title: resolveColor(textPrimary, '#111827'),
+  };
 }
 
-function useIOSHeaderTintColor() {
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
-  return resolveColor(textPrimary, '#111827');
+const NativeTabsOverlayContext = React.createContext<ReturnType<
+  typeof useWhatsNewBannerState
+> | null>(null);
+
+/**
+ * iOS native tabs don't expose a `tabBar` render prop, so banners are
+ * overlaid absolutely just above the native UITabBar. The bottom offset
+ * clears the 49pt tab bar + bottom safe-area inset so the banners stack
+ * directly on top of the bar rather than underneath it.
+ */
+function NativeTabsBannerOverlay() {
+  const whatsNewState = React.useContext(NativeTabsOverlayContext);
+  const insets = useSafeAreaInsets();
+  if (!whatsNewState) return null;
+
+  const TAB_BAR_HEIGHT = 49; // standard iOS native tab bar height
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        bottom: TAB_BAR_HEIGHT + insets.bottom,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+      }}
+    >
+      <WhatsNewBannerContent
+        reserveAddButtonClearance
+        state={whatsNewState}
+      />
+      <ActiveWorkoutBar variant="embedded" />
+    </View>
+  );
 }
 
 function DashboardStackScreen() {
-  const headerTintColor = useIOSHeaderTintColor();
+  const headerColors = useIOSHeaderColors();
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerTintColor),
-    [headerTintColor],
+    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
+    [headerColors.action, headerColors.title],
   );
 
   return (
@@ -189,31 +137,20 @@ function DashboardStackScreen() {
       <DashboardStack.Screen
         name="DashboardRoot"
         component={SafeDashboard as React.ComponentType}
-        options={({ route }) => ({
+        options={{
           title: 'Dashboard',
           headerBackTitle: 'Dashboard',
-          unstable_headerRightItems: Platform.OS === 'ios'
-            ? () => createDateHeaderItems({
-                handlerKey: 'Dashboard',
-                selectedDate: route.params?.selectedDate,
-                onPreviousDate: route.params?.onPreviousDate,
-                onPress: route.params?.onDatePress,
-                onNextDate: route.params?.onNextDate,
-                tintColor: headerTintColor,
-                accessibilityLabel: 'Choose dashboard date',
-              })
-            : undefined,
-        })}
+        }}
       />
     </DashboardStack.Navigator>
   );
 }
 
 function DiaryStackScreen() {
-  const headerTintColor = useIOSHeaderTintColor();
+  const headerColors = useIOSHeaderColors();
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerTintColor),
-    [headerTintColor],
+    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
+    [headerColors.action, headerColors.title],
   );
 
   return (
@@ -221,31 +158,20 @@ function DiaryStackScreen() {
       <DiaryStack.Screen
         name="DiaryRoot"
         component={SafeDiary as React.ComponentType}
-        options={({ route }) => ({
+        options={{
           title: 'Diary',
           headerBackTitle: 'Diary',
-          unstable_headerRightItems: Platform.OS === 'ios'
-            ? () => createDateHeaderItems({
-                handlerKey: 'Diary',
-                selectedDate: route.params?.selectedDate,
-                onPreviousDate: route.params?.onPreviousDate,
-                onPress: route.params?.onDatePress,
-                onNextDate: route.params?.onNextDate,
-                tintColor: headerTintColor,
-                accessibilityLabel: 'Choose diary date',
-              })
-            : undefined,
-        })}
+        }}
       />
     </DiaryStack.Navigator>
   );
 }
 
 function LibraryStackScreen() {
-  const headerTintColor = useIOSHeaderTintColor();
+  const headerColors = useIOSHeaderColors();
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerTintColor),
-    [headerTintColor],
+    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
+    [headerColors.action, headerColors.title],
   );
 
   return (
@@ -256,10 +182,10 @@ function LibraryStackScreen() {
 }
 
 function SettingsStackScreen() {
-  const headerTintColor = useIOSHeaderTintColor();
+  const headerColors = useIOSHeaderColors();
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerTintColor),
-    [headerTintColor],
+    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
+    [headerColors.action, headerColors.title],
   );
 
   return (
@@ -279,97 +205,79 @@ export function NativeTabsLayout({
     '--color-tab-active',
     '--color-tab-inactive',
   ]) as [string, string, string];
-  const addTabRole: TabRole | undefined = supportsSeparateAddTabButton()
-    ? 'search'
-    : undefined;
   const activeTintColor = resolveColor(tabActive, resolveColor(primary, '#0A84FF'));
   const inactiveTintColor = resolveColor(tabInactive, '#8E8E93');
-  const AddScreen = React.useCallback(
-    () => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />,
-    [getLastActiveTab],
-  );
-
-  const insets = useSafeAreaInsets();
+  const whatsNewState = useWhatsNewBannerState();
 
   return (
-    <View className="flex-1">
-      <NativeTab.Navigator
-        initialRouteName="Dashboard"
-        tabBarActiveTintColor={activeTintColor}
-        tabBarInactiveTintColor={inactiveTintColor}
-        screenListeners={({ navigation }) => {
-          tabsNavigation = navigation;
-
-          return {
+    <NativeTabsOverlayContext.Provider value={whatsNewState}>
+      <View style={{ flex: 1 }}>
+        <NativeTab.Navigator
+          initialRouteName="Dashboard"
+          tabBarActiveTintColor={activeTintColor}
+          tabBarInactiveTintColor={inactiveTintColor}
+          screenListeners={{
             state: (event) => {
               const state = event.data?.state;
               if (!state?.routes) return;
               const route = state.routes[state.index ?? 0];
               if (route) rememberActiveTab(route.name);
             },
-          };
-        }}
-      >
-      <NativeTab.Screen
-        name="Dashboard"
-        component={DashboardStackScreen}
-        options={{
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: () => ({ sfSymbol: 'house' } as unknown as AppleIcon),
-        }}
-      />
-      <NativeTab.Screen
-        name="Diary"
-        component={DiaryStackScreen}
-        options={{
-          tabBarLabel: 'Diary',
-          tabBarIcon: () => ({ sfSymbol: 'doc.text' } as unknown as AppleIcon),
-        }}
-      />
-      <NativeTab.Screen
-        name="Add"
-        component={AddScreen}
-        options={{
-          tabBarLabel: 'Add',
-          tabBarIcon: () => ADD_TAB_ICON,
-          role: addTabRole,
-          preventsDefault: true,
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            onAddPress?.();
-          },
-        }}
-      />
-      <NativeTab.Screen
-        name="Library"
-        component={LibraryStackScreen}
-        options={{
-          tabBarLabel: 'Library',
-          tabBarIcon: () => ({ sfSymbol: 'book' } as unknown as AppleIcon),
-        }}
-      />
-      <NativeTab.Screen
-        name="Settings"
-        component={SettingsStackScreen}
-        options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: () => ({ sfSymbol: 'gearshape' } as unknown as AppleIcon),
-        }}
-      />
-      </NativeTab.Navigator>
-      {/* Native UITabBar does not expose a custom tabBar slot. Pin the HUD
-          just above the native bar so it keeps the original "above tab bar"
-          placement without moving to the top of the tab screen. */}
-      <View
-        pointerEvents="box-none"
-        className="absolute inset-x-0 z-50"
-        style={{ bottom: insets.bottom + 49 }}
-      >
-        <ActiveWorkoutBar variant="embedded" />
+          }}
+        >
+          <NativeTab.Screen
+            name="Dashboard"
+            component={DashboardStackScreen}
+            options={{
+              tabBarLabel: 'Dashboard',
+              tabBarIcon: () => ({ sfSymbol: 'house' } as unknown as AppleIcon),
+            }}
+          />
+          <NativeTab.Screen
+            name="Diary"
+            component={DiaryStackScreen}
+            options={{
+              tabBarLabel: 'Diary',
+              tabBarIcon: () => ({ sfSymbol: 'doc.text' } as unknown as AppleIcon),
+            }}
+          />
+          <NativeTab.Screen
+            name="Add"
+            options={{
+              tabBarLabel: 'Add',
+              tabBarIcon: () => ADD_TAB_ICON,
+              role: 'search',
+              preventsDefault: true,
+            }}
+            listeners={{
+              tabPress: (e) => {
+                e.preventDefault();
+                onAddPress?.();
+              },
+            }}
+          >
+            {() => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />}
+          </NativeTab.Screen>
+          <NativeTab.Screen
+            name="Library"
+            component={LibraryStackScreen}
+            options={{
+              tabBarLabel: 'Library',
+              tabBarIcon: () => ({ sfSymbol: 'book' } as unknown as AppleIcon),
+            }}
+          />
+          <NativeTab.Screen
+            name="Settings"
+            component={SettingsStackScreen}
+            options={{
+              tabBarLabel: 'Settings',
+              tabBarIcon: () => ({ sfSymbol: 'gearshape' } as unknown as AppleIcon),
+            }}
+          />
+        </NativeTab.Navigator>
+        <NativeTabsBannerOverlay />
       </View>
-    </View>
+    </NativeTabsOverlayContext.Provider>
   );
 }
 
@@ -378,32 +286,24 @@ export function FallbackTabsLayout({
   rememberActiveTab,
   getLastActiveTab,
 }: { onAddPress?: () => void } & TabTrackingProps) {
-  const AddScreen = React.useCallback(
-    () => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />,
-    [getLastActiveTab],
-  );
-
   // The AddSheet is rendered in App.tsx with proper props
   return (
     <FallbackTab.Navigator
       initialRouteName="Dashboard"
-      screenListeners={({ navigation }) => {
-        tabsNavigation = navigation;
-
-        return {
-          state: (event) => {
-            const state = event.data?.state;
-            if (!state?.routes) return;
-            const route = state.routes[state.index ?? 0];
-            if (route) rememberActiveTab(route.name);
-          },
-        };
+      screenListeners={{
+        state: (event) => {
+          const state = event.data?.state;
+          if (!state?.routes) return;
+          const route = state.routes[state.index ?? 0];
+          if (route) rememberActiveTab(route.name);
+        },
       }}
       screenOptions={{
         headerShown: false,
       }}
       tabBar={(props) => (
         <View collapsable={false}>
+          <WhatsNewBanner reserveAddButtonClearance />
           <ActiveWorkoutBar variant="embedded" />
           <CustomTabBar {...props} />
         </View>
@@ -413,27 +313,29 @@ export function FallbackTabsLayout({
       <FallbackTab.Screen name="Diary" component={SafeDiary} />
       <FallbackTab.Screen
         name="Add"
-        component={AddScreen}
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
             onAddPress?.();
           },
         }}
-      />
+      >
+        {() => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />}
+      </FallbackTab.Screen>
       <FallbackTab.Screen name="Library" component={SafeLibrary} />
       <FallbackTab.Screen name="Settings" component={SettingsScreen} />
     </FallbackTab.Navigator>
   );
 }
 
-// Main export - uses native tabs on iOS, fallback on Android
+// Native tabs require the iOS 26 bottom-accessory APIs. Older iOS releases
+// intentionally use the same custom tab bar as Android.
 export function TabsLayout({
   onAddPress,
   rememberActiveTab,
   getLastActiveTab,
 }: { onAddPress?: () => void } & TabTrackingProps) {
-  if (Platform.OS === 'ios') {
+  if (shouldUseNativeIOSTabs()) {
     return (
       <NativeTabsLayout
         onAddPress={onAddPress}

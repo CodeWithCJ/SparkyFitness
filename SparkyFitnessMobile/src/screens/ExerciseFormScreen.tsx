@@ -410,7 +410,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -582,7 +582,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;

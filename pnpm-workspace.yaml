@@ -26,3 +26,6 @@ onlyBuiltDependencies:
 minimumReleaseAge: 4320
 
 minimumReleaseAgeExclude: []
+
+patchedDependencies:
+  "react-native-health-connect@3.5.3": "patches/react-native-health-connect@3.5.3.patch"

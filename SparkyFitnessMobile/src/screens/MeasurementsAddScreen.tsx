@@ -419,7 +419,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
-  const headerTintColor = String(useCSSVariable('--color-text-primary'));
+  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;

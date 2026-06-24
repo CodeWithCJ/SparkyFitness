@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,7 +21,11 @@ import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
-import { setNativeHeaderDatePickerHandlers } from '../utils/nativeHeaderDatePicker';
+import {
+  setNativeHeaderDatePickerOptions,
+  type NativeHeaderDatePickerNavigation,
+} from '../utils/nativeHeaderDatePicker';
+import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -71,28 +75,31 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const usesNativeTabs = shouldUseNativeIOSTabs();
 
   const syncNativeHeaderDatePicker = useCallback(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeTabs) return;
 
-    const handlers = {
-      selectedDate,
-      onPreviousDate: goToPreviousDay,
-      onDatePress: openCalendar,
-      onNextDate: goToNextDay,
-    };
-
-    setNativeHeaderDatePickerHandlers('Diary', handlers);
-
-    (navigation as unknown as {
-      setParams: (params: {
-        selectedDate: string;
-        onPreviousDate: () => void;
-        onDatePress: () => void;
-        onNextDate: () => void;
-      }) => void;
-    }).setParams(handlers);
-  }, [goToNextDay, goToPreviousDay, navigation, openCalendar, selectedDate]);
+    setNativeHeaderDatePickerOptions(
+      navigation as unknown as NativeHeaderDatePickerNavigation,
+      {
+        selectedDate,
+        onPreviousDate: goToPreviousDay,
+        onDatePress: openCalendar,
+        onNextDate: goToNextDay,
+        tintColor: accentColor || '#0A84FF',
+        accessibilityLabel: 'Choose diary date',
+      },
+    );
+  }, [
+    accentColor,
+    goToNextDay,
+    goToPreviousDay,
+    navigation,
+    openCalendar,
+    selectedDate,
+    usesNativeTabs,
+  ]);
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -147,7 +154,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const topSafeAreaStyle = Platform.OS === 'ios' ? undefined : { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchMeasurements()]);
@@ -206,15 +212,15 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       <ScrollView
         ref={scrollViewRef}
         className="flex-1 bg-background"
-        style={[{ flex: 1 }, topSafeAreaStyle]}
+        style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -268,7 +274,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const renderedContent = renderContent();
 
-  if (Platform.OS === 'ios') {
+  if (usesNativeTabs) {
     return (
       <>
         <GestureDetector gesture={swipeGesture}>
@@ -291,10 +297,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           onToday={goToToday}
           onDatePress={openCalendar}
           showDateAlways
-          skipSafeAreaTop
         />
       ) : !isConnectionLoading && (
-        <View className="px-4 pt-4 pb-5">
+        <View
+          className="px-4 pb-5"
+          style={{ paddingTop: insets.top + 16 }}
+        >
           <Text className="text-2xl font-bold text-text-primary">Diary</Text>
         </View>
       )}
@@ -306,7 +314,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   return (
     <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background" style={topSafeAreaStyle}>
+      <View className="flex-1 bg-background">
         {content}
       </View>
     </GestureDetector>

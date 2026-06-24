@@ -228,12 +228,32 @@ interface BuiltRequest {
   body: unknown;
 }
 
+function appendChatCompletions(baseUrl: string): string {
+  const normalized = baseUrl.replace(/\/+$/, '');
+  return normalized.endsWith('/chat/completions')
+    ? normalized
+    : `${normalized}/chat/completions`;
+}
+
+function isOpenRouterCompatible(provider: ProviderConfig): boolean {
+  return (
+    provider.service_type === 'openrouter' ||
+    provider.custom_url?.toLowerCase().includes('openrouter.ai') === true
+  );
+}
+
 function openAiFamilyUrl(provider: ProviderConfig): string {
   switch (provider.service_type) {
     case 'openai':
-      return 'https://api.openai.com/v1/chat/completions';
+      // Workaround for the mobile photo gate: the app only accepts the
+      // provider identity `openai`, but production may store an OpenRouter
+      // base URL/key in that row. When a custom URL is present, respect it
+      // instead of sending an OpenRouter key to api.openai.com.
+      return provider.custom_url
+        ? appendChatCompletions(provider.custom_url)
+        : 'https://api.openai.com/v1/chat/completions';
     case 'openai_compatible':
-      return `${provider.custom_url}/chat/completions`;
+      return appendChatCompletions(provider.custom_url as string);
     case 'mistral':
       return 'https://api.mistral.ai/v1/chat/completions';
     case 'groq':
@@ -289,6 +309,7 @@ function buildGoogleRequest(
 }
 
 function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
+  const providerUsesOpenRouter = isOpenRouterCompatible(ctx.provider);
   const useStrictSchema =
     ctx.jsonSchema !== undefined &&
     STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type);
@@ -326,7 +347,7 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
         },
       };
       // OpenRouter refuses to route to a model lacking structured-output support.
-      if (ctx.provider.service_type === 'openrouter') {
+      if (providerUsesOpenRouter) {
         body.provider = { require_parameters: true };
       }
     } else {
@@ -337,7 +358,7 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
     url: openAiFamilyUrl(ctx.provider),
     headers: {
       'Content-Type': 'application/json',
-      ...(ctx.provider.service_type === 'openrouter' && {
+      ...(providerUsesOpenRouter && {
         'HTTP-Referer': 'https://sparky-fitness.com',
         'X-Title': 'Sparky Fitness',
       }),
