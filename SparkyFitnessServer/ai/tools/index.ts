@@ -38,8 +38,32 @@ export function buildChatbotTools(userId: string, tz: string) {
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
   // mode" and then forces models to emit every published property, producing
   // placeholder junk that the per-action validation rejects.
-  for (const tool of Object.values(tools)) {
+  const allTools = Object.values(tools);
+  for (const tool of allTools) {
     tool.strict = false;
+  }
+
+  // Anthropic prompt caching: tag the final tool as a cache breakpoint so the
+  // entire (static, user-independent) tool-schema block — the bulk of every
+  // request prefix — is written once and re-read across the multi-step agent
+  // loop and conversation turns. Provider-namespaced: non-Anthropic providers
+  // ignore it (and auto-cache on their own). MUST be the LAST tool the SDK
+  // emits (Anthropic caches the prefix up to & including the marked tool). This
+  // relies on the AI SDK preserving Object.values() order when building the
+  // Anthropic `tools` array — true today; if a package bump reorders tools this
+  // stops caching the full block silently (no error). Merge, don't overwrite,
+  // so any future providerOptions on this tool (e.g. deferLoading) survive.
+  const lastTool = allTools[allTools.length - 1];
+  if (lastTool) {
+    lastTool.providerOptions = {
+      ...lastTool.providerOptions,
+      anthropic: {
+        ...(lastTool.providerOptions?.anthropic as
+          | Record<string, unknown>
+          | undefined),
+        cacheControl: { type: 'ephemeral' },
+      },
+    };
   }
   return tools;
 }
