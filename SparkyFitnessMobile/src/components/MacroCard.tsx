@@ -73,7 +73,6 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
             : `${Math.round(consumed)}${unit}`}
         </Text>
       </View>
-      {/* Progress bar — only shown when there is a goal to track against */}
       {hasGoal && (
         <View
           className="h-2"

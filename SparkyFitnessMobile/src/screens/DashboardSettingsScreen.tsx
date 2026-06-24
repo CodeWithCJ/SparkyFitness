@@ -143,25 +143,23 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     }
 
     return (
-      <>
-        <SettingsRowGroup>
-          {customNutrients.map((cn) => (
-            <SettingsRow
-              key={cn.id}
-              title={cn.name}
-              subtitle={cn.unit}
-              rightAccessory={
-                <Switch
-                  value={base.includes(cn.name)}
-                  onValueChange={(value) => handleToggle(cn.name, value)}
-                  trackColor={{ false: formDisabled, true: formEnabled }}
-                  thumbColor="#FFFFFF"
-                />
-              }
-            />
-          ))}
-        </SettingsRowGroup>
-      </>
+      <SettingsRowGroup>
+        {customNutrients.map((cn) => (
+          <SettingsRow
+            key={cn.id}
+            title={cn.name}
+            subtitle={cn.unit}
+            rightAccessory={
+              <Switch
+                value={base.includes(cn.name)}
+                onValueChange={(value) => handleToggle(cn.name, value)}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+        ))}
+      </SettingsRowGroup>
     );
   };
 
@@ -175,7 +173,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
         }}
         contentInsetAdjustmentBehavior="never"
       >
-        {/* Header */}
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -187,7 +184,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
           </Button>
           <Text className="text-2xl font-bold text-text-primary">Dashboard Settings</Text>
         </View>
-
 
         <SettingsRowGroup>
           <SettingsRow
