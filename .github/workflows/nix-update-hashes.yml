@@ -1,6 +1,6 @@
 name: Update Nix pnpm Hashes
 
-# When the pnpm lockfile changes on dev, the vendored pnpm dependency hashes in
+# When the pnpm lockfile changes on main, the vendored pnpm dependency hashes in
 # nix/backend.nix and nix/frontend.nix go stale and Nix builds fail. This
 # workflow recomputes them with nix/update-hashes.sh and opens a PR if anything
 # changed. Nix is a community-maintained, untested integration, so this only
@@ -8,7 +8,7 @@ name: Update Nix pnpm Hashes
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
     paths:
       - "pnpm-lock.yaml"
       - "nix/update-hashes.sh"
@@ -41,10 +41,10 @@ jobs:
           commit-message: "chore(nix): update pnpm deps hashes"
           branch: nix/update-pnpm-hashes
           delete-branch: true
-          base: dev
+          base: main
           title: "chore(nix): update pnpm deps hashes"
           body: |
-            This pull request was automatically created by the **Update Nix pnpm Hashes** workflow after `pnpm-lock.yaml` changed on `dev`.
+            This pull request was automatically created by the **Update Nix pnpm Hashes** workflow after `pnpm-lock.yaml` changed on `main`.
 
             It reruns `nix/update-hashes.sh` to recompute the vendored pnpm dependency hashes in `nix/backend.nix` and `nix/frontend.nix` so the Nix packages keep building.
 
