@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
@@ -7,10 +8,15 @@ import {
   cancelScheduledNotification,
   ensureNotificationPermission,
   fireRestCompleteHaptic,
+  getNotificationsEnabled,
   initNotifications,
+  initializeNotificationsEnabled,
   scheduleFastGoalNotification,
   scheduleRestNotification,
+  setNotificationsEnabled,
 } from '../../src/services/notifications';
+
+const NOTIFICATIONS_ENABLED_KEY = '@HealthConnect:notificationsEnabled';
 
 const mockGetPerms = Notifications.getPermissionsAsync as jest.MockedFunction<
   typeof Notifications.getPermissionsAsync
@@ -33,7 +39,8 @@ const mockSetChannel = Notifications.setNotificationChannelAsync as jest.MockedF
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 describe('notifications service', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
     __resetNotificationStateForTests();
     mockGetPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
     mockRequestPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
@@ -199,6 +206,51 @@ describe('notifications service', () => {
     it('swallows rejections from Haptics', () => {
       mockHaptic.mockRejectedValueOnce(new Error('boom'));
       expect(() => fireRestCompleteHaptic()).not.toThrow();
+    });
+  });
+
+  describe('notifications-enabled toggle', () => {
+    it('defaults to enabled when nothing is persisted', async () => {
+      await initializeNotificationsEnabled();
+      expect(getNotificationsEnabled()).toBe(true);
+    });
+
+    it('restores the saved disabled value on init', async () => {
+      await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'false');
+      await initializeNotificationsEnabled();
+      expect(getNotificationsEnabled()).toBe(false);
+    });
+
+    it('persists the value when toggled', async () => {
+      await setNotificationsEnabled(false);
+      expect(getNotificationsEnabled()).toBe(false);
+      expect(await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)).toBe('false');
+
+      await setNotificationsEnabled(true);
+      expect(getNotificationsEnabled()).toBe(true);
+      expect(await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)).toBe('true');
+    });
+
+    it('does not let initializeNotificationsEnabled overwrite a user toggle made first', async () => {
+      await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'true');
+      await setNotificationsEnabled(false);
+      await initializeNotificationsEnabled();
+      expect(getNotificationsEnabled()).toBe(false);
+    });
+
+    it('skips scheduling a rest notification when disabled', async () => {
+      await setNotificationsEnabled(false);
+      expect(await scheduleRestNotification('Bench Press', 60)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(mockGetPerms).not.toHaveBeenCalled();
+    });
+
+    it('skips scheduling a fast-goal notification when disabled', async () => {
+      await setNotificationsEnabled(false);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(mockGetPerms).not.toHaveBeenCalled();
     });
   });
 

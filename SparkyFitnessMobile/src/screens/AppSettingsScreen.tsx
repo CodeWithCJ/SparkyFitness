@@ -14,6 +14,10 @@ import {
 } from '../services/themeService';
 import { useHapticsEnabled, setHapticsEnabled } from '../services/haptics';
 import { useSoundsEnabled, setSoundsEnabled } from '../services/sounds';
+import {
+  useNotificationsEnabled,
+  setNotificationsEnabled,
+} from '../services/notifications';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
@@ -37,6 +41,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const appTheme = useThemePreference();
   const hapticsEnabled = useHapticsEnabled();
   const soundsEnabled = useSoundsEnabled();
+  const notificationsEnabled = useNotificationsEnabled();
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -70,6 +75,21 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           </View>
+        </View>
+
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">Notifications</Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            Alerts for workout rest timers and fasting goals.
+          </Text>
         </View>
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">

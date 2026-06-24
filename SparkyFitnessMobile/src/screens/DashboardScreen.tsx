@@ -33,6 +33,7 @@ import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useFastingCardVisible } from '../services/fastingCardVisibility';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -136,6 +137,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
+  const fastingCardVisible = useFastingCardVisible();
   const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -380,8 +382,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
         {/* Fasting is "now"-based, so the card is deliberately date-independent —
             it always reflects the current/active fast regardless of the date
-            navigator. Do not wire it to `selectedDate`. */}
-        <FastingCard navigation={navigation} />
+            navigator. Do not wire it to `selectedDate`. Visibility is a local
+            app setting toggled from Dashboard Settings. */}
+        {fastingCardVisible && <FastingCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />

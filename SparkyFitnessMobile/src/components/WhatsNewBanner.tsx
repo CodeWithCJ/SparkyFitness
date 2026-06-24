@@ -103,7 +103,7 @@ const WhatsNewBanner: React.FC = () => {
         className="flex-row items-center px-4 py-3"
       >
         <View className="h-9 w-9 items-center justify-center rounded-full bg-accent-primary/15">
-          <Icon name="sparkle" size={20} color={accentPrimary} weight="bold" />
+          <Icon name="whats-new" size={20} color={accentPrimary} weight="bold" />
         </View>
         <View className="flex-1 px-3">
           <Text className="text-sm font-semibold text-text-primary">

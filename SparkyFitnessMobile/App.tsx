@@ -91,9 +91,13 @@ import {
 import { initializeTheme } from './src/services/themeService';
 import { initializeHaptics } from './src/services/haptics';
 import { initializeSounds } from './src/services/sounds';
+import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
-import { initNotifications } from './src/services/notifications';
+import {
+  initNotifications,
+  initializeNotificationsEnabled,
+} from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -436,6 +440,8 @@ function AppContent() {
     initializeTheme();
     initializeHaptics();
     initializeSounds();
+    initializeNotificationsEnabled();
+    initializeFastingCardVisibility();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {

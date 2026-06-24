@@ -163,7 +163,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
               {isConnected && (
                 <SettingsRow
-                  icon="tab-dashboard"
+                  icon="dashboard-settings"
                   title="Dashboard Settings"
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
@@ -179,7 +179,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
             <SettingsRowGroup>
               <SettingsRow
-                icon="sparkle"
+                icon="whats-new"
                 title="What's New"
                 onPress={() => navigation.navigate('WhatsNew')}
                 iconColor={catPink}

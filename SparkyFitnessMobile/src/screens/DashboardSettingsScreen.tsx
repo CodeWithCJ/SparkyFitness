@@ -16,6 +16,10 @@ import {
 } from '../services/api/preferencesApi';
 import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
 import { toggleNutrientVisibility } from '../utils/nutrientUtils';
+import {
+  useFastingCardVisible,
+  setFastingCardVisible,
+} from '../services/fastingCardVisibility';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
@@ -42,6 +46,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     '--color-form-enabled',
     '--color-form-disabled',
   ]) as [string, string, string];
+
+  const fastingCardVisible = useFastingCardVisible();
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -132,23 +138,25 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     }
 
     return (
-      <SettingsRowGroup>
-        {customNutrients.map((cn) => (
-          <SettingsRow
-            key={cn.id}
-            title={cn.name}
-            subtitle={cn.unit}
-            rightAccessory={
-              <Switch
-                value={base.includes(cn.name)}
-                onValueChange={(value) => handleToggle(cn.name, value)}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
-        ))}
-      </SettingsRowGroup>
+      <>
+        <SettingsRowGroup>
+          {customNutrients.map((cn) => (
+            <SettingsRow
+              key={cn.id}
+              title={cn.name}
+              subtitle={cn.unit}
+              rightAccessory={
+                <Switch
+                  value={base.includes(cn.name)}
+                  onValueChange={(value) => handleToggle(cn.name, value)}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+          ))}
+        </SettingsRowGroup>
+      </>
     );
   };
 
@@ -175,8 +183,24 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
           <Text className="text-2xl font-bold text-text-primary">Dashboard Settings</Text>
         </View>
 
-        <Text className="text-text-secondary text-sm mb-4">
-          Choose which of your custom nutrients appear on the Dashboard summary.
+
+        <SettingsRowGroup>
+          <SettingsRow
+            title="Fasting"
+            subtitle="Show the fasting card on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={fastingCardVisible}
+                onValueChange={setFastingCardVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+        </SettingsRowGroup>
+
+        <Text className="text-base font-semibold text-text-primary mb-4">
+          Custom Nutrient Display
         </Text>
 
         {renderContent()}
