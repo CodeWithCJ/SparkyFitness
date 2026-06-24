@@ -17,9 +17,20 @@ let hasShownDeniedToast = false;
 const notificationsPref = createBooleanPreference('@HealthConnect:notificationsEnabled', true);
 
 export const initializeNotificationsEnabled = notificationsPref.initialize;
-export const setNotificationsEnabled = notificationsPref.set;
 export const getNotificationsEnabled = notificationsPref.get;
 export const useNotificationsEnabled = notificationsPref.use;
+
+/**
+ * Updates the toggle. Turning notifications off also cancels any alerts already
+ * scheduled (rest-timer + fasting-goal) so they don't still fire after the user
+ * opts out.
+ */
+export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
+  await notificationsPref.set(enabled);
+  if (!enabled) {
+    await cancelAllScheduledNotifications();
+  }
+}
 
 export async function initNotifications(): Promise<void> {
   if (initialized) return;
@@ -149,6 +160,22 @@ export async function cancelScheduledNotification(id: string | null): Promise<vo
     await Notifications.cancelScheduledNotificationAsync(id);
   } catch (err) {
     addLog(`cancelScheduledNotification failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Cancels every pending local notification this app scheduled (rest-timer +
+ * fasting-goal alerts). Callers' stored notification ids (the rest-timer id in
+ * activeWorkoutStore, the persisted fasting goal record) are intentionally left
+ * as-is: a cancel-by-stale-id is a harmless no-op, and the fasting record
+ * self-heals on the next reconcile (which only re-runs when the fast actually
+ * changes, at which point a stale record is dropped and rescheduled).
+ */
+export async function cancelAllScheduledNotifications(): Promise<void> {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (err) {
+    addLog(`cancelAllScheduledNotifications failed: ${(err as Error).message}`, 'ERROR');
   }
 }
 

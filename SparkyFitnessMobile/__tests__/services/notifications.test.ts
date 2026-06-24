@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   __resetNotificationStateForTests,
+  cancelAllScheduledNotifications,
   cancelScheduledNotification,
   ensureNotificationPermission,
   fireRestCompleteHaptic,
@@ -29,6 +30,9 @@ const mockSchedule = Notifications.scheduleNotificationAsync as jest.MockedFunct
 const mockCancel = Notifications.cancelScheduledNotificationAsync as jest.MockedFunction<
   typeof Notifications.cancelScheduledNotificationAsync
 >;
+const mockCancelAll = Notifications.cancelAllScheduledNotificationsAsync as jest.MockedFunction<
+  typeof Notifications.cancelAllScheduledNotificationsAsync
+>;
 const mockSetHandler = Notifications.setNotificationHandler as jest.MockedFunction<
   typeof Notifications.setNotificationHandler
 >;
@@ -45,6 +49,7 @@ describe('notifications service', () => {
     mockRequestPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
     mockSchedule.mockReset().mockResolvedValue('notif-id' as any);
     mockCancel.mockReset().mockResolvedValue(undefined as any);
+    mockCancelAll.mockReset().mockResolvedValue(undefined as any);
     mockSetHandler.mockClear();
     mockSetChannel.mockClear();
     mockToastShow.mockClear();
@@ -231,6 +236,28 @@ describe('notifications service', () => {
       expect(await scheduleFastGoalNotification(target)).toBeNull();
       expect(mockSchedule).not.toHaveBeenCalled();
       expect(mockGetPerms).not.toHaveBeenCalled();
+    });
+
+    it('cancels already-scheduled notifications when turned off', async () => {
+      await setNotificationsEnabled(false);
+      expect(mockCancelAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cancel scheduled notifications when turned on', async () => {
+      await setNotificationsEnabled(true);
+      expect(mockCancelAll).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelAllScheduledNotifications', () => {
+    it('calls the expo cancel-all API', async () => {
+      await cancelAllScheduledNotifications();
+      expect(mockCancelAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('swallows errors', async () => {
+      mockCancelAll.mockRejectedValue(new Error('boom'));
+      await expect(cancelAllScheduledNotifications()).resolves.toBeUndefined();
     });
   });
 
