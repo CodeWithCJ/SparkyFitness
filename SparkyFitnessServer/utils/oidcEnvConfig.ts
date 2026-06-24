@@ -67,6 +67,25 @@ async function upsertEnvOidcProvider() {
   if (!config) {
     return;
   }
+  const { getSystemClient } = await import('../db/poolManager.js');
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT provider_id FROM "sso_provider"
+       WHERE issuer = $1
+       AND provider_id != $2`,
+      [config.issuer_url, config.provider_id]
+    );
+    for (const row of result.rows) {
+      await oidcProviderRepository.deleteOidcProvider(row.provider_id);
+      log(
+        'info',
+        `[OIDC ENV] Removed stale provider "${row.provider_id}" (slug changed to "${config.provider_id}").`
+      );
+    }
+  } finally {
+    client.release();
+  }
   const existing = await oidcProviderRepository.getOidcProviderById(
     config.provider_id
   );
