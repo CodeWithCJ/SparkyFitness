@@ -10,7 +10,6 @@ import {
   fireRestCompleteHaptic,
   getNotificationsEnabled,
   initNotifications,
-  initializeNotificationsEnabled,
   scheduleFastGoalNotification,
   scheduleRestNotification,
   setNotificationsEnabled,
@@ -210,32 +209,13 @@ describe('notifications service', () => {
   });
 
   describe('notifications-enabled toggle', () => {
-    it('defaults to enabled when nothing is persisted', async () => {
-      await initializeNotificationsEnabled();
-      expect(getNotificationsEnabled()).toBe(true);
-    });
-
-    it('restores the saved disabled value on init', async () => {
-      await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'false');
-      await initializeNotificationsEnabled();
-      expect(getNotificationsEnabled()).toBe(false);
-    });
-
-    it('persists the value when toggled', async () => {
+    // Toggle behavior (default/restore/init-race) is covered by
+    // booleanPreference.test.ts; these verify the notifications-specific wiring
+    // (storage key) and the scheduling gate.
+    it('persists toggles under the notifications storage key', async () => {
       await setNotificationsEnabled(false);
       expect(getNotificationsEnabled()).toBe(false);
       expect(await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)).toBe('false');
-
-      await setNotificationsEnabled(true);
-      expect(getNotificationsEnabled()).toBe(true);
-      expect(await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)).toBe('true');
-    });
-
-    it('does not let initializeNotificationsEnabled overwrite a user toggle made first', async () => {
-      await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'true');
-      await setNotificationsEnabled(false);
-      await initializeNotificationsEnabled();
-      expect(getNotificationsEnabled()).toBe(false);
     });
 
     it('skips scheduling a rest notification when disabled', async () => {
