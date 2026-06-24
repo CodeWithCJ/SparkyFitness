@@ -150,6 +150,10 @@ const EnhancedFoodSearch = ({
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+  // A new search supersedes any barcode-scanned product.
+  useEffect(() => {
+    if (searchTerm.trim()) setScannedFood(null);
+  }, [searchTerm]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [isMealLoading, setIsMealLoading] = useState(false);
 
@@ -169,6 +173,12 @@ const EnhancedFoodSearch = ({
   const [externalResults, setExternalResults] = useState<
     ExternalResultWrapper[]
   >([]);
+  // A product resolved from a barcode scan, shown even with an empty query.
+  // Kept separate from live online-search results (which clear on an empty
+  // query) so a scan result is not hidden or flickered away.
+  const [scannedFood, setScannedFood] = useState<ExternalResultWrapper | null>(
+    null
+  );
 
   const queryClient = useQueryClient();
   const { data: customNutrients } = useCustomNutrients();
@@ -467,15 +477,14 @@ const EnhancedFoodSearch = ({
           food: data.food,
         } as ExternalResultWrapper;
 
-        setExternalResults([mapped]);
-        setHasOnlineSearchBeenPerformed(true);
+        setScannedFood(mapped);
 
         toast({
           title: 'Barcode scanned successfully',
           description: `Found product: ${data.food.name}`,
         });
       } else {
-        setExternalResults([]);
+        setScannedFood(null);
         toast({
           title: 'Product not found',
           description: `No product found for this barcode using selected provider.`,
@@ -627,6 +636,23 @@ const EnhancedFoodSearch = ({
   const showLocalSpinner =
     showLocalFoods && !isSearchEmpty && localPending && noLocalResults;
 
+  const renderExternalCard = (result: ExternalResultWrapper) => (
+    <FoodResultCard
+      key={`${result.provider_type}-${result.food.provider_external_id}`}
+      item={result.food}
+      isOnline={true}
+      providerLabel={result.provider_type.toUpperCase()}
+      nutrientConfig={nutrientConfig}
+      onEditClick={() => {
+        if (result.provider_type === 'nutritionix') {
+          handleNutritionixEdit(result.raw);
+        } else {
+          handleExternalFoodEdit(result.food);
+        }
+      }}
+    />
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
@@ -678,6 +704,10 @@ const EnhancedFoodSearch = ({
             // Temporary view-only switch: peek at another provider's results
             // without changing the saved default provider.
             onValueChange={(value) => {
+              // Clear the previous provider's results so the loading spinner
+              // shows under the new header instead of stale rows (which reads as
+              // if the swap did nothing on a slow connection).
+              setExternalResults([]);
               setManualProviderId(value);
             }}
           >
@@ -752,6 +782,16 @@ const EnhancedFoodSearch = ({
           </div>
         )}
 
+        {/* Barcode scan result (shown even with an empty query) */}
+        {isSearchEmpty && scannedFood && (
+          <>
+            <SectionHeader>
+              {t('enhancedFoodSearch.scannedProduct', 'Scanned product')}
+            </SectionHeader>
+            {renderExternalCard(scannedFood)}
+          </>
+        )}
+
         {/* Search results */}
         {!isSearchEmpty && (
           <>
@@ -820,22 +860,7 @@ const EnhancedFoodSearch = ({
                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </div>
                 )}
-                {externalResults.map((result) => (
-                  <FoodResultCard
-                    key={`${result.provider_type}-${result.food.provider_external_id}`}
-                    item={result.food}
-                    isOnline={true}
-                    providerLabel={result.provider_type.toUpperCase()}
-                    nutrientConfig={nutrientConfig}
-                    onEditClick={() => {
-                      if (result.provider_type === 'nutritionix') {
-                        handleNutritionixEdit(result.raw);
-                      } else {
-                        handleExternalFoodEdit(result.food);
-                      }
-                    }}
-                  />
-                ))}
+                {externalResults.map(renderExternalCard)}
                 {!isOnlineLoading &&
                   hasOnlineSearchBeenPerformed &&
                   externalResults.length === 0 && (

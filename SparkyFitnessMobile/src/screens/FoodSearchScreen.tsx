@@ -241,8 +241,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const localPending = isSearching || isMealSearching || !isSearchActive;
   const hasLocalResults =
     searchResults.length > 0 || (!isMealBuilderMode && mealResults.length > 0);
+  // Only show online results from the currently selected provider. On a swap,
+  // keepPreviousData holds the previous provider's results in the hook until the
+  // new ones load; filtering by source drops those stale rows immediately (so a
+  // spinner shows, matching web) while still keeping results in place while
+  // typing within the same provider.
+  const visibleOnlineResults = useMemo(
+    () =>
+      onlineResults.filter((online) => online.source === selectedProviderType),
+    [onlineResults, selectedProviderType],
+  );
   const showOnlineSection =
-    !!selectedProviderName && (isOnlineSearchActive || onlineResults.length > 0);
+    !!selectedProviderName &&
+    (isOnlineSearchActive || visibleOnlineResults.length > 0);
 
   const landingSections = useMemo<LandingSection[]>(() => {
     return [
@@ -292,7 +303,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         key: 'online',
         kind: 'online',
         title: selectedProviderName,
-        data: onlineResults.map((online) => ({ type: 'online', online })),
+        data: visibleOnlineResults.map((online) => ({ type: 'online', online })),
       });
     }
 
@@ -305,7 +316,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isMealBuilderMode,
     showOnlineSection,
     selectedProviderName,
-    onlineResults,
+    visibleOnlineResults,
   ]);
 
   // --- Row renderers (shared between landing and results) ---
@@ -422,7 +433,32 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (!section.title) return null;
     // The online section header doubles as a provider switcher so the user can
     // peek at another provider's results without changing their default.
-    if (section.kind === 'online' && providerOptions.length > 1) {
+    if (section.kind === 'online') {
+      const canSwitch = providerOptions.length > 1;
+      // Section heading on the left; on the right the current provider name is
+      // shown in the accent colour with a double-arrow selector icon so it reads
+      // as a switchable control. The icon becomes a spinner while a swap loads.
+      const header = (
+        <View className="px-4 py-2 bg-surface flex-row items-center justify-between">
+          <Text className="text-text-muted text-xs font-semibold uppercase">
+            External Results
+          </Text>
+          <View className="flex-row items-center gap-1">
+            <Text
+              className="text-xs font-medium"
+              style={{ color: canSwitch ? accentColor : textSecondary }}
+            >
+              {selectedProviderName}
+            </Text>
+            {isOnlineSearching ? (
+              <ActivityIndicator size="small" color={accentColor} />
+            ) : canSwitch ? (
+              <Icon name="chevron-expand" size={16} color={accentColor} />
+            ) : null}
+          </View>
+        </View>
+      );
+      if (!canSwitch) return header;
       return (
         <BottomSheetPicker
           value={selectedProvider ?? ''}
@@ -437,14 +473,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
                 Keyboard.dismiss();
                 onPress();
               }}
-              className="px-4 py-2 bg-surface flex-row items-center justify-between"
               accessibilityRole="button"
-              accessibilityLabel={`Online provider ${section.title}, tap to change`}
+              accessibilityLabel={`External results source ${selectedProviderName}, tap to change`}
             >
-              <Text className="text-text-muted text-xs font-semibold uppercase">
-                {section.title}
-              </Text>
-              <Icon name="chevron-down" size={16} color={textMuted} />
+              {header}
             </Pressable>
           )}
         />
@@ -456,7 +488,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderResultSectionFooter = ({ section }: { section: ResultSection }) => {
     if (section.kind !== 'online') return null;
 
-    if (isOnlineSearching && onlineResults.length === 0) {
+    if (isOnlineSearching && visibleOnlineResults.length === 0) {
       return (
         <View className="py-4 items-center">
           <ActivityIndicator size="small" color={accentColor} />
@@ -494,7 +526,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         </Button>
       );
     }
-    if (onlineResults.length === 0 && !isOnlineSearching) {
+    if (visibleOnlineResults.length === 0 && !isOnlineSearching) {
       return (
         <View className="px-4 py-4">
           <Text className="text-text-secondary text-sm text-center">

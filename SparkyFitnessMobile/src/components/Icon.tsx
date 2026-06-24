@@ -14,6 +14,7 @@ const ICON_MAP = {
   'chevron-up': { sf: 'chevron.up', ion: 'chevron-up' },
   'chevron-forward': { sf: 'chevron.right', ion: 'chevron-forward' },
   'chevron-back': { sf: 'chevron.left', ion: 'chevron-back' },
+  'chevron-expand': { sf: 'chevron.up.chevron.down', ion: 'chevron-expand' },
 
   // Actions
   'copy': { sf: 'doc.on.doc', ion: 'copy-outline' },

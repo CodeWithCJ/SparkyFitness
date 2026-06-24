@@ -412,6 +412,7 @@
     "noSavedFoodsOrMeals": "No saved foods or meals found.",
     "searchOnlineToImport": "Search to find foods from your online provider.",
     "onlineSearchFailed": "Failed to search the online provider.",
+    "scannedProduct": "Scanned product",
     "recentFoods": "Recent Foods",
     "private": "Private",
     "public": "Public",
