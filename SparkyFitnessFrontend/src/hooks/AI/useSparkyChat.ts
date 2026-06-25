@@ -48,7 +48,7 @@ export const useClearChatHistoryMutation = () => {
   return useMutation({
     mutationFn: (clearType: 'manual' | 'all') => clearChatHistory(clearType),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatbotKeys.all });
+      queryClient.removeQueries({ queryKey: [...chatbotKeys.all, 'history'] });
     },
     meta: {
       successMessage: t(
