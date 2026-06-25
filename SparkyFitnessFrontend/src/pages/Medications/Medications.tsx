@@ -97,6 +97,10 @@ function AddMedicationDialog() {
   const [glp1Drug, setGlp1Drug] = useState('semaglutide');
   const [strength, setStrength] = useState('');
   const [strengthUnit, setStrengthUnit] = useState('mg');
+  const [prescriber, setPrescriber] = useState('');
+  const [pharmacy, setPharmacy] = useState('');
+  const [rxNumber, setRxNumber] = useState('');
+  const [reason, setReason] = useState('');
 
   const mutation = useCreateMedicationMutation();
 
@@ -109,12 +113,20 @@ function AddMedicationDialog() {
       strength_unit: strengthUnit || null,
       dose_amount: strength ? Number(strength) : null,
       dose_unit: strengthUnit || null,
+      prescriber: prescriber.trim() || null,
+      pharmacy: pharmacy.trim() || null,
+      rx_number: rxNumber.trim() || null,
+      reason_text: reason.trim() || null,
       custom_fields: isGlp1 ? { glp1_drug: glp1Drug } : {},
     };
     mutation.mutate(body, {
       onSuccess: () => {
         setOpen(false);
         setName('');
+        setPrescriber('');
+        setPharmacy('');
+        setRxNumber('');
+        setReason('');
       },
     });
   };
@@ -199,6 +211,44 @@ function AddMedicationDialog() {
               </Select>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="med-reason">Reason / condition (optional)</Label>
+            <Input
+              id="med-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Weight management, Type 2 diabetes"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="med-prescriber">Prescriber (optional)</Label>
+              <Input
+                id="med-prescriber"
+                value={prescriber}
+                onChange={(e) => setPrescriber(e.target.value)}
+                placeholder="Dr. Chen"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="med-pharmacy">Pharmacy (optional)</Label>
+              <Input
+                id="med-pharmacy"
+                value={pharmacy}
+                onChange={(e) => setPharmacy(e.target.value)}
+                placeholder="CVS #4421"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="med-rx">Rx number (optional)</Label>
+            <Input
+              id="med-rx"
+              value={rxNumber}
+              onChange={(e) => setRxNumber(e.target.value)}
+              placeholder="Rx-482-93221"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button
@@ -635,6 +685,18 @@ const BRISTOL_TYPES = [
   },
 ];
 
+const SYMPTOM_EMOJI: Record<string, string> = {
+  nausea: '🤢',
+  fatigue: '😮‍💨',
+  headache: '🤕',
+  constipation: '🚽',
+  diarrhea: '💧',
+  vomiting: '🤮',
+  acid_reflux: '🔥',
+  stomach_pain: '😖',
+  dizziness: '💫',
+};
+
 export default function Medications() {
   const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
     'today'
@@ -729,6 +791,43 @@ export default function Medications() {
       ? Math.round((completedDosesCount / dueDoses.length) * 100)
       : 100;
 
+  // True 14-day adherence: evaluate each day's scheduled doses vs. what was taken.
+  const adherence14 = useMemo(() => {
+    let due = 0;
+    let taken = 0;
+    let perfectDays = 0;
+    for (let i = 13; i >= 0; i--) {
+      const d = addDays(today, -i);
+      const dayDue = getDueDosesForDate(meds, d);
+      if (dayDue.length === 0) continue;
+      let dayTaken = 0;
+      for (const dd of dayDue) {
+        const hit = recentEntries.some(
+          (e) =>
+            e.schedule_id === dd.schedule.id &&
+            e.entry_date === d &&
+            (e.status === 'taken' || e.status === 'prn_taken')
+        );
+        if (hit) dayTaken++;
+      }
+      due += dayDue.length;
+      taken += dayTaken;
+      if (dayTaken === dayDue.length) perfectDays++;
+    }
+    return {
+      due,
+      taken,
+      perfectDays,
+      pct: due > 0 ? Math.round((taken / due) * 100) : 100,
+    };
+  }, [meds, today, recentEntries]);
+
+  // The next GLP-1 dose due today (if any), for the next-injection banner.
+  const nextGlpDue = useMemo(
+    () => dueDoses.find((d) => d.medication.is_glp1) ?? null,
+    [dueDoses]
+  );
+
   // Pattern Correlation Calculations
   const patternDoses = useMemo(() => {
     return recentEntries
@@ -781,6 +880,30 @@ export default function Medications() {
     }
     return days;
   }, [today, symptomLogs]);
+
+  // GI sub-tracker: real per-week rates over the loaded 30-day window.
+  const giStats = useMemo(() => {
+    const weeks = 30 / 7;
+    const rate = (needle: string) =>
+      (
+        symptomLogs.filter((l) =>
+          l.symptom_name_snapshot.toLowerCase().includes(needle)
+        ).length / weeks
+      ).toFixed(1);
+    const bristolLogs = symptomLogs.filter((l) => l.bristol_type != null);
+    const avgBristol = bristolLogs.length
+      ? (
+          bristolLogs.reduce((s, l) => s + (l.bristol_type ?? 0), 0) /
+          bristolLogs.length
+        ).toFixed(1)
+      : '—';
+    return {
+      nausea: rate('nausea'),
+      vomiting: rate('vomit'),
+      reflux: rate('reflux'),
+      avgBristol,
+    };
+  }, [symptomLogs]);
 
   const handleLogScheduled = (
     due: (typeof dueDoses)[0],
@@ -957,6 +1080,102 @@ export default function Medications() {
 
       {activeTab === 'today' && (
         <div className="space-y-6">
+          {/* Next GLP-1 injection banner */}
+          {nextGlpDue && (
+            <Card className="border-blue-500/30 bg-blue-50/40 dark:bg-blue-950/20">
+              <CardContent className="flex items-center justify-between gap-4 p-4">
+                <div className="flex items-center gap-3">
+                  <Syringe className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="font-semibold">
+                      {nextGlpDue.medication.display_name ||
+                        nextGlpDue.medication.name}{' '}
+                      injection — due today
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {nextGlpDue.schedule.time_of_day
+                        ? `Scheduled ${nextGlpDue.schedule.time_of_day.substring(0, 5)}`
+                        : 'Any time today'}
+                    </p>
+                  </div>
+                </div>
+                {!entries.some(
+                  (e) =>
+                    e.schedule_id === nextGlpDue.schedule.id &&
+                    (e.status === 'taken' || e.status === 'skipped')
+                ) && (
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => handleLogScheduled(nextGlpDue, 'taken')}
+                    disabled={createEntryMutation.isPending}
+                  >
+                    Log shot
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Today stats + 14-day adherence ring */}
+          <Card>
+            <CardContent className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:justify-between">
+              <div className="grid w-full grid-cols-3 gap-3">
+                {[
+                  {
+                    label: 'Doses today',
+                    value: `${completedDosesCount}/${dueDoses.length}`,
+                  },
+                  { label: '14-day adherence', value: `${adherence14.pct}%` },
+                  {
+                    label: 'Perfect days (14d)',
+                    value: String(adherence14.perfectDays),
+                  },
+                ].map((t) => (
+                  <div
+                    key={t.label}
+                    className="rounded-lg border p-3 text-center"
+                  >
+                    <p className="text-xl font-bold tabular-nums">{t.value}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="relative h-24 w-24 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9155"
+                    fill="none"
+                    className="stroke-muted"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9155"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="3"
+                    strokeDasharray={`${adherence14.pct}, 100`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-lg font-bold tabular-nums">
+                    {adherence14.pct}%
+                  </span>
+                  <span className="text-[9px] text-muted-foreground">
+                    14-day
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Progress Banner */}
           <Card className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 shadow-sm">
             <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -1255,134 +1474,200 @@ export default function Medications() {
       )}
 
       {activeTab === 'cabinet' && (
-        <div className="grid gap-6 md:grid-cols-[320px_1fr]">
-          {/* Medications list */}
-          <div className="space-y-3">
-            {loadingMeds && (
-              <p className="text-sm text-muted-foreground">
-                Loading medications…
-              </p>
-            )}
-            {!loadingMeds && meds.length === 0 && (
-              <Card>
-                <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                  No medications yet. Add your first one to get started.
-                </CardContent>
-              </Card>
-            )}
-            {meds.map((med) => (
-              <Card
-                key={med.id}
-                onClick={() => setSelectedId(med.id)}
-                className={`cursor-pointer transition hover:shadow-sm ${
-                  selectedId === med.id
-                    ? 'border-primary ring-1 ring-primary'
-                    : ''
-                }`}
-              >
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    {med.is_glp1 ? (
-                      <Syringe className="h-5 w-5 text-blue-500" />
-                    ) : (
-                      <Pill className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <p className="font-medium">
-                        {med.display_name || med.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {med.strength_value
-                          ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                          : med.type_id}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {med.is_glp1 && <Badge variant="secondary">GLP-1</Badge>}
-                    {med.schedules && med.schedules.length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] flex items-center gap-1"
-                      >
-                        <Clock className="h-2.5 w-2.5" /> {med.schedules.length}
-                      </Badge>
-                    )}
+        <div className="space-y-6">
+          {/* KPI tiles (real counts only — no cost) */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              {
+                label: 'Active scripts',
+                value: meds.filter((m) => m.is_active).length,
+                Icon: Pill,
+                color: 'text-primary',
+              },
+              {
+                label: 'GLP-1 meds',
+                value: meds.filter((m) => m.is_glp1).length,
+                Icon: Syringe,
+                color: 'text-blue-500',
+              },
+              {
+                label: 'Scheduled today',
+                value: dueDoses.length,
+                Icon: Clock,
+                color: 'text-amber-500',
+              },
+              {
+                label: 'Total meds',
+                value: meds.length,
+                Icon: Activity,
+                color: 'text-muted-foreground',
+              },
+            ].map((tile) => (
+              <Card key={tile.label}>
+                <CardContent className="flex items-center gap-3 p-4">
+                  <tile.Icon className={`h-5 w-5 ${tile.color}`} />
+                  <div>
+                    <p className="text-xl font-bold tabular-nums">
+                      {tile.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {tile.label}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Details pane */}
-          <div>
-            {!selected && (
-              <Card>
-                <CardContent className="p-10 text-center text-sm text-muted-foreground">
-                  Select a medication to view details and schedules.
-                </CardContent>
-              </Card>
-            )}
-            {selected && (
-              <div className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+            {/* Medications list */}
+            <div className="space-y-3">
+              {loadingMeds && (
+                <p className="text-sm text-muted-foreground">
+                  Loading medications…
+                </p>
+              )}
+              {!loadingMeds && meds.length === 0 && (
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>
-                        {selected.display_name || selected.name}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {selected.strength_value
-                          ? `${selected.strength_value} ${selected.strength_unit ?? ''}`
-                          : selected.type_id}
-                        {selected.reason_text
-                          ? ` · ${selected.reason_text}`
-                          : ''}
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteMed(selected.id)}
-                      disabled={removeMedMutation.isPending}
-                      aria-label="Delete medication"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </CardHeader>
-                  {selected.notes && (
-                    <CardContent className="text-sm text-muted-foreground border-t pt-4">
-                      <p className="font-medium text-foreground mb-1">Notes</p>
-                      <p>{selected.notes}</p>
-                    </CardContent>
-                  )}
+                  <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                    No medications yet. Add your first one to get started.
+                  </CardContent>
                 </Card>
+              )}
+              {meds.map((med) => (
+                <Card
+                  key={med.id}
+                  onClick={() => setSelectedId(med.id)}
+                  className={`cursor-pointer transition hover:shadow-sm ${
+                    selectedId === med.id
+                      ? 'border-primary ring-1 ring-primary'
+                      : ''
+                  }`}
+                >
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      {med.is_glp1 ? (
+                        <Syringe className="h-5 w-5 text-blue-500" />
+                      ) : (
+                        <Pill className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
+                          {med.display_name || med.name}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                          <span>
+                            {med.strength_value
+                              ? `${med.strength_value} ${med.strength_unit ?? ''}`
+                              : med.type_id}
+                          </span>
+                          {med.schedules?.[0] && (
+                            <>
+                              <span>·</span>
+                              <span>
+                                {formatScheduleDescription(med.schedules[0])}
+                              </span>
+                            </>
+                          )}
+                          {med.prescriber && (
+                            <>
+                              <span>·</span>
+                              <span className="truncate">{med.prescriber}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {med.is_glp1 && <Badge variant="secondary">GLP-1</Badge>}
+                      {med.schedules && med.schedules.length > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] flex items-center gap-1"
+                        >
+                          <Clock className="h-2.5 w-2.5" />{' '}
+                          {med.schedules.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-                {selected.is_glp1 ? (
-                  <div className="space-y-4">
-                    <Glp1Coach med={selected} />
-                    <ScheduleManager med={selected} />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <Activity className="h-4 w-4 text-primary" />{' '}
-                          Adherence Overview
+            {/* Details pane */}
+            <div>
+              {!selected && (
+                <Card>
+                  <CardContent className="p-10 text-center text-sm text-muted-foreground">
+                    Select a medication to view details and schedules.
+                  </CardContent>
+                </Card>
+              )}
+              {selected && (
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle>
+                          {selected.display_name || selected.name}
                         </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm text-muted-foreground">
-                        Schedules and daily checklists for non-GLP-1 medications
-                        are fully active. Manage schedule rules below, and log
-                        daily intake from the <strong>Today</strong> tab.
+                        <CardDescription className="mt-1">
+                          {selected.strength_value
+                            ? `${selected.strength_value} ${selected.strength_unit ?? ''}`
+                            : selected.type_id}
+                          {selected.reason_text
+                            ? ` · ${selected.reason_text}`
+                            : ''}
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteMed(selected.id)}
+                        disabled={removeMedMutation.isPending}
+                        aria-label="Delete medication"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </CardHeader>
+                    {selected.notes && (
+                      <CardContent className="text-sm text-muted-foreground border-t pt-4">
+                        <p className="font-medium text-foreground mb-1">
+                          Notes
+                        </p>
+                        <p>{selected.notes}</p>
                       </CardContent>
-                    </Card>
-                    <ScheduleManager med={selected} />
-                  </div>
-                )}
-              </div>
-            )}
+                    )}
+                  </Card>
+
+                  {selected.is_glp1 ? (
+                    <div className="space-y-4">
+                      <Glp1Coach med={selected} />
+                      <ScheduleManager med={selected} />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-primary" />{' '}
+                            Adherence Overview
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          Schedules and daily checklists for non-GLP-1
+                          medications are fully active. Manage schedule rules
+                          below, and log daily intake from the{' '}
+                          <strong>Today</strong> tab.
+                        </CardContent>
+                      </Card>
+                      <ScheduleManager med={selected} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1463,18 +1748,36 @@ export default function Medications() {
                         </DialogContent>
                       </Dialog>
                     </div>
-                    <Select value={symptomName} onValueChange={setSymptomName}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allSymptomOptions.map((opt) => (
-                          <SelectItem key={opt.id} value={opt.name}>
-                            {opt.displayName} {opt.isGlp1 ? ' (GLP-1)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {allSymptomOptions.map((opt) => {
+                        const active = symptomName === opt.name;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setSymptomName(opt.name)}
+                            className={`relative flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition ${
+                              active
+                                ? 'border-red-500 bg-red-50 dark:bg-red-950'
+                                : 'border-border hover:bg-muted'
+                            }`}
+                          >
+                            <span className="text-xl leading-none">
+                              {SYMPTOM_EMOJI[opt.name] ?? '📝'}
+                            </span>
+                            <span className="text-[11px] font-medium leading-tight">
+                              {opt.displayName}
+                            </span>
+                            {opt.isGlp1 && (
+                              <span
+                                className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-blue-500"
+                                title="Common on GLP-1"
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Severity Slider */}
@@ -1661,6 +1964,40 @@ export default function Medications() {
 
             {/* Right Column: Calendar, Pattern Hints, and Logs */}
             <div className="space-y-6">
+              {/* GI sub-tracker (real rates over the last 30 days) */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    GI sub-tracker
+                  </CardTitle>
+                  <CardDescription>
+                    Per-week rates over the last 30 days
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: 'Nausea / wk', value: giStats.nausea },
+                      { label: 'Vomiting / wk', value: giStats.vomiting },
+                      { label: 'Reflux / wk', value: giStats.reflux },
+                      { label: 'Avg Bristol', value: giStats.avgBristol },
+                    ].map((t) => (
+                      <div
+                        key={t.label}
+                        className="rounded-lg border p-3 text-center"
+                      >
+                        <p className="text-xl font-bold tabular-nums">
+                          {t.value}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Pattern Hints Card */}
               {patternHints.length > 0 && (
                 <Card className="border-amber-200 bg-amber-50/15">

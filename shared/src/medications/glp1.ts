@@ -145,23 +145,35 @@ export function simulateSerumCurve(
   return raw.map((p) => ({ ...p, fraction: p.level / peak }));
 }
 
-/** Eight injection zones for subcutaneous GLP-1 rotation. */
+/**
+ * Subcutaneous GLP-1 injection zones (granular, matching common GLP-1 trackers).
+ * `svgClass` is the class applied to the matching `<path>` in the clickable body map SVG
+ * (`public/images/injection-body.svg`).
+ */
 export interface InjectionSite {
   id: string;
   label: string;
-  region: 'abdomen' | 'thigh' | 'arm';
-  side: 'left' | 'right';
+  region: 'abdomen' | 'thigh' | 'arm' | 'hip' | 'other';
+  side: 'left' | 'mid' | 'right' | 'none';
+  svgClass: string;
 }
 
 export const INJECTION_SITES: InjectionSite[] = [
-  { id: 'left_abdomen', label: 'Left abdomen', region: 'abdomen', side: 'left' },
-  { id: 'right_abdomen', label: 'Right abdomen', region: 'abdomen', side: 'right' },
-  { id: 'left_thigh', label: 'Left thigh', region: 'thigh', side: 'left' },
-  { id: 'right_thigh', label: 'Right thigh', region: 'thigh', side: 'right' },
-  { id: 'left_arm', label: 'Left upper arm', region: 'arm', side: 'left' },
-  { id: 'right_arm', label: 'Right upper arm', region: 'arm', side: 'right' },
-  { id: 'left_flank', label: 'Left flank', region: 'abdomen', side: 'left' },
-  { id: 'right_flank', label: 'Right flank', region: 'abdomen', side: 'right' },
+  { id: 'stomach_upper_left', label: 'Stomach – Upper Left', region: 'abdomen', side: 'left', svgClass: 'stomach_upper_left' },
+  { id: 'stomach_upper_mid', label: 'Stomach – Upper Mid', region: 'abdomen', side: 'mid', svgClass: 'stomach_upper_mid' },
+  { id: 'stomach_upper_right', label: 'Stomach – Upper Right', region: 'abdomen', side: 'right', svgClass: 'stomach_upper_right' },
+  { id: 'stomach_mid_left', label: 'Stomach – Left Mid', region: 'abdomen', side: 'left', svgClass: 'stomach_mid_left' },
+  { id: 'stomach_mid_right', label: 'Stomach – Right Mid', region: 'abdomen', side: 'right', svgClass: 'stomach_mid_right' },
+  { id: 'stomach_lower_left', label: 'Stomach – Lower Left', region: 'abdomen', side: 'left', svgClass: 'stomach_lower_left' },
+  { id: 'stomach_lower_mid', label: 'Stomach – Lower Mid', region: 'abdomen', side: 'mid', svgClass: 'stomach_lower_mid' },
+  { id: 'stomach_lower_right', label: 'Stomach – Lower Right', region: 'abdomen', side: 'right', svgClass: 'stomach_lower_right' },
+  { id: 'left_arm', label: 'Left Arm', region: 'arm', side: 'left', svgClass: 'left_arm' },
+  { id: 'right_arm', label: 'Right Arm', region: 'arm', side: 'right', svgClass: 'right_arm' },
+  { id: 'left_thigh', label: 'Left Thigh', region: 'thigh', side: 'left', svgClass: 'left_thigh' },
+  { id: 'right_thigh', label: 'Right Thigh', region: 'thigh', side: 'right', svgClass: 'right_thigh' },
+  { id: 'left_hip', label: 'Left Hip', region: 'hip', side: 'left', svgClass: 'left_hip' },
+  { id: 'right_hip', label: 'Right Hip', region: 'hip', side: 'right', svgClass: 'right_hip' },
+  { id: 'unknown', label: 'Unknown', region: 'other', side: 'none', svgClass: 'unknown' },
 ];
 
 /** Minimum days a site should rest before reuse (lipohypertrophy guidance). */
@@ -174,37 +186,69 @@ export interface RecentSiteUse {
 }
 
 export interface SiteRotationResult {
-  /** suggested next site id (the one rested longest / never used) */
+  /** suggested next site id (rotates forward; the longest-rested if all are within the window) */
   suggestedSiteId: string;
   /** site ids that are still within the rest window and should be avoided */
   restingSiteIds: string[];
 }
 
 /**
- * Suggest the next injection site: prefer sites never used, otherwise the one rested longest.
- * Flags any site used within SITE_REST_DAYS as resting (lipo warning).
+ * Suggest the next injection site.
+ * - `activeSiteIds` (optional, ordered): the user's active sites in rotation order; when omitted,
+ *   all built-in sites except `unknown` are used. Lets Settings drive customization + auto-rotation.
+ * - Rotation: start just after the most-recently-used site and pick the first one past its rest
+ *   window; if every candidate is still resting, fall back to the one rested longest.
+ * - Flags any candidate used within `SITE_REST_DAYS` as resting (lipo warning).
  */
-export function suggestNextSite(recent: RecentSiteUse[]): SiteRotationResult {
+export function suggestNextSite(
+  recent: RecentSiteUse[],
+  activeSiteIds?: string[],
+): SiteRotationResult {
+  const candidates = (
+    activeSiteIds && activeSiteIds.length > 0
+      ? activeSiteIds
+      : INJECTION_SITES.map((s) => s.id)
+  ).filter((id) => id !== 'unknown');
+
   const lastUsed = new Map<string, number>();
+  let mostRecentId: string | undefined;
+  let mostRecentDaysAgo = Infinity;
   for (const r of recent) {
     const prev = lastUsed.get(r.siteId);
     if (prev === undefined || r.daysAgo < prev) lastUsed.set(r.siteId, r.daysAgo);
-  }
-  const restingSiteIds = INJECTION_SITES.filter(
-    (s) => (lastUsed.get(s.id) ?? Infinity) < SITE_REST_DAYS,
-  ).map((s) => s.id);
-
-  // Pick the site rested longest (or never used). Written as a reduce so it stays
-  // safe under noUncheckedIndexedAccess (no array[0] that TS sees as possibly undefined).
-  let best: InjectionSite | undefined;
-  for (const s of INJECTION_SITES) {
-    if (
-      !best ||
-      (lastUsed.get(s.id) ?? Infinity) > (lastUsed.get(best.id) ?? Infinity)
-    ) {
-      best = s;
+    if (r.daysAgo < mostRecentDaysAgo) {
+      mostRecentDaysAgo = r.daysAgo;
+      mostRecentId = r.siteId;
     }
   }
 
-  return { suggestedSiteId: best?.id ?? 'left_abdomen', restingSiteIds };
+  const restingSiteIds = candidates.filter(
+    (id) => (lastUsed.get(id) ?? Infinity) < SITE_REST_DAYS,
+  );
+
+  if (candidates.length === 0) {
+    return { suggestedSiteId: 'unknown', restingSiteIds };
+  }
+
+  // Rotate forward from the site used most recently.
+  const lastIdx = mostRecentId ? candidates.indexOf(mostRecentId) : -1;
+  const startIdx = lastIdx >= 0 ? lastIdx + 1 : 0;
+  let suggested: string | undefined;
+  for (let i = 0; i < candidates.length; i++) {
+    const id = candidates[(startIdx + i) % candidates.length];
+    if (id && (lastUsed.get(id) ?? Infinity) >= SITE_REST_DAYS) {
+      suggested = id;
+      break;
+    }
+  }
+  // Everything is still resting → the one rested longest.
+  if (!suggested) {
+    for (const id of candidates) {
+      if (!suggested || (lastUsed.get(id) ?? Infinity) > (lastUsed.get(suggested) ?? Infinity)) {
+        suggested = id;
+      }
+    }
+  }
+
+  return { suggestedSiteId: suggested ?? candidates[0] ?? 'unknown', restingSiteIds };
 }

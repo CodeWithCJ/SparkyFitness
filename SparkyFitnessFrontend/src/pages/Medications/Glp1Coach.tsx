@@ -10,6 +10,8 @@ import {
 } from 'recharts';
 import { Syringe, AlertTriangle } from 'lucide-react';
 import { INJECTION_SITES } from '@workspace/shared';
+import InjectionSiteBodyMap from './InjectionSiteBodyMap';
+import FastingTimer from './FastingTimer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +30,10 @@ import type { Medication } from '@/types/medications';
 
 export default function Glp1Coach({ med }: { med: Medication }) {
   const medId = med.id;
+  const glp1Drug = (
+    med.custom_fields as Record<string, unknown> | null | undefined
+  )?.glp1_drug;
+  const isOralGlp1 = glp1Drug === 'oral_semaglutide';
 
   const sitesQ = useSiteSuggestion(medId);
   const curveQ = useSerumCurve(medId);
@@ -78,6 +84,9 @@ export default function Glp1Coach({ med }: { med: Medication }) {
 
   return (
     <div className="space-y-4">
+      {/* Oral GLP-1 fasting timer (oral semaglutide only) */}
+      {isOralGlp1 && <FastingTimer medId={medId} />}
+
       {/* Log injection + site rotation */}
       <Card>
         <CardHeader>
@@ -88,34 +97,28 @@ export default function Glp1Coach({ med }: { med: Medication }) {
         <CardContent className="space-y-4">
           <div>
             <Label className="text-xs text-muted-foreground">
-              Injection site (8-zone rotation · green = suggested, amber =
-              resting &lt;
-              {sitesQ.data?.restDays ?? 7}d)
+              Injection site ·{' '}
+              <span className="text-green-600">green = suggested</span>,{' '}
+              <span className="text-amber-600">
+                amber = resting &lt;{sitesQ.data?.restDays ?? 7}d
+              </span>
             </Label>
-            <div className="mt-2 grid grid-cols-4 gap-2">
-              {INJECTION_SITES.map((s) => {
-                const isSuggested = s.id === suggestedSite;
-                const isResting = restingSites.has(s.id);
-                const isSelected = s.id === site;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSelectedSite(s.id)}
-                    className={[
-                      'rounded-md border p-2 text-xs transition',
-                      isSelected ? 'ring-2 ring-primary' : '',
-                      isSuggested
-                        ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                        : isResting
-                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950'
-                          : 'border-border',
-                    ].join(' ')}
-                  >
-                    {s.label}
-                  </button>
-                );
-              })}
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <InjectionSiteBodyMap
+                selectedSiteId={site}
+                suggestedSiteId={suggestedSite}
+                restingSiteIds={sitesQ.data?.restingSiteIds ?? []}
+                onSelect={setSelectedSite}
+              />
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Selected:</span>
+                <span className="font-medium">
+                  {site
+                    ? (INJECTION_SITES.find((s) => s.id === site)?.label ??
+                      site)
+                    : 'Tap a zone'}
+                </span>
+              </div>
             </div>
             {site && restingSites.has(site) && (
               <p className="mt-2 flex items-center gap-1 text-xs text-amber-600">
@@ -231,33 +234,59 @@ export default function Glp1Coach({ med }: { med: Medication }) {
               No pens/vials tracked.
             </p>
           )}
-          {(pensQ.data ?? []).map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-md border p-3 text-sm"
-            >
-              <div>
-                <span className="font-medium capitalize">{p.kind}</span>{' '}
-                {p.dose_mg ? `${p.dose_mg} mg` : ''}{' '}
-                {p.concentration_mg_ml
-                  ? `· ${p.concentration_mg_ml} mg/mL`
-                  : ''}
-                {p.expiry_date && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    · exp {p.expiry_date}
-                  </span>
+          {(pensQ.data ?? []).map((p) => {
+            const total = p.doses_total ?? 0;
+            const left = Math.max(0, total - p.doses_used);
+            const pct = total > 0 ? Math.round((left / total) * 100) : 0;
+            const low = total > 0 && pct <= 25;
+            return (
+              <div key={p.id} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium capitalize">{p.kind}</span>
+                    {p.dose_mg ? (
+                      <span className="text-muted-foreground">
+                        {p.dose_mg} mg
+                      </span>
+                    ) : null}
+                    {p.concentration_mg_ml ? (
+                      <span className="text-muted-foreground">
+                        · {p.concentration_mg_ml} mg/mL
+                      </span>
+                    ) : null}
+                    {p.status === 'in_use' && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        in use
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {p.reorder_flag && (
+                      <Badge variant="destructive">Reorder</Badge>
+                    )}
+                    <span className="font-medium tabular-nums">
+                      {left}/{total || '?'}{' '}
+                      <span className="font-normal text-muted-foreground">
+                        doses
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all ${low ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                {(p.expiry_date || p.bud_date) && (
+                  <div className="mt-1.5 flex gap-3 text-xs text-muted-foreground">
+                    {p.expiry_date && <span>Exp {p.expiry_date}</span>}
+                    {p.bud_date && <span>BUD {p.bud_date}</span>}
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                {p.reorder_flag && <Badge variant="destructive">Reorder</Badge>}
-                <span className="text-muted-foreground">
-                  {(p.doses_total ?? 0) - p.doses_used}/{p.doses_total ?? '?'}{' '}
-                  doses
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -266,40 +295,62 @@ export default function Glp1Coach({ med }: { med: Medication }) {
         <CardHeader>
           <CardTitle className="text-base">Dose titration plan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {(titrationQ.data ?? []).length === 0 && (
+        <CardContent>
+          {(titrationQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No titration steps yet.
             </p>
+          ) : (
+            <ol className="relative space-y-4 border-l border-muted pl-6">
+              {(titrationQ.data ?? []).map((step) => {
+                const active = step.status === 'active';
+                const done = step.status === 'done';
+                return (
+                  <li key={step.id} className="relative">
+                    <span
+                      className={`absolute -left-[27px] mt-1 h-3.5 w-3.5 rounded-full border-2 ${
+                        active
+                          ? 'border-blue-500 bg-blue-500'
+                          : done
+                            ? 'border-green-500 bg-green-500'
+                            : 'border-muted-foreground/40 bg-background'
+                      }`}
+                    />
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <span className="font-medium">
+                          {step.dose_mg} {step.dose_unit}
+                        </span>
+                        {step.start_date && (
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {step.start_date}
+                          </span>
+                        )}
+                        {step.planned_weeks ? (
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {step.planned_weeks} wks
+                          </span>
+                        ) : null}
+                        {step.is_taper && (
+                          <Badge variant="outline" className="ml-2 text-[10px]">
+                            taper
+                          </Badge>
+                        )}
+                      </div>
+                      <Badge
+                        variant={active ? 'default' : 'secondary'}
+                        className="capitalize"
+                      >
+                        {step.status}
+                      </Badge>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           )}
-          {(titrationQ.data ?? []).map((step) => (
-            <div
-              key={step.id}
-              className="flex items-center justify-between rounded-md border p-3 text-sm"
-            >
-              <div>
-                <span className="font-medium">
-                  {step.dose_mg} {step.dose_unit}
-                </span>
-                {step.start_date && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    · {step.start_date}
-                  </span>
-                )}
-                {step.is_taper && (
-                  <Badge variant="outline" className="ml-2">
-                    taper
-                  </Badge>
-                )}
-              </div>
-              <Badge
-                variant={step.status === 'active' ? 'default' : 'secondary'}
-              >
-                {step.status}
-              </Badge>
-            </div>
-          ))}
         </CardContent>
       </Card>
 

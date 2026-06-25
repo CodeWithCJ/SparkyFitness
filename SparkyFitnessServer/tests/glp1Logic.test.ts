@@ -82,3 +82,51 @@ describe('GLP-1 injection site rotation', () => {
     expect(SITE_REST_DAYS).toBe(7);
   });
 });
+
+describe('GLP-1 granular sites + ordered rotation', () => {
+  it('exposes the granular site set (stomach quadrants, hips, unknown)', () => {
+    const ids = INJECTION_SITES.map((s) => s.id);
+    expect(ids).toContain('stomach_upper_left');
+    expect(ids).toContain('stomach_lower_right');
+    expect(ids).toContain('stomach_mid_left');
+    expect(ids).toContain('left_hip');
+    expect(ids).toContain('right_hip');
+    expect(ids).toContain('unknown');
+    expect(INJECTION_SITES.length).toBeGreaterThanOrEqual(15);
+    // every site carries an svgClass used by the body map
+    expect(INJECTION_SITES.every((s) => typeof s.svgClass === 'string')).toBe(
+      true
+    );
+  });
+
+  it('never suggests the "unknown" placeholder site', () => {
+    expect(suggestNextSite([]).suggestedSiteId).not.toBe('unknown');
+  });
+
+  it('rotates forward through the user-provided active order', () => {
+    const active = ['left_thigh', 'right_thigh', 'left_arm'];
+    // just used the first site → suggest the next one in the ordered list
+    const result = suggestNextSite(
+      [{ siteId: 'left_thigh', daysAgo: 0 }],
+      active
+    );
+    expect(result.suggestedSiteId).toBe('right_thigh');
+    expect(result.restingSiteIds).toContain('left_thigh');
+  });
+
+  it('falls back to the longest-rested site when every active site is resting', () => {
+    const active = ['left_thigh', 'right_thigh'];
+    const result = suggestNextSite(
+      [
+        { siteId: 'left_thigh', daysAgo: 1 },
+        { siteId: 'right_thigh', daysAgo: 5 },
+      ],
+      active
+    );
+    // both within the 7-day window → pick the one rested longest (right_thigh)
+    expect(result.suggestedSiteId).toBe('right_thigh');
+    expect(result.restingSiteIds).toEqual(
+      expect.arrayContaining(['left_thigh', 'right_thigh'])
+    );
+  });
+});
