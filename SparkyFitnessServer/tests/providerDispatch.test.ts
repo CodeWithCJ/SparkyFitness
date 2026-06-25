@@ -244,6 +244,17 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(body.provider).toBeUndefined();
   });
 
+  it('xai routes to api.x.ai and mirrors openai strict json_schema without provider.require_parameters', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({ provider: makeProvider({ service_type: 'xai' }) })
+    );
+    const { url, body } = captured(m);
+    expect(url).toBe('https://api.x.ai/v1/chat/completions');
+    expect((body.response_format as { type: string }).type).toBe('json_schema');
+    expect(body.provider).toBeUndefined();
+  });
+
   it('openrouter sends strict json_schema, provider.require_parameters, and attribution headers', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(

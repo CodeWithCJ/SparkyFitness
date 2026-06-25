@@ -112,6 +112,7 @@ const STRICT_SCHEMA_PROVIDERS = new Set([
   'mistral',
   'groq',
   'openrouter',
+  'xai',
 ]);
 
 function providerFamily(serviceType: string): ProviderFamily | null {
@@ -123,6 +124,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'mistral':
     case 'groq':
     case 'openrouter':
+    case 'xai':
     case 'custom':
       return 'openai';
     case 'anthropic':
@@ -240,6 +242,8 @@ function openAiFamilyUrl(provider: ProviderConfig): string {
       return 'https://api.groq.com/openai/v1/chat/completions';
     case 'openrouter':
       return 'https://openrouter.ai/api/v1/chat/completions';
+    case 'xai':
+      return 'https://api.x.ai/v1/chat/completions';
     default:
       // 'custom' uses the user-supplied URL as-is.
       return provider.custom_url as string;

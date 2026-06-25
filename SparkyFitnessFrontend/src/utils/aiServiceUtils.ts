@@ -21,6 +21,7 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
     value: 'openrouter',
     label: t('settings.aiService.serviceTypes.openrouter'),
   },
+  { value: 'xai', label: t('settings.aiService.serviceTypes.xai') },
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
@@ -72,6 +73,16 @@ export const getModelOptions = (serviceType: string): string[] => {
         'anthropic/claude-sonnet-4.6',
         'deepseek/deepseek-chat',
         'meta-llama/llama-3.1-8b-instruct:free',
+      ];
+    case 'xai':
+      // grok-4.3 is multimodal (handles vision + text), so it leads as the
+      // all-round recommendation. The fast/non-reasoning and build variants
+      // follow. grok-4 / grok-4-fast were retired (redirect to grok-4.3).
+      return [
+        'grok-4.3',
+        'grok-4.20-0309-non-reasoning',
+        'grok-4.20-0309-reasoning',
+        'grok-build-0.1',
       ];
     default:
       return [];

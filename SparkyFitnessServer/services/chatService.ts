@@ -462,7 +462,8 @@ async function processChatMessage(
       aiService.service_type === 'custom' ||
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter'
+      aiService.service_type === 'openrouter' ||
+      aiService.service_type === 'xai'
     ) {
       // Connect as OpenAI-compatible
       let baseURL = aiService.custom_url;
@@ -474,6 +475,8 @@ async function processChatMessage(
         baseURL = 'https://openrouter.ai/api/v1';
       } else if (aiService.service_type === 'mistral') {
         baseURL = 'https://api.mistral.ai/v1';
+      } else if (aiService.service_type === 'xai') {
+        baseURL = 'https://api.x.ai/v1';
       }
       const provider = createOpenAI({
         baseURL,
@@ -884,7 +887,8 @@ async function processChatMessageStream(
       aiService.service_type === 'custom' ||
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter'
+      aiService.service_type === 'openrouter' ||
+      aiService.service_type === 'xai'
     ) {
       let baseURL = aiService.custom_url;
       if (aiService.service_type === 'ollama') {
@@ -895,6 +899,8 @@ async function processChatMessageStream(
         baseURL = 'https://openrouter.ai/api/v1';
       } else if (aiService.service_type === 'mistral') {
         baseURL = 'https://api.mistral.ai/v1';
+      } else if (aiService.service_type === 'xai') {
+        baseURL = 'https://api.x.ai/v1';
       }
       const provider = createOpenAI({
         baseURL,
