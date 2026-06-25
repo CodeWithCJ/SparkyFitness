@@ -27,7 +27,7 @@ import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
-import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import HydrationGauge from '../components/HydrationGauge';
@@ -93,7 +93,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   }, [navigation]);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
-  const usesNativeTabs = shouldUseNativeIOSTabs();
+  const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;

@@ -18,6 +18,13 @@ describe('resolveHeaderActionColors', () => {
     });
   });
 
+  it('uses accent actions on iOS 26 when the glass tab bar is disabled', () => {
+    expect(resolveHeaderActionColors('ios', '26.0', accent, text, false)).toEqual({
+      defaultColor: accent,
+      saveColor: accent,
+    });
+  });
+
   it('uses text actions and an accent save action on Android', () => {
     expect(resolveHeaderActionColors('android', 36, accent, text)).toEqual({
       defaultColor: text,

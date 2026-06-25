@@ -95,6 +95,7 @@ import { initializeHaptics } from './src/services/haptics';
 import { initializeSounds } from './src/services/sounds';
 import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
 import { initializeHydrationCardVisibility } from './src/services/hydrationCardVisibility';
+import { initializeLiquidGlassTabBar } from './src/services/nativeTabBarPreference';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import {
@@ -566,6 +567,7 @@ function AppContent() {
     initializeNotificationsEnabled();
     initializeFastingCardVisibility();
     initializeHydrationCardVisibility();
+    initializeLiquidGlassTabBar();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
