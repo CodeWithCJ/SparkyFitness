@@ -148,16 +148,18 @@ async function getFatSecretAccessToken(
       'info',
       `Attempting to get FatSecret Access Token for scope "${requestedScope}" from: ${FATSECRET_OAUTH_TOKEN_URL}`
     );
+    const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
+      'base64'
+    );
     const response = await fetch(FATSECRET_OAUTH_TOKEN_URL, {
       method: 'POST',
       headers: {
+        Authorization: `Basic ${authHeader}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
         scope: requestedScope,
-        client_id: clientId,
-        client_secret: clientSecret,
       }).toString(),
     });
     if (!response.ok) {
