@@ -12,6 +12,7 @@ import {
   SerumCurveQuerySchema,
   CreateMedicationEntryBodySchema,
   ListMedicationEntriesQuerySchema,
+  UpdateMedicationDisplayPreferencesBodySchema,
 } from '../../schemas/medicationSchemas.js';
 import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
@@ -22,6 +23,7 @@ import injectionRepository from '../../models/injectionRepository.js';
 import titrationRepository from '../../models/titrationRepository.js';
 import glp1Service from '../../services/glp1Service.js';
 import medicationEntryRepository from '../../models/medicationEntryRepository.js';
+import medicationDisplayPreferenceRepository from '../../models/medicationDisplayPreferenceRepository.js';
 
 const router = express.Router();
 
@@ -306,9 +308,9 @@ const listEntries: RequestHandler = async (req, res, next) => {
     const query = ListMedicationEntriesQuerySchema.safeParse(req.query);
     if (!query.success) return badRequest(res, query.error);
     const entries = await medicationEntryRepository.listEntries(req.userId, {
-      fromDate: query.data.fromDate,
-      toDate: query.data.toDate,
-      medicationId: query.data.medicationId,
+      fromDate: query.data.fromDate ?? undefined,
+      toDate: query.data.toDate ?? undefined,
+      medicationId: query.data.medicationId ?? undefined,
     });
     res.json(entries);
   } catch (error) {
@@ -353,6 +355,71 @@ router.post('/', createMedication);
 router.get('/entries', listEntries);
 router.post('/entries', createEntry);
 router.delete('/entries/:id', deleteEntry);
+// --- Display Preferences --------------------------------------------------
+
+const getDisplayPreferences: RequestHandler = async (req, res, next) => {
+  try {
+    const prefs =
+      await medicationDisplayPreferenceRepository.getMedicationDisplayPreferences(
+        req.userId
+      );
+    res.json(prefs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const upsertDisplayPreference: RequestHandler = async (req, res, next) => {
+  try {
+    const viewGroup = req.params.viewGroup as string;
+    const platform = req.params.platform as string;
+    const body = UpdateMedicationDisplayPreferencesBodySchema.safeParse(
+      req.body
+    );
+    if (!body.success) return badRequest(res, body.error);
+    const pref =
+      await medicationDisplayPreferenceRepository.upsertMedicationDisplayPreference(
+        req.userId,
+        viewGroup,
+        platform || 'web',
+        body.data.visible_items
+      );
+    res.json(pref);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteDisplayPreference: RequestHandler = async (req, res, next) => {
+  try {
+    const viewGroup = req.params.viewGroup as string;
+    const platform = req.params.platform as string;
+    const ok =
+      await medicationDisplayPreferenceRepository.deleteMedicationDisplayPreference(
+        req.userId,
+        viewGroup,
+        platform || 'web'
+      );
+    if (!ok) {
+      res.status(404).json({ error: 'Display preference not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+router.get('/display-preferences', getDisplayPreferences);
+router.put(
+  '/display-preferences/:viewGroup/:platform',
+  upsertDisplayPreference
+);
+router.delete(
+  '/display-preferences/:viewGroup/:platform',
+  deleteDisplayPreference
+);
+
 router.get('/:id', getMedication);
 router.put('/:id', updateMedication);
 router.delete('/:id', deleteMedication);

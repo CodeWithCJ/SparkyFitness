@@ -6,6 +6,11 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import sleepAnalyticsService from './sleepAnalyticsService.js';
 import customNutrientService from './customNutrientService.js';
+import medicationRepository from '../models/medicationRepository.js';
+import medicationEntryRepository from '../models/medicationEntryRepository.js';
+import symptomRepository from '../models/symptomRepository.js';
+import injectionRepository from '../models/injectionRepository.js';
+import titrationRepository from '../models/titrationRepository.js';
 import { log } from '../config/logging.js';
 import { addDays, compareDays, todayInZone } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
@@ -123,6 +128,10 @@ async function getReportsData(
       userProfile,
       userPreferences,
       sleepAnalyticsData,
+      medications,
+      medicationEntries,
+      symptomEntries,
+      injections,
     ] = await Promise.all([
       reportRepository.getNutritionData(
         targetUserId,
@@ -143,6 +152,16 @@ async function getReportsData(
       userRepository.getUserProfile(targetUserId),
       preferenceRepository.getUserPreferences(targetUserId),
       sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
+      medicationRepository.listMedications(targetUserId),
+      medicationEntryRepository.listEntries(targetUserId, {
+        fromDate: startDate,
+        toDate: endDate,
+      }),
+      symptomRepository.listSymptomEntries(targetUserId, {
+        fromDate: startDate,
+        toDate: endDate,
+      }),
+      injectionRepository.listInjections(targetUserId),
     ]);
     const customMeasurementsData = [];
     for (const category of customCategoriesResult) {
@@ -299,6 +318,17 @@ async function getReportsData(
         mechanic: entry.exercise_mechanic,
       },
     }));
+
+    // Fetch titration steps in parallel
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const titrationStepsList = await Promise.all(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      medications.map((m: any) =>
+        titrationRepository.listSteps(targetUserId, m.id)
+      )
+    );
+    const titrationSteps = titrationStepsList.flat();
+
     return {
       nutritionData,
       tabularData,
@@ -307,6 +337,11 @@ async function getReportsData(
       customCategories: customCategoriesResult,
       customMeasurementsData,
       sleepAnalyticsData, // New: Include sleep analytics data
+      medications,
+      medicationEntries,
+      symptomEntries,
+      injections,
+      titrationSteps,
     };
   } catch (error) {
     log(

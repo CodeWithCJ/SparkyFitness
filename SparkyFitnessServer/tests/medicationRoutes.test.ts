@@ -6,6 +6,8 @@ import medicationRepository from '../models/medicationRepository.js';
 import medicationPenRepository from '../models/medicationPenRepository.js';
 import injectionRepository from '../models/injectionRepository.js';
 import titrationRepository from '../models/titrationRepository.js';
+import medicationEntryRepository from '../models/medicationEntryRepository.js';
+import medicationDisplayPreferenceRepository from '../models/medicationDisplayPreferenceRepository.js';
 import glp1Service from '../services/glp1Service.js';
 import medicationRoutes from '../routes/v2/medicationRoutes.js';
 
@@ -13,6 +15,8 @@ vi.mock('../models/medicationRepository.js');
 vi.mock('../models/medicationPenRepository.js');
 vi.mock('../models/injectionRepository.js');
 vi.mock('../models/titrationRepository.js');
+vi.mock('../models/medicationEntryRepository.js');
+vi.mock('../models/medicationDisplayPreferenceRepository.js');
 vi.mock('../services/glp1Service.js');
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   default: vi.fn(
@@ -266,6 +270,125 @@ describe('Medication Routes V2', () => {
       );
       const res = await request(app)
         .get(`/api/v2/medications/${UID}/glp1/serum-curve`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('Entries', () => {
+    it('lists medication entries', async () => {
+      const entries = [{ id: 'entry-1', medication_id: UID, status: 'taken' }];
+      vi.mocked(medicationEntryRepository.listEntries).mockResolvedValue(
+        entries
+      );
+      const res = await request(app)
+        .get(
+          '/api/v2/medications/entries?fromDate=2026-06-01&toDate=2026-06-30'
+        )
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(entries);
+      expect(medicationEntryRepository.listEntries).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({
+          fromDate: '2026-06-01',
+          toDate: '2026-06-30',
+        })
+      );
+    });
+
+    it('creates a medication entry', async () => {
+      const entry = { id: 'entry-1', medication_id: UID, status: 'taken' };
+      vi.mocked(medicationEntryRepository.createEntry).mockResolvedValue(entry);
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          status: 'taken',
+          entry_date: '2026-06-25',
+        });
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toEqual(entry);
+    });
+
+    it('returns 400 when creating with invalid status', async () => {
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          status: 'invalid_status',
+        });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('deletes an entry', async () => {
+      vi.mocked(medicationEntryRepository.deleteEntry).mockResolvedValue(true);
+      const res = await request(app)
+        .delete(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(204);
+    });
+  });
+
+  describe('Display Preferences', () => {
+    it('lists display preferences', async () => {
+      const prefs = [
+        {
+          id: 'pref-1',
+          view_group: 'reports',
+          platform: 'web',
+          visible_items: ['a'],
+        },
+      ];
+      vi.mocked(
+        medicationDisplayPreferenceRepository.getMedicationDisplayPreferences
+      ).mockResolvedValue(prefs);
+      const res = await request(app)
+        .get('/api/v2/medications/display-preferences')
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(prefs);
+    });
+
+    it('upserts a display preference', async () => {
+      const pref = {
+        id: 'pref-1',
+        view_group: 'reports',
+        platform: 'web',
+        visible_items: ['a'],
+      };
+      vi.mocked(
+        medicationDisplayPreferenceRepository.upsertMedicationDisplayPreference
+      ).mockResolvedValue(pref);
+      const res = await request(app)
+        .put('/api/v2/medications/display-preferences/reports/web')
+        .set('Cookie', cookie)
+        .send({ visible_items: ['a'] });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(pref);
+      expect(
+        medicationDisplayPreferenceRepository.upsertMedicationDisplayPreference
+      ).toHaveBeenCalledWith('testUser', 'reports', 'web', ['a']);
+    });
+
+    it('deletes a display preference', async () => {
+      vi.mocked(
+        medicationDisplayPreferenceRepository.deleteMedicationDisplayPreference
+      ).mockResolvedValue(true);
+      const res = await request(app)
+        .delete('/api/v2/medications/display-preferences/reports/web')
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(204);
+    });
+
+    it('returns 404 when display preference to delete is not found', async () => {
+      vi.mocked(
+        medicationDisplayPreferenceRepository.deleteMedicationDisplayPreference
+      ).mockResolvedValue(false);
+      const res = await request(app)
+        .delete('/api/v2/medications/display-preferences/reports/web')
         .set('Cookie', cookie);
       expect(res.statusCode).toBe(404);
     });

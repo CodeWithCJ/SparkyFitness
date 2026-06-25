@@ -82,7 +82,7 @@ async function listMedications(
 
     if (medsResult.rows.length === 0) return [];
 
-    const medIds = medsResult.rows.map((m) => m.id);
+    const medIds = medsResult.rows.map((m: any) => m.id);
     const schedulesResult = await client.query(
       `SELECT ${SCHEDULE_COLS} FROM medication_schedules
        WHERE medication_id = ANY($1) AND user_id = $2
@@ -98,7 +98,7 @@ async function listMedications(
       schedulesByMedId[sched.medication_id].push(sched);
     }
 
-    return medsResult.rows.map((med) => ({
+    return medsResult.rows.map((med: any) => ({
       ...med,
       schedules: schedulesByMedId[med.id] || [],
     }));

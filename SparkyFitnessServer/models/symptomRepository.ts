@@ -4,7 +4,8 @@ import type {
   CreateSymptomEntryBody,
 } from '../schemas/symptomSchemas.js';
 
-const CUSTOM_SYMPTOM_COLS = `id, user_id, name, display_name, scale_type, unit, is_glp1_flagged, created_at, updated_at`;
+const CUSTOM_SYMPTOM_COLS =
+  'id, user_id, name, display_name, scale_type, unit, is_glp1_flagged, created_at, updated_at';
 
 const ENTRY_COLS = `id, user_id, medication_id, symptom_id, symptom_name_snapshot, severity, severity_label,
   logged_at, entry_date, body_location, context_text, bristol_type, source, custom_fields, created_at, updated_at`;
@@ -65,7 +66,7 @@ async function deleteCustomSymptom(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `DELETE FROM user_custom_symptoms WHERE id = $1 AND user_id = $2 RETURNING id`,
+      'DELETE FROM user_custom_symptoms WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;
@@ -152,7 +153,7 @@ async function deleteSymptomEntry(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `DELETE FROM symptom_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
+      'DELETE FROM symptom_entries WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;

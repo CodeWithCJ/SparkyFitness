@@ -193,3 +193,15 @@ export const ListMedicationEntriesQuerySchema = z
 export type ListMedicationEntriesQuery = z.infer<
   typeof ListMedicationEntriesQuerySchema
 >;
+
+// --------------------------------------------------------------------------
+// Display Preferences
+// --------------------------------------------------------------------------
+export const UpdateMedicationDisplayPreferencesBodySchema = z
+  .object({
+    visible_items: z.array(z.string()),
+  })
+  .loose();
+export type UpdateMedicationDisplayPreferencesBody = z.infer<
+  typeof UpdateMedicationDisplayPreferencesBodySchema
+>;

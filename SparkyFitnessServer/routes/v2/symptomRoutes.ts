@@ -77,9 +77,9 @@ const listEntries: RequestHandler = async (req, res, next) => {
     const query = ListSymptomEntriesQuerySchema.safeParse(req.query);
     if (!query.success) return badRequest(res, query.error);
     const list = await symptomRepository.listSymptomEntries(req.userId, {
-      fromDate: query.data.fromDate,
-      toDate: query.data.toDate,
-      symptomName: query.data.symptomName,
+      fromDate: query.data.fromDate ?? undefined,
+      toDate: query.data.toDate ?? undefined,
+      symptomName: query.data.symptomName ?? undefined,
     });
     res.json(list);
   } catch (error) {

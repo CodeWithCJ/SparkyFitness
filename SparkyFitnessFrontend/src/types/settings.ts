@@ -64,6 +64,7 @@ export interface Profile {
   bio: string | null;
   avatar_url: string | null;
   gender: string | null;
+  target_weight?: string | number | null;
 }
 
 export interface ProfileFormState {

@@ -181,6 +181,24 @@ import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
 } from '@workspace/shared';
+import {
+  Medication,
+  MedicationEntry,
+  InjectionEntry,
+  TitrationStep,
+} from './medications';
+
+export interface SymptomEntry {
+  id: string;
+  user_id: string;
+  symptom_name_snapshot: string;
+  severity: number;
+  entry_date: string;
+  body_location?: string | null;
+  context_text?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface SleepAnalyticsData {
   date: string;
@@ -201,4 +219,9 @@ export interface ReportResponse {
   customCategories: CustomCategoriesResponse[];
   customMeasurementsData: CustomMeasurementsResponse[];
   sleepAnalyticsData: SleepAnalyticsData[];
+  medications?: Medication[];
+  medicationEntries?: MedicationEntry[];
+  symptomEntries?: SymptomEntry[];
+  injections?: InjectionEntry[];
+  titrationSteps?: TitrationStep[];
 }

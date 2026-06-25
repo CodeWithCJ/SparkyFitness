@@ -23,6 +23,9 @@ export interface Medication {
   is_glp1: boolean;
   notes: string | null;
   source: string;
+  prescriber?: string | null;
+  pharmacy?: string | null;
+  rx_number?: string | null;
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;

@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { optionalNullableNumber, optionalNullableInt } from './schema.utils.js';
+import { optionalNullableNumber } from './schema.utils.js';
 
 const customFields = z.record(z.string(), z.unknown()).nullable().optional();
 const optionalNullableString = z.string().nullable().optional();
