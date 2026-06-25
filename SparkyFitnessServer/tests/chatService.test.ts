@@ -711,5 +711,51 @@ describe('chatService', () => {
       // Current turn: image preserved for live vision analysis.
       expect(nonTextParts(userMessages[1].content)).toHaveLength(1);
     });
+
+    it('trims old history to a token budget but always keeps the current turn', async () => {
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'ok' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      // Each filler message is ~2K estimated tokens; several of them blow past
+      // the 6K budget so the oldest must be dropped, while the short final user
+      // turn is always retained.
+      const filler = 'a'.repeat(8000);
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          { role: 'user', content: `OLDEST ${filler}` },
+          { role: 'assistant', content: filler },
+          { role: 'user', content: filler },
+          { role: 'assistant', content: filler },
+          { role: 'user', content: 'CURRENT what is my total?' },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const prompt = model.doStreamCalls[0].prompt;
+      const convoMessages = prompt.filter(
+        (m) => m.role === 'user' || m.role === 'assistant'
+      );
+      const allText = convoMessages
+        .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+        .map((p) => (p as { text?: string }).text ?? '')
+        .join(' ');
+
+      // Oldest turn evicted by the budget; current question always survives.
+      expect(convoMessages.length).toBeLessThan(5);
+      expect(allText).not.toContain('OLDEST');
+      expect(allText).toContain('CURRENT what is my total?');
+    });
   });
 });

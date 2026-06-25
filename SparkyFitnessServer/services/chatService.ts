@@ -502,6 +502,57 @@ function stripHistoricalImages(messages: LlmMessage[]): LlmMessage[] {
   });
 }
 
+// Token budget for the conversation-history window. A token budget is steadier
+// than a fixed message count: 20 short turns and 20 turns full of long pastes or
+// tool dumps cost wildly different amounts, and a count can't tell them apart.
+const CONTEXT_TOKEN_BUDGET = 6000;
+// Flat per-image cost. A base64 data URL is tens of KB of characters but bills as
+// roughly a fixed number of vision tokens, so char-based estimation would
+// massively overcount it. Past images are already stripped, so in practice this
+// only covers the current turn's image (which is always kept regardless).
+const IMAGE_TOKEN_ESTIMATE = 1500;
+// Rough English chars-per-token, plus a small fixed per-message structural cost
+// (role markers, delimiters) so a long run of tiny messages still bounds.
+const CHARS_PER_TOKEN = 4;
+const PER_MESSAGE_OVERHEAD = 4;
+
+function estimateMessageTokens(
+  content: string | ProcessedMessagePart[]
+): number {
+  if (typeof content === 'string') {
+    return PER_MESSAGE_OVERHEAD + Math.ceil(content.length / CHARS_PER_TOKEN);
+  }
+  let total = PER_MESSAGE_OVERHEAD;
+  for (const part of content) {
+    total +=
+      part.type === 'image'
+        ? IMAGE_TOKEN_ESTIMATE
+        : Math.ceil((part.text?.length ?? 0) / CHARS_PER_TOKEN);
+  }
+  return total;
+}
+
+// Keep the most recent messages whose estimated tokens fit the budget, walking
+// newest-first. The final (current-turn) message is always kept even if it alone
+// blows the budget — we never drop the user's actual question.
+function trimToTokenBudget(
+  messages: LlmMessage[],
+  budget: number
+): LlmMessage[] {
+  let used = 0;
+  let startIndex = messages.length;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const cost = estimateMessageTokens(messages[i].content);
+    const isCurrentTurn = i === messages.length - 1;
+    if (!isCurrentTurn && used + cost > budget) {
+      break;
+    }
+    used += cost;
+    startIndex = i;
+  }
+  return messages.slice(startIndex);
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -1102,10 +1153,17 @@ async function processChatMessageStream(
       conversationMessages.pop();
     }
 
-    // Use a sliding window of recent messages to give the LLM multi-turn context
-    // ...
-    const CONTEXT_WINDOW = 20;
-    const llmMessages = conversationMessages.slice(-CONTEXT_WINDOW);
+    // Drop images from earlier turns first so the token budget reflects what is
+    // actually sent; the current user turn keeps its image so live vision
+    // analysis still works.
+    const strippedMessages = stripHistoricalImages(conversationMessages);
+
+    // Token-budgeted sliding window of recent messages to give the LLM multi-turn
+    // context without an unpredictable, count-based blow-up.
+    const llmMessages = trimToTokenBudget(
+      strippedMessages,
+      CONTEXT_TOKEN_BUDGET
+    );
 
     log(
       'debug',
@@ -1116,10 +1174,6 @@ async function processChatMessageStream(
     while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
       llmMessages.shift();
     }
-
-    // Drop images from earlier turns to avoid re-billing them each turn; the
-    // current user turn keeps its image so live vision analysis still works.
-    const modelMessages = stripHistoricalImages(llmMessages);
 
     const lastMsg = llmMessages[llmMessages.length - 1];
     const userMessageContent = Array.isArray(lastMsg?.content)
@@ -1132,7 +1186,7 @@ async function processChatMessageStream(
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
-      messages: modelMessages as NonNullable<
+      messages: llmMessages as NonNullable<
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
