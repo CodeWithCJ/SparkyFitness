@@ -694,6 +694,7 @@
         "groq": "Groq",
         "ollama": "Ollama",
         "openrouter": "OpenRouter",
+        "xai": "xAI (Grok)",
         "custom": "Custom"
       }
     },

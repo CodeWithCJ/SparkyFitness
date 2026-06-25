@@ -14,6 +14,8 @@ function getDefaultModel(serviceType: any) {
       return 'llama-3.3-70b-versatile';
     case 'openrouter':
       return 'google/gemini-2.5-flash';
+    case 'xai':
+      return 'grok-4.3';
     case 'ollama':
       return 'llama3.2';
     default:
@@ -36,6 +38,8 @@ function getDefaultVisionModel(serviceType: any) {
       return 'meta-llama/llama-4-scout-17b-16e-instruct';
     case 'openrouter':
       return 'google/gemini-2.5-flash';
+    case 'xai':
+      return 'grok-4.3';
     case 'ollama':
       return 'llava';
     default:
