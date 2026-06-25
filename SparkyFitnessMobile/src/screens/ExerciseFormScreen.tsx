@@ -16,6 +16,7 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 const CATEGORY_OPTIONS = [
   { label: 'General', value: 'general' },
@@ -410,7 +411,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -420,7 +422,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'exercise-create-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isPending,
         }),
@@ -429,14 +431,14 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
         createNativeHeaderTextButtonItem({
           label: 'Save',
           identifier: 'exercise-create-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => void handleSave(),
           disabled: isPending,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isPending, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, isPending, handleSave]);
 
   return (
     <FormScreenChrome
@@ -582,7 +584,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -592,7 +595,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'exercise-edit-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isPending,
         }),
@@ -601,14 +604,14 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
         createNativeHeaderTextButtonItem({
           label: 'Save Changes',
           identifier: 'exercise-edit-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => void handleSave(),
           disabled: isPending,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isPending, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, isPending, handleSave]);
 
   return (
     <FormScreenChrome

@@ -31,6 +31,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -76,6 +77,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const usesNativeTabs = shouldUseNativeIOSTabs();
+  const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
 
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
@@ -87,14 +89,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onPreviousDate: goToPreviousDay,
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
-        tintColor: accentColor || '#0A84FF',
+        tintColor: nativeHeaderActionColor,
         accessibilityLabel: 'Choose diary date',
       },
     );
   }, [
-    accentColor,
     goToNextDay,
     goToPreviousDay,
+    nativeHeaderActionColor,
     navigation,
     openCalendar,
     selectedDate,

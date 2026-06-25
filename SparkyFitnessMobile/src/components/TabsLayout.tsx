@@ -4,7 +4,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { createIOSNativeHeaderOptions } from '../utils/nativeHeaderItems';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -12,7 +11,10 @@ import DiaryScreen from '../screens/DiaryScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import type { TabParamList } from '../types/navigation';
-import type { AppleIcon } from 'react-native-bottom-tabs';
+import {
+  useBottomTabBarHeight,
+  type AppleIcon,
+} from 'react-native-bottom-tabs';
 import { withErrorBoundary } from './ScreenErrorBoundary';
 import ActiveWorkoutBar from './ActiveWorkoutBar';
 import CustomTabBar from './CustomTabBar';
@@ -21,6 +23,7 @@ import WhatsNewBanner, {
   useWhatsNewBannerState,
 } from './WhatsNewBanner';
 import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 export const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as const;
 export type NonAddTabName = typeof NON_ADD_TABS[number];
@@ -77,40 +80,26 @@ const DiaryStack = createNativeStackNavigator<DiaryStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
-function useIOSHeaderColors() {
-  const [accentPrimary, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-primary',
-  ]) as [string, string];
-  return {
-    action: resolveColor(accentPrimary, '#0A84FF'),
-    title: resolveColor(textPrimary, '#111827'),
-  };
-}
-
 const NativeTabsOverlayContext = React.createContext<ReturnType<
   typeof useWhatsNewBannerState
 > | null>(null);
 
 /**
  * iOS native tabs don't expose a `tabBar` render prop, so banners are
- * overlaid absolutely just above the native UITabBar. The bottom offset
- * clears the 49pt tab bar + bottom safe-area inset so the banners stack
- * directly on top of the bar rather than underneath it.
+ * rendered inside each native tab scene. The library's measured tab-bar
+ * height keeps the overlay directly above the native bar on every device.
  */
 function NativeTabsBannerOverlay() {
   const whatsNewState = React.useContext(NativeTabsOverlayContext);
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   if (!whatsNewState) return null;
-
-  const TAB_BAR_HEIGHT = 49; // standard iOS native tab bar height
 
   return (
     <View
       pointerEvents="box-none"
       style={{
         position: 'absolute',
-        bottom: TAB_BAR_HEIGHT + insets.bottom,
+        bottom: tabBarHeight,
         left: 0,
         right: 0,
         zIndex: 50,
@@ -126,72 +115,88 @@ function NativeTabsBannerOverlay() {
 }
 
 function DashboardStackScreen() {
-  const headerColors = useIOSHeaderColors();
+  const { defaultColor } = useHeaderActionColors();
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
-    [headerColors.action, headerColors.title],
+    () => createIOSNativeHeaderOptions(defaultColor, textPrimary),
+    [defaultColor, textPrimary],
   );
 
   return (
-    <DashboardStack.Navigator screenOptions={screenOptions}>
-      <DashboardStack.Screen
-        name="DashboardRoot"
-        component={SafeDashboard as React.ComponentType}
-        options={{
-          title: 'Dashboard',
-          headerBackTitle: 'Dashboard',
-        }}
-      />
-    </DashboardStack.Navigator>
+    <View className="flex-1">
+      <DashboardStack.Navigator screenOptions={screenOptions}>
+        <DashboardStack.Screen
+          name="DashboardRoot"
+          component={SafeDashboard as React.ComponentType}
+          options={{
+            title: 'Dashboard',
+            headerBackTitle: 'Dashboard',
+          }}
+        />
+      </DashboardStack.Navigator>
+      <NativeTabsBannerOverlay />
+    </View>
   );
 }
 
 function DiaryStackScreen() {
-  const headerColors = useIOSHeaderColors();
+  const { defaultColor } = useHeaderActionColors();
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
-    [headerColors.action, headerColors.title],
+    () => createIOSNativeHeaderOptions(defaultColor, textPrimary),
+    [defaultColor, textPrimary],
   );
 
   return (
-    <DiaryStack.Navigator screenOptions={screenOptions}>
-      <DiaryStack.Screen
-        name="DiaryRoot"
-        component={SafeDiary as React.ComponentType}
-        options={{
-          title: 'Diary',
-          headerBackTitle: 'Diary',
-        }}
-      />
-    </DiaryStack.Navigator>
+    <View className="flex-1">
+      <DiaryStack.Navigator screenOptions={screenOptions}>
+        <DiaryStack.Screen
+          name="DiaryRoot"
+          component={SafeDiary as React.ComponentType}
+          options={{
+            title: 'Diary',
+            headerBackTitle: 'Diary',
+          }}
+        />
+      </DiaryStack.Navigator>
+      <NativeTabsBannerOverlay />
+    </View>
   );
 }
 
 function LibraryStackScreen() {
-  const headerColors = useIOSHeaderColors();
+  const { defaultColor } = useHeaderActionColors();
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
-    [headerColors.action, headerColors.title],
+    () => createIOSNativeHeaderOptions(defaultColor, textPrimary),
+    [defaultColor, textPrimary],
   );
 
   return (
-    <LibraryStack.Navigator screenOptions={screenOptions}>
-      <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library', headerBackTitle: 'Library' }} />
-    </LibraryStack.Navigator>
+    <View className="flex-1">
+      <LibraryStack.Navigator screenOptions={screenOptions}>
+        <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library', headerBackTitle: 'Library' }} />
+      </LibraryStack.Navigator>
+      <NativeTabsBannerOverlay />
+    </View>
   );
 }
 
 function SettingsStackScreen() {
-  const headerColors = useIOSHeaderColors();
+  const { defaultColor } = useHeaderActionColors();
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const screenOptions = React.useMemo(
-    () => createIOSNativeHeaderOptions(headerColors.action, headerColors.title),
-    [headerColors.action, headerColors.title],
+    () => createIOSNativeHeaderOptions(defaultColor, textPrimary),
+    [defaultColor, textPrimary],
   );
 
   return (
-    <SettingsStack.Navigator screenOptions={screenOptions}>
-      <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings', headerBackTitle: 'Settings' }} />
-    </SettingsStack.Navigator>
+    <View className="flex-1">
+      <SettingsStack.Navigator screenOptions={screenOptions}>
+        <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings', headerBackTitle: 'Settings' }} />
+      </SettingsStack.Navigator>
+      <NativeTabsBannerOverlay />
+    </View>
   );
 }
 
@@ -211,8 +216,7 @@ export function NativeTabsLayout({
 
   return (
     <NativeTabsOverlayContext.Provider value={whatsNewState}>
-      <View style={{ flex: 1 }}>
-        <NativeTab.Navigator
+      <NativeTab.Navigator
           initialRouteName="Dashboard"
           tabBarActiveTintColor={activeTintColor}
           tabBarInactiveTintColor={inactiveTintColor}
@@ -274,9 +278,7 @@ export function NativeTabsLayout({
               tabBarIcon: () => ({ sfSymbol: 'gearshape' } as unknown as AppleIcon),
             }}
           />
-        </NativeTab.Navigator>
-        <NativeTabsBannerOverlay />
-      </View>
+      </NativeTab.Navigator>
     </NativeTabsOverlayContext.Provider>
   );
 }

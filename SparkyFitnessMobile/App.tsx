@@ -109,6 +109,7 @@ import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
+import { useHeaderActionColors } from './src/hooks/useHeaderActionColors';
 import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
@@ -279,9 +280,10 @@ function AppContent() {
     '--color-background',
     '--color-text-primary',
   ]) as [string, string, string, string];
+  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const iosSmallHeaderOptions = useMemo(
-    () => createIOSSmallNativeHeaderOptions(primary, textPrimary),
-    [primary, textPrimary],
+    () => createIOSSmallNativeHeaderOptions(headerActionColor, textPrimary),
+    [headerActionColor, textPrimary],
   );
   const createStackScreenOptions = useCallback(
     (

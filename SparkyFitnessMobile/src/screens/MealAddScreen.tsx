@@ -33,6 +33,7 @@ import {
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -386,7 +387,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
   const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
 
   useLayoutEffect(() => {
@@ -396,7 +398,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: isEditMode ? 'meal-edit-cancel' : 'meal-create-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isSaving,
         }),
@@ -405,14 +407,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         createNativeHeaderTextButtonItem({
           label: saveLabel,
           identifier: isEditMode ? 'meal-edit-save' : 'meal-create-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => void handleSaveMeal(),
           disabled: isSaving,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isSaving, isEditMode, saveLabel, handleSaveMeal]);
+  }, [navigation, headerActionColor, headerSaveColor, isSaving, isEditMode, saveLabel, handleSaveMeal]);
 
   const renderHeader = () => Platform.OS === 'ios' ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
@@ -423,7 +425,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         accessibilityLabel="Back"
         accessibilityRole="button"
       >
-        <Icon name="chevron-back" size={22} color={accentColor} />
+        <Icon name="chevron-back" size={22} color={headerActionColor} />
       </TouchableOpacity>
       <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
         {isEditMode ? 'Edit Meal' : 'Create Meal'}

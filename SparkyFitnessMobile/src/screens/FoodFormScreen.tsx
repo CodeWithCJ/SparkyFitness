@@ -49,6 +49,7 @@ import {
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -460,7 +461,7 @@ function BarcodeField({
 
 function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary, textSecondary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-text-secondary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string, string];
+  const [textPrimary, textSecondary, formEnabled, formDisabled] = useCSSVariable(['--color-text-primary', '--color-text-secondary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
@@ -744,7 +745,8 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     });
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -754,7 +756,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'food-create-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isSubmitting,
         }),
@@ -763,14 +765,14 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         createNativeHeaderTextButtonItem({
           label: saveLabel,
           identifier: 'food-create-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => { /* submit handled by FoodForm */ },
           disabled: isSubmitting,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isSubmitting, isLibraryMode]);
+  }, [navigation, headerActionColor, headerSaveColor, isSubmitting, isLibraryMode]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
@@ -782,7 +784,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={headerActionColor} />
         </TouchableOpacity>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           New Food
@@ -919,7 +921,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     selectedUnitSelection,
   } = params;
   const insets = useSafeAreaInsets();
-  const [accentColor, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string];
+  const [formEnabled, formDisabled] = useCSSVariable(['--color-form-enabled', '--color-form-disabled']) as [string, string];
   const queryClient = useQueryClient();
   const { createVariant } = useCreateFoodVariant();
   const { preferences } = usePreferences();
@@ -1362,7 +1364,8 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     navigation.goBack();
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
@@ -1372,7 +1375,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'food-adjust-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
         }),
       ],
@@ -1380,13 +1383,13 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         createNativeHeaderTextButtonItem({
           label: 'Update Values',
           identifier: 'food-adjust-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => submitRequestRef.current?.(),
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor]);
+  }, [navigation, headerActionColor, headerSaveColor]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
@@ -1397,7 +1400,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={headerActionColor} />
         </TouchableOpacity>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Adjust Nutrition
@@ -1454,7 +1457,6 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
   const insets = useSafeAreaInsets();
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createVariant } = useCreateFoodVariant();
@@ -1833,7 +1835,8 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     }
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -1842,7 +1845,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'food-edit-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isSubmitting,
         }),
@@ -1851,14 +1854,14 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         createNativeHeaderTextButtonItem({
           label: 'Save Changes',
           identifier: 'food-edit-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: () => { /* submit handled by FoodForm */ },
           disabled: isSubmitting,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isSubmitting]);
+  }, [navigation, headerActionColor, headerSaveColor, isSubmitting]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
@@ -1869,7 +1872,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={headerActionColor} />
         </TouchableOpacity>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Edit Food

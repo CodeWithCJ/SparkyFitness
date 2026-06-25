@@ -14,6 +14,7 @@ import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
@@ -101,7 +102,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const headerTintColor = useCSSVariable('--color-accent-primary') as string;
+  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -141,7 +142,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             createNativeHeaderTextButtonItem({
               label: 'Edit',
               identifier: 'meal-detail-edit',
-              tintColor: headerTintColor,
+              tintColor: headerActionColor,
               accessibilityLabel: 'Edit meal',
               onPress: () =>
                 navigation.navigate('MealAdd', {
@@ -153,7 +154,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           ]
         : undefined,
     });
-  }, [navigation, meal, canManageMeal, headerTintColor]);
+  }, [navigation, meal, canManageMeal, headerActionColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

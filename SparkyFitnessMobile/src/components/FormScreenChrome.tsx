@@ -42,7 +42,7 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             disabled={isSaving}
           >
-            <Text className="text-base text-accent-primary">Cancel</Text>
+            <Text className="text-base text-text-primary">Cancel</Text>
           </TouchableOpacity>
           <Text className="text-text-primary text-lg font-semibold">{title}</Text>
           <TouchableOpacity

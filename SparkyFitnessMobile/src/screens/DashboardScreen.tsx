@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffe
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
@@ -46,6 +45,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { NUTRIENT_META } from '../constants/nutrients';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
   { key: '7d', label: '7d' },
@@ -60,7 +60,6 @@ type DashboardScreenProps = CompositeScreenProps<
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const queryClient = useQueryClient();
-  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
@@ -95,7 +94,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
   const usesNativeTabs = shouldUseNativeIOSTabs();
-  const nativeHeaderActionColor = useCSSVariable('--color-accent-primary') as string;
+  const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
 
@@ -106,7 +105,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onPreviousDate: goToPreviousDay,
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
-        tintColor: nativeHeaderActionColor || '#0A84FF',
+        tintColor: nativeHeaderActionColor,
         accessibilityLabel: 'Choose dashboard date',
       },
     );
@@ -171,7 +170,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const fastingCardVisible = useFastingCardVisible();
   const hydrationCardVisible = useHydrationCardVisible();
-  const topSafeAreaStyle = usesNativeTabs ? undefined : { paddingTop: insets.top };
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -224,24 +222,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // Loading state
     if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
       return (
-        <View className="flex-1">
-          {!isConnectionLoading && isConnected && (
-            !usesNativeTabs ? (
-              <DateNavigator
-                title="Dashboard"
-                selectedDate={selectedDate}
-                onPreviousDay={goToPreviousDay}
-                onNextDay={goToNextDay}
-                onToday={goToToday}
-                onDatePress={openCalendar}
-                skipTopInset
-              />
-            ) : null
-          )}
-          <View className="flex-1 items-center justify-center p-8 shadow-sm">
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
-          </View>
+        <View className="flex-1 items-center justify-center p-8 shadow-sm">
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
         </View>
       );
     }
@@ -249,34 +232,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // Error state
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
-        <View className="flex-1">
-          {!usesNativeTabs && (
-            <DateNavigator
-              title="Dashboard"
-              selectedDate={selectedDate}
-              onPreviousDay={goToPreviousDay}
-              onNextDay={goToNextDay}
-              onToday={goToToday}
-              onDatePress={openCalendar}
-              skipTopInset
-            />
-          )}
-          <View className="flex-1 items-center justify-center p-8 shadow-sm">
-            <Icon name="alert-circle" size={64} color="#EF4444" />
-            <Text className="text-text-muted text-lg text-center mt-4">
-              Failed to load summary
-            </Text>
-            <Text className="text-text-muted text-sm text-center mt-2">
-              Please check your connection and try again.
-            </Text>
-            <Button
-              variant="primary"
-              className="px-6 mt-6"
-              onPress={() => refetch()}
-            >
-              Retry
-            </Button>
-          </View>
+        <View className="flex-1 items-center justify-center p-8 shadow-sm">
+          <Icon name="alert-circle" size={64} color="#EF4444" />
+          <Text className="text-text-muted text-lg text-center mt-4">
+            Failed to load summary
+          </Text>
+          <Text className="text-text-muted text-sm text-center mt-2">
+            Please check your connection and try again.
+          </Text>
+          <Button
+            variant="primary"
+            className="px-6 mt-6"
+            onPress={() => refetch()}
+          >
+            Retry
+          </Button>
         </View>
       );
     }
@@ -293,7 +263,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       <ScrollView
         ref={scrollViewRef}
         className="flex-1 bg-background"
-        style={[{ flex: 1 }, topSafeAreaStyle]}
+        style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingBottom: 80 + activeWorkoutBarPadding,
@@ -306,18 +276,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
-        {!usesNativeTabs && (
-          <DateNavigator
-            title="Dashboard"
-            selectedDate={selectedDate}
-            onPreviousDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-            onToday={goToToday}
-            onDatePress={openCalendar}
-            skipTopInset
-            skipHorizontalPadding
-          />
-        )}
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || goal > 0) && (
           <CalorieRingCard
             caloriesConsumed={eaten}
@@ -469,12 +427,33 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     );
   };
 
-  return (
-    <>
-      {renderContent()}
+  const renderedContent = renderContent();
 
+  if (usesNativeTabs) {
+    return (
+      <>
+        {renderedContent}
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      </>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-background">
+      {!isConnectionLoading && isConnected ? (
+        <DateNavigator
+          title="Dashboard"
+          selectedDate={selectedDate}
+          onPreviousDay={goToPreviousDay}
+          onNextDay={goToNextDay}
+          onToday={goToToday}
+          onDatePress={openCalendar}
+          showDateAlways
+        />
+      ) : null}
+      {renderedContent}
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
-    </>
+    </View>
   );
 };
 

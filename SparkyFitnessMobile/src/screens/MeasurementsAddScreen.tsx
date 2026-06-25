@@ -32,6 +32,7 @@ import {
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -419,7 +420,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
-  const headerTintColor = String(useCSSVariable('--color-accent-primary'));
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+    useHeaderActionColors();
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -428,7 +430,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'measurements-cancel',
-          tintColor: headerTintColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isSaveDisabled,
         }),
@@ -437,14 +439,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         createNativeHeaderTextButtonItem({
           label: 'Save',
           identifier: 'measurements-save',
-          tintColor: headerTintColor,
+          tintColor: headerSaveColor,
           onPress: handleSave,
           disabled: isSaveDisabled,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerTintColor, isSaveDisabled, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, isSaveDisabled, handleSave]);
 
   return (
     <View
@@ -461,7 +463,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           className="z-10 p-0"
           accessibilityLabel="Close"
         >
-          <Icon name="close" size={22} color={accentPrimary} />
+          <Icon name="close" size={22} color={headerActionColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Measurements
