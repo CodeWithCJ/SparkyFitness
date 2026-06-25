@@ -1,5 +1,5 @@
 /**
- * Dev harness: A/B the chatbot's 'full' (34-tool) vs 'core' (18-tool) tool
+ * Dev harness: A/B the chatbot's 'full' (35-tool) vs 'core' (18-tool) tool
  * surface against a real Ollama model, to eyeball tool-selection accuracy and
  * latency on a small/local model.
  *

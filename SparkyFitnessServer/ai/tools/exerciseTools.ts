@@ -141,7 +141,6 @@ const EXERCISE_CATALOG_DROP: readonly string[] = [
   'updated_by_user_id',
 ];
 
-// Date-normalizes then conservatively compacts a full exercise_entries row.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function projectExerciseEntry(row: any) {
   return compactRecord(projectEntryDate(row), EXERCISE_ENTRY_DROP);

@@ -528,8 +528,8 @@ describe('chatService', () => {
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
-      // The §4 gate keys on service_type, so a service that was Ollama+core and
-      // later switched to OpenAI still loads the full 35-tool surface.
+      // The profile gate keys on service_type, so a service that was Ollama+core
+      // and later switched to OpenAI still loads the full 35-tool surface.
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,

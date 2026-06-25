@@ -7,8 +7,8 @@ export function dayString(value: unknown): string {
   return value instanceof Date ? localDateToDay(value) : String(value);
 }
 
-// Conservative result-size trim shared by the read tools (token-efficiency
-// roadmap item 2): drop keys whose value carries no information — null/undefined,
+// Conservative result-size trim shared by the read tools: drop keys whose value
+// carries no information — null/undefined,
 // empty `{}` (e.g. default `custom_nutrients`), empty `[]` (e.g. `allergens`) —
 // plus an explicit denylist of redundant internal keys (audit columns, surrogate
 // FKs). Every populated field is kept, so no answerable data is lost. Applied to

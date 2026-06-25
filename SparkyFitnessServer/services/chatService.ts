@@ -439,16 +439,11 @@ const RETENTION_24H_MODEL_PREFIXES = [
   'gpt-5.5',
 ];
 
-// OpenAI auto-caches the system+tools prefix; a stable per-user prompt cache key
-// maximizes hit-rate routing (safe on all OpenAI models), and 24h retention keeps
-// that prefix warm for users who return later in the day (supported models only).
-// Gemini 2.5 implicit-caches the same prefix with no flag, and Anthropic caching
-// is set on the tools (see ai/tools/index.ts) — so only the canonical OpenAI
-// service type needs request-level providerOptions. The OpenAI-compatible service
-// types (groq, mistral, openrouter, ollama, openai_compatible, custom) share the
-// `openai` providerOptions namespace via createOpenAI(), so gate strictly to the
-// canonical 'openai' type to avoid injecting prompt_cache_* into backends that
-// may reject it.
+// Only the canonical 'openai' service type needs request-level providerOptions.
+// The OpenAI-compatible types share the `openai` namespace via createOpenAI(), so
+// gate strictly to 'openai' to avoid injecting prompt_cache_* into backends that
+// may reject it. (Anthropic caches on the tools — see ai/tools/index.ts; Gemini
+// auto-caches with no flag.)
 export function buildChatProviderOptions(
   serviceType: string,
   userId: string,
