@@ -58,6 +58,9 @@
       --color-cat-violet:        hsl(265, 70%, 60%);
       --color-cat-orange:        hsl(22, 92%, 65%);
       --color-cat-green:         hsl(124, 54%, 38%);
+      --color-cat-blue:          hsl(217, 80%, 52%);
+      --color-cat-teal:          hsl(182, 64%, 33%);
+      --color-cat-amber:         hsl(40, 88%, 43%);
 
       --color-progress-track:    hsl(218, 29%, 92%);
       --color-progress-overfill: hsl(215, 28%, 17%);
@@ -119,6 +122,9 @@
       --color-cat-violet:        hsl(265, 50%, 60%);
       --color-cat-orange:        hsl(22, 55%, 60%);
       --color-cat-green:         hsl(125, 24%, 53%);
+      --color-cat-blue:          hsl(217, 55%, 62%);
+      --color-cat-teal:          hsl(182, 35%, 52%);
+      --color-cat-amber:         hsl(40, 60%, 58%);
 
       --color-progress-track:    hsl(218, 41%, 23%);
       --color-progress-overfill: hsl(357, 66%, 65%);
@@ -180,6 +186,9 @@
       --color-cat-violet:        hsl(265, 50%, 60%);
       --color-cat-orange:        hsl(22, 55%, 60%);
       --color-cat-green:         hsl(125, 24%, 53%);
+      --color-cat-blue:          hsl(217, 55%, 62%);
+      --color-cat-teal:          hsl(182, 35%, 52%);
+      --color-cat-amber:         hsl(40, 60%, 58%);
 
       --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);

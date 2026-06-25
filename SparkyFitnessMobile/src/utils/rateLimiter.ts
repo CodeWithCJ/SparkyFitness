@@ -80,3 +80,9 @@ export class RateLimiter {
     this.timestamps = [];
   }
 }
+
+// Shared Open Food Facts rate limiter. Both the single-provider search hook and
+// the All Providers fan-out use this one instance, so the two modes draw from a
+// single budget rather than two; toggling between them can't push OFF past its
+// limit. OFF allows ~10 requests/min; 8 leaves headroom.
+export const offRateLimiter = new RateLimiter(8, 60_000);

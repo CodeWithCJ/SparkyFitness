@@ -38,6 +38,12 @@ export const externalProvidersQueryKey = ['externalProviders'] as const;
 export const externalFoodSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string, autoScale?: boolean) =>
   ['externalFoodSearch', providerType, searchTerm, providerId, autoScale] as const;
 
+// First-page-only key for the "All Providers" fan-out. Kept distinct from
+// externalFoodSearchQueryKey (which backs an infinite query) so the two query
+// shapes do not collide in the cache.
+export const allProvidersFoodSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string, autoScale?: boolean) =>
+  ['allProvidersFoodSearch', providerType, searchTerm, providerId, autoScale] as const;
+
 export const mealTypesQueryKey = ['mealTypes'] as const;
 
 export const goalsQueryKey = (date: string) => ['goals', date] as const;

@@ -4,10 +4,7 @@ import { searchExternalFoods } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
-import { RateLimiter } from '../utils/rateLimiter';
-
-// Open Food Facts allows 10 req/min; use 8 for headroom
-const offRateLimiter = new RateLimiter(8, 60_000);
+import { offRateLimiter } from '../utils/rateLimiter';
 
 export function useExternalFoodSearch(
   searchText: string,

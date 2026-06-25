@@ -8,6 +8,7 @@ import { ApiError } from '../../src/services/api/errors';
 import {
   useExternalFoodSearch,
   useExternalProviders,
+  useAllProvidersSearch,
   useFoodSearch,
   useFoods,
   useMealSearch,
@@ -21,6 +22,7 @@ import type { FoodItem } from '../../src/types/foods';
 jest.mock('../../src/hooks', () => ({
   useExternalFoodSearch: jest.fn(),
   useExternalProviders: jest.fn(),
+  useAllProvidersSearch: jest.fn(),
   useFoodSearch: jest.fn(),
   useFoods: jest.fn(),
   useMealSearch: jest.fn(),
@@ -50,6 +52,7 @@ const mockFetchExternalFoodDetails = fetchExternalFoodDetails as jest.MockedFunc
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 const mockUseExternalFoodSearch = useExternalFoodSearch as jest.MockedFunction<typeof useExternalFoodSearch>;
 const mockUseExternalProviders = useExternalProviders as jest.MockedFunction<typeof useExternalProviders>;
+const mockUseAllProvidersSearch = useAllProvidersSearch as jest.MockedFunction<typeof useAllProvidersSearch>;
 const mockUseFoodSearch = useFoodSearch as jest.MockedFunction<typeof useFoodSearch>;
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
@@ -193,6 +196,11 @@ describe('FoodSearchScreen', () => {
       refetch: jest.fn(),
     } as any);
     mockUseExternalFoodSearch.mockReturnValue(activeExternalSearch());
+    mockUseAllProvidersSearch.mockReturnValue({
+      providerResults: [],
+      isSearchActive: false,
+      anyLoading: false,
+    } as any);
   });
 
   // Type a query so the screen enters search mode and renders the result sections.
