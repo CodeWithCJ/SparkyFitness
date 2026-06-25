@@ -11,28 +11,51 @@ import { buildVisionTools } from './visionTools.js';
 import { buildWizardTools } from './wizardTools.js';
 
 /**
- * Composes the full in-process chatbot tool set for generateText/streamText.
+ * Tool surfaces the chatbot can expose:
+ * - 'full': every chat-visible tool (the default).
+ * - 'core': just the food/exercise/measurement logging the system prompt
+ *   centers on. Used for small/local models (e.g. Ollama's default 3B
+ *   llama3.2) that have no prompt cache — so the whole tool block is
+ *   reprocessed every turn — and select tools more reliably from a smaller
+ *   surface. Analytics, coaching, vision, goals, profile, habits, the check-in
+ *   wizard, and reports are dropped.
+ */
+export type ChatToolProfile = 'full' | 'core';
+
+/**
+ * Composes the in-process chatbot tool set for generateText/streamText.
  * Handlers close over the authenticated userId — chat tools always act as the
  * session user, so two-actor services receive (userId, userId, …) — and the
  * user's IANA timezone, used for "today" defaults and day bucketing.
  *
  * Domain order mirrors MCP's registerAllTools; the MCP-only dev tools are
- * intentionally not part of the chat surface.
+ * intentionally not part of the chat surface. The 'core' profile is a strict
+ * prefix of the full set, so the full set keeps its original ordering.
  */
-export function buildChatbotTools(userId: string, tz: string) {
+export function buildChatbotTools(
+  userId: string,
+  tz: string,
+  profile: ChatToolProfile = 'full'
+) {
+  // Core logging domains: food, exercise, and measurements/check-ins.
   const tools = {
     ...buildExerciseTools(userId, tz),
     ...buildFoodTools(userId, tz),
     ...buildCheckinTools(userId, tz),
-    ...buildCoachTools(userId, tz),
-    ...buildEngagementTools(userId, tz),
-    ...buildVisionTools(userId),
-    ...buildGoalTools(userId, tz),
-    ...buildProfileTools(userId),
-    ...buildHabitTools(userId),
-    ...buildWizardTools(userId),
-    ...buildReportTools(userId, tz),
   };
+  if (profile === 'full') {
+    Object.assign(
+      tools,
+      buildCoachTools(userId, tz),
+      buildEngagementTools(userId, tz),
+      buildVisionTools(userId),
+      buildGoalTools(userId, tz),
+      buildProfileTools(userId),
+      buildHabitTools(userId),
+      buildWizardTools(userId),
+      buildReportTools(userId, tz)
+    );
+  }
   // The published flat schemas are advisory; real validation is the strict
   // per-action union inside each handler. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict

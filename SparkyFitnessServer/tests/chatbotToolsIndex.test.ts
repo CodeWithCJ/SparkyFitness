@@ -49,10 +49,61 @@ const EXPECTED_TOOLS = [
   'sparky_search_foods',
 ];
 
+// The 'core' profile (used for Ollama and other small/local models): the
+// food, exercise, and measurement logging the system prompt centers on, minus
+// the analytics, coaching, vision, goal, profile, habit, wizard, and report
+// tools that weaker models struggle to drive and that inflate prefill cost.
+const EXPECTED_CORE_TOOLS = [
+  'sparky_get_daily_exercise_totals',
+  'sparky_get_exercise_details',
+  'sparky_get_exercise_diary',
+  'sparky_get_exercise_progress',
+  'sparky_get_exercise_usage',
+  'sparky_get_food_details',
+  'sparky_get_food_diary',
+  'sparky_get_food_usage',
+  'sparky_get_nutrition_summary',
+  'sparky_get_recent_exercise_entries',
+  'sparky_get_recent_food_entries',
+  'sparky_list_exercises',
+  'sparky_list_foods',
+  'sparky_manage_checkin',
+  'sparky_manage_exercise',
+  'sparky_manage_food',
+  'sparky_search_exercises',
+  'sparky_search_foods',
+];
+
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {
     const tools = buildChatbotTools('user-1', 'UTC');
     expect(Object.keys(tools).sort()).toEqual(EXPECTED_TOOLS);
+  });
+
+  it('defaults to the full profile', () => {
+    const tools = buildChatbotTools('user-1', 'UTC', 'full');
+    expect(Object.keys(tools).sort()).toEqual(EXPECTED_TOOLS);
+  });
+
+  it('exposes only the core logging tools for the core profile', () => {
+    const tools = buildChatbotTools('user-1', 'UTC', 'core');
+    expect(Object.keys(tools).sort()).toEqual(EXPECTED_CORE_TOOLS);
+  });
+
+  it('keeps the core profile a strict subset of the full surface', () => {
+    const full = new Set(Object.keys(buildChatbotTools('user-1', 'UTC')));
+    const core = Object.keys(buildChatbotTools('user-1', 'UTC', 'core'));
+    expect(core.length).toBeLessThan(full.size);
+    for (const name of core) {
+      expect(full.has(name), `${name} missing from full surface`).toBe(true);
+    }
+  });
+
+  it('still disables provider strict mode in the core profile', () => {
+    const tools = buildChatbotTools('user-1', 'UTC', 'core');
+    for (const [name, t] of Object.entries(tools)) {
+      expect(t.strict, `${name} strict`).toBe(false);
+    }
   });
 
   it('gives every tool a description, an input schema, and an executor', () => {

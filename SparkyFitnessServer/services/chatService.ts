@@ -45,7 +45,7 @@ import type { JSONValue, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { buildChatbotTools } from '../ai/tools/index.js';
+import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
 
 async function handleAiServiceSettings(
   action: string,
@@ -348,7 +348,10 @@ async function saveSparkyChatHistory(
  * registry. Everything is scoped to the authenticated user — chat tool calls
  * always act as the logged-in actor, matching the previous MCP behavior.
  */
-async function prepareChatContext(authenticatedUserId: string) {
+async function prepareChatContext(
+  authenticatedUserId: string,
+  serviceType: string
+) {
   const [customCategories, chatTz] = await Promise.all([
     measurementRepository.getCustomCategories(authenticatedUserId),
     loadUserTimezone(authenticatedUserId),
@@ -364,10 +367,15 @@ async function prepareChatContext(authenticatedUserId: string) {
           .join('\n')
       : 'None';
 
-  const tools = buildChatbotTools(authenticatedUserId, chatTz);
+  // Ollama is typically a small/local model with no prompt cache, so the whole
+  // tool block is reprocessed every turn. Ship the trimmed core set to cut
+  // prefill latency and improve tool-selection accuracy on weaker models.
+  const toolProfile: ChatToolProfile =
+    serviceType === 'ollama' ? 'core' : 'full';
+  const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
   log(
     'info',
-    `Loaded ${Object.keys(tools).length} tools for chatbot: ${Object.keys(tools).join(', ')}`
+    `Loaded ${Object.keys(tools).length} ${toolProfile} tools for chatbot: ${Object.keys(tools).join(', ')}`
   );
 
   return {
@@ -376,7 +384,10 @@ async function prepareChatContext(authenticatedUserId: string) {
   };
 }
 
-function getSystemPrompt(chatTz: string, customCategoriesList: string): string {
+export function getSystemPrompt(
+  chatTz: string,
+  customCategoriesList: string
+): string {
   return `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
 
 The current local date is ${todayInZone(chatTz)}.
@@ -520,8 +531,10 @@ async function processChatMessage(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } =
-      await prepareChatContext(authenticatedUserId);
+    const { systemPromptContent, tools } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type
+    );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
@@ -954,8 +967,10 @@ async function processChatMessageStream(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } =
-      await prepareChatContext(authenticatedUserId);
+    const { systemPromptContent, tools } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type
+    );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
