@@ -13,7 +13,7 @@ export interface UserMedicationDisplayPreference {
 export const getMedicationDisplayPreferences = async (): Promise<
   UserMedicationDisplayPreference[]
 > => {
-  return apiCall('/medications/display-preferences', {
+  return apiCall('/v2/medications/display-preferences', {
     method: 'GET',
   });
 };
@@ -23,17 +23,23 @@ export const upsertMedicationDisplayPreference = async (
   platform: string,
   visibleItems: string[]
 ): Promise<UserMedicationDisplayPreference> => {
-  return apiCall(`/medications/display-preferences/${viewGroup}/${platform}`, {
-    method: 'PUT',
-    body: JSON.stringify({ visible_items: visibleItems }),
-  });
+  return apiCall(
+    `/v2/medications/display-preferences/${viewGroup}/${platform}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ visible_items: visibleItems }),
+    }
+  );
 };
 
 export const deleteMedicationDisplayPreference = async (
   viewGroup: string,
   platform: string
 ): Promise<void> => {
-  return apiCall(`/medications/display-preferences/${viewGroup}/${platform}`, {
-    method: 'DELETE',
-  });
+  return apiCall(
+    `/v2/medications/display-preferences/${viewGroup}/${platform}`,
+    {
+      method: 'DELETE',
+    }
+  );
 };

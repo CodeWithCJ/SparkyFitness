@@ -1,9 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   Pill,
   Syringe,
+  Tablets,
+  FlaskConical,
+  Bandage,
+  SprayCan,
+  Pipette,
+  Droplets,
+  Package,
   Plus,
   Trash2,
+  Pencil,
   Calendar,
   X,
   Clock,
@@ -13,6 +21,7 @@ import {
   AlertCircle,
   Info,
   ShieldAlert,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   GLP1_DRUG_PROFILES,
@@ -55,6 +64,7 @@ import {
 import {
   useMedications,
   useCreateMedicationMutation,
+  useUpdateMedicationMutation,
   useDeleteMedicationMutation,
   useMedicationEntries,
   useCreateMedicationEntryMutation,
@@ -84,25 +94,87 @@ const MED_TYPES = [
   'inhaler',
   'drops',
   'cream',
+  'suppository',
   'other',
 ];
 
+// Icon + color per medication form/type — used in the type dropdown and on med cards.
+const MED_TYPE_ICONS: Record<string, LucideIcon> = {
+  pill: Pill,
+  tablet: Tablets,
+  capsule: Pill,
+  liquid: FlaskConical,
+  injection: Syringe,
+  patch: Bandage,
+  inhaler: SprayCan,
+  drops: Pipette,
+  cream: Droplets,
+  suppository: Pill,
+  other: Package,
+};
+
+const MED_TYPE_COLORS: Record<string, string> = {
+  pill: 'text-rose-500',
+  tablet: 'text-amber-500',
+  capsule: 'text-orange-500',
+  liquid: 'text-cyan-500',
+  injection: 'text-blue-500',
+  patch: 'text-violet-500',
+  inhaler: 'text-teal-500',
+  drops: 'text-sky-500',
+  cream: 'text-pink-500',
+  suppository: 'text-fuchsia-500',
+  other: 'text-slate-500',
+};
+
+function MedTypeIcon({
+  typeId,
+  isGlp1,
+  className,
+}: {
+  typeId?: string | null;
+  isGlp1?: boolean;
+  className?: string;
+}) {
+  // The actual form/type wins (a liquid is a flask even if flagged GLP-1, e.g. oral semaglutide
+  // is a pill); fall back to an injection only when no type is set but it's a GLP-1 med.
+  const key = typeId ?? (isGlp1 ? 'injection' : 'other');
+  const Icon = MED_TYPE_ICONS[key] ?? Pill;
+  const color = MED_TYPE_COLORS[key] ?? 'text-muted-foreground';
+  return <Icon className={`${color} ${className ?? ''}`} />;
+}
+
 type MedicationDetail = Medication & { schedules: MedicationSchedule[] };
 
-function AddMedicationDialog() {
+function AddMedicationDialog({
+  editMed,
+  trigger,
+}: {
+  editMed?: Medication;
+  trigger?: ReactNode;
+} = {}) {
+  const isEdit = Boolean(editMed);
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [typeId, setTypeId] = useState('injection');
-  const [isGlp1, setIsGlp1] = useState(true);
-  const [glp1Drug, setGlp1Drug] = useState('semaglutide');
-  const [strength, setStrength] = useState('');
-  const [strengthUnit, setStrengthUnit] = useState('mg');
-  const [prescriber, setPrescriber] = useState('');
-  const [pharmacy, setPharmacy] = useState('');
-  const [rxNumber, setRxNumber] = useState('');
-  const [reason, setReason] = useState('');
+  const [name, setName] = useState(editMed?.name ?? '');
+  const [typeId, setTypeId] = useState(editMed?.type_id ?? 'pill');
+  const [isGlp1, setIsGlp1] = useState(editMed?.is_glp1 ?? false);
+  const [glp1Drug, setGlp1Drug] = useState(
+    (editMed?.custom_fields?.glp1_drug as string | undefined) ?? 'semaglutide'
+  );
+  const [strength, setStrength] = useState(
+    editMed?.strength_value != null ? String(editMed.strength_value) : ''
+  );
+  const [strengthUnit, setStrengthUnit] = useState(
+    editMed?.strength_unit ?? 'mg'
+  );
+  const [prescriber, setPrescriber] = useState(editMed?.prescriber ?? '');
+  const [pharmacy, setPharmacy] = useState(editMed?.pharmacy ?? '');
+  const [rxNumber, setRxNumber] = useState(editMed?.rx_number ?? '');
+  const [reason, setReason] = useState(editMed?.reason_text ?? '');
 
-  const mutation = useCreateMedicationMutation();
+  const createMutation = useCreateMedicationMutation();
+  const updateMutation = useUpdateMedicationMutation();
+  const mutation = isEdit ? updateMutation : createMutation;
 
   const handleSave = () => {
     const body: Partial<Medication> & { name: string } = {
@@ -119,7 +191,14 @@ function AddMedicationDialog() {
       reason_text: reason.trim() || null,
       custom_fields: isGlp1 ? { glp1_drug: glp1Drug } : {},
     };
-    mutation.mutate(body, {
+    if (isEdit && editMed) {
+      updateMutation.mutate(
+        { id: editMed.id, body },
+        { onSuccess: () => setOpen(false) }
+      );
+      return;
+    }
+    createMutation.mutate(body, {
       onSuccess: () => {
         setOpen(false);
         setName('');
@@ -134,13 +213,17 @@ function AddMedicationDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Add medication
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> Add medication
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add medication</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Edit medication' : 'Add medication'}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -162,7 +245,10 @@ function AddMedicationDialog() {
                 <SelectContent>
                   {MED_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {t}
+                      <span className="flex items-center gap-2 capitalize">
+                        <MedTypeIcon typeId={t} className="h-4 w-4" />
+                        {t}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1256,10 +1342,12 @@ export default function Medications() {
                                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                               ) : isLogged && entry.status === 'skipped' ? (
                                 <X className="h-5 w-5 text-muted-foreground" />
-                              ) : due.medication.is_glp1 ? (
-                                <Syringe className="h-5 w-5 text-blue-500" />
                               ) : (
-                                <Pill className="h-5 w-5 text-muted-foreground" />
+                                <MedTypeIcon
+                                  typeId={due.medication.type_id}
+                                  isGlp1={due.medication.is_glp1}
+                                  className="h-5 w-5"
+                                />
                               )}
                             </div>
                             <div>
@@ -1375,11 +1463,11 @@ export default function Medications() {
                         onClick={() => handleLogPrn(med as MedicationDetail)}
                         disabled={createEntryMutation.isPending}
                       >
-                        {med.is_glp1 ? (
-                          <Syringe className="h-4.5 w-4.5 text-blue-500 shrink-0" />
-                        ) : (
-                          <Pill className="h-4.5 w-4.5 text-muted-foreground shrink-0" />
-                        )}
+                        <MedTypeIcon
+                          typeId={med.type_id}
+                          isGlp1={med.is_glp1}
+                          className="h-4.5 w-4.5 shrink-0"
+                        />
                         <div className="text-left truncate">
                           <p className="font-semibold text-xs truncate">
                             {med.display_name || med.name}
@@ -1422,35 +1510,48 @@ export default function Medications() {
                       key={entry.id}
                       className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10 text-sm"
                     >
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {entry.med_name_snapshot}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                          <span className="tabular-nums font-medium">
-                            {formatEntryTime(entry.taken_at)}
-                          </span>
-                          <span>•</span>
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] px-1.5 py-0 border-none font-semibold ${
-                              entry.status === 'taken'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <MedTypeIcon
+                          typeId={
+                            meds.find((m) => m.id === entry.medication_id)
+                              ?.type_id
+                          }
+                          isGlp1={
+                            meds.find((m) => m.id === entry.medication_id)
+                              ?.is_glp1
+                          }
+                          className="h-4 w-4 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {entry.med_name_snapshot}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                            <span className="tabular-nums font-medium">
+                              {formatEntryTime(entry.taken_at)}
+                            </span>
+                            <span>•</span>
+                            <Badge
+                              variant="secondary"
+                              className={`text-[10px] px-1.5 py-0 border-none font-semibold ${
+                                entry.status === 'taken'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                                  : entry.status === 'prn_taken'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                    : entry.status === 'snoozed'
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-850 dark:text-gray-300'
+                              }`}
+                            >
+                              {entry.status === 'taken'
+                                ? 'Taken'
                                 : entry.status === 'prn_taken'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                  ? 'PRN Taken'
                                   : entry.status === 'snoozed'
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-850 dark:text-gray-300'
-                            }`}
-                          >
-                            {entry.status === 'taken'
-                              ? 'Taken'
-                              : entry.status === 'prn_taken'
-                                ? 'PRN Taken'
-                                : entry.status === 'snoozed'
-                                  ? 'Snoozed'
-                                  : 'Skipped'}
-                          </Badge>
+                                    ? 'Snoozed'
+                                    : 'Skipped'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
 
@@ -1546,11 +1647,11 @@ export default function Medications() {
                 >
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
-                      {med.is_glp1 ? (
-                        <Syringe className="h-5 w-5 text-blue-500" />
-                      ) : (
-                        <Pill className="h-5 w-5 text-muted-foreground" />
-                      )}
+                      <MedTypeIcon
+                        typeId={med.type_id}
+                        isGlp1={med.is_glp1}
+                        className="h-5 w-5"
+                      />
                       <div className="min-w-0">
                         <p className="font-medium truncate">
                           {med.display_name || med.name}
@@ -1621,15 +1722,30 @@ export default function Medications() {
                             : ''}
                         </CardDescription>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteMed(selected.id)}
-                        disabled={removeMedMutation.isPending}
-                        aria-label="Delete medication"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <AddMedicationDialog
+                          key={selected.id}
+                          editMed={selected}
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit medication"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteMed(selected.id)}
+                          disabled={removeMedMutation.isPending}
+                          aria-label="Delete medication"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </CardHeader>
                     {selected.notes && (
                       <CardContent className="text-sm text-muted-foreground border-t pt-4">

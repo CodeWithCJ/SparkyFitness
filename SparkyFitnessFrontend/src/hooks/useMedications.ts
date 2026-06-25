@@ -81,6 +81,20 @@ export const useCreateMedicationMutation = () => {
   });
 };
 
+export const useUpdateMedicationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<Medication> }) =>
+      medicationService.updateMedication(id, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['medications'] }),
+    meta: {
+      errorMessage: 'Could not update medication.',
+      successMessage: 'Medication updated.',
+    },
+  });
+};
+
 export const useDeleteMedicationMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -31,9 +31,16 @@ Untouched: Diary, Food, Exercise, Goals.
 ## Status
 - [x] **Phase 1 — Medication tab DONE & verified** (typecheck/lint/tests green)
   - [x] 1a body map · [x] 1b cabinet · [x] 1c symptoms · [x] 1d today
-- [ ] Phase 2 — Reports (medication insights) — see [phase-2-reports.md](./phase-2-reports.md)
+- [x] **Phase 2 — Reports: ALREADY IMPLEMENTED** (verified). `MedicationReports.tsx` (1182 lines)
+  already has nausea-vs-dose, weight-vs-goal, adherence charts + correlation cards + customizable
+  show/hide + CSV export, no cost chart. Typecheck/lint clean. Only optional remaining: provider PDF
+  export (deferred). No rebuild needed — see [phase-2-reports.md](./phase-2-reports.md).
 - [ ] Phase 3 — Check-in (GLP daily metrics) — see [phase-3-checkin.md](./phase-3-checkin.md)
-- [ ] Phase 4 — Settings (injection-site customization) — see [phase-4-settings.md](./phase-4-settings.md)
+- [x] **Phase 4 — Settings (injection-site customization) DONE & verified.** "Customize sites"
+  dialog in the GLP coach (`InjectionSiteSettings.tsx`) toggles/reorders sites → saved to the
+  `injection_sites` display pref; server `glp1Service.getSiteSuggestion` reads the pref and passes
+  the ordered active set to `suggestNextSite`; the body map filters to active sites. Server
+  typecheck + 37 tests green; frontend typecheck/lint/prettier clean.
 
 ## Phase 1 delivered — reuse these in Phases 2–4
 New files (front-end, `SparkyFitnessFrontend/src/pages/Medications/`):

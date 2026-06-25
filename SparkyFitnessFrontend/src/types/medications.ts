@@ -105,6 +105,8 @@ export interface SerumCurveResponse {
   drugId: string | null;
   curve: SerumPoint[];
   currentLevelFraction: number | null;
+  /** Day positions of logged injections (relative to the curve anchor), for chart markers. */
+  doseDays: number[];
   disclaimer: string;
 }
 
@@ -113,6 +115,8 @@ export interface SiteSuggestionResponse {
   restingSiteIds: string[];
   sites: { id: string; label: string; region: string; side: string }[];
   restDays: number;
+  /** User's customized active site ids (ordered), or null if using defaults. */
+  activeSiteIds: string[] | null;
 }
 
 export interface ListMedicationsOptions {

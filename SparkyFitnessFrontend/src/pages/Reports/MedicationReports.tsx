@@ -48,7 +48,7 @@ import {
 import {
   useMedicationDisplayPreferences,
   useUpsertMedicationDisplayPreferenceMutation,
-} from '@/hooks/useMedicationReports';
+} from '@/hooks/useMedicationDisplayPreferences';
 import Papa from 'papaparse';
 
 import type {

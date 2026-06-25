@@ -12,6 +12,7 @@ import {
 } from '@workspace/shared';
 import injectionRepository from '../models/injectionRepository.js';
 import medicationRepository from '../models/medicationRepository.js';
+import medicationDisplayPreferenceRepository from '../models/medicationDisplayPreferenceRepository.js';
 
 interface InjectionRow {
   id: string;
@@ -37,6 +38,8 @@ async function getSerumCurve(
   drugId: string | null;
   curve: SerumPoint[];
   currentLevelFraction: number | null;
+  /** Day positions (relative to the curve anchor) of each logged injection, for chart markers. */
+  doseDays: number[];
   disclaimer: string;
 }> {
   const med = await medicationRepository.getMedicationById(
@@ -65,6 +68,7 @@ async function getSerumCurve(
       drugId: profile?.id ?? null,
       curve: [],
       currentLevelFraction: null,
+      doseDays: [],
       disclaimer,
     };
   }
@@ -97,7 +101,15 @@ async function getSerumCurve(
       ? serumLevelAt(nowDay, doses, profile) / peak
       : null;
 
-  return { drugId: profile.id, curve, currentLevelFraction, disclaimer };
+  const doseDays = doses.map((d) => Number(d.day.toFixed(2)));
+
+  return {
+    drugId: profile.id,
+    curve,
+    currentLevelFraction,
+    doseDays,
+    disclaimer,
+  };
 }
 
 /**
@@ -108,7 +120,11 @@ async function getSiteSuggestion(
   userId: string,
   medicationId: string
 ): Promise<
-  SiteRotationResult & { sites: typeof INJECTION_SITES; restDays: number }
+  SiteRotationResult & {
+    sites: typeof INJECTION_SITES;
+    restDays: number;
+    activeSiteIds: string[] | null;
+  }
 > {
   const injections = (await injectionRepository.listInjections(userId, {
     medicationId,
@@ -123,8 +139,27 @@ async function getSiteSuggestion(
       daysAgo: daysBetween(now, new Date(i.injected_at)),
     }));
 
-  const result = suggestNextSite(recent);
-  return { ...result, sites: INJECTION_SITES, restDays: SITE_REST_DAYS };
+  // Honor the user's customized injection-site set/order (Settings → injection_sites pref).
+  const prefs =
+    await medicationDisplayPreferenceRepository.getMedicationDisplayPreferences(
+      userId
+    );
+  const sitePref = prefs.find(
+    (p: { view_group: string; visible_items: unknown }) =>
+      p.view_group === 'injection_sites'
+  );
+  const activeSiteIds =
+    Array.isArray(sitePref?.visible_items) && sitePref.visible_items.length
+      ? (sitePref.visible_items as string[])
+      : null;
+
+  const result = suggestNextSite(recent, activeSiteIds ?? undefined);
+  return {
+    ...result,
+    sites: INJECTION_SITES,
+    restDays: SITE_REST_DAYS,
+    activeSiteIds,
+  };
 }
 
 export { getSerumCurve, getSiteSuggestion };

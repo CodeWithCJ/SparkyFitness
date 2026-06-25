@@ -239,6 +239,7 @@ describe('Medication Routes V2', () => {
         drugId: 'semaglutide',
         curve: [{ day: 0, level: 1, fraction: 1 }],
         currentLevelFraction: 0.7,
+        doseDays: [0],
         disclaimer: 'Modeled estimate',
       };
       vi.mocked(glp1Service.getSerumCurve).mockResolvedValue(payload);
@@ -255,6 +256,7 @@ describe('Medication Routes V2', () => {
         restingSiteIds: ['left_thigh'],
         sites: [],
         restDays: 7,
+        activeSiteIds: null,
       };
       vi.mocked(glp1Service.getSiteSuggestion).mockResolvedValue(payload);
       const res = await request(app)
