@@ -663,6 +663,45 @@ describe('readHealthRecords', () => {
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(6000);
     });
 
+    test('averages heart-rate samples that fall inside the workout window', async () => {
+      await initHealthConnect();
+
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
+      mockQueryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 37,
+          duration: 3600,
+          totalEnergyBurned: { unit: 'kcal', quantity: 500 },
+          totalDistance: { unit: 'm', quantity: 5000 },
+          getStatistic: mockGetStatistic,
+        },
+      ]);
+      mockQueryQuantitySamples.mockResolvedValue([
+        { startDate: '2024-01-15T08:10:00Z', quantity: 130 },
+        { startDate: '2024-01-15T08:20:00Z', quantity: 140 },
+        { startDate: '2024-01-15T08:30:00Z', quantity: 150 },
+        { startDate: '2024-01-15T09:30:00Z', quantity: 80 },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierHeartRate',
+        expect.objectContaining({
+          ascending: false,
+          limit: 0,
+          unit: 'count/min',
+        })
+      );
+      expect((result[0] as { averageHeartRate: number }).averageHeartRate).toBe(140);
+    });
+
     test('pins units to kcal and meters on getStatistic calls (regression: user-preferred units leaked through)', async () => {
       await initHealthConnect();
 

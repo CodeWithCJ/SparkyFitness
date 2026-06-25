@@ -361,6 +361,23 @@ describe('transformHealthRecords', () => {
       expect(exerciseResult.source).toBe('HealthKit');
     });
 
+    test('passes average heart rate through to exercise sessions', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+          duration: 3600,
+          totalEnergyBurned: 500,
+          totalDistance: 5000,
+          averageHeartRate: 138,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
+
+      expect((result[0] as TransformedExerciseSession).avg_heart_rate).toBe(138);
+    });
+
     test('includes sets array with duration in minutes', () => {
       const records = [
         {

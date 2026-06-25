@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import { log } from '../config/logging.js';
 vi.mock('../models/measurementRepository');
 vi.mock('../models/preferenceRepository');
@@ -316,6 +319,20 @@ describe('processHealthData timezone resolution', () => {
     measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
+    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    exerciseDb.findExerciseByNameAndUserId = vi.fn().mockResolvedValue({
+      id: 'exercise-1',
+      name: 'Other',
+    });
+    exerciseDb.createExercise = vi.fn();
+    exerciseEntryDb.createExerciseEntry = vi
+      .fn()
+      .mockResolvedValue({ id: 'entry-exercise-1' });
+    activityDetailsRepository.createActivityDetail = vi
+      .fn()
+      .mockResolvedValue({ id: 'detail-1' });
   });
   it('record_timezone overrides account timezone for parsedDate', async () => {
     // Account timezone is UTC. Record says Asia/Tokyo.
@@ -436,6 +453,40 @@ describe('processHealthData timezone resolution', () => {
     expect(log).toHaveBeenCalledWith(
       'DEBUG',
       expect.stringContaining('heart_rate=1')
+    );
+  });
+
+  it('passes ExerciseSession average heart rate through to exercise entries', async () => {
+    const healthData = [
+      {
+        type: 'ExerciseSession',
+        source: 'HealthKit',
+        timestamp: '2024-06-15T11:44:00Z',
+        activityType: 'Other',
+        duration: 1054,
+        caloriesBurned: 136,
+        avg_heart_rate: 138,
+        source_id: 'hk-workout-1',
+        record_timezone: 'Australia/Adelaide',
+      },
+    ];
+
+    await measurementService.processHealthData(
+      healthData,
+      userId,
+      actingUserId
+    );
+
+    expect(exerciseEntryDb.createExerciseEntry).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({
+        duration_minutes: 1054 / 60,
+        calories_burned: 136,
+        avg_heart_rate: 138,
+        source_id: 'hk-workout-1',
+      }),
+      actingUserId,
+      'HealthKit'
     );
   });
 });

@@ -861,6 +861,7 @@ async function processHealthData(
               caloriesBurned,
               distance,
               duration,
+              avg_heart_rate,
               raw_data,
               source_id,
             } = dataEntry;
@@ -891,6 +892,7 @@ async function processHealthData(
                 entry_date: parsedDate,
                 notes: `Source: ${source}, Activity Type: ${activityType}`,
                 distance: distance,
+                avg_heart_rate: avg_heart_rate ?? null,
                 sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
                 source_id: source_id || null,
               },
@@ -1283,6 +1285,7 @@ async function processMobileHealthData(
               entry_date: parsedDate,
               notes: `Source: ${source}, Activity Type: ${activityType}`,
               distance: distance,
+              avg_heart_rate: dataEntry.avg_heart_rate ?? null,
               sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
               // Add other exercise-related fields from mobileHealthData if available
             },

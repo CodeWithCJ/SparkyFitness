@@ -563,6 +563,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       activityType: activityTypeName,
       title: activityTypeName,
       caloriesBurned: rec.totalEnergyBurned as number || 0,
+      avg_heart_rate: typeof rec.averageHeartRate === 'number' ? rec.averageHeartRate : undefined,
       distance: parseFloat((totalDistanceMeters / 1000).toFixed(2)),
       notes: 'Source: HealthKit',
       raw_data: record,

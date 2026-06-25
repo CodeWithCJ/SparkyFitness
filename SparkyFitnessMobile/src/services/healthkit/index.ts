@@ -721,6 +721,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     let totalDistance = typeof workoutAny.totalDistance === 'object'
       ? (workoutAny.totalDistance?.quantity ?? 0)
       : (workoutAny.totalDistance ?? 0);
+    let averageHeartRate: number | undefined;
 
     // Pin units explicitly on each getStatistic call. getAllStatistics returns
     // values in the user's HealthKit-preferred unit (often miles / kJ), but the
@@ -753,6 +754,33 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       // Stats fetch failed - keep using direct properties from workout
     }
 
+    try {
+      const heartRateSamples = await queryQuantitySamples('HKQuantityTypeIdentifierHeartRate', {
+        filter: { date: { startDate: new Date(w.startDate), endDate: new Date(w.endDate) } },
+        ascending: false,
+        limit: 0,
+        unit: 'count/min',
+      });
+
+      const bpmValues = Array.isArray(heartRateSamples)
+        ? heartRateSamples
+            .filter(sample => {
+              const sampleStart = new Date(sample.startDate);
+              return isInDateRange(sampleStart, new Date(w.startDate), new Date(w.endDate));
+            })
+            .map(sample => Number(sample.quantity))
+            .filter(value => Number.isFinite(value) && value > 0)
+        : [];
+
+      if (bpmValues.length > 0) {
+        averageHeartRate = Math.round(
+          bpmValues.reduce((sum, value) => sum + value, 0) / bpmValues.length
+        );
+      }
+    } catch {
+      // Heart-rate samples are optional; keep importing the workout without HR.
+    }
+
     const record: Record<string, unknown> = {
       startTime: w.startDate,
       endTime: w.endDate,
@@ -760,6 +788,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       duration: w.duration,
       totalEnergyBurned,
       totalDistance,
+      averageHeartRate,
       uuid: (w as unknown as { uuid?: string }).uuid,
     };
     // Forward timezone metadata so the transform layer can attach it to output records
