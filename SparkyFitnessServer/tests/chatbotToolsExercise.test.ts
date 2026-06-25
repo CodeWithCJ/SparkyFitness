@@ -901,16 +901,12 @@ describe('sparky_list_exercises', () => {
     const result = await tools.sparky_list_exercises.execute!({}, opts);
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [{ id: EXERCISE_ID, name: 'Bench Press' }],
-          has_more: false,
-          next_offset: null,
-          total_count: 1,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [{ id: EXERCISE_ID, name: 'Bench Press' }],
+        has_more: false,
+        next_offset: null,
+        total_count: 1,
+      })
     );
     expect(exerciseDb.getExercisesWithPagination).toHaveBeenCalledWith(
       'user-1',
@@ -979,23 +975,19 @@ describe('sparky_get_exercise_details', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          id: EXERCISE_ID,
-          name: 'Bench Press',
-          category: 'Strength',
-          muscle_groups: ['Chest', 'Triceps'],
-          equipment: ['Barbell'],
-          level: 'intermediate',
-          calories_per_hour: 400,
-          description: null,
-          is_custom: false,
-          instructions: ['Lie on the bench.'],
-          images: [],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        id: EXERCISE_ID,
+        name: 'Bench Press',
+        category: 'Strength',
+        muscle_groups: ['Chest', 'Triceps'],
+        equipment: ['Barbell'],
+        level: 'intermediate',
+        calories_per_hour: 400,
+        description: null,
+        is_custom: false,
+        instructions: ['Lie on the bench.'],
+        images: [],
+      })
     );
   });
 
@@ -1048,28 +1040,24 @@ describe('sparky_search_exercises', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [
-            {
-              id: EXERCISE_ID,
-              name: 'Bench Press',
-              category: 'Strength',
-              muscle_groups: ['Chest'],
-              equipment: ['Barbell'],
-              level: 'intermediate',
-              calories_per_hour: 400,
-              description: null,
-              is_custom: false,
-            },
-          ],
-          has_more: false,
-          next_offset: null,
-          total_count: 1,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [
+          {
+            id: EXERCISE_ID,
+            name: 'Bench Press',
+            category: 'Strength',
+            muscle_groups: ['Chest'],
+            equipment: ['Barbell'],
+            level: 'intermediate',
+            calories_per_hour: 400,
+            description: null,
+            is_custom: false,
+          },
+        ],
+        has_more: false,
+        next_offset: null,
+        total_count: 1,
+      })
     );
     expect(exerciseService.searchExercisesPaginated).toHaveBeenCalledWith(
       'user-1',
@@ -1096,16 +1084,12 @@ describe('sparky_get_exercise_diary', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          start_date: '2026-06-10',
-          end_date: '2026-06-10',
-          entries: [{ id: 'ee-1' }],
-          sets: [{ id: 's-1' }],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        start_date: '2026-06-10',
+        end_date: '2026-06-10',
+        entries: [{ id: 'ee-1' }],
+        sets: [{ id: 's-1' }],
+      })
     );
     expect(exerciseEntryDb.getExerciseDiaryRange).toHaveBeenCalledWith(
       'user-1',
@@ -1141,15 +1125,11 @@ describe('sparky_get_daily_exercise_totals', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          start_date: '2026-06-01',
-          end_date: '2026-06-01',
-          rows: [{ entry_date: '2026-06-01', entry_count: 2 }],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        start_date: '2026-06-01',
+        end_date: '2026-06-01',
+        rows: [{ entry_date: '2026-06-01', entry_count: 2 }],
+      })
     );
     expect(exerciseEntryDb.getDailyExerciseTotalsRange).toHaveBeenCalledWith(
       'user-1',
@@ -1171,11 +1151,7 @@ describe('sparky_get_recent_exercise_entries', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        [{ id: 'ee-1', exercise_name_from_catalog: 'Running' }],
-        null,
-        2
-      )
+      JSON.stringify([{ id: 'ee-1', exercise_name_from_catalog: 'Running' }])
     );
     expect(exerciseEntryDb.getRecentExerciseEntries).toHaveBeenCalledWith(
       'user-1',
@@ -1212,16 +1188,12 @@ describe('sparky_get_exercise_usage', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [{ id: 'ee-1' }, { id: 'ee-2' }],
-          has_more: true,
-          next_offset: 2,
-          total_count: 12,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [{ id: 'ee-1' }, { id: 'ee-2' }],
+        has_more: true,
+        next_offset: 2,
+        total_count: 12,
+      })
     );
     expect(exerciseEntryDb.getExerciseUsage).toHaveBeenCalledWith(
       'user-1',
@@ -1250,23 +1222,19 @@ describe('sparky_get_exercise_progress', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [
-            {
-              entry_date: '2026-06-01',
-              max_weight: 60,
-              max_reps: 10,
-              total_volume: 600,
-            },
-          ],
-          has_more: false,
-          next_offset: null,
-          total_count: 1,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [
+          {
+            entry_date: '2026-06-01',
+            max_weight: 60,
+            max_reps: 10,
+            total_volume: 600,
+          },
+        ],
+        has_more: false,
+        next_offset: null,
+        total_count: 1,
+      })
     );
     expect(exerciseService.getExerciseProgressData).toHaveBeenCalledWith(
       'user-1',
@@ -1288,23 +1256,19 @@ describe('sparky_get_exercise_progress', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [
-            {
-              entry_date: '2026-06-10',
-              max_weight: 70,
-              max_reps: 10,
-              total_volume: 10 * 60 + 8 * 70,
-            },
-          ],
-          has_more: false,
-          next_offset: null,
-          total_count: 1,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [
+          {
+            entry_date: '2026-06-10',
+            max_weight: 70,
+            max_reps: 10,
+            total_volume: 10 * 60 + 8 * 70,
+          },
+        ],
+        has_more: false,
+        next_offset: null,
+        total_count: 1,
+      })
     );
   });
 });

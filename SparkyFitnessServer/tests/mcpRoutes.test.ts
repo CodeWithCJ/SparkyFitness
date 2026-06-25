@@ -167,7 +167,7 @@ describe('POST /mcp', () => {
     expect(res.status).toBe(200);
     // Same text the chatbotToolsGoals golden test asserts for this case.
     expect(res.body.result.content).toEqual([
-      { type: 'text', text: JSON.stringify({ calories: 2000 }, null, 2) },
+      { type: 'text', text: JSON.stringify({ calories: 2000 }) },
     ]);
     // Scoped to the authenticated user; tz resolved to UTC for the today default.
     expect(goalService.getUserGoals).toHaveBeenCalledWith(

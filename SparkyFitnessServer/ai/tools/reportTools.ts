@@ -184,7 +184,7 @@ export function buildReportTools(userId: string, tz: string) {
         }
         try {
           const data = await getDailyReport(userId, tz, parsed.data);
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Report Tool] sparky_get_daily_report error:', error);
           if (error instanceof Error && error.message.includes('not found')) {

@@ -1517,34 +1517,27 @@ describe('sparky_list_foods', () => {
       opts
     );
 
+    // Compact render; per-row projection drops null `brand` and redundant `user_id`.
     expect(result).toBe(
-      JSON.stringify(
-        {
-          data: [
-            {
-              id: FOOD_ID,
-              name: 'Eggs',
-              brand: null,
-              is_custom: true,
-              user_id: 'user-1',
-              variants: [{ id: VARIANT_ID, calories: 155 }],
-            },
-            {
-              id: FOOD_ID_2,
-              name: 'Quick Add',
-              brand: null,
-              is_custom: true,
-              user_id: 'user-1',
-              variants: [],
-            },
-          ],
-          has_more: false,
-          next_offset: null,
-          total_count: 2,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [
+          {
+            id: FOOD_ID,
+            name: 'Eggs',
+            is_custom: true,
+            variants: [{ id: VARIANT_ID, calories: 155 }],
+          },
+          {
+            id: FOOD_ID_2,
+            name: 'Quick Add',
+            is_custom: true,
+            variants: [],
+          },
+        ],
+        has_more: false,
+        next_offset: null,
+        total_count: 2,
+      })
     );
     expect(foodRepository.getFoodsWithPagination).toHaveBeenCalledWith(
       'egg',
@@ -1576,19 +1569,15 @@ describe('sparky_get_food_details', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          id: FOOD_ID,
-          name: 'Eggs',
-          brand: 'Farm Fresh',
-          variants: [
-            { id: VARIANT_ID, serving_unit: 'g' },
-            { id: FOOD_ID_2, serving_unit: 'serving' },
-          ],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        id: FOOD_ID,
+        name: 'Eggs',
+        brand: 'Farm Fresh',
+        variants: [
+          { id: VARIANT_ID, serving_unit: 'g' },
+          { id: FOOD_ID_2, serving_unit: 'serving' },
+        ],
+      })
     );
   });
 
@@ -1629,11 +1618,12 @@ describe('sparky_search_foods', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        { data: [], has_more: false, next_offset: null, total_count: 0 },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: [],
+        has_more: false,
+        next_offset: null,
+        total_count: 0,
+      })
     );
     expect(foodRepository.getFoodsWithPagination).toHaveBeenCalledWith(
       'egg',
@@ -1663,16 +1653,12 @@ describe('sparky_get_food_diary', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          start_date: '2026-06-10',
-          end_date: '2026-06-10',
-          food_entries: foodEntries,
-          meal_entries: mealEntries,
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        start_date: '2026-06-10',
+        end_date: '2026-06-10',
+        food_entries: foodEntries,
+        meal_entries: mealEntries,
+      })
     );
     expect(foodEntryService.getFoodEntriesByDateRange).toHaveBeenCalledWith(
       'user-1',
@@ -1683,6 +1669,105 @@ describe('sparky_get_food_diary', () => {
     expect(
       foodEntryMealRepository.getFoodEntryMealsByDateRange
     ).toHaveBeenCalledWith('user-1', '2026-06-10', '2026-06-10');
+  });
+
+  it('compacts the payload: single line, null/empty/redundant fields dropped, actionable ids kept', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDateRange).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_id: FOOD_ID,
+        meal_id: null,
+        meal_type: 'Breakfast',
+        meal_type_id: '99999999-9999-4999-8999-999999999999',
+        quantity: 2,
+        unit: 'serving',
+        variant_id: VARIANT_ID,
+        entry_date: '2026-06-10',
+        meal_plan_template_id: null,
+        food_entry_meal_id: null,
+        food_name: 'Eggs',
+        brand_name: null,
+        calories: 155,
+        protein: 13,
+        vitamin_a: null,
+        vitamin_c: null,
+        custom_nutrients: {},
+      },
+    ]);
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDateRange
+    ).mockResolvedValue([
+      {
+        id: MEAL_ID,
+        user_id: 'user-1',
+        name: 'Protein Shake',
+        meal_type: 'Snacks',
+        quantity: 1,
+        entry_date: '2026-06-10',
+        created_at: '2026-06-10T08:00:00.000Z',
+        updated_at: '2026-06-10T08:00:00.000Z',
+        created_by_user_id: 'user-1',
+        updated_by_user_id: 'user-1',
+        meal_template_id: null,
+        meal_type_id: '99999999-9999-4999-8999-999999999999',
+        legacy_serving_unit_math: false,
+      },
+    ]);
+
+    const result = await tools.sparky_get_food_diary.execute!(
+      { date: '2026-06-10' },
+      opts
+    );
+
+    // Compact render: no pretty-print whitespace.
+    expect(result).not.toContain('\n');
+
+    const parsed = JSON.parse(result as string);
+    const entry = parsed.food_entries[0];
+    // Actionable ids kept.
+    expect(entry.id).toBe(ENTRY_ID);
+    expect(entry.food_id).toBe(FOOD_ID);
+    // Populated nutrients kept.
+    expect(entry).toMatchObject({
+      food_name: 'Eggs',
+      calories: 155,
+      protein: 13,
+    });
+    // Nulls, empty objects, and redundant internal surrogate keys dropped.
+    for (const dropped of [
+      'meal_id',
+      'brand_name',
+      'vitamin_a',
+      'vitamin_c',
+      'custom_nutrients',
+      'meal_type_id',
+      'variant_id',
+      'meal_plan_template_id',
+      'food_entry_meal_id',
+    ]) {
+      expect(entry).not.toHaveProperty(dropped);
+    }
+    // Human-readable label kept in place of meal_type_id.
+    expect(entry.meal_type).toBe('Breakfast');
+
+    const meal = parsed.meal_entries[0];
+    expect(meal).toMatchObject({
+      id: MEAL_ID,
+      name: 'Protein Shake',
+      meal_type: 'Snacks',
+    });
+    for (const dropped of [
+      'user_id',
+      'created_at',
+      'updated_at',
+      'created_by_user_id',
+      'updated_by_user_id',
+      'meal_template_id',
+      'meal_type_id',
+      'legacy_serving_unit_math',
+    ]) {
+      expect(meal).not.toHaveProperty(dropped);
+    }
   });
 });
 
@@ -1736,11 +1821,12 @@ describe('sparky_get_food_usage', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        { data: rows, has_more: false, next_offset: null, total_count: 1 },
-        null,
-        2
-      )
+      JSON.stringify({
+        data: rows,
+        has_more: false,
+        next_offset: null,
+        total_count: 1,
+      })
     );
     expect(foodRepository.getFoodUsage).toHaveBeenCalledWith(
       'user-1',
