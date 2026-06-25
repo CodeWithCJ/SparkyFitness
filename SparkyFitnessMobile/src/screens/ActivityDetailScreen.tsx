@@ -437,6 +437,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const startEditingRef = useRef(startEditing);
+  const cancelEditingRef = useRef(cancelEditing);
+  const handleSaveRef = useRef(handleSave);
+  startEditingRef.current = startEditing;
+  cancelEditingRef.current = cancelEditing;
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -454,7 +461,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             tintColor: headerActionColor,
             accessibilityLabel: 'Cancel',
             disabled: isSaving,
-            onPress: () => cancelEditing(),
+            onPress: () => cancelEditingRef.current(),
           }),
         ],
         unstable_headerRightItems: () => [
@@ -465,7 +472,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             accessibilityLabel: 'Save',
             fontWeight: '600',
             disabled: isSaving,
-            onPress: () => handleSave(),
+            onPress: () => handleSaveRef.current(),
           }),
         ],
       });
@@ -482,7 +489,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 identifier: 'activity-detail-edit',
                 tintColor: headerActionColor,
                 accessibilityLabel: 'Edit activity',
-                onPress: () => startEditing(),
+                onPress: () => startEditingRef.current(),
               }),
             ]
           : undefined,
@@ -496,9 +503,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     isSparky,
     headerActionColor,
     headerSaveColor,
-    startEditing,
-    cancelEditing,
-    handleSave,
+    headerTintColor,
   ]);
 
   return (

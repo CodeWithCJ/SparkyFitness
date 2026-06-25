@@ -711,6 +711,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? `${Math.round(scaled(value))}${unit}`
       : `${Math.round(scaledValue(value, entry))}${unit}`;
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -729,7 +732,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               disabled: isEditing && (isUpdatePending || quantity <= 0),
               onPress: () => {
                 if (isEditing) {
-                  handleSave();
+                  handleSaveRef.current();
                   return;
                 }
                 updateEdit({ isEditing: true });
@@ -746,7 +749,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     quantity,
     headerActionColor,
     headerSaveColor,
-    handleSave,
+    headerTintColor,
     updateEdit,
   ]);
 

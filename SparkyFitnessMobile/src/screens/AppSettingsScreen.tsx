@@ -32,12 +32,11 @@ const themeOptions: { label: string; value: ThemePreference }[] = [
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
+  const [formEnabled, formDisabled, textPrimary] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
     '--color-text-primary',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
 
   const appTheme = useThemePreference();
   const hapticsEnabled = useHapticsEnabled();

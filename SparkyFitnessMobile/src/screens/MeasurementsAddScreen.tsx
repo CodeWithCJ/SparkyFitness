@@ -447,7 +447,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isSaveDisabled, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaveDisabled, handleSave]);
 
   return (
     <View

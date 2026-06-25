@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -159,6 +159,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     });
   };
 
+  const handleEditRef = useRef(handleEdit);
+  handleEditRef.current = handleEdit;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -173,12 +176,12 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
               tintColor: headerActionColor,
               accessibilityLabel: 'Edit food',
               disabled: !selectedVariantId,
-              onPress: () => handleEdit(),
+              onPress: () => handleEditRef.current(),
             }),
           ]
         : undefined,
     });
-  }, [navigation, canManageFood, selectedVariantId, headerActionColor, handleEdit]);
+  }, [navigation, canManageFood, selectedVariantId, headerActionColor, headerTintColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

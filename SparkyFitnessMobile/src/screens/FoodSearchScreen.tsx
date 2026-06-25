@@ -216,6 +216,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     openCreateFood();
   };
 
+  const handleHeaderActionPressRef = useRef(handleHeaderActionPress);
+  handleHeaderActionPressRef.current = handleHeaderActionPress;
+
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
     if ((item.source === 'fatsecret' || item.source === 'yazio') && selectedProvider) {
       setLoadingFoodId(item.id);
@@ -267,11 +270,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           identifier: 'food-search-add',
           tintColor: headerActionColor,
           accessibilityLabel: trailingActionLabel,
-          onPress: () => handleHeaderActionPress(),
+          onPress: () => handleHeaderActionPressRef.current(),
         }),
       ],
     });
-  }, [navigation, headerActionColor, trailingActionLabel, handleHeaderActionPress]);
+  }, [navigation, headerActionColor, headerTintColor, trailingActionLabel]);
 
   const renderCreateMealCta = () => {
     if (isMealBuilderMode || activeTab !== 'meal') return null;

@@ -17,11 +17,10 @@ type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textSecondary, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
+  const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
     '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
 

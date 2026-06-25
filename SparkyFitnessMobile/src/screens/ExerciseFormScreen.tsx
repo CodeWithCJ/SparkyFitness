@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
@@ -414,6 +414,9 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -434,13 +437,13 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
           label: 'Save',
           identifier: 'exercise-create-save',
           tintColor: headerSaveColor,
-          onPress: () => void handleSave(),
+          onPress: () => void handleSaveRef.current(),
           disabled: isPending,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isPending, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
 
   return (
     <FormScreenChrome
@@ -589,6 +592,9 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -609,13 +615,13 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
           label: 'Save Changes',
           identifier: 'exercise-edit-save',
           tintColor: headerSaveColor,
-          onPress: () => void handleSave(),
+          onPress: () => void handleSaveRef.current(),
           disabled: isPending,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isPending, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
 
   return (
     <FormScreenChrome

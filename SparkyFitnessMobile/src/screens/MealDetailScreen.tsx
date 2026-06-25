@@ -156,7 +156,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           ]
         : undefined,
     });
-  }, [navigation, meal, canManageMeal, headerActionColor]);
+  }, [navigation, meal, canManageMeal, headerActionColor, headerTintColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

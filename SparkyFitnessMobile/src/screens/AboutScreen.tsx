@@ -18,7 +18,6 @@ const DOCUMENTATION_URL = 'https://codewithcj.github.io/SparkyFitness/';
 const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   const openUrl = (url: string) => {

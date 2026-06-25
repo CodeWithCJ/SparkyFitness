@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,10 +41,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const { item, updatedItem } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-primary',
-  ]) as [string, string];
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { getImageSource } = useExerciseImageSource();
   const { profile } = useProfile();
@@ -119,6 +116,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     });
   };
 
+  const handleEditRef = useRef(handleEdit);
+  handleEditRef.current = handleEdit;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -132,12 +132,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               identifier: 'exercise-detail-edit',
               tintColor: headerActionColor,
               accessibilityLabel: 'Edit exercise',
-              onPress: () => handleEdit(),
+              onPress: () => handleEditRef.current(),
             }),
           ]
         : undefined,
     });
-  }, [navigation, canManageExercise, headerActionColor, handleEdit]);
+  }, [navigation, canManageExercise, headerActionColor, headerTintColor]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>

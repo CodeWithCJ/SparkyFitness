@@ -36,6 +36,11 @@ export function useHeaderActionColors() {
 
   return {
     ...resolved,
+    // Semantic aliases for manually rendered Android headers. Consumers should
+    // not choose theme colors directly: back/cancel use the text color while
+    // save remains accented on Android.
+    backColor: resolved.defaultColor,
+    actionColor: resolved.defaultColor,
     headerTintColor: resolved.defaultColor,
   };
 }

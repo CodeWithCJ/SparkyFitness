@@ -210,7 +210,14 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         }),
       ],
     });
-  }, [navigation, accentPrimary, hasLogs, handleClearLogs]);
+  }, [
+    navigation,
+    accentPrimary,
+    headerActionColor,
+    headerTintColor,
+    hasLogs,
+    handleClearLogs,
+  ]);
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
     let logText = `Status: ${item.status}\n`;

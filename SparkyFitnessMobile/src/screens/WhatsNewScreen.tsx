@@ -213,7 +213,6 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
 
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in

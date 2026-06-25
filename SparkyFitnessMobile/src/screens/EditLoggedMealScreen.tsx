@@ -285,6 +285,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     updateMeal(payload);
   };
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -299,11 +302,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           accessibilityLabel: 'Save meal',
           fontWeight: '600',
           disabled: !canSave || isRowBusy,
-          onPress: () => handleSave(),
+          onPress: () => handleSaveRef.current(),
         }),
       ],
     });
-  }, [navigation, headerSaveColor, canSave, isRowBusy, handleSave]);
+  }, [navigation, headerSaveColor, headerTintColor, canSave, isRowBusy]);
 
   if (isLoading) {
     return (

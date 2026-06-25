@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -389,6 +389,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
   const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
+  const handleSaveMealRef = useRef(handleSaveMeal);
+  handleSaveMealRef.current = handleSaveMeal;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -409,13 +412,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           label: saveLabel,
           identifier: isEditMode ? 'meal-edit-save' : 'meal-create-save',
           tintColor: headerSaveColor,
-          onPress: () => void handleSaveMeal(),
+          onPress: () => void handleSaveMealRef.current(),
           disabled: isSaving,
           fontWeight: '600',
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isSaving, isEditMode, saveLabel, handleSaveMeal]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaving, isEditMode, saveLabel]);
 
   const renderHeader = () => Platform.OS === 'ios' ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">

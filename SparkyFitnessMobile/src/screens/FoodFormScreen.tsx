@@ -774,7 +774,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isSubmitting, isLibraryMode]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, isLibraryMode]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
@@ -1865,7 +1865,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, isSubmitting]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>

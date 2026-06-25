@@ -325,7 +325,7 @@ export function FallbackTabsLayout({
         {() => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />}
       </FallbackTab.Screen>
       <FallbackTab.Screen name="Library" component={SafeLibrary} />
-      <FallbackTab.Screen name="Settings" component={SettingsScreen} />
+      <FallbackTab.Screen name="Settings" component={SafeSettings} />
     </FallbackTab.Navigator>
   );
 }

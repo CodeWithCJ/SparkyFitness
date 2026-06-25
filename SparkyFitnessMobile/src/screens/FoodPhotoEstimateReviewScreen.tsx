@@ -13,6 +13,7 @@ import Button from '../components/ui/Button';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import Icon from '../components/Icon';
 import { parseDecimalInput } from '../utils/numericInput';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   confidenceTones,
   itemConfidenceLabels,
@@ -65,6 +66,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { backColor } = useHeaderActionColors();
 
   const dismissFlow = () =>
     navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
@@ -289,7 +291,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           className="z-10 p-0"
           accessibilityLabel="Cancel"
         >
-          <Icon name="close" size={22} color={accentPrimary} />
+          <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Review estimate

@@ -1087,6 +1087,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   // name as the title). Drive the Edit / Save actions through native header
   // items and hide the custom in-screen header below. Android keeps the
   // custom header.
+  const handleSaveExternalFoodRef = useRef(handleSaveExternalFood);
+  handleSaveExternalFoodRef.current = handleSaveExternalFood;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -1123,7 +1126,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   tintColor: headerSaveColor,
                   accessibilityLabel: 'Save Food',
                   disabled: isActionPending,
-                  onPress: () => void handleSaveExternalFood(),
+                  onPress: () => void handleSaveExternalFoodRef.current(),
                 }),
               );
             }
@@ -1135,11 +1138,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     navigation,
     headerActionColor,
     headerSaveColor,
+    headerTintColor,
     showHeaderActions,
     showSaveExternalAction,
     isActionPending,
     handleAdjustNutrition,
-    handleSaveExternalFood,
   ]);
 
   return (

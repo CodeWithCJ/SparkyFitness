@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,11 +32,10 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const [accentColor, textSecondary, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
+  const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
     '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const { saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const [value, setValue] = useState(currentBarcode ?? '');
@@ -172,6 +171,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     );
   };
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
@@ -187,12 +189,12 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
           fontWeight: '600',
           disabled: saveDisabled,
           onPress: () => {
-            void handleSave();
+            void handleSaveRef.current();
           },
         }),
       ],
     });
-  }, [navigation, headerSaveColor, saveDisabled, handleSave]);
+  }, [navigation, headerSaveColor, headerTintColor, saveDisabled]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>

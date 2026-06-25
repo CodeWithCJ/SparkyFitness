@@ -255,7 +255,6 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         }),
       ],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation, presetHeaderTintColor, isPending]);
 
   return (
@@ -450,7 +449,6 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         }),
       ],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation, presetHeaderTintColor, isPending]);
 
   return (

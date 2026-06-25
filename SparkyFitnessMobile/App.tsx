@@ -1050,9 +1050,7 @@ function AppContent() {
           <Stack.Screen
             name="DashboardSettings"
             component={SafeDashboardSettings}
-            options={{
-              headerShown: false,
-            }}
+            options={createStackScreenOptions('Dashboard Settings', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="ServerSettings"

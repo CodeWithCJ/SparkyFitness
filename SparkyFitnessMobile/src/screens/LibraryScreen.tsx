@@ -15,6 +15,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
 import FoodLibraryRow from '../components/FoodLibraryRow';
@@ -48,6 +49,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
     recentFoods,
@@ -210,28 +212,44 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             icon="food"
             title="Food"
             subtitle="Manual entry"
-            onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="meal"
             title="Meal"
             subtitle="Group foods"
-            onPress={() => navigation.navigate('MealAdd')}
+            disabled={isNavigationLocked}
+            onPress={() => runNavigationAction(() => navigation.navigate('MealAdd'))}
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="exercise-weights"
             title="Exercise"
             subtitle="Manual entry"
-            onPress={() => navigation.navigate('ExerciseForm', { mode: 'create-exercise' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('ExerciseForm', { mode: 'create-exercise' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="bookmark-filled"
             title="Workout preset"
             subtitle="Exercise routine"
-            onPress={() => navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
         </View>
