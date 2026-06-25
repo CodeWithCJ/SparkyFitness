@@ -673,7 +673,7 @@ async function processChatMessage(
       providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(50),
       maxRetries: 5,
-      onStepFinish({ toolCalls }) {
+      onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
             log(
@@ -686,13 +686,19 @@ async function processChatMessage(
             });
           });
         }
+        if (toolResults && toolResults.length > 0) {
+          const sizes = toolResults
+            .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
+            .join(' ');
+          log('info', `[chat] tool result sizes: ${sizes}`);
+        }
       },
     });
 
     const usage = result.totalUsage ?? result.usage;
     log(
       'info',
-      `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0}`
+      `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0} noCacheTokens=${usage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${usage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${usage?.outputTokens ?? 0} totalTokens=${usage?.totalTokens ?? 0}`
     );
 
     // Save history dynamically to DB (replacing frontend client-side saves)
@@ -1083,11 +1089,19 @@ async function processChatMessageStream(
       providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(50),
       maxRetries: 5,
+      onStepFinish({ toolResults }) {
+        if (toolResults && toolResults.length > 0) {
+          const sizes = toolResults
+            .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
+            .join(' ');
+          log('info', `[chat] tool result sizes: ${sizes}`);
+        }
+      },
       onFinish: async ({ text, finishReason, usage, totalUsage }) => {
         const observedUsage = totalUsage ?? usage;
         log(
           'info',
-          `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0}`
+          `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
         );
 
         // Get the last user message from conversationMessages to ensure parts are captured
