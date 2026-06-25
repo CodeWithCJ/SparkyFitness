@@ -2,7 +2,6 @@ import { getClient } from '../db/poolManager.js';
 import type {
   CreateCustomSymptomBody,
   CreateSymptomEntryBody,
-  ListSymptomEntriesQuery,
 } from '../schemas/symptomSchemas.js';
 
 const CUSTOM_SYMPTOM_COLS = `id, user_id, name, display_name, scale_type, unit, is_glp1_flagged, created_at, updated_at`;
@@ -31,7 +30,7 @@ async function createCustomSymptom(
        RETURNING ${CUSTOM_SYMPTOM_COLS}`,
       [
         userId,
-        data.name.trim(),
+        data.name.toLowerCase().trim(),
         data.display_name ?? null,
         data.scale_type ?? null,
         data.unit ?? null,
@@ -66,7 +65,7 @@ async function deleteCustomSymptom(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'DELETE FROM user_custom_symptoms WHERE id = $1 AND user_id = $2 RETURNING id',
+      `DELETE FROM user_custom_symptoms WHERE id = $1 AND user_id = $2 RETURNING id`,
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;
@@ -87,7 +86,8 @@ async function createSymptomEntry(
       `INSERT INTO symptom_entries (
          user_id, medication_id, symptom_id, symptom_name_snapshot, severity, severity_label,
          logged_at, entry_date, body_location, context_text, bristol_type, source, custom_fields)
-       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, NOW()), COALESCE($8, CURRENT_DATE), $9, $10, $11, COALESCE($12, 'manual'), COALESCE($13, '{}'::jsonb))
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, NOW()), COALESCE($8, CURRENT_DATE),
+         $9, $10, $11, COALESCE($12, 'manual'), COALESCE($13, '{}'::jsonb))
        RETURNING ${ENTRY_COLS}`,
       [
         userId,
@@ -113,7 +113,7 @@ async function createSymptomEntry(
 
 async function listSymptomEntries(
   userId: string,
-  opts: ListSymptomEntriesQuery = {}
+  opts: { fromDate?: string; toDate?: string; symptomName?: string } = {}
 ) {
   const client = await getClient(userId);
   try {
@@ -129,8 +129,8 @@ async function listSymptomEntries(
       where.push(`entry_date <= $${params.length}`);
     }
     if (opts.symptomName) {
-      params.push(opts.symptomName);
-      where.push(`LOWER(symptom_name_snapshot) = LOWER($${params.length})`);
+      params.push(opts.symptomName.toLowerCase().trim());
+      where.push(`LOWER(symptom_name_snapshot) = $${params.length}`);
     }
 
     const result = await client.query(
@@ -152,7 +152,7 @@ async function deleteSymptomEntry(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'DELETE FROM symptom_entries WHERE id = $1 AND user_id = $2 RETURNING id',
+      `DELETE FROM symptom_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;
@@ -169,6 +169,7 @@ export {
   listSymptomEntries,
   deleteSymptomEntry,
 };
+
 export default {
   createCustomSymptom,
   listCustomSymptoms,

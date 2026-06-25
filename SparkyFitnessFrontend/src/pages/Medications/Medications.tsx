@@ -10,12 +10,18 @@ import {
   Activity,
   CheckCircle2,
   RotateCcw,
+  AlertCircle,
+  Info,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   GLP1_DRUG_PROFILES,
   todayInZone,
   dayToUtcRange,
   getDueDosesForDate,
+  BUILT_IN_SYMPTOMS,
+  getSymptomPatternHints,
+  addDays,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +35,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +62,14 @@ import {
   useAddScheduleMutation,
   useDeleteScheduleMutation,
 } from '@/hooks/useMedications';
+import {
+  useCustomSymptoms,
+  useCreateCustomSymptomMutation,
+  useDeleteCustomSymptomMutation,
+  useSymptomEntries,
+  useCreateSymptomEntryMutation,
+  useDeleteSymptomEntryMutation,
+} from '@/hooks/useSymptoms';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { Medication, MedicationSchedule } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
@@ -574,28 +590,107 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
   );
 }
 
+const BRISTOL_TYPES = [
+  {
+    type: 1,
+    label: 'Type 1',
+    desc: 'Separate hard lumps, like nuts (constipation)',
+    color: 'border-red-300 bg-red-50/20',
+  },
+  {
+    type: 2,
+    label: 'Type 2',
+    desc: 'Sausage-shaped but lumpy (mild constipation)',
+    color: 'border-orange-300 bg-orange-50/20',
+  },
+  {
+    type: 3,
+    label: 'Type 3',
+    desc: 'Like a sausage but with cracks on surface (normal)',
+    color: 'border-green-300 bg-green-50/10',
+  },
+  {
+    type: 4,
+    label: 'Type 4',
+    desc: 'Like a sausage or snake, smooth and soft (optimal)',
+    color: 'border-emerald-300 bg-emerald-50/20',
+  },
+  {
+    type: 5,
+    label: 'Type 5',
+    desc: 'Soft blobs with clear-cut edges (lacks fiber)',
+    color: 'border-blue-200 bg-blue-50/10',
+  },
+  {
+    type: 6,
+    label: 'Type 6',
+    desc: 'Fluffy pieces with ragged edges, mushy (mild diarrhea)',
+    color: 'border-yellow-300 bg-yellow-50/20',
+  },
+  {
+    type: 7,
+    label: 'Type 7',
+    desc: 'Watery, no solid pieces, entirely liquid (diarrhea)',
+    color: 'border-red-400 bg-red-100/10',
+  },
+];
+
 export default function Medications() {
-  const [activeTab, setActiveTab] = useState<'today' | 'cabinet'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
+    'today'
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Symptoms tracking state
+  const [symptomName, setSymptomName] = useState('nausea');
+  const [customSymptomInput, setCustomSymptomInput] = useState('');
+  const [severity, setSeverity] = useState([5]);
+  const [bodyLocation, setBodyLocation] = useState('general');
+  const [contextText, setContextText] = useState('');
+  const [bristolType, setBristolType] = useState<number | null>(null);
+  const [linkedMedId, setLinkedMedId] = useState<string | null>(null);
+  const [symptomCustomOpen, setSymptomCustomOpen] = useState(false);
+  const [customSymptomDisplayName, setCustomSymptomDisplayName] = useState('');
 
   const preferencesContext = usePreferences();
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = todayInZone(timezone);
+  const thirtyDaysAgo = addDays(today, -30);
 
+  // Queries
   const { data: meds = [], isLoading: loadingMeds } = useMedications({
     activeOnly: false,
   });
+
   const { data: entries = [], isLoading: loadingEntries } =
     useMedicationEntries({
       fromDate: today,
       toDate: today,
     });
 
+  const { data: recentEntries = [] } = useMedicationEntries({
+    fromDate: thirtyDaysAgo,
+    toDate: today,
+  });
+
+  const { data: customSymptoms = [] } = useCustomSymptoms();
+  const { data: symptomLogs = [], isLoading: loadingSymptoms } =
+    useSymptomEntries({
+      fromDate: thirtyDaysAgo,
+      toDate: today,
+    });
+
+  // Mutations
   const removeMedMutation = useDeleteMedicationMutation();
   const createEntryMutation = useCreateMedicationEntryMutation();
   const deleteEntryMutation = useDeleteMedicationEntryMutation();
+
+  const createCustomSymptomMutation = useCreateCustomSymptomMutation();
+  const deleteCustomSymptomMutation = useDeleteCustomSymptomMutation();
+  const createSymptomEntryMutation = useCreateSymptomEntryMutation();
+  const deleteSymptomEntryMutation = useDeleteSymptomEntryMutation();
 
   const handleDeleteMed = (id: string) =>
     removeMedMutation.mutate(id, { onSuccess: () => setSelectedId(null) });
@@ -603,6 +698,7 @@ export default function Medications() {
   const selected =
     (meds.find((m) => m.id === selectedId) as MedicationDetail) ?? null;
 
+  // Schedules evaluation
   const dueDoses = useMemo(() => {
     if (loadingMeds || meds.length === 0) return [];
     return getDueDosesForDate(meds, today);
@@ -632,6 +728,59 @@ export default function Medications() {
     dueDoses.length > 0
       ? Math.round((completedDosesCount / dueDoses.length) * 100)
       : 100;
+
+  // Pattern Correlation Calculations
+  const patternDoses = useMemo(() => {
+    return recentEntries
+      .filter((e) => e.status === 'taken' || e.status === 'prn_taken')
+      .map((e) => ({
+        injected_at: e.taken_at,
+        dose_mg: e.dose_amount_snapshot,
+        medication_name: e.med_name_snapshot ?? undefined,
+      }));
+  }, [recentEntries]);
+
+  const patternHints = useMemo(() => {
+    return getSymptomPatternHints(patternDoses, symptomLogs);
+  }, [patternDoses, symptomLogs]);
+
+  // Combined built-in and custom symptoms list
+  const allSymptomOptions = useMemo(() => {
+    const list = BUILT_IN_SYMPTOMS.map((s) => ({
+      id: s.name,
+      name: s.name,
+      displayName: s.displayName,
+      isGlp1: s.isGlp1,
+    }));
+    customSymptoms.forEach((s) => {
+      list.push({
+        id: s.id,
+        name: s.name,
+        displayName: s.display_name || s.name,
+        isGlp1: s.is_glp1_flagged,
+      });
+    });
+    return list;
+  }, [customSymptoms]);
+
+  // Calendar rendering helper: build past 30 days
+  const calendarDays = useMemo(() => {
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const dStr = addDays(today, -i);
+      const logsForDay = symptomLogs.filter((l) => l.entry_date === dStr);
+      days.push({
+        dateString: dStr,
+        dayLabel: dStr.substring(8, 10),
+        logs: logsForDay,
+        maxSeverity:
+          logsForDay.length > 0
+            ? Math.max(...logsForDay.map((l) => l.severity))
+            : 0,
+      });
+    }
+    return days;
+  }, [today, symptomLogs]);
 
   const handleLogScheduled = (
     due: (typeof dueDoses)[0],
@@ -675,6 +824,67 @@ export default function Medications() {
 
   const handleUndoEntry = (entryId: string) => {
     deleteEntryMutation.mutate(entryId);
+  };
+
+  const handleCreateCustomSymptom = () => {
+    if (!customSymptomInput.trim()) return;
+    createCustomSymptomMutation.mutate(
+      {
+        name: customSymptomInput.trim().toLowerCase().replace(/\s+/g, '_'),
+        display_name:
+          customSymptomDisplayName.trim() || customSymptomInput.trim(),
+        scale_type: '1-10',
+        is_glp1_flagged: false,
+      },
+      {
+        onSuccess: () => {
+          setSymptomCustomOpen(false);
+          setSymptomName(
+            customSymptomInput.trim().toLowerCase().replace(/\s+/g, '_')
+          );
+          setCustomSymptomInput('');
+          setCustomSymptomDisplayName('');
+        },
+      }
+    );
+  };
+
+  const handleLogSymptom = () => {
+    const selectedOpt = allSymptomOptions.find((s) => s.name === symptomName);
+    const snapName = selectedOpt ? selectedOpt.displayName : symptomName;
+
+    let severityLabel = 'Moderate';
+    const val = severity[0] ?? 5;
+    if (val <= 3) severityLabel = 'Mild';
+    else if (val >= 7) severityLabel = 'Severe';
+
+    createSymptomEntryMutation.mutate(
+      {
+        medication_id: linkedMedId || null,
+        symptom_id:
+          selectedOpt && selectedOpt.id !== selectedOpt.name
+            ? selectedOpt.id
+            : null,
+        symptom_name_snapshot: snapName,
+        severity: val,
+        severity_label: severityLabel,
+        body_location: bodyLocation,
+        context_text: contextText || null,
+        bristol_type: ['constipation', 'diarrhea'].includes(symptomName)
+          ? bristolType
+          : null,
+        entry_date: today,
+        logged_at: new Date().toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setContextText('');
+          setBristolType(null);
+          setLinkedMedId(null);
+          setBodyLocation('general');
+        },
+      }
+    );
   };
 
   const formatEntryTime = (timestamp: string) => {
@@ -729,6 +939,16 @@ export default function Medications() {
               }`}
             >
               Cabinet
+            </button>
+            <button
+              onClick={() => setActiveTab('symptoms')}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm transition ${
+                activeTab === 'symptoms'
+                  ? 'bg-background shadow text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Symptoms
             </button>
           </div>
           <AddMedicationDialog />
@@ -1149,7 +1369,7 @@ export default function Medications() {
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-semibold flex items-center gap-2">
                           <Activity className="h-4 w-4 text-primary" />{' '}
-                          Adherence Adherence Overview
+                          Adherence Overview
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="text-sm text-muted-foreground">
@@ -1163,6 +1383,489 @@ export default function Medications() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'symptoms' && (
+        <div className="space-y-6">
+          {/* Main layout grid for symptoms dashboard */}
+          <div className="grid gap-6 md:grid-cols-[400px_1fr]">
+            {/* Left Column: Log Form & Custom Manager */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-red-500" /> Log Symptom
+                  </CardTitle>
+                  <CardDescription>
+                    Log severity and physical context of your side effects
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Select Symptom */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label>Symptom</Label>
+                      <Dialog
+                        open={symptomCustomOpen}
+                        onOpenChange={setSymptomCustomOpen}
+                      >
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs text-primary flex items-center gap-0.5"
+                          >
+                            <Plus className="h-3 w-3" /> Custom
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Add Custom Symptom</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="custom-sym-name">
+                                Symptom Name (internal)
+                              </Label>
+                              <Input
+                                id="custom-sym-name"
+                                value={customSymptomInput}
+                                onChange={(e) =>
+                                  setCustomSymptomInput(e.target.value)
+                                }
+                                placeholder="e.g. skin_rash"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="custom-sym-disp">
+                                Display Label
+                              </Label>
+                              <Input
+                                id="custom-sym-disp"
+                                value={customSymptomDisplayName}
+                                onChange={(e) =>
+                                  setCustomSymptomDisplayName(e.target.value)
+                                }
+                                placeholder="e.g. Skin Rash"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleCreateCustomSymptom}
+                              disabled={createCustomSymptomMutation.isPending}
+                            >
+                              Save Custom Symptom
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    <Select value={symptomName} onValueChange={setSymptomName}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allSymptomOptions.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.name}>
+                            {opt.displayName} {opt.isGlp1 ? ' (GLP-1)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Severity Slider */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label>Severity</Label>
+                      <span className="text-sm font-semibold tabular-nums text-red-500">
+                        {severity[0]} / 10
+                      </span>
+                    </div>
+                    <Slider
+                      value={severity}
+                      onValueChange={setSeverity}
+                      min={1}
+                      max={10}
+                      step={1}
+                      className="py-1"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground px-0.5">
+                      <span>Mild (1-3)</span>
+                      <span>Moderate (4-6)</span>
+                      <span>Severe (7-10)</span>
+                    </div>
+                  </div>
+
+                  {/* Body Location Pin */}
+                  <div className="space-y-2">
+                    <Label>Primary Location</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        'general',
+                        'head',
+                        'abdomen',
+                        'chest',
+                        'back',
+                        'muscles',
+                        'joints',
+                      ].map((loc) => (
+                        <button
+                          key={loc}
+                          type="button"
+                          onClick={() => setBodyLocation(loc)}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                            bodyLocation === loc
+                              ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
+                              : 'bg-background hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {loc.charAt(0).toUpperCase() + loc.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bristol Stool Scale (Only if constipation/diarrhea selected) */}
+                  {['constipation', 'diarrhea'].includes(symptomName) && (
+                    <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />{' '}
+                        Bowel Log (Bristol Stool Scale)
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground mb-2">
+                        Select the stool type that best describes the event:
+                      </p>
+                      <div className="grid grid-cols-7 gap-1">
+                        {[1, 2, 3, 4, 5, 6, 7].map((type) => {
+                          const typeDef = BRISTOL_TYPES.find(
+                            (b) => b.type === type
+                          );
+                          const isSelected = bristolType === type;
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setBristolType(type)}
+                              title={typeDef?.desc}
+                              className={`h-9 border rounded flex flex-col items-center justify-center text-xs font-bold transition ${
+                                isSelected
+                                  ? 'bg-red-500/20 text-red-700 border-red-500'
+                                  : 'bg-background hover:bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              T{type}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {bristolType && (
+                        <p className="text-[10px] mt-1.5 text-red-600 font-medium bg-red-50/50 p-1 border border-red-100 rounded text-center">
+                          {
+                            BRISTOL_TYPES.find((b) => b.type === bristolType)
+                              ?.desc
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Optional Linked Medication */}
+                  <div className="space-y-2">
+                    <Label htmlFor="linked-med">
+                      Link to Medication (Optional)
+                    </Label>
+                    <Select
+                      value={linkedMedId || 'none'}
+                      onValueChange={(val) =>
+                        setLinkedMedId(val === 'none' ? null : val)
+                      }
+                    >
+                      <SelectTrigger id="linked-med">
+                        <SelectValue placeholder="No medication linked" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          No medication linked
+                        </SelectItem>
+                        {meds.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.display_name || m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Context Text */}
+                  <div className="space-y-2">
+                    <Label htmlFor="symptom-notes">Context / Notes</Label>
+                    <Textarea
+                      id="symptom-notes"
+                      placeholder="e.g. Occurred 4 hours after taking my dinner dose."
+                      value={contextText}
+                      onChange={(e) => setContextText(e.target.value)}
+                      className="resize-none h-16 text-xs"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleLogSymptom}
+                    disabled={createSymptomEntryMutation.isPending}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {createSymptomEntryMutation.isPending
+                      ? 'Logging…'
+                      : 'Log Symptom'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Manage Custom Symptoms deletion */}
+              {customSymptoms.length > 0 && (
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Custom Symptoms Cabinet
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-0 max-h-40 overflow-y-auto">
+                    {customSymptoms.map((sym) => (
+                      <div
+                        key={sym.id}
+                        className="flex justify-between items-center py-1 text-xs border-b last:border-0"
+                      >
+                        <span className="font-medium text-foreground">
+                          {sym.display_name || sym.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() =>
+                            deleteCustomSymptomMutation.mutate(sym.id)
+                          }
+                          disabled={deleteCustomSymptomMutation.isPending}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right Column: Calendar, Pattern Hints, and Logs */}
+            <div className="space-y-6">
+              {/* Pattern Hints Card */}
+              {patternHints.length > 0 && (
+                <Card className="border-amber-200 bg-amber-50/15">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <ShieldAlert className="h-4.5 w-4.5 text-amber-500 animate-pulse" />{' '}
+                      Side-Effect Insights & Hints
+                    </CardTitle>
+                    <CardDescription>
+                      Pharmacokinetic correlations overlaying recent dose
+                      timings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    {patternHints.map((hint, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-lg border text-sm flex gap-3 ${
+                          hint.severityLevel === 'high'
+                            ? 'bg-red-50/30 border-red-200 text-red-800'
+                            : 'bg-amber-50/40 border-amber-200 text-amber-900'
+                        }`}
+                      >
+                        <AlertCircle
+                          className={`h-5 w-5 shrink-0 ${hint.severityLevel === 'high' ? 'text-red-500' : 'text-amber-500'}`}
+                        />
+                        <div>
+                          <p className="font-semibold text-xs leading-none capitalize mb-1">
+                            {hint.symptomName.replace(/_/g, ' ')} Correlation
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            {hint.message}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-muted-foreground italic flex items-center gap-1 mt-1">
+                      <Info className="h-3 w-3" /> Insights are calculated over
+                      a rolling 30-day window. These are educational
+                      estimations, not clinical advice.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Symptom History Calendar */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    Symptom Activity Calendar
+                  </CardTitle>
+                  <CardDescription>
+                    Symptom logging frequency and severity over the past 30 days
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-10 gap-2">
+                    {calendarDays.map((day) => {
+                      let colorClass = 'bg-muted/30 border-muted';
+                      if (day.logs.length > 0) {
+                        const sev = day.maxSeverity;
+                        if (sev <= 3)
+                          colorClass =
+                            'bg-green-500/20 border-green-400 text-green-700';
+                        else if (sev <= 6)
+                          colorClass =
+                            'bg-amber-500/20 border-amber-400 text-amber-700';
+                        else
+                          colorClass =
+                            'bg-red-500/20 border-red-400 text-red-700 font-bold';
+                      }
+
+                      return (
+                        <div
+                          key={day.dateString}
+                          title={`${day.dateString}: ${day.logs.length} logged, max severity ${day.maxSeverity}`}
+                          className={`aspect-square rounded border flex flex-col items-center justify-center text-xs transition-all relative group cursor-pointer ${colorClass}`}
+                        >
+                          <span>{day.dayLabel}</span>
+                          {day.logs.length > 0 && (
+                            <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-foreground/45"></span>
+                          )}
+                          {/* Tooltip on hover */}
+                          <div className="absolute z-10 hidden group-hover:block bg-popover border text-popover-foreground text-[10px] p-2 rounded shadow-md -top-16 left-1/2 -translate-x-1/2 w-32 text-center">
+                            <p className="font-semibold">{day.dateString}</p>
+                            <p>
+                              {day.logs.length} logged symptom
+                              {day.logs.length === 1 ? '' : 's'}
+                            </p>
+                            {day.maxSeverity > 0 && (
+                              <p>Max severity: {day.maxSeverity}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-4 justify-center mt-4 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-3 w-3 rounded bg-muted/40 border"></span>{' '}
+                      Clear
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-3 w-3 rounded bg-green-500/20 border border-green-400"></span>{' '}
+                      Mild (1-3)
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-3 w-3 rounded bg-amber-500/20 border border-amber-400"></span>{' '}
+                      Moderate (4-6)
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-3 w-3 rounded bg-red-500/20 border border-red-400"></span>{' '}
+                      Severe (7-10)
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Symptom Log Entries List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold">
+                    Logged Symptom Logs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {loadingSymptoms && (
+                    <p className="text-sm text-muted-foreground">
+                      Loading logs…
+                    </p>
+                  )}
+                  {!loadingSymptoms && symptomLogs.length === 0 && (
+                    <div className="text-center py-6 text-sm text-muted-foreground">
+                      No symptom entries logged in the past 30 days. Use the log
+                      form to record symptoms.
+                    </div>
+                  )}
+                  {symptomLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-start justify-between p-3 rounded-lg border bg-muted/10 text-sm hover:shadow-xs transition"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground capitalize">
+                            {log.symptom_name_snapshot.replace(/_/g, ' ')}
+                          </p>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] border-none font-semibold ${
+                              log.severity <= 3
+                                ? 'bg-green-100 text-green-800'
+                                : log.severity <= 6
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            Severity: {log.severity}
+                          </Badge>
+                          {log.bristol_type && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] text-brown-600 border-brown-200"
+                            >
+                              Bristol Type {log.bristol_type}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                          <span>
+                            {log.entry_date} at {formatEntryTime(log.logged_at)}
+                          </span>
+                          {log.body_location && (
+                            <>
+                              <span>•</span>
+                              <span className="capitalize">
+                                {log.body_location}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {log.context_text && (
+                          <p className="text-xs text-muted-foreground bg-background p-1.5 rounded border border-muted mt-1 leading-relaxed italic">
+                            "{log.context_text}"
+                          </p>
+                        )}
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() =>
+                          deleteSymptomEntryMutation.mutate(log.id)
+                        }
+                        disabled={deleteSymptomEntryMutation.isPending}
+                        aria-label="Remove symptom log"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       )}
