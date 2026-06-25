@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
@@ -15,6 +16,7 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 const CATEGORY_OPTIONS = [
   { label: 'General', value: 'general' },
@@ -409,6 +411,40 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
+    useHeaderActionColors();
+
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'exercise-form-cancel',
+          tintColor: headerActionColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'exercise-create-save',
+          tintColor: headerSaveColor,
+          onPress: () => void handleSaveRef.current(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
+
   return (
     <FormScreenChrome
       title="New Exercise"
@@ -552,6 +588,40 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
       // Error toast handled in useUpdateExercise.
     }
   };
+
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
+    useHeaderActionColors();
+
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'exercise-form-cancel',
+          tintColor: headerActionColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save Changes',
+          identifier: 'exercise-edit-save',
+          tintColor: headerSaveColor,
+          onPress: () => void handleSaveRef.current(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
 
   return (
     <FormScreenChrome

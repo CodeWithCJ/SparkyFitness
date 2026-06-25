@@ -286,7 +286,6 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const secondaryLine = isWorkoutComplete
     ? ''
     : (activeSetLabel?.loadText ?? '');
-
   // Right-aligned countdown — only rendered while a rest timer is running.
   const countdownLabel =
     restState === 'resting' ? formatCountdown(displaySeconds) : null;

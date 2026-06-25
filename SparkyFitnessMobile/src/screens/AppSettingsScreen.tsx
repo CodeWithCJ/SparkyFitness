@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import { Platform, View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -32,10 +32,10 @@ const themeOptions: { label: string; value: ThemePreference }[] = [
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
-    '--color-accent-primary',
+  const [formEnabled, formDisabled, textPrimary] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
+    '--color-text-primary',
   ]) as [string, string, string];
 
   const appTheme = useThemePreference();
@@ -44,14 +44,15 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const notificationsEnabled = useNotificationsEnabled();
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
+        {Platform.OS !== 'ios' && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -59,10 +60,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="py-0 px-0 mr-2"
           >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
+            <Icon name="chevron-back" size={22} color={textPrimary} />
           </Button>
           <Text className="text-2xl font-bold text-text-primary">App Settings</Text>
         </View>
+        )}
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

@@ -1,10 +1,11 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Pressable,
   ScrollView,
+  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import Animated, {
@@ -16,6 +17,7 @@ import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -38,6 +40,7 @@ import type {
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   formatVariantLabel,
   formatServingUnit,
@@ -642,6 +645,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       '--color-macro-carbs',
       '--color-macro-fat',
     ]) as [string, string, string, string, string];
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -707,15 +711,58 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? `${Math.round(scaled(value))}${unit}`
       : `${Math.round(scaledValue(value, entry))}${unit}`;
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerBackVisible: true,
+      unstable_headerRightItems: canEdit
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: isEditing ? 'Done' : 'Edit',
+              identifier: isEditing ? 'food-entry-view-done' : 'food-entry-view-edit',
+              tintColor: isEditing ? headerSaveColor : headerActionColor,
+              accessibilityLabel: isEditing ? 'Save food entry changes' : 'Edit food entry',
+              fontWeight: isEditing ? '600' : '500',
+              disabled: isEditing && (isUpdatePending || quantity <= 0),
+              onPress: () => {
+                if (isEditing) {
+                  handleSaveRef.current();
+                  return;
+                }
+                updateEdit({ isEditing: true });
+              },
+            }),
+          ]
+        : undefined,
+    });
+  }, [
+    navigation,
+    canEdit,
+    isEditing,
+    isUpdatePending,
+    quantity,
+    headerActionColor,
+    headerSaveColor,
+    headerTintColor,
+    updateEdit,
+  ]);
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canEdit && !isEditing && (
           <FadeView style={{ marginLeft: 'auto', zIndex: 10 }}>
@@ -723,7 +770,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               variant="ghost"
               onPress={() => updateEdit({ isEditing: true })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
@@ -742,6 +789,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           </FadeView>
         )}
       </View>
+      )}
 
       <ScrollView
         className="flex-1"

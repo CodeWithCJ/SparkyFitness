@@ -55,9 +55,11 @@ export interface FoodFormData {
 export interface FoodFormProps {
   initialValues?: Partial<FoodFormData>;
   onSubmit: (data: FoodFormData) => void;
+  submitRequestRef?: React.MutableRefObject<(() => void) | null>;
   onServingChange?: (servingSize: string, servingUnit: string) => void;
   submitLabel?: string;
   isSubmitting?: boolean;
+  hideSubmitButton?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
   unitSelector?: {
@@ -562,9 +564,11 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
 const FoodForm: React.FC<FoodFormProps> = ({
   initialValues,
   onSubmit,
+  submitRequestRef,
   onServingChange,
   submitLabel = 'Add Food',
   isSubmitting = false,
+  hideSubmitButton = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
   unitSelector,
@@ -1301,6 +1305,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
     );
   };
 
+  useEffect(() => {
+    if (!submitRequestRef) return;
+    submitRequestRef.current = handleSubmitPress;
+    return () => {
+      submitRequestRef.current = null;
+    };
+  });
+
   return (
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}>
       <ScrollView
@@ -1597,6 +1609,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {children}
 
         {/* Submit */}
+        {!hideSubmitButton && (
         <Button
           variant="primary"
           className="mt-2"
@@ -1609,6 +1622,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
             <Text className="text-white text-base font-semibold">{submitLabel}</Text>
           )}
         </Button>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

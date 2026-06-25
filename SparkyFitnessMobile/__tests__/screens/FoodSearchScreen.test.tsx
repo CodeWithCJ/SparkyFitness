@@ -97,6 +97,7 @@ function buildMeal(): Meal {
 
 describe('FoodSearchScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
   } as any;

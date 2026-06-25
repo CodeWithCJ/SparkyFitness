@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
 import {
@@ -69,6 +70,7 @@ const ownedCustomExercise: Exercise = {
 
 describe('ExerciseDetailScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     navigate: jest.fn(),
     goBack: jest.fn(),
     setParams: jest.fn(),
@@ -153,7 +155,7 @@ describe('ExerciseDetailScreen', () => {
   it('shows Edit and Delete for non-custom exercises even when the user matches', () => {
     const screen = renderScreen({ source: 'sparky', userId: 'user-1', isCustom: true });
 
-    expect(screen.queryByText('Edit')).toBeTruthy();
+    expectActionPresent(screen, navigation, 'Edit');
     expect(screen.queryByText('Delete Exercise')).toBeTruthy();
     
   });
@@ -183,7 +185,7 @@ describe('ExerciseDetailScreen', () => {
   it('shows Edit and navigates to ExerciseForm in edit mode for an owned custom exercise', () => {
     const screen = renderScreen(ownedCustomExercise);
 
-    fireEvent.press(screen.getByText('Edit'));
+    pressAction(screen, navigation, 'Edit');
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'ExerciseForm',

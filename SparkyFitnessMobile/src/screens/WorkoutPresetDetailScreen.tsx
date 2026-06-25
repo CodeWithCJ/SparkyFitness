@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useLayoutEffect } from 'react';
+import { Alert, Platform, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -7,12 +7,15 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
   useDeleteWorkoutPreset,
   usePreferences,
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { weightFromKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
@@ -76,7 +79,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const preset = route.params.updatedPreset ?? route.params.preset;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const [textPrimary] = useCSSVariable([
+    '--color-text-primary',
+  ]) as [string];
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { preferences } = usePreferences();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -100,26 +106,77 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     },
   });
 
-  const handleStartWorkout = () => {
+  const navigateToPresetWorkout = useCallback(() => {
     navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
-  };
+  }, [navigation, preset]);
 
-  const handleEdit = () => {
+  const handleStartWorkout = useCallback(async () => {
+    const draft = await loadActiveDraft();
+    if (!draft) {
+      navigateToPresetWorkout();
+      return;
+    }
+
+    Alert.alert(
+      'Draft in Progress',
+      `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Resume Draft',
+          onPress: () => {
+            navigation.navigate(draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd');
+          },
+        },
+        {
+          text: 'Discard & Continue',
+          style: 'destructive',
+          onPress: async () => {
+            await clearDraft();
+            navigateToPresetWorkout();
+          },
+        },
+      ],
+    );
+  }, [navigateToPresetWorkout, navigation]);
+
+  const handleEdit = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
       mode: 'edit-preset',
       preset,
       returnKey: route.key,
     });
-  };
+  }, [navigation, preset, route.key]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: canManagePreset
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: 'Edit',
+              identifier: 'workout-preset-detail-edit',
+              tintColor: headerActionColor,
+              accessibilityLabel: 'Edit workout preset',
+              onPress: () => handleEdit(),
+            }),
+          ]
+        : undefined,
+    });
+  }, [navigation, headerTintColor, headerActionColor, canManagePreset, handleEdit]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManagePreset && (
           <View className="ml-auto">
@@ -127,13 +184,14 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
               variant="ghost"
               onPress={handleEdit}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
           </View>
         )}
       </View>
+      )}
 
       <ScrollView
         className="flex-1"

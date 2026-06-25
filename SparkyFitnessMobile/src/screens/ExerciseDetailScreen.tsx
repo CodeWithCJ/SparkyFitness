@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
@@ -7,12 +7,14 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
@@ -39,7 +41,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const { item, updatedItem } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { getImageSource } = useExerciseImageSource();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -113,14 +116,38 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     });
   };
 
+  const handleEditRef = useRef(handleEdit);
+  handleEditRef.current = handleEdit;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: canManageExercise
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: 'Edit',
+              identifier: 'exercise-detail-edit',
+              tintColor: headerActionColor,
+              accessibilityLabel: 'Edit exercise',
+              onPress: () => handleEditRef.current(),
+            }),
+          ]
+        : undefined,
+    });
+  }, [navigation, canManageExercise, headerActionColor, headerTintColor]);
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManageExercise && (
           <View className="ml-auto">
@@ -128,13 +155,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               variant="ghost"
               onPress={handleEdit}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
           </View>
         )}
       </View>
+      )}
 
       <ScrollView
         className="flex-1"
@@ -255,7 +283,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               <Icon
                 name={detailsExpanded ? 'chevron-down' : 'chevron-forward'}
                 size={18}
-                color={accentColor}
+                color={textPrimary}
               />
             </View>
             {detailsExpanded ? (

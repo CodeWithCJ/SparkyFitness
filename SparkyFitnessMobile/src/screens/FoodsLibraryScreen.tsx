@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { Platform, View, Text, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -20,6 +20,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -55,7 +56,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         className="py-0 px-0 mr-2"
       >
-        <Icon name="chevron-back" size={22} color={accentColor} />
+        <Icon name="chevron-back" size={22} color={textPrimary} />
       </Button>
       <Text className="text-2xl font-bold text-text-primary">Foods</Text>
     </View>
@@ -141,8 +142,8 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {renderHeader()}
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && renderHeader()}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}

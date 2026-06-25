@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodDetailScreen from '../../src/screens/FoodDetailScreen';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../../src/hooks';
@@ -62,6 +63,7 @@ const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodDetailScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
     setParams: jest.fn(),
@@ -215,7 +217,7 @@ describe('FoodDetailScreen', () => {
     const screen = renderScreen();
 
     fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
-    fireEvent.press(screen.getByText('Edit'));
+    pressAction(screen, navigation, 'Edit');
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodForm',

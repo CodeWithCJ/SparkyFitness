@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import FormInput from '../components/FormInput';
@@ -15,6 +15,8 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useCSSVariable } from 'uniwind';
 import { buildPresetExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type {
@@ -170,6 +172,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
@@ -222,6 +225,37 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
       // Error toast handled in useCreateWorkoutPreset.
     }
   };
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+
+  const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'preset-create-cancel',
+          tintColor: presetHeaderTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'preset-create-save',
+          tintColor: presetHeaderTintColor,
+          onPress: () => void handleSaveRef.current?.(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, presetHeaderTintColor, isPending]);
 
   return (
     <FormScreenChrome
@@ -339,6 +373,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   }, [isPreferencesLoading, populateFromPreset, preset, weightUnit]);
 
   const { updatePresetAsync, isPending } = useUpdateWorkoutPreset();
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
@@ -384,6 +419,37 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       // Error toast handled in useUpdateWorkoutPreset.
     }
   };
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+
+  const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'preset-edit-cancel',
+          tintColor: presetHeaderTintColor,
+          onPress: () => navigation.goBack(),
+          disabled: isPending,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save Changes',
+          identifier: 'preset-edit-save',
+          tintColor: presetHeaderTintColor,
+          onPress: () => void handleSaveRef.current?.(),
+          disabled: isPending,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, presetHeaderTintColor, isPending]);
 
   return (
     <FormScreenChrome

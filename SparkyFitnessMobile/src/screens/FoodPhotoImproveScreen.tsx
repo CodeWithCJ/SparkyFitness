@@ -25,6 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
 import { useEstimateFoodPhoto } from '../hooks/useEstimateFoodPhoto';
 import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
@@ -116,6 +117,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
     '--color-text-danger-subtle',
   ]) as [string, string, string];
+  const { backColor } = useHeaderActionColors();
 
   const { date, photo } = route.params;
 
@@ -429,7 +431,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           accessibilityLabel="Cancel"
           disabled={isPending}
         >
-          <Icon name="close" size={22} color={accentPrimary} />
+          <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Improve estimate

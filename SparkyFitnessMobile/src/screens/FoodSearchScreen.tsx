@@ -8,11 +8,13 @@ import {
   FlatList,
   ScrollView,
   TextInput,
+  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import { createNativeHeaderIconButtonItem, createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import MealLibraryRow from '../components/MealLibraryRow';
 import SegmentedControl from '../components/SegmentedControl';
 import {
@@ -25,6 +27,7 @@ import {
   useExternalFoodSearch,
   usePreferences,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
@@ -58,12 +61,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textPrimary, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+  ]) as [string, string, string, string];
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
@@ -211,6 +216,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     openCreateFood();
   };
 
+  const handleHeaderActionPressRef = useRef(handleHeaderActionPress);
+  handleHeaderActionPressRef.current = handleHeaderActionPress;
+
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
     if ((item.source === 'fatsecret' || item.source === 'yazio') && selectedProvider) {
       setLoadingFoodId(item.id);
@@ -241,6 +249,32 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const trailingActionLabel =
     !isMealBuilderMode && activeTab === 'meal' ? 'Create Meal' : 'Add Food';
+
+  useEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'food-search-cancel',
+          tintColor: headerActionColor,
+          onPress: () => navigation.goBack(),
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderIconButtonItem({
+          sfSymbol: 'plus',
+          identifier: 'food-search-add',
+          tintColor: headerActionColor,
+          accessibilityLabel: trailingActionLabel,
+          onPress: () => handleHeaderActionPressRef.current(),
+        }),
+      ],
+    });
+  }, [navigation, headerActionColor, headerTintColor, trailingActionLabel]);
 
   const renderCreateMealCta = () => {
     if (isMealBuilderMode || activeTab !== 'meal') return null;
@@ -291,15 +325,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderHeaderBar = () => (
     <View className="flex-row items-center px-4 py-2 gap-3">
-      <Button
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="p-0"
-        accessibilityLabel="Close"
-      >
-        <Icon name="close" size={22} color={accentColor} />
-      </Button>
+      {Platform.OS !== 'ios' && (
+        <Button
+          variant="ghost"
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="p-0"
+          accessibilityLabel="Close"
+        >
+          <Icon name="close" size={22} color={textPrimary} />
+        </Button>
+      )}
 
       <View
         className="flex-1 flex-row items-center bg-raised rounded-lg px-3"
@@ -340,20 +376,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             className="ml-2 p-0"
             accessibilityLabel="Scan Food"
           >
-            <Icon name="scan" size={20} color={accentColor} />
+            <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
         )}
       </View>
 
-      <Button
-        variant="ghost"
-        onPress={handleHeaderActionPress}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="p-0"
-        accessibilityLabel={trailingActionLabel}
-      >
-        <Icon name="add" size={26} color={accentColor} />
-      </Button>
+      {Platform.OS !== 'ios' && (
+        <Button
+          variant="ghost"
+          onPress={handleHeaderActionPress}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="p-0"
+          accessibilityLabel={trailingActionLabel}
+        >
+          <Icon name="add" size={26} color={textPrimary} />
+        </Button>
+      )}
     </View>
   );
 
@@ -903,7 +941,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {renderHeaderBar()}
       {renderTabSwitcher()}
 

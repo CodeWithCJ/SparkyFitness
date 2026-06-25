@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -21,6 +22,8 @@ import Button from '../components/ui/Button';
 import Icon, { IconName } from '../components/Icon';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   getLogs,
   clearLogs,
@@ -125,7 +128,9 @@ const pluralize = (count: number, [singular, plural]: [string, string]): string 
 const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
+  const accentPrimary = (useCSSVariable('--color-accent-primary') as string | undefined) ?? '#0A84FF';
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<LogStatus[]>([]);
 
@@ -187,6 +192,32 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   }, []);
 
   const hasLogs = logs.length > 0;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Clear',
+          identifier: 'logs-clear',
+          tintColor: headerActionColor,
+          accessibilityLabel: 'Clear logs',
+          disabled: !hasLogs,
+          onPress: () => handleClearLogs(),
+        }),
+      ],
+    });
+  }, [
+    navigation,
+    accentPrimary,
+    headerActionColor,
+    headerTintColor,
+    hasLogs,
+    handleClearLogs,
+  ]);
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
     let logText = `Status: ${item.status}\n`;
@@ -258,7 +289,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3">
         <Button
           variant="ghost"
@@ -266,7 +298,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="py-0 px-0 mr-2"
         >
-          <Icon name="chevron-back" size={22} color={accentPrimary} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </Button>
         <Text className="text-2xl font-bold text-text-primary">Logs</Text>
         <View className="flex-1" />
@@ -282,6 +314,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
           </Text>
         </Button>
       </View>
+      )}
       <FlatList
         data={filteredLogs}
         ListHeaderComponent={ListHeader}

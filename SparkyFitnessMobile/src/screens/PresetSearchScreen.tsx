@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
+import { Platform, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -7,6 +7,7 @@ import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -22,6 +23,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
+  const { backColor } = useHeaderActionColors();
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -100,8 +102,9 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -109,13 +112,14 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
         >
-          <Icon name="close" size={22} color={accentColor} />
+          <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Presets
         </Text>
         <View style={{ width: 22 }} />
       </View>
+      )}
 
       {/* Search bar */}
       <View className="px-4 py-2">

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
@@ -31,6 +32,7 @@ import {
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -418,12 +420,42 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'measurements-cancel',
+          tintColor: headerActionColor,
+          onPress: () => navigation.goBack(),
+          disabled: isSaveDisabled,
+        }),
+      ],
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'measurements-save',
+          tintColor: headerSaveColor,
+          onPress: handleSave,
+          disabled: isSaveDisabled,
+          fontWeight: '600',
+        }),
+      ],
+    });
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaveDisabled, handleSave]);
+
   return (
     <View
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -432,12 +464,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           className="z-10 p-0"
           accessibilityLabel="Close"
         >
-          <Icon name="close" size={22} color={accentPrimary} />
+          <Icon name="close" size={22} color={headerActionColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Measurements
         </Text>
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4 py-4"
@@ -600,6 +633,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       </KeyboardAwareScrollView>
 
       {/* Sticky footer */}
+      {Platform.OS !== 'ios' && (
       <View
         className="px-4 py-3"
         style={{
@@ -623,6 +657,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </Button>
       </View>
+      )}
 
       <CalendarSheet
         ref={calendarSheetRef}

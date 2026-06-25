@@ -1,5 +1,7 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { pressAction, pressActionByAccessibilityLabel } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
@@ -213,6 +215,7 @@ describe('FoodEntryAddScreen', () => {
     navigate: jest.fn(),
     setParams: jest.fn(),
     dispatch: jest.fn(),
+    setOptions: jest.fn(),
   } as any;
 
   const mockSaveFoodAsync = jest.fn();
@@ -846,7 +849,7 @@ describe('FoodEntryAddScreen', () => {
 
     expect(screen.getByText(/1 oz per serving/)).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Save Food'));
+    pressActionByAccessibilityLabel(screen, navigation, 'Save Food');
 
     await waitFor(() => {
       expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
@@ -1157,22 +1160,24 @@ describe('FoodEntryAddScreen', () => {
       });
 
       // Find and press the nutrition edit (pencil) button
-      const editButtons = screen.queryAllByTestId('icon-pencil');
-      expect(editButtons.length).toBeGreaterThan(0);
-      if (editButtons.length > 0) {
+      if (Platform.OS === 'ios') {
+        pressAction(screen, navigation, 'Edit');
+      } else {
+        const editButtons = screen.queryAllByTestId('icon-pencil');
+        expect(editButtons.length).toBeGreaterThan(0);
         fireEvent.press(editButtons[0]);
-        expect(navigation.navigate).toHaveBeenCalledWith(
-          'FoodForm',
-          expect.objectContaining({
-            selectedUnitSelection: expect.objectContaining({
-              variant: expect.objectContaining({
-                serving_unit: 'mg',
-                calories: 50,
-              }),
+      }
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        'FoodForm',
+        expect.objectContaining({
+          selectedUnitSelection: expect.objectContaining({
+            variant: expect.objectContaining({
+              serving_unit: 'mg',
+              calories: 50,
             }),
           }),
-        );
-      }
+        }),
+      );
     });
   });
 });

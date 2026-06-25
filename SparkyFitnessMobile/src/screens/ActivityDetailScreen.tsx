@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { Platform, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import FadeView from '../components/FadeView';
 import EditableSetList from '../components/EditableSetList';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -11,6 +11,8 @@ import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
@@ -45,10 +47,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-border-subtle',
-  ]) as [string, string];
+  ]) as [string, string, string];
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -433,9 +437,79 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const startEditingRef = useRef(startEditing);
+  const cancelEditingRef = useRef(cancelEditing);
+  const handleSaveRef = useRef(handleSave);
+  startEditingRef.current = startEditing;
+  cancelEditingRef.current = cancelEditing;
+  handleSaveRef.current = handleSave;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    if (isEditing) {
+      navigation.setOptions({
+        title: 'Edit Activity',
+        headerBackVisible: false,
+        gestureEnabled: false,
+        unstable_headerLeftItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Cancel',
+            identifier: 'activity-detail-cancel',
+            tintColor: headerActionColor,
+            accessibilityLabel: 'Cancel',
+            disabled: isSaving,
+            onPress: () => cancelEditingRef.current(),
+          }),
+        ],
+        unstable_headerRightItems: () => [
+          createNativeHeaderTextButtonItem({
+            label: 'Save',
+            identifier: 'activity-detail-save',
+            tintColor: headerSaveColor,
+            accessibilityLabel: 'Save',
+            fontWeight: '600',
+            disabled: isSaving,
+            onPress: () => handleSaveRef.current(),
+          }),
+        ],
+      });
+    } else {
+      navigation.setOptions({
+        title: name,
+        headerBackVisible: true,
+        gestureEnabled: true,
+        unstable_headerLeftItems: undefined,
+        unstable_headerRightItems: isSparky
+          ? () => [
+              createNativeHeaderTextButtonItem({
+                label: 'Edit',
+                identifier: 'activity-detail-edit',
+                tintColor: headerActionColor,
+                accessibilityLabel: 'Edit activity',
+                onPress: () => startEditingRef.current(),
+              }),
+            ]
+          : undefined,
+      });
+    }
+  }, [
+    navigation,
+    isEditing,
+    isSaving,
+    name,
+    isSparky,
+    headerActionColor,
+    headerSaveColor,
+    headerTintColor,
+  ]);
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 ">
         {isEditing ? (
           <FadeView
@@ -449,7 +523,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Text className="text-accent-primary text-base font-medium">Cancel</Text>
+              <Text className="text-text-primary text-base font-medium">Cancel</Text>
             </Button>
             <View className="flex-1" />
             <Button
@@ -477,7 +551,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Icon name="chevron-back" size={22} color={accentPrimary} />
+              <Icon name="chevron-back" size={22} color={textPrimary} />
             </Button>
             <View className="flex-1" />
             {isSparky && (
@@ -487,12 +561,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 className="py-0 px-0"
               >
-                <Text className="text-accent-primary text-base font-medium">Edit</Text>
+                <Text className="text-text-primary text-base font-medium">Edit</Text>
               </Button>
             )}
           </FadeView>
         )}
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"

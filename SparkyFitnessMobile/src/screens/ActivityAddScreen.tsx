@@ -6,6 +6,7 @@ import {
   Pressable,
   Keyboard,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -19,6 +20,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import Toast from 'react-native-toast-message';
@@ -44,6 +46,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
     '--color-raised',
   ]) as [string, string, string, string, string];
+  const { backColor } = useHeaderActionColors();
 
   const {
     state,
@@ -135,8 +138,9 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-3 py-3">
         <Button
           variant="ghost"
@@ -144,9 +148,10 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           className="py-0 px-0"
         >
-          <Icon name="close" size={24} color={accentPrimary} />
+          <Icon name="close" size={24} color={backColor} />
         </Button>
       </View>
+      )}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"

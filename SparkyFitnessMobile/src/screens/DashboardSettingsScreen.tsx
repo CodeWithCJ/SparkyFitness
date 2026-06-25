@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
+import { Platform, View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ import {
   useHydrationCardVisible,
   setHydrationCardVisible,
 } from '../services/hydrationCardVisibility';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
@@ -50,6 +51,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     '--color-form-enabled',
     '--color-form-disabled',
   ]) as [string, string, string];
+  const { backColor } = useHeaderActionColors();
 
   const fastingCardVisible = useFastingCardVisible();
   const hydrationCardVisible = useHydrationCardVisible();
@@ -164,26 +166,31 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}
+    >
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingTop: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">Dashboard Settings</Text>
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View className="flex-row items-center mb-4">
+            <Button
+              variant="ghost"
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0 mr-2"
+            >
+              <Icon name="chevron-back" size={22} color={backColor} />
+            </Button>
+            <Text className="text-2xl font-bold text-text-primary">Dashboard Settings</Text>
+          </View>
+        )}
 
         <SettingsRowGroup>
           <SettingsRow
