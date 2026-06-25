@@ -387,12 +387,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
-    useHeaderActionColors();
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
   const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
-
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
+
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({

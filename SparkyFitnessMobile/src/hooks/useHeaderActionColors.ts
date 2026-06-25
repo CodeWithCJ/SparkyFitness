@@ -27,10 +27,15 @@ export function useHeaderActionColors() {
     '--color-text-primary',
   ]) as [string, string];
 
-  return resolveHeaderActionColors(
+  const resolved = resolveHeaderActionColors(
     Platform.OS,
     Platform.Version,
     accentColor || '#0A84FF',
     textColor || '#111827',
   );
+
+  return {
+    ...resolved,
+    headerTintColor: resolved.defaultColor,
+  };
 }

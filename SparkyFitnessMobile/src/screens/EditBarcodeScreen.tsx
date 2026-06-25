@@ -14,6 +14,7 @@ import { updateFood } from '../services/api/foodsApi';
 import { lookupBarcodeV2 } from '../services/api/externalFoodSearchApi';
 import { foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type EditBarcodeScreenProps = RootStackScreenProps<'EditBarcode'>;
 
@@ -36,6 +37,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     '--color-text-secondary',
     '--color-text-primary',
   ]) as [string, string, string];
+  const { saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const [value, setValue] = useState(currentBarcode ?? '');
 
@@ -171,6 +173,8 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
   };
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -178,7 +182,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
         createNativeHeaderTextButtonItem({
           label: 'Save',
           identifier: 'edit-barcode-save',
-          tintColor: textPrimary,
+          tintColor: headerSaveColor,
           accessibilityLabel: 'Save barcode',
           fontWeight: '600',
           disabled: saveDisabled,
@@ -188,7 +192,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
         }),
       ],
     });
-  }, [navigation, textPrimary, saveDisabled, handleSave]);
+  }, [navigation, headerSaveColor, saveDisabled, handleSave]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
@@ -198,7 +202,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         <Text
           pointerEvents="none"

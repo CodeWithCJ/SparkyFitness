@@ -17,10 +17,11 @@ type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibr
 const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textSecondary] = useCSSVariable([
+  const [accentColor, textSecondary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
-  ]) as [string, string];
+    '--color-text-primary',
+  ]) as [string, string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
 
@@ -52,7 +53,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         className="py-0 px-0 mr-2"
       >
-        <Icon name="chevron-back" size={22} color={accentColor} />
+        <Icon name="chevron-back" size={22} color={textPrimary} />
       </Button>
       <Text className="text-2xl font-bold text-text-primary">Workout presets</Text>
     </View>

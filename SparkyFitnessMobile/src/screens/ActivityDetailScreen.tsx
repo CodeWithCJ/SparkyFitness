@@ -12,6 +12,7 @@ import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
@@ -51,6 +52,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string];
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -436,6 +438,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     if (isEditing) {
@@ -447,7 +451,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           createNativeHeaderTextButtonItem({
             label: 'Cancel',
             identifier: 'activity-detail-cancel',
-            tintColor: textPrimary,
+            tintColor: headerActionColor,
             accessibilityLabel: 'Cancel',
             disabled: isSaving,
             onPress: () => cancelEditing(),
@@ -457,7 +461,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           createNativeHeaderTextButtonItem({
             label: 'Save',
             identifier: 'activity-detail-save',
-            tintColor: textPrimary,
+            tintColor: headerSaveColor,
             accessibilityLabel: 'Save',
             fontWeight: '600',
             disabled: isSaving,
@@ -476,7 +480,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               createNativeHeaderTextButtonItem({
                 label: 'Edit',
                 identifier: 'activity-detail-edit',
-                tintColor: textPrimary,
+                tintColor: headerActionColor,
                 accessibilityLabel: 'Edit activity',
                 onPress: () => startEditing(),
               }),
@@ -490,7 +494,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     isSaving,
     name,
     isSparky,
-    textPrimary,
+    headerActionColor,
+    headerSaveColor,
     startEditing,
     cancelEditing,
     handleSave,
@@ -513,7 +518,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Text className="text-accent-primary text-base font-medium">Cancel</Text>
+              <Text className="text-text-primary text-base font-medium">Cancel</Text>
             </Button>
             <View className="flex-1" />
             <Button
@@ -541,7 +546,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Icon name="chevron-back" size={22} color={accentPrimary} />
+              <Icon name="chevron-back" size={22} color={textPrimary} />
             </Button>
             <View className="flex-1" />
             {isSparky && (
@@ -551,7 +556,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 className="py-0 px-0"
               >
-                <Text className="text-accent-primary text-base font-medium">Edit</Text>
+                <Text className="text-text-primary text-base font-medium">Edit</Text>
               </Button>
             )}
           </FadeView>

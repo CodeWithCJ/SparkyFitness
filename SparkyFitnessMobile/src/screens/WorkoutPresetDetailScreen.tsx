@@ -15,6 +15,7 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { weightFromKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
@@ -78,10 +79,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const preset = route.params.updatedPreset ?? route.params.preset;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
+  const [textPrimary] = useCSSVariable([
     '--color-text-primary',
-  ]) as [string, string];
+  ]) as [string];
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { preferences } = usePreferences();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -148,6 +149,8 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   }, [navigation, preset, route.key]);
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -156,14 +159,14 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             createNativeHeaderTextButtonItem({
               label: 'Edit',
               identifier: 'workout-preset-detail-edit',
-              tintColor: textPrimary,
+              tintColor: headerActionColor,
               accessibilityLabel: 'Edit workout preset',
               onPress: () => handleEdit(),
             }),
           ]
         : undefined,
     });
-  }, [navigation, canManagePreset, textPrimary, handleEdit]);
+  }, [navigation, headerTintColor, headerActionColor, canManagePreset, handleEdit]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
@@ -173,7 +176,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManagePreset && (
           <View className="ml-auto">
@@ -181,7 +184,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
               variant="ghost"
               onPress={handleEdit}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>

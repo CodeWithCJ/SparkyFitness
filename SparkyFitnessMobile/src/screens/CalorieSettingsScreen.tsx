@@ -54,11 +54,12 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
+  const [accentPrimary, formEnabled, formDisabled, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string];
+    '--color-text-primary',
+  ]) as [string, string, string, string];
 
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
@@ -189,7 +190,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="py-0 px-0 mr-2"
           >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
+            <Icon name="chevron-back" size={22} color={textPrimary} />
           </Button>
           <Text className="text-2xl font-bold text-text-primary">Calorie & BMR Settings</Text>
         </View>

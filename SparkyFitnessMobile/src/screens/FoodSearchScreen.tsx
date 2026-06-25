@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import {
   useExternalFoodSearch,
   usePreferences,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
@@ -60,12 +61,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textPrimary, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+  ]) as [string, string, string, string];
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
@@ -244,7 +247,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const trailingActionLabel =
     !isMealBuilderMode && activeTab === 'meal' ? 'Create Meal' : 'Add Food';
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -252,7 +257,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'food-search-cancel',
-          tintColor: accentColor,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
         }),
       ],
@@ -260,13 +265,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         createNativeHeaderIconButtonItem({
           sfSymbol: 'plus',
           identifier: 'food-search-add',
-          tintColor: accentColor,
+          tintColor: headerActionColor,
           accessibilityLabel: trailingActionLabel,
           onPress: () => handleHeaderActionPress(),
         }),
       ],
     });
-  }, [navigation, accentColor, trailingActionLabel, handleHeaderActionPress]);
+  }, [navigation, headerActionColor, trailingActionLabel, handleHeaderActionPress]);
 
   const renderCreateMealCta = () => {
     if (isMealBuilderMode || activeTab !== 'meal') return null;
@@ -325,7 +330,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           className="p-0"
           accessibilityLabel="Close"
         >
-          <Icon name="close" size={22} color={accentColor} />
+          <Icon name="close" size={22} color={textPrimary} />
         </Button>
       )}
 
@@ -368,7 +373,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             className="ml-2 p-0"
             accessibilityLabel="Scan Food"
           >
-            <Icon name="scan" size={20} color={accentColor} />
+            <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
         )}
       </View>
@@ -381,7 +386,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           className="p-0"
           accessibilityLabel={trailingActionLabel}
         >
-          <Icon name="add" size={26} color={accentColor} />
+          <Icon name="add" size={26} color={textPrimary} />
         </Button>
       )}
     </View>

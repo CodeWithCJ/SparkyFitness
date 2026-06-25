@@ -24,6 +24,7 @@ import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes, usePreferences, useServerConnection } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
   useCreateFoodVariant,
@@ -656,6 +657,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const buildSaveFoodPayload = useCallback(
     () => ({
@@ -1086,6 +1088,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   // items and hide the custom in-screen header below. Android keeps the
   // custom header.
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -1094,7 +1098,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
           identifier: 'food-entry-add-cancel',
-          tintColor: textPrimary,
+          tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isActionPending,
         }),
@@ -1105,7 +1109,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               createNativeHeaderTextButtonItem({
                 label: 'Edit',
                 identifier: 'food-entry-add-edit',
-                tintColor: textPrimary,
+                tintColor: headerActionColor,
                 accessibilityLabel: 'Adjust nutrition',
                 disabled: isActionPending,
                 onPress: () => handleAdjustNutrition(),
@@ -1116,7 +1120,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 createNativeHeaderTextButtonItem({
                   label: 'Save',
                   identifier: 'food-entry-add-save',
-                  tintColor: textPrimary,
+                  tintColor: headerSaveColor,
                   accessibilityLabel: 'Save Food',
                   disabled: isActionPending,
                   onPress: () => void handleSaveExternalFood(),
@@ -1129,7 +1133,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     });
   }, [
     navigation,
-    textPrimary,
+    headerActionColor,
+    headerSaveColor,
     showHeaderActions,
     showSaveExternalAction,
     isActionPending,
@@ -1149,7 +1154,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
 
         {showHeaderActions && (
@@ -1160,7 +1165,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               activeOpacity={0.7}
               disabled={isActionPending}
             >
-              <Icon name="pencil" size={20} color={accentColor} />
+              <Icon name="pencil" size={20} color={textPrimary} />
             </TouchableOpacity>
 
             {showSaveExternalAction && (

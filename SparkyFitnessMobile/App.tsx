@@ -788,6 +788,7 @@ function AppContent() {
             headerShown: false,
             animation: 'default',
             contentStyle: { backgroundColor: bgPrimary },
+            headerTintColor: Platform.OS === 'android' ? textPrimary : undefined,
           }}
           initialRouteName={initialRoute}
         >

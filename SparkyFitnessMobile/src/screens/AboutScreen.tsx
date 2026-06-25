@@ -19,6 +19,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   const openUrl = (url: string) => {
     Linking.openURL(url).catch(() => {
@@ -40,7 +41,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="py-0 px-0 mr-2"
           >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
+            <Icon name="chevron-back" size={22} color={textPrimary} />
           </Button>
           <Text className="text-2xl font-bold text-text-primary">About</Text>
         </View>

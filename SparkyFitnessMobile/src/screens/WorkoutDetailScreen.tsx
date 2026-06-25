@@ -32,6 +32,7 @@ import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   ExerciseEntryResponse,
@@ -276,12 +277,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textMuted, borderSubtle, textPrimary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-primary',
     '--color-text-muted',
     '--color-border-subtle',
+    '--color-text-primary',
   ]) as [string, string, string, string];
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -654,7 +656,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           createNativeHeaderTextButtonItem({
             label: 'Cancel',
             identifier: 'workout-detail-cancel',
-            tintColor: textPrimary,
+            tintColor: headerActionColor,
             accessibilityLabel: 'Cancel',
             disabled: isSaving,
             onPress: () => cancelEditing(),
@@ -664,7 +666,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           createNativeHeaderTextButtonItem({
             label: 'Save',
             identifier: 'workout-detail-save',
-            tintColor: textPrimary,
+            tintColor: headerSaveColor,
             accessibilityLabel: 'Save',
             fontWeight: '600',
             disabled: isSaving || !hasEditedExercisesWithSets,
@@ -683,7 +685,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               createNativeHeaderTextButtonItem({
                 label: 'Edit',
                 identifier: 'workout-detail-edit',
-                tintColor: textPrimary,
+                tintColor: headerActionColor,
                 accessibilityLabel: 'Edit workout',
                 onPress: () => startEditing(),
               }),
@@ -698,7 +700,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     hasEditedExercisesWithSets,
     name,
     isSparky,
-    textPrimary,
+    headerActionColor,
+    headerSaveColor,
     startEditing,
     cancelEditing,
     handleSave,
@@ -723,7 +726,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Text className="text-accent-primary text-base font-medium">Cancel</Text>
+              <Text className="text-text-primary text-base font-medium">Cancel</Text>
             </Button>
             <View className="flex-1" />
             <Button
@@ -751,7 +754,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
-              <Icon name="chevron-back" size={22} color={accentPrimary} />
+              <Icon name="chevron-back" size={22} color={textPrimary} />
             </Button>
             <View className="flex-1" />
             {isSparky && (
@@ -761,7 +764,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 className="py-0 px-0"
               >
-                <Text className="text-accent-primary text-base font-medium">Edit</Text>
+                <Text className="text-text-primary text-base font-medium">Edit</Text>
               </Button>
             )}
           </FadeView>

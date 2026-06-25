@@ -214,6 +214,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
 
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
@@ -257,7 +258,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="py-0 px-0 mr-2"
           >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
+            <Icon name="chevron-back" size={22} color={textPrimary} />
           </Button>
           <Text className="text-2xl font-bold text-text-primary">What&apos;s New</Text>
         </View>

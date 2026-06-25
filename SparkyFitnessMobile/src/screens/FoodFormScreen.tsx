@@ -745,10 +745,12 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     });
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
     const saveLabel = isLibraryMode ? 'Save Food' : 'Save';
     navigation.setOptions({
@@ -1835,10 +1837,12 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
     navigation.setOptions({
       unstable_headerLeftItems: () => [

@@ -14,6 +14,7 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
@@ -44,6 +45,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { getImageSource } = useExerciseImageSource();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -118,6 +120,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   };
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -126,14 +130,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             createNativeHeaderTextButtonItem({
               label: 'Edit',
               identifier: 'exercise-detail-edit',
-              tintColor: textPrimary,
+              tintColor: headerActionColor,
               accessibilityLabel: 'Edit exercise',
               onPress: () => handleEdit(),
             }),
           ]
         : undefined,
     });
-  }, [navigation, canManageExercise, textPrimary, handleEdit]);
+  }, [navigation, canManageExercise, headerActionColor, handleEdit]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
@@ -143,7 +147,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManageExercise && (
           <View className="ml-auto">
@@ -151,7 +155,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               variant="ghost"
               onPress={handleEdit}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
@@ -279,7 +283,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               <Icon
                 name={detailsExpanded ? 'chevron-down' : 'chevron-forward'}
                 size={18}
-                color={accentColor}
+                color={textPrimary}
               />
             </View>
             {detailsExpanded ? (

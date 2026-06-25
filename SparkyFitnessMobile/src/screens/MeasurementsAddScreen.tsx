@@ -420,10 +420,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
-    useHeaderActionColors();
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
     navigation.setOptions({
       unstable_headerLeftItems: () => [

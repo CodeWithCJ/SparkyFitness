@@ -411,17 +411,19 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
-          identifier: 'exercise-create-cancel',
+          identifier: 'exercise-form-cancel',
           tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isPending,
@@ -584,17 +586,19 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({
           label: 'Cancel',
-          identifier: 'exercise-edit-cancel',
+          identifier: 'exercise-form-cancel',
           tintColor: headerActionColor,
           onPress: () => navigation.goBack(),
           disabled: isPending,

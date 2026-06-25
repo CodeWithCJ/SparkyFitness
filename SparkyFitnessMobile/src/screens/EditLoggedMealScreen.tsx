@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -203,6 +204,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
@@ -284,6 +286,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   };
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -291,7 +295,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         createNativeHeaderTextButtonItem({
           label: 'Save',
           identifier: 'edit-logged-meal-save',
-          tintColor: textPrimary,
+          tintColor: headerSaveColor,
           accessibilityLabel: 'Save meal',
           fontWeight: '600',
           disabled: !canSave || isRowBusy,
@@ -299,7 +303,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         }),
       ],
     });
-  }, [navigation, textPrimary, canSave, isRowBusy, handleSave]);
+  }, [navigation, headerSaveColor, canSave, isRowBusy, handleSave]);
 
   if (isLoading) {
     return (
@@ -336,7 +340,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         <View style={{ marginLeft: 'auto', zIndex: 10 }}>
           <Button

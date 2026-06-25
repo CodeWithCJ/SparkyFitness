@@ -17,10 +17,11 @@ type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textSecondary] = useCSSVariable([
+  const [accentColor, textSecondary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
-  ]) as [string, string];
+    '--color-text-primary',
+  ]) as [string, string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
 
@@ -53,7 +54,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         className="py-0 px-0 mr-2"
       >
-        <Icon name="chevron-back" size={22} color={accentColor} />
+        <Icon name="chevron-back" size={22} color={textPrimary} />
       </Button>
       <Text className="text-2xl font-bold text-text-primary">Exercises</Text>
     </View>
@@ -153,7 +154,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           <RefreshControl
             refreshing={isSearching}
             onRefresh={refetch}
-            tintColor={accentColor}
+            tintColor={textPrimary}
           />
         }
         contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}

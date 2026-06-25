@@ -101,8 +101,8 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const { defaultColor: headerActionColor } = useHeaderActionColors();
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -134,6 +134,8 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   // would just duplicate it; we only drive the owner-gated Edit action here once
   // the meal loads. Android keeps the custom in-screen header below.
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -309,7 +311,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           accessibilityLabel="Back"
           accessibilityRole="button"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManageMeal ? (
           <View className="ml-auto z-10">
@@ -321,7 +323,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                 initialMeal: meal,
               })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>

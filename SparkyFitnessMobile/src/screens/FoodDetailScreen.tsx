@@ -11,6 +11,7 @@ import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection, usePreferences } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -33,6 +34,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
@@ -158,6 +160,8 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   };
 
   useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -166,7 +170,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             createNativeHeaderTextButtonItem({
               label: 'Edit',
               identifier: 'food-detail-edit',
-              tintColor: textPrimary,
+              tintColor: headerActionColor,
               accessibilityLabel: 'Edit food',
               disabled: !selectedVariantId,
               onPress: () => handleEdit(),
@@ -174,7 +178,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           ]
         : undefined,
     });
-  }, [navigation, canManageFood, selectedVariantId, textPrimary, handleEdit]);
+  }, [navigation, canManageFood, selectedVariantId, headerActionColor, handleEdit]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -308,7 +312,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManageFood && (
           <View className="ml-auto">
@@ -317,7 +321,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
               onPress={handleEdit}
               disabled={!selectedVariantId}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
