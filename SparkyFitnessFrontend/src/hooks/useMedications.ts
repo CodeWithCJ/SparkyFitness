@@ -5,6 +5,9 @@ import type {
   ListMedicationsOptions,
   LogInjectionInput,
   MedicationPen,
+  MedicationSchedule,
+  CreateMedicationEntryInput,
+  ListMedicationEntriesOptions,
 } from '@/types/medications';
 
 const medKeys = {
@@ -14,6 +17,8 @@ const medKeys = {
   titration: (medId: string) => ['medication-titration', medId] as const,
   serumCurve: (medId: string) => ['glp1-serum-curve', medId] as const,
   siteSuggestion: (medId: string) => ['glp1-site-suggestion', medId] as const,
+  entries: (opts?: ListMedicationEntriesOptions) =>
+    ['medication-entries', opts ?? {}] as const,
 };
 
 // --- Queries ---------------------------------------------------------------
@@ -119,6 +124,79 @@ export const useCreatePenMutation = (medId: string) => {
     meta: {
       errorMessage: 'Could not add pen/vial.',
       successMessage: 'Pen/vial added.',
+    },
+  });
+};
+
+// --- Entries & Adherence Queries & Mutations ------------------------------
+
+export const useMedicationEntries = (opts?: ListMedicationEntriesOptions) =>
+  useQuery({
+    queryKey: medKeys.entries(opts),
+    queryFn: () => medicationService.listMedicationEntries(opts),
+    meta: { errorMessage: 'Failed to load logged doses.' },
+  });
+
+export const useCreateMedicationEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateMedicationEntryInput) =>
+      medicationService.createMedicationEntry(body),
+    onSuccess: () => {
+      // Invalidate both the entries list and general medications list (for medication details/schedules status)
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not log dose.',
+      successMessage: 'Dose logged.',
+    },
+  });
+};
+
+export const useDeleteMedicationEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deleteMedicationEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not remove logged dose.',
+      successMessage: 'Logged dose removed.',
+    },
+  });
+};
+
+// --- Schedule Mutations ---------------------------------------------------
+
+export const useAddScheduleMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      body: Partial<MedicationSchedule> & { schedule_type_id: string }
+    ) => medicationService.addSchedule(medId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not add schedule.',
+      successMessage: 'Schedule added.',
+    },
+  });
+};
+
+export const useDeleteScheduleMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deleteSchedule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not delete schedule.',
+      successMessage: 'Schedule deleted.',
     },
   });
 };

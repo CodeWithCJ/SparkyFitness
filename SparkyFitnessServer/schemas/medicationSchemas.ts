@@ -159,3 +159,37 @@ export const SerumCurveQuerySchema = z
   })
   .loose();
 export type SerumCurveQuery = z.infer<typeof SerumCurveQuerySchema>;
+
+// --------------------------------------------------------------------------
+// Medication Entries
+// --------------------------------------------------------------------------
+export const CreateMedicationEntryBodySchema = z
+  .object({
+    medication_id: z.string().uuid(),
+    schedule_id: z.string().uuid().nullable().optional(),
+    status: z.enum(['taken', 'skipped', 'snoozed', 'prn_taken']).optional(),
+    taken_at: z.string().nullable().optional(),
+    scheduled_for: z.string().nullable().optional(),
+    entry_date: optionalDateString,
+    med_name_snapshot: optionalNullableString,
+    dose_amount_snapshot: optionalNullableNumber,
+    dose_unit_snapshot: optionalNullableString,
+    notes: optionalNullableString,
+    source: z.string().optional(),
+    custom_fields: customFields,
+  })
+  .loose();
+export type CreateMedicationEntryBody = z.infer<
+  typeof CreateMedicationEntryBodySchema
+>;
+
+export const ListMedicationEntriesQuerySchema = z
+  .object({
+    fromDate: optionalDateString,
+    toDate: optionalDateString,
+    medicationId: z.string().uuid().optional(),
+  })
+  .loose();
+export type ListMedicationEntriesQuery = z.infer<
+  typeof ListMedicationEntriesQuerySchema
+>;

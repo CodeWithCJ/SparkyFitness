@@ -10,6 +10,9 @@ import type {
   SiteSuggestionResponse,
   ListMedicationsOptions,
   LogInjectionInput,
+  MedicationEntry,
+  CreateMedicationEntryInput,
+  ListMedicationEntriesOptions,
 } from '@/types/medications';
 
 // --- Medications -----------------------------------------------------------
@@ -34,6 +37,21 @@ export const updateMedication = (
 
 export const deleteMedication = (id: string): Promise<void> =>
   apiCall(`/v2/medications/${id}`, { method: 'DELETE' });
+
+// --- Medication Entries (Adherence) ---------------------------------------
+
+export const listMedicationEntries = (
+  opts?: ListMedicationEntriesOptions
+): Promise<MedicationEntry[]> =>
+  apiCall('/v2/medications/entries', { method: 'GET', params: opts });
+
+export const createMedicationEntry = (
+  body: CreateMedicationEntryInput
+): Promise<MedicationEntry> =>
+  apiCall('/v2/medications/entries', { method: 'POST', body });
+
+export const deleteMedicationEntry = (id: string): Promise<void> =>
+  apiCall(`/v2/medications/entries/${id}`, { method: 'DELETE' });
 
 // --- Schedules -------------------------------------------------------------
 

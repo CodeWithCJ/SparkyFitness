@@ -10,6 +10,8 @@ import {
   MedicationIdParamSchema,
   ListMedicationsQuerySchema,
   SerumCurveQuerySchema,
+  CreateMedicationEntryBodySchema,
+  ListMedicationEntriesQuerySchema,
 } from '../../schemas/medicationSchemas.js';
 import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
@@ -19,6 +21,7 @@ import medicationPenRepository from '../../models/medicationPenRepository.js';
 import injectionRepository from '../../models/injectionRepository.js';
 import titrationRepository from '../../models/titrationRepository.js';
 import glp1Service from '../../services/glp1Service.js';
+import medicationEntryRepository from '../../models/medicationEntryRepository.js';
 
 const router = express.Router();
 
@@ -296,8 +299,60 @@ const deleteMedication: RequestHandler = async (req, res, next) => {
   }
 };
 
+// --- Medication Entries (Adherence) ---------------------------------------
+
+const listEntries: RequestHandler = async (req, res, next) => {
+  try {
+    const query = ListMedicationEntriesQuerySchema.safeParse(req.query);
+    if (!query.success) return badRequest(res, query.error);
+    const entries = await medicationEntryRepository.listEntries(req.userId, {
+      fromDate: query.data.fromDate,
+      toDate: query.data.toDate,
+      medicationId: query.data.medicationId,
+    });
+    res.json(entries);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createEntry: RequestHandler = async (req, res, next) => {
+  try {
+    const body = CreateMedicationEntryBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const entry = await medicationEntryRepository.createEntry(
+      req.userId,
+      body.data
+    );
+    res.status(201).json(entry);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteEntry: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const ok = await medicationEntryRepository.deleteEntry(
+      req.userId,
+      params.data.id
+    );
+    if (!ok) {
+      res.status(404).json({ error: 'Medication entry not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
 router.get('/', listMedications);
 router.post('/', createMedication);
+router.get('/entries', listEntries);
+router.post('/entries', createEntry);
+router.delete('/entries/:id', deleteEntry);
 router.get('/:id', getMedication);
 router.put('/:id', updateMedication);
 router.delete('/:id', deleteMedication);

@@ -26,6 +26,7 @@ export interface Medication {
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  schedules?: MedicationSchedule[];
 }
 
 export interface MedicationSchedule {
@@ -37,6 +38,10 @@ export interface MedicationSchedule {
   days_of_week: number[] | null;
   interval_days: number | null;
   day_of_month: number | null;
+  cycle_on_days: number | null;
+  cycle_off_days: number | null;
+  prn_reason: string | null;
+  prn_max_per_day: number | null;
   with_meal: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -120,4 +125,44 @@ export interface LogInjectionInput {
   dose_mg?: number | null;
   deduct_pen?: boolean;
   notes?: string | null;
+}
+
+export interface MedicationEntry {
+  id: string;
+  medication_id: string;
+  schedule_id: string | null;
+  user_id: string;
+  status: 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
+  taken_at: string;
+  scheduled_for: string | null;
+  entry_date: string;
+  med_name_snapshot: string | null;
+  dose_amount_snapshot: number | null;
+  dose_unit_snapshot: string | null;
+  notes: string | null;
+  source: string;
+  custom_fields: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMedicationEntryInput {
+  medication_id: string;
+  schedule_id?: string | null;
+  status?: 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
+  taken_at?: string | null;
+  scheduled_for?: string | null;
+  entry_date?: string | null;
+  med_name_snapshot?: string | null;
+  dose_amount_snapshot?: number | null;
+  dose_unit_snapshot?: string | null;
+  notes?: string | null;
+  source?: string;
+  custom_fields?: Record<string, unknown> | null;
+}
+
+export interface ListMedicationEntriesOptions {
+  fromDate?: string;
+  toDate?: string;
+  medicationId?: string;
 }

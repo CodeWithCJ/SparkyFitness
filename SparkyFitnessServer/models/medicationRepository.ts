@@ -73,13 +73,35 @@ async function listMedications(
     const where: string[] = ['user_id = $1'];
     if (opts.glp1Only) where.push('is_glp1 = TRUE');
     if (opts.activeOnly) where.push('is_active = TRUE');
-    const result = await client.query(
+    const medsResult = await client.query(
       `SELECT ${MED_COLS} FROM medications
        WHERE ${where.join(' AND ')}
        ORDER BY is_active DESC, name ASC`,
       [userId]
     );
-    return result.rows;
+
+    if (medsResult.rows.length === 0) return [];
+
+    const medIds = medsResult.rows.map((m) => m.id);
+    const schedulesResult = await client.query(
+      `SELECT ${SCHEDULE_COLS} FROM medication_schedules
+       WHERE medication_id = ANY($1) AND user_id = $2
+       ORDER BY time_of_day NULLS LAST, created_at ASC`,
+      [medIds, userId]
+    );
+
+    const schedulesByMedId: Record<string, any[]> = {};
+    for (const sched of schedulesResult.rows) {
+      if (!schedulesByMedId[sched.medication_id]) {
+        schedulesByMedId[sched.medication_id] = [];
+      }
+      schedulesByMedId[sched.medication_id].push(sched);
+    }
+
+    return medsResult.rows.map((med) => ({
+      ...med,
+      schedules: schedulesByMedId[med.id] || [],
+    }));
   } finally {
     client.release();
   }
