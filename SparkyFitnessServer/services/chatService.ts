@@ -47,6 +47,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
 
+const MAX_AGENTIC_STEPS = 15;
+
 async function handleAiServiceSettings(
   action: string,
   serviceData: Partial<AiServiceSettings> & { api_key?: string },
@@ -671,7 +673,7 @@ async function processChatMessage(
       >,
       tools,
       providerOptions: chatProviderOptions,
-      stopWhen: stepCountIs(50),
+      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
       maxRetries: 5,
       onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
@@ -1087,7 +1089,7 @@ async function processChatMessageStream(
       >,
       tools,
       providerOptions: chatProviderOptions,
-      stopWhen: stepCountIs(50),
+      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
       maxRetries: 5,
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
