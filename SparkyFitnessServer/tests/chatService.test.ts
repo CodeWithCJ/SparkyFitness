@@ -458,6 +458,99 @@ describe('chatService', () => {
         model.doGenerateCalls[0].providerOptions?.openai?.promptCacheKey
       ).toBe(`sparky-chat-${actorUserId}`);
     });
+
+    it('ships the trimmed core tool set when an Ollama service opts into the core profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          chat_tool_profile: 'core',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 18 core tools/)
+      );
+    });
+
+    it('ships the full tool set for an Ollama service left on the full profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          chat_tool_profile: 'full',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
+
+    it('defaults to the full tool set when an Ollama service has no stored profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
+
+    it('never trims a non-Ollama service even with a stale core profile stored', async () => {
+      // The §4 gate keys on service_type, so a service that was Ollama+core and
+      // later switched to OpenAI still loads the full 35-tool surface.
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai',
+          chat_tool_profile: 'core',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
   });
 
   describe('processChatMessageStream (empty completion handling)', () => {

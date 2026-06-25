@@ -77,6 +77,7 @@ export const ServiceForm = ({
               onFormDataChange({
                 service_type: value,
                 model_name: '',
+                chat_tool_profile: 'full',
               })
             }
           >
@@ -136,6 +137,37 @@ export const ServiceForm = ({
                 : t(`${translationPrefix}.customUrlPlaceholder`)
             }
           />
+        </div>
+      )}
+
+      {formData.service_type === 'ollama' && (
+        <div>
+          <Label htmlFor="chat_tool_profile">
+            {t(`${translationPrefix}.chatToolProfile`)}
+          </Label>
+          <Select
+            value={formData.chat_tool_profile ?? 'full'}
+            onValueChange={(value) =>
+              onFormDataChange({
+                chat_tool_profile: value as 'full' | 'core',
+              })
+            }
+          >
+            <SelectTrigger id="chat_tool_profile">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full">
+                {t(`${translationPrefix}.chatToolProfileFull`)}
+              </SelectItem>
+              <SelectItem value="core">
+                {t(`${translationPrefix}.chatToolProfileCore`)}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t(`${translationPrefix}.chatToolProfileDescription`)}
+          </p>
         </div>
       )}
 

@@ -357,7 +357,8 @@ async function saveSparkyChatHistory(
  */
 async function prepareChatContext(
   authenticatedUserId: string,
-  serviceType: string
+  serviceType: string,
+  chatToolProfile?: string | null
 ) {
   const [customCategories, chatTz] = await Promise.all([
     measurementRepository.getCustomCategories(authenticatedUserId),
@@ -374,11 +375,11 @@ async function prepareChatContext(
           .join('\n')
       : 'None';
 
-  // Ollama is typically a small/local model with no prompt cache, so the whole
-  // tool block is reprocessed every turn. Ship the trimmed core set to cut
-  // prefill latency and improve tool-selection accuracy on weaker models.
+  // Per-service chat tool profile. 'core' trims the tool surface for small/local
+  // models and is only offered for Ollama; every other backend always gets the
+  // full set, so a stale 'core' on a non-Ollama service can never trim it.
   const toolProfile: ChatToolProfile =
-    serviceType === 'ollama' ? 'core' : 'full';
+    serviceType === 'ollama' && chatToolProfile === 'core' ? 'core' : 'full';
   const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
   log(
     'info',
@@ -630,7 +631,8 @@ async function processChatMessage(
 
     const { systemPromptContent, tools } = await prepareChatContext(
       authenticatedUserId,
-      aiService.service_type
+      aiService.service_type,
+      aiService.chat_tool_profile
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -1072,7 +1074,8 @@ async function processChatMessageStream(
 
     const { systemPromptContent, tools } = await prepareChatContext(
       authenticatedUserId,
-      aiService.service_type
+      aiService.service_type,
+      aiService.chat_tool_profile
     );
 
     const chatProviderOptions = buildChatProviderOptions(
