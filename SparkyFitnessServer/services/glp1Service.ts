@@ -1,0 +1,131 @@
+import {
+  resolveGlp1Profile,
+  simulateSerumCurve,
+  serumLevelAt,
+  suggestNextSite,
+  INJECTION_SITES,
+  SITE_REST_DAYS,
+  type DoseEvent,
+  type RecentSiteUse,
+  type SerumPoint,
+  type SiteRotationResult,
+} from '@workspace/shared';
+import injectionRepository from '../models/injectionRepository.js';
+import medicationRepository from '../models/medicationRepository.js';
+
+interface InjectionRow {
+  id: string;
+  injected_at: string | Date;
+  site: string | null;
+  dose_mg: string | number | null;
+}
+
+function daysBetween(later: Date, earlier: Date): number {
+  return (later.getTime() - earlier.getTime()) / (1000 * 60 * 60 * 24);
+}
+
+/**
+ * Build the modeled serum-level curve for a GLP-1 medication from the user's injection history.
+ * Returns the sampled curve plus the current modeled level. This is a PK *model* (Bateman
+ * one-compartment), not a measured value.
+ */
+async function getSerumCurve(
+  userId: string,
+  medicationId: string,
+  opts: { fromDay?: number; toDay?: number; stepDays?: number } = {}
+): Promise<{
+  drugId: string | null;
+  curve: SerumPoint[];
+  currentLevelFraction: number | null;
+  disclaimer: string;
+}> {
+  const med = await medicationRepository.getMedicationById(
+    userId,
+    medicationId
+  );
+  if (!med) {
+    throw new Error('Medication not found');
+  }
+  const profile =
+    resolveGlp1Profile(med.name) ??
+    (med.custom_fields?.glp1_drug
+      ? resolveGlp1Profile(String(med.custom_fields.glp1_drug))
+      : undefined);
+
+  const injections = (await injectionRepository.listInjections(userId, {
+    medicationId,
+    limit: 60,
+  })) as InjectionRow[];
+
+  const disclaimer =
+    'Modeled estimate from published half-lives — not a measured blood level.';
+
+  if (!profile || injections.length === 0) {
+    return {
+      drugId: profile?.id ?? null,
+      curve: [],
+      currentLevelFraction: null,
+      disclaimer,
+    };
+  }
+
+  // Anchor day 0 at the earliest injection in the window.
+  const sorted = [...injections].sort(
+    (a, b) =>
+      new Date(a.injected_at).getTime() - new Date(b.injected_at).getTime()
+  );
+  const anchor = new Date(sorted[0].injected_at);
+  const doses: DoseEvent[] = sorted.map((inj) => ({
+    day: daysBetween(new Date(inj.injected_at), anchor),
+    doseMg:
+      inj.dose_mg !== null && inj.dose_mg !== undefined
+        ? Number(inj.dose_mg)
+        : 1,
+  }));
+
+  const lastDay = doses[doses.length - 1].day;
+  const fromDay = opts.fromDay ?? 0;
+  const toDay = opts.toDay ?? lastDay + profile.halfLifeDays * 2;
+  const stepDays = opts.stepDays ?? 0.25;
+
+  const curve = simulateSerumCurve(doses, profile, fromDay, toDay, stepDays);
+
+  const nowDay = daysBetween(new Date(), anchor);
+  const peak = curve.reduce((m, p) => Math.max(m, p.level), 0) || 1;
+  const currentLevelFraction =
+    nowDay >= fromDay && nowDay <= toDay
+      ? serumLevelAt(nowDay, doses, profile) / peak
+      : null;
+
+  return { drugId: profile.id, curve, currentLevelFraction, disclaimer };
+}
+
+/**
+ * Suggest the next injection site for a medication based on recent injection history,
+ * flagging sites that are still resting (lipohypertrophy guidance).
+ */
+async function getSiteSuggestion(
+  userId: string,
+  medicationId: string
+): Promise<
+  SiteRotationResult & { sites: typeof INJECTION_SITES; restDays: number }
+> {
+  const injections = (await injectionRepository.listInjections(userId, {
+    medicationId,
+    limit: 30,
+  })) as InjectionRow[];
+
+  const now = new Date();
+  const recent: RecentSiteUse[] = injections
+    .filter((i): i is InjectionRow & { site: string } => Boolean(i.site))
+    .map((i) => ({
+      siteId: i.site,
+      daysAgo: daysBetween(now, new Date(i.injected_at)),
+    }));
+
+  const result = suggestNextSite(recent);
+  return { ...result, sites: INJECTION_SITES, restDays: SITE_REST_DAYS };
+}
+
+export { getSerumCurve, getSiteSuggestion };
+export default { getSerumCurve, getSiteSuggestion };

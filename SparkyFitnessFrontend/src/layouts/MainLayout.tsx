@@ -12,6 +12,7 @@ import {
   LogOut,
   Dumbbell, // Used for Exercises
   Target, // Used for Goals
+  Pill, // Used for Medications
   Shield,
   Plus,
   X,
@@ -202,6 +203,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           icon: Dumbbell,
         },
         { value: '/goals', label: t('nav.goals'), icon: Target },
+        {
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        },
         { value: '/settings', label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
