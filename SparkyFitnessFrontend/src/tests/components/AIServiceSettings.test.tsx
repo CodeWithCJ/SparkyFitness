@@ -74,6 +74,12 @@ const translations: Record<string, string> = {
   'settings.aiService.userSettings.systemPrompt': 'System Prompt',
   'settings.aiService.userSettings.activeService': 'Active Service',
   'settings.aiService.userSettings.setAsActive': 'Set as Active Service',
+  'settings.aiService.userSettings.chatToolProfile': 'Chat Tool Set',
+  'settings.aiService.userSettings.chatToolProfileFull': 'Full (all tools)',
+  'settings.aiService.userSettings.chatToolProfileCore':
+    'Core (faster, fewer tools)',
+  'settings.aiService.userSettings.chatToolProfileDescription':
+    'Core trims the chatbot to logging essentials.',
   'settings.aiService.userSettings.chatPreferences': 'Chat Preferences',
   'settings.aiService.userSettings.autoClearHistory': 'Auto Clear Chat History',
   'settings.aiService.userSettings.neverClear': 'Never',
@@ -382,6 +388,33 @@ describe('AIServiceSettings', () => {
         l.textContent?.includes('Optional')
       );
       expect(optionalLabel).toBeInTheDocument();
+    });
+  });
+
+  it('shows the chat tool set selector only for Ollama services', async () => {
+    renderWithClient(<AIServiceSettings />);
+
+    const addButton = await screen.findByRole('button', {
+      name: 'Add New AI Service',
+    });
+    fireEvent.click(addButton);
+
+    // Default service type is OpenAI — the tool-set selector stays hidden.
+    expect(screen.queryByLabelText('Chat Tool Set')).not.toBeInTheDocument();
+
+    // Switch to Ollama.
+    const serviceTypeTrigger = screen.getByLabelText('Service Type', {
+      selector: 'button',
+    });
+    fireEvent.click(serviceTypeTrigger);
+    const ollamaOption = await screen.findByRole('option', { name: /ollama/i });
+    fireEvent.click(ollamaOption);
+
+    // Now the Ollama-only selector appears.
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Chat Tool Set', { selector: 'button' })
+      ).toBeInTheDocument();
     });
   });
 

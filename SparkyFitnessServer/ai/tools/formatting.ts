@@ -7,6 +7,37 @@ export function dayString(value: unknown): string {
   return value instanceof Date ? localDateToDay(value) : String(value);
 }
 
+// Conservative result-size trim shared by the read tools: drop keys whose value
+// carries no information — null/undefined,
+// empty `{}` (e.g. default `custom_nutrients`), empty `[]` (e.g. `allergens`) —
+// plus an explicit denylist of redundant internal keys (audit columns, surrogate
+// FKs). Every populated field is kept, so no answerable data is lost. Applied to
+// both the chat and MCP surfaces, which share the tool handlers.
+export function compactRecord(
+  row: Record<string, unknown>,
+  dropKeys: readonly string[] = []
+): Record<string, unknown> {
+  const drop = new Set(dropKeys);
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (drop.has(key)) continue;
+    if (value === null || value === undefined) continue;
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+    } else if (
+      typeof value === 'object' &&
+      !(value instanceof Date) &&
+      Object.keys(value as object).length === 0
+    ) {
+      // Date objects have zero own keys but carry a real value; never strip them
+      // (pg returns timestamp columns as Date). Drop them by name instead.
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 /**
  * Formats successful tool result data as text, with optional truncation.
  */

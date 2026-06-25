@@ -72,6 +72,7 @@ const GlobalAISettings = () => {
       model_name: '',
       showCustomModelInput: false,
       custom_model_name: '',
+      chat_tool_profile: 'full',
     });
 
   const [editingService, setEditingService] = useState<string | null>(null);
@@ -142,6 +143,7 @@ const GlobalAISettings = () => {
         model_name: '',
         showCustomModelInput: false,
         custom_model_name: '',
+        chat_tool_profile: 'full',
       });
       setShowAddForm(false);
       // Success toast is handled by the mutation meta
@@ -216,6 +218,7 @@ const GlobalAISettings = () => {
       model_name: isCustomModel ? '' : service.model_name || '',
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
+      chat_tool_profile: service.chat_tool_profile ?? 'full',
     });
   };
 

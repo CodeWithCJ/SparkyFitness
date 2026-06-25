@@ -11,35 +11,82 @@ import { buildVisionTools } from './visionTools.js';
 import { buildWizardTools } from './wizardTools.js';
 
 /**
- * Composes the full in-process chatbot tool set for generateText/streamText.
+ * Tool surfaces the chatbot can expose:
+ * - 'full': every chat-visible tool (the default).
+ * - 'core': just the food/exercise/measurement logging the system prompt
+ *   centers on. Used for small/local models (e.g. Ollama's default 3B
+ *   llama3.2) that have no prompt cache — so the whole tool block is
+ *   reprocessed every turn — and select tools more reliably from a smaller
+ *   surface. Analytics, coaching, vision, goals, profile, habits, the check-in
+ *   wizard, and reports are dropped.
+ */
+export type ChatToolProfile = 'full' | 'core';
+
+/**
+ * Composes the in-process chatbot tool set for generateText/streamText.
  * Handlers close over the authenticated userId — chat tools always act as the
  * session user, so two-actor services receive (userId, userId, …) — and the
  * user's IANA timezone, used for "today" defaults and day bucketing.
  *
  * Domain order mirrors MCP's registerAllTools; the MCP-only dev tools are
- * intentionally not part of the chat surface.
+ * intentionally not part of the chat surface. The 'core' profile is a strict
+ * prefix of the full set, so the full set keeps its original ordering.
  */
-export function buildChatbotTools(userId: string, tz: string) {
+export function buildChatbotTools(
+  userId: string,
+  tz: string,
+  profile: ChatToolProfile = 'full'
+) {
+  // Core logging domains: food, exercise, and measurements/check-ins.
   const tools = {
     ...buildExerciseTools(userId, tz),
     ...buildFoodTools(userId, tz),
     ...buildCheckinTools(userId, tz),
-    ...buildCoachTools(userId, tz),
-    ...buildEngagementTools(userId, tz),
-    ...buildVisionTools(userId),
-    ...buildGoalTools(userId, tz),
-    ...buildProfileTools(userId),
-    ...buildHabitTools(userId),
-    ...buildWizardTools(userId),
-    ...buildReportTools(userId, tz),
   };
+  if (profile === 'full') {
+    Object.assign(
+      tools,
+      buildCoachTools(userId, tz),
+      buildEngagementTools(userId, tz),
+      buildVisionTools(userId),
+      buildGoalTools(userId, tz),
+      buildProfileTools(userId),
+      buildHabitTools(userId),
+      buildWizardTools(userId),
+      buildReportTools(userId, tz)
+    );
+  }
   // The published flat schemas are advisory; real validation is the strict
   // per-action union inside each handler. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
   // mode" and then forces models to emit every published property, producing
   // placeholder junk that the per-action validation rejects.
-  for (const tool of Object.values(tools)) {
+  const allTools = Object.values(tools);
+  for (const tool of allTools) {
     tool.strict = false;
+  }
+
+  // Anthropic prompt caching: tag the final tool as a cache breakpoint so the
+  // entire (static, user-independent) tool-schema block — the bulk of every
+  // request prefix — is written once and re-read across the multi-step agent
+  // loop and conversation turns. Provider-namespaced: non-Anthropic providers
+  // ignore it (and auto-cache on their own). MUST be the LAST tool the SDK
+  // emits (Anthropic caches the prefix up to & including the marked tool). This
+  // relies on the AI SDK preserving Object.values() order when building the
+  // Anthropic `tools` array — true today; if a package bump reorders tools this
+  // stops caching the full block silently (no error). Merge, don't overwrite,
+  // so any future providerOptions on this tool (e.g. deferLoading) survive.
+  const lastTool = allTools[allTools.length - 1];
+  if (lastTool) {
+    lastTool.providerOptions = {
+      ...lastTool.providerOptions,
+      anthropic: {
+        ...(lastTool.providerOptions?.anthropic as
+          | Record<string, unknown>
+          | undefined),
+        cacheControl: { type: 'ephemeral' },
+      },
+    };
   }
   return tools;
 }

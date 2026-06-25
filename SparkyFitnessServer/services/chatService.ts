@@ -41,11 +41,18 @@ interface ChatMessage {
 }
 
 import { generateText, streamText, stepCountIs } from 'ai';
-import type { UIMessageChunk } from 'ai';
+import type { JSONValue, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { buildChatbotTools } from '../ai/tools/index.js';
+import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
+
+const MAX_AGENTIC_STEPS = 15;
+
+// Retries per chat request on persistent provider errors. Each retry re-sends the
+// full request (system + tools + history), so a high count multiplies token cost
+// on a hard provider outage. 3 covers transient blips without a runaway 5×.
+const MAX_PROVIDER_RETRIES = 3;
 
 async function handleAiServiceSettings(
   action: string,
@@ -348,7 +355,11 @@ async function saveSparkyChatHistory(
  * registry. Everything is scoped to the authenticated user — chat tool calls
  * always act as the logged-in actor, matching the previous MCP behavior.
  */
-async function prepareChatContext(authenticatedUserId: string) {
+async function prepareChatContext(
+  authenticatedUserId: string,
+  serviceType: string,
+  chatToolProfile?: string | null
+) {
   const [customCategories, chatTz] = await Promise.all([
     measurementRepository.getCustomCategories(authenticatedUserId),
     loadUserTimezone(authenticatedUserId),
@@ -364,19 +375,48 @@ async function prepareChatContext(authenticatedUserId: string) {
           .join('\n')
       : 'None';
 
-  const tools = buildChatbotTools(authenticatedUserId, chatTz);
+  // Per-service chat tool profile. 'core' trims the tool surface for small/local
+  // models and is only offered for Ollama; every other backend always gets the
+  // full set, so a stale 'core' on a non-Ollama service can never trim it.
+  const toolProfile: ChatToolProfile =
+    serviceType === 'ollama' && chatToolProfile === 'core' ? 'core' : 'full';
+  const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
   log(
     'info',
-    `Loaded ${Object.keys(tools).length} tools for chatbot: ${Object.keys(tools).join(', ')}`
+    `Loaded ${Object.keys(tools).length} ${toolProfile} tools for chatbot: ${Object.keys(tools).join(', ')}`
   );
 
   return {
-    systemPromptContent: getSystemPrompt(chatTz, customCategoriesList),
+    systemPromptContent: getSystemPrompt(
+      chatTz,
+      customCategoriesList,
+      toolProfile
+    ),
     tools,
   };
 }
 
-function getSystemPrompt(chatTz: string, customCategoriesList: string): string {
+export function getSystemPrompt(
+  chatTz: string,
+  customCategoriesList: string,
+  profile: ChatToolProfile = 'full'
+): string {
+  // Vision tools (sparky_analyze_food_image, sparky_scan_label) are dropped
+  // from the 'core' profile, so omit their guidance there — keeping the prompt
+  // a strict subset of the full one and never pointing small/local models at
+  // tools they don't have.
+  const visionSupport =
+    profile === 'full'
+      ? `
+
+## VISION SUPPORT
+You are a multimodal AI. When the user provides an image (photo of food, meal, or nutrition label):
+1. **Analyze it directly** using your built-in vision capabilities. You can see the images in the conversation history.
+2. If you need a more structured nutritional estimate or if the image is a complex meal, you can use the 'sparky_analyze_food_image' tool as a secondary step.
+3. For nutrition labels, you can use 'sparky_scan_label' to ensure high accuracy in data extraction.
+4. Based on your analysis, proceed to log the entry using the appropriate tools (e.g., 'sparky_manage_food').`
+      : '';
+
   return `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
 
 The current local date is ${todayInZone(chatTz)}.
@@ -388,25 +428,139 @@ ${customCategoriesList}
 
 When logging measurements or custom categories, compare user inputs to the list above. If you find a match or variations (synonyms, capitalization), use the exact category name.
 
-For solid food items or beverages that are not water, use the 'sparky_manage_food' tool. Do NOT classify water as food. Use the 'sparky_manage_water' tool for water intake.
+For solid food items or beverages that are not water, use the 'sparky_manage_food' tool. Do NOT classify water as food. Use the 'sparky_manage_food' tool with the 'log_water' action for water intake.
 
 ## MANDATORY FOOD LOOKUP RULE
-BEFORE creating any new food entry or logging food that may not exist in the database, you MUST call 'sparky_lookup_food_nutrition' first to search for verified nutritional data. This tool searches internal database, user food providers, OpenFoodFacts, and other verified sources.
+BEFORE creating any new food entry or logging food that may not exist in the database, you MUST call the 'sparky_manage_food' tool with the 'lookup_food_nutrition' action first to search for verified nutritional data. This searches internal database, user food providers, OpenFoodFacts, and other verified sources.
 
-- If 'sparky_lookup_food_nutrition' returns nutrition data (calories > 0), use that data when calling 'sparky_manage_food'. Do NOT override it with your own estimates.
-- Only use AI-estimated nutrition if 'sparky_lookup_food_nutrition' explicitly returns no data or a zero-calorie result.
+- If 'lookup_food_nutrition' returns nutrition data (calories > 0), use that data when calling 'sparky_manage_food' with the 'log_food' action. Do NOT override it with your own estimates.
+- Only use AI-estimated nutrition if 'lookup_food_nutrition' explicitly returns no data or a zero-calorie result.
 - Always tell the user the source of nutrition data (e.g., "from OpenFoodFacts", "from internal database", "AI estimate").
-- If the user explicitly asks for internet search or a specific source, pass that preference to 'sparky_lookup_food_nutrition' using the source_preference parameter.
-- **Maximized Nutritional Detail (CRITICAL)**: When creating or logging a food via 'sparky_manage_food' with 'create_food', you MUST populate EVERY single nutritional field (saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, fiber, sugar, vitamin_a, vitamin_c, calcium, iron, gi). Do NOT default to logging only main macros (calories, protein, carbs, fat). Even if the source data or user description lacks detailed micro-nutrients, you MUST use your comprehensive biochemical and culinary knowledge to calculate and estimate realistic, scientifically sound values for every field (e.g., estimating fiber for grains, sugar for fruits, saturated fat & cholesterol for meat, sodium for prepared/seasoned dishes). Omit no fields, and do not default them to zero unless the food truly contains none of that nutrient.
-
-## VISION SUPPORT
-You are a multimodal AI. When the user provides an image (photo of food, meal, or nutrition label):
-1. **Analyze it directly** using your built-in vision capabilities. You can see the images in the conversation history.
-2. If you need a more structured nutritional estimate or if the image is a complex meal, you can use the 'sparky_analyze_food_image' tool as a secondary step.
-3. For nutrition labels, you can use 'sparky_scan_label' to ensure high accuracy in data extraction.
-4. Based on your analysis, proceed to log the entry using the appropriate tools (e.g., 'sparky_manage_food').
+- If the user explicitly asks for internet search or a specific source, pass that preference to 'lookup_food_nutrition' using the provider_type parameter.
+- **Nutritional detail**: When creating a food via the 'create_food' action, include any micronutrients (saturated_fat, fiber, sugar, sodium, etc.) the looked-up source provides or that you can confidently derive. Don't fabricate values you can't reasonably estimate, and don't pad unknown fields with zeros.${visionSupport}
 
 Be precise with data extraction and call the correct tools in the correct order.`;
+}
+
+// OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
+// (per @ai-sdk/openai), and the adapter forwards the field without gating, so
+// other models may reject it. Mirror the adapter's own family check.
+const RETENTION_24H_MODEL_PREFIXES = [
+  'gpt-5.1',
+  'gpt-5.2',
+  'gpt-5.3',
+  'gpt-5.4',
+  'gpt-5.5',
+];
+
+// Only the canonical 'openai' service type needs request-level providerOptions.
+// The OpenAI-compatible types share the `openai` namespace via createOpenAI(), so
+// gate strictly to 'openai' to avoid injecting prompt_cache_* into backends that
+// may reject it. (Anthropic caches on the tools — see ai/tools/index.ts; Gemini
+// auto-caches with no flag.)
+export function buildChatProviderOptions(
+  serviceType: string,
+  userId: string,
+  modelName: string
+): Record<string, Record<string, JSONValue>> | undefined {
+  if (serviceType !== 'openai') return undefined;
+  const openai: Record<string, JSONValue> = {
+    promptCacheKey: `sparky-chat-${userId}`,
+  };
+  if (RETENTION_24H_MODEL_PREFIXES.some((p) => modelName.startsWith(p))) {
+    openai.promptCacheRetention = '24h';
+  }
+  return { openai };
+}
+
+interface LlmMessage {
+  role: string;
+  content: string | ProcessedMessagePart[];
+}
+
+// Vision images are stored as base64 data URLs and re-sent inside the context
+// window on every turn until they age out, costing ~1-2K+ uncached tokens each,
+// each turn. The model only needs to *see* an image on the turn it arrives; for
+// earlier turns the assistant's text reply already captured the analysis. Strip
+// image parts from every message except the latest user turn. A turn that was
+// image-only keeps a short placeholder so it never becomes empty (some providers
+// reject empty messages); turns with accompanying text just lose the image.
+function stripHistoricalImages(messages: LlmMessage[]): LlmMessage[] {
+  let lastUserIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserIndex = i;
+      break;
+    }
+  }
+
+  return messages.map((msg, index) => {
+    if (index === lastUserIndex || !Array.isArray(msg.content)) {
+      return msg;
+    }
+    const withoutImages = msg.content.filter((part) => part.type !== 'image');
+    if (withoutImages.length === msg.content.length) {
+      return msg;
+    }
+    return {
+      ...msg,
+      content:
+        withoutImages.length > 0
+          ? withoutImages
+          : [{ type: 'text' as const, text: '[image omitted]' }],
+    };
+  });
+}
+
+// Token budget for the conversation-history window. A token budget is steadier
+// than a fixed message count: 20 short turns and 20 turns full of long pastes or
+// tool dumps cost wildly different amounts, and a count can't tell them apart.
+const CONTEXT_TOKEN_BUDGET = 6000;
+// Flat per-image cost. A base64 data URL is tens of KB of characters but bills as
+// roughly a fixed number of vision tokens, so char-based estimation would
+// massively overcount it. Past images are already stripped, so in practice this
+// only covers the current turn's image (which is always kept regardless).
+const IMAGE_TOKEN_ESTIMATE = 1500;
+// Rough English chars-per-token, plus a small fixed per-message structural cost
+// (role markers, delimiters) so a long run of tiny messages still bounds.
+const CHARS_PER_TOKEN = 4;
+const PER_MESSAGE_OVERHEAD = 4;
+
+function estimateMessageTokens(
+  content: string | ProcessedMessagePart[]
+): number {
+  if (typeof content === 'string') {
+    return PER_MESSAGE_OVERHEAD + Math.ceil(content.length / CHARS_PER_TOKEN);
+  }
+  let total = PER_MESSAGE_OVERHEAD;
+  for (const part of content) {
+    total +=
+      part.type === 'image'
+        ? IMAGE_TOKEN_ESTIMATE
+        : Math.ceil((part.text?.length ?? 0) / CHARS_PER_TOKEN);
+  }
+  return total;
+}
+
+// Keep the most recent messages whose estimated tokens fit the budget, walking
+// newest-first. The final (current-turn) message is always kept even if it alone
+// blows the budget — we never drop the user's actual question.
+function trimToTokenBudget(
+  messages: LlmMessage[],
+  budget: number
+): LlmMessage[] {
+  let used = 0;
+  let startIndex = messages.length;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const cost = estimateMessageTokens(messages[i].content);
+    const isCurrentTurn = i === messages.length - 1;
+    if (!isCurrentTurn && used + cost > budget) {
+      break;
+    }
+    used += cost;
+    startIndex = i;
+  }
+  return messages.slice(startIndex);
 }
 
 async function processChatMessage(
@@ -487,8 +641,17 @@ async function processChatMessage(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } =
-      await prepareChatContext(authenticatedUserId);
+    const { systemPromptContent, tools } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type,
+      aiService.chat_tool_profile
+    );
+
+    const chatProviderOptions = buildChatProviderOptions(
+      aiService.service_type,
+      authenticatedUserId,
+      modelName
+    );
 
     // Map conversation history messages to CoreMessage format
     const conversationMessages = messages.map((msg: ChatMessage) => {
@@ -594,8 +757,6 @@ async function processChatMessage(
       };
     });
 
-    conversationMessages.push(...incomingMessages);
-
     // Filter out trailing empty assistant messages if sent by the client
     while (
       conversationMessages.length > 0 &&
@@ -606,6 +767,19 @@ async function processChatMessage(
       conversationMessages.pop();
     }
 
+    // Mirror the streaming path's context-window controls so the non-streaming
+    // route doesn't resend historical images or overflow the context budget.
+    const strippedMessages = stripHistoricalImages(conversationMessages);
+    const llmMessages = trimToTokenBudget(
+      strippedMessages,
+      CONTEXT_TOKEN_BUDGET
+    );
+
+    // Ensure the window starts with a user message (some models reject assistant-first history)
+    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
+      llmMessages.shift();
+    }
+
     const executedToolsList: Array<{
       name: string;
       args: Record<string, unknown>;
@@ -614,13 +788,14 @@ async function processChatMessage(
     const result = await generateText({
       model: modelInstance,
       system: systemPromptContent,
-      messages: conversationMessages as NonNullable<
+      messages: llmMessages as NonNullable<
         Parameters<typeof generateText>[0]['messages']
       >,
       tools,
-      stopWhen: stepCountIs(50),
-      maxRetries: 5,
-      onStepFinish({ toolCalls }) {
+      providerOptions: chatProviderOptions,
+      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
+      maxRetries: MAX_PROVIDER_RETRIES,
+      onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
             log(
@@ -633,8 +808,20 @@ async function processChatMessage(
             });
           });
         }
+        if (toolResults && toolResults.length > 0) {
+          const sizes = toolResults
+            .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
+            .join(' ');
+          log('info', `[chat] tool result sizes: ${sizes}`);
+        }
       },
     });
+
+    const usage = result.totalUsage ?? result.usage;
+    log(
+      'info',
+      `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0} noCacheTokens=${usage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${usage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${usage?.outputTokens ?? 0} totalTokens=${usage?.totalTokens ?? 0}`
+    );
 
     // Save history dynamically to DB (replacing frontend client-side saves)
     const lastUserMsg = incomingMessages[incomingMessages.length - 1];
@@ -911,8 +1098,17 @@ async function processChatMessageStream(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } =
-      await prepareChatContext(authenticatedUserId);
+    const { systemPromptContent, tools } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type,
+      aiService.chat_tool_profile
+    );
+
+    const chatProviderOptions = buildChatProviderOptions(
+      aiService.service_type,
+      authenticatedUserId,
+      modelName
+    );
 
     const conversationMessages = messages.map((msg: ChatMessage) => {
       // If parts or content is an array of parts (text + images), pass them through
@@ -986,10 +1182,17 @@ async function processChatMessageStream(
       conversationMessages.pop();
     }
 
-    // Use a sliding window of recent messages to give the LLM multi-turn context
-    // ...
-    const CONTEXT_WINDOW = 20;
-    const llmMessages = conversationMessages.slice(-CONTEXT_WINDOW);
+    // Drop images from earlier turns first so the token budget reflects what is
+    // actually sent; the current user turn keeps its image so live vision
+    // analysis still works.
+    const strippedMessages = stripHistoricalImages(conversationMessages);
+
+    // Token-budgeted sliding window of recent messages to give the LLM multi-turn
+    // context without an unpredictable, count-based blow-up.
+    const llmMessages = trimToTokenBudget(
+      strippedMessages,
+      CONTEXT_TOKEN_BUDGET
+    );
 
     log(
       'debug',
@@ -1016,9 +1219,24 @@ async function processChatMessageStream(
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
-      stopWhen: stepCountIs(50),
-      maxRetries: 5,
-      onFinish: async ({ text, finishReason }) => {
+      providerOptions: chatProviderOptions,
+      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
+      maxRetries: MAX_PROVIDER_RETRIES,
+      onStepFinish({ toolResults }) {
+        if (toolResults && toolResults.length > 0) {
+          const sizes = toolResults
+            .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
+            .join(' ');
+          log('info', `[chat] tool result sizes: ${sizes}`);
+        }
+      },
+      onFinish: async ({ text, finishReason, usage, totalUsage }) => {
+        const observedUsage = totalUsage ?? usage;
+        log(
+          'info',
+          `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
+        );
+
         // Get the last user message from conversationMessages to ensure parts are captured
         const lastUserMessage = [...conversationMessages]
           .reverse()

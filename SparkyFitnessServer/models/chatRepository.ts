@@ -33,8 +33,9 @@ async function upsertAiServiceSetting(
           encrypted_api_key = COALESCE($7, encrypted_api_key),
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
+          chat_tool_profile = COALESCE($10, chat_tool_profile),
           updated_at = now()
-        WHERE id = $10 RETURNING *`,
+        WHERE id = $11 RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -45,6 +46,7 @@ async function upsertAiServiceSetting(
           encryptedApiKey,
           apiKeyIv,
           apiKeyTag,
+          settingData.chat_tool_profile ?? null,
           settingData.id,
         ]
       );
@@ -54,8 +56,8 @@ async function upsertAiServiceSetting(
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, service_name, service_type, custom_url, system_prompt,
-          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING *`,
+          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now()) RETURNING *`,
         [
           settingData.user_id,
           settingData.service_name,
@@ -67,6 +69,7 @@ async function upsertAiServiceSetting(
           encryptedApiKey,
           apiKeyIv,
           apiKeyTag,
+          settingData.chat_tool_profile ?? 'full',
         ]
       );
       return result.rows[0];
@@ -141,12 +144,12 @@ async function getAiServiceSettingsByUserId(userId: string) {
   try {
     // Get user-specific settings
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     // Get global settings (admin-created, all authenticated users can read)
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     // Combine results: user settings first, then global settings
@@ -382,8 +385,9 @@ async function upsertGlobalAiServiceSetting(
           encrypted_api_key = COALESCE($7, encrypted_api_key),
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
+          chat_tool_profile = COALESCE($10, chat_tool_profile),
           updated_at = now()
-        WHERE id = $10 AND is_public = TRUE RETURNING *`,
+        WHERE id = $11 AND is_public = TRUE RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -394,6 +398,7 @@ async function upsertGlobalAiServiceSetting(
           encryptedApiKey,
           apiKeyIv,
           apiKeyTag,
+          settingData.chat_tool_profile ?? null,
           settingData.id,
         ]
       );
@@ -403,8 +408,8 @@ async function upsertGlobalAiServiceSetting(
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, is_public, service_name, service_type, custom_url, system_prompt,
-          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, created_at, updated_at
-        ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING *`,
+          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, created_at, updated_at
+        ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -415,6 +420,7 @@ async function upsertGlobalAiServiceSetting(
           encryptedApiKey,
           apiKeyIv,
           apiKeyTag,
+          settingData.chat_tool_profile ?? 'full',
         ]
       );
       return result.rows[0];
@@ -427,7 +433,7 @@ async function getGlobalAiServiceSettings() {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at, chat_tool_profile FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     return result.rows;

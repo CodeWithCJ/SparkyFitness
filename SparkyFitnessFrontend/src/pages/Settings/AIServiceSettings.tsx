@@ -71,6 +71,7 @@ const AIServiceSettings = () => {
       model_name: '',
       showCustomModelInput: false,
       custom_model_name: '',
+      chat_tool_profile: 'full',
     });
 
   const [editingService, setEditingService] = useState<string | null>(null);
@@ -131,6 +132,7 @@ const AIServiceSettings = () => {
         system_prompt: globalSetting.system_prompt || '',
         is_active: true,
         model_name: globalSetting.model_name || undefined,
+        chat_tool_profile: globalSetting.chat_tool_profile ?? 'full',
       };
       await addService(overrideData);
       // Success toast is handled by the mutation meta
@@ -230,6 +232,7 @@ const AIServiceSettings = () => {
         model_name: '',
         showCustomModelInput: false,
         custom_model_name: '',
+        chat_tool_profile: 'full',
       });
 
       setShowAddForm(false);
@@ -523,6 +526,7 @@ const AIServiceSettings = () => {
       model_name: isCustomModel ? '' : service.model_name || '',
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
+      chat_tool_profile: service.chat_tool_profile ?? 'full',
     });
   };
 

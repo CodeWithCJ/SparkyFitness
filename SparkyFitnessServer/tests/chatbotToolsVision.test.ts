@@ -258,7 +258,7 @@ describe('sparky_scan_label', () => {
     );
 
     expect(result).toBe(
-      `🏷️ Nutrition Label Scan Result:\n\n${JSON.stringify(nutrition, null, 2)}`
+      `🏷️ Nutrition Label Scan Result:\n\n${JSON.stringify(nutrition)}`
     );
     expect(labelScanService.extractNutritionFromLabel).toHaveBeenCalledWith(
       JPEG_BASE64,

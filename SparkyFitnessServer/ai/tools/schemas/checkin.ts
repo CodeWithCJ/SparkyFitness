@@ -207,9 +207,7 @@ export const manageCheckinInput = z.object({
       'get_fasting_status',
       'get_biometrics_history',
     ])
-    .describe(
-      'Action to perform. Each value selects a per-action signature; see the tool description for required fields per action.'
-    ),
+    .describe('Action to perform; see tool description for per-action fields.'),
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   // biometrics
   weight: z.coerce.number().min(0).optional().describe('Weight value'),

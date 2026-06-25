@@ -904,6 +904,8 @@ CREATE TABLE public.ai_service_settings (
     api_key_iv text,
     api_key_tag text,
     is_public boolean DEFAULT false NOT NULL,
+    chat_tool_profile text DEFAULT 'full'::text NOT NULL,
+    CONSTRAINT ai_service_settings_chat_tool_profile_check CHECK ((chat_tool_profile = ANY (ARRAY['full'::text, 'core'::text]))),
     CONSTRAINT check_public_settings_user_id_null CHECK ((((is_public = true) AND (user_id IS NULL)) OR ((is_public = false) AND (user_id IS NOT NULL))))
 );
 

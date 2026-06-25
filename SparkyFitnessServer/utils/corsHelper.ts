@@ -1,4 +1,5 @@
 import ipaddr from 'ipaddr.js';
+import { log } from '../config/logging.js';
 /**
  * Check if a host is a private network address
  * @param {string} hostname - The hostname to check (e.g., "192.168.1.100", "localhost", "10.0.0.5")
@@ -131,7 +132,8 @@ function createCorsOriginChecker(
     const rejectionReason = allowPrivateNetworks
       ? 'origin/referer not in allowlist and not a private network'
       : 'origin/referer not in allowlist (private networks disabled)';
-    console.info(
+    log(
+      'debug',
       `CORS: Rejected ${origin || 'no origin'} - ${rejectionReason}`
     );
     return callback(null, false);

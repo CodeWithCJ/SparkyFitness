@@ -229,33 +229,29 @@ describe('sparky_get_daily_report', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          start_date: '2026-06-10',
-          end_date: '2026-06-10',
-          nutrition: [
-            {
-              entry_date: '2026-06-10',
-              calories: 2100.5,
-              protein: 95,
-              carbs: 240,
-              fat: 70,
-              fiber: 28,
-            },
-          ],
-          exercise: [
-            {
-              entry_date: '2026-06-10',
-              exercise_calories: 400,
-              exercise_minutes: 45,
-              steps: 8000,
-            },
-          ],
-          water: [{ entry_date: '2026-06-10', water_ml: 1500 }],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        start_date: '2026-06-10',
+        end_date: '2026-06-10',
+        nutrition: [
+          {
+            entry_date: '2026-06-10',
+            calories: 2100.5,
+            protein: 95,
+            carbs: 240,
+            fat: 70,
+            fiber: 28,
+          },
+        ],
+        exercise: [
+          {
+            entry_date: '2026-06-10',
+            exercise_calories: 400,
+            exercise_minutes: 45,
+            steps: 8000,
+          },
+        ],
+        water: [{ entry_date: '2026-06-10', water_ml: 1500 }],
+      })
     );
     expect(exerciseEntryDb.getDailyExerciseTotalsRange).toHaveBeenCalledWith(
       'user-1',
@@ -297,33 +293,29 @@ describe('sparky_get_daily_report', () => {
     );
 
     expect(result).toBe(
-      JSON.stringify(
-        {
-          start_date: '2026-06-10',
-          end_date: '2026-06-10',
-          nutrition: [
-            {
-              entry_date: '2026-06-10',
-              calories: 2100.5,
-              protein: 95,
-              carbs: 240,
-              fat: 70,
-              fiber: 28,
-            },
-          ],
-          exercise: [
-            {
-              entry_date: '2026-06-10',
-              exercise_calories: 400,
-              exercise_minutes: 45,
-              steps: 8000,
-            },
-          ],
-          water: [{ entry_date: '2026-06-10', water_ml: 1500 }],
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        start_date: '2026-06-10',
+        end_date: '2026-06-10',
+        nutrition: [
+          {
+            entry_date: '2026-06-10',
+            calories: 2100.5,
+            protein: 95,
+            carbs: 240,
+            fat: 70,
+            fiber: 28,
+          },
+        ],
+        exercise: [
+          {
+            entry_date: '2026-06-10',
+            exercise_calories: 400,
+            exercise_minutes: 45,
+            steps: 8000,
+          },
+        ],
+        water: [{ entry_date: '2026-06-10', water_ml: 1500 }],
+      })
     );
   });
 

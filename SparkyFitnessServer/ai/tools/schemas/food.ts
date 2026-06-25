@@ -491,9 +491,7 @@ export const manageFoodInput = z.object({
       'get_nutritional_summary',
       'get_water_history',
     ])
-    .describe(
-      'Action to perform. Each value selects a different per-action signature; see the tool description for required fields per action.'
-    ),
+    .describe('Action to perform; see tool description for per-action fields.'),
   // food identity
   food_name: z
     .string()
@@ -595,98 +593,28 @@ export const manageFoodInput = z.object({
     .number()
     .min(0)
     .optional()
-    .describe(
-      'Saturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
-    ),
+    .describe('Saturated fat (g)'),
   polyunsaturated_fat: z.coerce
     .number()
     .min(0)
     .optional()
-    .describe(
-      'Polyunsaturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
-    ),
+    .describe('Polyunsaturated fat (g)'),
   monounsaturated_fat: z.coerce
     .number()
     .min(0)
     .optional()
-    .describe(
-      'Monounsaturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
-    ),
-  trans_fat: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Trans fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
-    ),
-  cholesterol: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Cholesterol (mg). MANDATORY: Estimate and populate this if food is animal-based or has fat; do not default to 0/empty.'
-    ),
-  sodium: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Sodium (mg). MANDATORY: Estimate and populate based on food type and processing; do not default to 0/empty.'
-    ),
-  potassium: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Potassium (mg). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
-    ),
-  fiber: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Dietary fiber (g). MANDATORY: Estimate and populate if plant-based or contains carbs; do not default to 0/empty.'
-    ),
-  sugar: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Sugars (g). MANDATORY: Estimate and populate if food contains carbs; do not default to 0/empty.'
-    ),
-  vitamin_a: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Vitamin A (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
-    ),
-  vitamin_c: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Vitamin C (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
-    ),
-  calcium: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Calcium (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
-    ),
-  iron: z.coerce
-    .number()
-    .min(0)
-    .optional()
-    .describe(
-      'Iron (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
-    ),
-  gi: giIndexEnum
-    .optional()
-    .describe(
-      'Glycemic Index classification. MANDATORY: Classify as low, medium, or high based on carb composition.'
-    ),
+    .describe('Monounsaturated fat (g)'),
+  trans_fat: z.coerce.number().min(0).optional().describe('Trans fat (g)'),
+  cholesterol: z.coerce.number().min(0).optional().describe('Cholesterol (mg)'),
+  sodium: z.coerce.number().min(0).optional().describe('Sodium (mg)'),
+  potassium: z.coerce.number().min(0).optional().describe('Potassium (mg)'),
+  fiber: z.coerce.number().min(0).optional().describe('Dietary fiber (g)'),
+  sugar: z.coerce.number().min(0).optional().describe('Sugars (g)'),
+  vitamin_a: z.coerce.number().min(0).optional().describe('Vitamin A (% DV)'),
+  vitamin_c: z.coerce.number().min(0).optional().describe('Vitamin C (% DV)'),
+  calcium: z.coerce.number().min(0).optional().describe('Calcium (% DV)'),
+  iron: z.coerce.number().min(0).optional().describe('Iron (% DV)'),
+  gi: giIndexEnum.optional().describe('Glycemic index classification'),
   // entry / diary management
   entry_id: uuidSchema.optional().describe('Diary entry UUID'),
   entry_type: entryTypeEnum.optional().describe('food_entry | food_entry_meal'),

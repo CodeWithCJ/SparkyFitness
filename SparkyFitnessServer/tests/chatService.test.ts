@@ -441,6 +441,116 @@ describe('chatService', () => {
         'Error [DB_ERROR]: A database error occurred.'
       );
     });
+
+    it('forwards a per-user OpenAI prompt cache key into the blocking model call', async () => {
+      // The pure builder is unit-tested separately; this guards that the
+      // blocking call site actually wires providerOptions into generateText.
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(
+        model.doGenerateCalls[0].providerOptions?.openai?.promptCacheKey
+      ).toBe(`sparky-chat-${actorUserId}`);
+    });
+
+    it('ships the trimmed core tool set when an Ollama service opts into the core profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          chat_tool_profile: 'core',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 18 core tools/)
+      );
+    });
+
+    it('ships the full tool set for an Ollama service left on the full profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          chat_tool_profile: 'full',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
+
+    it('defaults to the full tool set when an Ollama service has no stored profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
+
+    it('never trims a non-Ollama service even with a stale core profile stored', async () => {
+      // The profile gate keys on service_type, so a service that was Ollama+core
+      // and later switched to OpenAI still loads the full 35-tool surface.
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai',
+          chat_tool_profile: 'core',
+        }
+      );
+      scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        expect.stringMatching(/Loaded 35 full tools/)
+      );
+    });
   });
 
   describe('processChatMessageStream (empty completion handling)', () => {
@@ -603,6 +713,142 @@ describe('chatService', () => {
           content: 'Show my goal timeline',
         })
       );
+    });
+
+    it('forwards a per-user OpenAI prompt cache key into the streaming model call', async () => {
+      // Mirrors the blocking-path guard: the streaming call site must also wire
+      // providerOptions into streamText (the two paths diverge subtly).
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Hi!' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      expect(
+        model.doStreamCalls[0].providerOptions?.openai?.promptCacheKey
+      ).toBe(`sparky-chat-${actorUserId}`);
+    });
+
+    it('strips images from earlier turns but keeps the current-turn image', async () => {
+      // Vision images are large and otherwise re-sent inside the window on every
+      // turn; only the latest user turn needs to carry the image, earlier turns
+      // keep just their text (the assistant reply already captured the analysis).
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'ok' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const pngDataUrl =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'What is this food?' },
+              { type: 'image', image: pngDataUrl },
+            ],
+          },
+          { role: 'assistant', content: 'That looks like an apple.' },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'And this one?' },
+              { type: 'image', image: pngDataUrl },
+            ],
+          },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const prompt = model.doStreamCalls[0].prompt;
+      const userMessages = prompt.filter((m) => m.role === 'user');
+      const nonTextParts = (content: unknown) =>
+        Array.isArray(content)
+          ? content.filter((p) => (p as { type: string }).type !== 'text')
+          : [];
+      const textParts = (content: unknown) =>
+        Array.isArray(content)
+          ? content.filter((p) => (p as { type: string }).type === 'text')
+          : [];
+
+      expect(userMessages).toHaveLength(2);
+      // Earlier turn: image dropped, text retained.
+      expect(nonTextParts(userMessages[0].content)).toHaveLength(0);
+      expect(textParts(userMessages[0].content).length).toBeGreaterThan(0);
+      // Current turn: image preserved for live vision analysis.
+      expect(nonTextParts(userMessages[1].content)).toHaveLength(1);
+    });
+
+    it('trims old history to a token budget but always keeps the current turn', async () => {
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'ok' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      // Each filler message is ~2K estimated tokens; several of them blow past
+      // the 6K budget so the oldest must be dropped, while the short final user
+      // turn is always retained.
+      const filler = 'a'.repeat(8000);
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          { role: 'user', content: `OLDEST ${filler}` },
+          { role: 'assistant', content: filler },
+          { role: 'user', content: filler },
+          { role: 'assistant', content: filler },
+          { role: 'user', content: 'CURRENT what is my total?' },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const prompt = model.doStreamCalls[0].prompt;
+      const convoMessages = prompt.filter(
+        (m) => m.role === 'user' || m.role === 'assistant'
+      );
+      const allText = convoMessages
+        .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+        .map((p) => (p as { text?: string }).text ?? '')
+        .join(' ');
+
+      // Oldest turn evicted by the budget; current question always survives.
+      expect(convoMessages.length).toBeLessThan(5);
+      expect(allText).not.toContain('OLDEST');
+      expect(allText).toContain('CURRENT what is my total?');
     });
   });
 });

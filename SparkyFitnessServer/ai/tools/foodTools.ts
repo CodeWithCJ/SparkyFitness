@@ -16,7 +16,12 @@ import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { dayString, formatConfirmation, formatList } from './formatting.js';
+import {
+  compactRecord,
+  dayString,
+  formatConfirmation,
+  formatList,
+} from './formatting.js';
 import {
   normalizePagination,
   buildPaginatedResult,
@@ -141,12 +146,51 @@ function projectFoodItem(row: any) {
   };
 }
 
+// `user_id` is the authenticated caller on every row; never useful in output.
+const CATALOG_FOOD_DROP = ['user_id'] as const;
+const VARIANT_DROP = ['user_id'] as const;
+// food_entries internal surrogate keys with a human-readable equivalent already
+// present (meal_type label, serving_size/serving_unit) or no model use. `id`
+// (for edit/delete) and `food_id` (for food lookups / re-logging) are kept.
+const DIARY_ENTRY_DROP = [
+  'meal_type_id',
+  'variant_id',
+  'meal_plan_template_id',
+  'food_entry_meal_id',
+] as const;
+// food_entry_meals (SELECT fem.*) audit/ownership/internal columns.
+const DIARY_MEAL_DROP = [
+  'user_id',
+  'created_at',
+  'updated_at',
+  'created_by_user_id',
+  'updated_by_user_id',
+  'meal_template_id',
+  'meal_type_id',
+  'legacy_serving_unit_math',
+] as const;
+// Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
+// add audit/ownership columns on top of the diary projection's surrogate keys.
+const FULL_ENTRY_DROP: readonly string[] = [
+  ...DIARY_ENTRY_DROP,
+  'user_id',
+  'created_at',
+  'updated_at',
+  'created_by_user_id',
+  'updated_by_user_id',
+];
+
 // Catalog row for the JSON helpers: the server's default_variant JSON is
-// folded into MCP's `variants` array shape.
+// folded into MCP's `variants` array shape, both compacted.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function projectCatalogFood(row: any) {
   const { default_variant: defaultVariant, ...rest } = row;
-  return { ...rest, variants: defaultVariant?.id ? [defaultVariant] : [] };
+  return {
+    ...compactRecord(rest, CATALOG_FOOD_DROP),
+    variants: defaultVariant?.id
+      ? [compactRecord(defaultVariant, VARIANT_DROP)]
+      : [],
+  };
 }
 
 // Internal food search mirroring MCP's searchFood: "broad" is a substring
@@ -1206,7 +1250,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_list_foods error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1236,7 +1280,13 @@ Actions:
             userId
           );
           const { default_variant: _defaultVariant, ...rest } = food;
-          return JSON.stringify({ ...rest, variants }, null, 2);
+          const data = {
+            ...compactRecord(rest, CATALOG_FOOD_DROP),
+            variants: variants.map((v: Record<string, unknown>) =>
+              compactRecord(v, VARIANT_DROP)
+            ),
+          };
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_details error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1276,7 +1326,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_search_foods error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1313,10 +1363,14 @@ Actions:
           const data = {
             start_date: startDate,
             end_date: endDate,
-            food_entries: foodEntries,
-            meal_entries: mealEntries,
+            food_entries: foodEntries.map((e: Record<string, unknown>) =>
+              compactRecord(e, DIARY_ENTRY_DROP)
+            ),
+            meal_entries: mealEntries.map((m: Record<string, unknown>) =>
+              compactRecord(m, DIARY_MEAL_DROP)
+            ),
           };
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_diary error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1346,7 +1400,7 @@ Actions:
             startDate,
             endDate
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -1375,8 +1429,11 @@ Actions:
         }
         try {
           const limit = Math.min(Math.max(parsed.data.limit ?? 50, 1), 200);
-          const data = await foodRepository.getRecentFoodEntries(userId, limit);
-          return JSON.stringify(data, null, 2);
+          const rows = await foodRepository.getRecentFoodEntries(userId, limit);
+          const data = rows.map((r: Record<string, unknown>) =>
+            compactRecord(r, FULL_ENTRY_DROP)
+          );
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -1414,8 +1471,14 @@ Actions:
             limit,
             offset
           );
-          const data = buildPaginatedResult(rows, totalCount, offset);
-          return JSON.stringify(data, null, 2);
+          const data = buildPaginatedResult(
+            rows.map((r: Record<string, unknown>) =>
+              compactRecord(r, FULL_ENTRY_DROP)
+            ),
+            totalCount,
+            offset
+          );
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_usage error:', error);
           if (error instanceof Error && error.message.includes('not found')) {

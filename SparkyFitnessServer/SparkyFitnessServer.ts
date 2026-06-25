@@ -212,7 +212,8 @@ app.use(async (req, res, next) => {
       );
       applySignOutCookieCleanup(res);
     }
-    console.log(
+    log(
+      'debug',
       `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`
     );
     return betterAuthHandlerInstance(req, res);

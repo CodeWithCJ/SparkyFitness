@@ -8,7 +8,12 @@ import exerciseDb from '../../models/exercise.js';
 import exerciseEntryDb from '../../models/exerciseEntry.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { dayString, formatConfirmation, formatList } from './formatting.js';
+import {
+  compactRecord,
+  dayString,
+  formatConfirmation,
+  formatList,
+} from './formatting.js';
 import {
   normalizePagination,
   buildPaginatedResult,
@@ -107,6 +112,38 @@ function exerciseDateRange(
 function projectEntryDate<T extends { entry_date?: unknown }>(row: T) {
   if (!isSet(row.entry_date)) return row;
   return { ...row, entry_date: dayString(row.entry_date) };
+}
+
+// exercise_entries dumps (`SELECT ee.*`/`SELECT *`, used by the diary, recent,
+// and usage tools) carry audit/ownership columns and internal surrogate keys.
+// `id` (edit/delete) and `exercise_id` (lookups / re-logging) are kept, as are
+// populated metrics and the denormalized catalog fields.
+const EXERCISE_ENTRY_DROP: readonly string[] = [
+  'user_id',
+  'created_at',
+  'updated_at',
+  'created_by_user_id',
+  'updated_by_user_id',
+  'workout_plan_assignment_id',
+  'exercise_preset_entry_id',
+  'sort_order',
+];
+// exercise_entry_sets dumps (`SELECT *`): only audit timestamps are noise.
+// `exercise_entry_id` is kept so the model can map sets back to their entry.
+const EXERCISE_SET_DROP: readonly string[] = ['created_at', 'updated_at'];
+// exercises catalog rows (sparky_list_exercises) — drop the redundant caller id
+// and audit columns; keep descriptive catalog fields.
+const EXERCISE_CATALOG_DROP: readonly string[] = [
+  'user_id',
+  'created_at',
+  'updated_at',
+  'created_by_user_id',
+  'updated_by_user_id',
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function projectExerciseEntry(row: any) {
+  return compactRecord(projectEntryDate(row), EXERCISE_ENTRY_DROP);
 }
 
 // The column set MCP's exercise search exposed; richer server rows are
@@ -718,8 +755,14 @@ Actions:
             ),
             exerciseDb.countExercises(userId, search, null, null, null, null),
           ]);
-          const data = buildPaginatedResult(rows, totalCount, offset);
-          return JSON.stringify(data, null, 2);
+          const data = buildPaginatedResult(
+            rows.map((r: Record<string, unknown>) =>
+              compactRecord(r, EXERCISE_CATALOG_DROP)
+            ),
+            totalCount,
+            offset
+          );
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Exercise Tool] sparky_list_exercises error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -741,7 +784,7 @@ Actions:
         }
         try {
           const data = await getExerciseDetails(userId, parsed.data);
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -788,7 +831,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Exercise Tool] sparky_search_exercises error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -818,10 +861,12 @@ Actions:
           const data = {
             start_date: startDate,
             end_date: endDate,
-            entries: entries.map(projectEntryDate),
-            sets,
+            entries: entries.map(projectExerciseEntry),
+            sets: sets.map((s: Record<string, unknown>) =>
+              compactRecord(s, EXERCISE_SET_DROP)
+            ),
           };
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -859,7 +904,7 @@ Actions:
             end_date: endDate,
             rows: rows.map(projectEntryDate),
           };
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -892,7 +937,7 @@ Actions:
             userId,
             limit
           );
-          return JSON.stringify(rows.map(projectEntryDate), null, 2);
+          return JSON.stringify(rows.map(projectExerciseEntry));
         } catch (error) {
           log(
             'error',
@@ -932,11 +977,11 @@ Actions:
             offset
           );
           const data = buildPaginatedResult(
-            rows.map(projectEntryDate),
+            rows.map(projectExerciseEntry),
             totalCount,
             offset
           );
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',
@@ -961,7 +1006,7 @@ Actions:
         }
         try {
           const data = await getExerciseProgress(userId, parsed.data);
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log(
             'error',

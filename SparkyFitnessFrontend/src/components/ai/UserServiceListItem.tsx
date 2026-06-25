@@ -57,6 +57,8 @@ export const UserServiceListItem = ({
       model_name: editData.model_name || service.model_name || '',
       showCustomModelInput: editData.showCustomModelInput ?? false,
       custom_model_name: editData.custom_model_name ?? service.model_name ?? '',
+      chat_tool_profile:
+        editData.chat_tool_profile ?? service.chat_tool_profile ?? 'full',
     };
 
     return (

@@ -147,7 +147,7 @@ export function buildVisionTools(userId: string) {
             }
             return `❌ Error scanning label: ${result.error}`;
           }
-          return `🏷️ Nutrition Label Scan Result:\n\n${JSON.stringify(result.nutrition, null, 2)}`;
+          return `🏷️ Nutrition Label Scan Result:\n\n${JSON.stringify(result.nutrition)}`;
         } catch (error) {
           log('error', '[Vision Tool] scanLabel error:', error);
           return `❌ Error scanning label: ${error instanceof Error ? error.message : 'Unknown error'}`;

@@ -135,7 +135,7 @@ Actions:
               data[field] = goals[field];
             }
           }
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(data);
         } catch (error) {
           log('error', '[Goal Tool] sparky_get_goal_snapshot error:', error);
           if (error instanceof Error && error.message.includes('not found')) {

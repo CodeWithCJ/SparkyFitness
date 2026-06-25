@@ -259,7 +259,7 @@ describe('sparky_get_goal_snapshot', () => {
       opts
     );
 
-    expect(result).toBe(JSON.stringify(snapshotFields, null, 2));
+    expect(result).toBe(JSON.stringify(snapshotFields));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
       '2026-06-01'
@@ -271,7 +271,7 @@ describe('sparky_get_goal_snapshot', () => {
 
     const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
 
-    expect(result).toBe(JSON.stringify({ calories: 2000 }, null, 2));
+    expect(result).toBe(JSON.stringify({ calories: 2000 }));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
       todayInZone('UTC')

@@ -282,9 +282,7 @@ export const manageExerciseInput = z.object({
       'create_workout_preset',
       'get_exercise_progress',
     ])
-    .describe(
-      'Action to perform. Each value selects a per-action signature; see the tool description for required fields per action.'
-    ),
+    .describe('Action to perform; see tool description for per-action fields.'),
   // identity
   exercise_id: uuidSchema.optional().describe('Exercise UUID'),
   exercise_name: z
