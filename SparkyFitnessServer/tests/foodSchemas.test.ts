@@ -58,6 +58,16 @@ describe('PaginationSchema', () => {
     }
   });
 
+  it('rejects a non-integer float string like "1.5" in pagination fields', () => {
+    const result = PaginationSchema.safeParse({
+      page: '1.5',
+      pageSize: 20,
+      totalCount: 42,
+      hasMore: false,
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('still rejects a non-boolean hasMore', () => {
     const result = PaginationSchema.safeParse({
       page: 1,
