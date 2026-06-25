@@ -175,6 +175,7 @@ const FULL_ENTRY_DROP: readonly string[] = [
   ...DIARY_ENTRY_DROP,
   'user_id',
   'created_at',
+  'updated_at',
   'created_by_user_id',
   'updated_by_user_id',
 ];

@@ -754,8 +754,6 @@ async function processChatMessage(
       };
     });
 
-    conversationMessages.push(...incomingMessages);
-
     // Filter out trailing empty assistant messages if sent by the client
     while (
       conversationMessages.length > 0 &&
@@ -766,6 +764,19 @@ async function processChatMessage(
       conversationMessages.pop();
     }
 
+    // Mirror the streaming path's context-window controls so the non-streaming
+    // route doesn't resend historical images or overflow the context budget.
+    const strippedMessages = stripHistoricalImages(conversationMessages);
+    const llmMessages = trimToTokenBudget(
+      strippedMessages,
+      CONTEXT_TOKEN_BUDGET
+    );
+
+    // Ensure the window starts with a user message (some models reject assistant-first history)
+    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
+      llmMessages.shift();
+    }
+
     const executedToolsList: Array<{
       name: string;
       args: Record<string, unknown>;
@@ -774,7 +785,7 @@ async function processChatMessage(
     const result = await generateText({
       model: modelInstance,
       system: systemPromptContent,
-      messages: conversationMessages as NonNullable<
+      messages: llmMessages as NonNullable<
         Parameters<typeof generateText>[0]['messages']
       >,
       tools,

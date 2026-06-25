@@ -26,8 +26,11 @@ export function compactRecord(
       if (value.length === 0) continue;
     } else if (
       typeof value === 'object' &&
+      !(value instanceof Date) &&
       Object.keys(value as object).length === 0
     ) {
+      // Date objects have zero own keys but carry a real value; never strip them
+      // (pg returns timestamp columns as Date). Drop them by name instead.
       continue;
     }
     out[key] = value;
