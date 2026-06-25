@@ -23,7 +23,9 @@
     },
     "overrides": {
       "side-channel": "1.0.6",
-      "tailwindcss": "4.2.1"
+      "tailwindcss": "4.2.1",
+      "assistant-cloud": "0.1.33",
+      "zustand": "5.0.14"
     },
     "onlyBuiltDependencies": [
       "@scarf/scarf",

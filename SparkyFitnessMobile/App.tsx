@@ -28,6 +28,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
+import StreamProbeScreen from './src/screens/StreamProbeScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
@@ -211,6 +213,8 @@ const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDeta
 const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail', { canGoBack: true });
 const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
+const SafeStreamProbe = withErrorBoundary(StreamProbeScreen, 'StreamProbe', { canGoBack: true });
+const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
@@ -1029,6 +1033,24 @@ function AppContent() {
             component={SafeSync}
             options={createStackScreenOptions('Health Sync', { headerBackTitle: 'Settings' })}
           />
+          {__DEV__ && (
+            <Stack.Screen
+              name="StreamProbe"
+              component={SafeStreamProbe}
+              options={{
+                headerShown: false,
+              }}
+            />
+          )}
+          {__DEV__ && (
+            <Stack.Screen
+              name="Chat"
+              component={SafeChat}
+              options={{
+                headerShown: false,
+              }}
+            />
+          )}
           <Stack.Screen
             name="MeasurementsAdd"
             component={SafeMeasurementsAdd}

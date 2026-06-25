@@ -156,6 +156,8 @@ export type RootStackParamList = {
   FastingDetail: undefined;
   Logs: undefined;
   Sync: undefined;
+  StreamProbe: undefined;
+  Chat: undefined;
   MeasurementsAdd: { date?: string } | undefined;
   CalorieSettings: undefined;
   FoodSettings: undefined;

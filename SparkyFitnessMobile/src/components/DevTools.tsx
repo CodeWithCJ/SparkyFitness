@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, ActivityIndicator, Pressable, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
 import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
@@ -10,6 +13,8 @@ import { resetWhatsNewBanner } from '../services/whatsNewBanner';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
 
 const DevTools: React.FC = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -214,6 +219,29 @@ const DevTools: React.FC = () => {
             }}
           >
             <Text className="text-white text-base font-bold">Reset Banner</Text>
+          </Button>
+        </View>
+      </View>
+
+      <View className="mt-5">
+        <Text className="text-sm text-text-primary">Chatbot</Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          Probe /api/chat/stream with expo/fetch vs global fetch to verify streaming.
+        </Text>
+        <View className="flex-row gap-2 flex-wrap">
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+            onPress={() => navigation.navigate('StreamProbe')}
+          >
+            <Text className="text-white text-base font-bold">Stream Probe</Text>
+          </Button>
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+            onPress={() => navigation.navigate('Chat')}
+          >
+            <Text className="text-white text-base font-bold">Open Chat</Text>
           </Button>
         </View>
       </View>
