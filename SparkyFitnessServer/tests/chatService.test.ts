@@ -5,6 +5,7 @@ import type { UIMessageChunk } from 'ai';
 import chatService from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
@@ -12,6 +13,12 @@ import { log } from '../config/logging.js';
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/measurementRepository');
+vi.mock('../models/preferenceRepository', () => ({
+  default: {
+    getUserPreferences: vi.fn(),
+    updateUserPreferences: vi.fn(),
+  },
+}));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
@@ -80,6 +87,67 @@ describe('chatService', () => {
       await expect(
         chatService.handleAiServiceSettings('unknown_action', {}, mockUserId)
       ).rejects.toThrow('Unsupported action for AI service settings.');
+    });
+    it('auto-selects the saved service as active when no provider is selected yet', async () => {
+      const serviceData = { service_type: 'openai', is_active: true };
+      const savedSetting = { id: 'setting-1', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: null,
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      expect(preferenceRepository.updateUserPreferences).toHaveBeenCalledWith(
+        mockUserId,
+        { active_ai_service_id: 'setting-1' }
+      );
+    });
+    it('preserves an existing active selection when another service is enabled', async () => {
+      const serviceData = { service_type: 'anthropic', is_active: true };
+      const savedSetting = { id: 'setting-2', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: 'setting-1',
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      // Enabling a second service must not hijack the existing selection.
+      expect(preferenceRepository.updateUserPreferences).not.toHaveBeenCalled();
+    });
+    it('clears the active pointer when the currently-active service is disabled', async () => {
+      const serviceData = { service_type: 'openai', is_active: false };
+      const savedSetting = { id: 'setting-1', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: 'setting-1',
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      expect(preferenceRepository.updateUserPreferences).toHaveBeenCalledWith(
+        mockUserId,
+        { active_ai_service_id: null }
+      );
     });
   });
   describe('getAiServiceSettings', () => {

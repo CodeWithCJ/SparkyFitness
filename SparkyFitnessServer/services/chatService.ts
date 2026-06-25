@@ -75,12 +75,19 @@ async function handleAiServiceSettings(
         const currentPrefs =
           await preferenceRepository.getUserPreferences(authenticatedUserId);
         if (serviceData.is_active) {
-          await preferenceRepository.updateUserPreferences(
-            authenticatedUserId,
-            {
-              active_ai_service_id: result.id,
-            }
-          );
+          // Auto-select this service only when no provider is selected yet, so
+          // the user's first enabled service powers AI features immediately.
+          // Enabling a second service must not hijack an existing selection —
+          // the active-provider dropdown (Settings or chat) is the authoritative
+          // way to *change* the active provider; enable only toggles availability.
+          if (!currentPrefs?.active_ai_service_id) {
+            await preferenceRepository.updateUserPreferences(
+              authenticatedUserId,
+              {
+                active_ai_service_id: result.id,
+              }
+            );
+          }
         } else if (
           currentPrefs &&
           currentPrefs.active_ai_service_id === result.id

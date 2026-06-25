@@ -74,6 +74,8 @@ export const useAddAIService = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.user() });
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.active() });
+      // Saving an active service syncs active_ai_service_id in preferences.
+      queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
     },
     meta: {
       successMessage: t(
@@ -103,6 +105,9 @@ export const useUpdateAIService = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.user() });
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.active() });
+      // Toggling is_active syncs active_ai_service_id in preferences, which
+      // drives the rendered switch state; refetch so the toggle reflects it.
+      queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
     },
     meta: {
       successMessage: t(
@@ -126,6 +131,8 @@ export const useDeleteAIService = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.user() });
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.active() });
+      // Deleting the active service clears active_ai_service_id (ON DELETE SET NULL).
+      queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
     },
     meta: {
       successMessage: t(
@@ -149,6 +156,10 @@ export const useUpdateUserAIPreferences = () => {
       updateUserPreferences(preferences),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
+      // Changing active_ai_service_id (Settings dropdown or chat switcher) must
+      // also refetch the active-service query, since the next chat stream sends
+      // service_config_id from it; otherwise it keeps using the stale provider.
+      queryClient.invalidateQueries({ queryKey: aiServiceKeys.active() });
     },
     meta: {
       successMessage: t(

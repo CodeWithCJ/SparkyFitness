@@ -637,6 +637,7 @@
         "delete": "Delete",
         "configuredServices": "Configured Services",
         "availableServices": "Available AI Services",
+        "activeProvider": "Active AI provider",
         "noServices": "No AI services configured yet.",
         "noServicesDescription": "Add your first AI service to get started with Sparky.",
         "noServicesDescriptionDisabled": "Please contact your administrator to configure an AI service.",
