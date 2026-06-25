@@ -649,5 +649,67 @@ describe('chatService', () => {
         model.doStreamCalls[0].providerOptions?.openai?.promptCacheKey
       ).toBe(`sparky-chat-${actorUserId}`);
     });
+
+    it('strips images from earlier turns but keeps the current-turn image', async () => {
+      // Vision images are large and otherwise re-sent inside the window on every
+      // turn; only the latest user turn needs to carry the image, earlier turns
+      // keep just their text (the assistant reply already captured the analysis).
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'ok' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage,
+        },
+      ]);
+
+      const pngDataUrl =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'What is this food?' },
+              { type: 'image', image: pngDataUrl },
+            ],
+          },
+          { role: 'assistant', content: 'That looks like an apple.' },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'And this one?' },
+              { type: 'image', image: pngDataUrl },
+            ],
+          },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const prompt = model.doStreamCalls[0].prompt;
+      const userMessages = prompt.filter((m) => m.role === 'user');
+      const nonTextParts = (content: unknown) =>
+        Array.isArray(content)
+          ? content.filter((p) => (p as { type: string }).type !== 'text')
+          : [];
+      const textParts = (content: unknown) =>
+        Array.isArray(content)
+          ? content.filter((p) => (p as { type: string }).type === 'text')
+          : [];
+
+      expect(userMessages).toHaveLength(2);
+      // Earlier turn: image dropped, text retained.
+      expect(nonTextParts(userMessages[0].content)).toHaveLength(0);
+      expect(textParts(userMessages[0].content).length).toBeGreaterThan(0);
+      // Current turn: image preserved for live vision analysis.
+      expect(nonTextParts(userMessages[1].content)).toHaveLength(1);
+    });
   });
 });

@@ -49,6 +49,11 @@ import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
 
 const MAX_AGENTIC_STEPS = 15;
 
+// Retries per chat request on persistent provider errors. Each retry re-sends the
+// full request (system + tools + history), so a high count multiplies token cost
+// on a hard provider outage. 3 covers transient blips without a runaway 5×.
+const MAX_PROVIDER_RETRIES = 3;
+
 async function handleAiServiceSettings(
   action: string,
   serviceData: Partial<AiServiceSettings> & { api_key?: string },
@@ -458,6 +463,45 @@ export function buildChatProviderOptions(
   return { openai };
 }
 
+interface LlmMessage {
+  role: string;
+  content: string | ProcessedMessagePart[];
+}
+
+// Vision images are stored as base64 data URLs and re-sent inside the context
+// window on every turn until they age out, costing ~1-2K+ uncached tokens each,
+// each turn. The model only needs to *see* an image on the turn it arrives; for
+// earlier turns the assistant's text reply already captured the analysis. Strip
+// image parts from every message except the latest user turn. A turn that was
+// image-only keeps a short placeholder so it never becomes empty (some providers
+// reject empty messages); turns with accompanying text just lose the image.
+function stripHistoricalImages(messages: LlmMessage[]): LlmMessage[] {
+  let lastUserIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserIndex = i;
+      break;
+    }
+  }
+
+  return messages.map((msg, index) => {
+    if (index === lastUserIndex || !Array.isArray(msg.content)) {
+      return msg;
+    }
+    const withoutImages = msg.content.filter((part) => part.type !== 'image');
+    if (withoutImages.length === msg.content.length) {
+      return msg;
+    }
+    return {
+      ...msg,
+      content:
+        withoutImages.length > 0
+          ? withoutImages
+          : [{ type: 'text' as const, text: '[image omitted]' }],
+    };
+  });
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -674,7 +718,7 @@ async function processChatMessage(
       tools,
       providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: 5,
+      maxRetries: MAX_PROVIDER_RETRIES,
       onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
@@ -1073,6 +1117,10 @@ async function processChatMessageStream(
       llmMessages.shift();
     }
 
+    // Drop images from earlier turns to avoid re-billing them each turn; the
+    // current user turn keeps its image so live vision analysis still works.
+    const modelMessages = stripHistoricalImages(llmMessages);
+
     const lastMsg = llmMessages[llmMessages.length - 1];
     const userMessageContent = Array.isArray(lastMsg?.content)
       ? lastMsg.content
@@ -1084,13 +1132,13 @@ async function processChatMessageStream(
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
-      messages: llmMessages as NonNullable<
+      messages: modelMessages as NonNullable<
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
       providerOptions: chatProviderOptions,
       stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: 5,
+      maxRetries: MAX_PROVIDER_RETRIES,
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults
