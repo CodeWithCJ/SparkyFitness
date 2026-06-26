@@ -64,6 +64,7 @@ import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import WhatsNewScreen from './src/screens/WhatsNewScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
@@ -213,6 +214,7 @@ const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail'
 const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
+const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
@@ -462,6 +464,10 @@ function AppContent() {
     const date = getActiveDiaryDate();
     navigateFromSheet('MeasurementsAdd', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
+
+  const handleAskSparky = useCallback(() => {
+    navigateFromSheet('Chat');
+  }, [navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
     if (syncMutation.isPending || isSyncClaimed()) return;
@@ -944,6 +950,14 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="Chat"
+            component={SafeChat}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
             name="MealAdd"
             component={SafeMealAdd}
             options={({ route }) => createStackScreenOptions(
@@ -1075,7 +1089,7 @@ function AppContent() {
             options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}
