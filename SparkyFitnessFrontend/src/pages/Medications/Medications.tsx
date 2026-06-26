@@ -1,4 +1,6 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import DayNavigator from '@/components/DayNavigator';
 import {
   Pill,
   Syringe,
@@ -802,12 +804,30 @@ export default function Medications() {
   const [symptomCustomOpen, setSymptomCustomOpen] = useState(false);
   const [customSymptomDisplayName, setCustomSymptomDisplayName] = useState('');
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+
   const preferencesContext = usePreferences();
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = todayInZone(timezone);
-  const thirtyDaysAgo = addDays(today, -30);
+
+  const [selectedDate, setSelectedDate] = useState<string>(
+    () => dateParam || today
+  );
+
+  useEffect(() => {
+    const targetDate = dateParam || today;
+    if (targetDate !== selectedDate) {
+      setSelectedDate(targetDate);
+    }
+  }, [dateParam, today, selectedDate]);
+
+  const thirtyDaysAgo = useMemo(
+    () => addDays(selectedDate, -30),
+    [selectedDate]
+  );
 
   // Queries
   const { data: meds = [], isLoading: loadingMeds } = useMedications({
@@ -816,20 +836,20 @@ export default function Medications() {
 
   const { data: entries = [], isLoading: loadingEntries } =
     useMedicationEntries({
-      fromDate: today,
-      toDate: today,
+      fromDate: selectedDate,
+      toDate: selectedDate,
     });
 
   const { data: recentEntries = [] } = useMedicationEntries({
     fromDate: thirtyDaysAgo,
-    toDate: today,
+    toDate: selectedDate,
   });
 
   const { data: customSymptoms = [] } = useCustomSymptoms();
   const { data: symptomLogs = [], isLoading: loadingSymptoms } =
     useSymptomEntries({
       fromDate: thirtyDaysAgo,
-      toDate: today,
+      toDate: selectedDate,
     });
 
   // Mutations
@@ -851,8 +871,8 @@ export default function Medications() {
   // Schedules evaluation
   const dueDoses = useMemo(() => {
     if (loadingMeds || meds.length === 0) return [];
-    return getDueDosesForDate(meds, today);
-  }, [meds, today, loadingMeds]);
+    return getDueDosesForDate(meds, selectedDate);
+  }, [meds, selectedDate, loadingMeds]);
 
   const prnMeds = useMemo(() => {
     return meds.filter((m) => {
@@ -885,7 +905,7 @@ export default function Medications() {
     let taken = 0;
     let perfectDays = 0;
     for (let i = 13; i >= 0; i--) {
-      const d = addDays(today, -i);
+      const d = addDays(selectedDate, -i);
       const dayDue = getDueDosesForDate(meds, d);
       if (dayDue.length === 0) continue;
       let dayTaken = 0;
@@ -908,7 +928,7 @@ export default function Medications() {
       perfectDays,
       pct: due > 0 ? Math.round((taken / due) * 100) : 100,
     };
-  }, [meds, today, recentEntries]);
+  }, [meds, selectedDate, recentEntries]);
 
   // The next GLP-1 dose due today (if any), for the next-injection banner.
   const nextGlpDue = useMemo(
@@ -1000,7 +1020,7 @@ export default function Medications() {
     let scheduledFor = null;
     if (due.schedule.time_of_day) {
       try {
-        const { start } = dayToUtcRange(today, timezone);
+        const { start } = dayToUtcRange(selectedDate, timezone);
         const [h, m] = due.schedule.time_of_day.split(':');
         scheduledFor = new Date(
           start.getTime() +
@@ -1016,9 +1036,12 @@ export default function Medications() {
       medication_id: due.medication.id,
       schedule_id: due.schedule.id,
       status,
-      taken_at: new Date().toISOString(),
+      taken_at:
+        selectedDate === today
+          ? new Date().toISOString()
+          : `${selectedDate}T12:00:00.000Z`,
       scheduled_for: scheduledFor,
-      entry_date: today,
+      entry_date: selectedDate,
     });
   };
 
@@ -1028,8 +1051,11 @@ export default function Medications() {
       medication_id: med.id,
       schedule_id: prnSched?.id || null,
       status: 'prn_taken',
-      taken_at: new Date().toISOString(),
-      entry_date: today,
+      taken_at:
+        selectedDate === today
+          ? new Date().toISOString()
+          : `${selectedDate}T12:00:00.000Z`,
+      entry_date: selectedDate,
     });
   };
 
@@ -1122,47 +1148,66 @@ export default function Medications() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-4">
-      {/* Top Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Pill className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Medications</h1>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex border rounded-md p-0.5 bg-muted/50">
-            <button
-              onClick={() => setActiveTab('today')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm transition ${
-                activeTab === 'today'
-                  ? 'bg-background shadow text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setActiveTab('cabinet')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm transition ${
-                activeTab === 'cabinet'
-                  ? 'bg-background shadow text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Cabinet
-            </button>
-            <button
-              onClick={() => setActiveTab('symptoms')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm transition ${
-                activeTab === 'symptoms'
-                  ? 'bg-background shadow text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Symptoms
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* Navigation & Date Filter Row */}
+      <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-6 border-b pb-3 mb-6">
+        {/* Navigation Pills */}
+        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1 flex-1">
+          <Button
+            variant={activeTab === 'today' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('today')}
+            className={`rounded-full px-4 h-9 gap-2 transition-all ${
+              activeTab === 'today'
+                ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span className="text-xs font-semibold">Log</span>
+          </Button>
+          <Button
+            variant={activeTab === 'cabinet' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('cabinet')}
+            className={`rounded-full px-4 h-9 gap-2 transition-all ${
+              activeTab === 'cabinet'
+                ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span className="text-xs font-semibold">Cabinet</span>
+          </Button>
+          <Button
+            variant={activeTab === 'symptoms' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('symptoms')}
+            className={`rounded-full px-4 h-9 gap-2 transition-all ${
+              activeTab === 'symptoms'
+                ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span className="text-xs font-semibold">Symptoms</span>
+          </Button>
+          <span className="mx-2 text-muted-foreground/30 hidden sm:inline">
+            |
+          </span>
           <AddMedicationDialog />
+        </div>
+
+        {/* Vertical Divider (Desktop Only) */}
+        <div className="hidden lg:block w-px h-6 bg-border" />
+
+        {/* Date Filter */}
+        <div className="shrink-0">
+          <DayNavigator
+            selectedDate={selectedDate}
+            onDateChange={(d) => setSearchParams({ date: d })}
+            className="flex items-center justify-end gap-2 mb-0"
+          />
         </div>
       </div>
 
@@ -1178,12 +1223,15 @@ export default function Medications() {
                     <p className="font-semibold">
                       {nextGlpDue.medication.display_name ||
                         nextGlpDue.medication.name}{' '}
-                      injection — due today
+                      injection —{' '}
+                      {selectedDate === today ? 'due today' : 'scheduled'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {nextGlpDue.schedule.time_of_day
                         ? `Scheduled ${nextGlpDue.schedule.time_of_day.substring(0, 5)}`
-                        : 'Any time today'}
+                        : selectedDate === today
+                          ? 'Any time today'
+                          : 'Any time'}
                     </p>
                   </div>
                 </div>
@@ -1211,7 +1259,7 @@ export default function Medications() {
               <div className="grid w-full grid-cols-3 gap-3">
                 {[
                   {
-                    label: 'Doses today',
+                    label: selectedDate === today ? 'Doses today' : 'Doses',
                     value: `${completedDosesCount}/${dueDoses.length}`,
                   },
                   { label: '14-day adherence', value: `${adherence14.pct}%` },
@@ -1269,13 +1317,13 @@ export default function Medications() {
             <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-500" /> Today's
-                  Checklist
+                  <Calendar className="h-5 w-5 text-blue-500" />{' '}
+                  {selectedDate === today ? "Today's" : 'Medication'} Checklist
                 </CardTitle>
                 <CardDescription className="mt-1">
                   {dueDoses.length === 0
-                    ? 'No scheduled doses for today.'
-                    : `${completedDosesCount} of ${dueDoses.length} doses logged today.`}
+                    ? `No scheduled doses for ${selectedDate === today ? 'today' : 'this day'}.`
+                    : `${completedDosesCount} of ${dueDoses.length} doses logged ${selectedDate === today ? 'today' : 'for this day'}.`}
                 </CardDescription>
               </div>
               {dueDoses.length > 0 && (
@@ -1294,7 +1342,9 @@ export default function Medications() {
             </CardContent>
           </Card>
 
-          {meds.some((m) => m.is_glp1) && <GlpDailyCheckIn />}
+          {meds.some((m) => m.is_glp1) && (
+            <GlpDailyCheckIn selectedDate={selectedDate} />
+          )}
 
           <div className="grid gap-6 md:grid-cols-[1fr_350px]">
             {/* Scheduled & PRN Column */}
@@ -1314,8 +1364,9 @@ export default function Medications() {
                   )}
                   {!loadingMeds && dueDoses.length === 0 && (
                     <div className="text-center py-6 text-sm text-muted-foreground">
-                      No medication doses scheduled for today. Add a schedule in
-                      the Cabinet view.
+                      No medication doses scheduled for{' '}
+                      {selectedDate === today ? 'today' : 'this day'}. Add a
+                      schedule in the Cabinet view.
                     </div>
                   )}
                   {!loadingMeds &&

@@ -35,14 +35,21 @@ const GLP_METRICS: {
   { key: 'energy', name: 'GLP Energy', label: 'Energy', Icon: Zap },
 ];
 
-export default function GlpDailyCheckIn() {
+interface GlpDailyCheckInProps {
+  selectedDate?: string;
+}
+
+export default function GlpDailyCheckIn({
+  selectedDate,
+}: GlpDailyCheckInProps = {}) {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const currentUserId = activeUserId || user?.id;
   const today = todayInZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const targetDate = selectedDate || today;
 
   const { data: categories = [] } = useCustomCategories(currentUserId);
-  const { data: existing = [] } = useExistingCustomMeasurements(today);
+  const { data: existing = [] } = useExistingCustomMeasurements(targetDate);
   const { mutateAsync: saveMeasurement, isPending: saving } =
     useSaveCustomMeasurementMutation();
   const { mutateAsync: addCategory } = useAddCategoryMutation(
@@ -92,7 +99,7 @@ export default function GlpDailyCheckIn() {
       const payload: UpdateCustomMeasurementsRequest = {
         category_id: categoryId,
         value: String(valueFor(m.key)),
-        entry_date: today,
+        entry_date: targetDate,
         entry_hour: null,
         entry_timestamp: new Date().toISOString(),
         notes: '',
@@ -139,7 +146,11 @@ export default function GlpDailyCheckIn() {
           ))}
         </div>
         <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? 'Saving…' : "Save today's check-in"}
+          {saving
+            ? 'Saving…'
+            : targetDate === today
+              ? "Save today's check-in"
+              : 'Save check-in'}
         </Button>
       </CardContent>
     </Card>
