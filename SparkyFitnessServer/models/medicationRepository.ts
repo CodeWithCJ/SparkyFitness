@@ -133,62 +133,65 @@ async function updateMedication(
 ) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `UPDATE medications SET
-         name = COALESCE($3, name),
-         display_name = COALESCE($4, display_name),
-         type_id = COALESCE($5, type_id),
-         route_id = COALESCE($6, route_id),
-         strength_value = COALESCE($7, strength_value),
-         strength_unit = COALESCE($8, strength_unit),
-         dose_amount = COALESCE($9, dose_amount),
-         dose_unit = COALESCE($10, dose_unit),
-         rxnorm_rxcui = COALESCE($11, rxnorm_rxcui),
-         ndc = COALESCE($12, ndc),
-         prescriber = COALESCE($13, prescriber),
-         pharmacy = COALESCE($14, pharmacy),
-         rx_number = COALESCE($15, rx_number),
-         reason_text = COALESCE($16, reason_text),
-         effectiveness_rating = COALESCE($17, effectiveness_rating),
-         color = COALESCE($18, color),
-         icon = COALESCE($19, icon),
-         photo_path = COALESCE($20, photo_path),
-         is_active = COALESCE($21, is_active),
-         is_quick = COALESCE($22, is_quick),
-         is_glp1 = COALESCE($23, is_glp1),
-         notes = COALESCE($24, notes),
-         custom_fields = COALESCE($25, custom_fields),
-         updated_at = NOW()
-       WHERE id = $1 AND user_id = $2
-       RETURNING ${MED_COLS}`,
-      [
-        id,
-        userId,
-        data.name ?? null,
-        data.display_name ?? null,
-        data.type_id ?? null,
-        data.route_id ?? null,
-        data.strength_value ?? null,
-        data.strength_unit ?? null,
-        data.dose_amount ?? null,
-        data.dose_unit ?? null,
-        data.rxnorm_rxcui ?? null,
-        data.ndc ?? null,
-        data.prescriber ?? null,
-        data.pharmacy ?? null,
-        data.rx_number ?? null,
-        data.reason_text ?? null,
-        data.effectiveness_rating ?? null,
-        data.color ?? null,
-        data.icon ?? null,
-        data.photo_path ?? null,
-        data.is_active ?? null,
-        data.is_quick ?? null,
-        data.is_glp1 ?? null,
-        data.notes ?? null,
-        data.custom_fields ? JSON.stringify(data.custom_fields) : null,
-      ]
-    );
+    const updates: string[] = [];
+    const values: any[] = [id, userId];
+    let index = 3;
+
+    const fields: (keyof UpdateMedicationBody)[] = [
+      'name',
+      'display_name',
+      'type_id',
+      'route_id',
+      'strength_value',
+      'strength_unit',
+      'dose_amount',
+      'dose_unit',
+      'rxnorm_rxcui',
+      'ndc',
+      'prescriber',
+      'pharmacy',
+      'rx_number',
+      'reason_text',
+      'effectiveness_rating',
+      'color',
+      'icon',
+      'photo_path',
+      'is_active',
+      'is_quick',
+      'is_glp1',
+      'notes',
+      'custom_fields',
+    ];
+
+    for (const key of fields) {
+      if (data[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        if (key === 'custom_fields') {
+          values.push(
+            data.custom_fields ? JSON.stringify(data.custom_fields) : null
+          );
+        } else {
+          values.push(data[key]);
+        }
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      const current = await client.query(
+        `SELECT ${MED_COLS} FROM medications WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+      return current.rows[0] ?? null;
+    }
+
+    const query = `UPDATE medications SET
+                     ${updates.join(',\n')},
+                     updated_at = NOW()
+                   WHERE id = $1 AND user_id = $2
+                   RETURNING ${MED_COLS}`;
+
+    const result = await client.query(query, values);
     return result.rows[0] ?? null;
   } finally {
     client.release();
