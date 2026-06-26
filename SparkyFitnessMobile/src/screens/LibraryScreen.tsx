@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +14,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
@@ -47,6 +47,7 @@ type RecentItem =
 const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
+  const usesNativeTabs = useNativeIOSTabsActive();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
@@ -156,7 +157,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
   if (!isConnectionLoading && !isConnected) {
     return (
-      <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      <View className="flex-1 bg-background" style={usesNativeTabs ? undefined : { paddingTop: insets.top }}>
         <StatusView
           icon="cloud-offline"
           iconColor="#9CA3AF"
@@ -171,7 +172,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
   if (isConnectionLoading) {
     return (
-      <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      <View className="flex-1 bg-background" style={usesNativeTabs ? undefined : { paddingTop: insets.top }}>
         <StatusView loading title="Loading library..." />
       </View>
     );
@@ -180,15 +181,15 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   return (
     <ScrollView
         className="flex-1 bg-background"
-        style={[{ flex: 1 }, Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }]}
+        style={[{ flex: 1 }, usesNativeTabs ? undefined : { paddingTop: insets.top }]}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          ...(Platform.OS !== 'ios' ? { paddingTop: 16 } : null),
+          ...(!usesNativeTabs ? { paddingTop: 16 } : null),
           paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
         }}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -197,7 +198,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
         }
       >
-        {Platform.OS !== 'ios' && (
+        {!usesNativeTabs && (
           <View className="mb-6">
             <Text className="text-2xl font-bold text-text-primary">Library</Text>
           </View>

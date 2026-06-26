@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { loadLastSyncedTime } from '../services/storage';
 import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
@@ -28,6 +29,7 @@ type SettingsScreenProps = CompositeScreenProps<
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
+  const usesNativeTabs = useNativeIOSTabsActive();
 
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
@@ -118,17 +120,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     <>
       <ScrollView
         className="flex-1 bg-background"
-        style={[{ flex: 1 }, Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }]}
+        style={[{ flex: 1 }, usesNativeTabs ? undefined : { paddingTop: insets.top }]}
         contentContainerStyle={{
-          ...(Platform.OS !== 'ios' ? { paddingTop: 0 } : null),
+          ...(!usesNativeTabs ? { paddingTop: 0 } : null),
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
       >
-        <View className={Platform.OS === 'ios' ? 'px-4 pb-4' : 'flex-1 p-4'}>
-          {Platform.OS !== 'ios' && (
+        <View className={usesNativeTabs ? 'px-4 pb-4' : 'flex-1 p-4'}>
+          {!usesNativeTabs && (
             <View className="mb-6">
               <Text className="text-2xl font-bold text-text-primary">Settings</Text>
             </View>

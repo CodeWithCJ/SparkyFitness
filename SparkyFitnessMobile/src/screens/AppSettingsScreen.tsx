@@ -18,6 +18,11 @@ import {
   useNotificationsEnabled,
   setNotificationsEnabled,
 } from '../services/notifications';
+import {
+  useLiquidGlassTabBarEnabled,
+  setLiquidGlassTabBarEnabled,
+} from '../services/nativeTabBarPreference';
+import { supportsNativeIOSTabs } from '../utils/nativeTabs';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
@@ -42,6 +47,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const hapticsEnabled = useHapticsEnabled();
   const soundsEnabled = useSoundsEnabled();
   const notificationsEnabled = useNotificationsEnabled();
+  const liquidGlassEnabled = useLiquidGlassTabBarEnabled();
+  const supportsLiquidGlassTabBar = supportsNativeIOSTabs(
+    Platform.OS,
+    Platform.Version,
+  );
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
@@ -78,7 +88,22 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             />
           </View>
         </View>
-
+        {supportsLiquidGlassTabBar && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-primary">Liquid Glass tab bar</Text>
+              <Switch
+                value={liquidGlassEnabled}
+                onValueChange={setLiquidGlassTabBarEnabled}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              Use the iOS 26 glass tab bar.
+            </Text>
+          </View>
+        )}
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base text-text-primary">Notifications</Text>
@@ -123,6 +148,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             Play a sound when capturing photos.
           </Text>
         </View>
+
+
       </ScrollView>
     </View>
   );

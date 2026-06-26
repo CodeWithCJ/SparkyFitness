@@ -22,7 +22,7 @@ import WhatsNewBanner, {
   WhatsNewBannerContent,
   useWhatsNewBannerState,
 } from './WhatsNewBanner';
-import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 export const NON_ADD_TABS = ['Dashboard', 'Diary', 'Library', 'Settings'] as const;
@@ -217,7 +217,10 @@ export function NativeTabsLayout({
   return (
     <NativeTabsOverlayContext.Provider value={whatsNewState}>
       <NativeTab.Navigator
-          initialRouteName="Dashboard"
+          // Start on the last active tab so toggling the Liquid Glass tab bar —
+          // which swaps and remounts this navigator — keeps the user on the tab
+          // they came from. Defaults to Dashboard on a cold start.
+          initialRouteName={getLastActiveTab()}
           tabBarActiveTintColor={activeTintColor}
           tabBarInactiveTintColor={inactiveTintColor}
           screenListeners={{
@@ -291,7 +294,10 @@ export function FallbackTabsLayout({
   // The AddSheet is rendered in App.tsx with proper props
   return (
     <FallbackTab.Navigator
-      initialRouteName="Dashboard"
+      // Start on the last active tab so toggling the Liquid Glass tab bar —
+      // which swaps and remounts this navigator — keeps the user on the tab
+      // they came from. Defaults to Dashboard on a cold start.
+      initialRouteName={getLastActiveTab()}
       screenListeners={{
         state: (event) => {
           const state = event.data?.state;
@@ -337,7 +343,7 @@ export function TabsLayout({
   rememberActiveTab,
   getLastActiveTab,
 }: { onAddPress?: () => void } & TabTrackingProps) {
-  if (shouldUseNativeIOSTabs()) {
+  if (useNativeIOSTabsActive()) {
     return (
       <NativeTabsLayout
         onAddPress={onAddPress}

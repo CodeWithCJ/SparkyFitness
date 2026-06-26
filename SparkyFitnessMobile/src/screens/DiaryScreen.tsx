@@ -25,7 +25,7 @@ import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
-import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -76,7 +76,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const usesNativeTabs = shouldUseNativeIOSTabs();
+  const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
 
   const syncNativeHeaderDatePicker = useCallback(() => {
