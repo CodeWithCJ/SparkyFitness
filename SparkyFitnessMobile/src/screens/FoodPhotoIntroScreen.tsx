@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Platform, View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -55,7 +55,8 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-2">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -65,6 +66,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
       </View>
+      )}
 
       <View className="flex-1 px-6">
         <Text className="text-text-primary text-2xl font-semibold">

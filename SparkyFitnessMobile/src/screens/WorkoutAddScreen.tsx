@@ -7,6 +7,7 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -25,6 +26,7 @@ import { formatDateLabel } from '../utils/dateUtils';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
@@ -54,6 +56,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
+  const { backColor } = useHeaderActionColors();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -225,7 +228,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {isInitializingEditForm ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={accentPrimary} />
@@ -233,6 +236,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       ) : (
         <>
           {/* Header */}
+          {Platform.OS !== 'ios' && (
           <View className="flex-row items-center px-3 py-3">
             <Button
               variant="ghost"
@@ -240,9 +244,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               className="py-0 px-0"
             >
-              <Icon name="close" size={24} color={accentPrimary} />
+              <Icon name="close" size={24} color={backColor} />
             </Button>
           </View>
+          )}
 
           <KeyboardAwareScrollView
             contentContainerClassName="px-4"

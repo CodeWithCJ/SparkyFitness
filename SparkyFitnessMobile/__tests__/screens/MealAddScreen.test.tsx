@@ -1,5 +1,7 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MealAddScreen from '../../src/screens/MealAddScreen';
@@ -147,6 +149,7 @@ function buildMeal(overrides: Partial<Meal> = {}): Meal {
 
 describe('MealAddScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     push: jest.fn(),
     navigate: jest.fn(),
@@ -199,7 +202,7 @@ describe('MealAddScreen', () => {
   it('shows an error when the meal name is missing and does not submit', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -217,7 +220,7 @@ describe('MealAddScreen', () => {
     // single placeholder="1" field on screen is Total Servings. Typing 0 here
     // trips total_servings validation.
     fireEvent.changeText(screen.getByPlaceholderText('1'), '0');
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -231,7 +234,7 @@ describe('MealAddScreen', () => {
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -252,7 +255,7 @@ describe('MealAddScreen', () => {
     });
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -275,7 +278,7 @@ describe('MealAddScreen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  My Meal  ');
     fireEvent.changeText(screen.getByPlaceholderText('Notes about this meal'), '  Tasty  ');
     fireEvent.changeText(screen.getByPlaceholderText('1'), '2');
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     await waitFor(() => {
       expect(mockCreateMealAsync).toHaveBeenCalledTimes(1);
@@ -333,7 +336,7 @@ describe('MealAddScreen', () => {
     const numericInputs = screen.getAllByPlaceholderText('1');
     fireEvent.changeText(numericInputs[0], '1000');
     fireEvent.changeText(numericInputs[1], '333');
-    fireEvent.press(screen.getByText('Save Meal'));
+    pressAction(screen, navigation, 'Save Meal');
 
     await waitFor(() => {
       expect(mockCreateMealAsync).toHaveBeenCalledTimes(1);
@@ -402,7 +405,11 @@ describe('MealAddScreen', () => {
       params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
     });
 
-    expect(screen.getByText('Edit Meal')).toBeTruthy();
+    if (Platform.OS !== 'ios') {
+      // On iOS the "Edit Meal" title comes from the native stack header
+      // (configured in App.tsx), so it is only rendered inline on Android.
+      expect(screen.getByText('Edit Meal')).toBeTruthy();
+    }
     expect(screen.getByDisplayValue('Lunch Bowl')).toBeTruthy();
     expect(screen.getByDisplayValue('Tasty')).toBeTruthy();
     expect(screen.getByDisplayValue('2')).toBeTruthy();
@@ -424,7 +431,7 @@ describe('MealAddScreen', () => {
     });
 
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  Edited Meal  ');
-    fireEvent.press(screen.getByText('Save Changes'));
+    pressAction(screen, navigation, 'Save Changes');
 
     await waitFor(() => {
       expect(mockUpdateMealAsync).toHaveBeenCalledTimes(1);

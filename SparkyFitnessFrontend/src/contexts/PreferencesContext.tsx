@@ -92,6 +92,7 @@ interface PreferencesContextType {
   autoScaleOnlineImports: boolean;
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: WaterDisplayUnit;
+  addExerciseWaterToGoal: boolean;
   language: string;
   bmrAlgorithm: BmrAlgorithm;
   bodyFatAlgorithm: BodyFatAlgorithm;
@@ -107,9 +108,11 @@ interface PreferencesContextType {
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
   firstDayOfWeek: DayOfWeek;
+  measurementDecimalPlaces: number;
   goalMode: GoalMode;
   goalModeCalculationMethod: GoalModeCalculationMethod;
   goalModeCustomPercentage: number;
+  setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
   setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
   setGoalModeCustomPercentage: (pct: number) => void;
@@ -133,6 +136,7 @@ interface PreferencesContextType {
   setAutoScaleOnlineImports: (enabled: boolean) => void;
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
+  setAddExerciseWaterToGoal: (enabled: boolean) => void;
   setLanguage: (language: string) => void;
   setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
@@ -189,6 +193,7 @@ export interface DefaultPreferences {
   item_display_limit: number;
   food_display_limit: number;
   water_display_unit: WaterDisplayUnit;
+  add_exercise_water_to_goal: boolean;
   language: string;
   calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
   energy_unit: EnergyUnit;
@@ -212,6 +217,7 @@ export interface DefaultPreferences {
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
   sugar_calculation_algorithm: SugarCalculationAlgorithm;
   first_day_of_week: number;
+  measurement_decimal_places: number;
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   goal_mode_custom_percentage: number;
@@ -292,6 +298,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] =
     useState<boolean>(false);
   const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
+  const [addExerciseWaterToGoal, setAddExerciseWaterToGoalState] =
+    useState<boolean>(false);
   // AI-Assisted Unit Conversions: per-user toggle for the diary/food-form AI
   // estimate path. Default true matches the server migration (DEFAULT TRUE).
   const [aiAssistedConversions, setAiAssistedConversionsState] =
@@ -312,6 +320,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
+  const [measurementDecimalPlaces, setMeasurementDecimalPlacesState] =
+    useState<number>(0);
   const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
   const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
     useState<GoalModeCalculationMethod>('manual');
@@ -670,6 +680,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.include_bmr_in_net_calories ?? false
         );
         setShowNetCarbsState(data.show_net_carbs ?? false);
+        setAddExerciseWaterToGoalState(
+          data.add_exercise_water_to_goal ?? false
+        );
         setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
         setFatBreakdownAlgorithmState(
           data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
@@ -688,6 +701,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setSelectedDietState(data.selected_diet || 'balanced');
         setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+        setMeasurementDecimalPlacesState(data.measurement_decimal_places ?? 0);
         setGoalModeState(data.goal_mode || 'maintain');
         setGoalModeCalculationMethodState(
           data.goal_mode_calculation_method || 'manual'
@@ -834,6 +848,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         include_bmr_in_net_calories:
           newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
         show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
+        add_exercise_water_to_goal:
+          newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
         ai_assisted_conversions:
           newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
         fat_breakdown_algorithm:
@@ -846,6 +862,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
         selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
         first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
+        measurement_decimal_places:
+          newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
         goal_mode: newPrefs?.goalMode ?? goalMode,
         goal_mode_calculation_method:
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
@@ -883,6 +901,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       itemDisplayLimit,
       foodDisplayLimit,
       waterDisplayUnit,
+      addExerciseWaterToGoal,
       language,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
@@ -902,6 +921,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      measurementDecimalPlaces,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
@@ -1123,6 +1143,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       autoScaleOnlineImports,
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
+      addExerciseWaterToGoal,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
@@ -1135,9 +1156,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      measurementDecimalPlaces,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
+      setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
@@ -1161,6 +1184,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setAutoScaleOnlineImports,
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
+      setAddExerciseWaterToGoal: setAddExerciseWaterToGoalState,
       setLanguage: setLanguageState,
       setBmrAlgorithm: setBmrAlgorithmState,
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
@@ -1207,6 +1231,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       autoScaleOnlineImports,
       nutrientDisplayPreferences,
       waterDisplayUnit,
+      addExerciseWaterToGoal,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
@@ -1219,6 +1244,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      measurementDecimalPlaces,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,

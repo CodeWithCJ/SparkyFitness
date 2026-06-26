@@ -69,3 +69,7 @@ docker/docker_volume/
 # TypeScript
 *.tsbuildinfo
 dossier sans titre/
+
+# Nix build outputs
+/result
+/result-*

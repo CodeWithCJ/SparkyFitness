@@ -20,7 +20,7 @@ export interface WaterIntakeLogEntry {
 }
 
 export const getWaterGoalForDate = async (date: string, userId: string) => {
-  return apiCall(`/goals/for-date?date=${date}&userId=${userId}`);
+  return apiCall(`/goals/for-date?date=${date}&userId=${userId}&adjust=true`);
 };
 
 export const getWaterIntakeForDate = async (date: string, userId: string) => {

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
 import FoodLibraryRow from '../components/FoodLibraryRow';
@@ -47,6 +49,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
     recentFoods,
@@ -153,7 +156,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
   if (!isConnectionLoading && !isConnected) {
     return (
-      <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
         <StatusView
           icon="cloud-offline"
           iconColor="#9CA3AF"
@@ -168,21 +171,24 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
   if (isConnectionLoading) {
     return (
-      <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
         <StatusView loading title="Loading library..." />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView
+    <ScrollView
+        className="flex-1 bg-background"
+        style={[{ flex: 1 }, Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }]}
         contentContainerStyle={{
-          padding: 16,
-          paddingTop: 16,
+          paddingHorizontal: 16,
+          ...(Platform.OS !== 'ios' ? { paddingTop: 16 } : null),
           paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
         }}
-        contentInsetAdjustmentBehavior="never"
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustsScrollIndicatorInsets={Platform.OS === 'ios'}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -191,9 +197,11 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
         }
       >
-        <View className="mb-6">
-          <Text className="text-2xl font-bold text-text-primary">Library</Text>
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View className="mb-6">
+            <Text className="text-2xl font-bold text-text-primary">Library</Text>
+          </View>
+        )}
 
         <View className="mb-3">
           <Text className="text-lg font-semibold text-text-primary">Create</Text>
@@ -204,28 +212,44 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             icon="food"
             title="Food"
             subtitle="Manual entry"
-            onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('FoodForm', { mode: 'create-food', pickerMode: 'library' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="meal"
             title="Meal"
             subtitle="Group foods"
-            onPress={() => navigation.navigate('MealAdd')}
+            disabled={isNavigationLocked}
+            onPress={() => runNavigationAction(() => navigation.navigate('MealAdd'))}
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="exercise-weights"
             title="Exercise"
             subtitle="Manual entry"
-            onPress={() => navigation.navigate('ExerciseForm', { mode: 'create-exercise' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('ExerciseForm', { mode: 'create-exercise' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="bookmark-filled"
             title="Workout preset"
             subtitle="Exercise routine"
-            onPress={() => navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' })}
+            disabled={isNavigationLocked}
+            onPress={() =>
+              runNavigationAction(() =>
+                navigation.navigate('WorkoutPresetForm', { mode: 'create-preset' }),
+              )
+            }
             className="w-[48%] mb-3"
           />
         </View>
@@ -366,7 +390,6 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           )}
         </View>
       </ScrollView>
-    </View>
   );
 };
 

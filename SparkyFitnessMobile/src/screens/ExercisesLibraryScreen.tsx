@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { Platform, View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -17,9 +17,9 @@ type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textSecondary] = useCSSVariable([
-    '--color-accent-primary',
+  const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
+    '--color-text-primary',
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
@@ -53,7 +53,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         className="py-0 px-0 mr-2"
       >
-        <Icon name="chevron-back" size={22} color={accentColor} />
+        <Icon name="chevron-back" size={22} color={textPrimary} />
       </Button>
       <Text className="text-2xl font-bold text-text-primary">Exercises</Text>
     </View>
@@ -153,7 +153,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           <RefreshControl
             refreshing={isSearching}
             onRefresh={refetch}
-            tintColor={accentColor}
+            tintColor={textPrimary}
           />
         }
         contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
@@ -162,8 +162,8 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {renderHeader()}
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && renderHeader()}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}

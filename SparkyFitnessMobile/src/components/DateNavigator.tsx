@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -14,7 +14,6 @@ interface DateNavigatorProps {
   onDatePress?: () => void;
   hideChevrons?: boolean;
   showDateAlways?: boolean;
-  skipSafeAreaTop?: boolean;
   skipTopInset?: boolean;
   skipHorizontalPadding?: boolean;
 }
@@ -28,7 +27,6 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   onDatePress,
   hideChevrons,
   showDateAlways,
-  skipSafeAreaTop,
   skipTopInset,
   skipHorizontalPadding,
 }) => {
@@ -40,9 +38,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
     ? formatDate(selectedDate)
     : formatDateLabel(selectedDate);
 
-  const paddingTop = skipTopInset
-    ? 16
-    : (skipSafeAreaTop && Platform.OS === 'ios') ? 16 : insets.top + 16;
+  const paddingTop = skipTopInset ? 16 : insets.top + 16;
 
   return (
     <View style={{ paddingTop, paddingHorizontal: skipHorizontalPadding ? 0 : 16 }}

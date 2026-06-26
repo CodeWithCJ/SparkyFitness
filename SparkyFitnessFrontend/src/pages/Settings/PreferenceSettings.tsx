@@ -3,6 +3,7 @@ import {
   getLanguageDisplayName,
 } from '@/utils/languageUtils'; // Import language utilities
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -51,6 +52,8 @@ export const PreferenceSettings = () => {
     loggingLevel,
     firstDayOfWeek,
     setFirstDayOfWeek,
+    measurementDecimalPlaces,
+    setMeasurementDecimalPlaces,
     timezone,
     setTimezone,
     saveAllPreferences,
@@ -78,6 +81,7 @@ export const PreferenceSettings = () => {
         autoScaleOnlineImports,
         language,
         firstDayOfWeek,
+        measurementDecimalPlaces,
         timezone,
         loggingLevel: localLoggingLevel,
       });
@@ -229,6 +233,25 @@ export const PreferenceSettings = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="measurement_decimal_places">
+              {t(
+                'settings.preferences.measurementDecimalPlaces',
+                'Measurement Decimal Places'
+              )}
+            </Label>
+            <Input
+              id="measurement_decimal_places"
+              type="number"
+              min={0}
+              value={measurementDecimalPlaces}
+              onChange={(e) =>
+                setMeasurementDecimalPlaces(
+                  Math.max(0, parseInt(e.target.value, 10) || 0)
+                )
+              }
+            />
           </div>
           <div>
             <Label htmlFor="first_day_of_week">

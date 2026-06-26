@@ -11,7 +11,7 @@ import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import HealthSourceLabel from '../components/HealthSourceLabel';
+import HealthSourceLabel, { healthSourceName } from '../components/HealthSourceLabel';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { preferencesQueryKey } from '../hooks/queryKeys';
@@ -36,6 +36,9 @@ const activityLevelOptions = [
   { label: 'Very Active (x1.725)', value: 'heavy' },
 ];
 
+// Apple Health and Health Connect use different terms for the same baseline-energy value.
+const bmrMetricName = Platform.OS === 'ios' ? 'Resting Energy' : 'BMR';
+
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
   return {
@@ -51,11 +54,12 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
+  const [accentPrimary, formEnabled, formDisabled, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string];
+    '--color-text-primary',
+  ]) as [string, string, string, string];
 
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
@@ -172,12 +176,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
   }, [normalized.mode, normalized.includeBmrInNetCalories, normalized.exerciseCaloriePercentage]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       >
         {/* Header */}
+        {Platform.OS !== 'ios' && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -185,10 +190,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="py-0 px-0 mr-2"
           >
-            <Icon name="chevron-back" size={22} color={accentPrimary} />
+            <Icon name="chevron-back" size={22} color={textPrimary} />
           </Button>
           <Text className="text-2xl font-bold text-text-primary">Calorie & BMR Settings</Text>
         </View>
+        )}
 
         {/* Mode */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
@@ -350,7 +356,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
-              Use BMR from Health Apps
+              Use {bmrMetricName} from {healthSourceName}
             </Text>
             <Switch
               onValueChange={handleExternalBmrToggle}
@@ -360,8 +366,8 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
-            Uses Apple Health Resting Energy or Health Connect BMR when available. Otherwise,
-            the selected formula will be used.
+            Uses {healthSourceName} {bmrMetricName} when available. Otherwise, the selected
+            formula will be used.
           </Text>
           {normalized.useExternalBmr && (
             <View className="mt-3">

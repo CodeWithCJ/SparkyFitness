@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -9,7 +9,9 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection, usePreferences } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -32,6 +34,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
@@ -155,6 +158,30 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       },
     });
   };
+
+  const handleEditRef = useRef(handleEdit);
+  handleEditRef.current = handleEdit;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: canManageFood
+        ? () => [
+            createNativeHeaderTextButtonItem({
+              label: 'Edit',
+              identifier: 'food-detail-edit',
+              tintColor: headerActionColor,
+              accessibilityLabel: 'Edit food',
+              disabled: !selectedVariantId,
+              onPress: () => handleEditRef.current(),
+            }),
+          ]
+        : undefined,
+    });
+  }, [navigation, canManageFood, selectedVariantId, headerActionColor, headerTintColor]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -281,13 +308,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         {canManageFood && (
           <View className="ml-auto">
@@ -296,13 +324,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
               onPress={handleEdit}
               disabled={!selectedVariantId}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="font-medium"
+              textClassName="text-text-primary font-medium"
             >
               Edit
             </Button>
           </View>
         )}
       </View>
+      )}
       {renderContent()}
     </View>
   );

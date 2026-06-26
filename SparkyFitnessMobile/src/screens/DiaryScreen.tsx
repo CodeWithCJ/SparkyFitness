@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
+import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,11 +21,17 @@ import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import {
+  setNativeHeaderDatePickerOptions,
+  type NativeHeaderDatePickerNavigation,
+} from '../utils/nativeHeaderDatePicker';
+import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -68,13 +74,50 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
   const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
   const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
+  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const usesNativeTabs = shouldUseNativeIOSTabs();
+  const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
+
+  const syncNativeHeaderDatePicker = useCallback(() => {
+    if (!usesNativeTabs) return;
+
+    setNativeHeaderDatePickerOptions(
+      navigation as unknown as NativeHeaderDatePickerNavigation,
+      {
+        selectedDate,
+        onPreviousDate: goToPreviousDay,
+        onDatePress: openCalendar,
+        onNextDate: goToNextDay,
+        tintColor: nativeHeaderActionColor,
+        accessibilityLabel: 'Choose diary date',
+      },
+    );
+  }, [
+    goToNextDay,
+    goToPreviousDay,
+    nativeHeaderActionColor,
+    navigation,
+    openCalendar,
+    selectedDate,
+    usesNativeTabs,
+  ]);
+
+  useLayoutEffect(() => {
+    syncNativeHeaderDatePicker();
+  }, [syncNativeHeaderDatePicker]);
+
+  useFocusEffect(
+    useCallback(() => {
+      syncNativeHeaderDatePicker();
+    }, [syncNativeHeaderDatePicker])
+  );
 
   const swipeGesture = useMemo(() => Gesture.Race(
     Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
   ), [goToPreviousDay, goToNextDay]);
 
-  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
   const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
     navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
@@ -111,11 +154,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   }, [measurements]);
 
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
-
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchMeasurements()]);
@@ -173,9 +213,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     return (
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
+        className="flex-1 bg-background"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
+        scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -227,27 +274,50 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   };
 
-  return (
-    <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background" style={topSafeAreaStyle}>
-        {!isConnectionLoading && isConnected ? (
-          <DateNavigator
-            title="Diary"
-            selectedDate={selectedDate}
-            onPreviousDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-            onToday={goToToday}
-            onDatePress={openCalendar}
-            skipSafeAreaTop
-          />
-        ) : !isConnectionLoading && (
-          <View className="px-4 pt-4 pb-5">
-            <Text className="text-2xl font-bold text-text-primary">Diary</Text>
-          </View>
-        )}
-        {renderContent()}
+  const renderedContent = renderContent();
+
+  if (usesNativeTabs) {
+    return (
+      <>
+        <GestureDetector gesture={swipeGesture}>
+          {renderedContent ?? <View className="flex-1 bg-background" />}
+        </GestureDetector>
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
         <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+      </>
+    );
+  }
+
+  const content = (
+    <>
+      {!isConnectionLoading && isConnected ? (
+        <DateNavigator
+          title="Diary"
+          selectedDate={selectedDate}
+          onPreviousDay={goToPreviousDay}
+          onNextDay={goToNextDay}
+          onToday={goToToday}
+          onDatePress={openCalendar}
+          showDateAlways
+        />
+      ) : !isConnectionLoading && (
+        <View
+          className="px-4 pb-5"
+          style={{ paddingTop: insets.top + 16 }}
+        >
+          <Text className="text-2xl font-bold text-text-primary">Diary</Text>
+        </View>
+      )}
+      {renderedContent}
+      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+    </>
+  );
+
+  return (
+    <GestureDetector gesture={swipeGesture}>
+      <View className="flex-1 bg-background">
+        {content}
       </View>
     </GestureDetector>
   );

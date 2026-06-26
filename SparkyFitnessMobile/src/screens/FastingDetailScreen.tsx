@@ -13,6 +13,7 @@ import EndFastSheet, { type EndFastSheetRef } from '../components/EndFastSheet';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCurrentFast, useFastingStats } from '../hooks/useFasting';
 import { useFastingTimer } from '../hooks/useFastingTimer';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { formatFastingStats } from '../utils/fasting';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
 import {
@@ -65,8 +66,8 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
   const endFastSheetRef = useRef<EndFastSheetRef>(null);
 
-  // Read-only here — the dashboard `FastingCard` is the single owner of
-  // goal-notification reconciliation.
+  // Read-only here — the dashboard `FastingGoalReconciler` is the single owner
+  // of goal-notification reconciliation.
   const { data: currentFast, isLoading } = useCurrentFast();
   const { data: stats } = useFastingStats();
 
@@ -83,6 +84,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
+  const { backColor } = useHeaderActionColors();
   const stageColors = useCSSVariable(METABOLIC_STAGES.map((s) => s.colorVar)) as string[];
   const currentStageIndex = getMetabolicStageIndex(timer.stage);
   const stageColor = stageColors[currentStageIndex] ?? accentPrimary;
@@ -97,7 +99,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         className="py-0 px-0"
       >
-        <Icon name="chevron-back" size={22} color={accentPrimary} />
+        <Icon name="chevron-back" size={22} color={backColor} />
       </Button>
       <Text className="flex-1 text-center text-lg font-semibold text-text-primary">Fasting</Text>
       {/* Spacer to balance the back button so the title stays centered. */}

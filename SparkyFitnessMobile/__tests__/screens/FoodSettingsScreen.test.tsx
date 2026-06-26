@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import FoodSettingsScreen from '../../src/screens/FoodSettingsScreen';
@@ -51,8 +52,14 @@ describe('FoodSettingsScreen', () => {
   });
 
   it('renders the renamed "Food Settings" header', () => {
-    const { getByText } = renderScreen({});
-    expect(getByText('Food Settings')).toBeTruthy();
+    const { getByText, queryByText } = renderScreen({});
+    if (Platform.OS === 'ios') {
+      // On iOS the title is provided by the native stack header (configured in
+      // App.tsx via createStackScreenOptions), so the inline title is hidden.
+      expect(queryByText('Food Settings')).toBeNull();
+    } else {
+      expect(getByText('Food Settings')).toBeTruthy();
+    }
   });
 
   it('renders the Show Net Carbs toggle row with description', () => {

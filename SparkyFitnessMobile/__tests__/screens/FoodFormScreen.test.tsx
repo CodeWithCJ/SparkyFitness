@@ -162,6 +162,7 @@ const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodFormScreen', () => {
   const navigation = {
+    setOptions: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
     dispatch: jest.fn(),
@@ -645,6 +646,7 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'oz',
               }),
             },
+            adjustedCustomNutrients: null,
           },
         },
         source: 'FoodEntryAdd-key',
@@ -777,6 +779,7 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'cup',
               }),
             },
+            adjustedCustomNutrients: null,
           },
         },
         source: 'FoodEntryAdd-key',

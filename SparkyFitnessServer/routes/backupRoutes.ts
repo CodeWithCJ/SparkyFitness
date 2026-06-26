@@ -36,14 +36,20 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 const fs = { promises }.promises;
+// Temporary directory for uploaded backup files. Resolved from an env var so
+// the path can live on writable storage (the application directory may be
+// read-only, e.g. when installed into the Nix store).
+const TEMP_UPLOAD_DIR = process.env.SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY
+  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY)
+  : path.join(__dirname, '../temp_uploads/');
 // Configure multer for file uploads (for restore)
 const upload = multer({
-  dest: path.join(__dirname, '../temp_uploads/'), // Temporary directory for uploaded backup files
+  dest: TEMP_UPLOAD_DIR,
   limits: { fileSize: 1024 * 1024 * 500 }, // 500 MB limit, adjust as needed
 });
 // Ensure temporary upload directory exists
 async function ensureTempUploadDirectory() {
-  const tempUploadDir = path.join(__dirname, '../temp_uploads/');
+  const tempUploadDir = TEMP_UPLOAD_DIR;
   try {
     await fs.mkdir(tempUploadDir, { recursive: true });
     log('info', `Ensured temporary upload directory exists: ${tempUploadDir}`);

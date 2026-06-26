@@ -474,6 +474,7 @@
       "kilograms": "Kilograms (kg)",
       "pounds": "Pounds (lbs)",
       "measurementUnit": "Measurement Unit",
+      "measurementDecimalPlaces": "Measurement Decimal Places",
       "centimeters": "Centimeters (cm)",
       "inches": "Inches (in)",
       "distanceUnit": "Distance Unit",
@@ -499,7 +500,9 @@
       "milliliters": "Milliliters (ml)",
       "fluidOunces": "Fluid Ounces (oz)",
       "cups": "Cups",
-      "saveWaterDisplayUnit": "Save Water Display Unit"
+      "saveWaterDisplayUnit": "Save Water Display Unit",
+      "addExerciseWater": "Add exercise water loss to daily goal",
+      "addExerciseWaterHint": "Increases your daily water goal by the estimated sweat loss from activities."
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
@@ -1025,6 +1028,17 @@
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
+    "dailyEnergyGoal": "Daily Energy Goal",
+    "waterIntake": "Water Intake",
+    "exercise": "Exercise",
+    "widgets": {
+      "layout": "Customize layout",
+      "done": "Done",
+      "resetLayout": "Reset layout",
+      "maximize": "Maximize",
+      "restore": "Restore",
+      "hide": "Hide"
+    },
     "nutrientLabels": {
       "cal": "cal",
       "protein": "protein",
@@ -1590,6 +1604,8 @@
       "totalAscent": "Total Ascent",
       "calories": "Calories",
       "heartRate": "Heart Rate",
+      "cadence": "Cadence",
+      "waterLoss": "Water Loss",
       "runningDynamics": "Running Dynamics",
       "xAxis": "X-Axis:",
       "timeOfDay": "Time of Day",

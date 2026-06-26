@@ -280,14 +280,16 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
   return (
     <ZoomableChart title={t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')}>
       {(isMaximized) => (
-        <Card>
+        <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
           <CardHeader>
             <CardTitle>
               {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
               {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent
+            className={`${isMaximized ? 'grow min-h-0 flex flex-col' : ''}`}
+          >
             <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
               {Object.entries(stageLabels).map(([stageKey, stageLabel]) => {
                 const totalDurationSeconds = sortedSegments
@@ -330,9 +332,7 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
               })}
             </div>
             <div
-              className={
-                (isMaximized ? 'h-[calc(95vh-200px)]' : 'h-48') + ' w-full'
-              }
+              className={(isMaximized ? 'grow min-h-0' : 'h-48') + ' w-full'}
             >
               <svg
                 width="100%"

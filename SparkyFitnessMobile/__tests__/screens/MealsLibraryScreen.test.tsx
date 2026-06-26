@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealsLibraryScreen from '../../src/screens/MealsLibraryScreen';
@@ -108,7 +109,13 @@ describe('MealsLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Meals')).toBeTruthy();
+    if (Platform.OS === 'ios') {
+      // On iOS the "Meals" title is provided by the native stack header
+      // (configured in App.tsx via createStackScreenOptions), not inline.
+      expect(screen.queryByText('Meals')).toBeNull();
+    } else {
+      expect(screen.getByText('Meals')).toBeTruthy();
+    }
     expect(screen.getByText('Overnight Oats')).toBeTruthy();
     expect(screen.getByText('Protein Shake')).toBeTruthy();
 

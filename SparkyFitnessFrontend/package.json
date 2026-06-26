@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.17.0",
+  "version": "0.17.2",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
@@ -110,6 +110,7 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.2.3",
     "react-error-boundary": "^6.1.1",
+    "react-grid-layout": "^2.2.3",
     "react-i18next": "^16.5.8",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",

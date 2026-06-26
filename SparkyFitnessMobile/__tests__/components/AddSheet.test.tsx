@@ -98,6 +98,7 @@ describe('AddSheet', () => {
 
   it('does not re-present after dismiss when no new present was requested', () => {
     const ref = React.createRef<AddSheetRef>();
+    const onDismissWithoutAction = jest.fn();
 
     render(
       <AddSheet
@@ -109,6 +110,7 @@ describe('AddSheet', () => {
         onSyncHealthData={jest.fn()}
         onBarcodeScan={jest.fn()}
         onAddMeasurements={jest.fn()}
+        onDismissWithoutAction={onDismissWithoutAction}
       />,
     );
 
@@ -119,6 +121,7 @@ describe('AddSheet', () => {
     mockBottomSheetControls.onDismiss?.();
 
     expect(mockBottomSheetControls.openCount).toBe(1);
+    expect(onDismissWithoutAction).toHaveBeenCalledTimes(1);
   });
 
   it('renders the Measurements tile in the main grid', () => {
@@ -144,6 +147,7 @@ describe('AddSheet', () => {
   it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {
     const ref = React.createRef<AddSheetRef>();
     const onSyncHealthData = jest.fn();
+    const onDismissWithoutAction = jest.fn();
 
     const { getByText } = render(
       <AddSheet
@@ -155,12 +159,15 @@ describe('AddSheet', () => {
         onSyncHealthData={onSyncHealthData}
         onBarcodeScan={jest.fn()}
         onAddMeasurements={jest.fn()}
+        onDismissWithoutAction={onDismissWithoutAction}
       />,
     );
 
     ref.current?.present();
     fireEvent.press(getByText('Sync Health Data'));
+    mockBottomSheetControls.onDismiss?.();
 
     expect(onSyncHealthData).toHaveBeenCalledTimes(1);
+    expect(onDismissWithoutAction).not.toHaveBeenCalled();
   });
 });

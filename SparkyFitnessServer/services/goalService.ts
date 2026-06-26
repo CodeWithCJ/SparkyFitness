@@ -4,6 +4,7 @@ import goalPresetRepository from '../models/goalPresetRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
+import exerciseEntryRepository from '../models/exerciseEntry.js';
 import bmrService from './bmrService.js';
 import adaptiveTdeeService from './AdaptiveTdeeService.js';
 import { userAge } from '../utils/dateHelpers.js';
@@ -125,6 +126,7 @@ async function getUserGoalsForRange(
     );
   }
 
+  let waterEstimatedMap: Record<string, number> = {};
   let adaptiveTdeeMap: Record<string, any> = {};
   if (adjust && userPreferences) {
     const adjustmentMode =
@@ -147,6 +149,14 @@ async function getUserGoalsForRange(
           `goalService: Failed to bulk fetch adaptive TDEE range for ${userId} [${startDate}, ${endDate}]: ${(err as Error).message}`
         );
       }
+    }
+    if (userPreferences.add_exercise_water_to_goal) {
+      waterEstimatedMap =
+        await exerciseEntryRepository.getWaterEstimatedSumForDateRange(
+          userId,
+          startDate,
+          endDate
+        );
     }
   }
 
@@ -330,6 +340,19 @@ async function getUserGoalsForRange(
         carbs: carbs_grams,
         fat: fat_grams,
       };
+    }
+
+    // Adjust water goal by exercise water loss if preference is enabled
+    if (adjust && userPreferences?.add_exercise_water_to_goal) {
+      const waterLoss = waterEstimatedMap[dateStr] || 0;
+      if (waterLoss > 0) {
+        const baseWaterGoal =
+          processedGoals.water_goal_ml ?? DEFAULT_GOALS.water_goal_ml ?? 1920;
+        processedGoals = {
+          ...processedGoals,
+          water_goal_ml: Number(baseWaterGoal) + waterLoss,
+        };
+      }
     }
 
     result[dateStr] = processedGoals;

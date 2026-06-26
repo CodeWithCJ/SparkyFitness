@@ -399,16 +399,11 @@ const NutritionPeriodSummary = ({
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 p-0">
-                  <div
-                    className={
-                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-full') +
-                      ' min-w-0 w-full px-4 pb-4'
-                    }
-                  >
+                <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
+                  <div className="grow min-h-0 min-w-0 w-full px-4 pb-4">
                     <ResponsiveContainer
                       width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height="100%"
                       minWidth={0}
                       minHeight={0}
                       debounce={100}
@@ -539,19 +534,21 @@ const NutritionPeriodSummary = ({
       {showCumulativeChart && (
         <ZoomableChart title={chartTitle}>
           {(isMaximized, zoomLevel) => (
-            <Card>
+            <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{chartTitle}</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent
+                className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
+              >
                 <div
                   className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-64') + ' min-w-0'
+                    (isMaximized ? 'grow min-h-0' : 'h-64') + ' min-w-0'
                   }
                 >
                   <ResponsiveContainer
                     width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    height="100%"
                     minWidth={0}
                     minHeight={0}
                     debounce={100}

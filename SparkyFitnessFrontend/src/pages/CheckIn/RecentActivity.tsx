@@ -44,6 +44,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   const {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
+    measurementDecimalPlaces,
   } = usePreferences();
   const { t } = useTranslation();
 
@@ -95,7 +96,16 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                           defaultMeasurementUnit
                         );
                   } else {
-                    displayString = `${measurement.value} ${measurement.custom_categories.measurement_type}`;
+                    const unit =
+                      measurement.custom_categories.measurement_type === 'N/A'
+                        ? ''
+                        : measurement.custom_categories.measurement_type;
+                    const num = Number(measurement.value);
+                    const val =
+                      measurement.value === '' || isNaN(num)
+                        ? measurement.value
+                        : Number(num.toFixed(measurementDecimalPlaces));
+                    displayString = `${val} ${unit}`.trim();
                   }
                 } else if (measurement.type === 'standard') {
                   if (measurement.display_name === 'Weight') {
@@ -113,7 +123,16 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                       defaultMeasurementUnit
                     );
                   } else {
-                    displayString = `${measurement.value} ${measurement.display_unit || ''}`;
+                    const unit =
+                      measurement.display_unit === 'N/A'
+                        ? ''
+                        : measurement.display_unit || '';
+                    const num = Number(measurement.value);
+                    const val =
+                      measurement.value === '' || isNaN(num)
+                        ? measurement.value
+                        : Number(num.toFixed(measurementDecimalPlaces));
+                    displayString = `${val} ${unit}`.trim();
                   }
                 } else if (measurement.type === 'stress') {
                   measurementName = t('checkIn.stressLevel', 'Stress Level');
@@ -128,7 +147,16 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                     ? `${Math.floor(measurement.duration_minutes / 60)}h ${measurement.duration_minutes % 60}m`
                     : '0h 0m';
                 } else {
-                  displayString = `${measurement.value} ${measurement.display_unit || ''}`;
+                  const unit =
+                    measurement.display_unit === 'N/A'
+                      ? ''
+                      : measurement.display_unit || '';
+                  const num = Number(measurement.value);
+                  const val =
+                    measurement.value === '' || isNaN(num)
+                      ? measurement.value
+                      : Math.round(num);
+                  displayString = `${val} ${unit}`.trim();
                 }
 
                 return (

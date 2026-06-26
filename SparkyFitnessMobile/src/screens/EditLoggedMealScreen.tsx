@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -202,6 +204,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
+  const { saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
@@ -282,9 +285,32 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     updateMeal(payload);
   };
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Save',
+          identifier: 'edit-logged-meal-save',
+          tintColor: headerSaveColor,
+          accessibilityLabel: 'Save meal',
+          fontWeight: '600',
+          disabled: !canSave || isRowBusy,
+          onPress: () => handleSaveRef.current(),
+        }),
+      ],
+    });
+  }, [navigation, headerSaveColor, headerTintColor, canSave, isRowBusy]);
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background justify-center items-center" style={{ paddingTop: insets.top }}>
+      <View className="flex-1 bg-background justify-center items-center" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
         <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
@@ -308,15 +334,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     baseTotals.fiber != null ? baseTotals.fiber * displayScale : undefined;
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
-          <Icon name="chevron-back" size={22} color={accentColor} />
+          <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
         <View style={{ marginLeft: 'auto', zIndex: 10 }}>
           <Button
@@ -330,6 +357,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           </Button>
         </View>
       </View>
+      )}
 
       <ScrollView
         className="flex-1"

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import DiaryTopControls from '@/pages/Diary/DiaryTopControls';
+import NutritionSummaryCard from '@/pages/Diary/NutritionSummaryCard';
 import { DEFAULT_GOALS } from '@/constants/goals';
 
 let mockShowNetCarbs = false;
@@ -29,16 +29,8 @@ jest.mock('@/hooks/use-mobile', () => ({
   useIsMobile: () => false,
 }));
 
-jest.mock('@/pages/Diary/DailyProgress', () => () => (
-  <div data-testid="daily-progress" />
-));
-
 jest.mock('@/pages/Diary/MiniNutritionTrends', () => () => (
   <div data-testid="mini-nutrition-trends" />
-));
-
-jest.mock('@/pages/Diary/WaterIntake', () => () => (
-  <div data-testid="water-intake" />
 ));
 
 jest.mock('@/pages/Goals/EditGoalsForToday', () => () => (
@@ -54,7 +46,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
 
 const renderSummary = () =>
   render(
-    <DiaryTopControls
+    <NutritionSummaryCard
       selectedDate="2026-05-15"
       dayTotals={{
         calories: 0,
@@ -69,7 +61,7 @@ const renderSummary = () =>
     />
   );
 
-describe('DiaryTopControls net carbs summary', () => {
+describe('NutritionSummaryCard net carbs summary', () => {
   beforeEach(() => {
     mockShowNetCarbs = false;
   });
