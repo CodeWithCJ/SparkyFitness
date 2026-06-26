@@ -296,10 +296,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         {askSparkyVisible && (
           <Pressable
             onPress={() => navigation.navigate('Chat')}
-            className="flex-row items-center bg-surface rounded-full px-4 py-3 mb-3 shadow-sm"
+            className="flex-row items-center bg-surface rounded-lg  px-4 py-3 mb-3 shadow-sm"
           >
             <Icon name="sparkles" size={18} color={accentColor} />
-            <Text className="text-text-muted text-base ml-3">Ask Sparky…</Text>
+            <Text className="text-text-muted text-base ml-3 bg-raised">Ask Sparky…</Text>
           </Pressable>
         )}
 

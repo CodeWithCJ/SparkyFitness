@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Alert } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
+import Clipboard from '@react-native-clipboard/clipboard';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -12,19 +14,25 @@ import {
   MessagePrimitive,
   ErrorPrimitive,
   ActionBarPrimitive,
+  useAuiState,
   type MessageRole,
 } from '@assistant-ui/react-native';
 import { useChatRuntime, AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ToolCallCard from '../components/chat/ToolCallCard';
+import TypingIndicator from '../components/chat/TypingIndicator';
 import { CHAT_SUGGESTIONS } from '../constants/chat';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
+import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
-import { useActiveAiServiceSetting } from '../hooks';
+import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
+
+/** Seed (initial) messages accepted by `useChatRuntime`. */
+type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messages'];
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -41,9 +49,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 function useSparkyChatRuntime({
   baseUrl,
   serviceConfigId,
+  initialMessages,
 }: {
   baseUrl: string;
   serviceConfigId: string;
+  initialMessages: InitialMessages;
 }) {
   const transport = useMemo(
     () =>
@@ -70,6 +80,8 @@ function useSparkyChatRuntime({
   // server supplies an onError mapper to its stream response — out of mobile scope.)
   return useChatRuntime({
     transport,
+    // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
+    messages: initialMessages,
     onError: (error: Error) => {
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
@@ -91,6 +103,17 @@ function MessageBubble({ role }: { role: MessageRole }) {
     '--color-text-muted',
   ]) as [string, string, string, string];
 
+  // "Thinking" window: an assistant message that's running but hasn't produced
+  // any visible content yet (before the first token / tool call). Show the
+  // animated typing indicator in place of the empty bubble until output arrives.
+  const isThinking = useAuiState((s) => {
+    const m = s.message;
+    if (m.role !== 'assistant' || m.status?.type !== 'running') return false;
+    return !m.content?.some(
+      (p) => (p.type === 'text' && p.text.length > 0) || p.type === 'tool-call',
+    );
+  });
+
   return (
     <MessagePrimitive.Root
       style={{
@@ -100,14 +123,18 @@ function MessageBubble({ role }: { role: MessageRole }) {
       }}
     >
       <View className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface'}`}>
-        <MessagePrimitive.Content
-          renderText={({ part }) => (
-            <Text className={`text-base ${isUser ? 'text-white' : 'text-text-primary'}`}>
-              {part.text}
-            </Text>
-          )}
-          renderToolCall={({ part }) => <ToolCallCard part={part} />}
-        />
+        {isThinking ? (
+          <TypingIndicator />
+        ) : (
+          <MessagePrimitive.Content
+            renderText={({ part }) => (
+              <Text className={`text-base ${isUser ? 'text-white' : 'text-text-primary'}`}>
+                {part.text}
+              </Text>
+            )}
+            renderToolCall={({ part }) => <ToolCallCard part={part} />}
+          />
+        )}
       </View>
 
       {/* Error box + actions sit below the bubble and only apply to assistant
@@ -137,7 +164,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
                 <Text className="text-text-muted text-xs">Retry</Text>
               </View>
             </ActionBarPrimitive.Reload>
-            <ActionBarPrimitive.Copy>
+            <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
                   <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
@@ -184,14 +211,14 @@ function Composer() {
           is not): show Send when idle, swap to a Stop button while streaming. */}
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send>
-          <View className="bg-accent-primary rounded-full px-4 h-11 items-center justify-center">
-            <Text className="text-white font-semibold">Send</Text>
+          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+            <Icon name="arrow-up" size={20} color="#ffffff" />
           </View>
         </ComposerPrimitive.Send>
       </ThreadPrimitive.If>
       <ThreadPrimitive.If running>
         <ComposerPrimitive.Cancel>
-          <View className="bg-accent-primary rounded-full w-11 h-11 items-center justify-center">
+          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
             <Icon name="stop" size={18} color="#ffffff" />
           </View>
         </ComposerPrimitive.Cancel>
@@ -200,12 +227,36 @@ function Composer() {
   );
 }
 
+/**
+ * Headless reporter: lifts the thread's running state out to ChatScreen so the
+ * header Clear button (outside the runtime provider) can disable while a stream
+ * is in flight. Reads `isRunning` from assistant-ui state and pushes it up.
+ */
+function RunningReporter({ onRunningChange }: { onRunningChange: (running: boolean) => void }) {
+  const isRunning = useAuiState((s) => s.thread.isRunning);
+  useEffect(() => {
+    onRunningChange(!!isRunning);
+  }, [isRunning, onRunningChange]);
+  return null;
+}
+
 /** The live thread. Only mounted once baseUrl + serviceConfigId are known. */
-function ChatThread({ baseUrl, serviceConfigId }: { baseUrl: string; serviceConfigId: string }) {
-  const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId });
+function ChatThread({
+  baseUrl,
+  serviceConfigId,
+  initialMessages,
+  onRunningChange,
+}: {
+  baseUrl: string;
+  serviceConfigId: string;
+  initialMessages: InitialMessages;
+  onRunningChange: (running: boolean) => void;
+}) {
+  const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <RunningReporter onRunningChange={onRunningChange} />
       <ThreadPrimitive.Root style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
           <ThreadPrimitive.Empty>
@@ -252,9 +303,14 @@ function Centered({ text }: { text: string }) {
 export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
+  const queryClient = useQueryClient();
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
+  const [running, setRunning] = useState(false);
+  // Remounting ChatThread by key resets the in-memory runtime (it ignores
+  // `messages` changes after mount), so bump this to clear the thread.
+  const [threadKey, setThreadKey] = useState(0);
   const { data: setting, isLoading: loadingSetting } = useActiveAiServiceSetting();
 
   useEffect(() => {
@@ -270,7 +326,42 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
     };
   }, []);
 
+  // Clearing needs only an authenticated server, not an active AI provider.
+  const { data: historyData, isLoading: loadingHistory } = useChatHistory({ enabled: !!baseUrl });
+  const initialMessages = historyData ?? [];
+
   const serviceConfigId = setting?.id ?? null;
+
+  const handleClear = () => {
+    Alert.alert(
+      'Clear chat',
+      'This permanently deletes your Sparky chat history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearAllChatHistory();
+              // Reset the raw (pre-select) cache so a remount seeds an empty thread.
+              queryClient.setQueryData(chatHistoryQueryKey, []);
+              setThreadKey((k) => k + 1);
+            } catch (error) {
+              addLog('Failed to clear chat history', 'ERROR', [
+                error instanceof Error ? error.message : String(error),
+              ]);
+              Toast.show({
+                type: 'error',
+                text1: 'Could not clear chat',
+                text2: 'Please try again.',
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View
@@ -288,6 +379,19 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           <Icon name="chevron-back" size={22} color={accent} />
         </Button>
         <Text className="text-2xl font-bold text-text-primary">Sparky</Text>
+        {/* Clear chat. Disabled while a stream runs so the server's in-flight
+            onFinish save can't resurrect the exchange after the DELETE. */}
+        {baseUrl ? (
+          <Button
+            variant="ghost"
+            onPress={handleClear}
+            disabled={running}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="py-0 px-0 ml-auto"
+          >
+            <Icon name="trash" size={20} color={accent} />
+          </Button>
+        ) : null}
       </View>
 
       {/* keyboard-controller's reworked KeyboardAvoidingView supports `padding`
@@ -295,7 +399,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           not that component). Padding shrinks the message list by the keyboard
           height so the composer stays pinned just above the keyboard. */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        {loadingConfig || loadingSetting ? (
+        {loadingConfig || loadingSetting || loadingHistory ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={accent} />
           </View>
@@ -304,7 +408,13 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         ) : !serviceConfigId ? (
           <Centered text="No active AI provider. Configure one in the web app first." />
         ) : (
-          <ChatThread baseUrl={baseUrl} serviceConfigId={serviceConfigId} />
+          <ChatThread
+            key={threadKey}
+            baseUrl={baseUrl}
+            serviceConfigId={serviceConfigId}
+            initialMessages={initialMessages}
+            onRunningChange={setRunning}
+          />
         )}
       </KeyboardAvoidingView>
     </View>

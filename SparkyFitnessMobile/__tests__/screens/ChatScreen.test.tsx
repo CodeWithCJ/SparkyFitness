@@ -1,10 +1,11 @@
 import React from 'react';
 import { act, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
-import { useActiveAiServiceSetting } from '../../src/hooks';
+import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
 
 // The real @assistant-ui runtime pulls in web fetch globals + a chain of ESM
 // dependencies that don't load under jsdom without transforming the whole tree.
@@ -19,8 +20,9 @@ jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 jest.mock('@assistant-ui/react-ai-sdk', () => ({
   __esModule: true,
   AssistantChatTransport: class AssistantChatTransport {},
-  useChatRuntime: (options: { onError?: (error: Error) => void }) => {
+  useChatRuntime: (options: { onError?: (error: Error) => void; messages?: unknown }) => {
     (global as any).__mockCapturedOnError = options?.onError;
+    (global as any).__mockCapturedMessages = options?.messages;
     return {};
   },
 }));
@@ -33,6 +35,8 @@ jest.mock('@assistant-ui/react-native', () => {
     __esModule: true,
     AssistantRuntimeProvider: ({ children }: any) =>
       React.createElement(React.Fragment, null, children),
+    useAuiState: (selector: (s: any) => any) =>
+      selector({ thread: { isRunning: !!(global as any).__mockChatIsRunning } }),
     ThreadPrimitive: {
       Root: Box,
       Empty: ({ children }: any) =>
@@ -95,6 +99,8 @@ jest.mock('../../src/services/api/apiClient', () => ({
 
 jest.mock('../../src/hooks', () => ({
   useActiveAiServiceSetting: jest.fn(),
+  useChatHistory: jest.fn(),
+  chatHistoryQueryKey: ['chatHistory'],
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -117,6 +123,7 @@ const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
 const mockUseActiveAiServiceSetting = useActiveAiServiceSetting as jest.MockedFunction<
   typeof useActiveAiServiceSetting
 >;
+const mockUseChatHistory = useChatHistory as jest.MockedFunction<typeof useChatHistory>;
 
 const navigation = { goBack: jest.fn() } as any;
 const route = { params: {} } as any;
@@ -127,10 +134,15 @@ const initialMetrics = {
 };
 
 function renderScreen() {
+  // A real QueryClient backs the screen's useQueryClient() call; useChatHistory
+  // is mocked so no actual queries run through it.
+  const queryClient = new QueryClient();
   return render(
-    <SafeAreaProvider initialMetrics={initialMetrics}>
-      <ChatScreen navigation={navigation} route={route} />
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider initialMetrics={initialMetrics}>
+        <ChatScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -142,8 +154,10 @@ beforeEach(() => {
   (global as any).__mockChatIsRunning = false;
   (global as any).__mockChatIsEmpty = true;
   (global as any).__mockCapturedOnError = undefined;
+  (global as any).__mockCapturedMessages = undefined;
   mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
   mockUseActiveAiServiceSetting.mockReturnValue({ data: ACTIVE_SETTING, isLoading: false } as any);
+  mockUseChatHistory.mockReturnValue({ data: [], isLoading: false } as any);
 });
 
 describe('ChatScreen config gating', () => {
@@ -181,9 +195,11 @@ describe('ChatScreen thread', () => {
     // Running: Send hidden, Stop shown.
     (global as any).__mockChatIsRunning = true;
     rerender(
-      <SafeAreaProvider initialMetrics={initialMetrics}>
-        <ChatScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <SafeAreaProvider initialMetrics={initialMetrics}>
+          <ChatScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
     );
     expect(queryByText('Send')).toBeNull();
     expect(getByTestId('icon-stop')).toBeTruthy();
@@ -202,5 +218,36 @@ describe('ChatScreen thread', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'error', text1: 'Chat error', text2: 'bad config' })
     );
+  });
+});
+
+describe('ChatScreen history seeding', () => {
+  it('seeds the runtime with the loaded history messages', async () => {
+    const seed = [
+      { id: 'm1', role: 'user', content: 'hi', parts: [{ type: 'text', text: 'hi' }] },
+      { id: 'm2', role: 'assistant', content: 'hey', parts: [{ type: 'text', text: 'hey' }] },
+    ];
+    mockUseChatHistory.mockReturnValue({ data: seed, isLoading: false } as any);
+
+    const { findByText } = renderScreen();
+    await findByText('Send');
+
+    expect((global as any).__mockCapturedMessages).toBe(seed);
+  });
+
+  it('holds the loading gate (no thread) while history is loading', async () => {
+    mockUseChatHistory.mockReturnValue({ data: undefined, isLoading: true } as any);
+
+    const { queryByText, queryByTestId } = renderScreen();
+    // Flush the async server-config load so only the history gate remains.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(queryByText('Send')).toBeNull();
+    expect(queryByTestId('composer-send')).toBeNull();
+    expect(
+      queryByText('Ask Sparky anything about your nutrition, exercise, or goals.')
+    ).toBeNull();
   });
 });

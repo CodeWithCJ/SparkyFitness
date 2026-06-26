@@ -18,6 +18,7 @@ const ICON_MAP = {
 
   // Actions
   'copy': { sf: 'doc.on.doc', ion: 'copy-outline' },
+  'trash': { sf: 'trash', ion: 'trash-outline' },
   'paste': { sf: 'doc.on.clipboard', ion: 'clipboard-outline' },
   'eye': { sf: 'eye', ion: 'eye-outline' },
   'eye-off': { sf: 'eye.slash', ion: 'eye-off-outline' },
@@ -27,6 +28,7 @@ const ICON_MAP = {
   'settings': { sf: 'gearshape.fill', ion: 'settings' },
   'add': { sf: 'plus', ion: 'add' },
   'remove': { sf: 'minus', ion: 'remove' },
+  'arrow-up': { sf: 'arrow.up', ion: 'arrow-up' },
   'close': { sf: 'xmark', ion: 'close' },
   'search': { sf: 'magnifyingglass', ion: 'search-outline' },
   'save': { sf: 'square.and.arrow.down', ion: 'save-outline' },
