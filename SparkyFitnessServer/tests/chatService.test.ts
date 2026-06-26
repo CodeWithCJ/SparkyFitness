@@ -2,9 +2,10 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
 import { simulateReadableStream } from 'ai';
 import type { UIMessageChunk } from 'ai';
-import chatService from '../services/chatService.js';
+import chatService, { mapUsageToMetadata } from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
@@ -12,6 +13,12 @@ import { log } from '../config/logging.js';
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/measurementRepository');
+vi.mock('../models/preferenceRepository', () => ({
+  default: {
+    getUserPreferences: vi.fn(),
+    updateUserPreferences: vi.fn(),
+  },
+}));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
@@ -80,6 +87,67 @@ describe('chatService', () => {
       await expect(
         chatService.handleAiServiceSettings('unknown_action', {}, mockUserId)
       ).rejects.toThrow('Unsupported action for AI service settings.');
+    });
+    it('auto-selects the saved service as active when no provider is selected yet', async () => {
+      const serviceData = { service_type: 'openai', is_active: true };
+      const savedSetting = { id: 'setting-1', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: null,
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      expect(preferenceRepository.updateUserPreferences).toHaveBeenCalledWith(
+        mockUserId,
+        { active_ai_service_id: 'setting-1' }
+      );
+    });
+    it('preserves an existing active selection when another service is enabled', async () => {
+      const serviceData = { service_type: 'anthropic', is_active: true };
+      const savedSetting = { id: 'setting-2', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: 'setting-1',
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      // Enabling a second service must not hijack the existing selection.
+      expect(preferenceRepository.updateUserPreferences).not.toHaveBeenCalled();
+    });
+    it('clears the active pointer when the currently-active service is disabled', async () => {
+      const serviceData = { service_type: 'openai', is_active: false };
+      const savedSetting = { id: 'setting-1', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_ai_service_id: 'setting-1',
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      expect(preferenceRepository.updateUserPreferences).toHaveBeenCalledWith(
+        mockUserId,
+        { active_ai_service_id: null }
+      );
     });
   });
   describe('getAiServiceSettings', () => {
@@ -715,6 +783,53 @@ describe('chatService', () => {
       );
     });
 
+    it('attaches token usage including cached input to the streamed finish metadata', async () => {
+      // Proves the mapper, toUIMessageStream({ messageMetadata }), and
+      // withEmptyCompletionGuard all cooperate to land usage on the finish chunk
+      // the chat UI reads. cacheRead must survive as cachedInputTokens.
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Here is your timeline.' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: undefined },
+          usage: {
+            inputTokens: {
+              total: 1240,
+              noCache: 260,
+              cacheRead: 980,
+              cacheWrite: 0,
+            },
+            outputTokens: { total: 380, text: 380, reasoning: 0 },
+          },
+        },
+      ]);
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Show my goal timeline' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const chunks = await drainStream(stream);
+
+      const finishChunk = chunks.find((chunk) => chunk.type === 'finish');
+      expect(
+        (finishChunk as { messageMetadata?: unknown }).messageMetadata
+      ).toEqual({
+        custom: {
+          usage: {
+            inputTokens: 1240,
+            outputTokens: 380,
+            totalTokens: 1620,
+            cachedInputTokens: 980,
+          },
+        },
+      });
+    });
+
     it('forwards a per-user OpenAI prompt cache key into the streaming model call', async () => {
       // Mirrors the blocking-path guard: the streaming call site must also wire
       // providerOptions into streamText (the two paths diverge subtly).
@@ -849,6 +964,52 @@ describe('chatService', () => {
       expect(convoMessages.length).toBeLessThan(5);
       expect(allText).not.toContain('OLDEST');
       expect(allText).toContain('CURRENT what is my total?');
+    });
+  });
+
+  describe('mapUsageToMetadata', () => {
+    it('nests usage under custom and maps cacheReadTokens to cachedInputTokens', () => {
+      // `custom` is the metadata key assistant-ui's fromThreadMessageLike
+      // preserves; a bare top-level `usage` would be stripped before reaching
+      // the thread message.
+      expect(
+        mapUsageToMetadata({
+          inputTokens: 1240,
+          outputTokens: 380,
+          totalTokens: 1620,
+          inputTokenDetails: {
+            noCacheTokens: 260,
+            cacheReadTokens: 980,
+            cacheWriteTokens: 0,
+          },
+        } as never)
+      ).toEqual({
+        custom: {
+          usage: {
+            inputTokens: 1240,
+            outputTokens: 380,
+            totalTokens: 1620,
+            cachedInputTokens: 980,
+          },
+        },
+      });
+    });
+
+    it('leaves missing fields undefined for the adapter to drop', () => {
+      // Providers reporting no cache details: cachedInputTokens must be
+      // undefined (not 0) so the adapter's normalizeUsage omits it.
+      expect(
+        mapUsageToMetadata({
+          inputTokens: 10,
+          outputTokens: 5,
+          totalTokens: 15,
+        } as never).custom.usage
+      ).toEqual({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+        cachedInputTokens: undefined,
+      });
     });
   });
 });

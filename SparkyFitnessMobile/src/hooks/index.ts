@@ -36,6 +36,7 @@ export {
   fastingHistoryQueryKey,
   customNutrientsQueryKey,
   nutrientDisplayPreferencesQueryKey,
+  chatHistoryQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -108,3 +109,4 @@ export type { FastTimerValues } from './useFastingTimer';
 export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';
+export { useChatHistory } from './useChatHistory';

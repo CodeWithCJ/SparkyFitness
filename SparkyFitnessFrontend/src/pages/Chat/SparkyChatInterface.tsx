@@ -192,7 +192,7 @@ const SparkyChatInner = ({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-1 overflow-hidden p-4">
+      <div className="flex-1 overflow-hidden py-4">
         <Thread runtime={runtime} />
       </div>
     </div>

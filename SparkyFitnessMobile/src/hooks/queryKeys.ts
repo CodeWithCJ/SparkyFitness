@@ -83,3 +83,5 @@ export const fastingHistoryQueryKey = (limit: number, offset: number) =>
 
 export const customNutrientsQueryKey = ['customNutrients'] as const;
 export const nutrientDisplayPreferencesQueryKey = ['nutrientDisplayPreferences'] as const;
+
+export const chatHistoryQueryKey = ['chatHistory'] as const;

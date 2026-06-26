@@ -24,6 +24,10 @@ import {
   useHydrationCardVisible,
   setHydrationCardVisible,
 } from '../services/hydrationCardVisibility';
+import {
+  useAskSparkyVisible,
+  setAskSparkyVisible,
+} from '../services/askSparkyVisibility';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -55,6 +59,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
 
   const fastingCardVisible = useFastingCardVisible();
   const hydrationCardVisible = useHydrationCardVisible();
+  const askSparkyVisible = useAskSparkyVisible();
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -194,6 +199,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
 
         <SettingsRowGroup>
           <SettingsRow
+            title="Ask Sparky"
+            subtitle="Show the Ask Sparky chat launcher on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={askSparkyVisible}
+                onValueChange={setAskSparkyVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />          
+          <SettingsRow
             title="Hydration"
             subtitle="Show the hydration card on the Dashboard"
             rightAccessory={
@@ -217,6 +234,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
               />
             }
           />
+
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">

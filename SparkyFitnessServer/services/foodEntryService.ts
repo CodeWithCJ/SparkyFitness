@@ -1546,7 +1546,7 @@ async function getFoodEntryMealsByDate(
   selectedDate: any
 ) {
   log(
-    'info',
+    'debug',
     `getFoodEntryMealsByDate in foodEntryService: authenticatedUserId: ${authenticatedUserId}, targetUserId: ${targetUserId}, selectedDate: ${selectedDate}`
   );
   try {

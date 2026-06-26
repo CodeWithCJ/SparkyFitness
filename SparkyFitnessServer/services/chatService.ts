@@ -41,7 +41,7 @@ interface ChatMessage {
 }
 
 import { generateText, streamText, stepCountIs } from 'ai';
-import type { JSONValue, UIMessageChunk } from 'ai';
+import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -75,12 +75,19 @@ async function handleAiServiceSettings(
         const currentPrefs =
           await preferenceRepository.getUserPreferences(authenticatedUserId);
         if (serviceData.is_active) {
-          await preferenceRepository.updateUserPreferences(
-            authenticatedUserId,
-            {
-              active_ai_service_id: result.id,
-            }
-          );
+          // Auto-select this service only when no provider is selected yet, so
+          // the user's first enabled service powers AI features immediately.
+          // Enabling a second service must not hijack an existing selection —
+          // the active-provider dropdown (Settings or chat) is the authoritative
+          // way to *change* the active provider; enable only toggles availability.
+          if (!currentPrefs?.active_ai_service_id) {
+            await preferenceRepository.updateUserPreferences(
+              authenticatedUserId,
+              {
+                active_ai_service_id: result.id,
+              }
+            );
+          }
         } else if (
           currentPrefs &&
           currentPrefs.active_ai_service_id === result.id
@@ -145,7 +152,7 @@ async function getActiveAiServiceSetting(
     if (setting) {
       const source = setting.source || 'unknown';
       log(
-        'info',
+        'debug',
         `Active AI service setting for user ${targetUserId} (source: ${source})`
       );
     }
@@ -1028,6 +1035,30 @@ function withEmptyCompletionGuard(
   );
 }
 
+// Shape provider usage into the keys @assistant-ui/react-ai-sdk's
+// getThreadMessageTokenUsage reads off the streamed message metadata, so the
+// chat UI can surface per-message token counts. cacheReadTokens is the
+// cached-input figure; the adapter's normalizeUsage drops undefined fields, so
+// providers reporting partial or no usage stay safe.
+//
+// Nest under `custom`: assistant-ui's fromThreadMessageLike normalization keeps
+// only known metadata keys (`custom`, `steps`, `unstable_*`, ...) and discards
+// unknown top-level keys, so a bare `{ usage }` would be stripped before it
+// reaches the thread message. `metadata.custom.usage` survives, and the adapter
+// reads exactly that path.
+export function mapUsageToMetadata(u: LanguageModelUsage) {
+  return {
+    custom: {
+      usage: {
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        totalTokens: u.totalTokens,
+        cachedInputTokens: u.inputTokenDetails?.cacheReadTokens,
+      },
+    },
+  };
+}
+
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -1284,7 +1315,16 @@ async function processChatMessageStream(
       },
     });
 
-    return { stream: withEmptyCompletionGuard(result.toUIMessageStream()) };
+    return {
+      stream: withEmptyCompletionGuard(
+        result.toUIMessageStream({
+          messageMetadata: ({ part }) =>
+            part.type === 'finish'
+              ? mapUsageToMetadata(part.totalUsage)
+              : undefined,
+        })
+      ),
+    };
   } catch (error) {
     log(
       'error',

@@ -35,7 +35,7 @@ async function createMealType(data: any, userId: any) {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getAllMealTypes(userId: any) {
-  log('info', `getAllMealTypes in mealType.js for userId: ${userId}`);
+  log('debug', `getAllMealTypes in mealType.js for userId: ${userId}`);
   const client = await getClient(userId);
   try {
     const result = await client.query(

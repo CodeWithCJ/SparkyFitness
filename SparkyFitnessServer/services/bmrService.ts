@@ -34,7 +34,7 @@ function calculateBmr(
   gender?: string | null,
   bodyFatPercentage?: number | null
 ): number {
-  log('info', `Calculating BMR with ${algorithm} algorithm.`);
+  log('debug', `Calculating BMR with ${algorithm} algorithm.`);
   return sharedCalculateBmr(
     algorithm,
     weight,

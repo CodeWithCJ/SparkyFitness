@@ -682,7 +682,7 @@ async function getCheckInMeasurementsByDateRange(
   endDate: any
 ) {
   log(
-    'info',
+    'debug',
     `[measurementRepository] getCheckInMeasurementsByDateRange called for userId: ${userId}, startDate: ${startDate}, endDate: ${endDate}`
   );
   const client = await getClient(userId); // User-specific operation

@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Bot, Plus } from 'lucide-react';
 import {
   AlertDialog,
@@ -23,6 +31,7 @@ import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
 import { getModelOptions } from '@/utils/aiServiceUtils';
 import {
   useAIServices,
+  useActiveAIService,
   useUserAIPreferences,
   useAddAIService,
   useUpdateAIService,
@@ -47,7 +56,18 @@ const AIServiceSettings = () => {
   const { data: isUserConfigAllowed = false, isLoading: settingsLoading } =
     useUserAiConfigAllowed();
   const { data: services = [] } = useAIServices();
+  const { data: activeService } = useActiveAIService(!!user);
   const { data: preferencesData } = useUserAIPreferences();
+
+  // Services the user has enabled (many can be on). The active-provider
+  // dropdown and the global "Active" badge both key off the single selection
+  // below, validated against this set so a stale pointer can never win.
+  const enabledServices = services.filter((s) => s.is_active);
+  const activeServiceId =
+    enabledServices.find((s) => s.id === preferencesData?.active_ai_service_id)
+      ?.id ??
+    enabledServices.find((s) => s.id === activeService?.id)?.id ??
+    '';
 
   // Mutations
   const { mutateAsync: addService, isPending: isAdding } = useAddAIService();
@@ -610,24 +630,59 @@ const AIServiceSettings = () => {
                   : t('settings.aiService.userSettings.availableServices')}
               </h3>
 
+              {/* Global active-provider selector: writes active_ai_service_id,
+                  the single pointer every AI feature (chat, food-photo, label
+                  scan, unit conversion) reads. Mirrors the chat quick-switcher. */}
+              {enabledServices.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="active-ai-provider-select">
+                    {t(
+                      'settings.aiService.userSettings.activeProvider',
+                      'Active AI provider'
+                    )}
+                  </Label>
+                  <Select
+                    value={activeServiceId}
+                    onValueChange={(id) =>
+                      updatePreferences({
+                        active_ai_service_id: id,
+                        auto_clear_history:
+                          preferencesData?.auto_clear_history || 'never',
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      id="active-ai-provider-select"
+                      className="max-w-sm"
+                    >
+                      <SelectValue
+                        placeholder={t(
+                          'settings.aiService.userSettings.activeProvider',
+                          'Active AI provider'
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {enabledServices.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.service_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {services
                   .filter((service) => isUserConfigAllowed || service.is_public)
                   .map((service) => {
                     const isOwner = service.user_id === user?.id;
-                    const isActive = preferencesData?.active_ai_service_id
-                      ? service.id === preferencesData.active_ai_service_id
-                      : service.is_active;
-
-                    const resolvedService = {
-                      ...service,
-                      is_active: isActive,
-                    };
 
                     return (
                       <UserServiceListItem
                         key={service.id}
-                        service={resolvedService}
+                        service={service}
                         isEditing={editingService === service.id}
                         editData={editData}
                         onEditDataChange={(data) =>
@@ -643,6 +698,7 @@ const AIServiceSettings = () => {
                         loading={loading}
                         isUserConfigAllowed={isUserConfigAllowed}
                         isOwner={isOwner}
+                        isActiveProvider={service.id === activeServiceId}
                       />
                     );
                   })}

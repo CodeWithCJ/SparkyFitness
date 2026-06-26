@@ -19,6 +19,7 @@ import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { useState } from 'react';
 import { UserPreferencesChat } from '@/types/settings';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 
 interface UserChatPreferencesProps {
   loading?: boolean;
@@ -52,6 +53,11 @@ export const UserChatPreferences = ({
   const showAiAssistedConversionsRow =
     userAiConfigAllowed === true && !!activeAiService;
 
+  // Pure-local advanced toggle for the in-chat token-usage displays. Persisted
+  // to localStorage via the context, so it saves immediately without the chat
+  // preferences Save button below.
+  const { showTokenStats, setShowTokenStats } = useChatbotVisibility();
+
   const onSave = async () => {
     try {
       await updatePreferences(preferences);
@@ -83,11 +89,12 @@ export const UserChatPreferences = ({
                 htmlFor="ai_assisted_conversions"
                 className="text-sm font-medium"
               >
-                AI Assisted Unit Conversions
+                {t('settings.aiService.userSettings.aiAssistedConversions')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Convert cross-category food units (e.g. cup → g) with AI inside
-                the unit picker.
+                {t(
+                  'settings.aiService.userSettings.aiAssistedConversionsDescription'
+                )}
               </p>
             </div>
             <Switch
@@ -97,6 +104,22 @@ export const UserChatPreferences = ({
             />
           </div>
         )}
+
+        <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+          <div className="space-y-1">
+            <Label htmlFor="show_token_stats" className="text-sm font-medium">
+              {t('settings.aiService.userSettings.showTokenStats')}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t('settings.aiService.userSettings.showTokenStatsDescription')}
+            </p>
+          </div>
+          <Switch
+            id="show_token_stats"
+            checked={showTokenStats}
+            onCheckedChange={setShowTokenStats}
+          />
+        </div>
 
         <h3 className="flex items-center gap-2 text-base font-semibold pt-2">
           <Bot className="h-5 w-5" />
