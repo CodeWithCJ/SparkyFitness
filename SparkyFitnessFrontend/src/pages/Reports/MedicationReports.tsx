@@ -46,6 +46,9 @@ import {
   getDoseSymptomCorrelation,
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
+  compareDays,
+  addDays,
+  instantToDay,
 } from '@workspace/shared';
 import {
   useMedicationDisplayPreferences,
@@ -137,8 +140,13 @@ const MedicationReports = ({
   titrationSteps,
 }: MedicationReportsProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit, convertWeight } =
-    usePreferences();
+  const {
+    formatDateInUserTimezone,
+    weightUnit,
+    convertWeight,
+    timezone,
+    dateFormat,
+  } = usePreferences();
   const { activeUserId } = useActiveUser();
   const { data: profile } = useProfileQuery(activeUserId ?? undefined);
 
@@ -212,7 +220,7 @@ const MedicationReports = ({
 
     // GLP-1 count
     const glp1InjectionsCount = injections.filter((inj) => {
-      const dateStr = inj.injected_at.split('T')[0];
+      const dateStr = instantToDay(inj.injected_at, timezone);
       return dateStr && dateStr >= startDate && dateStr <= endDate;
     }).length;
 
@@ -226,34 +234,37 @@ const MedicationReports = ({
       glp1InjectionsCount,
       uniqueSymptomCount,
     };
-  }, [medicationEntries, injections, symptomEntries, startDate, endDate]);
+  }, [
+    medicationEntries,
+    injections,
+    symptomEntries,
+    startDate,
+    endDate,
+    timezone,
+  ]);
 
   // --- Map and align daily data for Recharts ---------------------------------
   const alignedDailyData = useMemo(() => {
     const datesMap: Record<string, AlignedDailyDataPoint> = {};
 
     // Base date list
-    const curr = new Date(startDate);
-    const end = new Date(endDate);
-    while (curr <= end) {
-      const dStr = curr.toISOString().split('T')[0];
-      if (dStr) {
-        datesMap[dStr] = {
-          date: dStr,
-          displayDate: formatDateInUserTimezone(new Date(curr), 'MMM dd'),
-          nauseaSeverity: 0,
-          constipationSeverity: 0,
-          fatigueSeverity: 0,
-          glp1Dose: 0,
-          weight: null,
-          adherencePercent: null,
-          glpHunger: null,
-          glpFoodNoise: null,
-          glpFullness: null,
-          glpEnergy: null,
-        };
-      }
-      curr.setDate(curr.getDate() + 1);
+    let curr = startDate;
+    while (compareDays(curr, endDate) <= 0) {
+      datesMap[curr] = {
+        date: curr,
+        displayDate: formatDateInUserTimezone(curr, 'MMM dd'),
+        nauseaSeverity: 0,
+        constipationSeverity: 0,
+        fatigueSeverity: 0,
+        glp1Dose: 0,
+        weight: null,
+        adherencePercent: null,
+        glpHunger: null,
+        glpFoodNoise: null,
+        glpFullness: null,
+        glpEnergy: null,
+      };
+      curr = addDays(curr, 1);
     }
 
     // Weight logs
@@ -297,7 +308,7 @@ const MedicationReports = ({
 
     // Injections & Doses
     injections.forEach((inj) => {
-      const dStr = inj.injected_at.split('T')[0];
+      const dStr = instantToDay(inj.injected_at, timezone);
       if (dStr && datesMap[dStr]) {
         datesMap[dStr].glp1Dose =
           (datesMap[dStr].glp1Dose || 0) + (Number(inj.dose_mg) || 0);
@@ -365,6 +376,7 @@ const MedicationReports = ({
     weightUnit,
     convertWeight,
     formatDateInUserTimezone,
+    timezone,
   ]);
 
   // --- Compute Correlation Cards --------------------------------------------
@@ -1185,7 +1197,8 @@ const MedicationReports = ({
               {stats.adherenceRate !== null ? `${stats.adherenceRate}%` : 'N/A'}
             </p>
             <p>
-              <strong>Report Date:</strong> {new Date().toLocaleDateString()}
+              <strong>Report Date:</strong>{' '}
+              {formatDateInUserTimezone(new Date(), dateFormat)}
             </p>
           </div>
         </div>
@@ -1287,7 +1300,7 @@ const MedicationReports = ({
                 {injections.slice(0, 10).map((inj) => (
                   <tr key={inj.id} className="border-b border-slate-100">
                     <td className="py-1">
-                      {inj.injected_at.split('T')[0] ?? ''}
+                      {formatDateInUserTimezone(inj.injected_at, dateFormat)}
                     </td>
                     <td className="py-1 font-semibold">
                       {medications.find((m) => m.id === inj.medication_id)
@@ -1324,7 +1337,9 @@ const MedicationReports = ({
               <tbody>
                 {symptomEntries.slice(0, 15).map((s) => (
                   <tr key={s.id} className="border-b border-slate-100">
-                    <td className="py-1">{s.entry_date.split('T')[0]}</td>
+                    <td className="py-1">
+                      {formatDateInUserTimezone(s.entry_date, dateFormat)}
+                    </td>
                     <td className="py-1 font-semibold capitalize">
                       {s.symptom_name_snapshot.replace('_', ' ')}
                     </td>

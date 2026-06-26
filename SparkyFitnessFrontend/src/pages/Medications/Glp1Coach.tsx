@@ -40,10 +40,12 @@ import {
   useDeleteTitrationStepMutation,
   useDeleteInjectionMutation,
 } from '@/hooks/useMedications';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type { Medication } from '@/types/medications';
 
 export default function Glp1Coach({ med }: { med: Medication }) {
   const { t } = useTranslation();
+  const { formatDate } = usePreferences();
   const medId = med.id;
   const glp1Drug = (
     med.custom_fields as { glp1_drug?: string } | null | undefined
@@ -693,7 +695,7 @@ export default function Glp1Coach({ med }: { med: Medication }) {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {inj.dose_mg ? `${inj.dose_mg} mg · ` : ''}
-                    {new Date(inj.injected_at).toLocaleDateString()}
+                    {formatDate(inj.injected_at)}
                   </span>
                 </div>
                 <Button

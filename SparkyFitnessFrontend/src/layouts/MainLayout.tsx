@@ -195,6 +195,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       tabs.push(
         { value: '/', label: t('nav.diary'), icon: Home },
         { value: '/checkin', label: t('nav.checkin'), icon: Activity },
+        {
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        },
         { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         { value: '/foods', label: t('nav.foods'), icon: Utensils },
         {
@@ -203,11 +208,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           icon: Dumbbell,
         },
         { value: '/goals', label: t('nav.goals'), icon: Target },
-        {
-          value: '/medications',
-          label: t('nav.medications', 'Medications'),
-          icon: Pill,
-        },
         { value: '/settings', label: t('nav.settings'), icon: SettingsIcon }
       );
     } else {
