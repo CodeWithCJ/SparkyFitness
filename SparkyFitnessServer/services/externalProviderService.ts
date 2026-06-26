@@ -301,23 +301,28 @@ async function updateExternalDataProvider(
       existingProvider?.provider_type === 'yazio' ||
       updateData.provider_type === 'yazio';
     if (isYazio) {
+      // Only preserve stored credentials when the row is already YAZIO. When the
+      // type is being changed to YAZIO from another provider, the stored
+      // app_id/app_key belong to that old provider and must not be merged in, or
+      // the old provider's secret would leak into the new YAZIO credentials.
+      const existingYazio =
+        existingProvider?.provider_type === 'yazio'
+          ? existingProvider
+          : undefined;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resolveField = (nextVal: any, currentVal: any) => {
         if (nextVal === null) return null;
         if (nextVal === undefined) return currentVal;
         return nextVal;
       };
-      const nextAppId = resolveField(
-        updateData.app_id,
-        existingProvider?.app_id
-      );
+      const nextAppId = resolveField(updateData.app_id, existingYazio?.app_id);
       const nextAppKey = resolveField(
         updateData.app_key,
-        existingProvider?.app_key
+        existingYazio?.app_key
       );
       const currentCredentials = resolveYazioCredentials({
-        username: existingProvider?.app_id ?? undefined,
-        password: existingProvider?.app_key ?? undefined,
+        username: existingYazio?.app_id ?? undefined,
+        password: existingYazio?.app_key ?? undefined,
       });
       const nextCredentials = resolveYazioCredentials({
         username: nextAppId,

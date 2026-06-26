@@ -16,6 +16,7 @@ import {
   decodeYazioAppId,
   encodeYazioAppId,
   encodeYazioAppKey,
+  resolveProviderCredentialPayload,
 } from '@/utils/settings';
 
 import {
@@ -168,7 +169,10 @@ const ExternalProviderList = ({
     let yazioAppId: string | undefined;
     let yazioAppKey: string | undefined;
 
-    if (editData.provider_type === 'yazio' && existingProvider) {
+    if (
+      editData.provider_type === 'yazio' &&
+      existingProvider?.provider_type === 'yazio'
+    ) {
       // Decode existing stored credentials
       const existingAppId = decodeYazioAppId(existingProvider.app_id);
       const existingAppKey = (() => {
@@ -205,7 +209,9 @@ const ExternalProviderList = ({
       yazioAppId = encodeYazioAppId(mergedUsername, mergedClientId);
       yazioAppKey = encodeYazioAppKey(mergedPassword, mergedClientSecret);
     } else if (editData.provider_type === 'yazio') {
-      // Fallback for new provider (shouldn't happen in update path, but safe)
+      // New provider, or the type was just changed to YAZIO. Use only the
+      // entered values — never merge from a non-YAZIO row, or the old
+      // provider's credentials would be carried into the new YAZIO provider.
       yazioAppId = encodeYazioAppId(editData.app_id, editData.yazio_client_id);
       yazioAppKey = encodeYazioAppKey(
         editData.app_key,
@@ -213,48 +219,17 @@ const ExternalProviderList = ({
       );
     }
 
+    const { app_id, app_key } = resolveProviderCredentialPayload(
+      editData,
+      yazioAppId,
+      yazioAppKey,
+      existingProvider?.provider_type
+    );
     const providerUpdateData: Partial<ExternalDataProvider> = {
       provider_name: editData.provider_name,
       provider_type: editData.provider_type,
-      app_id:
-        editData.provider_type === 'mealie' ||
-        editData.provider_type === 'tandoor' ||
-        editData.provider_type === 'norish' ||
-        editData.provider_type === 'free-exercise-db' ||
-        editData.provider_type === 'wger'
-          ? null
-          : editData.provider_type === 'openfoodfacts' ||
-              editData.provider_type === 'yazio'
-            ? editData.provider_type === 'yazio'
-              ? yazioAppId
-              : editData.app_id || undefined
-            : // OAuth providers store credentials encrypted server-side and never echo them back.
-              // Send undefined (not null) when empty so COALESCE preserves the existing value.
-              // null would trigger clearAppId=true and wipe the encrypted credential.
-              [
-                  'googlehealth',
-                  'fitbit',
-                  'withings',
-                  'strava',
-                  'polar',
-                ].includes(editData.provider_type || '')
-              ? editData.app_id?.trim() || undefined
-              : editData.app_id || null,
-      app_key:
-        editData.provider_type === 'yazio'
-          ? yazioAppKey
-          : editData.provider_type === 'openfoodfacts'
-            ? editData.app_key || undefined
-            : // Same reasoning as app_id above: undefined preserves, null wipes.
-              [
-                  'googlehealth',
-                  'fitbit',
-                  'withings',
-                  'strava',
-                  'polar',
-                ].includes(editData.provider_type || '')
-              ? editData.app_key?.trim() || undefined
-              : editData.app_key || null,
+      app_id,
+      app_key,
       is_active: editData.is_active,
       base_url:
         editData.provider_type === 'mealie' ||
