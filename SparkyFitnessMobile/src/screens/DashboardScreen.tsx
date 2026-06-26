@@ -40,6 +40,7 @@ import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFastingCardVisible } from '../services/fastingCardVisibility';
 import { useHydrationCardVisible } from '../services/hydrationCardVisibility';
+import { useAskSparkyVisible } from '../services/askSparkyVisibility';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -170,6 +171,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const fastingCardVisible = useFastingCardVisible();
   const hydrationCardVisible = useHydrationCardVisible();
+  const askSparkyVisible = useAskSparkyVisible();
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -289,14 +291,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             invite, but it pushes the full chat screen rather than capturing text
             here — the Dashboard's scroll + date-fling gestures make a live input
             on this screen more trouble than it's worth. The composer autofocuses
-            on arrival so the affordance is honored immediately. */}
-        <Pressable
-          onPress={() => navigation.navigate('Chat')}
-          className="flex-row items-center bg-surface rounded-full px-4 py-3 mb-3 shadow-sm"
-        >
-          <Icon name="sparkles" size={18} color={accentColor} />
-          <Text className="text-text-muted text-base ml-3">Ask Sparky…</Text>
-        </Pressable>
+            on arrival so the affordance is honored immediately. Visibility is a
+            local app setting toggled from Dashboard Settings. */}
+        {askSparkyVisible && (
+          <Pressable
+            onPress={() => navigation.navigate('Chat')}
+            className="flex-row items-center bg-surface rounded-full px-4 py-3 mb-3 shadow-sm"
+          >
+            <Icon name="sparkles" size={18} color={accentColor} />
+            <Text className="text-text-muted text-base ml-3">Ask Sparky…</Text>
+          </Pressable>
+        )}
 
         {/* Macros Section — driven by nutrient display preferences (summary/mobile).
             Only the 4 core macros (with goals) and user-defined custom nutrients are

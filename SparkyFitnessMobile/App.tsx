@@ -97,6 +97,7 @@ import { initializeSounds } from './src/services/sounds';
 import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
 import { initializeHydrationCardVisibility } from './src/services/hydrationCardVisibility';
 import { initializeLiquidGlassTabBar } from './src/services/nativeTabBarPreference';
+import { initializeAskSparkyVisibility } from './src/services/askSparkyVisibility';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import {
@@ -574,6 +575,7 @@ function AppContent() {
     initializeFastingCardVisibility();
     initializeHydrationCardVisibility();
     initializeLiquidGlassTabBar();
+    initializeAskSparkyVisibility();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
