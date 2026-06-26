@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { INJECTION_SITES } from '@workspace/shared';
 import { ChevronUp, ChevronDown, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ interface SiteRow {
  * both honor it (server reads the same pref).
  */
 export default function InjectionSiteSettings() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const prefsQ = useMedicationDisplayPreferences();
   const upsert = useUpsertMedicationDisplayPreferenceMutation();
@@ -89,16 +91,21 @@ export default function InjectionSiteSettings() {
     >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Settings2 className="mr-1 h-3.5 w-3.5" /> Customize sites
+          <Settings2 className="mr-1 h-3.5 w-3.5" />{' '}
+          {t('medications.sites.customize', 'Customize sites')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Injection sites</DialogTitle>
+          <DialogTitle>
+            {t('medications.sites.dialogTitle', 'Injection sites')}
+          </DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Toggle the sites you use and order them — rotation suggestions follow
-          this order.
+          {t(
+            'medications.sites.subtitle',
+            'Toggle the sites you use and order them — rotation suggestions follow this order.'
+          )}
         </p>
         <div className="max-h-[50vh] space-y-1 overflow-y-auto">
           {rows.map((row, idx) => (
@@ -132,7 +139,7 @@ export default function InjectionSiteSettings() {
                     row.active ? '' : 'text-muted-foreground line-through'
                   }
                 >
-                  {row.label}
+                  {t('medications.sites.label.' + row.id, row.label)}
                 </span>
               </div>
               <Switch
@@ -145,7 +152,9 @@ export default function InjectionSiteSettings() {
         </div>
         <DialogFooter>
           <Button onClick={save} disabled={upsert.isPending}>
-            {upsert.isPending ? 'Saving…' : 'Save'}
+            {upsert.isPending
+              ? t('medications.common.saving', 'Saving…')
+              : t('medications.common.save', 'Save')}
           </Button>
         </DialogFooter>
       </DialogContent>

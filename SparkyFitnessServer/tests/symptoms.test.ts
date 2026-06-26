@@ -51,13 +51,52 @@ describe('Symptom Pattern Hints Shared Logic', () => {
     expect(hints).toEqual([]);
   });
 
-  it('calculates hints correctly when symptoms follow injections', () => {
+  it('surfaces a post-dose hint when a symptom clusters after injections (>= MIN_OCCURRENCES, >= 2 doses)', () => {
     const injections = [
+      { injected_at: '2026-06-13T08:00:00Z', dose_mg: 2.4 },
+      { injected_at: '2026-06-20T08:00:00Z', dose_mg: 2.4 },
+    ];
+    const symptoms = [
       {
-        injected_at: '2026-06-20T08:00:00Z',
-        dose_mg: 2.4,
-        medication_name: 'Wegovy',
-      },
+        logged_at: '2026-06-13T20:00:00Z',
+        severity: 5,
+        symptom_name_snapshot: 'Nausea',
+      }, // 12h post dose 1
+      {
+        logged_at: '2026-06-14T08:00:00Z',
+        severity: 4,
+        symptom_name_snapshot: 'nausea',
+      }, // 24h post dose 1
+      {
+        logged_at: '2026-06-20T20:00:00Z',
+        severity: 5,
+        symptom_name_snapshot: 'Nausea',
+      }, // 12h post dose 2
+      {
+        logged_at: '2026-06-21T08:00:00Z',
+        severity: 4,
+        symptom_name_snapshot: 'nausea',
+      }, // 24h post dose 2
+      {
+        logged_at: '2026-06-17T08:00:00Z',
+        severity: 3,
+        symptom_name_snapshot: 'Nausea',
+      }, // mid-week baseline
+    ];
+
+    const hints = getSymptomPatternHints(injections, symptoms);
+    expect(hints.length).toBe(1);
+    expect(hints[0].symptomName).toBe('nausea');
+    expect(hints[0].sampleSize).toBe(5);
+    // New contract: compares post-dose rate vs. baseline rather than a fixed onset phrase.
+    expect(hints[0].message.toLowerCase()).toContain('after your dose');
+    expect(['medium', 'high']).toContain(hints[0].severityLevel);
+  });
+
+  it('does not surface a hint below the minimum sample size', () => {
+    const injections = [
+      { injected_at: '2026-06-13T08:00:00Z', dose_mg: 2.4 },
+      { injected_at: '2026-06-20T08:00:00Z', dose_mg: 2.4 },
     ];
     const symptoms = [
       {
@@ -71,25 +110,37 @@ describe('Symptom Pattern Hints Shared Logic', () => {
         symptom_name_snapshot: 'nausea',
       },
     ];
-
-    const hints = getSymptomPatternHints(injections, symptoms);
-    expect(hints.length).toBe(1);
-    expect(hints[0].symptomName).toBe('nausea');
-    expect(hints[0].message).toContain('within 24 hours');
-    expect(hints[0].severityLevel).toBe('medium'); // Average severity is 4.5 (< 7)
+    expect(getSymptomPatternHints(injections, symptoms)).toEqual([]);
   });
 
   it('raises severity level to high when average severity is >= 7', () => {
     const injections = [
-      {
-        injected_at: '2026-06-20T08:00:00Z',
-        dose_mg: 2.4,
-        medication_name: 'Wegovy',
-      },
+      { injected_at: '2026-06-13T08:00:00Z', dose_mg: 2.4 },
+      { injected_at: '2026-06-20T08:00:00Z', dose_mg: 2.4 },
     ];
     const symptoms = [
       {
-        logged_at: '2026-06-21T12:00:00Z',
+        logged_at: '2026-06-13T18:00:00Z',
+        severity: 8,
+        symptom_name_snapshot: 'Fatigue',
+      },
+      {
+        logged_at: '2026-06-14T06:00:00Z',
+        severity: 8,
+        symptom_name_snapshot: 'fatigue',
+      },
+      {
+        logged_at: '2026-06-20T18:00:00Z',
+        severity: 8,
+        symptom_name_snapshot: 'Fatigue',
+      },
+      {
+        logged_at: '2026-06-21T06:00:00Z',
+        severity: 8,
+        symptom_name_snapshot: 'fatigue',
+      },
+      {
+        logged_at: '2026-06-17T08:00:00Z',
         severity: 8,
         symptom_name_snapshot: 'Fatigue',
       },

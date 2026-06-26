@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { useSearchParams } from 'react-router-dom';
 import DayNavigator from '@/components/DayNavigator';
 import {
@@ -159,6 +161,7 @@ function AddMedicationDialog({
   editMed?: Medication;
   trigger?: ReactNode;
 } = {}) {
+  const { t } = useTranslation();
   const isEdit = Boolean(editMed);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(editMed?.name ?? '');
@@ -222,39 +225,47 @@ function AddMedicationDialog({
       <DialogTrigger asChild>
         {trigger ?? (
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> Add medication
+            <Plus className="mr-2 h-4 w-4" />{' '}
+            {t('medications.cabinet.addMed', 'Add medication')}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? 'Edit medication' : 'Add medication'}
+            {isEdit
+              ? t('medications.cabinet.editMed', 'Edit medication')
+              : t('medications.cabinet.addMed', 'Add medication')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="med-name">Name</Label>
+            <Label htmlFor="med-name">
+              {t('medications.cabinet.name', 'Name')}
+            </Label>
             <Input
               id="med-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Wegovy"
+              placeholder={t(
+                'medications.cabinet.namePlaceholder',
+                'e.g. Wegovy'
+              )}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label>{t('medications.cabinet.type', 'Type')}</Label>
               <Select value={typeId} onValueChange={setTypeId}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MED_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
+                  {MED_TYPES.map((typeOption) => (
+                    <SelectItem key={typeOption} value={typeOption}>
                       <span className="flex items-center gap-2 capitalize">
-                        <MedTypeIcon typeId={t} className="h-4 w-4" />
-                        {t}
+                        <MedTypeIcon typeId={typeOption} className="h-4 w-4" />
+                        {t('medications.types.' + typeOption, typeOption)}
                       </span>
                     </SelectItem>
                   ))}
@@ -262,7 +273,7 @@ function AddMedicationDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Strength</Label>
+              <Label>{t('medications.cabinet.strength', 'Strength')}</Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -280,16 +291,26 @@ function AddMedicationDialog({
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <div>
-              <Label className="text-sm font-medium">GLP-1 medication</Label>
+              <Label className="text-sm font-medium">
+                {t('medications.cabinet.glp1Med', 'GLP-1 medication')}
+              </Label>
               <p className="text-xs text-muted-foreground">
-                Unlocks the injection coach, PK curve & site rotation.
+                {t(
+                  'medications.cabinet.glp1Hint',
+                  'Unlocks the injection coach, PK curve & site rotation.'
+                )}
               </p>
             </div>
             <Switch checked={isGlp1} onCheckedChange={setIsGlp1} />
           </div>
           {isGlp1 && (
             <div className="space-y-2">
-              <Label>GLP-1 drug (for the PK model)</Label>
+              <Label>
+                {t(
+                  'medications.cabinet.glp1Drug',
+                  'GLP-1 drug (for the PK model)'
+                )}
+              </Label>
               <Select value={glp1Drug} onValueChange={setGlp1Drug}>
                 <SelectTrigger>
                   <SelectValue />
@@ -305,41 +326,61 @@ function AddMedicationDialog({
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="med-reason">Reason / condition (optional)</Label>
+            <Label htmlFor="med-reason">
+              {t('medications.cabinet.reason', 'Reason / condition (optional)')}
+            </Label>
             <Input
               id="med-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Weight management, Type 2 diabetes"
+              placeholder={t(
+                'medications.cabinet.reasonPlaceholder',
+                'e.g. Weight management, Type 2 diabetes'
+              )}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="med-prescriber">Prescriber (optional)</Label>
+              <Label htmlFor="med-prescriber">
+                {t('medications.cabinet.prescriber', 'Prescriber (optional)')}
+              </Label>
               <Input
                 id="med-prescriber"
                 value={prescriber}
                 onChange={(e) => setPrescriber(e.target.value)}
-                placeholder="Dr. Chen"
+                placeholder={t(
+                  'medications.cabinet.prescriberPlaceholder',
+                  'Dr. Chen'
+                )}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="med-pharmacy">Pharmacy (optional)</Label>
+              <Label htmlFor="med-pharmacy">
+                {t('medications.cabinet.pharmacy', 'Pharmacy (optional)')}
+              </Label>
               <Input
                 id="med-pharmacy"
                 value={pharmacy}
                 onChange={(e) => setPharmacy(e.target.value)}
-                placeholder="CVS #4421"
+                placeholder={t(
+                  'medications.cabinet.pharmacyPlaceholder',
+                  'CVS #4421'
+                )}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="med-rx">Rx number (optional)</Label>
+            <Label htmlFor="med-rx">
+              {t('medications.cabinet.rxNumber', 'Rx number (optional)')}
+            </Label>
             <Input
               id="med-rx"
               value={rxNumber}
               onChange={(e) => setRxNumber(e.target.value)}
-              placeholder="Rx-482-93221"
+              placeholder={t(
+                'medications.cabinet.rxPlaceholder',
+                'Rx-482-93221'
+              )}
             />
           </div>
         </div>
@@ -348,7 +389,9 @@ function AddMedicationDialog({
             onClick={handleSave}
             disabled={!name.trim() || mutation.isPending}
           >
-            {mutation.isPending ? 'Saving…' : 'Save'}
+            {mutation.isPending
+              ? t('medications.common.saving', 'Saving…')
+              : t('medications.common.save', 'Save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -363,33 +406,41 @@ const formatDaysOfWeek = (days: number[] | null) => {
 };
 
 const formatScheduleDescription = (sched: MedicationSchedule) => {
+  // Outside a React component, so use the i18n instance directly. English fallbacks preserved.
   const timeStr = sched.time_of_day
-    ? ` at ${sched.time_of_day.substring(0, 5)}`
+    ? i18n.t('medications.scheduleDesc.atTime', ' at {{time}}', {
+        time: sched.time_of_day.substring(0, 5),
+      })
     : '';
-  const mealStr = sched.with_meal ? ` (${sched.with_meal} meal)` : '';
+  const mealStr = sched.with_meal
+    ? i18n.t('medications.scheduleDesc.mealSuffix', ' ({{meal}} meal)', {
+        meal: sched.with_meal,
+      })
+    : '';
 
   switch (sched.schedule_type_id) {
     case 'daily':
-      return `Daily${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.daily', 'Daily')}${timeStr}${mealStr}`;
     case 'weekly':
     case 'specific_days':
-      return `Weekly on ${formatDaysOfWeek(sched.days_of_week)}${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.weeklyOn', 'Weekly on {{days}}', { days: formatDaysOfWeek(sched.days_of_week) })}${timeStr}${mealStr}`;
     case 'every_n_days':
-      return `Every ${sched.interval_days} days${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.everyNDays', 'Every {{n}} days', { n: sched.interval_days })}${timeStr}${mealStr}`;
     case 'cyclic':
-      return `Cycle: ${sched.cycle_on_days} days on, ${sched.cycle_off_days} days off${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.cyclic', 'Cycle: {{on}} days on, {{off}} days off', { on: sched.cycle_on_days, off: sched.cycle_off_days })}${timeStr}${mealStr}`;
     case 'monthly':
-      return `Monthly on day ${sched.day_of_month}${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.monthly', 'Monthly on day {{day}}', { day: sched.day_of_month })}${timeStr}${mealStr}`;
     case 'prn':
-      return `As needed (PRN)${sched.prn_reason ? `: ${sched.prn_reason}` : ''}`;
+      return `${i18n.t('medications.scheduleDesc.prn', 'As needed (PRN)')}${sched.prn_reason ? `: ${sched.prn_reason}` : ''}`;
     case 'taper':
-      return `Taper / titration${timeStr}${mealStr}`;
+      return `${i18n.t('medications.scheduleDesc.taper', 'Taper / titration')}${timeStr}${mealStr}`;
     default:
       return `${sched.schedule_type_id}${timeStr}${mealStr}`;
   }
 };
 
 function ScheduleManager({ med }: { med: MedicationDetail }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');
   const [timeOfDay, setTimeOfDay] = useState('09:00');
@@ -473,25 +524,31 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <div>
           <CardTitle className="text-base font-semibold">
-            Schedules & Reminders
+            {t('medications.schedule.heading', 'Schedules & Reminders')}
           </CardTitle>
           <CardDescription>
-            Configure reminders and intake rules
+            {t(
+              'medications.schedule.subheading',
+              'Configure reminders and intake rules'
+            )}
           </CardDescription>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
+              <Plus className="mr-1 h-3.5 w-3.5" />{' '}
+              {t('medications.schedule.addRule', 'Add Rule')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Schedule Rule</DialogTitle>
+              <DialogTitle>
+                {t('medications.schedule.title', 'Add Schedule Rule')}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label>Schedule Type</Label>
+                <Label>{t('medications.schedule.type', 'Schedule Type')}</Label>
                 <Select
                   value={scheduleTypeId}
                   onValueChange={setScheduleTypeId}
@@ -500,21 +557,36 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Every day</SelectItem>
-                    <SelectItem value="weekly">
-                      Specific days of week
+                    <SelectItem value="daily">
+                      {t('medications.schedule.daily', 'Every day')}
                     </SelectItem>
-                    <SelectItem value="every_n_days">Every N days</SelectItem>
-                    <SelectItem value="cyclic">Cyclic (on/off)</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="prn">As needed (PRN)</SelectItem>
+                    <SelectItem value="weekly">
+                      {t(
+                        'medications.schedule.weekly',
+                        'Specific days of week'
+                      )}
+                    </SelectItem>
+                    <SelectItem value="every_n_days">
+                      {t('medications.schedule.everyNDays', 'Every N days')}
+                    </SelectItem>
+                    <SelectItem value="cyclic">
+                      {t('medications.schedule.cyclic', 'Cyclic (on/off)')}
+                    </SelectItem>
+                    <SelectItem value="monthly">
+                      {t('medications.schedule.monthly', 'Monthly')}
+                    </SelectItem>
+                    <SelectItem value="prn">
+                      {t('medications.schedule.prn', 'As needed (PRN)')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {scheduleTypeId !== 'prn' && (
                 <div className="space-y-2">
-                  <Label htmlFor="time-of-day">Time of Day</Label>
+                  <Label htmlFor="time-of-day">
+                    {t('medications.schedule.timeOfDay', 'Time of Day')}
+                  </Label>
                   <Input
                     id="time-of-day"
                     type="time"
@@ -526,7 +598,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
 
               {scheduleTypeId === 'weekly' && (
                 <div className="space-y-2">
-                  <Label>Days of Week</Label>
+                  <Label>
+                    {t('medications.schedule.daysOfWeek', 'Days of Week')}
+                  </Label>
                   <div className="flex gap-2 justify-between">
                     {DAYS.map((day) => (
                       <button
@@ -548,7 +622,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
 
               {scheduleTypeId === 'every_n_days' && (
                 <div className="space-y-2">
-                  <Label htmlFor="interval-days">Interval (Days)</Label>
+                  <Label htmlFor="interval-days">
+                    {t('medications.schedule.interval', 'Interval (Days)')}
+                  </Label>
                   <Input
                     id="interval-days"
                     type="number"
@@ -561,7 +637,12 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
 
               {scheduleTypeId === 'monthly' && (
                 <div className="space-y-2">
-                  <Label htmlFor="day-of-month">Day of Month (1-31)</Label>
+                  <Label htmlFor="day-of-month">
+                    {t(
+                      'medications.schedule.dayOfMonth',
+                      'Day of Month (1-31)'
+                    )}
+                  </Label>
                   <Input
                     id="day-of-month"
                     type="number"
@@ -576,7 +657,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
               {scheduleTypeId === 'cyclic' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cycle-on">Days On</Label>
+                    <Label htmlFor="cycle-on">
+                      {t('medications.schedule.daysOn', 'Days On')}
+                    </Label>
                     <Input
                       id="cycle-on"
                       type="number"
@@ -586,7 +669,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cycle-off">Days Off</Label>
+                    <Label htmlFor="cycle-off">
+                      {t('medications.schedule.daysOff', 'Days Off')}
+                    </Label>
                     <Input
                       id="cycle-off"
                       type="number"
@@ -601,16 +686,23 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
               {scheduleTypeId === 'prn' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="prn-reason">Reason (Optional)</Label>
+                    <Label htmlFor="prn-reason">
+                      {t('medications.schedule.prnReason', 'Reason (Optional)')}
+                    </Label>
                     <Input
                       id="prn-reason"
-                      placeholder="e.g. Pain"
+                      placeholder={t(
+                        'medications.schedule.prnReasonPlaceholder',
+                        'e.g. Pain'
+                      )}
                       value={prnReason}
                       onChange={(e) => setPrnReason(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="prn-max">Max Doses / Day</Label>
+                    <Label htmlFor="prn-max">
+                      {t('medications.schedule.prnMax', 'Max Doses / Day')}
+                    </Label>
                     <Input
                       id="prn-max"
                       type="number"
@@ -625,7 +717,12 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dose-override">Dose Amount (Optional)</Label>
+                  <Label htmlFor="dose-override">
+                    {t(
+                      'medications.schedule.doseOverride',
+                      'Dose Amount (Optional)'
+                    )}
+                  </Label>
                   <Input
                     id="dose-override"
                     type="number"
@@ -636,7 +733,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>With Meal</Label>
+                  <Label>
+                    {t('medications.schedule.withMeal', 'With Meal')}
+                  </Label>
                   <Select
                     value={withMeal || 'none'}
                     onValueChange={(val) =>
@@ -647,10 +746,18 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Any time</SelectItem>
-                      <SelectItem value="before">Before meal</SelectItem>
-                      <SelectItem value="with">With meal</SelectItem>
-                      <SelectItem value="after">After meal</SelectItem>
+                      <SelectItem value="none">
+                        {t('medications.schedule.anyTime', 'Any time')}
+                      </SelectItem>
+                      <SelectItem value="before">
+                        {t('medications.schedule.beforeMeal', 'Before meal')}
+                      </SelectItem>
+                      <SelectItem value="with">
+                        {t('medications.schedule.withMealOpt', 'With meal')}
+                      </SelectItem>
+                      <SelectItem value="after">
+                        {t('medications.schedule.afterMeal', 'After meal')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -658,7 +765,12 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start-date">Start Date (Optional)</Label>
+                  <Label htmlFor="start-date">
+                    {t(
+                      'medications.schedule.startDate',
+                      'Start Date (Optional)'
+                    )}
+                  </Label>
                   <Input
                     id="start-date"
                     type="date"
@@ -667,7 +779,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end-date">End Date (Optional)</Label>
+                  <Label htmlFor="end-date">
+                    {t('medications.schedule.endDate', 'End Date (Optional)')}
+                  </Label>
                   <Input
                     id="end-date"
                     type="date"
@@ -679,7 +793,9 @@ function ScheduleManager({ med }: { med: MedicationDetail }) {
             </div>
             <DialogFooter>
               <Button onClick={handleSave} disabled={addMutation.isPending}>
-                {addMutation.isPending ? 'Saving...' : 'Add Rule'}
+                {addMutation.isPending
+                  ? t('medications.common.saving', 'Saving…')
+                  : t('medications.schedule.addRule', 'Add Rule')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -907,6 +1023,7 @@ function CountUp({
 }
 
 export default function Medications() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
     'today'
   );
@@ -1020,12 +1137,14 @@ export default function Medications() {
   const prnMeds = useMemo(() => {
     return meds.filter((m) => {
       if (!m.is_active) return false;
+      // Exclude if it's currently due today to prevent showing it twice
+      if (dueDoses.some((d) => d.medication.id === m.id)) return false;
       if (!m.schedules || m.schedules.length === 0) return true;
       return m.schedules.some(
         (s: MedicationSchedule) => s.schedule_type_id === 'prn'
       );
     });
-  }, [meds]);
+  }, [meds, dueDoses]);
 
   const completedDosesCount = useMemo(() => {
     return dueDoses.filter((due) =>
@@ -1093,10 +1212,20 @@ export default function Medications() {
   }, [meds, selectedDate, recentEntries]);
 
   // The next GLP-1 dose due today (if any), for the next-injection banner.
-  const nextGlpDue = useMemo(
-    () => dueDoses.find((d) => d.medication.is_glp1) ?? null,
-    [dueDoses]
-  );
+  const nextGlpDue = useMemo(() => {
+    return (
+      dueDoses.find((d) => {
+        if (!d.medication.is_glp1) return false;
+        // Check if already logged on the selected date to hide the due banner once taken/skipped
+        const isLogged = entries.some(
+          (e) =>
+            e.schedule_id === d.schedule.id &&
+            (e.status === 'taken' || e.status === 'skipped')
+        );
+        return !isLogged;
+      }) ?? null
+    );
+  }, [dueDoses, entries]);
 
   // Pattern Correlation Calculations
   const patternDoses = useMemo(() => {
@@ -1367,7 +1496,9 @@ export default function Medications() {
             }`}
           >
             <Clock className="w-4 h-4" />
-            <span className="text-xs font-semibold">Log</span>
+            <span className="text-xs font-semibold">
+              {t('medications.tabs.log', 'Log')}
+            </span>
           </Button>
           <Button
             variant={activeTab === 'cabinet' ? 'secondary' : 'ghost'}
@@ -1380,7 +1511,9 @@ export default function Medications() {
             }`}
           >
             <Package className="w-4 h-4" />
-            <span className="text-xs font-semibold">Cabinet</span>
+            <span className="text-xs font-semibold">
+              {t('medications.tabs.cabinet', 'Cabinet')}
+            </span>
           </Button>
           <Button
             variant={activeTab === 'symptoms' ? 'secondary' : 'ghost'}
@@ -1393,7 +1526,9 @@ export default function Medications() {
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span className="text-xs font-semibold">Symptoms</span>
+            <span className="text-xs font-semibold">
+              {t('medications.tabs.symptoms', 'Symptoms')}
+            </span>
           </Button>
           <span className="mx-2 text-muted-foreground/30 hidden sm:inline">
             |
@@ -1466,7 +1601,10 @@ export default function Medications() {
                   : '#ef4444';
             const tiles = [
               {
-                label: selectedDate === today ? 'Doses today' : 'Doses',
+                label:
+                  selectedDate === today
+                    ? t('medications.today.dosesToday', 'Doses today')
+                    : t('medications.today.doses', 'Doses'),
                 value: `${completedDosesCount}/${dueDoses.length}`,
                 emoji: '💊',
                 grad: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-transparent',
@@ -1474,7 +1612,7 @@ export default function Medications() {
                 num: 'text-emerald-600 dark:text-emerald-400',
               },
               {
-                label: '14-day adherence',
+                label: t('medications.today.adherence14', '14-day adherence'),
                 value: `${adherence14.pct}%`,
                 emoji: '✅',
                 grad: 'from-blue-50 to-white dark:from-blue-950/40 dark:to-transparent',
@@ -1482,7 +1620,7 @@ export default function Medications() {
                 num: 'text-blue-600 dark:text-blue-400',
               },
               {
-                label: 'Perfect days (14d)',
+                label: t('medications.today.perfectDays', 'Perfect days (14d)'),
                 value: String(adherence14.perfectDays),
                 emoji: '🏆',
                 grad: 'from-amber-50 to-white dark:from-amber-950/40 dark:to-transparent',
@@ -1555,10 +1693,19 @@ export default function Medications() {
                   {/* 14-day adherence strip + streak */}
                   <div>
                     <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Last 14 days</span>
+                      <span>
+                        {t('medications.today.last14', 'Last 14 days')}
+                      </span>
                       {adherence14.streak > 0 && (
                         <span className="flex items-center gap-1 font-semibold text-orange-500">
-                          🔥 {adherence14.streak}-day streak
+                          🔥{' '}
+                          {t(
+                            'medications.today.streak',
+                            '{{count}}-day streak',
+                            {
+                              count: adherence14.streak,
+                            }
+                          )}
                         </span>
                       )}
                     </div>
@@ -1596,7 +1743,12 @@ export default function Medications() {
               <div>
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-500" />{' '}
-                  {selectedDate === today ? "Today's" : 'Medication'} Checklist
+                  {selectedDate === today
+                    ? t('medications.today.checklistToday', "Today's Checklist")
+                    : t(
+                        'medications.today.checklistMed',
+                        'Medication Checklist'
+                      )}
                 </CardTitle>
                 <CardDescription className="mt-1">
                   {dueDoses.length === 0
@@ -1627,198 +1779,231 @@ export default function Medications() {
           <div className="grid gap-6 md:grid-cols-[1fr_350px]">
             {/* Scheduled & PRN Column */}
             <div className="space-y-6">
-              {/* Checklist */}
+              {/* Today's Medications */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
-                      <Clock className="h-3.5 w-3.5 text-blue-500" />
+                      <Pill className="h-3.5 w-3.5 text-blue-500" />
                     </span>
-                    Scheduled Doses
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {loadingMeds && (
-                    <p className="text-sm text-muted-foreground">
-                      Loading checklist…
-                    </p>
-                  )}
-                  {!loadingMeds && dueDoses.length === 0 && (
-                    <div className="text-center py-6 text-sm text-muted-foreground">
-                      No medication doses scheduled for{' '}
-                      {selectedDate === today ? 'today' : 'this day'}. Add a
-                      schedule in the Cabinet view.
-                    </div>
-                  )}
-                  {!loadingMeds &&
-                    dueDoses.map((due, idx) => {
-                      const entry = entries.find(
-                        (e) => e.schedule_id === due.schedule.id
-                      );
-                      const isLogged =
-                        entry &&
-                        (entry.status === 'taken' ||
-                          entry.status === 'skipped');
-                      const isSnoozed = entry && entry.status === 'snoozed';
-
-                      return (
-                        <div
-                          key={`${due.medication.id}-${due.schedule.id}-${idx}`}
-                          className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg transition-all ${
-                            isLogged
-                              ? 'bg-muted/30 border-muted text-muted-foreground'
-                              : isSnoozed
-                                ? 'border-amber-200 bg-amber-50/20'
-                                : 'bg-card border-border hover:shadow-sm'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 shrink-0">
-                              {isLogged && entry.status === 'taken' ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                              ) : isLogged && entry.status === 'skipped' ? (
-                                <X className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <MedTypeIcon
-                                  typeId={due.medication.type_id}
-                                  isGlp1={due.medication.is_glp1}
-                                  className="h-5 w-5"
-                                />
-                              )}
-                            </div>
-                            <div>
-                              <p
-                                className={`font-semibold text-sm ${isLogged ? 'line-through' : ''}`}
-                              >
-                                {due.medication.display_name ||
-                                  due.medication.name}
-                              </p>
-                              <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
-                                <span>
-                                  {due.schedule.dose_amount ||
-                                    due.medication.strength_value}{' '}
-                                  {due.schedule.dose_amount
-                                    ? due.medication.type_id
-                                    : due.medication.strength_unit}
-                                </span>
-                                <span>•</span>
-                                <span className="flex items-center gap-1 font-medium text-primary">
-                                  <Clock className="h-3 w-3" />
-                                  {due.schedule.time_of_day
-                                    ? due.schedule.time_of_day.substring(0, 5)
-                                    : 'Any time'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-end gap-2 mt-3 sm:mt-0 shrink-0">
-                            {isLogged && entry ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
-                                onClick={() => handleUndoEntry(entry.id)}
-                                disabled={deleteEntryMutation.isPending}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" /> Undo
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
-                                  onClick={() =>
-                                    handleLogScheduled(due, 'snoozed')
-                                  }
-                                  disabled={
-                                    createEntryMutation.isPending || isSnoozed
-                                  }
-                                >
-                                  {isSnoozed ? 'Snoozed' : 'Snooze'}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-xs text-muted-foreground hover:bg-muted"
-                                  onClick={() =>
-                                    handleLogScheduled(due, 'skipped')
-                                  }
-                                  disabled={createEntryMutation.isPending}
-                                >
-                                  Skip
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() =>
-                                    handleLogScheduled(due, 'taken')
-                                  }
-                                  disabled={createEntryMutation.isPending}
-                                >
-                                  Take
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </CardContent>
-              </Card>
-
-              {/* PRN Log */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50">
-                      <Pill className="h-3.5 w-3.5 text-purple-500" />
-                    </span>
-                    Log As Needed (PRN)
+                    Today's medications
                   </CardTitle>
                   <CardDescription>
-                    Log medications that are taken as required rather than on a
-                    fixed schedule
+                    Track scheduled doses and log as-needed medications
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {loadingMeds && (
-                    <p className="text-sm text-muted-foreground">
-                      Loading active medications…
-                    </p>
-                  )}
-                  {!loadingMeds && prnMeds.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-2 text-center">
-                      No PRN or non-scheduled medications configured.
-                    </p>
-                  )}
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {prnMeds.map((med) => (
-                      <Button
-                        key={med.id}
-                        variant="outline"
-                        className="justify-start h-12 flex items-center gap-3"
-                        onClick={() => handleLogPrn(med as MedicationDetail)}
-                        disabled={createEntryMutation.isPending}
-                      >
-                        <MedTypeIcon
-                          typeId={med.type_id}
-                          isGlp1={med.is_glp1}
-                          className="h-4.5 w-4.5 shrink-0"
-                        />
-                        <div className="text-left truncate">
-                          <p className="font-semibold text-xs truncate">
-                            {med.display_name || med.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {med.strength_value
-                              ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                              : med.type_id}
-                          </p>
-                        </div>
-                      </Button>
-                    ))}
+                <CardContent className="space-y-6">
+                  {/* Due Today Group */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+                      <Clock className="h-3.5 w-3.5" /> Due today
+                    </h3>
+
+                    {loadingMeds && (
+                      <p className="text-sm text-muted-foreground">
+                        Loading checklist…
+                      </p>
+                    )}
+                    {!loadingMeds && dueDoses.length === 0 && (
+                      <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-dashed text-center">
+                        No scheduled doses today — log any medication as-needed
+                        below.
+                      </div>
+                    )}
+                    {!loadingMeds &&
+                      dueDoses.map((due, idx) => {
+                        const entry = entries.find(
+                          (e) => e.schedule_id === due.schedule.id
+                        );
+                        const isLogged =
+                          entry &&
+                          (entry.status === 'taken' ||
+                            entry.status === 'skipped');
+                        const isSnoozed = entry && entry.status === 'snoozed';
+
+                        return (
+                          <div
+                            key={`${due.medication.id}-${due.schedule.id}-${idx}`}
+                            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg transition-all ${
+                              isLogged
+                                ? 'bg-muted/30 border-muted text-muted-foreground'
+                                : isSnoozed
+                                  ? 'border-amber-200 bg-amber-50/20'
+                                  : 'bg-card border-border hover:shadow-sm'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 shrink-0">
+                                {isLogged && entry.status === 'taken' ? (
+                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                ) : isLogged && entry.status === 'skipped' ? (
+                                  <X className="h-5 w-5 text-muted-foreground" />
+                                ) : (
+                                  <MedTypeIcon
+                                    typeId={due.medication.type_id}
+                                    isGlp1={due.medication.is_glp1}
+                                    className="h-5 w-5"
+                                  />
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p
+                                    className={`font-semibold text-sm ${isLogged ? 'line-through' : ''}`}
+                                  >
+                                    {due.medication.display_name ||
+                                      due.medication.name}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 border-blue-200 text-blue-700 bg-blue-50/50 dark:border-blue-900 dark:text-blue-300 dark:bg-blue-950/30"
+                                  >
+                                    {t(
+                                      'medications.today.scheduled',
+                                      'Scheduled'
+                                    )}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
+                                  <span>
+                                    {due.schedule.dose_amount ||
+                                      due.medication.strength_value}{' '}
+                                    {due.schedule.dose_amount
+                                      ? due.medication.type_id
+                                      : due.medication.strength_unit}
+                                  </span>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1 font-medium text-primary">
+                                    <Clock className="h-3 w-3" />
+                                    {due.schedule.time_of_day
+                                      ? due.schedule.time_of_day.substring(0, 5)
+                                      : t(
+                                          'medications.schedule.anyTime',
+                                          'Any time'
+                                        )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 mt-3 sm:mt-0 shrink-0">
+                              {isLogged && entry ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
+                                  onClick={() => handleUndoEntry(entry.id)}
+                                  disabled={deleteEntryMutation.isPending}
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />{' '}
+                                  {t('medications.today.undo', 'Undo')}
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
+                                    onClick={() =>
+                                      handleLogScheduled(due, 'snoozed')
+                                    }
+                                    disabled={
+                                      createEntryMutation.isPending || isSnoozed
+                                    }
+                                  >
+                                    {isSnoozed
+                                      ? t(
+                                          'medications.today.snoozed',
+                                          'Snoozed'
+                                        )
+                                      : t('medications.today.snooze', 'Snooze')}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs text-muted-foreground hover:bg-muted"
+                                    onClick={() =>
+                                      handleLogScheduled(due, 'skipped')
+                                    }
+                                    disabled={createEntryMutation.isPending}
+                                  >
+                                    {t('medications.today.skip', 'Skip')}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                    onClick={() =>
+                                      handleLogScheduled(due, 'taken')
+                                    }
+                                    disabled={createEntryMutation.isPending}
+                                  >
+                                    {t('medications.today.take', 'Take')}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* As Needed Group */}
+                  <div className="space-y-3 pt-4 border-t border-border">
+                    <div>
+                      <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+                        <Pill className="h-3.5 w-3.5" /> As needed
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Tap to log a dose now (no fixed schedule or not due
+                        today).
+                      </p>
+                    </div>
+
+                    {loadingMeds && (
+                      <p className="text-sm text-muted-foreground">
+                        Loading active medications…
+                      </p>
+                    )}
+                    {!loadingMeds && prnMeds.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-2 text-center bg-muted/10 rounded-lg border border-dashed">
+                        No as-needed or non-scheduled medications configured.
+                      </p>
+                    )}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {prnMeds.map((med) => (
+                        <Button
+                          key={med.id}
+                          variant="outline"
+                          className="justify-between h-12 flex items-center gap-3 px-3 hover:bg-accent/50 w-full"
+                          onClick={() => handleLogPrn(med as MedicationDetail)}
+                          disabled={createEntryMutation.isPending}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <MedTypeIcon
+                              typeId={med.type_id}
+                              isGlp1={med.is_glp1}
+                              className="h-4.5 w-4.5 shrink-0"
+                            />
+                            <div className="text-left truncate">
+                              <p className="font-semibold text-xs truncate">
+                                {med.display_name || med.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {med.strength_value
+                                  ? `${med.strength_value} ${med.strength_unit ?? ''}`
+                                  : med.type_id}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-950 shrink-0"
+                          >
+                            PRN
+                          </Badge>
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1832,9 +2017,11 @@ export default function Medications() {
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                     </span>
-                    Today's Intake History
+                    Logged today
                   </CardTitle>
-                  <CardDescription>Logged history for today</CardDescription>
+                  <CardDescription>
+                    Everything you've taken or skipped on this date.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {loadingEntries && (
@@ -1844,7 +2031,10 @@ export default function Medications() {
                   )}
                   {!loadingEntries && entries.length === 0 && (
                     <div className="text-center py-8 text-sm text-muted-foreground">
-                      No entries logged yet today.
+                      {t(
+                        'medications.today.noIntake',
+                        'No entries logged yet today.'
+                      )}
                     </div>
                   )}
                   {entries.map((entry) => (
@@ -1922,25 +2112,28 @@ export default function Medications() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               {
-                label: 'Active scripts',
+                label: t('medications.cabinet.activeScripts', 'Active scripts'),
                 value: meds.filter((m) => m.is_active).length,
                 Icon: Pill,
                 color: 'text-primary',
               },
               {
-                label: 'GLP-1 meds',
+                label: t('medications.cabinet.glp1Meds', 'GLP-1 meds'),
                 value: meds.filter((m) => m.is_glp1).length,
                 Icon: Syringe,
                 color: 'text-blue-500',
               },
               {
-                label: 'Scheduled today',
+                label: t(
+                  'medications.cabinet.scheduledToday',
+                  'Scheduled today'
+                ),
                 value: dueDoses.length,
                 Icon: Clock,
                 color: 'text-amber-500',
               },
               {
-                label: 'Total meds',
+                label: t('medications.cabinet.totalMeds', 'Total meds'),
                 value: meds.length,
                 Icon: Activity,
                 color: 'text-muted-foreground',
@@ -2139,17 +2332,23 @@ export default function Medications() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-red-500" /> Log Symptom
+                    <Activity className="h-5 w-5 text-red-500" />{' '}
+                    {t('medications.symptoms.logTitle', 'Log Symptom')}
                   </CardTitle>
                   <CardDescription>
-                    Log severity and physical context of your side effects
+                    {t(
+                      'medications.symptoms.subtitle',
+                      'Log severity and physical context of your side effects'
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Select Symptom */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <Label>Symptom</Label>
+                      <Label>
+                        {t('medications.symptoms.symptom', 'Symptom')}
+                      </Label>
                       <Dialog
                         open={symptomCustomOpen}
                         onOpenChange={setSymptomCustomOpen}
@@ -2160,17 +2359,26 @@ export default function Medications() {
                             size="sm"
                             className="h-auto p-0 text-xs text-primary flex items-center gap-0.5"
                           >
-                            <Plus className="h-3 w-3" /> Custom
+                            <Plus className="h-3 w-3" />{' '}
+                            {t('medications.common.custom', 'Custom')}
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Add Custom Symptom</DialogTitle>
+                            <DialogTitle>
+                              {t(
+                                'medications.symptoms.addCustom',
+                                'Add Custom Symptom'
+                              )}
+                            </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4 py-2">
                             <div className="space-y-2">
                               <Label htmlFor="custom-sym-name">
-                                Symptom Name (internal)
+                                {t(
+                                  'medications.symptoms.customName',
+                                  'Symptom Name (internal)'
+                                )}
                               </Label>
                               <Input
                                 id="custom-sym-name"
@@ -2178,12 +2386,18 @@ export default function Medications() {
                                 onChange={(e) =>
                                   setCustomSymptomInput(e.target.value)
                                 }
-                                placeholder="e.g. skin_rash"
+                                placeholder={t(
+                                  'medications.symptoms.customNamePlaceholder',
+                                  'e.g. skin_rash'
+                                )}
                               />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="custom-sym-disp">
-                                Display Label
+                                {t(
+                                  'medications.symptoms.displayLabel',
+                                  'Display Label'
+                                )}
                               </Label>
                               <Input
                                 id="custom-sym-disp"
@@ -2191,7 +2405,10 @@ export default function Medications() {
                                 onChange={(e) =>
                                   setCustomSymptomDisplayName(e.target.value)
                                 }
-                                placeholder="e.g. Skin Rash"
+                                placeholder={t(
+                                  'medications.symptoms.displayLabelPlaceholder',
+                                  'e.g. Skin Rash'
+                                )}
                               />
                             </div>
                           </div>
@@ -2200,7 +2417,10 @@ export default function Medications() {
                               onClick={handleCreateCustomSymptom}
                               disabled={createCustomSymptomMutation.isPending}
                             >
-                              Save Custom Symptom
+                              {t(
+                                'medications.symptoms.saveCustom',
+                                'Save Custom Symptom'
+                              )}
                             </Button>
                           </DialogFooter>
                         </DialogContent>
@@ -2231,7 +2451,12 @@ export default function Medications() {
                                 {SYMPTOM_EMOJI[opt.name] ?? '📝'}
                               </span>
                               <span className="text-[11px] font-medium leading-tight">
-                                {opt.displayName}
+                                {opt.isCustom
+                                  ? opt.displayName
+                                  : t(
+                                      'medications.symptomNames.' + opt.name,
+                                      opt.displayName
+                                    )}
                               </span>
                             </button>
                             {opt.isGlp1 && !opt.isCustom && (
@@ -2262,7 +2487,9 @@ export default function Medications() {
                   {/* Severity Slider */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <Label>Severity</Label>
+                      <Label>
+                        {t('medications.symptoms.severity', 'Severity')}
+                      </Label>
                       <span className="text-sm font-semibold tabular-nums text-red-500">
                         {severity[0]} / 10
                       </span>
@@ -2276,22 +2503,34 @@ export default function Medications() {
                       className="py-1"
                     />
                     <div className="flex justify-between text-[10px] text-muted-foreground px-0.5">
-                      <span>Mild (1-3)</span>
-                      <span>Moderate (4-6)</span>
-                      <span>Severe (7-10)</span>
+                      <span>
+                        {t('medications.symptoms.mild', 'Mild (1-3)')}
+                      </span>
+                      <span>
+                        {t('medications.symptoms.moderate', 'Moderate (4-6)')}
+                      </span>
+                      <span>
+                        {t('medications.symptoms.severe', 'Severe (7-10)')}
+                      </span>
                     </div>
                   </div>
 
                   {/* Body Location Pin */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>Primary Location</Label>
+                      <Label>
+                        {t(
+                          'medications.symptoms.primaryLocation',
+                          'Primary Location'
+                        )}
+                      </Label>
                       <button
                         type="button"
                         onClick={() => setShowAddLocation((s) => !s)}
                         className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
                       >
-                        <Plus className="h-3 w-3" /> Custom
+                        <Plus className="h-3 w-3" />{' '}
+                        {t('medications.common.custom', 'Custom')}
                       </button>
                     </div>
                     {showAddLocation && (
@@ -2305,7 +2544,10 @@ export default function Medications() {
                               addCustomLocation();
                             }
                           }}
-                          placeholder="e.g. Left shoulder, Jaw…"
+                          placeholder={t(
+                            'medications.symptoms.customLocationPlaceholder',
+                            'e.g. Left shoulder, Jaw…'
+                          )}
                           className="h-8 text-xs"
                         />
                         <Button
@@ -2344,7 +2586,10 @@ export default function Medications() {
                             }`}
                           >
                             <span className="mr-1">{LOCATION_EMOJI[loc]}</span>
-                            {locationLabel(loc)}
+                            {t(
+                              'medications.locations.' + loc,
+                              locationLabel(loc)
+                            )}
                           </button>
                         );
                       })}
@@ -2386,7 +2631,10 @@ export default function Medications() {
                     <div className="space-y-2 border rounded-md p-3 bg-muted/20">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Info className="h-3.5 w-3.5 text-muted-foreground" />{' '}
-                        Bowel Log (Bristol Stool Scale)
+                        {t(
+                          'medications.symptoms.bristol',
+                          'Bowel Log (Bristol Stool Scale)'
+                        )}
                       </Label>
                       <p className="text-[10px] text-muted-foreground mb-2">
                         Select the stool type that best describes the event:
@@ -2428,7 +2676,10 @@ export default function Medications() {
                   {/* Optional Linked Medication */}
                   <div className="space-y-2">
                     <Label htmlFor="linked-med">
-                      Link to Medication (Optional)
+                      {t(
+                        'medications.symptoms.linkMed',
+                        'Link to Medication (Optional)'
+                      )}
                     </Label>
                     <Select
                       value={linkedMedId || 'none'}
@@ -2437,11 +2688,19 @@ export default function Medications() {
                       }
                     >
                       <SelectTrigger id="linked-med">
-                        <SelectValue placeholder="No medication linked" />
+                        <SelectValue
+                          placeholder={t(
+                            'medications.symptoms.noMedLinked',
+                            'No medication linked'
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">
-                          No medication linked
+                          {t(
+                            'medications.symptoms.noMedLinked',
+                            'No medication linked'
+                          )}
                         </SelectItem>
                         {meds.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
@@ -2454,10 +2713,15 @@ export default function Medications() {
 
                   {/* Context Text */}
                   <div className="space-y-2">
-                    <Label htmlFor="symptom-notes">Context / Notes</Label>
+                    <Label htmlFor="symptom-notes">
+                      {t('medications.symptoms.context', 'Context / Notes')}
+                    </Label>
                     <Textarea
                       id="symptom-notes"
-                      placeholder="e.g. Occurred 4 hours after taking my dinner dose."
+                      placeholder={t(
+                        'medications.symptoms.contextPlaceholder',
+                        'e.g. Occurred 4 hours after taking my dinner dose.'
+                      )}
                       value={contextText}
                       onChange={(e) => setContextText(e.target.value)}
                       className="resize-none h-16 text-xs"
@@ -2470,8 +2734,8 @@ export default function Medications() {
                     className="w-full bg-red-600 hover:bg-red-700 text-white"
                   >
                     {createSymptomEntryMutation.isPending
-                      ? 'Logging…'
-                      : 'Log Symptom'}
+                      ? t('medications.common.logging', 'Logging…')
+                      : t('medications.symptoms.logTitle', 'Log Symptom')}
                   </Button>
                 </CardContent>
               </Card>
@@ -2483,17 +2747,20 @@ export default function Medications() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    GI sub-tracker
+                    {t('medications.gi.title', 'GI sub-tracker')}
                   </CardTitle>
                   <CardDescription>
-                    Per-week rates over the last 30 days
+                    {t(
+                      'medications.gi.subtitle',
+                      'Per-week rates over the last 30 days'
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {[
                       {
-                        label: 'Nausea / wk',
+                        label: t('medications.gi.nausea', 'Nausea / wk'),
                         value: giStats.nausea,
                         emoji: '🤢',
                         series: giSeries.nausea,
@@ -2502,7 +2769,7 @@ export default function Medications() {
                         num: 'text-emerald-600 dark:text-emerald-400',
                       },
                       {
-                        label: 'Vomiting / wk',
+                        label: t('medications.gi.vomiting', 'Vomiting / wk'),
                         value: giStats.vomiting,
                         emoji: '🤮',
                         series: giSeries.vomiting,
@@ -2511,7 +2778,7 @@ export default function Medications() {
                         num: 'text-violet-600 dark:text-violet-400',
                       },
                       {
-                        label: 'Reflux / wk',
+                        label: t('medications.gi.reflux', 'Reflux / wk'),
                         value: giStats.reflux,
                         emoji: '🔥',
                         series: giSeries.reflux,
@@ -2520,7 +2787,7 @@ export default function Medications() {
                         num: 'text-orange-600 dark:text-orange-400',
                       },
                       {
-                        label: 'Avg Bristol',
+                        label: t('medications.gi.avgBristol', 'Avg Bristol'),
                         value: giStats.avgBristol,
                         emoji: '💩',
                         series: giSeries.bristol,
@@ -2586,11 +2853,16 @@ export default function Medications() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
                       <ShieldAlert className="h-4.5 w-4.5 text-amber-500 animate-pulse" />{' '}
-                      Side-Effect Insights & Hints
+                      {t(
+                        'medications.insights.title',
+                        'Side-Effect Insights & Hints'
+                      )}
                     </CardTitle>
                     <CardDescription>
-                      Pharmacokinetic correlations overlaying recent dose
-                      timings
+                      {t(
+                        'medications.insights.subtitle',
+                        'Pharmacokinetic correlations overlaying recent dose timings'
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2.5">
@@ -2617,9 +2889,11 @@ export default function Medications() {
                       </div>
                     ))}
                     <p className="text-[10px] text-muted-foreground italic flex items-center gap-1 mt-1">
-                      <Info className="h-3 w-3" /> Insights are calculated over
-                      a rolling 30-day window. These are educational
-                      estimations, not clinical advice.
+                      <Info className="h-3 w-3" />{' '}
+                      {t(
+                        'medications.insights.disclaimer',
+                        'Insights are calculated over a rolling 30-day window. These are educational estimations, not clinical advice.'
+                      )}
                     </p>
                   </CardContent>
                 </Card>
@@ -2629,7 +2903,10 @@ export default function Medications() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    Symptom Activity Calendar
+                    {t(
+                      'medications.symptoms.calendarTitle',
+                      'Symptom Activity Calendar'
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Symptom logging frequency and severity over the past 30 days
@@ -2704,11 +2981,24 @@ export default function Medications() {
                           <div className="absolute -top-16 left-1/2 z-10 hidden w-32 -translate-x-1/2 rounded border bg-popover p-2 text-center text-[10px] text-popover-foreground shadow-md group-hover:block">
                             <p className="font-semibold">{day.dateString}</p>
                             <p>
-                              {day.logs.length} logged symptom
-                              {day.logs.length === 1 ? '' : 's'}
+                              {t(
+                                'medications.calendar.loggedCount',
+                                '{{count}} logged symptom',
+                                {
+                                  count: day.logs.length,
+                                }
+                              )}
                             </p>
                             {day.maxSeverity > 0 && (
-                              <p>Max severity: {day.maxSeverity}</p>
+                              <p>
+                                {t(
+                                  'medications.calendar.maxSeverity',
+                                  'Max severity: {{n}}',
+                                  {
+                                    n: day.maxSeverity,
+                                  }
+                                )}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -2740,7 +3030,7 @@ export default function Medications() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">
-                    Logged Symptom Logs
+                    {t('medications.symptoms.logsTitle', 'Logged Symptom Logs')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -2782,7 +3072,11 @@ export default function Medications() {
                               variant="outline"
                               className="text-[10px] text-brown-600 border-brown-200"
                             >
-                              Bristol Type {log.bristol_type}
+                              {t(
+                                'medications.symptoms.bristolType',
+                                'Bristol Type {{n}}',
+                                { n: log.bristol_type }
+                              )}
                             </Badge>
                           )}
                         </div>

@@ -10,11 +10,19 @@ export interface CorrelationDataPoint {
  */
 export function calculatePearsonCorrelation(
   x: number[],
-  y: number[]
-): { r: number; confidence: number; strength: 'none' | 'weak' | 'moderate' | 'strong' } {
+  y: number[],
+): {
+  r: number;
+  confidence: number;
+  strength: "none" | "weak" | "moderate" | "strong";
+  n: number;
+} {
   const n = x.length;
-  if (n < 3) {
-    return { r: 0, confidence: 0, strength: 'none' };
+  // Require a minimum number of overlapping observations before reporting a correlation,
+  // so a couple of stray data points can't masquerade as a real signal.
+  const MIN_SAMPLE = 5;
+  if (n < MIN_SAMPLE) {
+    return { r: 0, confidence: 0, strength: "none", n };
   }
 
   let sumX = 0;
@@ -40,16 +48,16 @@ export function calculatePearsonCorrelation(
   const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
 
   if (den === 0) {
-    return { r: 0, confidence: 0, strength: 'none' };
+    return { r: 0, confidence: 0, strength: "none", n };
   }
 
   const r = num / den;
   const absR = Math.abs(r);
 
-  let strength: 'none' | 'weak' | 'moderate' | 'strong' = 'none';
-  if (absR >= 0.7) strength = 'strong';
-  else if (absR >= 0.4) strength = 'moderate';
-  else if (absR >= 0.1) strength = 'weak';
+  let strength: "none" | "weak" | "moderate" | "strong" = "none";
+  if (absR >= 0.7) strength = "strong";
+  else if (absR >= 0.4) strength = "moderate";
+  else if (absR >= 0.1) strength = "weak";
 
   // Confidence is a function of number of data points and strength
   let confidence = Math.round(absR * 100);
@@ -59,7 +67,7 @@ export function calculatePearsonCorrelation(
     confidence = Math.min(100, Math.round(confidence * 1.2)); // Bonus for larger sample size
   }
 
-  return { r, confidence, strength };
+  return { r, confidence, strength, n };
 }
 
 /**
@@ -67,7 +75,11 @@ export function calculatePearsonCorrelation(
  */
 export function getHydrationConstipationCorrelation(
   nutritionData: Array<{ date: string; water?: number | null }>,
-  symptomEntries: Array<{ entry_date: string; symptom_name_snapshot: string; severity: number }>
+  symptomEntries: Array<{
+    entry_date: string;
+    symptom_name_snapshot: string;
+    severity: number;
+  }>,
 ) {
   const waterMap: Record<string, number> = {};
   for (const day of nutritionData) {
@@ -76,8 +88,8 @@ export function getHydrationConstipationCorrelation(
 
   const constipationMap: Record<string, number> = {};
   for (const s of symptomEntries) {
-    if (s.symptom_name_snapshot.toLowerCase().trim() === 'constipation') {
-      const dateStr = s.entry_date.split('T')[0];
+    if (s.symptom_name_snapshot.toLowerCase().trim() === "constipation") {
+      const dateStr = s.entry_date.split("T")[0];
       if (dateStr) {
         const current = constipationMap[dateStr] || 0;
         const severity = Number(s.severity) || 0;
@@ -88,7 +100,9 @@ export function getHydrationConstipationCorrelation(
     }
   }
 
-  const allDates = Array.from(new Set([...Object.keys(waterMap), ...Object.keys(constipationMap)])).sort();
+  const allDates = Array.from(
+    new Set([...Object.keys(waterMap), ...Object.keys(constipationMap)]),
+  ).sort();
 
   const x: number[] = [];
   const y: number[] = [];
@@ -115,7 +129,11 @@ export function getHydrationConstipationCorrelation(
  */
 export function getProteinNauseaCorrelation(
   nutritionData: Array<{ date: string; protein?: number | null }>,
-  symptomEntries: Array<{ entry_date: string; symptom_name_snapshot: string; severity: number }>
+  symptomEntries: Array<{
+    entry_date: string;
+    symptom_name_snapshot: string;
+    severity: number;
+  }>,
 ) {
   const proteinMap: Record<string, number> = {};
   for (const day of nutritionData) {
@@ -124,8 +142,8 @@ export function getProteinNauseaCorrelation(
 
   const nauseaMap: Record<string, number> = {};
   for (const s of symptomEntries) {
-    if (s.symptom_name_snapshot.toLowerCase().trim() === 'nausea') {
-      const dateStr = s.entry_date.split('T')[0];
+    if (s.symptom_name_snapshot.toLowerCase().trim() === "nausea") {
+      const dateStr = s.entry_date.split("T")[0];
       if (dateStr) {
         const current = nauseaMap[dateStr] || 0;
         const severity = Number(s.severity) || 0;
@@ -136,7 +154,9 @@ export function getProteinNauseaCorrelation(
     }
   }
 
-  const allDates = Array.from(new Set([...Object.keys(proteinMap), ...Object.keys(nauseaMap)])).sort();
+  const allDates = Array.from(
+    new Set([...Object.keys(proteinMap), ...Object.keys(nauseaMap)]),
+  ).sort();
   const x: number[] = [];
   const y: number[] = [];
   const points: CorrelationDataPoint[] = [];
@@ -161,8 +181,15 @@ export function getProteinNauseaCorrelation(
  * Aligns daily sleep duration (from sleepAnalyticsData or sleepEntries) and fatigue severity (from symptomEntries).
  */
 export function getSleepFatigueCorrelation(
-  sleepData: Array<{ date: string; total_sleep_duration_hours?: number | null }>,
-  symptomEntries: Array<{ entry_date: string; symptom_name_snapshot: string; severity: number }>
+  sleepData: Array<{
+    date: string;
+    total_sleep_duration_hours?: number | null;
+  }>,
+  symptomEntries: Array<{
+    entry_date: string;
+    symptom_name_snapshot: string;
+    severity: number;
+  }>,
 ) {
   const sleepMap: Record<string, number> = {};
   for (const s of sleepData) {
@@ -171,8 +198,8 @@ export function getSleepFatigueCorrelation(
 
   const fatigueMap: Record<string, number> = {};
   for (const s of symptomEntries) {
-    if (s.symptom_name_snapshot.toLowerCase().trim() === 'fatigue') {
-      const dateStr = s.entry_date.split('T')[0];
+    if (s.symptom_name_snapshot.toLowerCase().trim() === "fatigue") {
+      const dateStr = s.entry_date.split("T")[0];
       if (dateStr) {
         const current = fatigueMap[dateStr] || 0;
         const severity = Number(s.severity) || 0;
@@ -183,7 +210,9 @@ export function getSleepFatigueCorrelation(
     }
   }
 
-  const allDates = Array.from(new Set([...Object.keys(sleepMap), ...Object.keys(fatigueMap)])).sort();
+  const allDates = Array.from(
+    new Set([...Object.keys(sleepMap), ...Object.keys(fatigueMap)]),
+  ).sort();
   const x: number[] = [];
   const y: number[] = [];
   const points: CorrelationDataPoint[] = [];
@@ -209,8 +238,12 @@ export function getSleepFatigueCorrelation(
  */
 export function getDoseSymptomCorrelation(
   medEntriesOrInjections: Array<{ date: string; dose: number }>,
-  symptomEntries: Array<{ entry_date: string; symptom_name_snapshot: string; severity: number }>,
-  symptomName: string
+  symptomEntries: Array<{
+    entry_date: string;
+    symptom_name_snapshot: string;
+    severity: number;
+  }>,
+  symptomName: string,
 ) {
   const doseMap: Record<string, number> = {};
   for (const entry of medEntriesOrInjections) {
@@ -221,7 +254,7 @@ export function getDoseSymptomCorrelation(
   const targetSym = symptomName.toLowerCase().trim();
   for (const s of symptomEntries) {
     if (s.symptom_name_snapshot.toLowerCase().trim() === targetSym) {
-      const dateStr = s.entry_date.split('T')[0];
+      const dateStr = s.entry_date.split("T")[0];
       if (dateStr) {
         const current = symMap[dateStr] || 0;
         const severity = Number(s.severity) || 0;
@@ -232,7 +265,9 @@ export function getDoseSymptomCorrelation(
     }
   }
 
-  const allDates = Array.from(new Set([...Object.keys(doseMap), ...Object.keys(symMap)])).sort();
+  const allDates = Array.from(
+    new Set([...Object.keys(doseMap), ...Object.keys(symMap)]),
+  ).sort();
   const x: number[] = [];
   const y: number[] = [];
   const points: CorrelationDataPoint[] = [];

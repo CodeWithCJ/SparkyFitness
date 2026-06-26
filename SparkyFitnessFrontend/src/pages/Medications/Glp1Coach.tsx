@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Area,
   AreaChart,
@@ -37,10 +38,12 @@ import {
   useCreatePenMutation,
   useAddTitrationStepMutation,
   useDeleteTitrationStepMutation,
+  useDeleteInjectionMutation,
 } from '@/hooks/useMedications';
 import type { Medication } from '@/types/medications';
 
 export default function Glp1Coach({ med }: { med: Medication }) {
+  const { t } = useTranslation();
   const medId = med.id;
   const glp1Drug = (
     med.custom_fields as { glp1_drug?: string } | null | undefined
@@ -89,6 +92,7 @@ export default function Glp1Coach({ med }: { med: Medication }) {
 
   const logMutation = useLogInjectionMutation(medId);
   const addPenMutation = useCreatePenMutation(medId);
+  const deleteInjMutation = useDeleteInjectionMutation(medId);
 
   const handleLog = () => {
     const willDeduct = effectivePenId !== 'none';
@@ -170,17 +174,25 @@ export default function Glp1Coach({ med }: { med: Medication }) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Syringe className="h-4 w-4 text-blue-500" /> Log injection
+              <Syringe className="h-4 w-4 text-blue-500" />{' '}
+              {t('medications.glp1.logInjection', 'Log injection')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">
                 <Label className="text-xs text-muted-foreground">
-                  Injection site ·{' '}
-                  <span className="text-green-600">green = suggested</span>,{' '}
+                  {t('medications.glp1.injectionSite', 'Injection site')} ·{' '}
+                  <span className="text-green-600">
+                    {t('medications.glp1.legendSuggested', 'green = suggested')}
+                  </span>
+                  ,{' '}
                   <span className="text-amber-600">
-                    amber = resting &lt;{sitesQ.data?.restDays ?? 7}d
+                    {t(
+                      'medications.glp1.legendResting',
+                      'amber = resting <{{days}}d',
+                      { days: sitesQ.data?.restDays ?? 7 }
+                    )}
                   </span>
                 </Label>
                 <InjectionSiteSettings />
@@ -194,19 +206,27 @@ export default function Glp1Coach({ med }: { med: Medication }) {
                   onSelect={setSelectedSite}
                 />
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Selected:</span>
+                  <span className="text-muted-foreground">
+                    {t('medications.glp1.selected', 'Selected:')}
+                  </span>
                   <span className="font-medium">
                     {site
-                      ? (INJECTION_SITES.find((s) => s.id === site)?.label ??
-                        site)
-                      : 'Tap a zone'}
+                      ? t(
+                          'medications.sites.label.' + site,
+                          INJECTION_SITES.find((s) => s.id === site)?.label ??
+                            site
+                        )
+                      : t('medications.glp1.tapZone', 'Tap a zone')}
                   </span>
                 </div>
               </div>
               {site && restingSites.has(site) && (
                 <p className="mt-2 flex items-center gap-1 text-xs text-amber-600">
-                  <AlertTriangle className="h-3 w-3" /> This site was used
-                  recently — rotate to avoid lipohypertrophy.
+                  <AlertTriangle className="h-3 w-3" />{' '}
+                  {t(
+                    'medications.glp1.lipoWarning',
+                    'This site was used recently — rotate to avoid lipohypertrophy.'
+                  )}
                 </p>
               )}
             </div>
@@ -214,7 +234,7 @@ export default function Glp1Coach({ med }: { med: Medication }) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Dose (mg)
+                  {t('medications.glp1.doseMg', 'Dose (mg)')}
                 </Label>
                 <Input
                   type="number"
@@ -228,7 +248,7 @@ export default function Glp1Coach({ med }: { med: Medication }) {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Date &amp; time
+                  {t('medications.glp1.dateTime', 'Date & time')}
                 </Label>
                 <Input
                   type="datetime-local"
@@ -240,17 +260,24 @@ export default function Glp1Coach({ med }: { med: Medication }) {
 
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">
-                Deduct from pen/vial
+                {t('medications.glp1.deduct', 'Deduct from pen/vial')}
               </Label>
               <Select
                 value={effectivePenId}
                 onValueChange={(v) => setPenChoice(v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Don't deduct" />
+                  <SelectValue
+                    placeholder={t(
+                      'medications.glp1.dontDeduct',
+                      "Don't deduct"
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Don&apos;t deduct</SelectItem>
+                  <SelectItem value="none">
+                    {t('medications.glp1.dontDeduct', "Don't deduct")}
+                  </SelectItem>
                   {(pensQ.data ?? [])
                     .filter((p) => p.status !== 'finished')
                     .map((p) => (
@@ -270,8 +297,20 @@ export default function Glp1Coach({ med }: { med: Medication }) {
               className="w-full"
             >
               {logMutation.isPending
-                ? 'Logging…'
-                : `Log injection${site ? ` — ${INJECTION_SITES.find((s) => s.id === site)?.label}` : ''}`}
+                ? t('medications.common.logging', 'Logging…')
+                : site
+                  ? t(
+                      'medications.glp1.logInjectionAt',
+                      'Log injection — {{site}}',
+                      {
+                        site: t(
+                          'medications.sites.label.' + site,
+                          INJECTION_SITES.find((s) => s.id === site)?.label ??
+                            site
+                        ),
+                      }
+                    )
+                  : t('medications.glp1.logInjection', 'Log injection')}
             </Button>
           </CardContent>
         </Card>
@@ -281,7 +320,10 @@ export default function Glp1Coach({ med }: { med: Medication }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-base">
-            <span>PK serum level — {curveQ.data?.drugId ?? med.name}</span>
+            <span>
+              {t('medications.glp1.pkTitle', 'PK serum level')} —{' '}
+              {curveQ.data?.drugId ?? med.name}
+            </span>
             {curveQ.data?.currentLevelFraction != null && (
               <Badge variant="secondary">
                 ~{Math.round(curveQ.data.currentLevelFraction * 100)}% now
@@ -292,8 +334,10 @@ export default function Glp1Coach({ med }: { med: Medication }) {
         <CardContent>
           {chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Log injections to model your serum level. (Needs a recognized
-              GLP-1 drug — set it on the medication.)
+              {t(
+                'medications.glp1.pkEmpty',
+                'Log injections to model your serum level. (Needs a recognized GLP-1 drug — set it on the medication.)'
+              )}
             </p>
           ) : (
             <>
@@ -353,21 +397,23 @@ export default function Glp1Coach({ med }: { med: Medication }) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base">
-              <span>Pen / vial inventory</span>
+              <span>
+                {t('medications.glp1.penInventory', 'Pen / vial inventory')}
+              </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleAddPen}
                 disabled={addPenMutation.isPending}
               >
-                Add pen
+                {t('medications.glp1.addPen', 'Add pen')}
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(pensQ.data ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No pens/vials tracked.
+                {t('medications.glp1.noPens', 'No pens/vials tracked.')}
               </p>
             )}
             {(pensQ.data ?? []).map((p) => {
@@ -431,13 +477,16 @@ export default function Glp1Coach({ med }: { med: Medication }) {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Dose titration plan</CardTitle>
+            <CardTitle className="text-base">
+              {t('medications.glp1.titrationTitle', 'Dose titration plan')}
+            </CardTitle>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowAddStep((s) => !s)}
             >
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add step
+              <Plus className="mr-1 h-3.5 w-3.5" />{' '}
+              {t('medications.glp1.addStep', 'Add step')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -502,9 +551,15 @@ export default function Glp1Coach({ med }: { med: Medication }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="planned">Planned</SelectItem>
-                      <SelectItem value="active">Active (current)</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="planned">
+                        {t('medications.glp1.statusPlanned', 'Planned')}
+                      </SelectItem>
+                      <SelectItem value="active">
+                        {t('medications.glp1.statusActive', 'Active (current)')}
+                      </SelectItem>
+                      <SelectItem value="done">
+                        {t('medications.glp1.statusDone', 'Done')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -538,8 +593,10 @@ export default function Glp1Coach({ med }: { med: Medication }) {
           )}
           {(titrationQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No titration steps yet — tap “Add step” to plan your dose
-              escalation.
+              {t(
+                'medications.glp1.noTitration',
+                'No titration steps yet — tap “Add step” to plan your dose escalation.'
+              )}
             </p>
           ) : (
             <ol className="relative space-y-4 border-l border-muted pl-6">
@@ -610,28 +667,45 @@ export default function Glp1Coach({ med }: { med: Medication }) {
       {isInjectable && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent injections</CardTitle>
+            <CardTitle className="text-base">
+              {t('medications.glp1.recentInjections', 'Recent injections')}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(injQ.data ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No injections logged yet.
+                {t(
+                  'medications.glp1.noInjections',
+                  'No injections logged yet.'
+                )}
               </p>
             )}
             {(injQ.data ?? []).slice(0, 8).map((inj) => (
               <div
                 key={inj.id}
-                className="flex items-center justify-between rounded-md border p-2 text-sm"
+                className="flex items-center justify-between rounded-md border p-2 text-sm gap-2"
               >
-                <span>
-                  {INJECTION_SITES.find((s) => s.id === inj.site)?.label ??
-                    inj.site ??
-                    '—'}
-                </span>
-                <span className="text-muted-foreground">
-                  {inj.dose_mg ? `${inj.dose_mg} mg · ` : ''}
-                  {new Date(inj.injected_at).toLocaleDateString()}
-                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium truncate">
+                    {INJECTION_SITES.find((s) => s.id === inj.site)?.label ??
+                      inj.site ??
+                      '—'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {inj.dose_mg ? `${inj.dose_mg} mg · ` : ''}
+                    {new Date(inj.injected_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => deleteInjMutation.mutate(inj.id)}
+                  disabled={deleteInjMutation.isPending}
+                  aria-label="Delete injection entry"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             ))}
           </CardContent>

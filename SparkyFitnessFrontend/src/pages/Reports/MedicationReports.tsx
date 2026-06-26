@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -44,6 +44,8 @@ import {
   getProteinNauseaCorrelation,
   getSleepFatigueCorrelation,
   getDoseSymptomCorrelation,
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
 } from '@workspace/shared';
 import {
   useMedicationDisplayPreferences,
@@ -76,6 +78,10 @@ interface AlignedDailyDataPoint {
   glp1Dose: number;
   weight: number | null;
   adherencePercent: number | null;
+  glpHunger: number | null;
+  glpFoodNoise: number | null;
+  glpFullness: number | null;
+  glpEnergy: number | null;
 }
 
 interface MedicationReportsProps {
@@ -92,8 +98,8 @@ interface MedicationReportsProps {
     entry_date: string;
     weight: number | string | null;
   }>;
-  customCategories: unknown[];
-  customMeasurementsData: unknown[];
+  customCategories: CustomCategoriesResponse[];
+  customMeasurementsData: CustomMeasurementsResponse[];
   sleepAnalyticsData: Array<{
     date: string;
     total_sleep_duration_hours?: number | null;
@@ -109,6 +115,7 @@ const DEFAULT_VISIBLE_ITEMS = [
   'nausea_vs_dose_chart',
   'weight_vs_goal_chart',
   'adherence_chart',
+  'glp1_checkin_chart',
   'hydration_constipation_card',
   'protein_nausea_card',
   'sleep_fatigue_card',
@@ -120,6 +127,8 @@ const MedicationReports = ({
   endDate,
   nutritionData,
   measurementData,
+  customCategories = [],
+  customMeasurementsData = [],
   sleepAnalyticsData,
   medications,
   medicationEntries,
@@ -162,6 +171,24 @@ const MedicationReports = ({
   };
 
   const [showConfig, setShowConfig] = useState(false);
+
+  // Migrate existing database preferences to include the new GLP-1 daily check-in chart by default
+  useEffect(() => {
+    if (
+      activePref &&
+      !activePref.visible_items.includes('glp1_checkin_chart')
+    ) {
+      const migratedKey = `migrated_glp1_checkin_chart_${activePref.id}`;
+      if (!localStorage.getItem(migratedKey)) {
+        localStorage.setItem(migratedKey, 'true');
+        upsertPrefMutation.mutate({
+          viewGroup: 'reports',
+          platform: 'web',
+          visibleItems: [...activePref.visible_items, 'glp1_checkin_chart'],
+        });
+      }
+    }
+  }, [activePref, upsertPrefMutation]);
 
   // Parse patient profile target weight
   const targetWeightConverted = useMemo(() => {
@@ -220,6 +247,10 @@ const MedicationReports = ({
           glp1Dose: 0,
           weight: null,
           adherencePercent: null,
+          glpHunger: null,
+          glpFoodNoise: null,
+          glpFullness: null,
+          glpEnergy: null,
         };
       }
       curr.setDate(curr.getDate() + 1);
@@ -295,6 +326,32 @@ const MedicationReports = ({
       }
     });
 
+    // Custom Measurements for GLP-1 Check-ins
+    const hungerCat = customCategories.find((c) => c.name === 'GLP Hunger');
+    const foodNoiseCat = customCategories.find(
+      (c) => c.name === 'GLP Food Noise'
+    );
+    const fullnessCat = customCategories.find((c) => c.name === 'GLP Fullness');
+    const energyCat = customCategories.find((c) => c.name === 'GLP Energy');
+
+    customMeasurementsData.forEach((m) => {
+      const dStr = m.entry_date.split('T')[0];
+      if (dStr && datesMap[dStr]) {
+        const val = Number(m.value);
+        if (!isNaN(val)) {
+          if (hungerCat && m.category_id === hungerCat.id) {
+            datesMap[dStr].glpHunger = val;
+          } else if (foodNoiseCat && m.category_id === foodNoiseCat.id) {
+            datesMap[dStr].glpFoodNoise = val;
+          } else if (fullnessCat && m.category_id === fullnessCat.id) {
+            datesMap[dStr].glpFullness = val;
+          } else if (energyCat && m.category_id === energyCat.id) {
+            datesMap[dStr].glpEnergy = val;
+          }
+        }
+      }
+    });
+
     return Object.values(datesMap).sort((a, b) => a.date.localeCompare(b.date));
   }, [
     startDate,
@@ -303,6 +360,8 @@ const MedicationReports = ({
     injections,
     medicationEntries,
     measurementData,
+    customCategories,
+    customMeasurementsData,
     weightUnit,
     convertWeight,
     formatDateInUserTimezone,
@@ -412,6 +471,7 @@ const MedicationReports = ({
               { id: 'nausea_vs_dose_chart', label: 'Nausea vs. Dose Chart' },
               { id: 'weight_vs_goal_chart', label: 'Weight vs. Goal Chart' },
               { id: 'adherence_chart', label: 'Adherence Trend Chart' },
+              { id: 'glp1_checkin_chart', label: 'GLP-1 Daily Check-In Chart' },
               {
                 id: 'hydration_constipation_card',
                 label: 'Hydration vs. Constipation Card',
@@ -668,6 +728,113 @@ const MedicationReports = ({
                     barSize={20}
                   />
                 </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* GLP-1 Daily Check-In Trends */}
+        {isVisible('glp1_checkin_chart') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-md">
+                <Activity className="w-4 h-4 mr-2 text-pink-500" />
+                {t(
+                  'medications.reports.glp1CheckinTrends',
+                  'GLP-1 Daily Check-In Trends'
+                )}
+              </CardTitle>
+              <CardDescription>
+                {t(
+                  'medications.reports.glp1CheckinTrendsDesc',
+                  'Tracks subjective hunger, food noise, fullness, and energy levels (0-10) alongside GLP-1 doses.'
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={alignedDailyData}
+                  margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="displayDate" fontSize={10} />
+                  <YAxis
+                    yAxisId="left"
+                    domain={[0, 10]}
+                    fontSize={10}
+                    label={{
+                      value: 'Check-In Score (0-10)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle', fontSize: 10 },
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#0ea5e9"
+                    fontSize={10}
+                    label={{
+                      value: 'Dose (mg)',
+                      angle: 90,
+                      position: 'insideRight',
+                      style: { textAnchor: 'middle', fontSize: 10 },
+                    }}
+                  />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="glpHunger"
+                    name="Hunger"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="glpFoodNoise"
+                    name="Food Noise"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="glpFullness"
+                    name="Fullness"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="glpEnergy"
+                    name="Energy"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="stepAfter"
+                    dataKey="glp1Dose"
+                    name="Dose (mg)"
+                    stroke="#0ea5e9"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    dot={false}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>

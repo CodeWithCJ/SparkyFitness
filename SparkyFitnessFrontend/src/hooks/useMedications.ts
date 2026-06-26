@@ -153,6 +153,25 @@ export const useLogInjectionMutation = (medId: string) => {
   });
 };
 
+export const useDeleteInjectionMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deleteInjection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medKeys.injections(medId) });
+      queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) });
+      queryClient.invalidateQueries({ queryKey: medKeys.serumCurve(medId) });
+      queryClient.invalidateQueries({
+        queryKey: medKeys.siteSuggestion(medId),
+      });
+    },
+    meta: {
+      errorMessage: 'Could not remove injection entry.',
+      successMessage: 'Injection entry removed.',
+    },
+  });
+};
+
 export const useCreatePenMutation = (medId: string) => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -67,6 +68,7 @@ interface GlpDailyCheckInProps {
 export default function GlpDailyCheckIn({
   selectedDate,
 }: GlpDailyCheckInProps = {}) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const currentUserId = activeUserId || user?.id;
@@ -141,11 +143,13 @@ export default function GlpDailyCheckIn({
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/50">
             <Activity className="h-3.5 w-3.5 text-pink-500" />
           </span>
-          GLP-1 daily check-in
+          {t('medications.checkin.title', 'GLP-1 daily check-in')}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Track how the medication is affecting you — saved to your daily
-          measurements, so it also shows in Check-in &amp; Reports.
+          {t(
+            'medications.checkin.subtitle',
+            'Track how the medication is affecting you — saved to your daily measurements, so it also shows in Check-in & Reports.'
+          )}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -159,7 +163,7 @@ export default function GlpDailyCheckIn({
                   >
                     <m.Icon className={`h-3.5 w-3.5 ${m.color}`} />
                   </span>
-                  {m.label}
+                  {t('medications.checkin.metric.' + m.key, m.label)}
                 </span>
                 <span className="font-semibold tabular-nums">
                   {valueFor(m.key)}{' '}
@@ -180,10 +184,10 @@ export default function GlpDailyCheckIn({
         </div>
         <Button onClick={handleSave} disabled={saving} className="w-full">
           {saving
-            ? 'Saving…'
+            ? t('medications.common.saving', 'Saving…')
             : targetDate === today
-              ? "Save today's check-in"
-              : 'Save check-in'}
+              ? t('medications.checkin.saveToday', "Save today's check-in")
+              : t('medications.checkin.save', 'Save check-in')}
         </Button>
       </CardContent>
     </Card>

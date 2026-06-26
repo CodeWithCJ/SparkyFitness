@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { INJECTION_SITES, type InjectionSite } from '@workspace/shared';
 
 /**
@@ -66,6 +67,7 @@ export default function InjectionSiteBodyMap({
   restingSiteIds = [],
   onSelect,
 }: InjectionSiteBodyMapProps) {
+  const { t } = useTranslation();
   const resting = new Set(restingSiteIds);
   const drawable = sites.filter((s) => ZONE[s.id]);
 
@@ -74,7 +76,7 @@ export default function InjectionSiteBodyMap({
       viewBox="150 0 300 600"
       className="mx-auto h-auto w-full max-w-[280px] text-muted-foreground/25"
       role="group"
-      aria-label="Injection site body map"
+      aria-label={t('medications.bodymap.label', 'Injection site body map')}
     >
       {/* Silhouette (non-interactive) */}
       <path d={BODY_SILHOUETTE_PATH} fill="currentColor" stroke="none" />
@@ -117,10 +119,10 @@ export default function InjectionSiteBodyMap({
                 onSelect(s.id);
               }
             }}
-            aria-label={s.label}
+            aria-label={t('medications.sites.label.' + s.id, s.label)}
             aria-pressed={selectedSiteId === s.id}
           >
-            <title>{s.label}</title>
+            <title>{t('medications.sites.label.' + s.id, s.label)}</title>
           </rect>
         );
       })}

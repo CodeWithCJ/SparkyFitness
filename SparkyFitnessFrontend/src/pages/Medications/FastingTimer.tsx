@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Timer, Droplet } from 'lucide-react';
@@ -11,6 +12,7 @@ const FAST_MINUTES = 30;
  * localStorage so the countdown survives reloads/navigation.
  */
 export default function FastingTimer({ medId }: { medId: string }) {
+  const { t } = useTranslation();
   const storageKey = `glp1-fast-${medId}`;
   const [startedAt, setStartedAt] = useState<number | null>(() => {
     const v =
@@ -23,8 +25,8 @@ export default function FastingTimer({ medId }: { medId: string }) {
 
   useEffect(() => {
     if (startedAt == null) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
   }, [startedAt]);
 
   const remainingMs =
@@ -50,38 +52,46 @@ export default function FastingTimer({ medId }: { medId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Timer className="h-4 w-4 text-blue-500" /> Oral GLP-1 fasting timer
+          <Timer className="h-4 w-4 text-blue-500" />{' '}
+          {t('medications.fasting.title', 'Oral GLP-1 fasting timer')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">
-          Take with 4–6 oz of water, then wait {FAST_MINUTES} min before food,
-          coffee, or other medications.
+          {t(
+            'medications.fasting.instructions',
+            'Take with 4–6 oz of water, then wait {{min}} min before food, coffee, or other medications.',
+            { min: FAST_MINUTES }
+          )}
         </p>
         {startedAt == null ? (
           <Button onClick={start} className="w-full">
-            Tablet taken — start timer
+            {t('medications.fasting.start', 'Tablet taken — start timer')}
           </Button>
         ) : done ? (
           <div className="flex items-center justify-between rounded-md border border-green-500/40 bg-green-50 p-3 text-sm dark:bg-green-950">
             <span className="font-medium text-green-700 dark:text-green-300">
-              Fast complete — you can eat now.
+              {t(
+                'medications.fasting.complete',
+                'Fast complete — you can eat now.'
+              )}
             </span>
             <Button variant="ghost" size="sm" onClick={reset}>
-              Reset
+              {t('medications.common.reset', 'Reset')}
             </Button>
           </div>
         ) : (
           <div className="flex items-center justify-between rounded-md border p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Droplet className="h-4 w-4 text-blue-500" /> Water only
+              <Droplet className="h-4 w-4 text-blue-500" />{' '}
+              {t('medications.fasting.waterOnly', 'Water only')}
             </div>
             <div className="flex items-center gap-3">
               <span className="font-mono text-xl font-semibold tabular-nums">
                 {mm}:{String(ss).padStart(2, '0')}
               </span>
               <Button variant="ghost" size="sm" onClick={reset}>
-                Reset
+                {t('medications.common.reset', 'Reset')}
               </Button>
             </div>
           </div>
