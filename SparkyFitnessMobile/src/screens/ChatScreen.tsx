@@ -4,19 +4,25 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import Toast from 'react-native-toast-message';
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
   ComposerPrimitive,
   MessagePrimitive,
+  ErrorPrimitive,
+  ActionBarPrimitive,
   type MessageRole,
 } from '@assistant-ui/react-native';
 import { useChatRuntime, AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import ToolCallCard from '../components/chat/ToolCallCard';
+import { CHAT_SUGGESTIONS } from '../constants/chat';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
+import { addLog } from '../services/LogService';
 import { useActiveAiServiceSetting } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -58,12 +64,33 @@ function useSparkyChatRuntime({
     [baseUrl, serviceConfigId]
   );
 
-  return useChatRuntime({ transport });
+  // Thread-level safety net: a per-message error box can't render if the stream
+  // fails before any assistant message exists, so surface a toast too. (AI SDK 6
+  // redacts mid-stream server errors to a generic message on the client unless the
+  // server supplies an onError mapper to its stream response — out of mobile scope.)
+  return useChatRuntime({
+    transport,
+    onError: (error: Error) => {
+      addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
+      Toast.show({
+        type: 'error',
+        text1: 'Chat error',
+        text2: error?.message || 'Something went wrong. Tap retry to try again.',
+      });
+    },
+  });
 }
 
 /** A single chat bubble. Rendered inside the message context. */
 function MessageBubble({ role }: { role: MessageRole }) {
   const isUser = role === 'user';
+  const [dangerBg, dangerIcon, dangerText, muted] = useCSSVariable([
+    '--color-bg-danger-subtle',
+    '--color-icon-danger',
+    '--color-text-danger-subtle',
+    '--color-text-muted',
+  ]) as [string, string, string, string];
+
   return (
     <MessagePrimitive.Root
       style={{
@@ -79,11 +106,48 @@ function MessageBubble({ role }: { role: MessageRole }) {
               {part.text}
             </Text>
           )}
-          renderToolCall={({ part }) => (
-            <Text className="text-text-muted text-xs italic">🔧 {part.toolName}</Text>
-          )}
+          renderToolCall={({ part }) => <ToolCallCard part={part} />}
         />
       </View>
+
+      {/* Error box + actions sit below the bubble and only apply to assistant
+          messages. ErrorPrimitive.Root self-gates (renders null with no error). */}
+      <MessagePrimitive.If assistant>
+        <ErrorPrimitive.Root
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: dangerBg,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            marginTop: 6,
+          }}
+        >
+          <Icon name="alert-circle" size={16} color={dangerIcon} />
+          <ErrorPrimitive.Message style={{ flex: 1, color: dangerText, fontSize: 13 }} />
+        </ErrorPrimitive.Root>
+
+        <MessagePrimitive.If last running={false}>
+          <View className="flex-row gap-4 mt-1.5 ml-1">
+            <ActionBarPrimitive.Reload>
+              <View className="flex-row items-center gap-1">
+                <Icon name="sync" size={15} color={muted} />
+                <Text className="text-text-muted text-xs">Retry</Text>
+              </View>
+            </ActionBarPrimitive.Reload>
+            <ActionBarPrimitive.Copy>
+              {({ isCopied }) => (
+                <View className="flex-row items-center gap-1">
+                  <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
+                  <Text className="text-text-muted text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                </View>
+              )}
+            </ActionBarPrimitive.Copy>
+          </View>
+        </MessagePrimitive.If>
+      </MessagePrimitive.If>
     </MessagePrimitive.Root>
   );
 }
@@ -116,11 +180,22 @@ function Composer() {
           fontSize: 16,
         }}
       />
-      <ComposerPrimitive.Send>
-        <View className="bg-accent-primary rounded-full px-4 h-11 items-center justify-center">
-          <Text className="text-white font-semibold">Send</Text>
-        </View>
-      </ComposerPrimitive.Send>
+      {/* ThreadPrimitive.If is the running-aware conditional (ComposerPrimitive.If
+          is not): show Send when idle, swap to a Stop button while streaming. */}
+      <ThreadPrimitive.If running={false}>
+        <ComposerPrimitive.Send>
+          <View className="bg-accent-primary rounded-full px-4 h-11 items-center justify-center">
+            <Text className="text-white font-semibold">Send</Text>
+          </View>
+        </ComposerPrimitive.Send>
+      </ThreadPrimitive.If>
+      <ThreadPrimitive.If running>
+        <ComposerPrimitive.Cancel>
+          <View className="bg-accent-primary rounded-full w-11 h-11 items-center justify-center">
+            <Icon name="stop" size={18} color="#ffffff" />
+          </View>
+        </ComposerPrimitive.Cancel>
+      </ThreadPrimitive.If>
     </ComposerPrimitive.Root>
   );
 }
@@ -135,9 +210,20 @@ function ChatThread({ baseUrl, serviceConfigId }: { baseUrl: string; serviceConf
         <View style={{ flex: 1 }}>
           <ThreadPrimitive.Empty>
             <View className="flex-1 items-center justify-center p-8">
-              <Text className="text-text-muted text-center text-base">
+              <Text className="text-text-muted text-center text-base mb-6">
                 Ask Sparky anything about your nutrition, exercise, or goals.
               </Text>
+              {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
+                  non-touchable styled View (nested pressables swallow touches). */}
+              <View className="w-full gap-2">
+                {CHAT_SUGGESTIONS.map((prompt) => (
+                  <ThreadPrimitive.Suggestion key={prompt} prompt={prompt} send clearComposer>
+                    <View className="bg-surface border border-border-subtle rounded-2xl px-4 py-3">
+                      <Text className="text-text-primary text-sm text-center">{prompt}</Text>
+                    </View>
+                  </ThreadPrimitive.Suggestion>
+                ))}
+              </View>
             </View>
           </ThreadPrimitive.Empty>
 
