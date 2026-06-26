@@ -62,7 +62,12 @@ export default function InjectionSiteSettings() {
       const j = idx + dir;
       if (j < 0 || j >= r.length) return r;
       const next = [...r];
-      [next[idx], next[j]] = [next[j], next[idx]];
+      const rowI = next[idx];
+      const rowJ = next[j];
+      if (rowI && rowJ) {
+        next[idx] = rowJ;
+        next[j] = rowI;
+      }
       return next;
     });
 

@@ -73,7 +73,7 @@ export default function GlpDailyCheckIn() {
   // Local edits layered over the stored values; cleared after a successful save so the sliders
   // reflect what was persisted. Deriving (instead of syncing stored data into state via useEffect)
   // avoids a render loop, since the query defaults produce fresh array identities each render.
-  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [edits, setEdits] = useState<Record<string, number | undefined>>({});
   const valueFor = (key: string) => edits[key] ?? loadedValues[key] ?? 5;
 
   const handleSave = async () => {
@@ -94,7 +94,7 @@ export default function GlpDailyCheckIn() {
         value: String(valueFor(m.key)),
         entry_date: today,
         entry_hour: null,
-        entry_timestamp: new Date(),
+        entry_timestamp: new Date().toISOString(),
         notes: '',
       };
       await saveMeasurement(payload);

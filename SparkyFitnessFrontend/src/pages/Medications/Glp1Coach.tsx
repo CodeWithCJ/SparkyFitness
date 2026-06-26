@@ -43,7 +43,7 @@ import type { Medication } from '@/types/medications';
 export default function Glp1Coach({ med }: { med: Medication }) {
   const medId = med.id;
   const glp1Drug = (
-    med.custom_fields as Record<string, unknown> | null | undefined
+    med.custom_fields as { glp1_drug?: string } | null | undefined
   )?.glp1_drug;
   const isOralGlp1 = glp1Drug === 'oral_semaglutide';
   // Injection-specific UI (body map, pens, shot log) only applies to injectable meds.

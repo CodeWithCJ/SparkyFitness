@@ -160,7 +160,8 @@ function AddMedicationDialog({
   const [typeId, setTypeId] = useState(editMed?.type_id ?? 'pill');
   const [isGlp1, setIsGlp1] = useState(editMed?.is_glp1 ?? false);
   const [glp1Drug, setGlp1Drug] = useState(
-    (editMed?.custom_fields?.glp1_drug as string | undefined) ?? 'semaglutide'
+    (editMed?.custom_fields?.['glp1_drug'] as string | undefined) ??
+      'semaglutide'
   );
   const [strength, setStrength] = useState(
     editMed?.strength_value != null ? String(editMed.strength_value) : ''
