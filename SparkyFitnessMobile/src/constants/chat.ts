@@ -36,6 +36,15 @@ function humanize(name: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/**
+ * Lookup/search tools (`sparky_get_*`) return raw data meant for the model, not
+ * the user (the server serializes it as JSON via `formatSuccess`). The card
+ * hides their result body and shows just the labeled status.
+ */
+export function isLookupTool(toolName: string): boolean {
+  return /^sparky_get_/.test(toolName);
+}
+
 /** Resolves the display label + icon for a tool call by name. */
 export function getToolDisplay(toolName: string): ToolDisplay {
   const explicit = TOOL_DISPLAY[toolName];

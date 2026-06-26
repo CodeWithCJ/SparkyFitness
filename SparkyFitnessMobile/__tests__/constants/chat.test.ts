@@ -1,4 +1,4 @@
-import { getToolDisplay, CHAT_SUGGESTIONS } from '../../src/constants/chat';
+import { getToolDisplay, isLookupTool, CHAT_SUGGESTIONS } from '../../src/constants/chat';
 
 describe('getToolDisplay', () => {
   it('maps the high-traffic logging tools to friendly labels + icons', () => {
@@ -30,6 +30,20 @@ describe('getToolDisplay', () => {
       label: 'Some random tool',
       icon: 'wrench',
     });
+  });
+});
+
+describe('isLookupTool', () => {
+  it('is true for sparky_get_* lookup tools', () => {
+    expect(isLookupTool('sparky_get_food_diary')).toBe(true);
+    expect(isLookupTool('sparky_get_nutritional_summary')).toBe(true);
+  });
+
+  it('is false for manage/other tools', () => {
+    expect(isLookupTool('sparky_manage_food')).toBe(false);
+    expect(isLookupTool('some_random_tool')).toBe(false);
+    // Keyed on the `sparky_get_` prefix, not the word "search".
+    expect(isLookupTool('sparky_search_foods')).toBe(false);
   });
 });
 

@@ -73,10 +73,45 @@ describe('ToolCallCard', () => {
   });
 
   it('stringifies a non-string result as JSON when expanded', () => {
-    const { getByText } = render(
+    const { getByText, queryByTestId } = render(
       <ToolCallCard part={{ ...baseFoodPart, result: { ok: true, id: 7 } }} />
     );
     fireEvent.press(getByText('Food'));
     expect(getByText(/"ok": true/)).toBeTruthy();
+    // Structured (non-string) results stay monospace JSON, not markdown.
+    expect(queryByTestId('enriched-markdown')).toBeNull();
+  });
+
+  it('renders a string result through the markdown renderer when expanded', () => {
+    const { getByText, getByTestId, queryByTestId } = render(
+      <ToolCallCard part={{ ...baseFoodPart, result: '**Logged** 2 eggs' }} />
+    );
+    // Collapsed: nothing rendered yet.
+    expect(queryByTestId('enriched-markdown')).toBeNull();
+    fireEvent.press(getByText('Food'));
+    // Expanded: the result goes through MarkdownMessage (mocked to testID).
+    expect(getByTestId('enriched-markdown')).toBeTruthy();
+  });
+
+  it('hides the body for lookup/search tools (no chevron, no raw JSON)', () => {
+    const lookupPart = {
+      type: 'tool-call' as const,
+      toolCallId: 'call-2',
+      toolName: 'sparky_get_food_diary',
+      args: {},
+      argsText: '{}',
+      result: '# Diary\n\n{ "calories": 1850 }',
+    };
+    const { getByText, getByTestId, queryByTestId, queryByText } = render(
+      <ToolCallCard part={lookupPart} />
+    );
+    // Labeled + complete...
+    expect(getByText('Looked up food diary')).toBeTruthy();
+    expect(getByTestId('icon-checkmark-circle')).toBeTruthy();
+    // ...but nothing to expand and the raw result is never rendered.
+    expect(queryByTestId('icon-chevron-forward')).toBeNull();
+    expect(queryByTestId('icon-chevron-down')).toBeNull();
+    expect(queryByTestId('enriched-markdown')).toBeNull();
+    expect(queryByText('1850')).toBeNull();
   });
 });

@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
+import MarkdownMessage from '../components/chat/MarkdownMessage';
 import { CHAT_SUGGESTIONS } from '../constants/chat';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
@@ -122,16 +123,20 @@ function MessageBubble({ role }: { role: MessageRole }) {
         marginBottom: 12,
       }}
     >
-      <View className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface'}`}>
+      <View className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface border border-border-subtle'}`}>
         {isThinking ? (
           <TypingIndicator />
         ) : (
           <MessagePrimitive.Content
-            renderText={({ part }) => (
-              <Text className={`text-base ${isUser ? 'text-white' : 'text-text-primary'}`}>
-                {part.text}
-              </Text>
-            )}
+            // User text is plain (white on the accent bubble); assistant text
+            // renders as themed markdown.
+            renderText={({ part }) =>
+              isUser ? (
+                <Text className="text-base text-white">{part.text}</Text>
+              ) : (
+                <MarkdownMessage text={part.text} />
+              )
+            }
             renderToolCall={({ part }) => <ToolCallCard part={part} />}
           />
         )}
@@ -161,14 +166,14 @@ function MessageBubble({ role }: { role: MessageRole }) {
             <ActionBarPrimitive.Reload>
               <View className="flex-row items-center gap-1">
                 <Icon name="sync" size={15} color={muted} />
-                <Text className="text-text-muted text-xs">Retry</Text>
+                <Text className="text-text-secondary text-xs">Retry</Text>
               </View>
             </ActionBarPrimitive.Reload>
             <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
                   <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                  <Text className="text-text-muted text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                  <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
                 </View>
               )}
             </ActionBarPrimitive.Copy>

@@ -184,15 +184,15 @@ describe('ChatScreen thread', () => {
     expect(getByText('Suggest a high-protein snack')).toBeTruthy();
   });
 
-  it('shows Send while idle and swaps to a Stop button while running', async () => {
-    const { findByText, queryByText, getByTestId, queryByTestId, rerender } = renderScreen();
-    await findByText('Send');
+  it('shows the up-arrow send button while idle and swaps to a Stop button while running', async () => {
+    const { findByTestId, getByTestId, queryByTestId, rerender } = renderScreen();
+    await findByTestId('composer-send');
 
-    // Idle: Send visible, Stop hidden.
-    expect(getByTestId('composer-send')).toBeTruthy();
+    // Idle: send button (up arrow) visible, Stop hidden.
+    expect(getByTestId('icon-arrow-up')).toBeTruthy();
     expect(queryByTestId('icon-stop')).toBeNull();
 
-    // Running: Send hidden, Stop shown.
+    // Running: send hidden, Stop shown.
     (global as any).__mockChatIsRunning = true;
     rerender(
       <QueryClientProvider client={new QueryClient()}>
@@ -201,13 +201,14 @@ describe('ChatScreen thread', () => {
         </SafeAreaProvider>
       </QueryClientProvider>
     );
-    expect(queryByText('Send')).toBeNull();
+    expect(queryByTestId('composer-send')).toBeNull();
+    expect(queryByTestId('icon-arrow-up')).toBeNull();
     expect(getByTestId('icon-stop')).toBeTruthy();
   });
 
   it('surfaces a toast when the stream errors via the runtime onError handler', async () => {
-    const { findByText } = renderScreen();
-    await findByText('Send');
+    const { findByTestId } = renderScreen();
+    await findByTestId('composer-send');
 
     const onError = (global as any).__mockCapturedOnError as ((e: Error) => void) | undefined;
     expect(onError).toBeDefined();
@@ -229,8 +230,8 @@ describe('ChatScreen history seeding', () => {
     ];
     mockUseChatHistory.mockReturnValue({ data: seed, isLoading: false } as any);
 
-    const { findByText } = renderScreen();
-    await findByText('Send');
+    const { findByTestId } = renderScreen();
+    await findByTestId('composer-send');
 
     expect((global as any).__mockCapturedMessages).toBe(seed);
   });
@@ -244,7 +245,6 @@ describe('ChatScreen history seeding', () => {
       await Promise.resolve();
     });
 
-    expect(queryByText('Send')).toBeNull();
     expect(queryByTestId('composer-send')).toBeNull();
     expect(
       queryByText('Ask Sparky anything about your nutrition, exercise, or goals.')
