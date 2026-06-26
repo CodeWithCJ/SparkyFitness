@@ -1,6 +1,7 @@
 import { getClient } from '../db/poolManager.js';
 import type {
   CreateCustomSymptomBody,
+  CreateCustomLocationBody,
   CreateSymptomEntryBody,
 } from '../schemas/symptomSchemas.js';
 
@@ -67,6 +68,60 @@ async function deleteCustomSymptom(
   try {
     const result = await client.query(
       'DELETE FROM user_custom_symptoms WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+// --- Custom Symptom Locations CRUD -----------------------------------------
+
+const CUSTOM_LOCATION_COLS = 'id, user_id, name, created_at, updated_at';
+
+async function createCustomLocation(
+  userId: string,
+  data: CreateCustomLocationBody
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `INSERT INTO user_custom_symptom_locations (user_id, name)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, name) DO UPDATE SET updated_at = NOW()
+       RETURNING ${CUSTOM_LOCATION_COLS}`,
+      [userId, data.name.trim()]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function listCustomLocations(userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ${CUSTOM_LOCATION_COLS} FROM user_custom_symptom_locations
+       WHERE user_id = $1
+       ORDER BY name ASC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteCustomLocation(
+  userId: string,
+  id: string
+): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'DELETE FROM user_custom_symptom_locations WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;
@@ -166,6 +221,9 @@ export {
   createCustomSymptom,
   listCustomSymptoms,
   deleteCustomSymptom,
+  createCustomLocation,
+  listCustomLocations,
+  deleteCustomLocation,
   createSymptomEntry,
   listSymptomEntries,
   deleteSymptomEntry,
@@ -175,6 +233,9 @@ export default {
   createCustomSymptom,
   listCustomSymptoms,
   deleteCustomSymptom,
+  createCustomLocation,
+  listCustomLocations,
+  deleteCustomLocation,
   createSymptomEntry,
   listSymptomEntries,
   deleteSymptomEntry,

@@ -85,7 +85,8 @@ BEGIN
     'medication_titration_steps',
     'user_custom_symptoms',
     'symptom_entries',
-    'user_medication_display_preferences'
+    'user_medication_display_preferences',
+    'user_custom_symptom_locations'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -407,6 +408,7 @@ SELECT create_diary_policy('injection_entries');
 SELECT create_diary_policy('medication_titration_steps');
 SELECT create_diary_policy('user_custom_symptoms');
 SELECT create_diary_policy('symptom_entries');
+SELECT create_diary_policy('user_custom_symptom_locations');
 SELECT create_owner_policy('user_medication_display_preferences');
 
 

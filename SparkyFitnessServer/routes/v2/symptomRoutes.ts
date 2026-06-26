@@ -1,6 +1,7 @@
 import express, { RequestHandler } from 'express';
 import {
   CreateCustomSymptomBodySchema,
+  CreateCustomLocationBodySchema,
   CreateSymptomEntryBodySchema,
   ListSymptomEntriesQuerySchema,
 } from '../../schemas/symptomSchemas.js';
@@ -70,6 +71,49 @@ const deleteCustomSymptom: RequestHandler = async (req, res, next) => {
   }
 };
 
+// --- Custom Symptom Locations ----------------------------------------------
+
+const listCustomLocations: RequestHandler = async (req, res, next) => {
+  try {
+    const list = await symptomRepository.listCustomLocations(req.userId);
+    res.json(list);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createCustomLocation: RequestHandler = async (req, res, next) => {
+  try {
+    const body = CreateCustomLocationBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const item = await symptomRepository.createCustomLocation(
+      req.userId,
+      body.data
+    );
+    res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteCustomLocation: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const ok = await symptomRepository.deleteCustomLocation(
+      req.userId,
+      params.data.id
+    );
+    if (!ok) {
+      res.status(404).json({ error: 'Custom location not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
 // --- Symptom Entries --------------------------------------------------------
 
 const listEntries: RequestHandler = async (req, res, next) => {
@@ -122,6 +166,10 @@ const deleteEntry: RequestHandler = async (req, res, next) => {
 router.get('/custom', listCustomSymptoms);
 router.post('/custom', createCustomSymptom);
 router.delete('/custom/:id', deleteCustomSymptom);
+
+router.get('/locations', listCustomLocations);
+router.post('/locations', createCustomLocation);
+router.delete('/locations/:id', deleteCustomLocation);
 
 router.get('/entries', listEntries);
 router.post('/entries', createEntry);

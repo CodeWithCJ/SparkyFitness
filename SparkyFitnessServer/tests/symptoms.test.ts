@@ -159,6 +159,37 @@ describe('Symptom Repository', () => {
     expect(result).toBe(true);
   });
 
+  it('createCustomLocation inserts (trimmed) correctly', async () => {
+    const loc = { id: UID, user_id: 'testUser', name: 'Left shoulder' };
+    mockClient.query.mockResolvedValue({ rows: [loc] });
+
+    const result = await symptomRepository.createCustomLocation('testUser', {
+      name: 'Left shoulder ',
+    });
+
+    expect(result).toEqual(loc);
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO user_custom_symptom_locations'),
+      ['testUser', 'Left shoulder']
+    );
+  });
+
+  it('listCustomLocations lists locations', async () => {
+    const list = [{ id: UID, name: 'Jaw' }];
+    mockClient.query.mockResolvedValue({ rows: list });
+    const result = await symptomRepository.listCustomLocations('testUser');
+    expect(result).toEqual(list);
+  });
+
+  it('deleteCustomLocation returns true if deleted', async () => {
+    mockClient.query.mockResolvedValue({ rowCount: 1, rows: [{ id: UID }] });
+    const result = await symptomRepository.deleteCustomLocation(
+      'testUser',
+      UID
+    );
+    expect(result).toBe(true);
+  });
+
   it('createSymptomEntry inserts entry', async () => {
     const entry = {
       id: UID,
@@ -271,6 +302,61 @@ describe('Symptom Routes V2', () => {
         .delete(`/api/v2/symptoms/custom/${UID}`)
         .set('Cookie', cookie);
 
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('Custom Locations /api/v2/symptoms/locations', () => {
+    it('GET lists custom locations', async () => {
+      const mockList = [{ id: UID, name: 'Jaw' }];
+      vi.spyOn(symptomRepository, 'listCustomLocations').mockResolvedValue(
+        mockList
+      );
+      const res = await request(app)
+        .get('/api/v2/symptoms/locations')
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(mockList);
+    });
+
+    it('POST creates a custom location', async () => {
+      const mockItem = { id: UID, name: 'Left shoulder' };
+      vi.spyOn(symptomRepository, 'createCustomLocation').mockResolvedValue(
+        mockItem
+      );
+      const res = await request(app)
+        .post('/api/v2/symptoms/locations')
+        .set('Cookie', cookie)
+        .send({ name: 'Left shoulder' });
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toEqual(mockItem);
+    });
+
+    it('POST returns 400 when name is missing', async () => {
+      const res = await request(app)
+        .post('/api/v2/symptoms/locations')
+        .set('Cookie', cookie)
+        .send({});
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('DELETE removes a custom location', async () => {
+      vi.spyOn(symptomRepository, 'deleteCustomLocation').mockResolvedValue(
+        true
+      );
+      const res = await request(app)
+        .delete(`/api/v2/symptoms/locations/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(204);
+    });
+
+    it('DELETE returns 404 when not found', async () => {
+      vi.spyOn(symptomRepository, 'deleteCustomLocation').mockResolvedValue(
+        false
+      );
+      const res = await request(app)
+        .delete(`/api/v2/symptoms/locations/${UID}`)
+        .set('Cookie', cookie);
       expect(res.statusCode).toBe(404);
     });
   });

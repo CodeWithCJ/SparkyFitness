@@ -19,6 +19,16 @@ export type CreateCustomSymptomBody = z.infer<
   typeof CreateCustomSymptomBodySchema
 >;
 
+export const CreateCustomLocationBodySchema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+  })
+  .loose();
+
+export type CreateCustomLocationBody = z.infer<
+  typeof CreateCustomLocationBodySchema
+>;
+
 export const CreateSymptomEntryBodySchema = z
   .object({
     medication_id: z.string().uuid().nullable().optional(),

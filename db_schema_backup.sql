@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5ChLfvO5ddnBz5DFfEJtoJ1ql5FNT9GMZx5SlyyfI985ESyh0cGvIVmEzB9hDNl
+\restrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -2463,6 +2463,19 @@ CREATE TABLE public.user_custom_nutrients (
 
 
 --
+-- Name: user_custom_symptom_locations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_custom_symptom_locations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_custom_symptoms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3792,6 +3805,14 @@ ALTER TABLE ONLY public.external_data_providers
 
 
 --
+-- Name: user_custom_symptom_locations unique_user_symptom_location_name; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT unique_user_symptom_location_name UNIQUE (user_id, name);
+
+
+--
 -- Name: user_custom_symptoms unique_user_symptom_name; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3821,6 +3842,14 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 ALTER TABLE ONLY public.user_custom_nutrients
     ADD CONSTRAINT user_custom_nutrients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_custom_symptom_locations user_custom_symptom_locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT user_custom_symptom_locations_pkey PRIMARY KEY (id);
 
 
 --
@@ -4459,6 +4488,13 @@ CREATE INDEX idx_symptom_entries_user_id ON public.symptom_entries USING btree (
 
 
 --
+-- Name: idx_user_custom_symptom_locations_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_custom_symptom_locations_user_id ON public.user_custom_symptom_locations USING btree (user_id);
+
+
+--
 -- Name: idx_user_custom_symptoms_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4645,6 +4681,13 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.symptom_entries FOR EACH RO
 --
 
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_nutrients FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_custom_symptom_locations set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_symptom_locations FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -5589,6 +5632,14 @@ ALTER TABLE ONLY public.user_custom_nutrients
 
 
 --
+-- Name: user_custom_symptom_locations user_custom_symptom_locations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT user_custom_symptom_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_custom_symptoms user_custom_symptoms_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6344,6 +6395,13 @@ CREATE POLICY modify_policy ON public.symptom_entries USING (public.has_diary_ac
 
 
 --
+-- Name: user_custom_symptom_locations modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_custom_symptom_locations USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: user_custom_symptoms modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6853,6 +6911,13 @@ CREATE POLICY select_policy ON public.symptom_entries FOR SELECT USING (public.h
 
 
 --
+-- Name: user_custom_symptom_locations select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_custom_symptom_locations FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
 -- Name: user_custom_symptoms select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6960,6 +7025,12 @@ ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_custom_nutrients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_custom_symptom_locations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_custom_symptom_locations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_custom_symptoms; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7985,6 +8056,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "spar
 
 
 --
+-- Name: TABLE user_custom_symptom_locations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO sparky_uat;
+
+
+--
 -- Name: TABLE user_custom_symptoms; Type: ACL; Schema: public; Owner: -
 --
 
@@ -8321,5 +8401,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5ChLfvO5ddnBz5DFfEJtoJ1ql5FNT9GMZx5SlyyfI985ESyh0cGvIVmEzB9hDNl
+\unrestrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
 

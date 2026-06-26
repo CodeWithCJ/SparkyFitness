@@ -78,6 +78,9 @@ import {
   useCustomSymptoms,
   useCreateCustomSymptomMutation,
   useDeleteCustomSymptomMutation,
+  useCustomLocations,
+  useCreateCustomLocationMutation,
+  useDeleteCustomLocationMutation,
   useSymptomEntries,
   useCreateSymptomEntryMutation,
   useDeleteSymptomEntryMutation,
@@ -787,6 +790,122 @@ const SYMPTOM_EMOJI: Record<string, string> = {
   dizziness: '💫',
 };
 
+const SYMPTOM_LOCATIONS = [
+  'general',
+  'head',
+  'abdomen',
+  'chest',
+  'back',
+  'muscles',
+  'joints',
+];
+
+// Locations that make sense for each built-in symptom (first = the one we preselect).
+// Symptoms not listed here (e.g. custom ones) treat every location as applicable.
+const SYMPTOM_LOCATION_MAP: Record<string, string[]> = {
+  nausea: ['abdomen', 'general'],
+  vomiting: ['abdomen', 'chest'],
+  constipation: ['abdomen'],
+  diarrhea: ['abdomen'],
+  acid_reflux: ['chest', 'abdomen'],
+  stomach_pain: ['abdomen'],
+  headache: ['head'],
+  dizziness: ['head'],
+  fatigue: ['general'],
+};
+
+const LOCATION_EMOJI: Record<string, string> = {
+  general: '🧍',
+  head: '🧠',
+  abdomen: '🫃',
+  chest: '🫁',
+  back: '🔙',
+  muscles: '💪',
+  joints: '🦴',
+};
+const locationLabel = (loc: string) =>
+  loc.charAt(0).toUpperCase() + loc.slice(1);
+
+// Map a logged symptom's snapshot name (a display name) to its emoji, for the calendar.
+const SNAPSHOT_EMOJI: Record<string, string> = Object.fromEntries(
+  BUILT_IN_SYMPTOMS.map((s) => [
+    s.displayName.toLowerCase(),
+    SYMPTOM_EMOJI[s.name] ?? '📝',
+  ])
+);
+const emojiForSnapshot = (snap: string): string =>
+  SNAPSHOT_EMOJI[snap.toLowerCase()] ?? '📝';
+
+// Direction of a small weekly series (recent half vs earlier half).
+function trendOf(arr: number[]): 'up' | 'down' | 'flat' {
+  if (arr.length < 2) return 'flat';
+  const half = Math.floor(arr.length / 2);
+  const earlier = arr.slice(0, half).reduce((a, b) => a + b, 0);
+  const recent = arr.slice(arr.length - half).reduce((a, b) => a + b, 0);
+  if (recent > earlier * 1.05) return 'up';
+  if (recent < earlier * 0.95) return 'down';
+  return 'flat';
+}
+
+// Tiny inline sparkline (inherits color via currentColor).
+function Sparkline({ data }: { data: number[] }) {
+  const w = 60;
+  const h = 16;
+  const max = Math.max(1, ...data);
+  const pts = data.map(
+    (v, i) =>
+      [(i / Math.max(1, data.length - 1)) * w, h - (v / max) * h] as [
+        number,
+        number,
+      ]
+  );
+  const line = pts.map((p) => p.join(',')).join(' ');
+  const last = pts[pts.length - 1];
+  return (
+    <svg width={w} height={h} className="block">
+      <polyline
+        points={`0,${h} ${line} ${w},${h}`}
+        fill="currentColor"
+        fillOpacity={0.12}
+        stroke="none"
+      />
+      <polyline
+        points={line}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {last && <circle cx={last[0]} cy={last[1]} r={1.7} fill="currentColor" />}
+    </svg>
+  );
+}
+
+// Animated count-up for the GI stat numbers (eases in on mount / value change).
+function CountUp({
+  value,
+  decimals = 1,
+}: {
+  value: number;
+  decimals?: number;
+}) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const dur = 700;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      setN(value * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{n.toFixed(decimals)}</>;
+}
+
 export default function Medications() {
   const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
     'today'
@@ -798,6 +917,30 @@ export default function Medications() {
   const [customSymptomInput, setCustomSymptomInput] = useState('');
   const [severity, setSeverity] = useState([5]);
   const [bodyLocation, setBodyLocation] = useState('general');
+  // Custom locations are user-defined body locations, stored in the DB (synced across devices).
+  const { data: customLocations = [] } = useCustomLocations();
+  const createLocationMutation = useCreateCustomLocationMutation();
+  const deleteLocationMutation = useDeleteCustomLocationMutation();
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocation, setNewLocation] = useState('');
+  const addCustomLocation = () => {
+    const v = newLocation.trim();
+    if (!v) return;
+    createLocationMutation.mutate(v, {
+      onSuccess: () => {
+        setBodyLocation(v);
+        setNewLocation('');
+        setShowAddLocation(false);
+      },
+    });
+  };
+  const removeCustomLocation = (loc: { id: string; name: string }) => {
+    deleteLocationMutation.mutate(loc.id, {
+      onSuccess: () => {
+        if (bodyLocation === loc.name) setBodyLocation('general');
+      },
+    });
+  };
   const [contextText, setContextText] = useState('');
   const [bristolType, setBristolType] = useState<number | null>(null);
   const [linkedMedId, setLinkedMedId] = useState<string | null>(null);
@@ -904,10 +1047,11 @@ export default function Medications() {
     let due = 0;
     let taken = 0;
     let perfectDays = 0;
+    const days: { date: string; due: number; taken: number; pct: number }[] =
+      [];
     for (let i = 13; i >= 0; i--) {
       const d = addDays(selectedDate, -i);
       const dayDue = getDueDosesForDate(meds, d);
-      if (dayDue.length === 0) continue;
       let dayTaken = 0;
       for (const dd of dayDue) {
         const hit = recentEntries.some(
@@ -918,14 +1062,32 @@ export default function Medications() {
         );
         if (hit) dayTaken++;
       }
+      days.push({
+        date: d,
+        due: dayDue.length,
+        taken: dayTaken,
+        pct:
+          dayDue.length > 0 ? Math.round((dayTaken / dayDue.length) * 100) : -1,
+      });
+      if (dayDue.length === 0) continue;
       due += dayDue.length;
       taken += dayTaken;
       if (dayTaken === dayDue.length) perfectDays++;
+    }
+    // Current streak of perfect days (walk back from newest; days with no doses are skipped).
+    let streak = 0;
+    for (let k = days.length - 1; k >= 0; k--) {
+      const day = days[k];
+      if (!day || day.due === 0) continue;
+      if (day.taken === day.due) streak++;
+      else break;
     }
     return {
       due,
       taken,
       perfectDays,
+      days,
+      streak,
       pct: due > 0 ? Math.round((taken / due) * 100) : 100,
     };
   }, [meds, selectedDate, recentEntries]);
@@ -958,6 +1120,7 @@ export default function Medications() {
       name: s.name,
       displayName: s.displayName,
       isGlp1: s.isGlp1,
+      isCustom: false,
     }));
     customSymptoms.forEach((s) => {
       list.push({
@@ -965,16 +1128,18 @@ export default function Medications() {
         name: s.name,
         displayName: s.display_name || s.name,
         isGlp1: s.is_glp1_flagged,
+        isCustom: true,
       });
     });
     return list;
   }, [customSymptoms]);
 
-  // Calendar rendering helper: build past 30 days
+  // Calendar rendering helper: build the 30 days ending on the selected date,
+  // so the calendar tracks the date filter (same window as the symptom query).
   const calendarDays = useMemo(() => {
     const days = [];
     for (let i = 29; i >= 0; i--) {
-      const dStr = addDays(today, -i);
+      const dStr = addDays(selectedDate, -i);
       const logsForDay = symptomLogs.filter((l) => l.entry_date === dStr);
       days.push({
         dateString: dStr,
@@ -987,7 +1152,7 @@ export default function Medications() {
       });
     }
     return days;
-  }, [today, symptomLogs]);
+  }, [selectedDate, symptomLogs]);
 
   // GI sub-tracker: real per-week rates over the loaded 30-day window.
   const giStats = useMemo(() => {
@@ -1012,6 +1177,41 @@ export default function Medications() {
       avgBristol,
     };
   }, [symptomLogs]);
+
+  // Weekly buckets (oldest→newest) over the same 30-day window, for the GI sparklines + trends.
+  const giSeries = useMemo(() => {
+    const B = 5;
+    const per = Math.ceil(Math.max(1, calendarDays.length) / B);
+    const bucketOf = new Map(
+      calendarDays.map((d, i) => [
+        d.dateString,
+        Math.min(B - 1, Math.floor(i / per)),
+      ])
+    );
+    const blank = () => Array(B).fill(0) as number[];
+    const nausea = blank();
+    const vomiting = blank();
+    const reflux = blank();
+    const bSum = blank();
+    const bCnt = blank();
+    for (const l of symptomLogs) {
+      const b = bucketOf.get(l.entry_date);
+      if (b == null) continue;
+      const s = l.symptom_name_snapshot.toLowerCase();
+      if (s.includes('nausea')) nausea[b] = (nausea[b] ?? 0) + 1;
+      if (s.includes('vomit')) vomiting[b] = (vomiting[b] ?? 0) + 1;
+      if (s.includes('reflux')) reflux[b] = (reflux[b] ?? 0) + 1;
+      if (l.bristol_type != null) {
+        bSum[b] = (bSum[b] ?? 0) + l.bristol_type;
+        bCnt[b] = (bCnt[b] ?? 0) + 1;
+      }
+    }
+    const bristol = bSum.map((sum, i) => {
+      const c = bCnt[i] ?? 0;
+      return c ? sum / c : 0;
+    });
+    return { nausea, vomiting, reflux, bristol };
+  }, [calendarDays, symptomLogs]);
 
   const handleLogScheduled = (
     due: (typeof dueDoses)[0],
@@ -1110,8 +1310,11 @@ export default function Medications() {
         bristol_type: ['constipation', 'diarrhea'].includes(symptomName)
           ? bristolType
           : null,
-        entry_date: today,
-        logged_at: new Date().toISOString(),
+        entry_date: selectedDate,
+        logged_at:
+          selectedDate === today
+            ? new Date().toISOString()
+            : `${selectedDate}T12:00:00.000Z`,
       },
       {
         onSuccess: () => {
@@ -1254,63 +1457,138 @@ export default function Medications() {
           )}
 
           {/* Today stats + 14-day adherence ring */}
-          <Card>
-            <CardContent className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:justify-between">
-              <div className="grid w-full grid-cols-3 gap-3">
-                {[
-                  {
-                    label: selectedDate === today ? 'Doses today' : 'Doses',
-                    value: `${completedDosesCount}/${dueDoses.length}`,
-                  },
-                  { label: '14-day adherence', value: `${adherence14.pct}%` },
-                  {
-                    label: 'Perfect days (14d)',
-                    value: String(adherence14.perfectDays),
-                  },
-                ].map((t) => (
-                  <div
-                    key={t.label}
-                    className="rounded-lg border p-3 text-center"
-                  >
-                    <p className="text-xl font-bold tabular-nums">{t.value}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t.label}
-                    </p>
+          {(() => {
+            const ringColor =
+              adherence14.pct >= 90
+                ? '#22c55e'
+                : adherence14.pct >= 70
+                  ? '#f59e0b'
+                  : '#ef4444';
+            const tiles = [
+              {
+                label: selectedDate === today ? 'Doses today' : 'Doses',
+                value: `${completedDosesCount}/${dueDoses.length}`,
+                emoji: '💊',
+                grad: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-transparent',
+                chip: 'bg-emerald-100 dark:bg-emerald-900/50',
+                num: 'text-emerald-600 dark:text-emerald-400',
+              },
+              {
+                label: '14-day adherence',
+                value: `${adherence14.pct}%`,
+                emoji: '✅',
+                grad: 'from-blue-50 to-white dark:from-blue-950/40 dark:to-transparent',
+                chip: 'bg-blue-100 dark:bg-blue-900/50',
+                num: 'text-blue-600 dark:text-blue-400',
+              },
+              {
+                label: 'Perfect days (14d)',
+                value: String(adherence14.perfectDays),
+                emoji: '🏆',
+                grad: 'from-amber-50 to-white dark:from-amber-950/40 dark:to-transparent',
+                chip: 'bg-amber-100 dark:bg-amber-900/50',
+                num: 'text-amber-600 dark:text-amber-400',
+              },
+            ];
+            return (
+              <Card>
+                <CardContent className="space-y-4 p-5">
+                  <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+                    <div className="grid w-full grid-cols-3 gap-3">
+                      {tiles.map((t) => (
+                        <div
+                          key={t.label}
+                          className={`rounded-xl border bg-gradient-to-br ${t.grad} p-3`}
+                        >
+                          <div
+                            className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${t.chip} text-base`}
+                          >
+                            {t.emoji}
+                          </div>
+                          <p
+                            className={`text-2xl font-bold leading-none tabular-nums ${t.num}`}
+                          >
+                            {t.value}
+                          </p>
+                          <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                            {t.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="relative h-24 w-24 shrink-0">
+                      <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+                        <circle
+                          cx="18"
+                          cy="18"
+                          r="15.9155"
+                          fill="none"
+                          className="stroke-muted"
+                          strokeWidth="3"
+                        />
+                        <circle
+                          cx="18"
+                          cy="18"
+                          r="15.9155"
+                          fill="none"
+                          stroke={ringColor}
+                          strokeWidth="3"
+                          strokeDasharray={`${adherence14.pct}, 100`}
+                          strokeLinecap="round"
+                          style={{ transition: 'stroke-dasharray 0.6s ease' }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span
+                          className="text-lg font-bold tabular-nums"
+                          style={{ color: ringColor }}
+                        >
+                          {adherence14.pct}%
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          14-day
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div className="relative h-24 w-24 shrink-0">
-                <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9155"
-                    fill="none"
-                    className="stroke-muted"
-                    strokeWidth="3"
-                  />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9155"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="3"
-                    strokeDasharray={`${adherence14.pct}, 100`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold tabular-nums">
-                    {adherence14.pct}%
-                  </span>
-                  <span className="text-[9px] text-muted-foreground">
-                    14-day
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                  {/* 14-day adherence strip + streak */}
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Last 14 days</span>
+                      {adherence14.streak > 0 && (
+                        <span className="flex items-center gap-1 font-semibold text-orange-500">
+                          🔥 {adherence14.streak}-day streak
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex h-10 items-end gap-1">
+                      {adherence14.days.map((d, i) => {
+                        const none = d.due === 0;
+                        const color = none
+                          ? 'bg-muted'
+                          : d.pct === 100
+                            ? 'bg-green-500'
+                            : d.pct >= 50
+                              ? 'bg-amber-500'
+                              : 'bg-red-500';
+                        return (
+                          <div
+                            key={i}
+                            title={`${d.date}: ${none ? 'no doses' : `${d.taken}/${d.due} taken`}`}
+                            className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${none ? 'opacity-40' : ''}`}
+                            style={{
+                              height: `${none ? 18 : Math.max(14, d.pct)}%`,
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Progress Banner */}
           <Card className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 shadow-sm">
@@ -1352,7 +1630,10 @@ export default function Medications() {
               {/* Checklist */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+                      <Clock className="h-3.5 w-3.5 text-blue-500" />
+                    </span>
                     Scheduled Doses
                   </CardTitle>
                 </CardHeader>
@@ -1490,7 +1771,10 @@ export default function Medications() {
               {/* PRN Log */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50">
+                      <Pill className="h-3.5 w-3.5 text-purple-500" />
+                    </span>
                     Log As Needed (PRN)
                   </CardTitle>
                   <CardDescription>
@@ -1544,7 +1828,10 @@ export default function Medications() {
             <div>
               <Card className="h-full">
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                    </span>
                     Today's Intake History
                   </CardTitle>
                   <CardDescription>Logged history for today</CardDescription>
@@ -1923,29 +2210,50 @@ export default function Medications() {
                       {allSymptomOptions.map((opt) => {
                         const active = symptomName === opt.name;
                         return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => setSymptomName(opt.name)}
-                            className={`relative flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition ${
-                              active
-                                ? 'border-red-500 bg-red-50 dark:bg-red-950'
-                                : 'border-border hover:bg-muted'
-                            }`}
-                          >
-                            <span className="text-xl leading-none">
-                              {SYMPTOM_EMOJI[opt.name] ?? '📝'}
-                            </span>
-                            <span className="text-[11px] font-medium leading-tight">
-                              {opt.displayName}
-                            </span>
-                            {opt.isGlp1 && (
+                          <div key={opt.id} className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSymptomName(opt.name);
+                                // Preselect the most relevant location for this symptom.
+                                setBodyLocation(
+                                  SYMPTOM_LOCATION_MAP[opt.name]?.[0] ??
+                                    'general'
+                                );
+                              }}
+                              className={`flex w-full flex-col items-center gap-1 rounded-lg border p-2 text-center transition ${
+                                active
+                                  ? 'border-red-500 bg-red-50 dark:bg-red-950'
+                                  : 'border-border hover:bg-muted'
+                              }`}
+                            >
+                              <span className="text-xl leading-none">
+                                {SYMPTOM_EMOJI[opt.name] ?? '📝'}
+                              </span>
+                              <span className="text-[11px] font-medium leading-tight">
+                                {opt.displayName}
+                              </span>
+                            </button>
+                            {opt.isGlp1 && !opt.isCustom && (
                               <span
-                                className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-blue-500"
+                                className="pointer-events-none absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-blue-500"
                                 title="Common on GLP-1"
                               />
                             )}
-                          </button>
+                            {opt.isCustom && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  deleteCustomSymptomMutation.mutate(opt.id)
+                                }
+                                disabled={deleteCustomSymptomMutation.isPending}
+                                aria-label={`Remove ${opt.displayName}`}
+                                className="absolute right-0.5 top-0.5 rounded-full bg-background/80 p-0.5 text-muted-foreground opacity-60 transition hover:text-destructive hover:opacity-100"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1976,30 +2284,100 @@ export default function Medications() {
 
                   {/* Body Location Pin */}
                   <div className="space-y-2">
-                    <Label>Primary Location</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        'general',
-                        'head',
-                        'abdomen',
-                        'chest',
-                        'back',
-                        'muscles',
-                        'joints',
-                      ].map((loc) => (
-                        <button
-                          key={loc}
+                    <div className="flex items-center justify-between">
+                      <Label>Primary Location</Label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddLocation((s) => !s)}
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+                      >
+                        <Plus className="h-3 w-3" /> Custom
+                      </button>
+                    </div>
+                    {showAddLocation && (
+                      <div className="flex gap-2">
+                        <Input
+                          value={newLocation}
+                          onChange={(e) => setNewLocation(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addCustomLocation();
+                            }
+                          }}
+                          placeholder="e.g. Left shoulder, Jaw…"
+                          className="h-8 text-xs"
+                        />
+                        <Button
                           type="button"
-                          onClick={() => setBodyLocation(loc)}
-                          className={`text-xs px-2.5 py-1 rounded-full border transition ${
-                            bodyLocation === loc
-                              ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
-                              : 'bg-background hover:bg-muted text-muted-foreground'
-                          }`}
+                          size="sm"
+                          className="h-8"
+                          onClick={addCustomLocation}
+                          disabled={!newLocation.trim()}
                         >
-                          {loc.charAt(0).toUpperCase() + loc.slice(1)}
-                        </button>
-                      ))}
+                          Add
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {SYMPTOM_LOCATIONS.map((loc) => {
+                        const applicable = SYMPTOM_LOCATION_MAP[symptomName];
+                        const isApplicable =
+                          !applicable || applicable.includes(loc);
+                        const selected = bodyLocation === loc;
+                        return (
+                          <button
+                            key={loc}
+                            type="button"
+                            onClick={() => setBodyLocation(loc)}
+                            title={
+                              isApplicable
+                                ? undefined
+                                : 'Not typical for this symptom — select anyway if it applies to you'
+                            }
+                            className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                              selected
+                                ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
+                                : isApplicable
+                                  ? 'bg-background hover:bg-muted text-muted-foreground'
+                                  : 'bg-background hover:bg-muted text-muted-foreground/50 opacity-50'
+                            }`}
+                          >
+                            <span className="mr-1">{LOCATION_EMOJI[loc]}</span>
+                            {locationLabel(loc)}
+                          </button>
+                        );
+                      })}
+                      {customLocations.map((loc) => {
+                        const selected = bodyLocation === loc.name;
+                        return (
+                          <span
+                            key={loc.id}
+                            className={`group inline-flex items-center rounded-full border py-1 pl-2.5 pr-1 text-xs transition ${
+                              selected
+                                ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
+                                : 'bg-background hover:bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setBodyLocation(loc.name)}
+                              className="flex items-center gap-1"
+                            >
+                              <span>📍</span>
+                              {loc.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCustomLocation(loc)}
+                              aria-label={`Remove ${loc.name}`}
+                              className="ml-1 rounded-full p-0.5 opacity-50 transition hover:text-destructive hover:opacity-100"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -2097,40 +2475,6 @@ export default function Medications() {
                   </Button>
                 </CardContent>
               </Card>
-
-              {/* Manage Custom Symptoms deletion */}
-              {customSymptoms.length > 0 && (
-                <Card>
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-sm font-semibold">
-                      Custom Symptoms Cabinet
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-0 max-h-40 overflow-y-auto">
-                    {customSymptoms.map((sym) => (
-                      <div
-                        key={sym.id}
-                        className="flex justify-between items-center py-1 text-xs border-b last:border-0"
-                      >
-                        <span className="font-medium text-foreground">
-                          {sym.display_name || sym.name}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={() =>
-                            deleteCustomSymptomMutation.mutate(sym.id)
-                          }
-                          disabled={deleteCustomSymptomMutation.isPending}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             {/* Right Column: Calendar, Pattern Hints, and Logs */}
@@ -2148,23 +2492,90 @@ export default function Medications() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {[
-                      { label: 'Nausea / wk', value: giStats.nausea },
-                      { label: 'Vomiting / wk', value: giStats.vomiting },
-                      { label: 'Reflux / wk', value: giStats.reflux },
-                      { label: 'Avg Bristol', value: giStats.avgBristol },
-                    ].map((t) => (
-                      <div
-                        key={t.label}
-                        className="rounded-lg border p-3 text-center"
-                      >
-                        <p className="text-xl font-bold tabular-nums">
-                          {t.value}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {t.label}
-                        </p>
-                      </div>
-                    ))}
+                      {
+                        label: 'Nausea / wk',
+                        value: giStats.nausea,
+                        emoji: '🤢',
+                        series: giSeries.nausea,
+                        grad: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-transparent',
+                        chip: 'bg-emerald-100 dark:bg-emerald-900/50',
+                        num: 'text-emerald-600 dark:text-emerald-400',
+                      },
+                      {
+                        label: 'Vomiting / wk',
+                        value: giStats.vomiting,
+                        emoji: '🤮',
+                        series: giSeries.vomiting,
+                        grad: 'from-violet-50 to-white dark:from-violet-950/40 dark:to-transparent',
+                        chip: 'bg-violet-100 dark:bg-violet-900/50',
+                        num: 'text-violet-600 dark:text-violet-400',
+                      },
+                      {
+                        label: 'Reflux / wk',
+                        value: giStats.reflux,
+                        emoji: '🔥',
+                        series: giSeries.reflux,
+                        grad: 'from-orange-50 to-white dark:from-orange-950/40 dark:to-transparent',
+                        chip: 'bg-orange-100 dark:bg-orange-900/50',
+                        num: 'text-orange-600 dark:text-orange-400',
+                      },
+                      {
+                        label: 'Avg Bristol',
+                        value: giStats.avgBristol,
+                        emoji: '💩',
+                        series: giSeries.bristol,
+                        neutral: true,
+                        grad: 'from-sky-50 to-white dark:from-sky-950/40 dark:to-transparent',
+                        chip: 'bg-sky-100 dark:bg-sky-900/50',
+                        num: 'text-sky-600 dark:text-sky-400',
+                      },
+                    ].map((t) => {
+                      const num = Number(t.value);
+                      const isNum = !Number.isNaN(num);
+                      const trend = trendOf(t.series);
+                      const hasSeries = t.series.some((v) => v > 0);
+                      return (
+                        <div
+                          key={t.label}
+                          className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${t.grad} p-3`}
+                        >
+                          {!t.neutral && trend !== 'flat' && (
+                            <span
+                              className={`absolute right-2 top-2 text-[11px] font-bold ${trend === 'up' ? 'text-red-500' : 'text-emerald-500'}`}
+                              title={
+                                trend === 'up'
+                                  ? 'Trending up vs earlier this period'
+                                  : 'Trending down vs earlier this period'
+                              }
+                            >
+                              {trend === 'up' ? '▲' : '▼'}
+                            </span>
+                          )}
+                          <div
+                            className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${t.chip} text-base`}
+                          >
+                            {t.emoji}
+                          </div>
+                          <p
+                            className={`text-2xl font-bold leading-none tabular-nums ${t.num}`}
+                          >
+                            {isNum ? (
+                              <CountUp value={num} decimals={1} />
+                            ) : (
+                              t.value
+                            )}
+                          </p>
+                          <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                            {t.label}
+                          </p>
+                          {hasSeries && (
+                            <div className={`mt-1.5 ${t.num}`}>
+                              <Sparkline data={t.series} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -2227,32 +2638,70 @@ export default function Medications() {
                 <CardContent>
                   <div className="grid grid-cols-10 gap-2">
                     {calendarDays.map((day) => {
-                      let colorClass = 'bg-muted/30 border-muted';
-                      if (day.logs.length > 0) {
-                        const sev = day.maxSeverity;
-                        if (sev <= 3)
+                      const sev = day.maxSeverity;
+                      const has = day.logs.length > 0;
+                      const isSelected = day.dateString === selectedDate;
+                      const dominant = has
+                        ? [...day.logs].sort(
+                            (a, b) => b.severity - a.severity
+                          )[0]
+                        : undefined;
+                      const dayEmoji = dominant
+                        ? emojiForSnapshot(dominant.symptom_name_snapshot)
+                        : null;
+                      let colorClass =
+                        'bg-muted/20 border-transparent text-muted-foreground/60';
+                      let badge = 'bg-foreground/10 text-foreground/70';
+                      if (has) {
+                        if (sev <= 3) {
                           colorClass =
-                            'bg-green-500/20 border-green-400 text-green-700';
-                        else if (sev <= 6)
+                            'bg-gradient-to-br from-green-400/25 to-green-500/10 border-green-400/60 text-green-700 dark:text-green-300';
+                          badge =
+                            'bg-green-500 text-white shadow-sm shadow-green-500/40';
+                        } else if (sev <= 6) {
                           colorClass =
-                            'bg-amber-500/20 border-amber-400 text-amber-700';
-                        else
+                            'bg-gradient-to-br from-amber-400/25 to-amber-500/10 border-amber-400/60 text-amber-700 dark:text-amber-300';
+                          badge =
+                            'bg-amber-500 text-white shadow-sm shadow-amber-500/40';
+                        } else {
                           colorClass =
-                            'bg-red-500/20 border-red-400 text-red-700 font-bold';
+                            'bg-gradient-to-br from-red-400/30 to-red-500/15 border-red-400/70 text-red-700 dark:text-red-300';
+                          badge =
+                            'bg-red-500 text-white shadow-sm shadow-red-500/40';
+                        }
                       }
 
                       return (
                         <div
                           key={day.dateString}
                           title={`${day.dateString}: ${day.logs.length} logged, max severity ${day.maxSeverity}`}
-                          className={`aspect-square rounded border flex flex-col items-center justify-center text-xs transition-all relative group cursor-pointer ${colorClass}`}
+                          className={`group relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border text-xs transition-all hover:scale-[1.06] hover:shadow-sm ${colorClass} ${
+                            isSelected
+                              ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                              : ''
+                          }`}
                         >
-                          <span>{day.dayLabel}</span>
-                          {day.logs.length > 0 && (
-                            <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-foreground/45"></span>
+                          <span
+                            className={`absolute left-1.5 top-1 text-[10px] ${has ? 'font-semibold opacity-80' : 'opacity-60'}`}
+                          >
+                            {day.dayLabel}
+                          </span>
+                          {has && (
+                            <>
+                              <span className="text-base leading-none">
+                                {dayEmoji}
+                              </span>
+                              {day.logs.length > 1 && (
+                                <span
+                                  className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums ${badge}`}
+                                >
+                                  {day.logs.length}
+                                </span>
+                              )}
+                            </>
                           )}
                           {/* Tooltip on hover */}
-                          <div className="absolute z-10 hidden group-hover:block bg-popover border text-popover-foreground text-[10px] p-2 rounded shadow-md -top-16 left-1/2 -translate-x-1/2 w-32 text-center">
+                          <div className="absolute -top-16 left-1/2 z-10 hidden w-32 -translate-x-1/2 rounded border bg-popover p-2 text-center text-[10px] text-popover-foreground shadow-md group-hover:block">
                             <p className="font-semibold">{day.dateString}</p>
                             <p>
                               {day.logs.length} logged symptom

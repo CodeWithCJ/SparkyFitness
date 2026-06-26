@@ -17,6 +17,25 @@ export const createCustomSymptom = (
 export const deleteCustomSymptom = (id: string): Promise<void> =>
   apiCall(`/v2/symptoms/custom/${id}`, { method: 'DELETE' });
 
+// --- Custom Symptom Locations ----------------------------------------------
+
+export interface CustomLocation {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const listCustomLocations = (): Promise<CustomLocation[]> =>
+  apiCall('/v2/symptoms/locations', { method: 'GET' });
+
+export const createCustomLocation = (name: string): Promise<CustomLocation> =>
+  apiCall('/v2/symptoms/locations', { method: 'POST', body: { name } });
+
+export const deleteCustomLocation = (id: string): Promise<void> =>
+  apiCall(`/v2/symptoms/locations/${id}`, { method: 'DELETE' });
+
 // --- Symptom Entries --------------------------------------------------------
 
 export const listSymptomEntries = (opts?: {

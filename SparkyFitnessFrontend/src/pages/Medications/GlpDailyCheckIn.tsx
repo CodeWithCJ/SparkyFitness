@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Utensils, Brain, Soup, Zap } from 'lucide-react';
+import { Utensils, Brain, Soup, Zap, Activity } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -23,16 +23,41 @@ const GLP_METRICS: {
   name: string;
   label: string;
   Icon: LucideIcon;
+  color: string;
+  chip: string;
 }[] = [
-  { key: 'hunger', name: 'GLP Hunger', label: 'Hunger', Icon: Utensils },
+  {
+    key: 'hunger',
+    name: 'GLP Hunger',
+    label: 'Hunger',
+    Icon: Utensils,
+    color: 'text-orange-500',
+    chip: 'bg-orange-100 dark:bg-orange-900/50',
+  },
   {
     key: 'food_noise',
     name: 'GLP Food Noise',
     label: 'Food noise',
     Icon: Brain,
+    color: 'text-violet-500',
+    chip: 'bg-violet-100 dark:bg-violet-900/50',
   },
-  { key: 'fullness', name: 'GLP Fullness', label: 'Fullness', Icon: Soup },
-  { key: 'energy', name: 'GLP Energy', label: 'Energy', Icon: Zap },
+  {
+    key: 'fullness',
+    name: 'GLP Fullness',
+    label: 'Fullness',
+    Icon: Soup,
+    color: 'text-emerald-500',
+    chip: 'bg-emerald-100 dark:bg-emerald-900/50',
+  },
+  {
+    key: 'energy',
+    name: 'GLP Energy',
+    label: 'Energy',
+    Icon: Zap,
+    color: 'text-amber-500',
+    chip: 'bg-amber-100 dark:bg-amber-900/50',
+  },
 ];
 
 interface GlpDailyCheckInProps {
@@ -112,7 +137,10 @@ export default function GlpDailyCheckIn({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/50">
+            <Activity className="h-3.5 w-3.5 text-pink-500" />
+          </span>
           GLP-1 daily check-in
         </CardTitle>
         <p className="text-xs text-muted-foreground">
@@ -125,8 +153,13 @@ export default function GlpDailyCheckIn({
           {GLP_METRICS.map((m) => (
             <div key={m.key} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <m.Icon className="h-4 w-4" /> {m.label}
+                <span className="flex items-center gap-2 font-medium">
+                  <span
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${m.chip}`}
+                  >
+                    <m.Icon className={`h-3.5 w-3.5 ${m.color}`} />
+                  </span>
+                  {m.label}
                 </span>
                 <span className="font-semibold tabular-nums">
                   {valueFor(m.key)}{' '}

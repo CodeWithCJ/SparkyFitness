@@ -7,6 +7,7 @@ import type {
 
 const symptomKeys = {
   custom: () => ['custom-symptoms'] as const,
+  locations: () => ['custom-symptom-locations'] as const,
   entries: (opts?: {
     fromDate?: string;
     toDate?: string;
@@ -22,6 +23,36 @@ export const useCustomSymptoms = () =>
     queryFn: () => symptomService.listCustomSymptoms(),
     meta: { errorMessage: 'Failed to load custom symptoms.' },
   });
+
+export const useCustomLocations = () =>
+  useQuery({
+    queryKey: symptomKeys.locations(),
+    queryFn: () => symptomService.listCustomLocations(),
+    meta: { errorMessage: 'Failed to load custom locations.' },
+  });
+
+export const useCreateCustomLocationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => symptomService.createCustomLocation(name),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: symptomKeys.locations() }),
+    meta: {
+      errorMessage: 'Could not add location.',
+      successMessage: 'Location added.',
+    },
+  });
+};
+
+export const useDeleteCustomLocationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => symptomService.deleteCustomLocation(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: symptomKeys.locations() }),
+    meta: { errorMessage: 'Could not remove location.' },
+  });
+};
 
 export const useSymptomEntries = (opts?: {
   fromDate?: string;
