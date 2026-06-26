@@ -150,7 +150,9 @@ FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 -- ---------------------------------------------------------------------------
 CREATE TABLE medication_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    medication_id UUID NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+    -- Nullable + SET NULL so dose history survives medication deletion (the row snapshots
+    -- med name/dose/unit below), mirroring how food_entries outlive a deleted food.
+    medication_id UUID REFERENCES medications(id) ON DELETE SET NULL,
     schedule_id UUID REFERENCES medication_schedules(id) ON DELETE SET NULL,
     user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'taken',         -- taken | skipped | snoozed | prn_taken
@@ -209,7 +211,8 @@ FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 -- ---------------------------------------------------------------------------
 CREATE TABLE injection_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    medication_id UUID NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+    -- Nullable + SET NULL so injection history survives medication deletion.
+    medication_id UUID REFERENCES medications(id) ON DELETE SET NULL,
     user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
     pen_id UUID REFERENCES medication_pens(id) ON DELETE SET NULL,
     injected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

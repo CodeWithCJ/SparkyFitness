@@ -83,6 +83,7 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { Medication, MedicationSchedule } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
+import GlpDailyCheckIn from './GlpDailyCheckIn';
 
 const MED_TYPES = [
   'pill',
@@ -1291,6 +1292,8 @@ export default function Medications() {
               )}
             </CardContent>
           </Card>
+
+          {meds.some((m) => m.is_glp1) && <GlpDailyCheckIn />}
 
           <div className="grid gap-6 md:grid-cols-[1fr_350px]">
             {/* Scheduled & PRN Column */}

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict t1HQMFOzD2DSeUtvMQKWLMxYegvRuaulAdzM87ucFlOWxJ7GN9QkO0FBglnAY8A
+\restrict 5ChLfvO5ddnBz5DFfEJtoJ1ql5FNT9GMZx5SlyyfI985ESyh0cGvIVmEzB9hDNl
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1648,7 +1648,7 @@ CREATE TABLE public.goal_presets (
 
 CREATE TABLE public.injection_entries (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    medication_id uuid NOT NULL,
+    medication_id uuid,
     user_id uuid NOT NULL,
     pen_id uuid,
     injected_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -1820,7 +1820,7 @@ COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe y
 
 CREATE TABLE public.medication_entries (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    medication_id uuid NOT NULL,
+    medication_id uuid,
     schedule_id uuid,
     user_id uuid NOT NULL,
     status character varying(20) DEFAULT 'taken'::character varying NOT NULL,
@@ -5177,7 +5177,7 @@ ALTER TABLE ONLY public.goal_presets
 --
 
 ALTER TABLE ONLY public.injection_entries
-    ADD CONSTRAINT injection_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE CASCADE;
+    ADD CONSTRAINT injection_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
 
 
 --
@@ -5305,7 +5305,7 @@ ALTER TABLE ONLY public.meals
 --
 
 ALTER TABLE ONLY public.medication_entries
-    ADD CONSTRAINT medication_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE CASCADE;
+    ADD CONSTRAINT medication_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
 
 
 --
@@ -8321,5 +8321,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict t1HQMFOzD2DSeUtvMQKWLMxYegvRuaulAdzM87ucFlOWxJ7GN9QkO0FBglnAY8A
+\unrestrict 5ChLfvO5ddnBz5DFfEJtoJ1ql5FNT9GMZx5SlyyfI985ESyh0cGvIVmEzB9hDNl
 

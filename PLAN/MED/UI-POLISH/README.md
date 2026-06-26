@@ -35,7 +35,12 @@ Untouched: Diary, Food, Exercise, Goals.
   already has nausea-vs-dose, weight-vs-goal, adherence charts + correlation cards + customizable
   show/hide + CSV export, no cost chart. Typecheck/lint clean. Only optional remaining: provider PDF
   export (deferred). No rebuild needed — see [phase-2-reports.md](./phase-2-reports.md).
-- [ ] Phase 3 — Check-in (GLP daily metrics) — see [phase-3-checkin.md](./phase-3-checkin.md)
+- [x] **Phase 3 — Check-in (GLP daily metrics) DONE.** `GlpDailyCheckIn.tsx` (hunger / food-noise /
+  fullness / energy, 0–10 sliders) in the Medication **Today** tab (shown when a GLP-1 med exists).
+  Stores via the existing `custom_measurements` system as daily categories ("GLP Hunger", etc.,
+  numeric/Daily), so values also flow into the Check-in page and Reports — no new table, no fake
+  data. Auto-creates the categories on first save. Typecheck/lint/prettier clean. _(Optional leftover:
+  a 24h post-dose prompt — deferred.)_
 - [x] **Phase 4 — Settings (injection-site customization) DONE & verified.** "Customize sites"
   dialog in the GLP coach (`InjectionSiteSettings.tsx`) toggles/reorders sites → saved to the
   `injection_sites` display pref; server `glp1Service.getSiteSuggestion` reads the pref and passes

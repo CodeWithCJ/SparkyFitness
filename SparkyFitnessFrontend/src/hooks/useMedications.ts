@@ -6,6 +6,7 @@ import type {
   LogInjectionInput,
   MedicationPen,
   MedicationSchedule,
+  TitrationStep,
   CreateMedicationEntryInput,
   ListMedicationEntriesOptions,
 } from '@/types/medications';
@@ -50,6 +51,30 @@ export const useMedicationTitration = (medId: string) =>
     queryFn: () => medicationService.listTitration(medId),
     meta: { errorMessage: 'Failed to load titration plan.' },
   });
+
+export const useAddTitrationStepMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<TitrationStep> & { dose_mg: number }) =>
+      medicationService.addTitrationStep(medId, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: medKeys.titration(medId) }),
+    meta: {
+      errorMessage: 'Could not add titration step.',
+      successMessage: 'Titration step added.',
+    },
+  });
+};
+
+export const useDeleteTitrationStepMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deleteTitrationStep(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: medKeys.titration(medId) }),
+    meta: { errorMessage: 'Could not remove titration step.' },
+  });
+};
 
 export const useSerumCurve = (medId: string) =>
   useQuery({
