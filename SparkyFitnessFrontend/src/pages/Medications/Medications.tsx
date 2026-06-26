@@ -12,8 +12,9 @@ import {
   Pencil,
   Info,
   Pill,
+  Syringe,
 } from 'lucide-react';
-import { todayInZone, addDays } from '@workspace/shared';
+import { todayInZone, addDays, getDueDosesForDate } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -123,6 +124,10 @@ export default function Medications() {
     toDate: selectedDate,
   });
 
+  const dueTodayCount = useMemo(() => {
+    return getDueDosesForDate(meds as MedicationDetail[], selectedDate).length;
+  }, [meds, selectedDate]);
+
   // Mutations
   const removeMedMutation = useDeleteMedicationMutation();
 
@@ -223,13 +228,28 @@ export default function Medications() {
                 label: t('medications.cabinet.activeScripts', 'Active scripts'),
                 value: meds.filter((m) => m.is_active).length,
                 Icon: Pill,
-                color: 'text-primary',
+                color: 'text-rose-500',
               },
               {
-                label: t('medications.cabinet.totalScripts', 'Total scripts'),
+                label: t('medications.cabinet.glp1Meds', 'GLP-1 meds'),
+                value: meds.filter((m) => m.is_active && m.is_glp1).length,
+                Icon: Syringe,
+                color: 'text-blue-500',
+              },
+              {
+                label: t(
+                  'medications.cabinet.scheduledToday',
+                  'Scheduled today'
+                ),
+                value: dueTodayCount,
+                Icon: Clock,
+                color: 'text-amber-500',
+              },
+              {
+                label: t('medications.cabinet.totalMeds', 'Total meds'),
                 value: meds.length,
-                Icon: Package,
-                color: 'text-muted-foreground',
+                Icon: Activity,
+                color: 'text-slate-500',
               },
             ].map((kpi) => (
               <Card key={kpi.label}>
@@ -250,7 +270,7 @@ export default function Medications() {
             ))}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-[1fr_380px]">
+          <div className="grid gap-6 md:grid-cols-[380px_1fr]">
             {/* Medications List */}
             <div className="space-y-4">
               {meds.length === 0 && (
