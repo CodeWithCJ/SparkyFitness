@@ -89,11 +89,12 @@ export const UserChatPreferences = ({
                 htmlFor="ai_assisted_conversions"
                 className="text-sm font-medium"
               >
-                AI Assisted Unit Conversions
+                {t('settings.aiService.userSettings.aiAssistedConversions')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Convert cross-category food units (e.g. cup → g) with AI inside
-                the unit picker.
+                {t(
+                  'settings.aiService.userSettings.aiAssistedConversionsDescription'
+                )}
               </p>
             </div>
             <Switch
@@ -107,10 +108,10 @@ export const UserChatPreferences = ({
         <div className="flex items-start justify-between gap-4 rounded-md border p-3">
           <div className="space-y-1">
             <Label htmlFor="show_token_stats" className="text-sm font-medium">
-              Show token usage
+              {t('settings.aiService.userSettings.showTokenStats')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Display per-message token counts in the chat.
+              {t('settings.aiService.userSettings.showTokenStatsDescription')}
             </p>
           </div>
           <Switch

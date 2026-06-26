@@ -614,6 +614,10 @@
       "userSettings": {
         "title": "AI Services",
         "chatPreferences": "Chat Preferences",
+        "aiAssistedConversions": "AI Assisted Unit Conversions",
+        "aiAssistedConversionsDescription": "Convert cross-category food units (e.g. cup → g) with AI inside the unit picker.",
+        "showTokenStats": "Show token usage",
+        "showTokenStatsDescription": "Display per-message token counts in the chat.",
         "autoClearHistory": "Auto Clear Chat History",
         "autoClearHistoryDescription": "Controls how chat history is preserved for AI context",
         "saveChatPreferences": "Save Chat Preferences",

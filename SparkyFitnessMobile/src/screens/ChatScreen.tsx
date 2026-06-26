@@ -321,10 +321,18 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const config = await getActiveServerConfig();
-      if (cancelled) return;
-      setBaseUrl(config ? normalizeUrl(config.url) : null);
-      setLoadingConfig(false);
+      try {
+        const config = await getActiveServerConfig();
+        if (cancelled) return;
+        setBaseUrl(config ? normalizeUrl(config.url) : null);
+      } catch (error) {
+        // getActiveServerConfig re-throws on storage failure; without this the
+        // spinner would hang forever. Fall through to the "no server" branch.
+        if (cancelled) return;
+        addLog('Failed to load active server config', 'ERROR', [String(error)]);
+      } finally {
+        if (!cancelled) setLoadingConfig(false);
+      }
     })();
     return () => {
       cancelled = true;
