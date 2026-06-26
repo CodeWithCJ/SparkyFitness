@@ -73,7 +73,7 @@ const SparkyChat = () => {
       <SheetContent side="right" className="w-full sm:w-[500px] p-0">
         <div className="flex flex-col h-full">
           <SheetHeader className="p-4 border-b">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 pr-8">
               <SheetTitle className="flex items-center gap-2 shrink-0">
                 <MessageCircle className="h-5 w-5" />
                 Sparky AI Coach
