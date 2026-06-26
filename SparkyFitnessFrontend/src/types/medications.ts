@@ -104,6 +104,7 @@ export interface SerumPoint {
 
 export interface SerumCurveResponse {
   drugId: string | null;
+  drugName?: string | null;
   curve: SerumPoint[];
   currentLevelFraction: number | null;
   /** Day positions of logged injections (relative to the curve anchor), for chart markers. */

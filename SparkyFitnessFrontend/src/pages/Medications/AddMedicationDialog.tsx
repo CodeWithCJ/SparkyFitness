@@ -61,6 +61,28 @@ export default function AddMedicationDialog({
     (editMed?.custom_fields?.['glp1_drug'] as string | undefined) ??
       'semaglutide'
   );
+  const [customName, setCustomName] = useState(
+    (editMed?.custom_fields?.['custom_glp1_name'] as string | undefined) ?? ''
+  );
+  const [customHalfLife, setCustomHalfLife] = useState(
+    editMed?.custom_fields?.['custom_half_life_days'] != null
+      ? String(editMed.custom_fields['custom_half_life_days'])
+      : '7.0'
+  );
+  const [customTMax, setCustomTMax] = useState(
+    editMed?.custom_fields?.['custom_t_max_days'] != null
+      ? String(editMed.custom_fields['custom_t_max_days'])
+      : '1.5'
+  );
+  const [customCadence, setCustomCadence] = useState(
+    (editMed?.custom_fields?.['custom_cadence'] as
+      | 'weekly'
+      | 'daily'
+      | undefined) ?? 'weekly'
+  );
+  const [customIsOral, setCustomIsOral] = useState(
+    (editMed?.custom_fields?.['custom_is_oral'] as boolean | undefined) ?? false
+  );
   const [strength, setStrength] = useState(
     editMed?.strength_value != null ? String(editMed.strength_value) : ''
   );
@@ -98,7 +120,20 @@ export default function AddMedicationDialog({
       notes: notes.trim() || null,
       effectiveness_rating: effectiveness > 0 ? effectiveness : null,
       photo_path: photoPath || null,
-      custom_fields: isGlp1 ? { glp1_drug: glp1Drug } : {},
+      custom_fields: isGlp1
+        ? glp1Drug === 'custom'
+          ? {
+              glp1_drug: 'custom',
+              custom_glp1_name: customName.trim() || null,
+              custom_half_life_days: customHalfLife
+                ? Number(customHalfLife)
+                : 7.0,
+              custom_t_max_days: customTMax ? Number(customTMax) : 1.5,
+              custom_cadence: customCadence,
+              custom_is_oral: customIsOral,
+            }
+          : { glp1_drug: glp1Drug }
+        : {},
     };
     if (isEdit && editMed) {
       updateMutation.mutate(
@@ -206,25 +241,121 @@ export default function AddMedicationDialog({
             <Switch checked={isGlp1} onCheckedChange={setIsGlp1} />
           </div>
           {isGlp1 && (
-            <div className="space-y-2">
-              <Label>
-                {t(
-                  'medications.cabinet.glp1Drug',
-                  'GLP-1 drug (for the PK model)'
-                )}
-              </Label>
-              <Select value={glp1Drug} onValueChange={setGlp1Drug}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(GLP1_DRUG_PROFILES).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.displayName} ({p.brands.join(', ')})
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>
+                  {t(
+                    'medications.cabinet.glp1Drug',
+                    'GLP-1 drug (for the PK model)'
+                  )}
+                </Label>
+                <Select value={glp1Drug} onValueChange={setGlp1Drug}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(GLP1_DRUG_PROFILES).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.displayName}
+                        {p.brands.length > 0 ? ` (${p.brands.join(', ')})` : ''}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">
+                      {t(
+                        'medications.cabinet.customGlp1',
+                        'Custom GLP-1 / Other...'
+                      )}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {glp1Drug === 'custom' && (
+                <div className="space-y-4 rounded-md border p-3 bg-muted/20">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-glp-name">
+                      {t(
+                        'medications.cabinet.customGlpName',
+                        'Custom Drug Name (optional)'
+                      )}
+                    </Label>
+                    <Input
+                      id="custom-glp-name"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="e.g. Retatrutide, Compound Semaglutide"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-half-life">
+                        {t(
+                          'medications.cabinet.customHalfLife',
+                          'Half-Life (days)'
+                        )}
+                      </Label>
+                      <Input
+                        id="custom-half-life"
+                        type="number"
+                        step="0.1"
+                        value={customHalfLife}
+                        onChange={(e) => setCustomHalfLife(e.target.value)}
+                        placeholder="7.0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-tmax">
+                        {t(
+                          'medications.cabinet.customTMax',
+                          'Time to Peak (days)'
+                        )}
+                      </Label>
+                      <Input
+                        id="custom-tmax"
+                        type="number"
+                        step="0.1"
+                        value={customTMax}
+                        onChange={(e) => setCustomTMax(e.target.value)}
+                        placeholder="1.5"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>
+                        {t('medications.cabinet.customCadence', 'Cadence')}
+                      </Label>
+                      <Select
+                        value={customCadence}
+                        onValueChange={(val: 'weekly' | 'daily') =>
+                          setCustomCadence(val)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between pt-6">
+                      <Label htmlFor="custom-oral-switch" className="text-xs">
+                        {t(
+                          'medications.cabinet.customIsOral',
+                          'Oral administration'
+                        )}
+                      </Label>
+                      <Switch
+                        id="custom-oral-switch"
+                        checked={customIsOral}
+                        onCheckedChange={setCustomIsOral}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="space-y-2">

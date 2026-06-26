@@ -30,7 +30,11 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
   const glp1Drug = (
     med.custom_fields as { glp1_drug?: string } | null | undefined
   )?.glp1_drug;
-  const isOralGlp1 = glp1Drug === 'oral_semaglutide';
+  const isOralGlp1 =
+    glp1Drug === 'oral_semaglutide' ||
+    (glp1Drug === 'custom' &&
+      (med.custom_fields as { custom_is_oral?: boolean } | null | undefined)
+        ?.custom_is_oral === true);
   // Injection-specific UI (body map, pens, shot log) only applies to injectable meds.
   // Oral/liquid GLP-1 (e.g. Rybelsus) still gets the PK curve, titration & fasting timer.
   const isInjectable = med.type_id === 'injection';
@@ -58,7 +62,7 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
           <CardTitle className="flex items-center justify-between text-base font-semibold">
             <span>
               {t('medications.glp1.pkTitle', 'PK serum level')} —{' '}
-              {curveQ.data?.drugId ?? med.name}
+              {curveQ.data?.drugName ?? curveQ.data?.drugId ?? med.name}
             </span>
             {curveQ.data?.currentLevelFraction != null && (
               <Badge variant="secondary">

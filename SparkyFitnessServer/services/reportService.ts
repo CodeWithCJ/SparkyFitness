@@ -319,15 +319,13 @@ async function getReportsData(
       },
     }));
 
-    // Fetch titration steps in parallel
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const titrationStepsList = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      medications.map((m: any) =>
-        titrationRepository.listSteps(targetUserId, m.id)
-      )
+    // Fetch titration steps in a single query (avoid N+1 pattern)
+    const medIds = new Set(medications.map((m: any) => m.id));
+    const allTitrationSteps =
+      await titrationRepository.listStepsForUser(targetUserId);
+    const titrationSteps = allTitrationSteps.filter((step: any) =>
+      medIds.has(step.medication_id)
     );
-    const titrationSteps = titrationStepsList.flat();
 
     return {
       nutritionData,

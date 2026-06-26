@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { todayInZone } from '@workspace/shared';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type { UpdateCustomMeasurementsRequest } from '@workspace/shared';
 import {
   useCustomCategories,
@@ -72,7 +73,8 @@ export default function GlpDailyCheckIn({
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const currentUserId = activeUserId || user?.id;
-  const today = todayInZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const { timezone } = usePreferences();
+  const today = todayInZone(timezone);
   const targetDate = selectedDate || today;
 
   const { data: categories = [] } = useCustomCategories(currentUserId);

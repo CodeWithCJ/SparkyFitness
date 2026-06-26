@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Syringe, AlertTriangle } from 'lucide-react';
-import { INJECTION_SITES } from '@workspace/shared';
+import { INJECTION_SITES, localDateTimeToUtc } from '@workspace/shared';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import InjectionSiteBodyMap from './InjectionSiteBodyMap';
 import InjectionSiteSettings from './InjectionSiteSettings';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ interface Glp1LogInjectionProps {
 
 export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
   const { t } = useTranslation();
+  const { timezone } = usePreferences();
   const medId = med.id;
 
   const sitesQ = useSiteSuggestion(medId);
@@ -72,7 +74,7 @@ export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
         site,
         dose_mg: doseMg ? Number(doseMg) : (med.dose_amount ?? null),
         injected_at: injectedAt
-          ? new Date(injectedAt).toISOString()
+          ? localDateTimeToUtc(injectedAt, timezone).toISOString()
           : undefined,
         pen_id: willDeduct ? effectivePenId : null,
         deduct_pen: willDeduct,

@@ -68,5 +68,20 @@ async function deleteStep(userId: string, id: string) {
   }
 }
 
-export { createStep, listSteps, deleteStep };
-export default { createStep, listSteps, deleteStep };
+async function listStepsForUser(userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT ${STEP_COLS} FROM medication_titration_steps
+       WHERE user_id = $1
+       ORDER BY medication_id, step_order ASC, start_date ASC NULLS LAST, created_at ASC`,
+      [userId]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+export { createStep, listSteps, listStepsForUser, deleteStep };
+export default { createStep, listSteps, listStepsForUser, deleteStep };

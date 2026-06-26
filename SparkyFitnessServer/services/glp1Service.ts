@@ -36,6 +36,7 @@ async function getSerumCurve(
   opts: { fromDay?: number; toDay?: number; stepDays?: number } = {}
 ): Promise<{
   drugId: string | null;
+  drugName?: string | null;
   curve: SerumPoint[];
   currentLevelFraction: number | null;
   /** Day positions (relative to the curve anchor) of each logged injection, for chart markers. */
@@ -49,11 +50,26 @@ async function getSerumCurve(
   if (!med) {
     throw new Error('Medication not found');
   }
-  const profile =
+  let profile =
     resolveGlp1Profile(med.name) ??
     (med.custom_fields?.glp1_drug
       ? resolveGlp1Profile(String(med.custom_fields.glp1_drug))
       : undefined);
+
+  if (!profile && med.custom_fields?.glp1_drug === 'custom') {
+    profile = {
+      id: 'custom',
+      displayName:
+        (med.custom_fields?.custom_glp1_name as string) ||
+        med.name ||
+        'Custom GLP-1',
+      brands: [],
+      halfLifeDays: Number(med.custom_fields?.custom_half_life_days) || 7,
+      tMaxDays: Number(med.custom_fields?.custom_t_max_days) || 1.5,
+      cadence:
+        (med.custom_fields?.custom_cadence as 'weekly' | 'daily') || 'weekly',
+    };
+  }
 
   const injections = (await injectionRepository.listInjections(userId, {
     medicationId,
@@ -66,6 +82,7 @@ async function getSerumCurve(
   if (!profile || injections.length === 0) {
     return {
       drugId: profile?.id ?? null,
+      drugName: profile?.displayName ?? null,
       curve: [],
       currentLevelFraction: null,
       doseDays: [],
@@ -105,6 +122,7 @@ async function getSerumCurve(
 
   return {
     drugId: profile.id,
+    drugName: profile.displayName,
     curve,
     currentLevelFraction,
     doseDays,
