@@ -165,7 +165,7 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
   log(
-    'info',
+    'debug',
     `getFoodEntryMealsByDate in foodEntryMealRepository: userId: ${userId}, selectedDate: ${selectedDate}`
   );
   const client = await getClient(userId);

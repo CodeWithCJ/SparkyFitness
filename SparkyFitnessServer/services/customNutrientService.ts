@@ -84,8 +84,8 @@ class CustomNutrientService {
         [userId]
       );
       log(
-        'info',
-        `CustomNutrientService.getCustomNutrients: Fetched ${result.rows.length} custom nutrients for user ${userId}. Data: ${JSON.stringify(result.rows)}`
+        'debug',
+        `CustomNutrientService.getCustomNutrients: Fetched ${result.rows.length} custom nutrients for user ${userId}`
       );
       return result.rows;
     } finally {

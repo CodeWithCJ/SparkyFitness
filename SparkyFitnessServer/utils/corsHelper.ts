@@ -128,14 +128,17 @@ function createCorsOriginChecker(
     if (!effectiveOrigin && !referer) {
       return callback(null, false);
     }
-    // 5. Reject if no match found
-    const rejectionReason = allowPrivateNetworks
-      ? 'origin/referer not in allowlist and not a private network'
-      : 'origin/referer not in allowlist (private networks disabled)';
-    log(
-      'debug',
-      `CORS: Rejected ${origin || 'no origin'} - ${rejectionReason}`
-    );
+    // 5. Reject if no match found.
+    // Only log when a real cross-origin request is declined. Requests with no
+    // Origin header (e.g. the dev Vite proxy, which strips it) hit this path on
+    // every reload but are same-origin and succeed regardless, so logging them
+    // is just misleading noise.
+    if (effectiveOrigin) {
+      const rejectionReason = allowPrivateNetworks
+        ? 'origin/referer not in allowlist and not a private network'
+        : 'origin/referer not in allowlist (private networks disabled)';
+      log('debug', `CORS: Rejected ${origin} - ${rejectionReason}`);
+    }
     return callback(null, false);
   };
 }

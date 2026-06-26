@@ -85,10 +85,6 @@ const authenticate = async (req: any, res: any, next: any) => {
       }
     }
     if (session && session.user) {
-      log(
-        'debug',
-        `Authentication: Better Auth identity valid. User ID: ${session.user.id}`
-      );
       req.authenticatedUserId = session.user.id;
       req.originalUserId = req.authenticatedUserId;
       req.user = session.user; // Full user object (includes role)

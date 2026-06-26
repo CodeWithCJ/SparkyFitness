@@ -90,7 +90,7 @@ async function isUserAiConfigAllowed() {
     );
     const value = result.rows[0] ? result.rows[0].allow_user_ai_config : true; // Default to true if not set
     log(
-      'info',
+      'debug',
       `[GLOBAL SETTINGS REPO] User AI config allowed (from DB): ${value}`
     );
     return value;
