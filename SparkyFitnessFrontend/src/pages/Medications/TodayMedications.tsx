@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Calendar,
   Trash2,
+  Activity,
 } from 'lucide-react';
 import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
@@ -110,8 +111,13 @@ export default function TodayMedications({
     let due = 0;
     let taken = 0;
     let perfectDays = 0;
-    const days: { date: string; due: number; taken: number; pct: number }[] =
-      [];
+    const days: {
+      date: string;
+      due: number;
+      taken: number;
+      prnTaken: number;
+      pct: number;
+    }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = addDays(selectedDate, -i);
       const dayDue = getDueDosesForDate(meds, d);
@@ -125,25 +131,77 @@ export default function TodayMedications({
         );
         if (hit) dayTaken++;
       }
+      const dayPrnTaken = recentEntries.filter(
+        (e) => e.entry_date === d && e.status === 'prn_taken'
+      ).length;
+      // Effective completion: scheduled taken + PRN activity (capped at due count)
+      const effectiveTaken =
+        dayDue.length > 0
+          ? Math.min(dayDue.length, dayTaken + dayPrnTaken)
+          : dayPrnTaken;
+      const effectivePct =
+        dayDue.length > 0
+          ? Math.round((effectiveTaken / dayDue.length) * 100)
+          : dayPrnTaken > 0
+            ? 100
+            : -1;
       days.push({
         date: d,
         due: dayDue.length,
         taken: dayTaken,
-        pct:
-          dayDue.length > 0 ? Math.round((dayTaken / dayDue.length) * 100) : -1,
+        prnTaken: dayPrnTaken,
+        pct: effectivePct,
       });
-      if (dayDue.length === 0) continue;
-      due += dayDue.length;
-      taken += dayTaken;
-      if (dayTaken === dayDue.length) perfectDays++;
+      if (dayDue.length > 0) {
+        due += dayDue.length;
+        taken += effectiveTaken;
+        if (effectiveTaken >= dayDue.length) perfectDays++;
+      } else if (dayPrnTaken > 0) {
+        // PRN-only day with activity counts as a perfect day
+        due += 1;
+        taken += 1;
+        perfectDays++;
+      }
     }
-    // Current streak of perfect days (walk back from newest; days with no doses are skipped).
+    // Current streak of perfect days (walk back from newest).
     let streak = 0;
-    for (let k = days.length - 1; k >= 0; k--) {
+    let startIndex = days.length - 1;
+    const todayDay = days[startIndex];
+    if (todayDay) {
+      const todayHasSkips = recentEntries.some(
+        (e) => e.entry_date === todayDay.date && e.status === 'skipped'
+      );
+      const todayIsComplete =
+        todayDay.due > 0
+          ? todayDay.taken === todayDay.due
+          : todayDay.prnTaken > 0;
+
+      if (!todayIsComplete && !todayHasSkips) {
+        startIndex = days.length - 2; // start from yesterday
+      }
+    }
+
+    for (let k = startIndex; k >= 0; k--) {
       const day = days[k];
-      if (!day || day.due === 0) continue;
-      if (day.taken === day.due) streak++;
-      else break;
+      if (!day) continue;
+
+      const hasSkips = recentEntries.some(
+        (e) => e.entry_date === day.date && e.status === 'skipped'
+      );
+
+      if (day.due > 0) {
+        if (day.taken === day.due && !hasSkips) {
+          streak++;
+        } else {
+          break;
+        }
+      } else if (day.prnTaken > 0) {
+        if (!hasSkips) {
+          streak++;
+        } else {
+          break;
+        }
+      }
     }
     return {
       due,
@@ -364,7 +422,15 @@ export default function TodayMedications({
 
       {/* Today stats + 14-day adherence ring */}
       <Card>
-        <CardContent className="space-y-4 p-5">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
+              <Activity className="h-3.5 w-3.5 text-indigo-500" />
+            </span>
+            {t('medications.today.adherenceTitle', 'Adherence overview')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-0">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
             <div className="grid w-full grid-cols-3 gap-3">
               {tiles.map((tile) => (
@@ -437,21 +503,40 @@ export default function TodayMedications({
             </div>
             <div className="flex h-10 items-end gap-1">
               {adherence14.days.map((d, i) => {
-                const none = d.due === 0;
-                const color = none
+                const noScheduled = d.due === 0;
+                const hasPrn = d.prnTaken > 0;
+                const idle = noScheduled && !hasPrn;
+
+                // d.pct already includes PRN contribution
+                const color = idle
                   ? 'bg-muted'
                   : d.pct === 100
                     ? 'bg-green-500'
                     : d.pct >= 50
                       ? 'bg-amber-500'
-                      : 'bg-red-500';
+                      : d.pct > 0
+                        ? 'bg-orange-500'
+                        : 'bg-red-500';
+
+                const tooltip = noScheduled
+                  ? hasPrn
+                    ? `${d.date}: ${d.prnTaken} PRN dose${d.prnTaken > 1 ? 's' : ''}`
+                    : `${d.date}: no doses`
+                  : `${d.date}: ${d.taken}/${d.due} taken${d.prnTaken > 0 ? ` + ${d.prnTaken} PRN` : ''}`;
+
+                const height = idle
+                  ? 18
+                  : noScheduled && hasPrn
+                    ? Math.min(100, 40 + d.prnTaken * 20)
+                    : Math.max(14, d.pct);
+
                 return (
                   <div
                     key={i}
-                    title={`${d.date}: ${none ? 'no doses' : `${d.taken}/${d.due} taken`}`}
-                    className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${none ? 'opacity-40' : ''}`}
+                    title={tooltip}
+                    className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${idle ? 'opacity-40' : ''}`}
                     style={{
-                      height: `${none ? 18 : Math.max(14, d.pct)}%`,
+                      height: `${height}%`,
                     }}
                   />
                 );
