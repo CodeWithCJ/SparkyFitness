@@ -19,6 +19,7 @@ import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { useState } from 'react';
 import { UserPreferencesChat } from '@/types/settings';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 
 interface UserChatPreferencesProps {
   loading?: boolean;
@@ -51,6 +52,11 @@ export const UserChatPreferences = ({
   );
   const showAiAssistedConversionsRow =
     userAiConfigAllowed === true && !!activeAiService;
+
+  // Pure-local advanced toggle for the in-chat token-usage displays. Persisted
+  // to localStorage via the context, so it saves immediately without the chat
+  // preferences Save button below.
+  const { showTokenStats, setShowTokenStats } = useChatbotVisibility();
 
   const onSave = async () => {
     try {
@@ -97,6 +103,22 @@ export const UserChatPreferences = ({
             />
           </div>
         )}
+
+        <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+          <div className="space-y-1">
+            <Label htmlFor="show_token_stats" className="text-sm font-medium">
+              Show token usage
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Display per-message token counts in the chat.
+            </p>
+          </div>
+          <Switch
+            id="show_token_stats"
+            checked={showTokenStats}
+            onCheckedChange={setShowTokenStats}
+          />
+        </div>
 
         <h3 className="flex items-center gap-2 text-base font-semibold pt-2">
           <Bot className="h-5 w-5" />

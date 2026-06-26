@@ -41,7 +41,7 @@ interface ChatMessage {
 }
 
 import { generateText, streamText, stepCountIs } from 'ai';
-import type { JSONValue, UIMessageChunk } from 'ai';
+import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -152,7 +152,7 @@ async function getActiveAiServiceSetting(
     if (setting) {
       const source = setting.source || 'unknown';
       log(
-        'info',
+        'debug',
         `Active AI service setting for user ${targetUserId} (source: ${source})`
       );
     }
@@ -1035,6 +1035,30 @@ function withEmptyCompletionGuard(
   );
 }
 
+// Shape provider usage into the keys @assistant-ui/react-ai-sdk's
+// getThreadMessageTokenUsage reads off the streamed message metadata, so the
+// chat UI can surface per-message token counts. cacheReadTokens is the
+// cached-input figure; the adapter's normalizeUsage drops undefined fields, so
+// providers reporting partial or no usage stay safe.
+//
+// Nest under `custom`: assistant-ui's fromThreadMessageLike normalization keeps
+// only known metadata keys (`custom`, `steps`, `unstable_*`, ...) and discards
+// unknown top-level keys, so a bare `{ usage }` would be stripped before it
+// reaches the thread message. `metadata.custom.usage` survives, and the adapter
+// reads exactly that path.
+export function mapUsageToMetadata(u: LanguageModelUsage) {
+  return {
+    custom: {
+      usage: {
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        totalTokens: u.totalTokens,
+        cachedInputTokens: u.inputTokenDetails?.cacheReadTokens,
+      },
+    },
+  };
+}
+
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -1291,7 +1315,16 @@ async function processChatMessageStream(
       },
     });
 
-    return { stream: withEmptyCompletionGuard(result.toUIMessageStream()) };
+    return {
+      stream: withEmptyCompletionGuard(
+        result.toUIMessageStream({
+          messageMetadata: ({ part }) =>
+            part.type === 'finish'
+              ? mapUsageToMetadata(part.totalUsage)
+              : undefined,
+        })
+      ),
+    };
   } catch (error) {
     log(
       'error',

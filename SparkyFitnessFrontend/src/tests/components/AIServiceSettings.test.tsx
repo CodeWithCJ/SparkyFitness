@@ -175,6 +175,16 @@ jest.mock('@/contexts/PreferencesContext', () => ({
   }),
 }));
 
+// UserChatPreferences also renders a pure-local "Show token usage" toggle that
+// reads showTokenStats from ChatbotVisibilityContext. Stub the hook so the suite
+// doesn't need a real ChatbotVisibilityProvider.
+jest.mock('@/contexts/ChatbotVisibilityContext', () => ({
+  useChatbotVisibility: () => ({
+    showTokenStats: false,
+    setShowTokenStats: jest.fn(),
+  }),
+}));
+
 // Mock window.confirm
 const mockConfirm = jest.fn();
 window.confirm = mockConfirm;
@@ -657,7 +667,10 @@ describe('AIServiceSettings', () => {
 
     await screen.findByText('My Custom Service');
 
-    const toggleSwitch = await screen.findByRole('switch');
+    // The service toggle is the unnamed switch; exclude the unrelated
+    // "Show token usage" toggle (id="show_token_stats").
+    const switches = await screen.findAllByRole('switch');
+    const toggleSwitch = switches.find((s) => s.id !== 'show_token_stats')!;
     fireEvent.click(toggleSwitch);
 
     await waitFor(() => {
@@ -716,7 +729,11 @@ describe('AIServiceSettings', () => {
     await screen.findByRole('heading', { name: 'Service A' });
     await screen.findByRole('heading', { name: 'Service B' });
 
-    const switches = screen.getAllByRole('switch');
+    // Exclude the unrelated "Show token usage" toggle (id="show_token_stats");
+    // assert only the per-service active toggles.
+    const switches = screen
+      .getAllByRole('switch')
+      .filter((toggle) => toggle.id !== 'show_token_stats');
     expect(switches).toHaveLength(2);
     switches.forEach((toggle) => expect(toggle).toBeChecked());
   });
