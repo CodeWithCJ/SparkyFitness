@@ -69,6 +69,7 @@ export interface MedicationPen {
   bud_date: string | null;
   reorder_flag: boolean;
   reorder_threshold: number | null;
+  notes: string | null;
 }
 
 export interface InjectionEntry {

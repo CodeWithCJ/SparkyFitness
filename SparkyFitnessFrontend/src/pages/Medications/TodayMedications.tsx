@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Clock,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -59,6 +60,9 @@ export default function TodayMedications({
 }: TodayMedicationsProps) {
   const { t } = useTranslation();
   const { timezone } = usePreferences();
+
+  // Notes state for logging
+  const [logNotes, setLogNotes] = useState<Record<string, string>>({});
 
   // Mutations
   const createEntryMutation = useCreateMedicationEntryMutation();
@@ -186,31 +190,59 @@ export default function TodayMedications({
       }
     }
 
-    createEntryMutation.mutate({
-      medication_id: due.medication.id,
-      schedule_id: due.schedule.id,
-      status,
-      taken_at:
-        selectedDate === today
-          ? new Date().toISOString()
-          : `${selectedDate}T12:00:00.000Z`,
-      scheduled_for: scheduledFor,
-      entry_date: selectedDate,
-    });
+    const notesVal = logNotes[due.schedule.id]?.trim() || null;
+    createEntryMutation.mutate(
+      {
+        medication_id: due.medication.id,
+        schedule_id: due.schedule.id,
+        status,
+        taken_at:
+          selectedDate === today
+            ? new Date().toISOString()
+            : `${selectedDate}T12:00:00.000Z`,
+        scheduled_for: scheduledFor,
+        entry_date: selectedDate,
+        notes: notesVal,
+      },
+      {
+        onSuccess: () => {
+          setLogNotes((prev) => {
+            const copy = { ...prev };
+            delete copy[due.schedule.id];
+            return copy;
+          });
+        },
+      }
+    );
   };
 
   const handleLogPrn = (med: MedicationDetail) => {
     const prnSched = med.schedules?.find((s) => s.schedule_type_id === 'prn');
-    createEntryMutation.mutate({
-      medication_id: med.id,
-      schedule_id: prnSched?.id || null,
-      status: 'prn_taken',
-      taken_at:
-        selectedDate === today
-          ? new Date().toISOString()
-          : `${selectedDate}T12:00:00.000Z`,
-      entry_date: selectedDate,
-    });
+    const schedId = prnSched?.id || med.id;
+    const notesVal = logNotes[schedId]?.trim() || null;
+
+    createEntryMutation.mutate(
+      {
+        medication_id: med.id,
+        schedule_id: prnSched?.id || null,
+        status: 'prn_taken',
+        taken_at:
+          selectedDate === today
+            ? new Date().toISOString()
+            : `${selectedDate}T12:00:00.000Z`,
+        entry_date: selectedDate,
+        notes: notesVal,
+      },
+      {
+        onSuccess: () => {
+          setLogNotes((prev) => {
+            const copy = { ...prev };
+            delete copy[schedId];
+            return copy;
+          });
+        },
+      }
+    );
   };
 
   const handleUndoEntry = (entryId: string) => {
@@ -568,6 +600,24 @@ export default function TodayMedications({
                                     )}
                               </span>
                             </div>
+                            {!isLogged && (
+                              <Input
+                                placeholder="Add note..."
+                                value={logNotes[due.schedule.id] || ''}
+                                onChange={(e) =>
+                                  setLogNotes((prev) => ({
+                                    ...prev,
+                                    [due.schedule.id]: e.target.value,
+                                  }))
+                                }
+                                className="h-7 text-xs mt-2 max-w-[200px]"
+                              />
+                            )}
+                            {isLogged && entry?.notes && (
+                              <p className="text-xs text-muted-foreground italic mt-1.5">
+                                Note: {entry.notes}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -646,40 +696,64 @@ export default function TodayMedications({
                     No as-needed or non-scheduled medications configured.
                   </p>
                 )}
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {prnMeds.map((med) => (
-                    <Button
-                      key={med.id}
-                      variant="outline"
-                      className="justify-between h-12 flex items-center gap-3 px-3 hover:bg-accent/50 w-full"
-                      onClick={() => handleLogPrn(med)}
-                      disabled={isPending}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <MedTypeIcon
-                          typeId={med.type_id}
-                          isGlp1={med.is_glp1}
-                          className="h-4.5 w-4.5 shrink-0"
-                        />
-                        <div className="text-left truncate">
-                          <p className="font-semibold text-xs truncate">
-                            {med.display_name || med.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {med.strength_value
-                              ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                              : med.type_id}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-950 shrink-0"
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {prnMeds.map((med) => {
+                    const prnSched = med.schedules?.find(
+                      (s) => s.schedule_type_id === 'prn'
+                    );
+                    const schedId = prnSched?.id || med.id;
+                    return (
+                      <div
+                        key={med.id}
+                        className="flex flex-col p-3 border rounded-lg bg-card border-border hover:shadow-sm"
                       >
-                        PRN
-                      </Badge>
-                    </Button>
-                  ))}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <MedTypeIcon
+                              typeId={med.type_id}
+                              isGlp1={med.is_glp1}
+                              className="h-4.5 w-4.5 shrink-0"
+                            />
+                            <div className="text-left truncate">
+                              <p className="font-semibold text-xs truncate">
+                                {med.display_name || med.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {med.strength_value
+                                  ? `${med.strength_value} ${med.strength_unit ?? ''}`
+                                  : med.type_id}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-950 shrink-0"
+                          >
+                            PRN
+                          </Badge>
+                        </div>
+                        <Input
+                          placeholder="Add note..."
+                          value={logNotes[schedId] || ''}
+                          onChange={(e) =>
+                            setLogNotes((prev) => ({
+                              ...prev,
+                              [schedId]: e.target.value,
+                            }))
+                          }
+                          className="h-7 text-xs mt-2"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white mt-2 w-full"
+                          onClick={() => handleLogPrn(med)}
+                          disabled={isPending}
+                        >
+                          Log Intake
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
@@ -759,6 +833,11 @@ export default function TodayMedications({
                                 : 'Skipped'}
                         </Badge>
                       </div>
+                      {entry.notes && (
+                        <p className="text-[11px] text-muted-foreground italic mt-1">
+                          Note: {entry.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
 
