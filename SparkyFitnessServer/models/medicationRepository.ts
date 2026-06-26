@@ -168,7 +168,7 @@ async function updateMedication(
         updates.push(`${key} = $${index}`);
         if (key === 'custom_fields') {
           values.push(
-            data.custom_fields ? JSON.stringify(data.custom_fields) : null
+            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
           );
         } else {
           values.push(data[key]);

@@ -45,7 +45,9 @@ export function calculatePearsonCorrelation(
   }
 
   const num = n * sumXY - sumX * sumY;
-  const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  const termX = Math.max(0, n * sumX2 - sumX * sumX);
+  const termY = Math.max(0, n * sumY2 - sumY * sumY);
+  const den = Math.sqrt(termX * termY);
 
   if (den === 0) {
     return { r: 0, confidence: 0, strength: "none", n };

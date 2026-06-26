@@ -298,3 +298,51 @@ export function calculateAge(dob: string, tz?: string): number {
   return age;
 }
 
+/**
+ * Parses a local datetime string (e.g. "YYYY-MM-DDTHH:mm") in a given timezone and returns a UTC Date.
+ */
+export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
+  const [datePart, timePart] = localDateTimeStr.split('T');
+  if (!datePart || !timePart) return new Date(localDateTimeStr);
+
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
+  if (year == null || month == null || day == null || hour == null || minute == null) {
+    return new Date(localDateTimeStr);
+  }
+
+  const fmt = Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  });
+
+  const targetLocalUtcMs = Date.UTC(year, month - 1, day, hour, minute);
+
+  function offsetAt(utcMs: number): number {
+    const parts = fmt.formatToParts(new Date(utcMs));
+    const pv = (type: string) => {
+      const p = parts.find((p) => p.type === type);
+      return p ? Number(p.value) : 0;
+    };
+    let h = pv('hour');
+    if (h === 24) h = 0;
+    const localAsUtcMs = Date.UTC(pv('year'), pv('month') - 1, pv('day'), h, pv('minute'));
+    return localAsUtcMs - utcMs;
+  }
+
+  const offset1 = offsetAt(targetLocalUtcMs);
+  let resultMs = targetLocalUtcMs - offset1;
+
+  const offset2 = offsetAt(resultMs);
+  if (offset2 !== offset1) {
+    resultMs = targetLocalUtcMs - offset2;
+  }
+
+  return new Date(resultMs);
+}
+

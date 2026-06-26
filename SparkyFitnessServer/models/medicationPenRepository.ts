@@ -75,46 +75,57 @@ async function listPens(userId: string, medicationId?: string) {
 async function updatePen(userId: string, id: string, data: UpdatePenBody) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `UPDATE medication_pens SET
-         kind = COALESCE($3, kind),
-         label = COALESCE($4, label),
-         dose_mg = COALESCE($5, dose_mg),
-         concentration_mg_ml = COALESCE($6, concentration_mg_ml),
-         volume_ml = COALESCE($7, volume_ml),
-         doses_total = COALESCE($8, doses_total),
-         doses_used = COALESCE($9, doses_used),
-         status = COALESCE($10, status),
-         opened_at = COALESCE($11, opened_at),
-         expiry_date = COALESCE($12, expiry_date),
-         bud_date = COALESCE($13, bud_date),
-         reorder_flag = COALESCE($14, reorder_flag),
-         reorder_threshold = COALESCE($15, reorder_threshold),
-         notes = COALESCE($16, notes),
-         custom_fields = COALESCE($17, custom_fields),
-         updated_at = NOW()
-       WHERE id = $1 AND user_id = $2
-       RETURNING ${PEN_COLS}`,
-      [
-        id,
-        userId,
-        data.kind ?? null,
-        data.label ?? null,
-        data.dose_mg ?? null,
-        data.concentration_mg_ml ?? null,
-        data.volume_ml ?? null,
-        data.doses_total ?? null,
-        data.doses_used ?? null,
-        data.status ?? null,
-        data.opened_at ?? null,
-        data.expiry_date ?? null,
-        data.bud_date ?? null,
-        data.reorder_flag ?? null,
-        data.reorder_threshold ?? null,
-        data.notes ?? null,
-        data.custom_fields ? JSON.stringify(data.custom_fields) : null,
-      ]
-    );
+    const updates: string[] = [];
+    const values: any[] = [id, userId];
+    let index = 3;
+
+    const fields: (keyof UpdatePenBody)[] = [
+      'kind',
+      'label',
+      'dose_mg',
+      'concentration_mg_ml',
+      'volume_ml',
+      'doses_total',
+      'doses_used',
+      'status',
+      'opened_at',
+      'expiry_date',
+      'bud_date',
+      'reorder_flag',
+      'reorder_threshold',
+      'notes',
+      'custom_fields',
+    ];
+
+    for (const key of fields) {
+      if (data[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        if (key === 'custom_fields') {
+          values.push(
+            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
+          );
+        } else {
+          values.push(data[key]);
+        }
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      const current = await client.query(
+        `SELECT ${PEN_COLS} FROM medication_pens WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+      return current.rows[0] ?? null;
+    }
+
+    const query = `UPDATE medication_pens SET
+                     ${updates.join(',\n')},
+                     updated_at = NOW()
+                   WHERE id = $1 AND user_id = $2
+                   RETURNING ${PEN_COLS}`;
+
+    const result = await client.query(query, values);
     return result.rows[0] ?? null;
   } finally {
     client.release();
