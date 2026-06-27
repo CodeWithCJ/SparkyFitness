@@ -4,7 +4,7 @@ import { ExtensionStorage } from '@bacons/apple-targets';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-import { CalorieWidgetBridge } from '../native/CalorieWidgetBridge';
+import { CalorieWidgetBridge } from '../services/CalorieWidgetBridge';
 import { addLog } from '../services/LogService';
 import type { DailySummary } from '../types/dailySummary';
 import { getTodayDate } from '../utils/dateUtils';

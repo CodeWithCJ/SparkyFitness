@@ -6,13 +6,19 @@ const expoConfig = require("eslint-config-expo/flat");
 // so the override below lives in a config object that can resolve the rule.
 const tsEslintPlugin = expoConfig.find(
   (config) => config.plugins && config.plugins["@typescript-eslint"],
-).plugins["@typescript-eslint"];
+)?.plugins?.["@typescript-eslint"];
 const reactPlugin = expoConfig.find(
   (config) => config.plugins && config.plugins["react"],
-).plugins["react"];
+)?.plugins?.["react"];
 const importPlugin = expoConfig.find(
   (config) => config.plugins && config.plugins["import"],
-).plugins["import"];
+)?.plugins?.["import"];
+
+if (!tsEslintPlugin || !reactPlugin || !importPlugin) {
+  throw new Error(
+    "eslint-config-expo/flat failed to find required plugins (@typescript-eslint, react, import) - it may have changed in an expo upgrade",
+  );
+}
 
 module.exports = defineConfig([
   expoConfig,

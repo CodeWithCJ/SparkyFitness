@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import Button from '../ui/Button';
-import FormInput from '../FormInput';
-import type { MfaFactors } from '../../services/api/authService';
+import Button from './ui/Button';
+import FormInput from './FormInput';
+import type { MfaFactors } from '../services/api/authService';
 
 // --- Shared auth sub-components ---
 

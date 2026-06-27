@@ -38,13 +38,12 @@ tsc --noEmit                                   # Type check only
   - `healthconnect/` — Android health read/aggregation/transformation/preferences + `writeback.ts`
   - `healthkit/` — iOS equivalents plus `backgroundDelivery` + `writeback.ts`
   - `shared/` — `preferences.ts` factory + `healthPermissionMigration.ts`
-  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `writeback.ts`/`.ios.ts` (platform writeback re-exports), `backgroundSyncService`, `autoSyncCoordinator`, `healthDataDisplay`, `calculations` (BMR / Navy body-fat / calorie-balance / age), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection`, `foodSearchPreferences`, `whatsNewBanner`, `diagnosticReportService`, `healthDiagnosticService` (Android-only), `seedHealthData`/`.ios.ts` (dev-only), `notifications` (rest-timer + fasting-goal scheduling), `booleanPreference` (app-local toggle factory), `haptics`, `sounds`, `hydrationCardVisibility`, `fastingCardVisibility`.
+  - Top-level: `healthConnectService.ts`/`.ios.ts` (platform orchestration), `writeback.ts`/`.ios.ts` (platform writeback re-exports), `backgroundSyncService`, `autoSyncCoordinator`, `healthDataDisplay`, `calculations` (BMR / Navy body-fat / calorie-balance / age), `storage`, `LogService`, `themeService`, `workoutDraftService`, `mealBuilderSelection`, `foodSearchPreferences`, `whatsNewBanner`, `diagnosticReportService`, `healthDiagnosticService` (Android-only), `seedHealthData`/`.ios.ts` (dev-only), `notifications` (rest-timer + fasting-goal scheduling), `booleanPreference` (app-local toggle factory), `haptics`, `sounds`, `hydrationCardVisibility`, `fastingCardVisibility`, `CalorieWidgetBridge` (TS bridge to the Android Glance widget native module).
 - **stores/** — Zustand stores (persisted via `zustand/middleware`). See **Workout timer** below for `activeWorkoutStore`.
 - **hooks/** — React Query hooks by domain (food, food-entry-meals, meals, exercise/workout, workout presets, measurements, profile, preferences). Fasting: `useFasting` (current/stats/history/start/end + `useFastingGoalReconciler`), `useFastingTimer`. Nutrients: `useCustomNutrients`, `useNutrientDisplayPreferences`. AI: `useActiveAiServiceSetting`, `useUserAiConfigAllowed`, `useUnitConversion`, `useEstimateFoodPhoto`. Also `useCopyFoodEntries`, `useUpsertCheckIn`. `useAuth` manages reauth/setup/api-key-switch modals. `useWidgetSync` pushes daily summary snapshots to iOS + Android widgets. Shared cache helpers: `invalidateExerciseCache`, `syncExerciseSessionInCache`, `refreshHealthSyncCache`. Query keys in `hooks/queryKeys.ts`.
-- **native/** — TS bridges to native modules (e.g., `CalorieWidgetBridge` for Android Glance widget reload).
 - **types/** — TypeScript interfaces (incl. `fasting.ts`). Core exercise session types come from `@workspace/shared`.
 - **utils/** — `dateUtils`, `unitConversions` (kg/lbs, km/miles — server storage is metric), `concurrency` (`withTimeout`, `runTasksInBatches`), `syncUtils`, `workoutSession` (display + stats + `buildExercisesPayload`), `activityDetails`, `foodDetails`, `mealNutrition`, `nutrientUtils` (nutrient aggregation + `toggleNutrientVisibility`), `mealBuilderDraft`, `loggedMealCollapse`, `fasting` (timer/stat formatting), `numericInput` (locale-tolerant decimal parsing), `foodPhotoEstimate` (`mapEstimateError`), `rateLimiter`.
-- **constants/** — `meals.ts`, `exercise.ts`, `fasting.ts` (presets + metabolic stages), `nutrients.ts` (nutrient metadata + default summary nutrients).
+- **constants/** — `meals.ts`, `fasting.ts` (presets + metabolic stages), `nutrients.ts` (nutrient metadata + default summary nutrients).
 - **HealthMetrics.ts** — Health metric definitions filtered by platform and enabled status at runtime.
 - **plugins/** — Expo config plugins applied at prebuild: `withCalorieWidget`, `withGlanceAndroidSupport`, `withNetworkSecurityConfig`. Edit `targets/`, never the generated `android/` or `ios/` folders.
 
@@ -125,7 +124,7 @@ Two auth modes per `ServerConfig.authType`:
 - **`apiKey`** — API key sent as `Authorization: Bearer <API_KEY>`. Configured via `ServerConfigModal`.
 - **`session`** — Session token via `authService.ts` (email/password, optional MFA via TOTP or email OTP). Configured via `OnboardingScreen` or `ReauthModal`.
 
-Three auth-UI entry points: `OnboardingScreen` (first-time setup, initial route when no config), `ReauthModal` (shown by `useAuth` on 401 — server picker + "Use API Key Instead" fallback), `ServerConfigModal` (edit server/key/proxy headers from Settings). MFA logic is shared via `MfaForm` (`src/components/auth/MfaForm.tsx`).
+Three auth-UI entry points: `OnboardingScreen` (first-time setup, initial route when no config), `ReauthModal` (shown by `useAuth` on 401 — server picker + "Use API Key Instead" fallback), `ServerConfigModal` (edit server/key/proxy headers from Settings). MFA logic is shared via `MfaForm` (`src/components/MfaForm.tsx`).
 
 **Proxy Headers**: Per-server custom HTTP headers for reverse proxy auth (Pangolin, Cloudflare Access). Stored in SecureStore as `ProxyHeader[]` on each `ServerConfig`. Injected globally via `proxyHeadersToRecord()` in `apiClient.ts` and raw fetch calls in `healthDataApi.ts`. During login, `setPendingProxyHeaders()`/`clearPendingProxyHeaders()` on `authService` manages headers before a config is saved.
 
@@ -161,7 +160,7 @@ Data flow: RN writes snapshots into the shared iOS app group (`Constants.expoCon
 
 Android home-screen widgets are Glance-based, under `targets/android-widget/` (Kotlin + `res/`). They are stamped into the generated Android project at prebuild by `plugins/withCalorieWidget.ts`, which copies the tree, expands `.kt.tmpl` files (substituting the resolved `applicationId`), registers each receiver in `AndroidManifest.xml`, and adds `CalorieWidgetPackage` to `MainApplication`. Two widgets ship today: `CalorieWidget` (kind `widget`) and `MacroWidget` (kind `macroWidget`), each with its own `Receiver`, `Module`, `*_widget_info.xml`, and `PREFS_*` namespace.
 
-Data flow: `useWidgetSync` calls `src/native/CalorieWidgetBridge.ts` (Android branch) to push snapshots and reload Glance — same `summary` payload as iOS. After any change to `targets/android-widget/` or the plugin, run `npx expo prebuild -c`. The pattern for adding a third widget is documented at the top of `plugins/withCalorieWidget.ts`.
+Data flow: `useWidgetSync` calls `src/services/CalorieWidgetBridge.ts` (Android branch) to push snapshots and reload Glance — same `summary` payload as iOS. After any change to `targets/android-widget/` or the plugin, run `npx expo prebuild -c`. The pattern for adding a third widget is documented at the top of `plugins/withCalorieWidget.ts`.
 
 ### Library Tab
 

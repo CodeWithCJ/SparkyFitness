@@ -17,7 +17,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import Icon from './Icon';
 import FormInput from './FormInput';
 import SegmentedControl from './SegmentedControl';
-import MfaForm, { ErrorBanner, PrimaryButton } from './auth/MfaForm';
+import MfaForm, { ErrorBanner, PrimaryButton } from './MfaForm';
 import {
   login,
   LoginError,
