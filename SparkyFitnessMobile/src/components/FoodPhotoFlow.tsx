@@ -4,7 +4,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import FoodPhotoImproveScreen from '../screens/FoodPhotoImproveScreen';
 import FoodPhotoEstimateReviewScreen from '../screens/FoodPhotoEstimateReviewScreen';
 import FoodPhotoLogEntryScreen from '../screens/FoodPhotoLogEntryScreen';
-import { withErrorBoundary } from '../components/ScreenErrorBoundary';
+import { withErrorBoundary } from './ScreenErrorBoundary';
 import type { FoodPhotoFlowParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<FoodPhotoFlowParamList>();

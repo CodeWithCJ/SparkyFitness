@@ -39,7 +39,7 @@ import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
 import WorkoutPresetFormScreen from './src/screens/WorkoutPresetFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodPhotoIntroScreen from './src/screens/FoodPhotoIntroScreen';
-import FoodPhotoFlow from './src/navigation/FoodPhotoFlow';
+import FoodPhotoFlow from './src/components/FoodPhotoFlow';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import ExercisesLibraryScreen from './src/screens/ExercisesLibraryScreen';
