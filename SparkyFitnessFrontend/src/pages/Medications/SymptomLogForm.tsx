@@ -1,24 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Activity,
-  Plus,
-  X,
-  Info,
-  Frown,
-  BatteryLow,
-  Brain,
-  ArrowDownFromLine,
-  Droplets,
-  CircleAlert,
-  Flame,
-  User,
-  Heart,
-  Dumbbell,
-  Bone,
-  RotateCcw,
-  MapPin,
-} from 'lucide-react';
+import { Activity, Plus, X, Info, MapPin } from 'lucide-react';
 import { BUILT_IN_SYMPTOMS } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,6 +39,12 @@ import {
   useCreateSymptomEntryMutation,
 } from '@/hooks/useSymptoms';
 import type { MedicationDetail } from '@/types/medications';
+import {
+  symptomIcon,
+  symptomChip,
+  LOCATION_ICONS,
+  LOCATION_COLORS,
+} from './medicationUtils';
 
 interface SymptomLogFormProps {
   selectedDate: string;
@@ -109,21 +97,6 @@ const BRISTOL_TYPES = [
   },
 ];
 
-const SYMPTOM_ICON: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
-  nausea: Frown,
-  fatigue: BatteryLow,
-  headache: Brain,
-  constipation: ArrowDownFromLine,
-  diarrhea: Droplets,
-  vomiting: CircleAlert,
-  acid_reflux: Flame,
-  stomach_pain: Frown,
-  dizziness: RotateCcw,
-};
-
 const SYMPTOM_LOCATIONS = [
   'general',
   'head',
@@ -144,19 +117,6 @@ const SYMPTOM_LOCATION_MAP: Record<string, string[]> = {
   headache: ['head'],
   dizziness: ['head'],
   fatigue: ['general'],
-};
-
-const LOCATION_ICON: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
-  general: User,
-  head: Brain,
-  abdomen: Activity,
-  chest: Heart,
-  back: User,
-  muscles: Dumbbell,
-  joints: Bone,
 };
 
 const locationLabel = (loc: string) =>
@@ -404,16 +364,18 @@ export default function SymptomLogForm({
                         : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <span className="text-xl leading-none h-6 flex items-center justify-center">
-                      {(() => {
-                        const Icon = SYMPTOM_ICON[opt.name];
-                        return Icon ? (
-                          <Icon className="h-5 w-5 text-muted-foreground" />
-                        ) : (
-                          <Activity className="h-5 w-5 text-muted-foreground" />
-                        );
-                      })()}
-                    </span>
+                    {(() => {
+                      const Icon = symptomIcon(opt.name);
+                      return (
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-full ${symptomChip(
+                            opt.name
+                          )}`}
+                        >
+                          <Icon className="h-[18px] w-[18px]" />
+                        </span>
+                      );
+                    })()}
                     <span className="text-[11px] font-medium leading-tight text-center">
                       {opt.isCustom
                         ? opt.displayName
@@ -537,8 +499,14 @@ export default function SymptomLogForm({
                 >
                   <span className="mr-1 inline-flex items-center">
                     {(() => {
-                      const Icon = LOCATION_ICON[loc];
-                      return Icon ? <Icon className="h-3 w-3" /> : null;
+                      const Icon = LOCATION_ICONS[loc];
+                      return Icon ? (
+                        <Icon
+                          className={`h-3 w-3 ${
+                            selected ? '' : (LOCATION_COLORS[loc] ?? '')
+                          }`}
+                        />
+                      ) : null;
                     })()}
                   </span>
                   {t('medications.locations.' + loc, locationLabel(loc))}
@@ -561,7 +529,9 @@ export default function SymptomLogForm({
                     onClick={() => setBodyLocation(loc.name)}
                     className="flex items-center gap-1"
                   >
-                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    <MapPin
+                      className={`h-3 w-3 ${selected ? '' : 'text-rose-400'}`}
+                    />
                     {loc.name}
                   </button>
                   <button

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Syringe } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -111,7 +112,17 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
                       strokeDasharray="2 2"
                       label={
                         i === 0
-                          ? { value: '💉', position: 'insideTop', fontSize: 10 }
+                          ? (props: {
+                              viewBox?: { x?: number; y?: number };
+                            }) => (
+                              <Syringe
+                                x={(props.viewBox?.x ?? 0) - 6}
+                                y={(props.viewBox?.y ?? 0) + 2}
+                                width={12}
+                                height={12}
+                                stroke="#3b82f6"
+                              />
+                            )
                           : undefined
                       }
                     />

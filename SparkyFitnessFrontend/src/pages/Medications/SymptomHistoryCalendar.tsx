@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShieldAlert, AlertCircle, Info } from 'lucide-react';
 import {
-  BUILT_IN_SYMPTOMS,
-  getSymptomPatternHints,
-  addDays,
-} from '@workspace/shared';
+  ShieldAlert,
+  AlertCircle,
+  Info,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
+import { getSymptomPatternHints, addDays } from '@workspace/shared';
 import {
   Card,
   CardContent,
@@ -15,6 +17,11 @@ import {
 } from '@/components/ui/card';
 import type { MedicationEntry } from '@/types/medications';
 import type { SharedSymptomEntry } from '@workspace/shared';
+import {
+  symptomIconForSnapshot,
+  symptomColorForSnapshot,
+  GI_TILE_ICONS,
+} from './medicationUtils';
 
 interface SymptomHistoryCalendarProps {
   selectedDate: string;
@@ -22,28 +29,6 @@ interface SymptomHistoryCalendarProps {
   recentEntries: MedicationEntry[];
   onDateChange?: (date: string) => void;
 }
-
-const SYMPTOM_EMOJI: Record<string, string> = {
-  nausea: '🤢',
-  fatigue: '😮‍💨',
-  headache: '🤕',
-  constipation: '🚽',
-  diarrhea: '💧',
-  vomiting: '🤮',
-  acid_reflux: '🔥',
-  stomach_pain: '😖',
-  dizziness: '💫',
-};
-
-const SNAPSHOT_EMOJI: Record<string, string> = Object.fromEntries(
-  BUILT_IN_SYMPTOMS.map((s) => [
-    s.displayName.toLowerCase(),
-    SYMPTOM_EMOJI[s.name] ?? '📝',
-  ])
-);
-
-const emojiForSnapshot = (snap: string): string =>
-  SNAPSHOT_EMOJI[snap.toLowerCase()] ?? '📝';
 
 function trendOf(arr: number[]): 'up' | 'down' | 'flat' {
   if (arr.length < 2) return 'flat';
@@ -230,7 +215,7 @@ export default function SymptomHistoryCalendar({
               {
                 label: t('medications.gi.nausea', 'Nausea / wk'),
                 value: giStats.nausea,
-                emoji: '🤢',
+                Icon: GI_TILE_ICONS.nausea,
                 series: giSeries.nausea,
                 grad: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-transparent',
                 chip: 'bg-emerald-100 dark:bg-emerald-900/50',
@@ -239,7 +224,7 @@ export default function SymptomHistoryCalendar({
               {
                 label: t('medications.gi.vomiting', 'Vomiting / wk'),
                 value: giStats.vomiting,
-                emoji: '🤮',
+                Icon: GI_TILE_ICONS.vomiting,
                 series: giSeries.vomiting,
                 grad: 'from-violet-50 to-white dark:from-violet-950/40 dark:to-transparent',
                 chip: 'bg-violet-100 dark:bg-violet-900/50',
@@ -248,7 +233,7 @@ export default function SymptomHistoryCalendar({
               {
                 label: t('medications.gi.reflux', 'Reflux / wk'),
                 value: giStats.reflux,
-                emoji: '🔥',
+                Icon: GI_TILE_ICONS.reflux,
                 series: giSeries.reflux,
                 grad: 'from-orange-50 to-white dark:from-orange-950/40 dark:to-transparent',
                 chip: 'bg-orange-100 dark:bg-orange-900/50',
@@ -257,7 +242,7 @@ export default function SymptomHistoryCalendar({
               {
                 label: t('medications.gi.avgBristol', 'Avg Bristol'),
                 value: giStats.avgBristol,
-                emoji: '💩',
+                Icon: GI_TILE_ICONS.bristol,
                 series: giSeries.bristol,
                 neutral: true,
                 grad: 'from-sky-50 to-white dark:from-sky-950/40 dark:to-transparent',
@@ -276,20 +261,24 @@ export default function SymptomHistoryCalendar({
                 >
                   {!tile.neutral && trend !== 'flat' && (
                     <span
-                      className={`absolute right-2 top-2 text-[11px] font-bold ${trend === 'up' ? 'text-red-500' : 'text-emerald-500'}`}
+                      className={`absolute right-2 top-2 ${trend === 'up' ? 'text-red-500' : 'text-emerald-500'}`}
                       title={
                         trend === 'up'
                           ? 'Trending up vs earlier this period'
                           : 'Trending down vs earlier this period'
                       }
                     >
-                      {trend === 'up' ? '▲' : '▼'}
+                      {trend === 'up' ? (
+                        <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      )}
                     </span>
                   )}
                   <div
-                    className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip} text-base`}
+                    className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip}`}
                   >
-                    {tile.emoji}
+                    <tile.Icon className={`h-4 w-4 ${tile.num}`} />
                   </div>
                   <p
                     className={`text-2xl font-bold leading-none tabular-nums ${tile.num}`}
@@ -380,9 +369,12 @@ export default function SymptomHistoryCalendar({
               const dominant = has
                 ? [...day.logs].sort((a, b) => b.severity - a.severity)[0]
                 : undefined;
-              const dayEmoji = dominant
-                ? emojiForSnapshot(dominant.symptom_name_snapshot)
+              const DayIcon = dominant
+                ? symptomIconForSnapshot(dominant.symptom_name_snapshot)
                 : null;
+              const dayIconColor = dominant
+                ? symptomColorForSnapshot(dominant.symptom_name_snapshot)
+                : '';
               let colorClass =
                 'bg-muted/20 border-transparent text-muted-foreground/60';
               let badge = 'bg-foreground/10 text-foreground/70';
@@ -422,7 +414,9 @@ export default function SymptomHistoryCalendar({
                   </span>
                   {has && (
                     <>
-                      <span className="text-base leading-none">{dayEmoji}</span>
+                      {DayIcon && (
+                        <DayIcon className={`h-4 w-4 ${dayIconColor}`} />
+                      )}
                       {day.logs.length > 1 && (
                         <span
                           className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums ${badge}`}

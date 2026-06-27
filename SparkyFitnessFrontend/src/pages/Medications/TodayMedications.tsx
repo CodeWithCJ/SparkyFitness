@@ -11,6 +11,7 @@ import {
   Trash2,
   Activity,
   Trophy,
+  Flame,
 } from 'lucide-react';
 import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
@@ -495,7 +496,7 @@ export default function TodayMedications({
               <span>{t('medications.today.last14', 'Last 14 days')}</span>
               {adherence14.streak > 0 && (
                 <span className="flex items-center gap-1 font-semibold text-orange-500">
-                  🔥{' '}
+                  <Flame className="h-3.5 w-3.5 fill-orange-500/20" />{' '}
                   {t('medications.today.streak', '{{count}}-day streak', {
                     count: adherence14.streak,
                   })}
