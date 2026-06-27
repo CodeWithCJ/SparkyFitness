@@ -871,6 +871,10 @@ function AppContent() {
             name="FoodSearch"
             component={SafeFoodSearch}
             options={createStackScreenOptions('Add Food', {
+              // The screen renders its own header; without this iOS shows the
+              // native stack header on top of it (double header). Android
+              // already defaults to headerShown: false.
+              headerShown: false,
               presentation: 'fullScreenModal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
