@@ -276,6 +276,10 @@ async function updateOidcProvider(id: any, providerData: any) {
         providerData.profile_signing_algorithm || 'none',
       timeout: providerData.timeout || 30000,
       is_env_configured: providerData.is_env_configured || false,
+      admin_group:
+        providerData.admin_group !== undefined
+          ? providerData.admin_group
+          : existing?.admin_group || null,
     });
     const discoveryEndpoint =
       providerData.issuer_url.replace(/\/$/, '') +
