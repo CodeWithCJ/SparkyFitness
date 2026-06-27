@@ -6,10 +6,65 @@ import mealPlanTemplateService from './mealPlanTemplateService.js';
 import mealTypeRepository from '../models/mealType.js';
 import { log } from '../config/logging.js';
 import { ValidationError } from '../utils/errors.js';
+import type { MealTypes } from '@workspace/shared';
+
+interface ServingFields {
+  serving_unit?: string;
+  total_servings?: unknown;
+  serving_size?: unknown;
+  [key: string]: unknown;
+}
+
+interface CreateMealData {
+  name: string;
+  description?: string | null;
+  is_public?: boolean;
+  serving_size?: unknown;
+  serving_unit?: string;
+  total_servings?: unknown;
+  foods?: Array<{
+    food_id: string;
+    variant_id: string;
+    quantity: number;
+    unit: string;
+    [key: string]: unknown;
+  }>;
+  user_id?: string;
+  [key: string]: unknown;
+}
+
+interface UpdateMealData {
+  name?: string;
+  description?: string | null;
+  is_public?: boolean;
+  serving_size?: unknown;
+  serving_unit?: string;
+  total_servings?: unknown;
+  [key: string]: unknown;
+}
+
+interface CreateMealPlanData {
+  user_id?: string;
+  meal_id?: string | null;
+  food_id?: string | null;
+  variant_id?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  plan_date: string | Date;
+  meal_type_id: string;
+  [key: string]: unknown;
+}
+
+interface UpdateMealPlanData {
+  quantity?: number | null;
+  unit?: string | null;
+  plan_date?: string | Date;
+  meal_type_id?: string;
+  [key: string]: unknown;
+}
 
 function normalizeServingFields(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
+  data: ServingFields,
   options: { mode: 'create' | 'update' }
 ) {
   // Backwards compatibility (issue #1023): old clients didn't know about
@@ -67,18 +122,21 @@ function normalizeServingFields(
   }
 }
 // --- Meal Template Service Functions ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveMealTypeId(userId: any, mealTypeName: any) {
-  if (!mealTypeName) return null;
-  const types = await mealTypeRepository.getAllMealTypes(userId);
-  const match = types.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t: any) => t.name.toLowerCase() === mealTypeName.toLowerCase()
-  );
-  return match ? match.id : null;
+async function resolveMealTypeId(userId: string, mealTypeName: string) {
+  try {
+    const types = (await mealTypeRepository.getAllMealTypes(
+      userId
+    )) as MealTypes[];
+    const match = types.find(
+      (t) => t.name.toLowerCase() === mealTypeName.toLowerCase()
+    );
+    return match ? match.id : null;
+  } catch (error) {
+    log('error', 'Error in resolveMealTypeId:', error);
+    return null;
+  }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createMeal(userId: any, mealData: any) {
+async function createMeal(userId: string, mealData: CreateMealData) {
   try {
     mealData.user_id = userId;
     normalizeServingFields(mealData, { mode: 'create' });
@@ -93,8 +151,7 @@ async function createMeal(userId: any, mealData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMeals(userId: any, filter = 'all', searchTerm = '') {
+async function getMeals(userId: string, filter = 'all', searchTerm = '') {
   try {
     let meals;
     if (searchTerm) {
@@ -131,8 +188,7 @@ async function getMeals(userId: any, filter = 'all', searchTerm = '') {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getRecentMeals(userId: any, limit = 3) {
+async function getRecentMeals(userId: string, limit = 3) {
   try {
     return await mealRepository.getRecentMeals(userId, limit);
   } catch (error) {
@@ -144,8 +200,7 @@ async function getRecentMeals(userId: any, limit = 3) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealById(userId: any, mealId: any) {
+async function getMealById(userId: string, mealId: string) {
   try {
     log(
       'info',
@@ -175,8 +230,11 @@ async function getMealById(userId: any, mealId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateMeal(userId: any, mealId: any, updateData: any) {
+async function updateMeal(
+  userId: string,
+  mealId: string,
+  updateData: UpdateMealData
+) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
@@ -201,15 +259,15 @@ async function updateMeal(userId: any, mealId: any, updateData: any) {
     let confirmationMessage = null;
     if (updateData.is_public) {
       const mealWithFoods = await mealRepository.getMealById(mealId, userId);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const foodIds = mealWithFoods.foods.map((f: any) => f.food_id);
+      const foodIds = mealWithFoods.foods.map(
+        (f: { food_id: string }) => f.food_id
+      );
       if (foodIds.length > 0) {
         log(
           'info',
           `Updating ${foodIds.length} foods to be public as part of sharing meal ${mealId}`
         );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updatePromises = foodIds.map((foodId: any) =>
+        const updatePromises = foodIds.map((foodId: string) =>
           foodRepository.updateFood(foodId, userId, {
             shared_with_public: true,
           })
@@ -217,8 +275,7 @@ async function updateMeal(userId: any, mealId: any, updateData: any) {
         await Promise.all(updatePromises);
         // Also update custom_nutrients for each food to be shared
         const customNutrientUpdatePromises = foodIds.map(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (foodId: any) =>
+          (foodId: string) =>
             foodRepository.updateFood(foodId, userId, { custom_nutrients: {} }) // Clear custom nutrients when sharing publicly
         );
         await Promise.all(customNutrientUpdatePromises);
@@ -255,8 +312,7 @@ async function updateMeal(userId: any, mealId: any, updateData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMeal(userId: any, mealId: any) {
+async function deleteMeal(userId: string, mealId: string) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
@@ -300,8 +356,7 @@ async function deleteMeal(userId: any, mealId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealDeletionImpact(userId: any, mealId: any) {
+async function getMealDeletionImpact(userId: string, mealId: string) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
     if (!meal) {
@@ -323,8 +378,10 @@ async function getMealDeletionImpact(userId: any, mealId: any) {
   }
 }
 // --- Meal Plan Service Functions ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createMealPlanEntry(userId: any, planData: any) {
+async function createMealPlanEntry(
+  userId: string,
+  planData: CreateMealPlanData
+) {
   try {
     planData.user_id = userId;
     const newMealPlanEntry = await mealRepository.createMealPlanEntry(planData);
@@ -338,8 +395,11 @@ async function createMealPlanEntry(userId: any, planData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealPlanEntries(userId: any, startDate: any, endDate: any) {
+async function getMealPlanEntries(
+  userId: string,
+  startDate: unknown,
+  endDate: unknown
+) {
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
       userId,
@@ -356,8 +416,11 @@ async function getMealPlanEntries(userId: any, startDate: any, endDate: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateMealPlanEntry(userId: any, planId: any, updateData: any) {
+async function updateMealPlanEntry(
+  userId: string,
+  planId: string,
+  updateData: UpdateMealPlanData
+) {
   try {
     // First, verify ownership by fetching the entry by its ID for the specific user
     const mealPlanEntry = await mealRepository.getMealPlanEntryById(
@@ -383,8 +446,7 @@ async function updateMealPlanEntry(userId: any, planId: any, updateData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMealPlanEntry(userId: any, planId: any) {
+async function deleteMealPlanEntry(userId: string, planId: string) {
   try {
     // First, verify ownership by fetching the entry by its ID for the specific user
     const mealPlanEntry = await mealRepository.getMealPlanEntryById(
@@ -412,12 +474,9 @@ async function deleteMealPlanEntry(userId: any, planId: any) {
 // --- Logging Meal Plan to Food Entries ---
 
 async function logMealPlanEntryToDiary(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealPlanId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any
+  userId: string,
+  mealPlanId: string,
+  targetDate: string | Date | null
 ) {
   try {
     const mealPlanEntry = await mealRepository.getMealPlanEntryById(
@@ -491,12 +550,9 @@ async function logMealPlanEntryToDiary(
 }
 
 async function logDayMealPlanToDiary(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  planDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any
+  userId: string,
+  planDate: string,
+  targetDate: string
 ) {
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
@@ -523,8 +579,11 @@ async function logDayMealPlanToDiary(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function searchMeals(userId: any, searchTerm: any, limit = null) {
+async function searchMeals(
+  userId: string,
+  searchTerm: unknown,
+  limit: number | null = null
+) {
   try {
     const meals = await mealRepository.searchMeals(searchTerm, userId, limit);
     return meals;
@@ -537,8 +596,7 @@ async function searchMeals(userId: any, searchTerm: any, limit = null) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealsNeedingReview(authenticatedUserId: any) {
+async function getMealsNeedingReview(authenticatedUserId: string) {
   try {
     const mealsNeedingReview =
       await mealRepository.getMealsNeedingReview(authenticatedUserId);
@@ -554,10 +612,8 @@ async function getMealsNeedingReview(authenticatedUserId: any) {
 }
 
 async function updateMealEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealId: any
+  authenticatedUserId: string,
+  mealId: string
 ) {
   try {
     // Fetch the latest meal details
@@ -589,14 +645,10 @@ async function updateMealEntriesSnapshot(
   }
 }
 async function createMealFromDiaryEntries(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealName: any,
+  userId: string,
+  date: string,
+  mealType: string,
+  mealName: string | null,
   description: string | null = null,
   isPublic = false
 ) {
@@ -628,13 +680,11 @@ async function createMealFromDiaryEntries(
       if (!variantExists && entry.variant_id) {
         // Only check if a variant_id was explicitly recorded
         // Attempt to find the specific variant, if not the default
-        // @ts-expect-error TS(2551): Property 'getFoodVariants' does not exist on type ... Remove this comment to see the full error message
-        const allFoodVariants = await foodRepository.getFoodVariants(
+        const allFoodVariants = ((await foodRepository.getFoodVariantsByFoodId(
           entry.food_id,
           userId
-        ); // Assuming this function exists or is created
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (!allFoodVariants.some((v: any) => v.id === entry.variant_id)) {
+        )) || []) as { id: string }[];
+        if (!allFoodVariants.some((v) => v.id === entry.variant_id)) {
           missingFoods.push(
             `${entry.food_name} (Variant ID: ${entry.variant_id})`
           );
