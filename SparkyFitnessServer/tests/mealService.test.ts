@@ -32,7 +32,7 @@ vi.mock('../models/mealRepository.js', () => ({
 vi.mock('../models/foodRepository.js', () => ({
   default: {
     getFoodById: vi.fn(),
-    getFoodVariants: vi.fn(),
+    getFoodVariantsByFoodId: vi.fn(),
   },
 }));
 vi.mock('../models/foodEntry.js', () => ({
@@ -311,6 +311,115 @@ describe('mealService validation', () => {
           unit: 'cup',
         }),
       ]);
+    });
+
+    it('validates a non-default food variant by calling getFoodVariantsByFoodId', async () => {
+      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
+        getFoodEntriesByDateAndMealType: {
+          mockResolvedValue: (value: unknown) => void;
+        };
+      };
+      const mockedFoodRepository = foodRepository as unknown as {
+        getFoodById: { mockResolvedValue: (value: unknown) => void };
+        getFoodVariantsByFoodId: {
+          mockResolvedValue: (value: unknown) => void;
+        };
+      };
+
+      mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
+        [
+          {
+            food_id: 'food-1',
+            food_name: 'Chicken',
+            variant_id: 'variant-non-default',
+            quantity: 1,
+            unit: 'cup',
+            custom_nutrients: {},
+          },
+        ]
+      );
+      mockedFoodRepository.getFoodById.mockResolvedValue({
+        id: 'food-1',
+        default_variant: { id: 'variant-1' },
+      });
+      mockedFoodRepository.getFoodVariantsByFoodId.mockResolvedValue([
+        { id: 'variant-1' },
+        { id: 'variant-non-default' },
+      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mealRepository as any).createMeal.mockResolvedValue({
+        id: 'new-meal',
+        serving_size: 1,
+        serving_unit: 'serving',
+        total_servings: 1,
+      });
+
+      await mealService.createMealFromDiaryEntries(
+        'user-1',
+        '2026-05-17',
+        'breakfast',
+        'Breakfast meal',
+        null,
+        false
+      );
+
+      expect(mockedFoodRepository.getFoodVariantsByFoodId).toHaveBeenCalledWith(
+        'food-1',
+        'user-1'
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      expect(payload.foods).toEqual([
+        expect.objectContaining({
+          food_id: 'food-1',
+          variant_id: 'variant-non-default',
+        }),
+      ]);
+    });
+
+    it('skips a food entry if its variant_id does not exist in the database', async () => {
+      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
+        getFoodEntriesByDateAndMealType: {
+          mockResolvedValue: (value: unknown) => void;
+        };
+      };
+      const mockedFoodRepository = foodRepository as unknown as {
+        getFoodById: { mockResolvedValue: (value: unknown) => void };
+        getFoodVariantsByFoodId: {
+          mockResolvedValue: (value: unknown) => void;
+        };
+      };
+
+      mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
+        [
+          {
+            food_id: 'food-1',
+            food_name: 'Chicken',
+            variant_id: 'variant-non-existent',
+            quantity: 1,
+            unit: 'cup',
+            custom_nutrients: {},
+          },
+        ]
+      );
+      mockedFoodRepository.getFoodById.mockResolvedValue({
+        id: 'food-1',
+        default_variant: { id: 'variant-1' },
+      });
+      mockedFoodRepository.getFoodVariantsByFoodId.mockResolvedValue([
+        { id: 'variant-1' },
+      ]);
+
+      await expect(
+        mealService.createMealFromDiaryEntries(
+          'user-1',
+          '2026-05-17',
+          'breakfast',
+          'Breakfast meal',
+          null,
+          false
+        )
+      ).rejects.toThrow('The following foods or their variants are missing');
     });
   });
 });

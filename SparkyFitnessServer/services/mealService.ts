@@ -628,11 +628,10 @@ async function createMealFromDiaryEntries(
       if (!variantExists && entry.variant_id) {
         // Only check if a variant_id was explicitly recorded
         // Attempt to find the specific variant, if not the default
-        // @ts-expect-error TS(2551): Property 'getFoodVariants' does not exist on type ... Remove this comment to see the full error message
-        const allFoodVariants = await foodRepository.getFoodVariants(
+        const allFoodVariants = await foodRepository.getFoodVariantsByFoodId(
           entry.food_id,
           userId
-        ); // Assuming this function exists or is created
+        );
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (!allFoodVariants.some((v: any) => v.id === entry.variant_id)) {
           missingFoods.push(
