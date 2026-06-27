@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
 import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';

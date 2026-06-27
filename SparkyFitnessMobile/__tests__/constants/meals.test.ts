@@ -1,4 +1,4 @@
-import { getDefaultMealType, MEAL_TYPES, MEAL_CONFIG } from '../../src/constants/meals';
+import { getDefaultMealType, MEAL_TYPES } from '../../src/constants/meals';
 
 describe('meals constants', () => {
   describe('getDefaultMealType', () => {

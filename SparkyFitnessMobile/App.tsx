@@ -23,10 +23,6 @@ import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHe
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
-import LibraryScreen from './src/screens/LibraryScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
-import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
@@ -113,11 +109,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type TabStateSnapshot = {
   index?: number;
-  routes: Array<{
+  routes: {
     name: string;
     params?: unknown;
     state?: TabStateSnapshot;
-  }>;
+  }[];
 };
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
 
@@ -166,11 +162,6 @@ function findRouteParams<T extends object>(
 }
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
-
-// Tab screens — no Go Back (tab bar provides navigation)
-const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
-const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
-const SafeLibrary = withErrorBoundary(LibraryScreen, 'Library');
 
 // Onboarding — no Go Back (initial route for new users)
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');

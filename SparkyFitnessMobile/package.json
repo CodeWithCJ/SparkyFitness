@@ -5,7 +5,7 @@
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "lint": "expo lint",
+    "lint": "expo lint src App.tsx index.js __tests__",
     "start": "expo start",
     "test": "jest",
     "test:run": "jest",
@@ -13,7 +13,7 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "typecheck": "tsc --noEmit",
-    "validate": "pnpm run typecheck && pnpm run lint"
+    "validate": "pnpm run typecheck && pnpm run lint -- --max-warnings 0"
   },
   "dependencies": {
     "@assistant-ui/react-ai-sdk": "^1.3.37",

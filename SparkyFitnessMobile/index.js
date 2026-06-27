@@ -2,7 +2,7 @@
  * @format
  */
 
-import { Platform, LogBox } from 'react-native';
+import { Platform } from 'react-native';
 import App from './App';
 import { registerRootComponent } from 'expo';
 import './src/services/backgroundSyncService';

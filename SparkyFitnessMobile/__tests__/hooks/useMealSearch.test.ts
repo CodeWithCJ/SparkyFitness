@@ -1,4 +1,4 @@
-import { renderHook, waitFor, act } from '@testing-library/react-native';
+import { renderHook, waitFor } from '@testing-library/react-native';
 import { useMealSearch } from '../../src/hooks/useMealSearch';
 import { mealSearchQueryKey } from '../../src/hooks/queryKeys';
 import { searchMeals } from '../../src/services/api/mealsApi';

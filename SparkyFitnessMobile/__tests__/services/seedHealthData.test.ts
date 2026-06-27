@@ -20,7 +20,6 @@ const mockInsertRecords = insertRecords as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
 const mockAddLog = addLog as jest.Mock;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const seedService = require('../../src/services/seedHealthData.ts') as {
   seedHealthData: (days?: number) => Promise<SeedResult>;
 };
@@ -184,7 +183,6 @@ describe('seedHealthData.ts (Android)', () => {
 describe('seedHealthData.ios.ts', () => {
   test('seeds health data successfully when permissions are granted', async () => {
     // Import iOS file directly using require to bypass Jest's platform resolution
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const iosService = require('../../src/services/seedHealthData.ios.ts') as {
       seedHealthData: (days?: number) => Promise<SeedResult>;
     };

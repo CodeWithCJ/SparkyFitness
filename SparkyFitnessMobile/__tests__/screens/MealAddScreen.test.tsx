@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
+import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MealAddScreen from '../../src/screens/MealAddScreen';

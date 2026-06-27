@@ -41,8 +41,8 @@ jest.mock('../../src/services/healthConnectService', () => ({
   loadHealthPreference: (...args: unknown[]) => mockLoadHealthPreference(...args),
 }));
 
-const { getLogs, getLogSummary, getCaptureLevel, getViewFilter } = jest.requireMock('../../src/services/LogService');
-const { loadLastSyncedTime, loadBackgroundSyncEnabled, loadTimeRange } = jest.requireMock('../../src/services/storage');
+const { getLogs, getLogSummary } = jest.requireMock('../../src/services/LogService');
+const { loadLastSyncedTime, loadTimeRange } = jest.requireMock('../../src/services/storage');
 
 const makeHookData = (overrides?: Partial<DiagnosticHookData>): DiagnosticHookData => ({
   isServerConnected: true,

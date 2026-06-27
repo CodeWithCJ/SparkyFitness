@@ -144,7 +144,7 @@ describe('WorkoutPresetDetailScreen', () => {
       );
     });
 
-    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string; onPress?: () => void }>;
+    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
     buttons.find((button) => button.text === 'Resume Draft')?.onPress?.();
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
   });

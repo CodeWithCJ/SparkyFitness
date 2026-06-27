@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
+import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EditLoggedMealScreen from '../../src/screens/EditLoggedMealScreen';
 import { useFoodEntryMealDetails } from '../../src/hooks/useFoodEntryMealDetails';

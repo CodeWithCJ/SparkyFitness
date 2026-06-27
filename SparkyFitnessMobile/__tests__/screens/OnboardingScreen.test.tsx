@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import OnboardingScreen from '../../src/screens/OnboardingScreen';
-import { login, verifyTotp } from '../../src/services/api/authService';
+import { login } from '../../src/services/api/authService';
 import { saveServerConfig } from '../../src/services/storage';
 
 // Mock navigation
@@ -46,7 +46,6 @@ global.fetch = mockFetch;
 
 const mockLogin = login as jest.MockedFunction<typeof login>;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
-const mockVerifyTotp = verifyTotp as jest.MockedFunction<typeof verifyTotp>;
 
 describe('OnboardingScreen', () => {
   beforeEach(() => {
