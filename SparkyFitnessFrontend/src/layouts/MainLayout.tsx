@@ -12,6 +12,7 @@ import {
   LogOut,
   Dumbbell, // Used for Exercises
   Target, // Used for Goals
+  Pill, // Used for Medications
   Shield,
   Plus,
   X,
@@ -194,6 +195,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       tabs.push(
         { value: '/', label: t('nav.diary'), icon: Home },
         { value: '/checkin', label: t('nav.checkin'), icon: Activity },
+        {
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        },
         { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         { value: '/foods', label: t('nav.foods'), icon: Utensils },
         {

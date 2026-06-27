@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FastingReport } from '@/pages/Reports/FastingReport';
+import MedicationReports from '@/pages/Reports/MedicationReports';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import ZoomableChart from '@/components/ZoomableChart';
@@ -136,6 +137,12 @@ const Reports = () => {
     measurementData = [],
     customCategories = [],
     customMeasurementsData = [],
+    sleepAnalyticsData = [],
+    medications = [],
+    medicationEntries = [],
+    symptomEntries = [],
+    injections = [],
+    titrationSteps = [],
   } = reportsData || {};
 
   const { data: goalData } = useDailyGoalsRange(startDate, endDate, true, true);
@@ -326,6 +333,27 @@ const Reports = () => {
                 })
               }
               customNutrients={customNutrients}
+            />
+          </ChartErrorBoundary>
+        );
+      case 'medications-reports':
+        return (
+          <ChartErrorBoundary>
+            <MedicationReports
+              startDate={startDate}
+              endDate={endDate}
+              nutritionData={nutritionData}
+              tabularData={tabularData}
+              exerciseEntries={exerciseEntries}
+              measurementData={measurementData}
+              customCategories={customCategories}
+              customMeasurementsData={customMeasurementsData}
+              sleepAnalyticsData={sleepAnalyticsData}
+              medications={medications}
+              medicationEntries={medicationEntries}
+              symptomEntries={symptomEntries}
+              injections={injections}
+              titrationSteps={titrationSteps}
             />
           </ChartErrorBoundary>
         );

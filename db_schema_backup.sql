@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict hhVIIi9ALNNCth5r9LYxA8wJufO3a0NcQt3hKO5v8R1k5jlIEwWX4BjbC7DQQJB
+\restrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1194,13 +1194,6 @@ COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded dur
 
 
 --
--- Name: COLUMN exercise_entries.water_estimated; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.exercise_entries.water_estimated IS 'Estimated water loss in ml during this activity, sourced from Garmin or other providers.';
-
-
---
 -- Name: exercise_entry_activity_details; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1652,6 +1645,27 @@ CREATE TABLE public.goal_presets (
 
 
 --
+-- Name: injection_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.injection_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    medication_id uuid,
+    user_id uuid NOT NULL,
+    pen_id uuid,
+    injected_at timestamp with time zone DEFAULT now() NOT NULL,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    site character varying(40),
+    dose_mg numeric,
+    notes text,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: meal_foods; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1800,6 +1814,187 @@ COMMENT ON COLUMN public.meals.serving_unit IS 'Unit of measurement for the serv
 --
 
 COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
+
+
+--
+-- Name: medication_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    medication_id uuid,
+    schedule_id uuid,
+    user_id uuid NOT NULL,
+    status character varying(20) DEFAULT 'taken'::character varying NOT NULL,
+    taken_at timestamp with time zone DEFAULT now() NOT NULL,
+    scheduled_for timestamp with time zone,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    med_name_snapshot text,
+    dose_amount_snapshot numeric,
+    dose_unit_snapshot character varying(20),
+    notes text,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_pens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_pens (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    medication_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    kind character varying(10) DEFAULT 'pen'::character varying NOT NULL,
+    label text,
+    dose_mg numeric,
+    concentration_mg_ml numeric,
+    volume_ml numeric,
+    doses_total integer,
+    doses_used integer DEFAULT 0 NOT NULL,
+    status character varying(20) DEFAULT 'sealed'::character varying NOT NULL,
+    opened_at date,
+    expiry_date date,
+    bud_date date,
+    reorder_flag boolean DEFAULT false NOT NULL,
+    reorder_threshold integer,
+    notes text,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_route_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_route_types (
+    id character varying(50) NOT NULL,
+    display_name character varying(100) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_schedule_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_schedule_types (
+    id character varying(50) NOT NULL,
+    display_name character varying(100) NOT NULL,
+    description text,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_schedules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_schedules (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    medication_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    schedule_type_id character varying(50) NOT NULL,
+    time_of_day time without time zone,
+    dose_amount numeric,
+    days_of_week integer[],
+    interval_days integer,
+    day_of_month integer,
+    cycle_on_days integer,
+    cycle_off_days integer,
+    with_meal character varying(20),
+    prn_reason text,
+    prn_max_per_day integer,
+    start_date date,
+    end_date date,
+    active boolean DEFAULT true NOT NULL,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_titration_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_titration_steps (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    medication_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    dose_mg numeric NOT NULL,
+    dose_unit character varying(20) DEFAULT 'mg'::character varying NOT NULL,
+    start_date date,
+    planned_weeks integer,
+    step_order integer DEFAULT 0 NOT NULL,
+    status character varying(20) DEFAULT 'planned'::character varying NOT NULL,
+    is_taper boolean DEFAULT false NOT NULL,
+    note text,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medication_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_types (
+    id character varying(50) NOT NULL,
+    display_name character varying(100) NOT NULL,
+    description text,
+    is_injectable boolean DEFAULT false NOT NULL,
+    counting_unit_default character varying(20),
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: medications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    display_name text,
+    type_id character varying(50),
+    route_id character varying(50),
+    strength_value numeric,
+    strength_unit character varying(20),
+    dose_amount numeric,
+    dose_unit character varying(20),
+    rxnorm_rxcui character varying(20),
+    ndc character varying(20),
+    prescriber text,
+    pharmacy text,
+    rx_number text,
+    reason_text text,
+    effectiveness_rating smallint,
+    color character varying(20),
+    icon character varying(50),
+    photo_path text,
+    is_active boolean DEFAULT true NOT NULL,
+    is_quick boolean DEFAULT false NOT NULL,
+    is_glp1 boolean DEFAULT false NOT NULL,
+    notes text,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -2166,6 +2361,30 @@ CREATE TABLE public.sso_provider (
 
 
 --
+-- Name: symptom_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.symptom_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    medication_id uuid,
+    symptom_id uuid,
+    symptom_name_snapshot text NOT NULL,
+    severity numeric,
+    severity_label character varying(40),
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    body_location character varying(60),
+    context_text text,
+    bristol_type smallint,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: two_factor; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2240,6 +2459,36 @@ CREATE TABLE public.user_custom_nutrients (
     user_id uuid NOT NULL,
     name text NOT NULL,
     unit text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_custom_symptom_locations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_custom_symptom_locations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_custom_symptoms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_custom_symptoms (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    display_name text,
+    scale_type character varying(20) DEFAULT '1-10'::character varying NOT NULL,
+    unit character varying(20),
+    is_glp1_flagged boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -2323,6 +2572,21 @@ CREATE TABLE public.user_meal_visibilities (
     is_visible boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now(),
     show_in_quick_log boolean DEFAULT true
+);
+
+
+--
+-- Name: user_medication_display_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_medication_display_preferences (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    view_group character varying(255) NOT NULL,
+    platform character varying(50) DEFAULT 'web'::character varying NOT NULL,
+    visible_items jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2438,10 +2702,10 @@ CREATE TABLE public.user_preferences (
     goal_mode character varying(50) DEFAULT 'maintain'::character varying NOT NULL,
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
-    measurement_decimal_places integer DEFAULT 0 NOT NULL,
     use_external_bmr boolean DEFAULT false NOT NULL,
-    add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     active_ai_service_id uuid,
+    add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
+    measurement_decimal_places integer DEFAULT 0 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -3247,6 +3511,14 @@ ALTER TABLE ONLY public.goal_presets
 
 
 --
+-- Name: injection_entries injection_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.injection_entries
+    ADD CONSTRAINT injection_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: meal_foods meal_foods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3300,6 +3572,70 @@ ALTER TABLE ONLY public.meal_types
 
 ALTER TABLE ONLY public.meals
     ADD CONSTRAINT meals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_entries medication_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_entries
+    ADD CONSTRAINT medication_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_pens medication_pens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_pens
+    ADD CONSTRAINT medication_pens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_route_types medication_route_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_route_types
+    ADD CONSTRAINT medication_route_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_schedule_types medication_schedule_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_schedule_types
+    ADD CONSTRAINT medication_schedule_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_schedules medication_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_schedules
+    ADD CONSTRAINT medication_schedules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_titration_steps medication_titration_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_titration_steps
+    ADD CONSTRAINT medication_titration_steps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medication_types medication_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_types
+    ADD CONSTRAINT medication_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: medications medications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medications
+    ADD CONSTRAINT medications_pkey PRIMARY KEY (id);
 
 
 --
@@ -3415,6 +3751,14 @@ ALTER TABLE ONLY public.sso_provider
 
 
 --
+-- Name: symptom_entries symptom_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.symptom_entries
+    ADD CONSTRAINT symptom_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: two_factor two_factor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3439,6 +3783,14 @@ ALTER TABLE ONLY public.mood_entries
 
 
 --
+-- Name: user_medication_display_preferences unique_user_med_display; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_medication_display_preferences
+    ADD CONSTRAINT unique_user_med_display UNIQUE (user_id, view_group, platform);
+
+
+--
 -- Name: user_custom_nutrients unique_user_nutrient_name; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3452,6 +3804,22 @@ ALTER TABLE ONLY public.user_custom_nutrients
 
 ALTER TABLE ONLY public.external_data_providers
     ADD CONSTRAINT unique_user_provider UNIQUE (user_id, provider_name);
+
+
+--
+-- Name: user_custom_symptom_locations unique_user_symptom_location_name; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT unique_user_symptom_location_name UNIQUE (user_id, name);
+
+
+--
+-- Name: user_custom_symptoms unique_user_symptom_name; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptoms
+    ADD CONSTRAINT unique_user_symptom_name UNIQUE (user_id, name);
 
 
 --
@@ -3476,6 +3844,22 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 ALTER TABLE ONLY public.user_custom_nutrients
     ADD CONSTRAINT user_custom_nutrients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_custom_symptom_locations user_custom_symptom_locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT user_custom_symptom_locations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_custom_symptoms user_custom_symptoms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptoms
+    ADD CONSTRAINT user_custom_symptoms_pkey PRIMARY KEY (id);
 
 
 --
@@ -3516,6 +3900,14 @@ ALTER TABLE ONLY public.user_ignored_updates
 
 ALTER TABLE ONLY public.user_meal_visibilities
     ADD CONSTRAINT user_meal_visibilities_pkey PRIMARY KEY (user_id, meal_type_id);
+
+
+--
+-- Name: user_medication_display_preferences user_medication_display_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_medication_display_preferences
+    ADD CONSTRAINT user_medication_display_preferences_pkey PRIMARY KEY (id);
 
 
 --
@@ -3902,6 +4294,104 @@ CREATE INDEX idx_foods_provider_type_user_id ON public.foods USING btree (provid
 
 
 --
+-- Name: idx_injection_entries_injected_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_injection_entries_injected_at ON public.injection_entries USING btree (user_id, injected_at);
+
+
+--
+-- Name: idx_injection_entries_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_injection_entries_medication_id ON public.injection_entries USING btree (medication_id);
+
+
+--
+-- Name: idx_injection_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_injection_entries_user_id ON public.injection_entries USING btree (user_id);
+
+
+--
+-- Name: idx_medication_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_entries_entry_date ON public.medication_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_medication_entries_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_entries_medication_id ON public.medication_entries USING btree (medication_id);
+
+
+--
+-- Name: idx_medication_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_entries_user_id ON public.medication_entries USING btree (user_id);
+
+
+--
+-- Name: idx_medication_pens_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_pens_medication_id ON public.medication_pens USING btree (medication_id);
+
+
+--
+-- Name: idx_medication_pens_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_pens_user_id ON public.medication_pens USING btree (user_id);
+
+
+--
+-- Name: idx_medication_schedules_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_schedules_medication_id ON public.medication_schedules USING btree (medication_id);
+
+
+--
+-- Name: idx_medication_schedules_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_schedules_user_id ON public.medication_schedules USING btree (user_id);
+
+
+--
+-- Name: idx_medication_titration_steps_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_titration_steps_medication_id ON public.medication_titration_steps USING btree (medication_id);
+
+
+--
+-- Name: idx_medication_titration_steps_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medication_titration_steps_user_id ON public.medication_titration_steps USING btree (user_id);
+
+
+--
+-- Name: idx_medications_is_glp1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medications_is_glp1 ON public.medications USING btree (user_id, is_glp1) WHERE is_glp1;
+
+
+--
+-- Name: idx_medications_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medications_user_id ON public.medications USING btree (user_id);
+
+
+--
 -- Name: idx_session_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3979,6 +4469,41 @@ CREATE INDEX idx_sparky_chat_history_user_id ON public.sparky_chat_history USING
 
 
 --
+-- Name: idx_symptom_entries_entry_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_symptom_entries_entry_date ON public.symptom_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_symptom_entries_medication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_symptom_entries_medication_id ON public.symptom_entries USING btree (medication_id);
+
+
+--
+-- Name: idx_symptom_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_symptom_entries_user_id ON public.symptom_entries USING btree (user_id);
+
+
+--
+-- Name: idx_user_custom_symptom_locations_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_custom_symptom_locations_user_id ON public.user_custom_symptom_locations USING btree (user_id);
+
+
+--
+-- Name: idx_user_custom_symptoms_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_custom_symptoms_user_id ON public.user_custom_symptoms USING btree (user_id);
+
+
+--
 -- Name: idx_user_goals_unique_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4004,6 +4529,13 @@ CREATE INDEX idx_user_goals_user_date_asc ON public.user_goals USING btree (user
 --
 
 CREATE INDEX idx_user_ignored_updates_variant_id ON public.user_ignored_updates USING btree (variant_id);
+
+
+--
+-- Name: idx_user_medication_display_preferences_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_medication_display_preferences_user_id ON public.user_medication_display_preferences USING btree (user_id);
 
 
 --
@@ -4091,6 +4623,48 @@ CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT OR UPDATE OF ro
 
 
 --
+-- Name: injection_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.injection_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: medication_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.medication_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: medication_pens set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.medication_pens FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: medication_schedules set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.medication_schedules FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: medication_titration_steps set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.medication_titration_steps FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: medications set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.medications FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: mood_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4098,10 +4672,38 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.mood_entries FOR EACH ROW E
 
 
 --
+-- Name: symptom_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.symptom_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: user_custom_nutrients set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_nutrients FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_custom_symptom_locations set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_symptom_locations FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_custom_symptoms set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_symptoms FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_medication_display_preferences set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_medication_display_preferences FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -4616,6 +5218,30 @@ ALTER TABLE ONLY public.goal_presets
 
 
 --
+-- Name: injection_entries injection_entries_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.injection_entries
+    ADD CONSTRAINT injection_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
+
+
+--
+-- Name: injection_entries injection_entries_pen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.injection_entries
+    ADD CONSTRAINT injection_entries_pen_id_fkey FOREIGN KEY (pen_id) REFERENCES public.medication_pens(id) ON DELETE SET NULL;
+
+
+--
+-- Name: injection_entries injection_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.injection_entries
+    ADD CONSTRAINT injection_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: meal_foods meal_foods_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4717,6 +5343,110 @@ ALTER TABLE ONLY public.meal_types
 
 ALTER TABLE ONLY public.meals
     ADD CONSTRAINT meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_entries medication_entries_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_entries
+    ADD CONSTRAINT medication_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
+
+
+--
+-- Name: medication_entries medication_entries_schedule_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_entries
+    ADD CONSTRAINT medication_entries_schedule_id_fkey FOREIGN KEY (schedule_id) REFERENCES public.medication_schedules(id) ON DELETE SET NULL;
+
+
+--
+-- Name: medication_entries medication_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_entries
+    ADD CONSTRAINT medication_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_pens medication_pens_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_pens
+    ADD CONSTRAINT medication_pens_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_pens medication_pens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_pens
+    ADD CONSTRAINT medication_pens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_schedules medication_schedules_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_schedules
+    ADD CONSTRAINT medication_schedules_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_schedules medication_schedules_schedule_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_schedules
+    ADD CONSTRAINT medication_schedules_schedule_type_id_fkey FOREIGN KEY (schedule_type_id) REFERENCES public.medication_schedule_types(id);
+
+
+--
+-- Name: medication_schedules medication_schedules_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_schedules
+    ADD CONSTRAINT medication_schedules_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_titration_steps medication_titration_steps_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_titration_steps
+    ADD CONSTRAINT medication_titration_steps_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medication_titration_steps medication_titration_steps_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_titration_steps
+    ADD CONSTRAINT medication_titration_steps_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: medications medications_route_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medications
+    ADD CONSTRAINT medications_route_id_fkey FOREIGN KEY (route_id) REFERENCES public.medication_route_types(id);
+
+
+--
+-- Name: medications medications_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medications
+    ADD CONSTRAINT medications_type_id_fkey FOREIGN KEY (type_id) REFERENCES public.medication_types(id);
+
+
+--
+-- Name: medications medications_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medications
+    ADD CONSTRAINT medications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -4856,6 +5586,30 @@ ALTER TABLE ONLY public.sleep_need_calculations
 
 
 --
+-- Name: symptom_entries symptom_entries_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.symptom_entries
+    ADD CONSTRAINT symptom_entries_medication_id_fkey FOREIGN KEY (medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
+
+
+--
+-- Name: symptom_entries symptom_entries_symptom_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.symptom_entries
+    ADD CONSTRAINT symptom_entries_symptom_id_fkey FOREIGN KEY (symptom_id) REFERENCES public.user_custom_symptoms(id) ON DELETE SET NULL;
+
+
+--
+-- Name: symptom_entries symptom_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.symptom_entries
+    ADD CONSTRAINT symptom_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: two_factor two_factor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4877,6 +5631,22 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 ALTER TABLE ONLY public.user_custom_nutrients
     ADD CONSTRAINT user_custom_nutrients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_custom_symptom_locations user_custom_symptom_locations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptom_locations
+    ADD CONSTRAINT user_custom_symptom_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_custom_symptoms user_custom_symptoms_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_symptoms
+    ADD CONSTRAINT user_custom_symptoms_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -4909,6 +5679,14 @@ ALTER TABLE ONLY public.user_meal_visibilities
 
 ALTER TABLE ONLY public.user_meal_visibilities
     ADD CONSTRAINT user_meal_visibilities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_medication_display_preferences user_medication_display_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_medication_display_preferences
+    ADD CONSTRAINT user_medication_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -5316,6 +6094,12 @@ ALTER TABLE public.foods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.goal_presets ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: injection_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.injection_entries ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: external_data_providers insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5375,6 +6159,36 @@ ALTER TABLE public.meal_types ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: medication_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.medication_entries ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: medication_pens; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.medication_pens ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: medication_schedules; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.medication_schedules ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: medication_titration_steps; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.medication_titration_steps ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: medications; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: check_in_measurements modify_policy; Type: POLICY; Schema: public; Owner: -
@@ -5484,6 +6298,13 @@ CREATE POLICY modify_policy ON public.foods USING ((public.current_user_id() = u
 
 
 --
+-- Name: injection_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.injection_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: meal_foods modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5520,6 +6341,41 @@ CREATE POLICY modify_policy ON public.meals USING ((public.current_user_id() = u
 
 
 --
+-- Name: medication_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.medication_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_pens modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.medication_pens USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_schedules modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.medication_schedules USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_titration_steps modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.medication_titration_steps USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: medications modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.medications USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
 -- Name: sleep_entries modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5531,6 +6387,27 @@ CREATE POLICY modify_policy ON public.sleep_entries USING (public.has_diary_acce
 --
 
 CREATE POLICY modify_policy ON public.sleep_entry_stages USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: symptom_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.symptom_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_symptom_locations modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_custom_symptom_locations USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_symptoms modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_custom_symptoms USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -5749,6 +6626,13 @@ CREATE POLICY owner_policy ON public.user_meal_visibilities USING ((user_id = pu
 
 
 --
+-- Name: user_medication_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_medication_display_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: user_nutrient_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5936,6 +6820,13 @@ CREATE POLICY select_policy ON public.foods FOR SELECT USING (public.has_library
 
 
 --
+-- Name: injection_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.injection_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
 -- Name: meal_foods select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5966,6 +6857,41 @@ CREATE POLICY select_policy ON public.meals FOR SELECT USING (public.has_library
 
 
 --
+-- Name: medication_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.medication_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_pens select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.medication_pens FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_schedules select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.medication_schedules FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: medication_titration_steps select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.medication_titration_steps FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: medications select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.medications FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_manage_diary'::text]));
+
+
+--
 -- Name: sleep_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5977,6 +6903,27 @@ CREATE POLICY select_policy ON public.sleep_entries FOR SELECT USING (public.has
 --
 
 CREATE POLICY select_policy ON public.sleep_entry_stages FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: symptom_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.symptom_entries FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_symptom_locations select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_custom_symptom_locations FOR SELECT USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_symptoms select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_custom_symptoms FOR SELECT USING (public.has_diary_access(user_id));
 
 
 --
@@ -6050,6 +6997,12 @@ ALTER TABLE public.sleep_need_calculations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: symptom_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.symptom_entries ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: external_data_providers update_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6076,6 +7029,18 @@ ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_custom_nutrients ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: user_custom_symptom_locations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_custom_symptom_locations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_custom_symptoms; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_custom_symptoms ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: user_dashboard_layouts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6098,6 +7063,12 @@ ALTER TABLE public.user_ignored_updates ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_meal_visibilities ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_medication_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_medication_display_preferences ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_nutrient_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
@@ -6790,6 +7761,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky uat";
 
 
 --
+-- Name: TABLE injection_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_uat;
+
+
+--
 -- Name: TABLE meal_foods; Type: ACL; Schema: public; Owner: -
 --
 
@@ -6841,6 +7821,78 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky uat";
+
+
+--
+-- Name: TABLE medication_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_pens; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_route_types; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_schedule_types; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_schedules; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_titration_steps; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO sparky_uat;
+
+
+--
+-- Name: TABLE medication_types; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO sparky_uat;
+
+
+--
+-- Name: TABLE medications; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO sparky_uat;
 
 
 --
@@ -6961,6 +8013,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky uat";
 
 
 --
+-- Name: TABLE symptom_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO sparky_uat;
+
+
+--
 -- Name: TABLE two_factor; Type: ACL; Schema: public; Owner: -
 --
 
@@ -6997,6 +8058,24 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "spar
 
 
 --
+-- Name: TABLE user_custom_symptom_locations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO sparky_uat;
+
+
+--
+-- Name: TABLE user_custom_symptoms; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky_uat;
+
+
+--
 -- Name: TABLE user_dashboard_layouts; Type: ACL; Schema: public; Owner: -
 --
 
@@ -7030,6 +8109,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "spark
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky uat";
+
+
+--
+-- Name: TABLE user_medication_display_preferences; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO sparky_uat;
 
 
 --
@@ -7315,5 +8403,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hhVIIi9ALNNCth5r9LYxA8wJufO3a0NcQt3hKO5v8R1k5jlIEwWX4BjbC7DQQJB
+\unrestrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
 

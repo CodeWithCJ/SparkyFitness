@@ -16,6 +16,14 @@ export const getGridClass = (cols: number) => {
       return 'sm:grid-cols-7';
     case 8:
       return 'sm:grid-cols-8';
+    case 9:
+      return 'sm:grid-cols-9';
+    case 10:
+      return 'sm:grid-cols-10';
+    case 11:
+      return 'sm:grid-cols-11';
+    case 12:
+      return 'sm:grid-cols-12';
     default:
       return 'sm:grid-cols-7';
   }
@@ -39,6 +47,14 @@ export const getGridClassNormal = (cols: number) => {
       return 'grid-cols-7';
     case 8:
       return 'grid-cols-8';
+    case 9:
+      return 'grid-cols-9';
+    case 10:
+      return 'grid-cols-10';
+    case 11:
+      return 'grid-cols-11';
+    case 12:
+      return 'grid-cols-12';
     default:
       return 'grid-cols-7';
   }

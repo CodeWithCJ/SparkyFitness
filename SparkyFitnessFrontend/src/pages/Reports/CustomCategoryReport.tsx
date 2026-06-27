@@ -27,6 +27,10 @@ const HIDDEN_CUSTOM_METRICS = [
   ...RESPIRATION_METRICS, // Shown in dedicated Respiration card
   'Average SpO2', // Shown in Sleep tab SpO2 card
   'Average Overnight HRV', // Shown in Sleep tab HRV card
+  'GLP Hunger',
+  'GLP Food Noise',
+  'GLP Fullness',
+  'GLP Energy',
 ];
 export const CustomCategoryReport = ({
   customCategories,

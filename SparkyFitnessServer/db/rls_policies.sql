@@ -76,7 +76,17 @@ BEGIN
     'user_dashboard_layouts',
     'sleep_need_calculations',
     'daily_sleep_need',
-    'day_classification_cache'
+    'day_classification_cache',
+    'medications',
+    'medication_schedules',
+    'medication_entries',
+    'medication_pens',
+    'injection_entries',
+    'medication_titration_steps',
+    'user_custom_symptoms',
+    'symptom_entries',
+    'user_medication_display_preferences',
+    'user_custom_symptom_locations'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -386,6 +396,20 @@ SELECT create_library_policy('meals', 'is_public', ARRAY['can_view_food_library'
 SELECT create_library_policy('meal_plan_templates', 'false', ARRAY['can_view_food_library']);
 SELECT create_library_policy('workout_plan_templates', 'false', ARRAY['can_view_exercise_library']);
 SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exercise_library']);
+
+-- Medication & GLP-1 tracker (see migration 20260624000000_add_medication_glp1_schema.sql).
+-- `medications` is PRIVATE: sharing disabled ('false'); owner-only writes; caregivers act via
+-- onBehalfOfMiddleware. Entry/child tables use the diary policy (owner + family diary access).
+SELECT create_library_policy('medications', 'false', ARRAY['can_manage_diary']);
+SELECT create_diary_policy('medication_schedules');
+SELECT create_diary_policy('medication_entries');
+SELECT create_diary_policy('medication_pens');
+SELECT create_diary_policy('injection_entries');
+SELECT create_diary_policy('medication_titration_steps');
+SELECT create_diary_policy('user_custom_symptoms');
+SELECT create_diary_policy('symptom_entries');
+SELECT create_diary_policy('user_custom_symptom_locations');
+SELECT create_owner_policy('user_medication_display_preferences');
 
 
 -- Custom policies for special cases
