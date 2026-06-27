@@ -13,6 +13,7 @@ import {
   CreateMedicationEntryBodySchema,
   ListMedicationEntriesQuerySchema,
   UpdateMedicationDisplayPreferencesBodySchema,
+  DisplayPreferenceParamsSchema,
 } from '../../schemas/medicationSchemas.js';
 import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
@@ -24,6 +25,8 @@ import titrationRepository from '../../models/titrationRepository.js';
 import glp1Service from '../../services/glp1Service.js';
 import medicationEntryRepository from '../../models/medicationEntryRepository.js';
 import medicationDisplayPreferenceRepository from '../../models/medicationDisplayPreferenceRepository.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 
 const router = express.Router();
 
@@ -322,6 +325,14 @@ const createEntry: RequestHandler = async (req, res, next) => {
   try {
     const body = CreateMedicationEntryBodySchema.safeParse(req.body);
     if (!body.success) return badRequest(res, body.error);
+    // Resolve timezone-aware defaults so we don't fall back to UTC CURRENT_DATE
+    if (!body.data.entry_date) {
+      const tz = await loadUserTimezone(req.userId);
+      body.data.entry_date = todayInZone(tz);
+    }
+    if (!body.data.taken_at) {
+      body.data.taken_at = new Date().toISOString();
+    }
     const entry = await medicationEntryRepository.createEntry(
       req.userId,
       body.data
@@ -371,8 +382,8 @@ const getDisplayPreferences: RequestHandler = async (req, res, next) => {
 
 const upsertDisplayPreference: RequestHandler = async (req, res, next) => {
   try {
-    const viewGroup = req.params.viewGroup as string;
-    const platform = req.params.platform as string;
+    const params = DisplayPreferenceParamsSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
     const body = UpdateMedicationDisplayPreferencesBodySchema.safeParse(
       req.body
     );
@@ -380,8 +391,8 @@ const upsertDisplayPreference: RequestHandler = async (req, res, next) => {
     const pref =
       await medicationDisplayPreferenceRepository.upsertMedicationDisplayPreference(
         req.userId,
-        viewGroup,
-        platform || 'web',
+        params.data.viewGroup,
+        params.data.platform,
         body.data.visible_items
       );
     res.json(pref);
@@ -392,13 +403,13 @@ const upsertDisplayPreference: RequestHandler = async (req, res, next) => {
 
 const deleteDisplayPreference: RequestHandler = async (req, res, next) => {
   try {
-    const viewGroup = req.params.viewGroup as string;
-    const platform = req.params.platform as string;
+    const params = DisplayPreferenceParamsSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
     const ok =
       await medicationDisplayPreferenceRepository.deleteMedicationDisplayPreference(
         req.userId,
-        viewGroup,
-        platform || 'web'
+        params.data.viewGroup,
+        params.data.platform
       );
     if (!ok) {
       res.status(404).json({ error: 'Display preference not found' });
@@ -560,6 +571,14 @@ const createInjection: RequestHandler = async (req, res, next) => {
   try {
     const body = CreateInjectionBodySchema.safeParse(req.body);
     if (!body.success) return badRequest(res, body.error);
+    // Resolve timezone-aware defaults so we don't fall back to UTC CURRENT_DATE
+    if (!body.data.entry_date) {
+      const tz = await loadUserTimezone(req.userId);
+      body.data.entry_date = todayInZone(tz);
+    }
+    if (!body.data.injected_at) {
+      body.data.injected_at = new Date().toISOString();
+    }
     const injection = await injectionRepository.createInjection(
       req.userId,
       body.data

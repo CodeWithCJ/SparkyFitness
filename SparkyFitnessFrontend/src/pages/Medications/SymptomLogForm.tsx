@@ -1,6 +1,24 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, Plus, X, Info } from 'lucide-react';
+import {
+  Activity,
+  Plus,
+  X,
+  Info,
+  Frown,
+  BatteryLow,
+  Brain,
+  ArrowDownFromLine,
+  Droplets,
+  CircleAlert,
+  Flame,
+  User,
+  Heart,
+  Dumbbell,
+  Bone,
+  RotateCcw,
+  MapPin,
+} from 'lucide-react';
 import { BUILT_IN_SYMPTOMS } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -91,16 +109,19 @@ const BRISTOL_TYPES = [
   },
 ];
 
-const SYMPTOM_EMOJI: Record<string, string> = {
-  nausea: '🤢',
-  fatigue: '😮‍💨',
-  headache: '🤕',
-  constipation: '🚽',
-  diarrhea: '💧',
-  vomiting: '🤮',
-  acid_reflux: '🔥',
-  stomach_pain: '😖',
-  dizziness: '💫',
+const SYMPTOM_ICON: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  nausea: Frown,
+  fatigue: BatteryLow,
+  headache: Brain,
+  constipation: ArrowDownFromLine,
+  diarrhea: Droplets,
+  vomiting: CircleAlert,
+  acid_reflux: Flame,
+  stomach_pain: Frown,
+  dizziness: RotateCcw,
 };
 
 const SYMPTOM_LOCATIONS = [
@@ -125,14 +146,17 @@ const SYMPTOM_LOCATION_MAP: Record<string, string[]> = {
   fatigue: ['general'],
 };
 
-const LOCATION_EMOJI: Record<string, string> = {
-  general: '🧍',
-  head: '🧠',
-  abdomen: '🫃',
-  chest: '🫁',
-  back: '🔙',
-  muscles: '💪',
-  joints: '🦴',
+const LOCATION_ICON: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  general: User,
+  head: Brain,
+  abdomen: Activity,
+  chest: Heart,
+  back: User,
+  muscles: Dumbbell,
+  joints: Bone,
 };
 
 const locationLabel = (loc: string) =>
@@ -380,8 +404,15 @@ export default function SymptomLogForm({
                         : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <span className="text-xl leading-none">
-                      {SYMPTOM_EMOJI[opt.name] ?? '📝'}
+                    <span className="text-xl leading-none h-6 flex items-center justify-center">
+                      {(() => {
+                        const Icon = SYMPTOM_ICON[opt.name];
+                        return Icon ? (
+                          <Icon className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <Activity className="h-5 w-5 text-muted-foreground" />
+                        );
+                      })()}
                     </span>
                     <span className="text-[11px] font-medium leading-tight text-center">
                       {opt.isCustom
@@ -500,11 +531,16 @@ export default function SymptomLogForm({
                     selected
                       ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
                       : isApplicable
-                        ? 'bg-background hover:bg-muted text-muted-foreground'
-                        : 'bg-background hover:bg-muted text-muted-foreground/50 opacity-50'
+                        ? 'border-border bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30'
+                        : 'border-border/50 bg-background text-muted-foreground opacity-60 hover:bg-muted hover:opacity-80'
                   }`}
                 >
-                  <span className="mr-1">{LOCATION_EMOJI[loc]}</span>
+                  <span className="mr-1 inline-flex items-center">
+                    {(() => {
+                      const Icon = LOCATION_ICON[loc];
+                      return Icon ? <Icon className="h-3 w-3" /> : null;
+                    })()}
+                  </span>
                   {t('medications.locations.' + loc, locationLabel(loc))}
                 </button>
               );
@@ -517,7 +553,7 @@ export default function SymptomLogForm({
                   className={`group inline-flex items-center rounded-full border py-1 pl-2.5 pr-1 text-xs transition ${
                     selected
                       ? 'bg-red-500/10 text-red-600 border-red-500/30 font-medium'
-                      : 'bg-background hover:bg-muted text-muted-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30'
                   }`}
                 >
                   <button
@@ -525,7 +561,7 @@ export default function SymptomLogForm({
                     onClick={() => setBodyLocation(loc.name)}
                     className="flex items-center gap-1"
                   >
-                    <span>📍</span>
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
                     {loc.name}
                   </button>
                   <button

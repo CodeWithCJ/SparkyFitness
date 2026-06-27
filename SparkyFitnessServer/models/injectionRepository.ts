@@ -69,7 +69,12 @@ async function createInjection(userId: string, data: CreateInjectionBody) {
 
 async function listInjections(
   userId: string,
-  opts: { medicationId?: string; limit?: number } = {}
+  opts: {
+    medicationId?: string;
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+  } = {}
 ) {
   const client = await getClient(userId);
   try {
@@ -78,6 +83,14 @@ async function listInjections(
     if (opts.medicationId) {
       params.push(opts.medicationId);
       where += ` AND medication_id = $${params.length}`;
+    }
+    if (opts.fromDate) {
+      params.push(opts.fromDate);
+      where += ` AND entry_date >= $${params.length}`;
+    }
+    if (opts.toDate) {
+      params.push(opts.toDate);
+      where += ` AND entry_date <= $${params.length}`;
     }
     let limitClause = '';
     if (opts.limit) {

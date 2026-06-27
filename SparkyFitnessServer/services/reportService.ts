@@ -161,7 +161,10 @@ async function getReportsData(
         fromDate: startDate,
         toDate: endDate,
       }),
-      injectionRepository.listInjections(targetUserId),
+      injectionRepository.listInjections(targetUserId, {
+        fromDate: startDate,
+        toDate: endDate,
+      }),
     ]);
     const customMeasurementsData = [];
     for (const category of customCategoriesResult) {

@@ -205,3 +205,11 @@ export const UpdateMedicationDisplayPreferencesBodySchema = z
 export type UpdateMedicationDisplayPreferencesBody = z.infer<
   typeof UpdateMedicationDisplayPreferencesBodySchema
 >;
+
+export const DisplayPreferenceParamsSchema = z.object({
+  viewGroup: z.string().min(1).max(50),
+  platform: z.string().min(1).max(20),
+});
+export type DisplayPreferenceParams = z.infer<
+  typeof DisplayPreferenceParamsSchema
+>;

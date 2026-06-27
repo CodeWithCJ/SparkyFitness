@@ -10,6 +10,7 @@ import {
   Calendar,
   Trash2,
   Activity,
+  Trophy,
 } from 'lucide-react';
 import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
@@ -346,7 +347,7 @@ export default function TodayMedications({
             ? t('medications.today.dosesToday', 'Doses today')
             : t('medications.today.doses', 'Doses'),
         value: `${completedDosesCount}/${dueDoses.length}`,
-        emoji: '💊',
+        Icon: Pill,
         grad: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-transparent',
         chip: 'bg-emerald-100 dark:bg-emerald-900/50',
         num: 'text-emerald-600 dark:text-emerald-400',
@@ -354,7 +355,7 @@ export default function TodayMedications({
       {
         label: t('medications.today.adherence14', '14-day adherence'),
         value: `${adherence14.pct}%`,
-        emoji: '✅',
+        Icon: CheckCircle2,
         grad: 'from-blue-50 to-white dark:from-blue-950/40 dark:to-transparent',
         chip: 'bg-blue-100 dark:bg-blue-900/50',
         num: 'text-blue-600 dark:text-blue-400',
@@ -362,7 +363,7 @@ export default function TodayMedications({
       {
         label: t('medications.today.perfectDays', 'Perfect days (14d)'),
         value: String(adherence14.perfectDays),
-        emoji: '🏆',
+        Icon: Trophy,
         grad: 'from-amber-50 to-white dark:from-amber-950/40 dark:to-transparent',
         chip: 'bg-amber-100 dark:bg-amber-900/50',
         num: 'text-amber-600 dark:text-amber-400',
@@ -439,9 +440,9 @@ export default function TodayMedications({
                   className={`rounded-xl border bg-gradient-to-br ${tile.grad} p-3`}
                 >
                   <div
-                    className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip} text-base`}
+                    className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip}`}
                   >
-                    {tile.emoji}
+                    <tile.Icon className="h-4.5 w-4.5" />
                   </div>
                   <p
                     className={`text-2xl font-bold leading-none tabular-nums ${tile.num}`}

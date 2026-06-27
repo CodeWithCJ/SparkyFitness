@@ -375,6 +375,7 @@ export default function Medications() {
                       </div>
                       <div className="flex items-center gap-1">
                         <AddMedicationDialog
+                          key={selected.id}
                           editMed={selected}
                           trigger={
                             <Button

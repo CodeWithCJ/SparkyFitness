@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Clock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { todayInZone } from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +31,11 @@ import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
 
 export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const { t } = useTranslation();
+  const preferencesContext = usePreferences();
+  const timezone =
+    preferencesContext?.timezone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const [open, setOpen] = useState(false);
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');
   const [timeOfDay, setTimeOfDay] = useState('09:00');
@@ -43,6 +50,13 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const [prnMaxPerDay, setPrnMaxPerDay] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const handleTypeChange = (val: string) => {
+    setScheduleTypeId(val);
+    if ((val === 'every_n_days' || val === 'cyclic') && !startDate) {
+      setStartDate(todayInZone(timezone));
+    }
+  };
 
   const addMutation = useAddScheduleMutation(med.id);
   const deleteMutation = useDeleteScheduleMutation();
@@ -120,10 +134,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
               {/* Type selector */}
               <div className="space-y-2">
                 <Label>{t('medications.schedule.type', 'Schedule Type')}</Label>
-                <Select
-                  value={scheduleTypeId}
-                  onValueChange={setScheduleTypeId}
-                >
+                <Select value={scheduleTypeId} onValueChange={handleTypeChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -344,9 +355,18 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
               <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                 <div className="space-y-2">
                   <Label>
-                    {t(
-                      'medications.schedule.startDate',
-                      'Start Date (Optional)'
+                    {['every_n_days', 'cyclic'].includes(scheduleTypeId) ? (
+                      <span className="font-semibold text-primary">
+                        {t(
+                          'medications.schedule.startDateRequired',
+                          'Start Date (Required)'
+                        )}
+                      </span>
+                    ) : (
+                      t(
+                        'medications.schedule.startDate',
+                        'Start Date (Optional)'
+                      )
                     )}
                   </Label>
                   <Input
@@ -368,7 +388,15 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSave} disabled={addMutation.isPending}>
+              <Button
+                onClick={handleSave}
+                disabled={
+                  addMutation.isPending ||
+                  ((scheduleTypeId === 'every_n_days' ||
+                    scheduleTypeId === 'cyclic') &&
+                    !startDate)
+                }
+              >
                 {addMutation.isPending
                   ? t('medications.common.saving', 'Saving…')
                   : t('medications.schedule.addRule', 'Add Rule')}

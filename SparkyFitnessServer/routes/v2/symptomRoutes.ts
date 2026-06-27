@@ -9,6 +9,8 @@ import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
 import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
 import symptomRepository from '../../models/symptomRepository.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 
 const router = express.Router();
 
@@ -135,6 +137,14 @@ const createEntry: RequestHandler = async (req, res, next) => {
   try {
     const body = CreateSymptomEntryBodySchema.safeParse(req.body);
     if (!body.success) return badRequest(res, body.error);
+    // Resolve timezone-aware defaults so we don't fall back to UTC CURRENT_DATE
+    if (!body.data.entry_date) {
+      const tz = await loadUserTimezone(req.userId);
+      body.data.entry_date = todayInZone(tz);
+    }
+    if (!body.data.logged_at) {
+      body.data.logged_at = new Date().toISOString();
+    }
     const item = await symptomRepository.createSymptomEntry(
       req.userId,
       body.data
