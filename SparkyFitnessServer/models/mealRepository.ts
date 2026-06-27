@@ -181,7 +181,11 @@ async function getMeals(userId: any, filter = 'all') {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function searchMeals(searchTerm: any, userId: any, limit = null) {
+async function searchMeals(
+  searchTerm: any,
+  userId: any,
+  limit: number | null = null
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `

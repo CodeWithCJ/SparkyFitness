@@ -256,14 +256,9 @@ describe('mealService validation', () => {
 
   describe('createMealFromDiaryEntries', () => {
     it('routes diary-created meals through create-time serving normalization', async () => {
-      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
-        getFoodEntriesByDateAndMealType: {
-          mockResolvedValue: (value: unknown) => void;
-        };
-      };
-      const mockedFoodRepository = foodRepository as unknown as {
-        getFoodById: { mockResolvedValue: (value: unknown) => void };
-      };
+      const mockedFoodEntryRepository = vi.mocked(foodEntryRepository);
+      const mockedFoodRepository = vi.mocked(foodRepository);
+      const mockedMealRepository = vi.mocked(mealRepository);
 
       mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
         [
@@ -281,8 +276,7 @@ describe('mealService validation', () => {
         id: 'food-1',
         default_variant: { id: 'variant-1' },
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mealRepository as any).createMeal.mockResolvedValue({
+      mockedMealRepository.createMeal.mockResolvedValue({
         id: 'new-meal',
         serving_size: 1,
         serving_unit: 'serving',
@@ -298,8 +292,7 @@ describe('mealService validation', () => {
         false
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      const payload = mockedMealRepository.createMeal.mock.calls[0][0];
       expect(payload.serving_size).toBe(1);
       expect(payload.serving_unit).toBe('serving');
       expect(payload.total_servings).toBe(1);
@@ -314,17 +307,9 @@ describe('mealService validation', () => {
     });
 
     it('validates a non-default food variant by calling getFoodVariantsByFoodId', async () => {
-      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
-        getFoodEntriesByDateAndMealType: {
-          mockResolvedValue: (value: unknown) => void;
-        };
-      };
-      const mockedFoodRepository = foodRepository as unknown as {
-        getFoodById: { mockResolvedValue: (value: unknown) => void };
-        getFoodVariantsByFoodId: {
-          mockResolvedValue: (value: unknown) => void;
-        };
-      };
+      const mockedFoodEntryRepository = vi.mocked(foodEntryRepository);
+      const mockedFoodRepository = vi.mocked(foodRepository);
+      const mockedMealRepository = vi.mocked(mealRepository);
 
       mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
         [
@@ -346,8 +331,7 @@ describe('mealService validation', () => {
         { id: 'variant-1' },
         { id: 'variant-non-default' },
       ]);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mealRepository as any).createMeal.mockResolvedValue({
+      mockedMealRepository.createMeal.mockResolvedValue({
         id: 'new-meal',
         serving_size: 1,
         serving_unit: 'serving',
@@ -367,8 +351,7 @@ describe('mealService validation', () => {
         'food-1',
         'user-1'
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const payload = (mealRepository as any).createMeal.mock.calls[0][0];
+      const payload = mockedMealRepository.createMeal.mock.calls[0][0];
       expect(payload.foods).toEqual([
         expect.objectContaining({
           food_id: 'food-1',
@@ -378,17 +361,8 @@ describe('mealService validation', () => {
     });
 
     it('skips a food entry if its variant_id does not exist in the database', async () => {
-      const mockedFoodEntryRepository = foodEntryRepository as unknown as {
-        getFoodEntriesByDateAndMealType: {
-          mockResolvedValue: (value: unknown) => void;
-        };
-      };
-      const mockedFoodRepository = foodRepository as unknown as {
-        getFoodById: { mockResolvedValue: (value: unknown) => void };
-        getFoodVariantsByFoodId: {
-          mockResolvedValue: (value: unknown) => void;
-        };
-      };
+      const mockedFoodEntryRepository = vi.mocked(foodEntryRepository);
+      const mockedFoodRepository = vi.mocked(foodRepository);
 
       mockedFoodEntryRepository.getFoodEntriesByDateAndMealType.mockResolvedValue(
         [
