@@ -16,18 +16,7 @@ import {
 } from '../services/api/preferencesApi';
 import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
 import { toggleNutrientVisibility } from '../utils/nutrientUtils';
-import {
-  useFastingCardVisible,
-  setFastingCardVisible,
-} from '../services/fastingCardVisibility';
-import {
-  useHydrationCardVisible,
-  setHydrationCardVisible,
-} from '../services/hydrationCardVisibility';
-import {
-  useAskSparkyVisible,
-  setAskSparkyVisible,
-} from '../services/askSparkyVisibility';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -57,9 +46,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
   ]) as [string, string, string];
   const { backColor } = useHeaderActionColors();
 
-  const fastingCardVisible = useFastingCardVisible();
-  const hydrationCardVisible = useHydrationCardVisible();
-  const askSparkyVisible = useAskSparkyVisible();
+  const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
+  const setFastingCardVisible = useAppPreferencesStore((s) => s.setFastingCardVisible);
+  const hydrationCardVisible = useAppPreferencesStore((s) => s.hydrationCardVisible);
+  const setHydrationCardVisible = useAppPreferencesStore((s) => s.setHydrationCardVisible);
+  const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
+  const setAskSparkyVisible = useAppPreferencesStore((s) => s.setAskSparkyVisible);
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();

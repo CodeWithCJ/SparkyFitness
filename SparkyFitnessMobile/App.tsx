@@ -92,18 +92,9 @@ import {
   recordAutoSyncTime,
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
-import { initializeHaptics } from './src/services/haptics';
-import { initializeSounds } from './src/services/sounds';
-import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
-import { initializeHydrationCardVisibility } from './src/services/hydrationCardVisibility';
-import { initializeLiquidGlassTabBar } from './src/services/nativeTabBarPreference';
-import { initializeAskSparkyVisibility } from './src/services/askSparkyVisibility';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
-import {
-  initNotifications,
-  initializeNotificationsEnabled,
-} from './src/services/notifications';
+import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -569,13 +560,6 @@ function AppContent() {
 
     // Initialize theme from storage on app start
     initializeTheme();
-    initializeHaptics();
-    initializeSounds();
-    initializeNotificationsEnabled();
-    initializeFastingCardVisibility();
-    initializeHydrationCardVisibility();
-    initializeLiquidGlassTabBar();
-    initializeAskSparkyVisibility();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
