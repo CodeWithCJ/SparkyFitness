@@ -12,7 +12,7 @@ import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import FormInput from './FormInput';
-import MfaForm, { ErrorBanner, PrimaryButton } from './auth/MfaForm';
+import MfaForm, { ErrorBanner, PrimaryButton } from './MfaForm';
 import {
   login,
   LoginError,

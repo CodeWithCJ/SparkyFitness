@@ -1,16 +1,7 @@
 import * as Haptics from 'expo-haptics';
-import { createBooleanPreference } from './booleanPreference';
-
-const hapticsPref = createBooleanPreference('@HealthConnect:hapticsEnabled', true);
-
-export const initializeHaptics = hapticsPref.initialize;
-export const setHapticsEnabled = hapticsPref.set;
-export const useHapticsEnabled = hapticsPref.use;
-
-/** Test-only helper — resets module-level state. */
-export const __resetHapticsStateForTests = hapticsPref.__reset;
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 
 export function fireSuccessHaptic(): void {
-  if (!hapticsPref.get()) return;
+  if (!useAppPreferencesStore.getState().hapticsEnabled) return;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 }

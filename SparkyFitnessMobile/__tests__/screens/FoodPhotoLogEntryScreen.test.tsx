@@ -36,7 +36,6 @@ jest.mock('react-native-toast-message', () => ({
 
 // Stub the bottom-sheet picker — surface the trigger only.
 jest.mock('../../src/components/BottomSheetPicker', () => {
-  const React = require('react');
   return {
     __esModule: true,
     default: ({ renderTrigger }: any) =>

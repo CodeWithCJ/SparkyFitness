@@ -38,9 +38,7 @@ import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
 import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFastingCardVisible } from '../services/fastingCardVisibility';
-import { useHydrationCardVisible } from '../services/hydrationCardVisibility';
-import { useAskSparkyVisible } from '../services/askSparkyVisibility';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -169,9 +167,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const fastingCardVisible = useFastingCardVisible();
-  const hydrationCardVisible = useHydrationCardVisible();
-  const askSparkyVisible = useAskSparkyVisible();
+  const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
+  const hydrationCardVisible = useAppPreferencesStore((s) => s.hydrationCardVisible);
+  const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();

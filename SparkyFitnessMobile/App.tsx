@@ -23,10 +23,6 @@ import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHe
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
-import LibraryScreen from './src/screens/LibraryScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
-import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
@@ -39,7 +35,7 @@ import ExerciseFormScreen from './src/screens/ExerciseFormScreen';
 import WorkoutPresetFormScreen from './src/screens/WorkoutPresetFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import FoodPhotoIntroScreen from './src/screens/FoodPhotoIntroScreen';
-import FoodPhotoFlow from './src/navigation/FoodPhotoFlow';
+import FoodPhotoFlow from './src/components/FoodPhotoFlow';
 import FoodsLibraryScreen from './src/screens/FoodsLibraryScreen';
 import MealsLibraryScreen from './src/screens/MealsLibraryScreen';
 import ExercisesLibraryScreen from './src/screens/ExercisesLibraryScreen';
@@ -92,18 +88,9 @@ import {
   recordAutoSyncTime,
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
-import { initializeHaptics } from './src/services/haptics';
-import { initializeSounds } from './src/services/sounds';
-import { initializeFastingCardVisibility } from './src/services/fastingCardVisibility';
-import { initializeHydrationCardVisibility } from './src/services/hydrationCardVisibility';
-import { initializeLiquidGlassTabBar } from './src/services/nativeTabBarPreference';
-import { initializeAskSparkyVisibility } from './src/services/askSparkyVisibility';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
-import {
-  initNotifications,
-  initializeNotificationsEnabled,
-} from './src/services/notifications';
+import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -122,11 +109,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type TabStateSnapshot = {
   index?: number;
-  routes: Array<{
+  routes: {
     name: string;
     params?: unknown;
     state?: TabStateSnapshot;
-  }>;
+  }[];
 };
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
 
@@ -175,11 +162,6 @@ function findRouteParams<T extends object>(
 }
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
-
-// Tab screens — no Go Back (tab bar provides navigation)
-const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
-const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
-const SafeLibrary = withErrorBoundary(LibraryScreen, 'Library');
 
 // Onboarding — no Go Back (initial route for new users)
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
@@ -569,13 +551,6 @@ function AppContent() {
 
     // Initialize theme from storage on app start
     initializeTheme();
-    initializeHaptics();
-    initializeSounds();
-    initializeNotificationsEnabled();
-    initializeFastingCardVisibility();
-    initializeHydrationCardVisibility();
-    initializeLiquidGlassTabBar();
-    initializeAskSparkyVisibility();
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {

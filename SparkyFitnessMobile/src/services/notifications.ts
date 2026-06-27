@@ -3,7 +3,10 @@ import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
-import { createBooleanPreference } from './booleanPreference';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../stores/appPreferencesStore';
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
@@ -11,22 +14,14 @@ const FASTING_CHANNEL_ID = 'fasting';
 let initialized = false;
 let hasShownDeniedToast = false;
 
-// App-local toggle (persisted in AsyncStorage, never synced to the server) that
-// gates whether the app schedules its local notifications — rest-timer alerts and
-// fasting-goal alerts. Independent of the OS notification permission.
-const notificationsPref = createBooleanPreference('@HealthConnect:notificationsEnabled', true);
-
-export const initializeNotificationsEnabled = notificationsPref.initialize;
-export const getNotificationsEnabled = notificationsPref.get;
-export const useNotificationsEnabled = notificationsPref.use;
-
 /**
- * Updates the toggle. Turning notifications off also cancels any alerts already
- * scheduled (rest-timer + fasting-goal) so they don't still fire after the user
- * opts out.
+ * Updates the app-local notifications toggle (backed by appPreferencesStore,
+ * independent of the OS notification permission). Turning notifications off also
+ * cancels any alerts already scheduled (rest-timer + fasting-goal) so they don't
+ * still fire after the user opts out.
  */
 export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
-  await notificationsPref.set(enabled);
+  useAppPreferencesStore.getState().setNotificationsEnabled(enabled);
   if (!enabled) {
     await cancelAllScheduledNotifications();
   }
@@ -91,7 +86,7 @@ export async function scheduleRestNotification(
   exerciseName: string,
   seconds: number,
 ): Promise<string | null> {
-  if (!notificationsPref.get()) return null;
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
 
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
@@ -124,7 +119,7 @@ export async function scheduleRestNotification(
 export async function scheduleFastGoalNotification(
   targetEndTime: string,
 ): Promise<string | null> {
-  if (!notificationsPref.get()) return null;
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
 
   const target = new Date(targetEndTime);
   if (Number.isNaN(target.getTime()) || target.getTime() <= Date.now()) {
@@ -183,9 +178,9 @@ export function fireRestCompleteHaptic(): void {
   fireSuccessHaptic();
 }
 
-/** Test-only helper — resets module-level state. */
+/** Test-only helper — resets module-level state and the preferences store. */
 export function __resetNotificationStateForTests(): void {
   initialized = false;
   hasShownDeniedToast = false;
-  notificationsPref.__reset();
+  __resetAppPreferencesStoreForTests();
 }

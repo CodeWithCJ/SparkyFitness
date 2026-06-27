@@ -9,14 +9,12 @@ import {
   cancelScheduledNotification,
   ensureNotificationPermission,
   fireRestCompleteHaptic,
-  getNotificationsEnabled,
   initNotifications,
   scheduleFastGoalNotification,
   scheduleRestNotification,
   setNotificationsEnabled,
 } from '../../src/services/notifications';
-
-const NOTIFICATIONS_ENABLED_KEY = '@HealthConnect:notificationsEnabled';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 
 const mockGetPerms = Notifications.getPermissionsAsync as jest.MockedFunction<
   typeof Notifications.getPermissionsAsync
@@ -214,13 +212,12 @@ describe('notifications service', () => {
   });
 
   describe('notifications-enabled toggle', () => {
-    // Toggle behavior (default/restore/init-race) is covered by
-    // booleanPreference.test.ts; these verify the notifications-specific wiring
-    // (storage key) and the scheduling gate.
-    it('persists toggles under the notifications storage key', async () => {
+    it('updates the in-memory value when toggled', async () => {
       await setNotificationsEnabled(false);
-      expect(getNotificationsEnabled()).toBe(false);
-      expect(await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)).toBe('false');
+      expect(useAppPreferencesStore.getState().notificationsEnabled).toBe(false);
+
+      await setNotificationsEnabled(true);
+      expect(useAppPreferencesStore.getState().notificationsEnabled).toBe(true);
     });
 
     it('skips scheduling a rest notification when disabled', async () => {

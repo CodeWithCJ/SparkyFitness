@@ -48,7 +48,7 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-jest.mock('../../src/native/CalorieWidgetBridge', () => ({
+jest.mock('../../src/services/CalorieWidgetBridge', () => ({
   CalorieWidgetBridge: {
     setCalorieSnapshot: jest.fn(() => Promise.resolve()),
     reloadWidget: jest.fn(() => Promise.resolve()),
@@ -58,7 +58,7 @@ jest.mock('../../src/native/CalorieWidgetBridge', () => ({
   },
 }));
 
-import { CalorieWidgetBridge } from '../../src/native/CalorieWidgetBridge';
+import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
 
 const setMock = (ExtensionStorage as any).__mockSet as jest.Mock;
 const getMock = (ExtensionStorage as any).__mockGet as jest.Mock;

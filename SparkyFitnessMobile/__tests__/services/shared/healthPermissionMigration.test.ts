@@ -5,10 +5,10 @@ jest.mock('../../../src/services/LogService', () => ({
 }));
 
 describe('migrateEnabledMetricPermissionsIfNeeded', () => {
-  const metrics: Array<{
+  const metrics: {
     stateKey: string;
-    permissions: Array<{ accessType: 'read' | 'write'; recordType: string }>;
-  }> = [
+    permissions: { accessType: 'read' | 'write'; recordType: string }[];
+  }[] = [
     {
       stateKey: 'isExerciseSessionSyncEnabled',
       permissions: [

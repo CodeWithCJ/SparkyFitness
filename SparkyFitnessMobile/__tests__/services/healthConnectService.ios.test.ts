@@ -34,7 +34,6 @@ const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
 const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
 const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
 
 describe('syncHealthData (iOS)', () => {

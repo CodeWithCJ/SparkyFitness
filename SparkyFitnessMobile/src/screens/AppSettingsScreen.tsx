@@ -12,16 +12,8 @@ import {
   setThemePreference,
   type ThemePreference,
 } from '../services/themeService';
-import { useHapticsEnabled, setHapticsEnabled } from '../services/haptics';
-import { useSoundsEnabled, setSoundsEnabled } from '../services/sounds';
-import {
-  useNotificationsEnabled,
-  setNotificationsEnabled,
-} from '../services/notifications';
-import {
-  useLiquidGlassTabBarEnabled,
-  setLiquidGlassTabBarEnabled,
-} from '../services/nativeTabBarPreference';
+import { setNotificationsEnabled } from '../services/notifications';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { supportsNativeIOSTabs } from '../utils/nativeTabs';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -44,10 +36,15 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   ]) as [string, string, string];
 
   const appTheme = useThemePreference();
-  const hapticsEnabled = useHapticsEnabled();
-  const soundsEnabled = useSoundsEnabled();
-  const notificationsEnabled = useNotificationsEnabled();
-  const liquidGlassEnabled = useLiquidGlassTabBarEnabled();
+  const hapticsEnabled = useAppPreferencesStore((s) => s.hapticsEnabled);
+  const setHapticsEnabled = useAppPreferencesStore((s) => s.setHapticsEnabled);
+  const soundsEnabled = useAppPreferencesStore((s) => s.soundsEnabled);
+  const setSoundsEnabled = useAppPreferencesStore((s) => s.setSoundsEnabled);
+  const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
+  const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
+  const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
+    (s) => s.setLiquidGlassTabBarEnabled,
+  );
   const supportsLiquidGlassTabBar = supportsNativeIOSTabs(
     Platform.OS,
     Platform.Version,

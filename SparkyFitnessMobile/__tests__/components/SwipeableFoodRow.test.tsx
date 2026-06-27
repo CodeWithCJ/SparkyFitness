@@ -120,7 +120,7 @@ describe('SwipeableFoodRow', () => {
     fireEvent(screen.getByText(/Greek Yogurt/), 'longPress');
 
     expect(alertSpy).toHaveBeenCalled();
-    const buttons = alertSpy.mock.calls[0][2] as Array<{ text: string }>;
+    const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
     const labels = buttons.map((b) => b.text);
     expect(labels).not.toContain('Adjust serving');
     expect(labels).toEqual(expect.arrayContaining(['Delete', 'Cancel']));

@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { fireSuccessHaptic } from '../../src/services/haptics';
 import {
-  fireSuccessHaptic,
-  setHapticsEnabled,
-  __resetHapticsStateForTests,
-} from '../../src/services/haptics';
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 
 describe('haptics service', () => {
   const mockNotificationAsync = Haptics.notificationAsync as jest.MockedFunction<
@@ -13,7 +13,7 @@ describe('haptics service', () => {
 
   beforeEach(async () => {
     await AsyncStorage.clear();
-    __resetHapticsStateForTests();
+    __resetAppPreferencesStoreForTests();
     mockNotificationAsync.mockClear();
   });
 
@@ -26,8 +26,8 @@ describe('haptics service', () => {
     );
   });
 
-  it('does not fire when haptics are disabled', async () => {
-    await setHapticsEnabled(false);
+  it('does not fire when haptics are disabled', () => {
+    useAppPreferencesStore.getState().setHapticsEnabled(false);
 
     fireSuccessHaptic();
 

@@ -17,7 +17,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
-import MfaForm, { ErrorBanner, PrimaryButton } from '../components/auth/MfaForm';
+import MfaForm, { ErrorBanner, PrimaryButton } from '../components/MfaForm';
 import {
   login,
   LoginError,

@@ -13,7 +13,6 @@ import {
 } from '../../../src/services/healthconnect/writebackMappers';
 import type { FoodEntry } from '../../../src/types/foodEntries';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const field = (record: any, key: string) => record[key];
 
 // A clearly-past date so every meal-time anchor (incl. dinner 19:00) is in the

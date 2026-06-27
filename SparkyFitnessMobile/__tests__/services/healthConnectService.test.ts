@@ -49,7 +49,6 @@ const mockAggregateGroupByPeriod = aggregateGroupByPeriod as jest.Mock;
 
 // Load the Android-specific file using explicit .ts extension
 // This bypasses Jest's platform resolution which would otherwise load .ios.ts
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const androidService = require('../../src/services/healthConnectService.ts') as {
   getAggregatedTotalCaloriesByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
   getAggregatedDistanceByDate: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>;
