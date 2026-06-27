@@ -361,6 +361,72 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     );
   });
 
+  it("does not merge a non-YAZIO row's credentials when the type is changed to YAZIO", async () => {
+    // The stored row is FatSecret; its app_key is a FatSecret secret, not a
+    // packed YAZIO credential. Switching the type to YAZIO must not pull that
+    // secret in to satisfy a blank password — the update is rejected so the
+    // user has to supply real YAZIO credentials.
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'fatsecret',
+      is_public: false,
+      app_id: 'fs-client-id',
+      app_key: 'fs-secret',
+    });
+
+    await expectBadRequest(
+      externalProviderService.updateExternalDataProvider(OWNER, PROVIDER_ID, {
+        provider_type: 'yazio',
+        app_id: JSON.stringify({ username: 'me@example.com', clientId: 'cid' }),
+        app_key: JSON.stringify({ password: '', clientSecret: 'csecret' }),
+      }),
+      /YAZIO credentials must include/i
+    );
+
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+
+  it('stores only the entered YAZIO credentials when changing type from a non-YAZIO row', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'fatsecret',
+      is_public: false,
+      app_id: 'fs-client-id',
+      app_key: 'fs-secret',
+    });
+
+    await externalProviderService.updateExternalDataProvider(
+      OWNER,
+      PROVIDER_ID,
+      {
+        provider_type: 'yazio',
+        app_id: JSON.stringify({ username: 'me@example.com', clientId: 'cid' }),
+        app_key: JSON.stringify({
+          password: 'newpass',
+          clientSecret: 'csecret',
+        }),
+      }
+    );
+
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).toHaveBeenCalledWith(
+      PROVIDER_ID,
+      OWNER,
+      expect.objectContaining({
+        app_id: JSON.stringify({ username: 'me@example.com', clientId: 'cid' }),
+        app_key: JSON.stringify({
+          password: 'newpass',
+          clientSecret: 'csecret',
+        }),
+      })
+    );
+  });
+
   it('allows setting credentials on a private OFF row and invalidates the session', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
