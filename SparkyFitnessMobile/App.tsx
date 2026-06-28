@@ -100,7 +100,8 @@ import { toastConfig } from './src/components/ui/toastConfig';
 import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import { useHeaderActionColors } from './src/hooks/useHeaderActionColors';
-import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
+import ActiveWorkoutBar, { navigationRef as rootNavigationRef, notifyActiveWorkoutBarStackTransition } from './src/components/ActiveWorkoutBar';
+import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
@@ -162,7 +163,6 @@ function findRouteParams<T extends object>(
 }
 const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
-
 // Onboarding — no Go Back (initial route for new users)
 const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
 
@@ -769,6 +769,22 @@ function AppContent() {
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator
+          screenLayout={({ children, route }) => (
+            <ActiveWorkoutTransitionScreenLayout routeName={route.name}>
+              {children}
+            </ActiveWorkoutTransitionScreenLayout>
+          )}
+          screenListeners={{
+            transitionStart: (event) => {
+              notifyActiveWorkoutBarStackTransition('start', Boolean(event.data?.closing));
+            },
+            transitionEnd: (event) => {
+              notifyActiveWorkoutBarStackTransition('end', Boolean(event.data?.closing));
+            },
+            gestureCancel: () => {
+              notifyActiveWorkoutBarStackTransition('end', false);
+            },
+          }}
           screenOptions={{
             headerShown: false,
             animation: 'default',

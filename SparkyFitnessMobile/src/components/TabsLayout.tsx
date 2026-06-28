@@ -16,7 +16,7 @@ import {
   type AppleIcon,
 } from 'react-native-bottom-tabs';
 import { withErrorBoundary } from './ScreenErrorBoundary';
-import ActiveWorkoutBar from './ActiveWorkoutBar';
+import ActiveWorkoutBar, { setActiveWorkoutBarTabBarHeight } from './ActiveWorkoutBar';
 import CustomTabBar from './CustomTabBar';
 import WhatsNewBanner, {
   WhatsNewBannerContent,
@@ -92,6 +92,10 @@ const NativeTabsOverlayContext = React.createContext<ReturnType<
 function NativeTabsBannerOverlay() {
   const whatsNewState = React.useContext(NativeTabsOverlayContext);
   const tabBarHeight = useBottomTabBarHeight();
+  React.useEffect(() => {
+    setActiveWorkoutBarTabBarHeight(tabBarHeight);
+  }, [tabBarHeight]);
+
   if (!whatsNewState) return null;
 
   return (
@@ -105,11 +109,7 @@ function NativeTabsBannerOverlay() {
         zIndex: 50,
       }}
     >
-      <WhatsNewBannerContent
-        reserveAddButtonClearance
-        state={whatsNewState}
-      />
-      <ActiveWorkoutBar variant="embedded" />
+      <WhatsNewBannerContent presentation="glass" state={whatsNewState} />
     </View>
   );
 }
@@ -336,7 +336,7 @@ export function FallbackTabsLayout({
   );
 }
 
-// Native tabs require the iOS 26 bottom-accessory APIs. Older iOS releases
+// Native Liquid Glass tabs are only used on iOS 26+. Older iOS releases
 // intentionally use the same custom tab bar as Android.
 export function TabsLayout({
   onAddPress,
