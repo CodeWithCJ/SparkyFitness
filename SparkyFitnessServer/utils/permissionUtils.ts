@@ -60,10 +60,20 @@ async function canAccessUserData(
             ($3 = 'water' AND ((fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR (fa.access_permissions->>'can manage diary')::boolean = TRUE))
             OR
             -- Handle mapping for 'checkin' permission to 'can_manage_checkin' key
-            ($3 = 'checkin' AND ((fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR (fa.access_permissions->>'can manage checkin')::boolean = TRUE))
+            ($3 = 'checkin' AND (
+              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR 
+              (fa.access_permissions->>'can manage checkin')::boolean = TRUE
+            ))
             OR
-            -- Handle mapping for 'reports' permission to 'can_view_reports' key
-            ($3 = 'reports' AND ((fa.access_permissions->>'can_view_reports')::boolean = TRUE OR (fa.access_permissions->>'can view reports')::boolean = TRUE))
+            -- Handle mapping for 'reports' permission to 'can_view_reports', 'can_manage_diary', or 'can_manage_checkin' key
+            ($3 = 'reports' AND (
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
+              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
+              (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
+              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR
+              (fa.access_permissions->>'can manage checkin')::boolean = TRUE
+            ))
             OR
             -- Inheritance: reports permission grants read access to all diary and wellness data
             ($3 IN ('diary', 'checkin', 'mood', 'goals', 'exercise', 'fasting', 'sleep', 'water') AND (

@@ -311,10 +311,44 @@ CREATE FUNCTION public.create_owner_policy(table_name text, id_column text DEFAU
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS owner_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_modify_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY owner_policy ON public.%I FOR ALL TO PUBLIC
-    USING (%I = current_user_id())
-    WITH CHECK (%I = current_user_id());
+    USING (%I = public.authenticated_user_id())
+    WITH CHECK (%I = public.authenticated_user_id());
+  ', table_name, id_column, id_column);
+END;
+$$;
+
+
+--
+-- Name: create_shared_owner_policy(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_shared_owner_policy(table_name text, id_column text DEFAULT 'user_id'::text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS owner_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_modify_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (%I = public.current_user_id());
+  ', table_name, id_column);
+
+  EXECUTE format('
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (%I = public.authenticated_user_id())
+    WITH CHECK (%I = public.authenticated_user_id());
   ', table_name, id_column, id_column);
 END;
 $$;
@@ -6484,35 +6518,39 @@ ALTER TABLE public.onboarding_status ENABLE ROW LEVEL SECURITY;
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.current_user_id())) WITH CHECK ((reference_id = public.current_user_id()));
+CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.authenticated_user_id())) WITH CHECK ((reference_id = public.authenticated_user_id()));
 
 
 --
 -- Name: daily_sleep_need owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.daily_sleep_need USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.daily_sleep_need FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.daily_sleep_need FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: day_classification_cache owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.day_classification_cache USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.day_classification_cache FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.day_classification_cache FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.fasting_logs USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.fasting_logs FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.fasting_logs FOR ALL USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
 -- Name: goal_presets owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.goal_presets USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.goal_presets FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.goal_presets FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6538,91 +6576,102 @@ CREATE POLICY owner_policy ON public.meal_plan_template_assignments USING (((EXI
 -- Name: meal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.meal_plans USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.meal_plans FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.meal_plans FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: mood_entries owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.mood_entries USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.mood_entries FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.mood_entries FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: onboarding_data owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.onboarding_data USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.onboarding_data FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.onboarding_data FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: onboarding_status owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.onboarding_status USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.onboarding_status FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.onboarding_status FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: profiles owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.profiles USING ((id = public.current_user_id())) WITH CHECK ((id = public.current_user_id()));
+CREATE POLICY select_policy ON public.profiles FOR SELECT USING ((id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.profiles FOR ALL USING ((id = public.authenticated_user_id())) WITH CHECK ((id = public.authenticated_user_id()));
 
 
 --
 -- Name: sleep_need_calculations owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.sleep_need_calculations USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.sleep_need_calculations FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.sleep_need_calculations FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: sparky_chat_history owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_allergen_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_allergen_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_allergen_preferences FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_allergen_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_custom_nutrients owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_custom_nutrients USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_custom_nutrients FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_custom_nutrients FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_dashboard_layouts owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_dashboard_layouts USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_dashboard_layouts FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_dashboard_layouts FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_goals owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_goals USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_goals FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_goals FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_ignored_updates owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_meal_visibilities owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_meal_visibilities USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_meal_visibilities FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_meal_visibilities FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6636,35 +6685,39 @@ CREATE POLICY owner_policy ON public.user_medication_display_preferences USING (
 -- Name: user_nutrient_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_nutrient_display_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_nutrient_display_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_oidc_links owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_oidc_links USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY owner_policy ON public.user_oidc_links USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_preferences FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: user_water_containers owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_water_containers USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.user_water_containers FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.user_water_containers FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
 -- Name: weekly_goal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.weekly_goal_plans USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY select_policy ON public.weekly_goal_plans FOR SELECT USING ((user_id = public.current_user_id()));
+CREATE POLICY modify_policy ON public.weekly_goal_plans FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --

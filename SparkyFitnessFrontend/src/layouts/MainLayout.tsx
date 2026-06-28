@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { debug, info, error } from '@/utils/logging';
@@ -328,6 +328,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const mobileGridClass = getGridClassNormal(availableMobileTabs.length);
 
   const location = useLocation();
+
+  useEffect(() => {
+    if (isActingOnBehalf && availableTabs.length > 0) {
+      const currentPath = location.pathname;
+      // Match exactly or as prefix (e.g. /medications/log should match /medications)
+      const isAllowed = availableTabs.some((tab) => {
+        if (tab.value === '/') {
+          return currentPath === '/';
+        }
+        return (
+          currentPath === tab.value || currentPath.startsWith(tab.value + '/')
+        );
+      });
+
+      if (!isAllowed) {
+        const fallbackTab = availableTabs[0]?.value;
+        if (fallbackTab) {
+          debug(
+            loggingLevel,
+            `MainLayout: Redirecting from unauthorized path ${currentPath} to ${fallbackTab}`
+          );
+          navigate(fallbackTab, { replace: true });
+        }
+      }
+    }
+  }, [
+    isActingOnBehalf,
+    availableTabs,
+    location.pathname,
+    navigate,
+    loggingLevel,
+  ]);
+
   const selectedDate = new URLSearchParams(location.search).get('date');
   const selectedDateRelation = selectedDate
     ? getDateRelationToToday(selectedDate)

@@ -181,10 +181,74 @@ AS $function$
   SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
 $function$;
 
+CREATE OR REPLACE FUNCTION has_profile_read_access(owner_uuid uuid) RETURNS bool
+LANGUAGE sql STABLE
+AS $function$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION has_diary_read_access(owner_uuid uuid) RETURNS bool
+LANGUAGE sql STABLE
+AS $function$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+      (fa.access_permissions->>'can manage diary')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'can view reports')::boolean = true
+    )
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION has_checkin_read_access(owner_uuid uuid) RETURNS bool
+LANGUAGE sql STABLE
+AS $function$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
+      (fa.access_permissions->>'can manage checkin')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'can view reports')::boolean = true
+    )
+  );
+$function$;
+
 CREATE OR REPLACE FUNCTION has_library_access_with_public(owner_uuid uuid, is_shared bool, perms text[]) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
-  SELECT authenticated_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
+  SELECT authenticated_user_id() = owner_uuid 
+      OR is_shared 
+      OR EXISTS (
+        SELECT 1 FROM public.family_access fa
+        WHERE fa.owner_user_id = owner_uuid
+        AND fa.family_user_id = authenticated_user_id()
+        AND fa.is_active = true
+        AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+        AND EXISTS (
+          SELECT 1 FROM unnest(perms) p
+          WHERE (fa.access_permissions ->> p)::boolean = true
+          AND (
+            p NOT IN ('can_manage_diary', 'can manage diary') 
+            OR current_user_id() = owner_uuid
+          )
+        )
+      );
 $function$;
 
 CREATE OR REPLACE FUNCTION public.set_app_context(p_user_id UUID, p_authenticated_user_id UUID)
@@ -253,10 +317,39 @@ CREATE OR REPLACE FUNCTION create_owner_policy(table_name text, id_column text D
 LANGUAGE plpgsql
 AS $_$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS owner_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_modify_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY owner_policy ON public.%I FOR ALL TO PUBLIC
-    USING (%I = current_user_id())
-    WITH CHECK (%I = current_user_id());
+    USING (%I = authenticated_user_id())
+    WITH CHECK (%I = authenticated_user_id());
+  ', table_name, id_column, id_column);
+END;
+$_$;
+
+CREATE OR REPLACE FUNCTION create_shared_owner_policy(table_name text, id_column text DEFAULT 'user_id') RETURNS void
+LANGUAGE plpgsql
+AS $_$
+BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS owner_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS owner_modify_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (%I = current_user_id());
+  ', table_name, id_column);
+
+  EXECUTE format('
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (%I = authenticated_user_id())
+    WITH CHECK (%I = authenticated_user_id());
   ', table_name, id_column, id_column);
 END;
 $_$;
@@ -267,10 +360,24 @@ AS $_$
 BEGIN
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
-    USING (has_diary_access(user_id));
+    USING (has_diary_read_access(user_id));
     CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
     USING (has_diary_access(user_id))
     WITH CHECK (has_diary_access(user_id));
+  ', table_name, table_name);
+END;
+$_$;
+
+CREATE OR REPLACE FUNCTION create_checkin_policy(table_name text) RETURNS void
+LANGUAGE plpgsql
+AS $_$
+BEGIN
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (has_checkin_read_access(user_id));
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (authenticated_user_id() = user_id OR has_family_access(user_id, ''can_manage_checkin''))
+    WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, ''can_manage_checkin''));
   ', table_name, table_name);
 END;
 $_$;
@@ -344,21 +451,38 @@ USING (
 );
 
 -- Owner-only access tables
-SELECT create_owner_policy('goal_presets');
-SELECT create_owner_policy('meal_plans');
-SELECT create_owner_policy('mood_entries');
-SELECT create_owner_policy('profiles', 'id');
-SELECT create_owner_policy('sparky_chat_history');
+-- Tier 1: Strictly Private (no delegation allowed)
 SELECT create_owner_policy('api_key', 'reference_id');
-SELECT create_owner_policy('user_goals');
-SELECT create_owner_policy('user_nutrient_display_preferences');
 SELECT create_owner_policy('user_oidc_links');
-SELECT create_owner_policy('user_preferences');
-SELECT create_owner_policy('user_water_containers');
-SELECT create_owner_policy('weekly_goal_plans');
-SELECT create_owner_policy('user_custom_nutrients');
-SELECT create_owner_policy('user_allergen_preferences');
-SELECT create_owner_policy('user_dashboard_layouts');
+SELECT create_owner_policy('sparky_chat_history');
+
+-- Profiles: access if user has diary access to the profile (which owner always does, and family members can if granted)
+CREATE POLICY select_policy ON public.profiles FOR SELECT TO PUBLIC USING (has_profile_read_access(id));
+CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (has_diary_access(id)) WITH CHECK (has_diary_access(id));
+
+CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
+CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
+USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
+WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+
+SELECT create_diary_policy('user_goals');
+SELECT create_diary_policy('weekly_goal_plans');
+SELECT create_diary_policy('user_water_containers');
+SELECT create_diary_policy('user_custom_nutrients');
+SELECT create_diary_policy('user_allergen_preferences');
+
+CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
+CREATE POLICY modify_policy ON public.user_nutrient_display_preferences FOR ALL TO PUBLIC
+USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
+WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+
+CREATE POLICY select_policy ON public.user_dashboard_layouts FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
+CREATE POLICY modify_policy ON public.user_dashboard_layouts FOR ALL TO PUBLIC
+USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
+WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+SELECT create_diary_policy('goal_presets');
+SELECT create_diary_policy('meal_plans');
+SELECT create_checkin_policy('mood_entries');
 
 -- Admin Activity Logs: Only the admin who performed the action or other admins can view
 CREATE POLICY admin_only_select ON public.admin_activity_logs FOR SELECT TO PUBLIC
@@ -367,8 +491,8 @@ CREATE POLICY admin_only_insert ON public.admin_activity_logs FOR INSERT TO PUBL
 WITH CHECK (admin_user_id = current_user_id() AND is_admin());
 
 -- Diary access tables
-SELECT create_diary_policy('check_in_measurements');
-SELECT create_diary_policy('check_in_photos');
+SELECT create_checkin_policy('check_in_measurements');
+SELECT create_checkin_policy('check_in_photos');
 SELECT create_diary_policy('custom_categories');
 SELECT create_diary_policy('custom_measurements');
 SELECT create_diary_policy('exercise_entries');
@@ -384,8 +508,8 @@ USING (
 
 SELECT create_diary_policy('exercise_preset_entries');
 SELECT create_diary_policy('food_entry_meals');
-SELECT create_diary_policy('sleep_entries');
-SELECT create_diary_policy('sleep_entry_stages');
+SELECT create_checkin_policy('sleep_entries');
+SELECT create_checkin_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');
 SELECT create_diary_policy('water_intake_entries');
 
@@ -569,11 +693,8 @@ WITH CHECK (EXISTS (
     AND current_user_id() = wp.user_id
 ));
 
+-- Strictly Private (Tier 1)
 SELECT create_owner_policy('user_ignored_updates');
-SELECT create_owner_policy('fasting_logs');
-SELECT create_owner_policy('onboarding_data');
-SELECT create_owner_policy('onboarding_status');
-SELECT create_owner_policy('user_meal_visibilities');
 
 -- Meal types: access if user_id is null (system) or if user has diary access
 CREATE POLICY select_policy ON public.meal_types FOR SELECT TO PUBLIC
@@ -598,7 +719,18 @@ WITH CHECK (
   (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND current_user_id() = epe.user_id))
 );
 
--- Sleep Science tables
-SELECT create_owner_policy('sleep_need_calculations');
-SELECT create_owner_policy('daily_sleep_need');
-SELECT create_owner_policy('day_classification_cache');
+-- Shared View-Only (Tier 2)
+SELECT create_checkin_policy('fasting_logs');
+SELECT create_diary_policy('user_meal_visibilities');
+SELECT create_checkin_policy('sleep_need_calculations');
+SELECT create_checkin_policy('daily_sleep_need');
+SELECT create_diary_policy('day_classification_cache');
+CREATE POLICY select_policy ON public.onboarding_data FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
+CREATE POLICY modify_policy ON public.onboarding_data FOR ALL TO PUBLIC
+USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
+WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+
+CREATE POLICY select_policy ON public.onboarding_status FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
+CREATE POLICY modify_policy ON public.onboarding_status FOR ALL TO PUBLIC
+USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
+WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));

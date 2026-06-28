@@ -153,12 +153,14 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
       'info',
       `Attempting context switch: User ${authenticatedUserId} -> User ${targetUserId}`
     );
-    // Verify access
-    const hasAccess = await canAccessUserData(
-      targetUserId,
-      'reports',
-      authenticatedUserId
-    );
+    // Verify access (allow switch if user has reports, diary, or checkin access)
+    const [hasReportsAccess, hasDiaryAccess, hasCheckinAccess] =
+      await Promise.all([
+        canAccessUserData(targetUserId, 'reports', authenticatedUserId),
+        canAccessUserData(targetUserId, 'diary', authenticatedUserId),
+        canAccessUserData(targetUserId, 'checkin', authenticatedUserId),
+      ]);
+    const hasAccess = hasReportsAccess || hasDiaryAccess || hasCheckinAccess;
     if (!hasAccess) {
       throw new Error(
         'Forbidden: You do not have permission to switch to this user context.'

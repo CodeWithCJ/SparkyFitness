@@ -4,6 +4,7 @@ import { serializeSignedCookie } from 'better-call';
 import { auth } from '../auth.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { dbContextStorage } from '../db/poolManager.js';
 import {
   getCachedSession,
   setCachedSession,
@@ -140,7 +141,10 @@ const authenticate = async (req: any, res: any, next: any) => {
           err
         );
       }
-      return next();
+      return dbContextStorage.run(
+        { authenticatedUserId: req.originalUserId || req.authenticatedUserId },
+        next
+      );
     }
   } catch (error) {
     log('error', 'Error checking Better Auth identity:', error);
