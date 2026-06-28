@@ -65,6 +65,16 @@ async function canAccessUserData(
               (fa.access_permissions->>'can manage checkin')::boolean = TRUE
             ))
             OR
+            -- Handle mapping for 'checkin_read' permission (read-only check-in data)
+            ($3 = 'checkin_read' AND (
+              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR 
+              (fa.access_permissions->>'can manage checkin')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
+              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
+              (fa.access_permissions->>'can manage diary')::boolean = TRUE
+            ))
+            OR
             -- Handle mapping for 'reports' permission to 'can_view_reports', 'can_manage_diary', or 'can_manage_checkin' key
             ($3 = 'reports' AND (
               (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 

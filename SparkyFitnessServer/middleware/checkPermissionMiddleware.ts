@@ -22,13 +22,27 @@ const checkPermissionMiddleware = (permissionType: any) => {
     }
 
     try {
+      let resolvedPermission = permissionType;
+      if (permissionType === 'checkin') {
+        if (req.originalUrl && req.originalUrl.includes('/water-intake')) {
+          resolvedPermission = 'water';
+        } else if (
+          req.method === 'GET' &&
+          req.originalUrl &&
+          !req.originalUrl.includes('/check-in-photos') &&
+          !req.originalUrl.includes('/photos')
+        ) {
+          resolvedPermission = 'checkin_read';
+        }
+      }
+
       log(
         'debug',
-        `checkPermissionMiddleware: User ${authUserId} acting as/accessing data for ${targetUserId}. Checking '${permissionType}' permission.`
+        `checkPermissionMiddleware: User ${authUserId} acting as/accessing data for ${targetUserId}. Checking '${resolvedPermission}' permission.`
       );
       const hasPermission = await canAccessUserData(
         targetUserId,
-        permissionType,
+        resolvedPermission,
         authUserId
       );
       if (hasPermission) {
