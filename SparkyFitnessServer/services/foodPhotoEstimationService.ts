@@ -301,7 +301,7 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
-  const setting = await chatRepository.getActiveAiServiceSetting(userId);
+  const setting = await chatRepository.getActiveVisionAiServiceSetting(userId);
   if (!setting) {
     return {
       success: false,

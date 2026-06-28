@@ -9,10 +9,6 @@ jest.mock('../../src/hooks/useEstimateFoodPhoto', () => ({
   useEstimateFoodPhoto: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
-  useActiveAiServiceSetting: jest.fn(() => ({ data: null, isLoading: false })),
-}));
-
 const mockBase64 = jest.fn().mockResolvedValue('AAAA-base64');
 jest.mock('expo-file-system', () => ({
   File: jest.fn().mockImplementation(() => ({

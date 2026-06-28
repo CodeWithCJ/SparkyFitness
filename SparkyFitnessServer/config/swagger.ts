@@ -1178,6 +1178,13 @@ const options = {
             enable_email_password_login: { type: 'boolean' },
             is_oidc_active: { type: 'boolean' },
             is_mfa_mandatory: { type: 'boolean' },
+            default_vision_ai_service_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description:
+                'Global default AI service used for vision tasks (food-photo, label scan) by users on the global default. Null clears it.',
+            },
           },
         },
         AppReview: {

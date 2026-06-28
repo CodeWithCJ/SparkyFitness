@@ -115,6 +115,48 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
     client.release();
   }
 }
+// Decrypt-and-return a single setting WITHOUT the `is_active = TRUE` filter that
+// getAiServiceSettingForBackend applies — the connection test must work for an
+// inactive service too. The user-scoped client preserves RLS: a user reads only
+// their own private rows plus `is_public` global rows, so this serves both the
+// per-user and admin/global test contexts without leaking other users' keys.
+async function getDecryptedAiServiceSettingById(id: string, userId: string) {
+  const client = await getClient(userId); // User-specific operation (RLS-scoped)
+  try {
+    const result = await client.query(
+      'SELECT * FROM ai_service_settings WHERE id = $1',
+      [id]
+    );
+    const setting = result.rows[0];
+    if (!setting) return null;
+    let decryptedApiKey = null;
+    if (
+      setting.encrypted_api_key &&
+      setting.api_key_iv &&
+      setting.api_key_tag
+    ) {
+      try {
+        decryptedApiKey = await decrypt(
+          setting.encrypted_api_key,
+          setting.api_key_iv,
+          setting.api_key_tag,
+          ENCRYPTION_KEY
+        );
+      } catch (e) {
+        log('error', 'Error decrypting API key for AI service setting:', id, e);
+      }
+    }
+    return {
+      service_type: setting.service_type,
+      api_key: decryptedApiKey,
+      custom_url: setting.custom_url,
+      model_name: setting.model_name,
+      is_public: setting.is_public,
+    };
+  } finally {
+    client.release();
+  }
+}
 async function getAiServiceSettingById(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -222,6 +264,90 @@ async function getActiveAiServiceSetting(userId: string) {
     }
     log('debug', `No active AI service setting found for user ${userId}`);
     return null;
+  } finally {
+    client.release();
+  }
+}
+// Resolves the AI service to use for vision tasks (food-photo, label scan).
+// The existing active/default service is the text default; vision falls back to
+// it unless the user (or admin, for defaulted users) points vision elsewhere.
+// See models/chatRepository getActiveAiServiceSetting for the text counterpart.
+async function getActiveVisionAiServiceSetting(userId: string) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    // Read both pointers up front: step 1 needs the vision pointer, and step 3
+    // compares active_ai_service_id against the resolved base to tell a
+    // genuinely-defaulted user apart from one whose explicit text pick is live.
+    const prefResult = await client.query(
+      'SELECT active_ai_service_id, active_vision_ai_service_id FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    const prefs = prefResult.rows[0];
+
+    // 1. Explicit per-user vision override (mirrors Priority-0 of the text
+    //    resolver) — honored only while the pointed-to service is active.
+    if (prefs && prefs.active_vision_ai_service_id) {
+      const visionId = prefs.active_vision_ai_service_id;
+      const settingResult = await client.query(
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, u.name as creator_name
+         FROM ai_service_settings ai
+         LEFT JOIN public."user" u ON ai.user_id = u.id
+         WHERE ai.id = $1 AND ai.is_active = TRUE`,
+        [visionId]
+      );
+      if (settingResult.rows.length > 0) {
+        const setting = settingResult.rows[0];
+        const source = setting.is_public ? 'global' : 'user';
+        log(
+          'debug',
+          `Using preferred vision AI service setting for user ${userId}: ${setting.id} (source: ${source})`
+        );
+        return { ...setting, source };
+      }
+    }
+
+    // 2. No usable vision override → the text/default service is the baseline.
+    const base = await getActiveAiServiceSetting(userId);
+    if (!base) return null;
+
+    // 3. Apply the admin global vision default only to users effectively on the
+    //    global default: the base resolved as a global service AND the user's
+    //    explicit text pointer did not resolve to it. Keying off whether the
+    //    pointer actually resolved (active_ai_service_id === base.id) — rather
+    //    than merely whether it is set — means a user whose explicitly-chosen
+    //    service was later deactivated (and who has fallen through to the global
+    //    default) still gets the configured vision default, while a live explicit
+    //    pick is never silently redirected. We read global_settings with the
+    //    user-scoped client (the table has no RLS and grants SELECT to the app
+    //    role) to avoid the system-client read in globalSettingsRepository that
+    //    logs every field.
+    if (base.source === 'global' && prefs?.active_ai_service_id !== base.id) {
+      const globalResult = await client.query(
+        'SELECT default_vision_ai_service_id FROM global_settings WHERE id = 1',
+        []
+      );
+      const defaultVisionId =
+        globalResult.rows[0]?.default_vision_ai_service_id;
+      if (defaultVisionId) {
+        // Enforce is_public in the query so the repository upholds the
+        // global-only invariant even though the admin UI only lists globals.
+        const visionResult = await client.query(
+          'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE id = $1 AND is_active = TRUE AND is_public = TRUE',
+          [defaultVisionId]
+        );
+        if (visionResult.rows.length > 0) {
+          const setting = visionResult.rows[0];
+          log(
+            'debug',
+            `Using global vision AI service default for user ${userId}: ${setting.id}`
+          );
+          return { ...setting, source: 'global' };
+        }
+      }
+    }
+
+    // 4. Otherwise reuse the text service for vision.
+    return base;
   } finally {
     client.release();
   }
@@ -468,9 +594,11 @@ async function deleteGlobalAiServiceSetting(id: string) {
 export { upsertAiServiceSetting };
 export { getAiServiceSettingById };
 export { getAiServiceSettingForBackend };
+export { getDecryptedAiServiceSettingById };
 export { deleteAiServiceSetting };
 export { getAiServiceSettingsByUserId };
 export { getActiveAiServiceSetting };
+export { getActiveVisionAiServiceSetting };
 export { clearOldChatHistory };
 export { getChatHistoryByUserId };
 export { getChatHistoryEntryById };
@@ -487,9 +615,11 @@ export default {
   upsertAiServiceSetting,
   getAiServiceSettingById,
   getAiServiceSettingForBackend,
+  getDecryptedAiServiceSettingById,
   deleteAiServiceSetting,
   getAiServiceSettingsByUserId,
   getActiveAiServiceSetting,
+  getActiveVisionAiServiceSetting,
   clearOldChatHistory,
   getChatHistoryByUserId,
   getChatHistoryEntryById,

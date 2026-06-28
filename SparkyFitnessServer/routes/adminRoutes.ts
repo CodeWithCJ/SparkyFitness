@@ -10,6 +10,7 @@ import {
 } from '../schemas/externalProviderSchemas.js';
 import { log } from '../config/logging.js';
 import { logAdminAction } from '../services/authService.js';
+import { requiresApiKey } from '../ai/providerDispatch.js';
 import { auth } from '../auth.js';
 const router = express.Router();
 // Middleware to ensure only admins can access these routes
@@ -597,10 +598,10 @@ router.post('/ai-service-settings/global', async (req, res, next) => {
         .status(400)
         .json({ error: 'service_name and service_type are required.' });
     }
-    if (service_type !== 'ollama' && !api_key) {
+    if (requiresApiKey(service_type) && !api_key) {
       return res
         .status(400)
-        .json({ error: 'api_key is required for non-Ollama services.' });
+        .json({ error: 'api_key is required for this service type.' });
     }
     const settingData = {
       service_name,

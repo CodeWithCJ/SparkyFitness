@@ -161,6 +161,30 @@ describe('dispatchAiRequest — preconditions', () => {
     expect(m).toHaveBeenCalled();
   });
 
+  // Regression: keyless local servers (LM Studio, llama.cpp) must work on the
+  // dispatch path the same way they already do on the chat path. Previously a
+  // blank key hard-failed here with api_key_missing while chat tolerated it,
+  // so chat worked but photo/label-scan/unit-conversion silently failed.
+  it.each(['openai_compatible', 'custom'])(
+    'does NOT require an api_key for %s and sends a no-key bearer',
+    async (serviceType) => {
+      const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+      const result = await dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({
+            service_type: serviceType,
+            api_key: undefined,
+            custom_url: 'https://example.local/v1',
+          }),
+        })
+      );
+      expect(result.ok).toBe(true);
+      expect(m).toHaveBeenCalled();
+      const { headers } = captured(m);
+      expect(headers.Authorization).toBe('Bearer no-key');
+    }
+  );
+
   it.each(['ollama', 'openai_compatible', 'custom'])(
     'returns custom_url_missing for %s with a blank custom_url',
     async (serviceType) => {

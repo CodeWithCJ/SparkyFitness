@@ -6,6 +6,7 @@ import { getServiceTypes } from '@/utils/aiServiceUtils';
 import { ServiceForm } from './ServiceForm';
 import { AiServiceSettingsResponse } from '@workspace/shared';
 import { UpdateAiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
+import type { TestConnectionStatus } from '@/hooks/AI/useTestAIServiceConnection';
 
 interface ServiceListItemProps {
   service: AiServiceSettingsResponse;
@@ -19,6 +20,10 @@ interface ServiceListItemProps {
   loading?: boolean;
   translationPrefix?: string;
   showGlobalBadge?: boolean;
+  // Forwarded to ServiceForm; this component never calls the test hook itself.
+  onTestConnection?: (selectedModel: string) => void;
+  testing?: boolean;
+  testStatus?: TestConnectionStatus;
 }
 
 export const ServiceListItem = ({
@@ -33,6 +38,9 @@ export const ServiceListItem = ({
   loading = false,
   translationPrefix = 'settings.aiService.globalSettings',
   showGlobalBadge = true,
+  onTestConnection,
+  testing = false,
+  testStatus = null,
 }: ServiceListItemProps) => {
   const { t } = useTranslation();
   const serviceTypes = getServiceTypes(t);
@@ -70,6 +78,9 @@ export const ServiceListItem = ({
           loading={loading}
           isEdit={true}
           translationPrefix={translationPrefix}
+          onTestConnection={onTestConnection}
+          testing={testing}
+          testStatus={testStatus}
         />
       </div>
     );

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
+import { reactClickToComponent } from 'vite-plugin-react-click-to-component';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -43,6 +44,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       tailwindcss(),
       react(),
+      // Option+Right Click any element in dev to open its source in your editor.
+      // Self-guards to `command === 'serve'`, so it's a no-op in production builds.
+      reactClickToComponent(),
       // Temporarily disabled for development to debug refresh issue
       // mode === "production" && VitePWA({...})
       mode === 'production' &&

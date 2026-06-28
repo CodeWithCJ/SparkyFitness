@@ -9,6 +9,9 @@ import {
   aiServiceSettingsResponseSchema,
   CreateAiServiceSettingsRequest,
   UpdateAiServiceSettingsRequest,
+  TestAiServiceConnectionRequest,
+  TestAiServiceConnectionResponse,
+  testAiServiceConnectionResponseSchema,
 } from '@workspace/shared';
 
 export const getAIServices = async (): Promise<AiServiceSettingsResponse[]> => {
@@ -94,6 +97,19 @@ export const deleteAIService = async (serviceId: string): Promise<void> => {
   return apiCall(`/chat/ai-service-settings/${serviceId}`, {
     method: 'DELETE',
   });
+};
+
+// Test a provider config with a minimal live completion. The endpoint returns
+// HTTP 200 for both pass and provider failure, so apiCall never auto-toasts the
+// failure here — the caller surfaces a category-specific message instead.
+export const testAIServiceConnection = async (
+  payload: TestAiServiceConnectionRequest
+): Promise<TestAiServiceConnectionResponse> => {
+  const response = await apiCall('/chat/ai-service-settings/test', {
+    method: 'POST',
+    body: payload,
+  });
+  return testAiServiceConnectionResponseSchema.parse(response);
 };
 
 export const updateAIServiceStatus = async (

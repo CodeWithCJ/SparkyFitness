@@ -24,7 +24,6 @@ import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
 import { useEstimateFoodPhoto } from '../hooks/useEstimateFoodPhoto';
-import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
@@ -140,7 +139,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const mutation = useEstimateFoodPhoto();
-  const { data: aiSetting } = useActiveAiServiceSetting();
 
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -171,26 +169,10 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const atImageCap = images.length >= MAX_IMAGES;
 
   const appendImage = (uri: string, mimeType?: string) => {
-    // Fail fast on the client when the active provider can't read HEIC/HEIF,
-    // rather than reading base64 and round-tripping to a guaranteed server
-    // rejection. The service-side guard remains the backstop. Only Gemini
-    // accepts HEIC, so reject for every other provider — but the truthiness
-    // check keeps us from gating while `service_type` is still loading
-    // (undefined), where a bare `!== 'google'` would wrongly reject.
-    const provider = aiSetting?.service_type;
-    const resolved = resolveMimeType({ uri, mimeType });
-    if (
-      provider &&
-      provider !== 'google' &&
-      (resolved === 'image/heic' || resolved === 'image/heif')
-    ) {
-      Toast.show({
-        type: 'error',
-        text1: 'Unsupported format',
-        text2: "This AI provider can't read HEIC/HEIF images. Please pick a JPEG or PNG.",
-      });
-      return;
-    }
+    // HEIC/HEIF support depends on the *vision* provider, which the mobile app
+    // does not fetch. Gating on the active *text* provider's type is wrong once
+    // vision can differ, so the server-side guard owns format rejection (it
+    // returns UNSUPPORTED_MIME_TYPE, surfaced as "Unexpected image format").
     setImages((prev) =>
       prev.length >= MAX_IMAGES ? prev : [...prev, { uri, mimeType }],
     );
@@ -318,27 +300,9 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    // Fail fast before the memory-intensive base64 reads if any staged image is
-    // HEIC/HEIF and the active provider can't read it. Catches the seed image
-    // from the scan screen, which never passes through appendImage. Only Gemini
-    // accepts HEIC; the truthiness check avoids gating while `service_type` is
-    // still loading (undefined).
-    const provider = aiSetting?.service_type;
-    if (provider && provider !== 'google') {
-      const hasUnsupported = images.some((img) => {
-        const resolved = resolveMimeType(img);
-        return resolved === 'image/heic' || resolved === 'image/heif';
-      });
-      if (hasUnsupported) {
-        Toast.show({
-          type: 'error',
-          text1: 'Unsupported format',
-          text2: "This AI provider can't read HEIC/HEIF images. Please remove them or switch to JPEG/PNG.",
-        });
-        return;
-      }
-    }
-
+    // Format rejection is owned server-side (it returns UNSUPPORTED_MIME_TYPE,
+    // surfaced on the review screen). The client can't reliably pre-screen HEIC
+    // because support depends on the vision provider, which the app never fetches.
     const imagePayloads: { base64Image: string; mimeType: string }[] = [];
     try {
       // Sequential rather than Promise.all: converting several images to base64

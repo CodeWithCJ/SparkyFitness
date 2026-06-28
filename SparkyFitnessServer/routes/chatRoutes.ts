@@ -4,6 +4,8 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import chatService from '../services/chatService.js';
 import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
+import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { testAiServiceConnectionRequestSchema } from '@workspace/shared';
 const router = express.Router();
 /**
  * @swagger
@@ -269,6 +271,85 @@ router.get(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });
       }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /chat/ai-service-settings/test:
+ *   post:
+ *     summary: Test an AI service connection with a minimal live completion
+ *     description: >
+ *       Runs a minimal completion against the supplied provider config without
+ *       persisting anything. Returns HTTP 200 for both pass (`ok: true`) and
+ *       provider failure (`ok: false`, with a `category`), so the client can show
+ *       a friendly, category-specific message instead of a generic API error.
+ *       On edit, a blank `api_key` falls back to the stored encrypted key.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [service_type]
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               service_type:
+ *                 type: string
+ *               api_key:
+ *                 type: string
+ *               custom_url:
+ *                 type: string
+ *               model_name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Test result (pass or provider failure).
+ *       400:
+ *         description: Bad request (malformed body or missing required model).
+ *       403:
+ *         description: Forbidden (per-user AI config disabled, or non-admin testing a global service).
+ *       500:
+ *         description: Server error.
+ */
+router.post(
+  '/ai-service-settings/test',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = testAiServiceConnectionRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid test connection request.' });
+    }
+    try {
+      // Gate #1 (per-user-AI-config): a test fires an outbound provider call, so
+      // it must respect the same admin policy as the save path — non-admins are
+      // rejected unless per-user AI config is enabled. Admins always pass.
+      const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
+      if (
+        !isAdmin &&
+        !(await globalSettingsRepository.isUserAiConfigAllowed())
+      ) {
+        return res.status(403).json({
+          error:
+            'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.',
+        });
+      }
+      // Gates #2 (global-key) and #3 (provider-mismatch) live in the service.
+      const result = await chatService.testAiServiceConnection(
+        parsed.data,
+        req.userId,
+        isAdmin
+      );
+      return res.status(200).json(result);
+    } catch (error) {
       next(error);
     }
   }

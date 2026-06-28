@@ -852,7 +852,9 @@
         "errorOriginalNotFound": "Original service not found.",
         "deleteConfirm": "Are you sure you want to delete this global AI service?",
         "fillRequiredFields": "Please fill in all required fields",
-        "enterNewApiKey": "Enter new API key to update"
+        "enterNewApiKey": "Enter new API key to update",
+        "testConnection": "Test Connection",
+        "testing": "Testing…"
       },
       "userSettings": {
         "title": "AI Services",
@@ -946,7 +948,21 @@
         "revertConfirm": "Are you sure you want to delete all your custom AI service settings and use the global settings instead?",
         "successReverting": "Reverted to global settings. Your custom settings have been deleted.",
         "errorReverting": "Failed to revert to global settings",
-        "fillRequiredFields": "Please fill in all required fields"
+        "fillRequiredFields": "Please fill in all required fields",
+        "testConnection": "Test Connection",
+        "testing": "Testing…"
+      },
+      "test": {
+        "successTitle": "Success",
+        "failureTitle": "Failure",
+        "categories": {
+          "api_key_missing": "API key is missing or invalid. Add a valid key and try again.",
+          "custom_url_missing": "A custom URL is required for this service type.",
+          "upstream_error": "The AI service returned an error. Check the API key, model name, and URL.",
+          "timeout": "The AI service did not respond in time. Check the URL and that the server is reachable.",
+          "unsupported_provider": "This service type is not supported.",
+          "unknown": "The connection test failed. Please check the configuration and try again."
+        }
       },
       "serviceTypes": {
         "openai": "OpenAI",

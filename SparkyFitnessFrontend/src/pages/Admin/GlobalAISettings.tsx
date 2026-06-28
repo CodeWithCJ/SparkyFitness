@@ -8,6 +8,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Globe } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,13 +31,14 @@ import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { useTranslation } from 'react-i18next';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { ServiceList } from '@/components/ai/ServiceList';
-import { getModelOptions } from '@/utils/aiServiceUtils';
+import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useGlobalAIServices,
   useCreateGlobalAIService,
   useUpdateGlobalAIService,
   useDeleteGlobalAIService,
 } from '@/hooks/AI/useGlobalAIServiceSettings';
+import { useTestAIServiceConnection } from '@/hooks/AI/useTestAIServiceConnection';
 import { GlobalSettings } from '@/types/admin';
 import { useAiConfigInvalidation } from '@/hooks/useInvalidateKeys';
 import { AiServiceSettingsResponse } from '@workspace/shared';
@@ -40,6 +48,10 @@ import {
   createAiServiceSettingsFormSchema,
   updateAiServiceSettingsFormSchema,
 } from '@/schemas/form/AiServiceSettings.form.zod';
+
+// Radix Select cannot bind null/'' (an empty SelectItem value throws), so the
+// "None" choice maps to this sentinel and back to null on save.
+const GLOBAL_VISION_NONE = '__none__';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
@@ -57,6 +69,12 @@ const GlobalAISettings = () => {
     useUpdateGlobalAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteGlobalAIService();
+  const {
+    testConnection,
+    isPending: isTesting,
+    status: testStatus,
+    reset: resetTestStatus,
+  } = useTestAIServiceConnection();
   const invalidateAiConfig = useAiConfigInvalidation();
 
   const loading = isCreating || isUpdating || isDeleting;
@@ -116,10 +134,48 @@ const GlobalAISettings = () => {
     });
   };
 
+  // Active global services are the only ones the server will resolve as a
+  // vision default (it requires is_active AND is_public), so the dropdown lists
+  // those. A stale pointer (service deactivated/deleted) falls back to "None".
+  const activeGlobalServices = services.filter((s) => s.is_active);
+  const visionDefaultId =
+    activeGlobalServices.find(
+      (s) => s.id === globalSettings?.default_vision_ai_service_id
+    )?.id ?? null;
+
+  const handleVisionDefaultChange = (value: string) => {
+    if (!globalSettings) return;
+
+    const newSettings: GlobalSettings = {
+      ...globalSettings,
+      default_vision_ai_service_id: value === GLOBAL_VISION_NONE ? null : value,
+    };
+
+    updateSettings(newSettings, {
+      onSuccess: () => {
+        toast({
+          title: t('settings.aiService.globalSettings.success'),
+          description: t(
+            'settings.aiService.globalSettings.successUpdatingConfig'
+          ),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t('settings.aiService.globalSettings.error'),
+          description: t(
+            'settings.aiService.globalSettings.errorUpdatingConfig'
+          ),
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
   const handleAddService = async () => {
     if (
       !newService.service_name ||
-      (newService.service_type !== 'ollama' && !newService.api_key)
+      (requiresApiKey(newService.service_type) && !newService.api_key)
     ) {
       toast({
         title: t('settings.aiService.globalSettings.error'),
@@ -202,6 +258,8 @@ const GlobalAISettings = () => {
   };
 
   const startEditing = (service: AiServiceSettingsResponse) => {
+    // Clear any prior service's test result so it never lingers on this form.
+    resetTestStatus();
     setEditingService(service.id);
     const isCustomModel = service.model_name
       ? !getModelOptions(service.service_type ?? '').includes(
@@ -223,6 +281,7 @@ const GlobalAISettings = () => {
   };
 
   const cancelEditing = () => {
+    resetTestStatus();
     setEditingService(null);
     setEditData({ showCustomModelInput: false, custom_model_name: '' });
   };
@@ -265,8 +324,55 @@ const GlobalAISettings = () => {
             </div>
           )}
 
+          {/* Global vision default: writes default_vision_ai_service_id, the
+              service the server routes vision tasks to for users who are on the
+              global default (no personal service configured). "None" clears it
+              so those users fall back to the global text default. */}
+          {globalSettings && activeGlobalServices.length > 0 && (
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="global-vision-ai-service-select">
+                {t(
+                  'settings.aiService.globalSettings.visionService',
+                  'Global vision AI service'
+                )}
+              </Label>
+              <Select
+                value={visionDefaultId ?? GLOBAL_VISION_NONE}
+                onValueChange={handleVisionDefaultChange}
+              >
+                <SelectTrigger
+                  id="global-vision-ai-service-select"
+                  className="max-w-sm"
+                >
+                  <SelectValue
+                    placeholder={t(
+                      'settings.aiService.globalSettings.visionService',
+                      'Global vision AI service'
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GLOBAL_VISION_NONE}>
+                    {t('settings.aiService.globalSettings.visionNone', 'None')}
+                  </SelectItem>
+                  {activeGlobalServices.map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.service_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {!showAddForm && (
-            <Button onClick={() => setShowAddForm(true)} variant="outline">
+            <Button
+              onClick={() => {
+                resetTestStatus();
+                setShowAddForm(true);
+              }}
+              variant="outline"
+            >
               <Plus className="h-4 w-4 mr-2" />
               {t('settings.aiService.globalSettings.addNewService')}
             </Button>
@@ -283,9 +389,22 @@ const GlobalAISettings = () => {
                   setNewService((prev) => ({ ...prev, ...data }))
                 }
                 onSubmit={handleAddService}
-                onCancel={() => setShowAddForm(false)}
+                onCancel={() => {
+                  resetTestStatus();
+                  setShowAddForm(false);
+                }}
                 loading={loading}
                 translationPrefix="settings.aiService.globalSettings"
+                onTestConnection={(model) =>
+                  testConnection({
+                    service_type: newService.service_type,
+                    api_key: newService.api_key,
+                    custom_url: newService.custom_url ?? undefined,
+                    model_name: model,
+                  })
+                }
+                testing={isTesting}
+                testStatus={testStatus}
               />
             </div>
           )}
@@ -304,6 +423,19 @@ const GlobalAISettings = () => {
             loading={loading}
             translationPrefix="settings.aiService.globalSettings"
             showGlobalBadge={true}
+            onTestConnection={(serviceId, model) => {
+              const original = services.find((s) => s.id === serviceId);
+              testConnection({
+                id: serviceId,
+                service_type:
+                  editData.service_type || original?.service_type || '',
+                api_key: editData.api_key,
+                custom_url: editData.custom_url ?? undefined,
+                model_name: model,
+              });
+            }}
+            testing={isTesting}
+            testStatus={testStatus}
           />
 
           {services.length === 0 && !showAddForm && (

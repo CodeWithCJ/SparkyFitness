@@ -619,6 +619,54 @@ describe('chatService', () => {
         expect.stringMatching(/Loaded 35 full tools/)
       );
     });
+
+    // Regression: keyless local servers (LM Studio, llama.cpp) configured as
+    // openai_compatible/custom must work on the non-stream chat path. Previously
+    // an ollama-only guard rejected them with "API key missing" even though the
+    // stream path, test-connection, and dispatcher all tolerate a blank key.
+    it.each(['openai_compatible', 'custom'])(
+      'does NOT require an api_key for keyless %s services',
+      async (serviceType) => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValue({
+          ...aiServiceSetting,
+          service_type: serviceType,
+          api_key: null,
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'local-model',
+        });
+        scriptModel([textStep('Hello from a local server!')]);
+
+        const result = await chatService.processChatMessage(
+          [{ role: 'user', content: 'hi' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+
+        expect(result.content).toBe('Hello from a local server!');
+      }
+    );
+
+    it('still rejects a cloud service that is missing its api_key', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai',
+          api_key: null,
+        }
+      );
+
+      await expect(
+        chatService.processChatMessage(
+          [{ role: 'user', content: 'hi' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        )
+      ).rejects.toThrow('API key missing for selected AI service.');
+    });
   });
 
   describe('processChatMessageStream (empty completion handling)', () => {
