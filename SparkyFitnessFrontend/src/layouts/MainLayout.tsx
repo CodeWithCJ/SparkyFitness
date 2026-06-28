@@ -228,6 +228,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           icon: BarChart3,
         });
       }
+      if (hasWritePermission('can_manage_medications')) {
+        tabs.push({
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        });
+      }
     }
     if (user?.role === 'admin' && !isActingOnBehalf) {
       tabs.push({ value: '/admin', label: t('nav.admin'), icon: Shield });
@@ -277,6 +284,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           value: '/reports',
           label: t('nav.reports'),
           icon: BarChart3,
+        });
+      }
+      if (hasWritePermission('can_manage_medications')) {
+        mobileTabs.push({
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
         });
       }
     }
@@ -335,7 +349,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       // Match exactly or as prefix (e.g. /medications/log should match /medications)
       const isAllowed = availableTabs.some((tab) => {
         if (tab.value === '/') {
-          return currentPath === '/';
+          return (
+            currentPath === '/' ||
+            currentPath === '/workout-playback' ||
+            currentPath.startsWith('/workout-playback/')
+          );
         }
         return (
           currentPath === tab.value || currentPath.startsWith(tab.value + '/')

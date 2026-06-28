@@ -542,7 +542,15 @@ async function getDailyNeed(userId: any, targetDate: any) {
     recovery_score_yesterday: null,
   };
   // Cache it
-  await sleepScienceRepository.upsertDailyNeed(userId, targetDate, breakdown);
+  try {
+    await sleepScienceRepository.upsertDailyNeed(userId, targetDate, breakdown);
+  } catch (err) {
+    log(
+      'warn',
+      `Failed to cache daily sleep need for user ${userId} (possibly due to RLS write restrictions on delegates):`,
+      err
+    );
+  }
   return breakdown;
 }
 // ==========================================

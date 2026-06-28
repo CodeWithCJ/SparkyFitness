@@ -11,7 +11,7 @@ async function createFoodEntryMeal(
     'info',
     `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, createdByUserId: ${createdByUserId}`
   );
-  const client = await getClient(createdByUserId);
+  const client = await getClient(foodEntryMealData.user_id, createdByUserId);
   try {
     let mealTypeId = foodEntryMealData.meal_type_id;
     if (!mealTypeId && foodEntryMealData.meal_type) {

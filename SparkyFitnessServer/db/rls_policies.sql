@@ -128,7 +128,17 @@ $function$;
       JOIN public."user" u ON u.id = fa.owner_user_id
       WHERE fa.family_user_id = p_user_id
         AND fa.is_active = true
-        AND (fa.access_end_date IS NULL OR fa.access_end_date > now());
+        AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+        AND (
+          (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+          (fa.access_permissions->>'can manage diary')::boolean = true OR
+          (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
+          (fa.access_permissions->>'can manage checkin')::boolean = true OR
+          (fa.access_permissions->>'can_view_reports')::boolean = true OR
+          (fa.access_permissions->>'can view reports')::boolean = true OR
+          (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+          (fa.access_permissions->>'can manage medications')::boolean = true
+        );
     END;
     $func$ LANGUAGE plpgsql STABLE;
 
@@ -185,7 +195,7 @@ CREATE OR REPLACE FUNCTION has_profile_read_access(owner_uuid uuid) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
   -- Owner always has access. Family delegates require at least one meaningful permission
-  -- (diary, checkin, or reports) to read profile/layout/onboarding data.
+  -- (diary, checkin, medications, or reports) to read profile/layout/onboarding data.
   -- A bare family_access row with no permissions does not grant read access.
   SELECT authenticated_user_id() = owner_uuid OR EXISTS (
     SELECT 1 FROM public.family_access fa
@@ -199,7 +209,9 @@ AS $function$
       (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
       (fa.access_permissions->>'can manage checkin')::boolean = true OR
       (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can view reports')::boolean = true OR
+      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can manage medications')::boolean = true
     )
   );
 $function$;
@@ -240,6 +252,29 @@ AS $function$
   );
 $function$;
 
+CREATE OR REPLACE FUNCTION public.has_medication_access(owner_uuid uuid) RETURNS boolean
+LANGUAGE sql STABLE
+AS $$
+  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_medications');
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_medication_read_access(owner_uuid uuid) RETURNS boolean
+LANGUAGE sql STABLE
+AS $$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'reports')::boolean = true
+    )
+  );
+$$;
+
 CREATE OR REPLACE FUNCTION has_library_access_with_public(owner_uuid uuid, is_shared bool, perms text[]) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
@@ -251,17 +286,22 @@ AS $function$
         AND fa.family_user_id = authenticated_user_id()
         AND fa.is_active = true
         AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-        AND EXISTS (
-          SELECT 1 FROM unnest(perms) p
-          WHERE (fa.access_permissions ->> p)::boolean = true
-          AND (
-            p NOT IN ('can_manage_diary', 'can manage diary') 
-            OR current_user_id() = owner_uuid
+        AND (
+          (fa.access_permissions->>'can_view_reports')::boolean = true OR
+          (fa.access_permissions->>'can view reports')::boolean = true OR
+          EXISTS (
+            SELECT 1 FROM unnest(perms) p
+            WHERE (fa.access_permissions ->> p)::boolean = true
+            AND (
+              p NOT IN ('can_manage_diary', 'can manage diary') 
+              OR current_user_id() = owner_uuid
+            )
           )
         )
       );
 $function$;
 
+DROP FUNCTION IF EXISTS public.set_app_context(UUID, UUID);
 CREATE OR REPLACE FUNCTION public.set_app_context(p_user_id UUID, p_authenticated_user_id UUID)
 RETURNS void AS $$
 BEGIN
@@ -428,6 +468,23 @@ BEGIN
 END;
 $_$;
 
+CREATE OR REPLACE FUNCTION public.create_medication_policy(table_name text) RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (has_medication_read_access(user_id));
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (has_medication_access(user_id))
+    WITH CHECK (has_medication_access(user_id));
+  ', table_name, table_name);
+END;
+$$;
+
 -- Step 5: Apply policies to all tables.
 -- Custom policy for ai_service_settings to support admin-global + user-owned settings
 -- Drop ALL possible old policy names before recreating
@@ -521,7 +578,7 @@ CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entr
 USING (
   exercise_preset_entry_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.exercise_preset_entries epe
-    WHERE epe.id = exercise_entries.exercise_preset_entry_id AND has_diary_access(epe.user_id)
+    WHERE epe.id = exercise_entries.exercise_preset_entry_id AND has_diary_read_access(epe.user_id)
   )
 );
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
@@ -558,7 +615,7 @@ SELECT create_owner_policy('user_medication_display_preferences');
 
 -- Custom policies for special cases
 CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)));
+USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_read_access(ee.user_id)));
 CREATE POLICY modify_policy ON public.exercise_entry_sets FOR ALL TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)))
 WITH CHECK (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)));
@@ -591,39 +648,39 @@ USING (
 -- INSERT: users create their own (is_public=FALSE), admins create global (is_public=TRUE)
 CREATE POLICY insert_policy ON public.external_data_providers FOR INSERT TO PUBLIC
 WITH CHECK (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 
 -- UPDATE: users update own, admins update global
 CREATE POLICY update_policy ON public.external_data_providers FOR UPDATE TO PUBLIC
 USING (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 )
 WITH CHECK (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 
 -- DELETE: users delete own, admins delete global
 CREATE POLICY delete_policy ON public.external_data_providers FOR DELETE TO PUBLIC
 USING (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 
 
 CREATE POLICY select_policy ON public.family_access FOR SELECT TO PUBLIC
-USING (current_user_id() = owner_user_id OR current_user_id() = family_user_id);
+USING (authenticated_user_id() = owner_user_id OR authenticated_user_id() = family_user_id);
 CREATE POLICY insert_policy ON public.family_access FOR INSERT TO PUBLIC
-WITH CHECK (current_user_id() = owner_user_id);
+WITH CHECK (authenticated_user_id() = owner_user_id);
 CREATE POLICY modify_policy ON public.family_access FOR ALL TO PUBLIC
-USING (current_user_id() = owner_user_id)
-WITH CHECK (current_user_id() = owner_user_id);
+USING (authenticated_user_id() = owner_user_id)
+WITH CHECK (authenticated_user_id() = owner_user_id);
 
 CREATE POLICY select_policy ON public.food_entries FOR SELECT TO PUBLIC
-USING (has_diary_access(user_id));
+USING (has_diary_read_access(user_id));
 CREATE POLICY insert_policy ON public.food_entries FOR INSERT TO PUBLIC
 WITH CHECK (
   has_diary_access(user_id) AND (
@@ -664,14 +721,14 @@ WITH CHECK (
 CREATE POLICY select_policy ON public.meal_foods FOR SELECT TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND has_library_access_with_public(m.user_id, m.is_public, ARRAY['can_view_food_library', 'can_manage_diary'])));
 CREATE POLICY modify_policy ON public.meal_foods FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND current_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND current_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)));
+USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)));
 
 CREATE POLICY owner_policy ON public.meal_plan_template_assignments FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.meal_plan_templates mpt WHERE mpt.id = meal_plan_template_assignments.template_id AND current_user_id() = mpt.user_id) AND
+USING (EXISTS (SELECT 1 FROM public.meal_plan_templates mpt WHERE mpt.id = meal_plan_template_assignments.template_id AND has_diary_access(mpt.user_id)) AND
        (((item_type = 'food') AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_plan_template_assignments.food_id)) OR
         ((item_type = 'meal') AND EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_plan_template_assignments.meal_id))))
-WITH CHECK (EXISTS (SELECT 1 FROM public.meal_plan_templates mpt WHERE mpt.id = meal_plan_template_assignments.template_id AND current_user_id() = mpt.user_id) AND
+WITH CHECK (EXISTS (SELECT 1 FROM public.meal_plan_templates mpt WHERE mpt.id = meal_plan_template_assignments.template_id AND has_diary_access(mpt.user_id)) AND
            (((item_type = 'food') AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_plan_template_assignments.food_id)) OR
             ((item_type = 'meal') AND EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_plan_template_assignments.meal_id))));
 
@@ -680,8 +737,8 @@ USING (EXISTS (SELECT 1 FROM public.workout_plan_template_assignments wpta WHERE
 WITH CHECK (EXISTS (SELECT 1 FROM public.workout_plan_template_assignments wpta WHERE wpta.id = workout_plan_assignment_sets.assignment_id));
 
 CREATE POLICY owner_policy ON public.workout_plan_template_assignments FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND current_user_id() = wpt.user_id))
-WITH CHECK (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND current_user_id() = wpt.user_id));
+USING (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND has_diary_access(wpt.user_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM public.workout_plan_templates wpt WHERE wpt.id = workout_plan_template_assignments.template_id AND has_diary_access(wpt.user_id)));
 
 CREATE POLICY select_policy ON public.workout_preset_exercise_sets FOR SELECT TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.workout_preset_exercises wpe WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id));
@@ -690,13 +747,13 @@ USING (EXISTS (
   SELECT 1 FROM public.workout_preset_exercises wpe
   JOIN public.workout_presets wp ON wp.id = wpe.workout_preset_id
   WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id
-    AND current_user_id() = wp.user_id
+    AND authenticated_user_id() = wp.user_id
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM public.workout_preset_exercises wpe
   JOIN public.workout_presets wp ON wp.id = wpe.workout_preset_id
   WHERE wpe.id = workout_preset_exercise_sets.workout_preset_exercise_id
-    AND current_user_id() = wp.user_id
+    AND authenticated_user_id() = wp.user_id
 ));
 
 CREATE POLICY select_policy ON public.workout_preset_exercises FOR SELECT TO PUBLIC
@@ -705,12 +762,12 @@ CREATE POLICY modify_policy ON public.workout_preset_exercises FOR ALL TO PUBLIC
 USING (EXISTS (
   SELECT 1 FROM public.workout_presets wp
   WHERE wp.id = workout_preset_exercises.workout_preset_id
-    AND current_user_id() = wp.user_id
+    AND authenticated_user_id() = wp.user_id
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM public.workout_presets wp
   WHERE wp.id = workout_preset_exercises.workout_preset_id
-    AND current_user_id() = wp.user_id
+    AND authenticated_user_id() = wp.user_id
 ));
 
 -- Strictly Private (Tier 1)
@@ -718,25 +775,25 @@ SELECT create_owner_policy('user_ignored_updates');
 
 -- Meal types: access if user_id is null (system) or if user has diary access
 CREATE POLICY select_policy ON public.meal_types FOR SELECT TO PUBLIC
-USING (user_id IS NULL OR has_diary_access(user_id));
+USING (user_id IS NULL OR has_diary_read_access(user_id));
 CREATE POLICY modify_policy ON public.meal_types FOR ALL TO PUBLIC
-USING (user_id = current_user_id())
-WITH CHECK (user_id = current_user_id());
+USING (user_id = authenticated_user_id())
+WITH CHECK (user_id = authenticated_user_id());
 
 -- Activity details: access if linked exercise entry or preset entry is accessible
 CREATE POLICY select_policy ON public.exercise_entry_activity_details FOR SELECT TO PUBLIC
 USING (
-  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND has_diary_access(ee.user_id))) OR
-  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND has_diary_access(epe.user_id)))
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND has_diary_read_access(ee.user_id))) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND has_diary_read_access(epe.user_id)))
 );
 CREATE POLICY modify_policy ON public.exercise_entry_activity_details FOR ALL TO PUBLIC
 USING (
-  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND current_user_id() = ee.user_id)) OR
-  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND current_user_id() = epe.user_id))
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND has_diary_access(ee.user_id))) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND has_diary_access(epe.user_id)))
 )
 WITH CHECK (
-  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND current_user_id() = ee.user_id)) OR
-  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND current_user_id() = epe.user_id))
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND has_diary_access(ee.user_id))) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND has_diary_access(epe.user_id)))
 );
 
 -- Shared View-Only (Tier 2)
@@ -756,3 +813,18 @@ CREATE POLICY select_policy ON public.onboarding_status FOR SELECT TO PUBLIC USI
 CREATE POLICY modify_policy ON public.onboarding_status FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)
 WITH CHECK (authenticated_user_id() = user_id);
+
+-- Medications & Symptoms (Tier 3 - Delegate Writable with medications permission)
+SELECT create_medication_policy('medications');
+SELECT create_medication_policy('medication_schedules');
+SELECT create_medication_policy('medication_entries');
+SELECT create_medication_policy('medication_pens');
+SELECT create_medication_policy('injection_entries');
+SELECT create_medication_policy('medication_titration_steps');
+SELECT create_medication_policy('user_custom_symptoms');
+SELECT create_medication_policy('symptom_entries');
+SELECT create_medication_policy('user_custom_symptom_locations');
+
+-- Medications Display Preferences (Tier 2 - Owner-Only Write, Delegate Read)
+CREATE POLICY select_policy ON public.user_medication_display_preferences FOR SELECT TO PUBLIC USING (has_medication_read_access(user_id));
+CREATE POLICY modify_policy ON public.user_medication_display_preferences FOR ALL TO PUBLIC USING (authenticated_user_id() = user_id) WITH CHECK (authenticated_user_id() = user_id);

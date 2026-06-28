@@ -44,7 +44,11 @@ For `shared/`, `docs/`, `SparkyFitnessMCP/`, and `SparkyFitnessGarmin/`, there i
 
 ## Cross-Package Rules
 
-- If you add or change a server migration, update `SparkyFitnessServer/db/migrations/`, repo-root `db_schema_backup.sql`, and `SparkyFitnessServer/db/rls_policies.sql` when access behavior changes.
+- If you add or change a server migration (such as creating a new table), you MUST:
+  1. Define and update the Row-Level Security (RLS) policies in `SparkyFitnessServer/db/rls_policies.sql`.
+  2. Sync changes to the repository root schema backup: `db_schema_backup.sql`.
+  3. Update the user-facing documentation in `docs/content/2.features/9.family-friends-sharing.md`.
+  4. Update the developer security documentation in `docs/content/8.developer/11.database-security-tiers.md` to classify the new table into Tier 1, Tier 2, or Tier 3.
 - Prefer the shared timezone helpers from `@workspace/shared` and `SparkyFitnessServer/utils/timezoneLoader.ts` for day-string logic. Avoid `toISOString().split('T')[0]` for user-facing or business-logic dates.
 - Keep `YYYY-MM-DD` values as calendar-day strings until you reach a database or external API boundary that needs UTC instants.
 - Auth or API contract changes usually need a quick check in both web and mobile because they share the same backend.

@@ -33,7 +33,7 @@ const router = express.Router();
 // Caregivers may manage a dependent's medications via the on-behalf-of header,
 // gated by the 'diary' permission. Owners are unaffected.
 router.use(onBehalfOfMiddleware);
-router.use(checkPermissionMiddleware('diary'));
+router.use(checkPermissionMiddleware('medications'));
 
 /**
  * @swagger

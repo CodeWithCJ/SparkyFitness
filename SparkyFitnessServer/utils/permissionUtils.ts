@@ -65,6 +65,20 @@ async function canAccessUserData(
               (fa.access_permissions->>'can manage checkin')::boolean = TRUE
             ))
             OR
+            -- Handle mapping for 'medications' permission to 'can_manage_medications' key
+            ($3 = 'medications' AND (
+              (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR 
+              (fa.access_permissions->>'can manage medications')::boolean = TRUE
+            ))
+            OR
+            -- Handle mapping for 'medications_read' permission (read-only medications data)
+            ($3 = 'medications_read' AND (
+              (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR 
+              (fa.access_permissions->>'can manage medications')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
+              (fa.access_permissions->>'can view reports')::boolean = TRUE
+            ))
+            OR
             -- Handle mapping for 'checkin_read' permission (read-only check-in data)
             ($3 = 'checkin_read' AND (
               (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR 
@@ -85,8 +99,8 @@ async function canAccessUserData(
               (fa.access_permissions->>'can manage checkin')::boolean = TRUE
             ))
             OR
-            -- Inheritance: reports permission grants read access to all diary and wellness data
-            ($3 IN ('diary', 'checkin', 'mood', 'goals', 'exercise', 'fasting', 'sleep', 'water') AND (
+            -- Inheritance: reports permission grants read access to all diary, wellness, and medication data
+            ($3 IN ('diary', 'checkin', 'mood', 'goals', 'exercise', 'fasting', 'sleep', 'water', 'medications', 'symptoms') AND (
                ((fa.access_permissions->>'reports')::boolean = TRUE OR (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR (fa.access_permissions->>'can view reports')::boolean = TRUE)
                OR 
                ((fa.access_permissions->>'calorie')::boolean = TRUE)

@@ -51,6 +51,7 @@ const FamilyAccessManager = () => {
     can_view_exercise_library: false,
     can_manage_checkin: false,
     can_view_reports: false,
+    can_manage_medications: false,
     share_external_providers: false,
     access_end_date: '',
   });
@@ -81,6 +82,7 @@ const FamilyAccessManager = () => {
       can_view_exercise_library: false,
       can_manage_checkin: false,
       can_view_reports: false,
+      can_manage_medications: false,
       share_external_providers: false,
       access_end_date: '',
     });
@@ -99,8 +101,10 @@ const FamilyAccessManager = () => {
       can_view_food_library: access.access_permissions.can_view_food_library,
       can_view_exercise_library:
         access.access_permissions.can_view_exercise_library,
-      can_manage_checkin: access.access_permissions.can_manage_checkin, // Add new permission
-      can_view_reports: access.access_permissions.can_view_reports, // Add new permission
+      can_manage_checkin: access.access_permissions.can_manage_checkin,
+      can_view_reports: access.access_permissions.can_view_reports,
+      can_manage_medications:
+        access.access_permissions.can_manage_medications || false,
       share_external_providers:
         access.access_permissions.share_external_providers,
       access_end_date: access.access_end_date
@@ -121,6 +125,7 @@ const FamilyAccessManager = () => {
       !formData.can_view_exercise_library &&
       !formData.can_manage_checkin &&
       !formData.can_view_reports &&
+      !formData.can_manage_medications &&
       !formData.share_external_providers
     ) {
       toast({
@@ -175,8 +180,9 @@ const FamilyAccessManager = () => {
           can_manage_diary: formData.can_manage_diary,
           can_view_food_library: formData.can_view_food_library,
           can_view_exercise_library: formData.can_view_exercise_library,
-          can_manage_checkin: formData.can_manage_checkin, // Add new permission
-          can_view_reports: formData.can_view_reports, // Add new permission
+          can_manage_checkin: formData.can_manage_checkin,
+          can_view_reports: formData.can_view_reports,
+          can_manage_medications: formData.can_manage_medications,
           share_external_providers: formData.share_external_providers,
         },
         access_end_date: formData.access_end_date || null,
@@ -428,6 +434,40 @@ const FamilyAccessManager = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Checkbox
+                        id="can_manage_medications"
+                        checked={formData.can_manage_medications}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_manage_medications: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_manage_medications"
+                        className="cursor-pointer"
+                      >
+                        Can Manage Medications
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to log medications, doses, titration
+                          plans, symptoms, and injection sites on your behalf.
+                          Diary logs are blocked. Gives read-only profile
+                          access.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
                         id="can_view_reports"
                         checked={formData.can_view_reports}
                         onCheckedChange={(checked) =>
@@ -573,6 +613,11 @@ const FamilyAccessManager = () => {
                             Manages Check-in
                           </span>
                         )}
+                        {access.access_permissions.can_manage_medications && (
+                          <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
+                            Manages Medications
+                          </span>
+                        )}
                         {access.access_permissions.can_view_reports && (
                           <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
                             Views Reports
@@ -666,6 +711,11 @@ const FamilyAccessManager = () => {
                         {access.access_permissions.can_manage_checkin && (
                           <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
                             Manages Check-in
+                          </span>
+                        )}
+                        {access.access_permissions.can_manage_medications && (
+                          <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
+                            Manages Medications
                           </span>
                         )}
                         {access.access_permissions.can_view_reports && (

@@ -98,7 +98,17 @@ async function getAccessibleUsers(userId: string) {
        JOIN "user" u ON u.id = fa.owner_user_id
        WHERE fa.family_user_id = $1
          AND fa.is_active = TRUE
-         AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())`,
+         AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
+         AND (
+           (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
+           (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
+           (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR
+           (fa.access_permissions->>'can manage checkin')::boolean = TRUE OR
+           (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
+           (fa.access_permissions->>'can view reports')::boolean = TRUE OR
+           (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR
+           (fa.access_permissions->>'can manage medications')::boolean = TRUE
+         )`,
       [userId]
     );
     return result.rows;

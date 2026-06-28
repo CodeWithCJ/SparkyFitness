@@ -65,8 +65,7 @@ router.get(
       const canAccess = await authService.canAccessUserData(
         targetUserId,
         permissionType,
-
-        req.userId
+        req.authenticatedUserId || req.userId
       );
       res.status(200).json({ canAccess });
     } catch (error) {
@@ -111,7 +110,7 @@ router.get(
     }
     try {
       const hasAccess = await authService.checkFamilyAccess(
-        req.userId,
+        req.authenticatedUserId || req.userId,
         ownerUserId,
         permission
       );
@@ -166,7 +165,7 @@ router.get(
  */
 router.get('/family-access', authenticate, async (req, res, next) => {
   try {
-    const authenticatedUserId = req.userId;
+    const authenticatedUserId = req.authenticatedUserId || req.userId;
     if (!authenticatedUserId) {
       return res.status(401).json({
         error: 'Unauthorized',
@@ -247,7 +246,7 @@ router.post('/family-access', authenticate, async (req, res, next) => {
   }
   try {
     const newEntry = await authService.createFamilyAccessEntry(
-      req.userId,
+      req.authenticatedUserId || req.userId,
       entryData
     );
     res.status(201).json(newEntry);
@@ -326,7 +325,7 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
   }
   try {
     const updatedEntry = await authService.updateFamilyAccessEntry(
-      req.userId,
+      req.authenticatedUserId || req.userId,
       id,
       updateData
     );
@@ -385,7 +384,10 @@ router.delete('/family-access/:id', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
   try {
-    await authService.deleteFamilyAccessEntry(req.userId, id);
+    await authService.deleteFamilyAccessEntry(
+      req.authenticatedUserId || req.userId,
+      id
+    );
     res
       .status(200)
       .json({ message: 'Family access entry deleted successfully.' });

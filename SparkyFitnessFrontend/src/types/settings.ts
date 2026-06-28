@@ -48,6 +48,7 @@ export interface FamilyAccess {
     can_view_exercise_library: boolean;
     can_manage_checkin: boolean; // Added can_manage_checkin
     can_view_reports: boolean; // Added can_view_reports
+    can_manage_medications: boolean; // Added can_manage_medications
     share_external_providers: boolean;
   };
   access_end_date: string | null;

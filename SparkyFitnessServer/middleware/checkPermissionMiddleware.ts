@@ -34,6 +34,10 @@ const checkPermissionMiddleware = (permissionType: any) => {
         ) {
           resolvedPermission = 'checkin_read';
         }
+      } else if (permissionType === 'medications') {
+        if (req.method === 'GET') {
+          resolvedPermission = 'medications_read';
+        }
       }
 
       log(

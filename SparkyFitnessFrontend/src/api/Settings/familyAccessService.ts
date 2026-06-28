@@ -11,6 +11,7 @@ export interface FamilyAccessPayload {
     can_view_exercise_library: boolean;
     can_manage_checkin: boolean; // Added can_manage_checkin
     can_view_reports: boolean; // Added can_view_reports
+    can_manage_medications: boolean; // Added can_manage_medications
     share_external_providers: boolean;
   };
   access_end_date: string | null;
@@ -46,6 +47,8 @@ export const loadFamilyAccess = async (): Promise<FamilyAccess[]> => {
                 item.access_permissions.can_manage_checkin || false, // Map can_manage_checkin
               can_view_reports:
                 item.access_permissions.can_view_reports || false, // Map can_view_reports
+              can_manage_medications:
+                item.access_permissions.can_manage_medications || false, // Map can_manage_medications
               share_external_providers:
                 item.access_permissions.share_external_providers || false,
             }
@@ -55,6 +58,7 @@ export const loadFamilyAccess = async (): Promise<FamilyAccess[]> => {
               can_view_exercise_library: false,
               can_manage_checkin: false,
               can_view_reports: false,
+              can_manage_medications: false,
               share_external_providers: false,
             },
       access_end_date: item.access_end_date,
