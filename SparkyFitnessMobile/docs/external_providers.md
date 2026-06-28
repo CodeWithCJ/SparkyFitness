@@ -12,6 +12,14 @@ They're all mounted under `/api/foods/` (since `foodIntegrationRoutes` is mounte
 
 Most providers require an `x-provider-id` header — that's the ID of the user's configured external provider record (from `/api/external-providers/user/:userId`). The middleware uses it to look up the stored API keys/credentials for that provider. Open Food Facts is the exception since it's a free public API.
 
+The server now prefers OFF's dedicated search service at `https://search.openfoodfacts.org/search` for text search because the older `cgi/search.pl` endpoint is rate-limited more aggressively. If you need authenticated OFF fallback for degraded scenarios, configure these server env vars:
+
+- `SPARKY_FITNESS_OFF_USER_ID`
+- `SPARKY_FITNESS_OFF_PASSWORD`
+- `SPARKY_FITNESS_OFF_APP_NAME`
+- `SPARKY_FITNESS_OFF_APP_VERSION`
+- `SPARKY_FITNESS_OFF_APP_UUID`
+
 
 ## Open Food Facts
 

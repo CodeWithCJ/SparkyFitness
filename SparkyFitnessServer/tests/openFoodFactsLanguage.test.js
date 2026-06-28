@@ -48,20 +48,17 @@ describe('OpenFoodFacts Language Handling', () => {
   });
 
   describe('API Request URL generation', () => {
-    it('should include product_name_${language} in the fields for search', async () => {
+    it('should send search language fallbacks to search-a-licious', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
       });
 
       await searchOpenFoodFacts('spaghetti', 1, 'fr');
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('product_name_fr'),
-        expect.any(Object)
-      );
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('product_name_en'),
+        expect.stringContaining('langs=fr%2Cen'),
         expect.any(Object)
       );
     });
