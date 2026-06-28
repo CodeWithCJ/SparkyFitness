@@ -358,6 +358,9 @@ CREATE OR REPLACE FUNCTION create_diary_policy(table_name text) RETURNS void
 LANGUAGE plpgsql
 AS $_$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_diary_read_access(user_id));
@@ -372,6 +375,9 @@ CREATE OR REPLACE FUNCTION create_checkin_policy(table_name text) RETURNS void
 LANGUAGE plpgsql
 AS $_$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_checkin_read_access(user_id));

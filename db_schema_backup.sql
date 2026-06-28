@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
+\restrict e7B8Kh9QejIBnAVwUCmk04JSmuSs0GxCgobjEDxCN2pcbeeccMh67wsCqSal6rk
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -157,6 +157,25 @@ $$;
 
 
 --
+-- Name: create_checkin_policy(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.create_checkin_policy(table_name text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  EXECUTE format('
+    CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
+    USING (has_checkin_read_access(user_id));
+    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+    USING (authenticated_user_id() = user_id OR has_family_access(user_id, ''can_manage_checkin''))
+    WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, ''can_manage_checkin''));
+  ', table_name, table_name);
+END;
+$$;
+
+
+--
 -- Name: create_default_external_data_providers(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -181,7 +200,7 @@ CREATE FUNCTION public.create_diary_policy(table_name text) RETURNS void
 BEGIN
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
-    USING (has_diary_access(user_id));
+    USING (has_diary_read_access(user_id));
     CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
     USING (has_diary_access(user_id))
     WITH CHECK (has_diary_access(user_id));
@@ -319,8 +338,8 @@ BEGIN
 
   EXECUTE format('
     CREATE POLICY owner_policy ON public.%I FOR ALL TO PUBLIC
-    USING (%I = public.authenticated_user_id())
-    WITH CHECK (%I = public.authenticated_user_id());
+    USING (%I = authenticated_user_id())
+    WITH CHECK (%I = authenticated_user_id());
   ', table_name, id_column, id_column);
 END;
 $$;
@@ -342,13 +361,13 @@ BEGIN
 
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
-    USING (%I = public.current_user_id());
+    USING (%I = current_user_id());
   ', table_name, id_column);
 
   EXECUTE format('
     CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
-    USING (%I = public.authenticated_user_id())
-    WITH CHECK (%I = public.authenticated_user_id());
+    USING (%I = authenticated_user_id())
+    WITH CHECK (%I = authenticated_user_id());
   ', table_name, id_column, id_column);
 END;
 $$;
@@ -547,6 +566,29 @@ $$;
 
 
 --
+-- Name: has_checkin_read_access(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_checkin_read_access(owner_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
+      (fa.access_permissions->>'can manage checkin')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'can view reports')::boolean = true
+    )
+  );
+$$;
+
+
+--
 -- Name: has_diary_access(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -554,6 +596,29 @@ CREATE FUNCTION public.has_diary_access(owner_uuid uuid) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
   SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+$$;
+
+
+--
+-- Name: has_diary_read_access(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_diary_read_access(owner_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+      (fa.access_permissions->>'can manage diary')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'can view reports')::boolean = true
+    )
+  );
 $$;
 
 
@@ -603,7 +668,40 @@ $$;
 CREATE FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
-  SELECT authenticated_user_id() = owner_uuid OR is_shared OR has_family_access_or(owner_uuid, perms);
+  SELECT authenticated_user_id() = owner_uuid 
+      OR is_shared 
+      OR EXISTS (
+        SELECT 1 FROM public.family_access fa
+        WHERE fa.owner_user_id = owner_uuid
+        AND fa.family_user_id = authenticated_user_id()
+        AND fa.is_active = true
+        AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+        AND EXISTS (
+          SELECT 1 FROM unnest(perms) p
+          WHERE (fa.access_permissions ->> p)::boolean = true
+          AND (
+            p NOT IN ('can_manage_diary', 'can manage diary') 
+            OR current_user_id() = owner_uuid
+          )
+        )
+      );
+$$;
+
+
+--
+-- Name: has_profile_read_access(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_profile_read_access(owner_uuid uuid) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+  );
 $$;
 
 
@@ -6228,14 +6326,14 @@ ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
 -- Name: check_in_measurements modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.check_in_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.check_in_measurements USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
 -- Name: check_in_photos modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.check_in_photos USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.check_in_photos USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -6250,6 +6348,20 @@ CREATE POLICY modify_policy ON public.custom_categories USING (public.has_diary_
 --
 
 CREATE POLICY modify_policy ON public.custom_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: daily_sleep_need modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.daily_sleep_need USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
+-- Name: day_classification_cache modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.day_classification_cache USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -6307,6 +6419,13 @@ CREATE POLICY modify_policy ON public.family_access USING ((public.current_user_
 
 
 --
+-- Name: fasting_logs modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.fasting_logs USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
 -- Name: food_entry_meals modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6329,6 +6448,13 @@ CREATE POLICY modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
 --
 
 CREATE POLICY modify_policy ON public.foods USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: goal_presets modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.goal_presets USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -6358,6 +6484,13 @@ CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
 --
 
 CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: meal_plans modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.meal_plans USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -6410,17 +6543,52 @@ CREATE POLICY modify_policy ON public.medications USING ((public.current_user_id
 
 
 --
+-- Name: mood_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.mood_entries USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
+-- Name: onboarding_data modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.onboarding_data USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+
+
+--
+-- Name: onboarding_status modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.onboarding_status USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+
+
+--
+-- Name: profiles modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.profiles USING (public.has_diary_access(id)) WITH CHECK (public.has_diary_access(id));
+
+
+--
 -- Name: sleep_entries modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.sleep_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.sleep_entries USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
 -- Name: sleep_entry_stages modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.sleep_entry_stages USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.sleep_entry_stages USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
+-- Name: sleep_need_calculations modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.sleep_need_calculations USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -6428,6 +6596,20 @@ CREATE POLICY modify_policy ON public.sleep_entry_stages USING (public.has_diary
 --
 
 CREATE POLICY modify_policy ON public.symptom_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_allergen_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_allergen_preferences USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_nutrients modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_custom_nutrients USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -6445,6 +6627,48 @@ CREATE POLICY modify_policy ON public.user_custom_symptoms USING (public.has_dia
 
 
 --
+-- Name: user_dashboard_layouts modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_dashboard_layouts USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+
+
+--
+-- Name: user_goals modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_goals USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_meal_visibilities modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_meal_visibilities USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_nutrient_display_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_nutrient_display_preferences USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+
+
+--
+-- Name: user_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_preferences USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+
+
+--
+-- Name: user_water_containers modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_water_containers USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: water_intake modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6456,6 +6680,13 @@ CREATE POLICY modify_policy ON public.water_intake USING (public.has_diary_acces
 --
 
 CREATE POLICY modify_policy ON public.water_intake_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: weekly_goal_plans modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.weekly_goal_plans USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -6522,38 +6753,6 @@ CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.authe
 
 
 --
--- Name: daily_sleep_need owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.daily_sleep_need FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.daily_sleep_need FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: day_classification_cache owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.day_classification_cache FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.day_classification_cache FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.fasting_logs FOR SELECT USING (public.has_diary_access(user_id));
-CREATE POLICY modify_policy ON public.fasting_logs FOR ALL USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
-
-
---
--- Name: goal_presets owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.goal_presets FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.goal_presets FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
 -- Name: meal_plan_template_assignments owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6573,90 +6772,10 @@ CREATE POLICY owner_policy ON public.meal_plan_template_assignments USING (((EXI
 
 
 --
--- Name: meal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.meal_plans FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.meal_plans FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: mood_entries owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.mood_entries FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.mood_entries FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: onboarding_data owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.onboarding_data FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.onboarding_data FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: onboarding_status owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.onboarding_status FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.onboarding_status FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: profiles owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.profiles FOR SELECT USING ((id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.profiles FOR ALL USING ((id = public.authenticated_user_id())) WITH CHECK ((id = public.authenticated_user_id()));
-
-
---
--- Name: sleep_need_calculations owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.sleep_need_calculations FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.sleep_need_calculations FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
 -- Name: sparky_chat_history owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_allergen_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_allergen_preferences FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_allergen_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_custom_nutrients owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_custom_nutrients FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_custom_nutrients FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_dashboard_layouts owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_dashboard_layouts FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_dashboard_layouts FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_goals owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_goals FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_goals FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6667,26 +6786,10 @@ CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = publ
 
 
 --
--- Name: user_meal_visibilities owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_meal_visibilities FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_meal_visibilities FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
 -- Name: user_medication_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.user_medication_display_preferences USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
-
-
---
--- Name: user_nutrient_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_nutrient_display_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+CREATE POLICY owner_policy ON public.user_medication_display_preferences USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6694,30 +6797,6 @@ CREATE POLICY modify_policy ON public.user_nutrient_display_preferences FOR ALL 
 --
 
 CREATE POLICY owner_policy ON public.user_oidc_links USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_preferences FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_preferences FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: user_water_containers owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.user_water_containers FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.user_water_containers FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
-
-
---
--- Name: weekly_goal_plans owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY select_policy ON public.weekly_goal_plans FOR SELECT USING ((user_id = public.current_user_id()));
-CREATE POLICY modify_policy ON public.weekly_goal_plans FOR ALL USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6761,35 +6840,49 @@ CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entr
 -- Name: check_in_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.check_in_measurements FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.check_in_measurements FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
 -- Name: check_in_photos select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.check_in_photos FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.check_in_photos FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
 -- Name: custom_categories select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.custom_categories FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.custom_categories FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: custom_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: daily_sleep_need select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.daily_sleep_need FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
+-- Name: day_classification_cache select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.day_classification_cache FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: exercise_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6816,7 +6909,7 @@ CREATE POLICY select_policy ON public.exercise_entry_sets FOR SELECT USING ((EXI
 -- Name: exercise_preset_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.exercise_preset_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.exercise_preset_entries FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6843,6 +6936,13 @@ CREATE POLICY select_policy ON public.family_access FOR SELECT USING (((public.c
 
 
 --
+-- Name: fasting_logs select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.fasting_logs FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
 -- Name: food_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6853,7 +6953,7 @@ CREATE POLICY select_policy ON public.food_entries FOR SELECT USING (public.has_
 -- Name: food_entry_meals select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6873,10 +6973,17 @@ CREATE POLICY select_policy ON public.foods FOR SELECT USING (public.has_library
 
 
 --
+-- Name: goal_presets select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.goal_presets FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
 -- Name: injection_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.injection_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.injection_entries FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6893,6 +7000,13 @@ CREATE POLICY select_policy ON public.meal_foods FOR SELECT USING ((EXISTS ( SEL
 --
 
 CREATE POLICY select_policy ON public.meal_plan_templates FOR SELECT USING (public.has_library_access_with_public(user_id, false, ARRAY['can_view_food_library'::text]));
+
+
+--
+-- Name: meal_plans select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.meal_plans FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6913,28 +7027,28 @@ CREATE POLICY select_policy ON public.meals FOR SELECT USING (public.has_library
 -- Name: medication_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.medication_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.medication_entries FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: medication_pens select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.medication_pens FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.medication_pens FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: medication_schedules select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.medication_schedules FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.medication_schedules FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: medication_titration_steps select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.medication_titration_steps FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.medication_titration_steps FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -6945,52 +7059,150 @@ CREATE POLICY select_policy ON public.medications FOR SELECT USING (public.has_l
 
 
 --
+-- Name: mood_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.mood_entries FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
+-- Name: onboarding_data select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.onboarding_data FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: onboarding_status select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.onboarding_status FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: profiles select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.profiles FOR SELECT USING (public.has_profile_read_access(id));
+
+
+--
 -- Name: sleep_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.sleep_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.sleep_entries FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
 -- Name: sleep_entry_stages select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.sleep_entry_stages FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.sleep_entry_stages FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
+-- Name: sleep_need_calculations select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.sleep_need_calculations FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
 -- Name: symptom_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.symptom_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.symptom_entries FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: user_allergen_preferences select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_allergen_preferences FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: user_custom_nutrients select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_custom_nutrients FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: user_custom_symptom_locations select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.user_custom_symptom_locations FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.user_custom_symptom_locations FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: user_custom_symptoms select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.user_custom_symptoms FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.user_custom_symptoms FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: user_dashboard_layouts select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_dashboard_layouts FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: user_goals select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_goals FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: user_meal_visibilities select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_meal_visibilities FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: user_nutrient_display_preferences select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: user_preferences select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_preferences FOR SELECT USING (public.has_profile_read_access(user_id));
+
+
+--
+-- Name: user_water_containers select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_water_containers FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: water_intake select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.water_intake FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.water_intake FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
 -- Name: water_intake_entries select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.water_intake_entries FOR SELECT USING (public.has_diary_access(user_id));
+CREATE POLICY select_policy ON public.water_intake_entries FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: weekly_goal_plans select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.weekly_goal_plans FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -7274,6 +7486,15 @@ GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky uat";
 
 
 --
+-- Name: FUNCTION create_checkin_policy(table_name text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO sparky_uat;
+
+
+--
 -- Name: FUNCTION create_default_external_data_providers(p_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
@@ -7334,6 +7555,15 @@ GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO 
 GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_uat;
 GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky uat";
+
+
+--
+-- Name: FUNCTION create_shared_owner_policy(table_name text, id_column text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO sparky_uat;
 
 
 --
@@ -7418,12 +7648,30 @@ GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky uat";
 
 
 --
+-- Name: FUNCTION has_checkin_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO sparky_uat;
+
+
+--
 -- Name: FUNCTION has_diary_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
 GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
 GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky uat";
+
+
+--
+-- Name: FUNCTION has_diary_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO sparky_uat;
 
 
 --
@@ -7451,6 +7699,15 @@ GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[])
 GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_uat;
 GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky uat";
+
+
+--
+-- Name: FUNCTION has_profile_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO sparky_uat;
 
 
 --
@@ -8456,5 +8713,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dhGmLySjFGTRowxkdoNsugMJvJLlJnLFKqaQcs0DG614jCZILkcwuzPSKJ6l1bT
+\unrestrict e7B8Kh9QejIBnAVwUCmk04JSmuSs0GxCgobjEDxCN2pcbeeccMh67wsCqSal6rk
 
