@@ -184,12 +184,23 @@ $function$;
 CREATE OR REPLACE FUNCTION has_profile_read_access(owner_uuid uuid) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
+  -- Owner always has access. Family delegates require at least one meaningful permission
+  -- (diary, checkin, or reports) to read profile/layout/onboarding data.
+  -- A bare family_access row with no permissions does not grant read access.
   SELECT authenticated_user_id() = owner_uuid OR EXISTS (
     SELECT 1 FROM public.family_access fa
     WHERE fa.owner_user_id = owner_uuid
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+      (fa.access_permissions->>'can manage diary')::boolean = true OR
+      (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
+      (fa.access_permissions->>'can manage checkin')::boolean = true OR
+      (fa.access_permissions->>'can_view_reports')::boolean = true OR
+      (fa.access_permissions->>'can view reports')::boolean = true
+    )
   );
 $function$;
 
@@ -462,9 +473,10 @@ SELECT create_owner_policy('api_key', 'reference_id');
 SELECT create_owner_policy('user_oidc_links');
 SELECT create_owner_policy('sparky_chat_history');
 
--- Profiles: access if user has diary access to the profile (which owner always does, and family members can if granted)
+-- Profiles: delegates can read (with any meaningful permission) but only owner can write.
+-- Delegates do not need to modify another user's profile to manage their diary.
 CREATE POLICY select_policy ON public.profiles FOR SELECT TO PUBLIC USING (has_profile_read_access(id));
-CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (has_diary_access(id)) WITH CHECK (has_diary_access(id));
+CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenticated_user_id() = id) WITH CHECK (authenticated_user_id() = id);
 
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
@@ -477,15 +489,17 @@ SELECT create_diary_policy('user_water_containers');
 SELECT create_diary_policy('user_custom_nutrients');
 SELECT create_diary_policy('user_allergen_preferences');
 
+-- Nutrient display preferences: delegates can read but only owner can rearrange their own columns.
 CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_nutrient_display_preferences FOR ALL TO PUBLIC
-USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
-WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+USING (authenticated_user_id() = user_id)
+WITH CHECK (authenticated_user_id() = user_id);
 
+-- Dashboard layouts: delegates can read but only owner can rearrange their own dashboard.
 CREATE POLICY select_policy ON public.user_dashboard_layouts FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_dashboard_layouts FOR ALL TO PUBLIC
-USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
-WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+USING (authenticated_user_id() = user_id)
+WITH CHECK (authenticated_user_id() = user_id);
 SELECT create_diary_policy('goal_presets');
 SELECT create_diary_policy('meal_plans');
 SELECT create_checkin_policy('mood_entries');
@@ -731,12 +745,14 @@ SELECT create_diary_policy('user_meal_visibilities');
 SELECT create_checkin_policy('sleep_need_calculations');
 SELECT create_checkin_policy('daily_sleep_need');
 SELECT create_diary_policy('day_classification_cache');
+-- Onboarding data/status: delegates can read (to avoid repeated onboarding prompts when viewing
+-- another user's diary) but only the account owner can submit or reset their own onboarding.
 CREATE POLICY select_policy ON public.onboarding_data FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.onboarding_data FOR ALL TO PUBLIC
-USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
-WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+USING (authenticated_user_id() = user_id)
+WITH CHECK (authenticated_user_id() = user_id);
 
 CREATE POLICY select_policy ON public.onboarding_status FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.onboarding_status FOR ALL TO PUBLIC
-USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
-WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+USING (authenticated_user_id() = user_id)
+WITH CHECK (authenticated_user_id() = user_id);

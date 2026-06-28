@@ -21,7 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -287,113 +292,204 @@ const FamilyAccessManager = () => {
                   Access Permissions
                 </Label>
                 <div className="space-y-3 mt-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="can_manage_diary"
-                      checked={formData.can_manage_diary}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          can_manage_diary: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="can_manage_diary"
-                      className="cursor-pointer"
-                    >
-                      Can Manage Diary
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="can_manage_diary"
+                        checked={formData.can_manage_diary}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_manage_diary: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_manage_diary"
+                        className="cursor-pointer"
+                      >
+                        Can Manage Diary
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to log meals, workouts, water, and
+                          goals on your behalf. Wellness logs (sleep, mood,
+                          fasting) are blocked. Gives read-only profile access.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="can_view_food_library"
-                      checked={formData.can_view_food_library}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          can_view_food_library: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="can_view_food_library"
-                      className="cursor-pointer"
-                    >
-                      Can Use My Food & Meal Library
-                    </Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="can_view_food_library"
+                        checked={formData.can_view_food_library}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_view_food_library: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_view_food_library"
+                        className="cursor-pointer"
+                      >
+                        Can Use My Food & Meal Library
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to search and select from your custom
+                          foods, meals, and recipes when context-switched. Does
+                          not grant access to diary logs or profile settings.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="can_view_exercise_library"
-                      checked={formData.can_view_exercise_library}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          can_view_exercise_library: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="can_view_exercise_library"
-                      className="cursor-pointer"
-                    >
-                      Can Use My Exercise & Workout Library
-                    </Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="can_view_exercise_library"
+                        checked={formData.can_view_exercise_library}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_view_exercise_library: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_view_exercise_library"
+                        className="cursor-pointer"
+                      >
+                        Can Use My Exercise & Workout Library
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to view and use your custom exercises
+                          and workout presets when context-switched. Does not
+                          grant access to diary logs or profile settings.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="can_manage_checkin"
-                      checked={formData.can_manage_checkin}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          can_manage_checkin: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="can_manage_checkin"
-                      className="cursor-pointer"
-                    >
-                      Can Manage Check-in Data
-                    </Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="can_manage_checkin"
+                        checked={formData.can_manage_checkin}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_manage_checkin: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_manage_checkin"
+                        className="cursor-pointer"
+                      >
+                        Can Manage Check-in Data
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to log weight, body measurements,
+                          progress photos, sleep logs, mood logs, and fasting
+                          status on your behalf. Diary logs are blocked. Gives
+                          read-only profile access.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="can_view_reports"
-                      checked={formData.can_view_reports}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          can_view_reports: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="can_view_reports"
-                      className="cursor-pointer"
-                    >
-                      Can View Reports
-                    </Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="can_view_reports"
+                        checked={formData.can_view_reports}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            can_view_reports: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="can_view_reports"
+                        className="cursor-pointer"
+                      >
+                        Can View Reports
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to view charts, statistics, and
+                          historical logs on your dashboard. No write privileges
+                          are granted. Gives read-only profile access.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="share_external_providers"
-                      checked={formData.share_external_providers}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          share_external_providers: !!checked,
-                        }))
-                      }
-                    />
-                    <Label
-                      htmlFor="share_external_providers"
-                      className="cursor-pointer"
-                    >
-                      Share External Data Providers
-                    </Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="share_external_providers"
+                        checked={formData.share_external_providers}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            share_external_providers: !!checked,
+                          }))
+                        }
+                      />
+                      <Label
+                        htmlFor="share_external_providers"
+                        className="cursor-pointer"
+                      >
+                        Share External Data Providers
+                      </Label>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <p className="text-xs">
+                          Allows delegate to search for foods/exercises using
+                          your configured API providers (e.g. FatSecret, USDA).
+                          Health integrations (Garmin, Fitbit, etc.) are
+                          strictly private and never shared.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -575,6 +671,11 @@ const FamilyAccessManager = () => {
                         {access.access_permissions.can_view_reports && (
                           <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
                             Views Reports
+                          </span>
+                        )}
+                        {access.access_permissions.share_external_providers && (
+                          <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                            Shares External Providers
                           </span>
                         )}
                       </div>
