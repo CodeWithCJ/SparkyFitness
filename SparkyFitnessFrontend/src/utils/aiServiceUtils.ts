@@ -31,7 +31,6 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
 export const getModelOptions = (serviceType: string): string[] => {
   switch (serviceType) {
     case 'openai':
-    case 'openai_compatible':
       return [
         'gpt-4o-mini',
         'gpt-5.4-mini',
@@ -84,6 +83,10 @@ export const getModelOptions = (serviceType: string): string[] => {
         'grok-4.20-0309-reasoning',
         'grok-build-0.1',
       ];
+    // 'openai_compatible' and 'custom' point at arbitrary user-hosted servers,
+    // so there is no model name we can suggest — OpenAI's names won't exist on
+    // most of them. Returning [] makes the form fall back to the custom-model
+    // text input where the user supplies their server's own model name.
     default:
       return [];
   }

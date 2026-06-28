@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Save, X } from 'lucide-react';
 import { getServiceTypes, getModelOptions } from '@/utils/aiServiceUtils';
+import { useToast } from '@/hooks/use-toast';
 import {
   AiServiceSettingsFormInput,
   UpdateAiServiceSettingsFormInput,
@@ -38,8 +39,16 @@ export const ServiceForm = ({
   translationPrefix = 'settings.aiService.globalSettings',
 }: ServiceFormProps) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const serviceTypes = getServiceTypes(t);
   const modelOptions = getModelOptions(formData.service_type ?? '');
+
+  // The effective model is whichever input is active for this service type.
+  const selectedModel = (
+    formData.showCustomModelInput
+      ? formData.custom_model_name
+      : formData.model_name
+  )?.trim();
 
   const requiresCustomUrl =
     formData.service_type === 'custom' ||
@@ -50,6 +59,18 @@ export const ServiceForm = ({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        // Providers with preset models (openai, anthropic, ...) have a sensible
+        // server-side default, so a blank model is fine. Types without presets
+        // (openai_compatible/custom/ollama) point at user-hosted servers with no
+        // reliable default, so require an explicit model there.
+        if (modelOptions.length === 0 && !selectedModel) {
+          toast({
+            title: t(`${translationPrefix}.error`),
+            description: t(`${translationPrefix}.fillRequiredFields`),
+            variant: 'destructive',
+          });
+          return;
+        }
         onSubmit();
       }}
       className="space-y-4"
@@ -77,6 +98,10 @@ export const ServiceForm = ({
               onFormDataChange({
                 service_type: value,
                 model_name: '',
+                custom_model_name: '',
+                // Types without preset models (openai_compatible/custom/ollama)
+                // have no dropdown, so reveal the custom-model input directly.
+                showCustomModelInput: getModelOptions(value).length === 0,
                 chat_tool_profile: 'full',
               })
             }
