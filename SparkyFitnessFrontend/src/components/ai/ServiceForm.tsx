@@ -12,7 +12,11 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Save, X, Plug, Loader2 } from 'lucide-react';
-import { getServiceTypes, getModelOptions } from '@/utils/aiServiceUtils';
+import {
+  getServiceTypes,
+  getModelOptions,
+  requiresApiKey,
+} from '@/utils/aiServiceUtils';
 import { useToast } from '@/hooks/use-toast';
 import {
   AiServiceSettingsFormInput,
@@ -132,9 +136,9 @@ export const ServiceForm = ({
 
       <div>
         <Label htmlFor="api_key">
-          {formData.service_type === 'ollama'
-            ? t(`${translationPrefix}.apiKeyOptional`)
-            : t(`${translationPrefix}.apiKey`)}
+          {requiresApiKey(formData.service_type)
+            ? t(`${translationPrefix}.apiKey`)
+            : t(`${translationPrefix}.apiKeyOptional`)}
         </Label>
         <Input
           id="api_key"

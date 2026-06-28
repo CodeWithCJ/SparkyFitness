@@ -25,6 +25,15 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
+// Local / self-hosted server types (LM Studio, llama.cpp, Ollama) commonly run
+// without an API key, so the add/edit forms must not force one for these types.
+// Cloud providers always need a key. This mirrors the server's requiresApiKey in
+// ai/providerDispatch.ts so the form and the dispatcher stay in agreement.
+export const requiresApiKey = (serviceType: string | undefined): boolean =>
+  serviceType !== 'ollama' &&
+  serviceType !== 'openai_compatible' &&
+  serviceType !== 'custom';
+
 // The first entry in each list is the recommended default — the cheapest model
 // that handles SparkyFitness's tasks well. Keep that ordering when refreshing,
 // since ServiceForm surfaces modelOptions[0] as the recommendation.

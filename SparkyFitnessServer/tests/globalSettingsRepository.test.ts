@@ -76,10 +76,11 @@ describe('globalSettingsRepository', () => {
       mockClient.query.mockResolvedValue({ rows: [savedSettings] });
       const result =
         await globalSettingsRepository.saveGlobalSettings(inputSettings);
-      // 5th param is default_vision_ai_service_id (null when not supplied).
+      // 5th param is default_vision_ai_service_id (null when not supplied); the
+      // 6th is the existence flag, false here so the CASE WHEN leaves it untouched.
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE global_settings'),
-        [true, false, true, false, null]
+        [true, false, true, false, null, false]
       );
       expect(result).toEqual({
         ...savedSettings,
@@ -98,10 +99,27 @@ describe('globalSettingsRepository', () => {
       await globalSettingsRepository.saveGlobalSettings(inputSettings);
       const params = mockClient.query.mock.calls[0][1];
       expect(params[4]).toBe('vision-svc-1');
-      // Plain assignment (not COALESCE) so the value round-trips on save.
+      // Present in the payload, so the existence flag is true and the CASE WHEN
+      // writes the supplied value.
+      expect(params[5]).toBe(true);
       expect(mockClient.query.mock.calls[0][0]).toContain(
-        'default_vision_ai_service_id = $5'
+        'default_vision_ai_service_id = CASE WHEN $6 THEN $5 ELSE default_vision_ai_service_id END'
       );
+    });
+    it('leaves the default_vision_ai_service_id pointer untouched when omitted', async () => {
+      const inputSettings = {
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        allow_user_ai_config: true,
+        // default_vision_ai_service_id intentionally omitted
+      };
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings(inputSettings);
+      // Existence flag false => the CASE WHEN keeps the stored value rather than
+      // clobbering it with null.
+      const params = mockClient.query.mock.calls[0][1];
+      expect(params[5]).toBe(false);
     });
     it('clears the default_vision_ai_service_id pointer when set to null', async () => {
       const inputSettings = {
@@ -113,9 +131,11 @@ describe('globalSettingsRepository', () => {
       };
       mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
       await globalSettingsRepository.saveGlobalSettings(inputSettings);
-      // The plain assignment (not COALESCE) makes the "None" clear possible.
+      // Explicit null is present in the payload, so the existence flag is true
+      // and the CASE WHEN clears the pointer ("None").
       const params = mockClient.query.mock.calls[0][1];
       expect(params[4]).toBeNull();
+      expect(params[5]).toBe(true);
     });
     it('should default allow_user_ai_config to true if undefined in update', async () => {
       const inputSettings = {

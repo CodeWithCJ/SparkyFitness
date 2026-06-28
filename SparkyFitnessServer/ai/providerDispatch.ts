@@ -148,7 +148,7 @@ function requiresCustomUrl(serviceType: string): boolean {
 // without an API key, so a blank key must not hard-fail them. Cloud providers
 // always need one. This mirrors the chat path, which sends `api_key || 'no-key'`
 // for these same types instead of rejecting the request.
-function requiresApiKey(serviceType: string): boolean {
+export function requiresApiKey(serviceType: string): boolean {
   return (
     serviceType !== 'ollama' &&
     serviceType !== 'openai_compatible' &&

@@ -45,5 +45,8 @@ export const useTestAIServiceConnection = () => {
     testConnection: mutation.mutate,
     isPending: mutation.isPending,
     status,
+    // Parents own a single page-level instance, so they call this when opening,
+    // closing, or switching forms to clear a previous service's stale result.
+    reset: mutation.reset,
   };
 };

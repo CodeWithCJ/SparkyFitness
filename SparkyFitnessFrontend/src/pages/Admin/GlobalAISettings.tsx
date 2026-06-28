@@ -31,7 +31,7 @@ import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { useTranslation } from 'react-i18next';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { ServiceList } from '@/components/ai/ServiceList';
-import { getModelOptions } from '@/utils/aiServiceUtils';
+import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useGlobalAIServices,
   useCreateGlobalAIService,
@@ -73,6 +73,7 @@ const GlobalAISettings = () => {
     testConnection,
     isPending: isTesting,
     status: testStatus,
+    reset: resetTestStatus,
   } = useTestAIServiceConnection();
   const invalidateAiConfig = useAiConfigInvalidation();
 
@@ -174,7 +175,7 @@ const GlobalAISettings = () => {
   const handleAddService = async () => {
     if (
       !newService.service_name ||
-      (newService.service_type !== 'ollama' && !newService.api_key)
+      (requiresApiKey(newService.service_type) && !newService.api_key)
     ) {
       toast({
         title: t('settings.aiService.globalSettings.error'),
@@ -257,6 +258,8 @@ const GlobalAISettings = () => {
   };
 
   const startEditing = (service: AiServiceSettingsResponse) => {
+    // Clear any prior service's test result so it never lingers on this form.
+    resetTestStatus();
     setEditingService(service.id);
     const isCustomModel = service.model_name
       ? !getModelOptions(service.service_type ?? '').includes(
@@ -278,6 +281,7 @@ const GlobalAISettings = () => {
   };
 
   const cancelEditing = () => {
+    resetTestStatus();
     setEditingService(null);
     setEditData({ showCustomModelInput: false, custom_model_name: '' });
   };
@@ -362,7 +366,13 @@ const GlobalAISettings = () => {
           )}
 
           {!showAddForm && (
-            <Button onClick={() => setShowAddForm(true)} variant="outline">
+            <Button
+              onClick={() => {
+                resetTestStatus();
+                setShowAddForm(true);
+              }}
+              variant="outline"
+            >
               <Plus className="h-4 w-4 mr-2" />
               {t('settings.aiService.globalSettings.addNewService')}
             </Button>
@@ -379,7 +389,10 @@ const GlobalAISettings = () => {
                   setNewService((prev) => ({ ...prev, ...data }))
                 }
                 onSubmit={handleAddService}
-                onCancel={() => setShowAddForm(false)}
+                onCancel={() => {
+                  resetTestStatus();
+                  setShowAddForm(false);
+                }}
                 loading={loading}
                 translationPrefix="settings.aiService.globalSettings"
                 onTestConnection={(model) =>

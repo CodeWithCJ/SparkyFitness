@@ -5,6 +5,7 @@ import { log } from '../config/logging.js';
 import { getDefaultModel } from '../ai/config.js';
 import {
   dispatchAiRequest,
+  requiresApiKey,
   type DispatchErrorCategory,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
@@ -598,7 +599,7 @@ async function processChatMessage(
       `Processing chat message for user ${userId} using AI service from ${source} (ID: ${serviceConfigId})`
     );
 
-    if (aiService.service_type !== 'ollama' && !aiService.api_key) {
+    if (requiresApiKey(aiService.service_type) && !aiService.api_key) {
       throw new Error('API key missing for selected AI service.');
     }
 

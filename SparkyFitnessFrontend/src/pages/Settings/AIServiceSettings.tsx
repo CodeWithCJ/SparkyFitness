@@ -28,7 +28,7 @@ import { UserChatPreferences } from '@/components/ai/UserChatPreferences';
 import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
-import { getModelOptions } from '@/utils/aiServiceUtils';
+import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useAIServices,
   useActiveAIService,
@@ -93,6 +93,7 @@ const AIServiceSettings = () => {
     testConnection,
     isPending: isTesting,
     status: testStatus,
+    reset: resetTestStatus,
   } = useTestAIServiceConnection();
 
   const loading = isAdding || isUpdating || isDeleting || isUpdatingPrefs;
@@ -245,7 +246,7 @@ const AIServiceSettings = () => {
     if (
       !user ||
       !newService.service_name ||
-      (newService.service_type !== 'ollama' && !newService.api_key)
+      (requiresApiKey(newService.service_type) && !newService.api_key)
     ) {
       toast({
         title: t('settings.aiService.userSettings.error'),
@@ -547,6 +548,8 @@ const AIServiceSettings = () => {
       return;
     }
 
+    // Clear any prior service's test result so it never lingers on this form.
+    resetTestStatus();
     setEditingService(service.id ?? null);
     const isCustomModel = service.model_name
       ? !getModelOptions(service.service_type ?? '').includes(
@@ -568,6 +571,7 @@ const AIServiceSettings = () => {
   };
 
   const cancelEditing = () => {
+    resetTestStatus();
     setEditingService(null);
     setEditData({
       showCustomModelInput: false,
@@ -614,7 +618,13 @@ const AIServiceSettings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {isUserConfigAllowed && !showAddForm && (
-            <Button onClick={() => setShowAddForm(true)} variant="outline">
+            <Button
+              onClick={() => {
+                resetTestStatus();
+                setShowAddForm(true);
+              }}
+              variant="outline"
+            >
               <Plus className="h-4 w-4 mr-2" />
               {t('settings.aiService.userSettings.addNewService')}
             </Button>
@@ -631,7 +641,10 @@ const AIServiceSettings = () => {
                   setNewService((prev) => ({ ...prev, ...data }))
                 }
                 onSubmit={handleAddService}
-                onCancel={() => setShowAddForm(false)}
+                onCancel={() => {
+                  resetTestStatus();
+                  setShowAddForm(false);
+                }}
                 loading={loading}
                 translationPrefix="settings.aiService.userSettings"
                 onTestConnection={(model) =>

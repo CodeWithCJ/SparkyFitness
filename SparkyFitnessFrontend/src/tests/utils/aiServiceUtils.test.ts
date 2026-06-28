@@ -1,4 +1,4 @@
-import { getModelOptions } from '@/utils/aiServiceUtils';
+import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
 
 describe('getModelOptions', () => {
   // Regression: 'openai_compatible' and 'custom' point at arbitrary user-hosted
@@ -25,5 +25,30 @@ describe('getModelOptions', () => {
 
   it('returns an empty list for an unknown service type', () => {
     expect(getModelOptions('totally-unknown')).toEqual([]);
+  });
+});
+
+describe('requiresApiKey', () => {
+  // Regression: keyless local servers (LM Studio, llama.cpp, Ollama) must be
+  // savable without an API key. The add/edit forms previously exempted only
+  // 'ollama', blocking openai_compatible/custom even though the server's
+  // dispatcher and test-connection path tolerate a blank key.
+  it.each(['ollama', 'openai_compatible', 'custom'])(
+    'does not require a key for keyless local type %s',
+    (serviceType) => {
+      expect(requiresApiKey(serviceType)).toBe(false);
+    }
+  );
+
+  it.each([
+    'openai',
+    'anthropic',
+    'google',
+    'mistral',
+    'groq',
+    'openrouter',
+    'xai',
+  ])('requires a key for cloud provider %s', (serviceType) => {
+    expect(requiresApiKey(serviceType)).toBe(true);
   });
 });
