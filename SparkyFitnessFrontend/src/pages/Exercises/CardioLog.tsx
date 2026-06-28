@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import { Timer, Flame, Route, Heart, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -41,15 +42,12 @@ export const CardioLog = ({
           <Timer className="h-3 w-3 mr-1 text-purple-500" />
           {t('workout.durationMin', 'Duration (min)')}
         </Label>
-        <Input
+        <NumericInput
           className="h-8 text-sm"
-          type="number"
-          value={durationMinutes}
-          onChange={(e) =>
-            onDurationChange(
-              e.target.value === '' ? '' : Number(e.target.value)
-            )
-          }
+          decimals={2}
+          step={0.01}
+          value={durationMinutes === '' ? null : durationMinutes}
+          onValueChange={(v) => onDurationChange(v ?? '')}
         />
       </div>
 
@@ -60,15 +58,12 @@ export const CardioLog = ({
               <Route className="h-3 w-3 mr-1 text-blue-500" />
               {t('workout.distance', 'Distance')} ({distanceUnit})
             </Label>
-            <Input
+            <NumericInput
               className="h-8 text-sm"
-              type="number"
-              value={distance ?? ''}
-              onChange={(e) =>
-                onDistanceChange(
-                  e.target.value === '' ? '' : Number(e.target.value)
-                )
-              }
+              decimals={1}
+              step={0.1}
+              value={distance === '' ? null : distance}
+              onValueChange={(v) => onDistanceChange(v ?? '')}
             />
           </div>
 

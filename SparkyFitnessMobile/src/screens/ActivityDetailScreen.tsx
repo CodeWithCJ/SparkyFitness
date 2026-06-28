@@ -261,11 +261,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       stats.push({
         value: isEditing
           ? (formState.duration || '—')
-          : (duration > 0 ? String(Math.round(duration)) : '—'),
+          : (duration > 0
+              ? String(Number(duration.toFixed(2)))
+              : '—'),
         label: 'Duration',
         editKey: 'duration',
         editSuffix: 'min',
-        keyboardType: 'numeric',
+        keyboardType: 'decimal-pad',
       });
     }
     if (isEditing || calories > 0) {

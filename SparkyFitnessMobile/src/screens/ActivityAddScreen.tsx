@@ -250,7 +250,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 value={state.duration}
                 onChangeText={setDuration}
                 placeholder="0"
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
                 returnKeyType="done"
               />
             </View>
