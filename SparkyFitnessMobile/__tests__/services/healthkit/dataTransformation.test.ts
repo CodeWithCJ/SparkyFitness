@@ -720,9 +720,9 @@ describe('own-app exclusion (writeback feedback-loop guard)', () => {
       { startTime: '2024-01-15T08:00:00Z', volume: { inLiters: 0.5 }, sourceBundleId: 'com.sparky.app' },
       { startTime: '2024-01-15T12:00:00Z', volume: { inLiters: 0.25 }, sourceBundleId: 'com.other.app' },
     ];
-    const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'L', type: 'water' });
+    const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'ml', type: 'water' });
     expect(result).toHaveLength(1);
-    expect((result[0] as TransformOutput & { value: number }).value).toBe(0.25);
+    expect((result[0] as TransformOutput & { value: number }).value).toBe(250);
   });
 
   test('keeps own dietary samples when no own bundle id is set', () => {

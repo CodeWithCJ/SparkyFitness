@@ -348,6 +348,23 @@ describe('aggregateByDay', () => {
     expect(result[1]).toEqual({ value: 300, type: 'step', date: '2024-01-16', unit: 'count' });
   });
 
+  test('sum strategy combines same-day hydration drinks into one daily water total (ml)', () => {
+    // Hydration is synced as type 'water', which the server upserts per (date, source),
+    // overwriting on conflict. Summing per day before upload prevents same-day drinks
+    // from overwriting each other.
+    const records: TransformedRecord[] = [
+      { value: 200, type: 'water', date: '2024-01-15', unit: 'ml' },
+      { value: 300, type: 'water', date: '2024-01-15', unit: 'ml' },
+      { value: 250, type: 'water', date: '2024-01-16', unit: 'ml' },
+    ];
+
+    const result = aggregateByDay(records, 'water', 'ml', 'sum');
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ value: 500, type: 'water', date: '2024-01-15', unit: 'ml' });
+    expect(result[1]).toEqual({ value: 250, type: 'water', date: '2024-01-16', unit: 'ml' });
+  });
+
   test('last strategy returns 1 record per day with the newest value (first in newest-first order)', () => {
     // Records arrive newest-first from HealthKit/Health Connect queries
     const records: TransformedRecord[] = [
