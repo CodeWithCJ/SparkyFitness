@@ -8,6 +8,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Globe } from 'lucide-react';
 import {
   AlertDialog,
@@ -40,6 +47,10 @@ import {
   createAiServiceSettingsFormSchema,
   updateAiServiceSettingsFormSchema,
 } from '@/schemas/form/AiServiceSettings.form.zod';
+
+// Radix Select cannot bind null/'' (an empty SelectItem value throws), so the
+// "None" choice maps to this sentinel and back to null on save.
+const GLOBAL_VISION_NONE = '__none__';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
@@ -97,6 +108,44 @@ const GlobalAISettings = () => {
       onSuccess: () => {
         // Invalidate the userAiConfigAllowed query so all users see the updated setting
         invalidateAiConfig();
+        toast({
+          title: t('settings.aiService.globalSettings.success'),
+          description: t(
+            'settings.aiService.globalSettings.successUpdatingConfig'
+          ),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t('settings.aiService.globalSettings.error'),
+          description: t(
+            'settings.aiService.globalSettings.errorUpdatingConfig'
+          ),
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
+  // Active global services are the only ones the server will resolve as a
+  // vision default (it requires is_active AND is_public), so the dropdown lists
+  // those. A stale pointer (service deactivated/deleted) falls back to "None".
+  const activeGlobalServices = services.filter((s) => s.is_active);
+  const visionDefaultId =
+    activeGlobalServices.find(
+      (s) => s.id === globalSettings?.default_vision_ai_service_id
+    )?.id ?? null;
+
+  const handleVisionDefaultChange = (value: string) => {
+    if (!globalSettings) return;
+
+    const newSettings: GlobalSettings = {
+      ...globalSettings,
+      default_vision_ai_service_id: value === GLOBAL_VISION_NONE ? null : value,
+    };
+
+    updateSettings(newSettings, {
+      onSuccess: () => {
         toast({
           title: t('settings.aiService.globalSettings.success'),
           description: t(
@@ -262,6 +311,47 @@ const GlobalAISettings = () => {
                 onCheckedChange={handleAllowUserConfigChange}
                 disabled={settingsLoading}
               />
+            </div>
+          )}
+
+          {/* Global vision default: writes default_vision_ai_service_id, the
+              service the server routes vision tasks to for users who are on the
+              global default (no personal service configured). "None" clears it
+              so those users fall back to the global text default. */}
+          {globalSettings && activeGlobalServices.length > 0 && (
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="global-vision-ai-service-select">
+                {t(
+                  'settings.aiService.globalSettings.visionService',
+                  'Global vision AI service'
+                )}
+              </Label>
+              <Select
+                value={visionDefaultId ?? GLOBAL_VISION_NONE}
+                onValueChange={handleVisionDefaultChange}
+              >
+                <SelectTrigger
+                  id="global-vision-ai-service-select"
+                  className="max-w-sm"
+                >
+                  <SelectValue
+                    placeholder={t(
+                      'settings.aiService.globalSettings.visionService',
+                      'Global vision AI service'
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GLOBAL_VISION_NONE}>
+                    {t('settings.aiService.globalSettings.visionNone', 'None')}
+                  </SelectItem>
+                  {activeGlobalServices.map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.service_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

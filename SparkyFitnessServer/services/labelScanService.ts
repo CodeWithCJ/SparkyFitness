@@ -34,7 +34,7 @@ async function extractNutritionFromLabel(
   mimeType: string,
   userId: string
 ): Promise<ExtractNutritionFromLabelResult> {
-  const setting = await chatRepository.getActiveAiServiceSetting(userId);
+  const setting = await chatRepository.getActiveVisionAiServiceSetting(userId);
   if (!setting) {
     return {
       success: false,

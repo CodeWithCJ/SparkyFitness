@@ -76,14 +76,46 @@ describe('globalSettingsRepository', () => {
       mockClient.query.mockResolvedValue({ rows: [savedSettings] });
       const result =
         await globalSettingsRepository.saveGlobalSettings(inputSettings);
+      // 5th param is default_vision_ai_service_id (null when not supplied).
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE global_settings'),
-        [true, false, true, false]
+        [true, false, true, false, null]
       );
       expect(result).toEqual({
         ...savedSettings,
         is_mfa_mandatory: true,
       });
+    });
+    it('persists the default_vision_ai_service_id pointer when supplied', async () => {
+      const inputSettings = {
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        allow_user_ai_config: true,
+        default_vision_ai_service_id: 'vision-svc-1',
+      };
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings(inputSettings);
+      const params = mockClient.query.mock.calls[0][1];
+      expect(params[4]).toBe('vision-svc-1');
+      // Plain assignment (not COALESCE) so the value round-trips on save.
+      expect(mockClient.query.mock.calls[0][0]).toContain(
+        'default_vision_ai_service_id = $5'
+      );
+    });
+    it('clears the default_vision_ai_service_id pointer when set to null', async () => {
+      const inputSettings = {
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        allow_user_ai_config: true,
+        default_vision_ai_service_id: null,
+      };
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings(inputSettings);
+      // The plain assignment (not COALESCE) makes the "None" clear possible.
+      const params = mockClient.query.mock.calls[0][1];
+      expect(params[4]).toBeNull();
     });
     it('should default allow_user_ai_config to true if undefined in update', async () => {
       const inputSettings = {

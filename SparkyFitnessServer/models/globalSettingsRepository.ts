@@ -65,15 +65,19 @@ async function saveGlobalSettings(settings: any) {
         : true;
     await client.query(
       `UPDATE global_settings
-             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true)
+             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true), default_vision_ai_service_id = $5
              WHERE id = 1
              RETURNING *`,
-      // Use 'is_mfa_mandatory' from the incoming settings from the frontend
+      // Use 'is_mfa_mandatory' from the incoming settings from the frontend.
+      // default_vision_ai_service_id uses a plain assignment (not COALESCE) so
+      // selecting "None" can clear it; both save callers spread the full
+      // settings object, so the field always round-trips.
       [
         settings.enable_email_password_login,
         settings.is_oidc_active,
         settings.is_mfa_mandatory,
         allowUserAiConfig,
+        settings.default_vision_ai_service_id ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)

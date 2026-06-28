@@ -75,6 +75,41 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     ]);
   });
 
+  it('round-trips the active_vision_ai_service_id pointer through save and load', async () => {
+    const row = { user_id: 'user-1', active_vision_ai_service_id: 'svc-99' };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      active_vision_ai_service_id: 'svc-99',
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.active_vision_ai_service_id).toBe('svc-99');
+    expect(mockClient.query.mock.calls[0][0]).toContain(
+      'active_vision_ai_service_id'
+    );
+    // The 'in'-guard flag ($43, last param) gates the CASE WHEN, and the value
+    // ($42) precedes it; a partial payload that includes the field must write it.
+    const params = mockClient.query.mock.calls[0][1];
+    expect(params[params.length - 1]).toBe(true);
+    expect(params[params.length - 2]).toBe('svc-99');
+  });
+
+  it('leaves active_vision_ai_service_id untouched when the field is omitted', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    // The guard flag is false, so the CASE WHEN keeps the stored pointer.
+    const params = mockClient.query.mock.calls[0][1];
+    expect(params[params.length - 1]).toBe(false);
+  });
+
   it('round-trips goal_mode preferences through save and load', async () => {
     const row = {
       user_id: 'user-1',

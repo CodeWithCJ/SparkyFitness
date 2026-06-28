@@ -1598,6 +1598,7 @@ CREATE TABLE public.global_settings (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     mfa_mandatory boolean DEFAULT false,
     allow_user_ai_config boolean DEFAULT true NOT NULL,
+    default_vision_ai_service_id uuid,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
 
@@ -2704,6 +2705,7 @@ CREATE TABLE public.user_preferences (
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
     use_external_bmr boolean DEFAULT false NOT NULL,
     active_ai_service_id uuid,
+    active_vision_ai_service_id uuid,
     add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
@@ -5210,6 +5212,14 @@ ALTER TABLE ONLY public.food_entry_meals
 
 
 --
+-- Name: global_settings global_settings_default_vision_ai_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.global_settings
+    ADD CONSTRAINT global_settings_default_vision_ai_service_id_fkey FOREIGN KEY (default_vision_ai_service_id) REFERENCES public.ai_service_settings(id) ON DELETE SET NULL;
+
+
+--
 -- Name: goal_presets goal_presets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5719,6 +5729,14 @@ ALTER TABLE ONLY public.user_oidc_links
 
 ALTER TABLE ONLY public.user_preferences
     ADD CONSTRAINT user_preferences_active_ai_service_id_fkey FOREIGN KEY (active_ai_service_id) REFERENCES public.ai_service_settings(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_preferences user_preferences_active_vision_ai_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_preferences
+    ADD CONSTRAINT user_preferences_active_vision_ai_service_id_fkey FOREIGN KEY (active_vision_ai_service_id) REFERENCES public.ai_service_settings(id) ON DELETE SET NULL;
 
 
 --

@@ -18,8 +18,10 @@ vi.mock('undici', () => {
   return { default: { Agent }, Agent };
 });
 
-const mockGetActiveSetting = vi.mocked(
-  chatRepository.getActiveAiServiceSetting
+// The vision features resolve through the vision pointer, which falls back to
+// the active/default service. The service consults getActiveVisionAiServiceSetting.
+const mockGetVisionSetting = vi.mocked(
+  chatRepository.getActiveVisionAiServiceSetting
 );
 const mockGetBackendSetting = vi.mocked(
   chatRepository.getAiServiceSettingForBackend
@@ -166,7 +168,7 @@ describe('extractNutritionFromLabel', () => {
     it.each(PROVIDER_CASES)(
       'returns the parsed nutrition for $service_type',
       async ({ service_type, api_key, custom_url }) => {
-        mockGetActiveSetting.mockResolvedValue(makeAiSetting({ service_type }));
+        mockGetVisionSetting.mockResolvedValue(makeAiSetting({ service_type }));
         mockGetBackendSetting.mockResolvedValue(
           makeAiServiceDetail({
             service_type,
@@ -191,8 +193,8 @@ describe('extractNutritionFromLabel', () => {
   });
 
   describe('service plumbing', () => {
-    it('returns no_ai_configured when getActiveAiServiceSetting returns null', async () => {
-      mockGetActiveSetting.mockResolvedValue(null);
+    it('returns no_ai_configured when getActiveVisionAiServiceSetting returns null', async () => {
+      mockGetVisionSetting.mockResolvedValue(null);
       const result = await extractNutritionFromLabel(
         TEST_BASE64,
         TEST_MIME,
@@ -206,7 +208,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('returns no_ai_configured when getAiServiceSettingForBackend returns null', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetVisionSetting.mockResolvedValue(makeAiSetting());
       mockGetBackendSetting.mockResolvedValue(null);
       const result = await extractNutritionFromLabel(
         TEST_BASE64,
@@ -221,7 +223,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('returns api_key_missing when a non-ollama provider has no api_key', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetVisionSetting.mockResolvedValue(makeAiSetting());
       mockGetBackendSetting.mockResolvedValue(
         makeAiServiceDetail({ api_key: null })
       );
@@ -240,7 +242,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('returns custom_url_missing when ollama has a blank custom_url', async () => {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeAiSetting({ service_type: 'ollama' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -265,7 +267,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('returns unsupported_provider for an unknown service type', async () => {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeAiSetting({ service_type: 'unknown_provider' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -283,7 +285,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('sends the label-scan prompt the service owns', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetVisionSetting.mockResolvedValue(makeAiSetting());
       mockGetBackendSetting.mockResolvedValue(makeAiServiceDetail());
       const m = mockFetch(openAiBody(sampleNutrition));
       await extractNutritionFromLabel(TEST_BASE64, TEST_MIME, TEST_USER_ID);
@@ -292,7 +294,7 @@ describe('extractNutritionFromLabel', () => {
     });
 
     it('passes the configured timeout to the Ollama agent', async () => {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeAiSetting({ service_type: 'ollama' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -319,7 +321,7 @@ describe('extractNutritionFromLabel', () => {
 
   describe('dispatch error categories', () => {
     beforeEach(() => {
-      mockGetActiveSetting.mockResolvedValue(makeAiSetting());
+      mockGetVisionSetting.mockResolvedValue(makeAiSetting());
       mockGetBackendSetting.mockResolvedValue(makeAiServiceDetail());
     });
 

@@ -17,8 +17,10 @@ vi.mock('undici', () => {
   return { default: { Agent }, Agent };
 });
 
-const mockGetActiveSetting = vi.mocked(
-  chatRepository.getActiveAiServiceSetting
+// The vision features resolve through the vision pointer, which falls back to
+// the active/default service. The service consults getActiveVisionAiServiceSetting.
+const mockGetVisionSetting = vi.mocked(
+  chatRepository.getActiveVisionAiServiceSetting
 );
 const mockGetBackendSetting = vi.mocked(
   chatRepository.getAiServiceSettingForBackend
@@ -213,7 +215,7 @@ describe('estimateFoodPhotoNutrition', () => {
     it.each(PROVIDER_CASES)(
       'returns the parsed estimate for $service_type',
       async ({ service_type, api_key, custom_url }) => {
-        mockGetActiveSetting.mockResolvedValue(makeSetting({ service_type }));
+        mockGetVisionSetting.mockResolvedValue(makeSetting({ service_type }));
         mockGetBackendSetting.mockResolvedValue(
           makeServiceDetail({
             service_type,
@@ -252,8 +254,8 @@ describe('estimateFoodPhotoNutrition', () => {
       }
     });
 
-    it('returns NO_AI_CONFIGURED when getActiveAiServiceSetting returns null', async () => {
-      mockGetActiveSetting.mockResolvedValue(null);
+    it('returns NO_AI_CONFIGURED when getActiveVisionAiServiceSetting returns null', async () => {
+      mockGetVisionSetting.mockResolvedValue(null);
       const result = await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
         mimeType: TEST_MIME,
@@ -266,7 +268,7 @@ describe('estimateFoodPhotoNutrition', () => {
     });
 
     it('returns NO_AI_CONFIGURED when getAiServiceSettingForBackend returns null', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetVisionSetting.mockResolvedValue(makeSetting());
       mockGetBackendSetting.mockResolvedValue(null);
       const result = await estimateFoodPhotoNutrition({
         base64Image: TEST_BASE64,
@@ -280,7 +282,7 @@ describe('estimateFoodPhotoNutrition', () => {
     });
 
     it('returns API_KEY_MISSING when a non-ollama provider has no api_key', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetVisionSetting.mockResolvedValue(makeSetting());
       mockGetBackendSetting.mockResolvedValue(
         makeServiceDetail({ api_key: null })
       );
@@ -301,7 +303,7 @@ describe('estimateFoodPhotoNutrition', () => {
 
   describe('prompt building (service-owned)', () => {
     beforeEach(() => {
-      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetVisionSetting.mockResolvedValue(makeSetting());
       mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
     });
 
@@ -358,11 +360,11 @@ describe('estimateFoodPhotoNutrition', () => {
 
   describe('dispatch category → food-photo code mapping', () => {
     function mockGoogle() {
-      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetVisionSetting.mockResolvedValue(makeSetting());
       mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
     }
     function mockOpenAi() {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeSetting({ service_type: 'openai' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -471,7 +473,7 @@ describe('estimateFoodPhotoNutrition', () => {
     });
 
     it('rejects HEIC to anthropic with UNSUPPORTED_MIME_TYPE before any upstream call', async () => {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeSetting({ service_type: 'anthropic' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -489,7 +491,7 @@ describe('estimateFoodPhotoNutrition', () => {
     });
 
     it('maps a blank custom_url on ollama → NO_AI_CONFIGURED', async () => {
-      mockGetActiveSetting.mockResolvedValue(
+      mockGetVisionSetting.mockResolvedValue(
         makeSetting({ service_type: 'ollama' })
       );
       mockGetBackendSetting.mockResolvedValue(
@@ -514,7 +516,7 @@ describe('estimateFoodPhotoNutrition', () => {
 
   describe('domain validation', () => {
     it('returns PARSE_ERROR when the provider payload fails the Zod schema', async () => {
-      mockGetActiveSetting.mockResolvedValue(makeSetting());
+      mockGetVisionSetting.mockResolvedValue(makeSetting());
       mockGetBackendSetting.mockResolvedValue(makeServiceDetail());
       const wrongShape: Record<string, unknown> = { ...sampleEstimate };
       delete wrongShape.totals;

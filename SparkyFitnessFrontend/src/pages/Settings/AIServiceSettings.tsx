@@ -47,6 +47,10 @@ import {
   updateAiServiceSettingsFormSchema,
 } from '@/schemas/form/AiServiceSettings.form.zod';
 
+// Radix Select cannot bind null/'' (an empty SelectItem value throws), so the
+// "Same as default" choice maps to this sentinel and back to null on save.
+const SAME_AS_DEFAULT = '__default__';
+
 const AIServiceSettings = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -68,6 +72,13 @@ const AIServiceSettings = () => {
       ?.id ??
     enabledServices.find((s) => s.id === activeService?.id)?.id ??
     '';
+
+  // Optional vision override. Validated against enabledServices so a stale or
+  // disabled pointer falls back to "Same as default" rather than a dead value.
+  const visionServiceId =
+    enabledServices.find(
+      (s) => s.id === preferencesData?.active_vision_ai_service_id
+    )?.id ?? null;
 
   // Mutations
   const { mutateAsync: addService, isPending: isAdding } = useAddAIService();
@@ -630,46 +641,96 @@ const AIServiceSettings = () => {
                   : t('settings.aiService.userSettings.availableServices')}
               </h3>
 
-              {/* Global active-provider selector: writes active_ai_service_id,
-                  the single pointer every AI feature (chat, food-photo, label
-                  scan, unit conversion) reads. Mirrors the chat quick-switcher. */}
+              {/* Active-provider + vision-provider selectors share a row.
+                  active_ai_service_id is the single pointer every AI feature
+                  (chat, food-photo, label scan, unit conversion) reads;
+                  active_vision_ai_service_id optionally overrides it for the
+                  vision tasks (food-photo + label scan, and chat's image tools),
+                  falling back to the active provider. "Same as default" clears it. */}
               {enabledServices.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="active-ai-provider-select">
-                    {t(
-                      'settings.aiService.userSettings.activeProvider',
-                      'Active AI provider'
-                    )}
-                  </Label>
-                  <Select
-                    value={activeServiceId}
-                    onValueChange={(id) =>
-                      updatePreferences({
-                        active_ai_service_id: id,
-                        auto_clear_history:
-                          preferencesData?.auto_clear_history || 'never',
-                      })
-                    }
-                  >
-                    <SelectTrigger
-                      id="active-ai-provider-select"
-                      className="max-w-sm"
+                <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                  <div className="space-y-2 sm:max-w-sm sm:flex-1">
+                    <Label htmlFor="active-ai-provider-select">
+                      {t(
+                        'settings.aiService.userSettings.activeProvider',
+                        'Active AI provider'
+                      )}
+                    </Label>
+                    <Select
+                      value={activeServiceId}
+                      onValueChange={(id) =>
+                        updatePreferences({
+                          active_ai_service_id: id,
+                          auto_clear_history:
+                            preferencesData?.auto_clear_history || 'never',
+                        })
+                      }
                     >
-                      <SelectValue
-                        placeholder={t(
-                          'settings.aiService.userSettings.activeProvider',
-                          'Active AI provider'
-                        )}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {enabledServices.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.service_name}
+                      <SelectTrigger
+                        id="active-ai-provider-select"
+                        className="w-full"
+                      >
+                        <SelectValue
+                          placeholder={t(
+                            'settings.aiService.userSettings.activeProvider',
+                            'Active AI provider'
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {enabledServices.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            {service.service_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2 sm:max-w-sm sm:flex-1">
+                    <Label htmlFor="active-vision-ai-provider-select">
+                      {t(
+                        'settings.aiService.userSettings.activeVisionProvider',
+                        'Active vision AI provider'
+                      )}
+                    </Label>
+                    <Select
+                      value={visionServiceId ?? SAME_AS_DEFAULT}
+                      onValueChange={(v) =>
+                        updatePreferences({
+                          active_vision_ai_service_id:
+                            v === SAME_AS_DEFAULT ? null : v,
+                          auto_clear_history:
+                            preferencesData?.auto_clear_history || 'never',
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id="active-vision-ai-provider-select"
+                        className="w-full"
+                      >
+                        <SelectValue
+                          placeholder={t(
+                            'settings.aiService.userSettings.activeVisionProvider',
+                            'Active vision AI provider'
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={SAME_AS_DEFAULT}>
+                          {t(
+                            'settings.aiService.userSettings.sameAsDefault',
+                            'Same as default'
+                          )}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        {enabledServices.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            {service.service_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 

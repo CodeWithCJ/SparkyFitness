@@ -42,6 +42,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         add_exercise_water_to_goal = COALESCE($40, add_exercise_water_to_goal),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         active_ai_service_id = CASE WHEN $39 THEN $38 ELSE active_ai_service_id END,
+        active_vision_ai_service_id = CASE WHEN $43 THEN $42 ELSE active_vision_ai_service_id END,
         measurement_decimal_places = COALESCE($41, measurement_decimal_places),
         updated_at = now()
       WHERE user_id = $29
@@ -88,6 +89,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         'active_ai_service_id' in preferenceData,
         preferenceData.add_exercise_water_to_goal,
         preferenceData.measurement_decimal_places,
+        preferenceData.active_vision_ai_service_id,
+        'active_vision_ai_service_id' in preferenceData,
       ]
     );
     return result.rows[0];
@@ -172,6 +175,7 @@ async function upsertUserPreferences(preferenceData: any) {
        add_exercise_water_to_goal,
        active_ai_service_id,
        measurement_decimal_places,
+       active_vision_ai_service_id,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -195,6 +199,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($40, false),
        $38,
        COALESCE($41, 0),
+       $42,
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -235,6 +240,7 @@ async function upsertUserPreferences(preferenceData: any) {
        add_exercise_water_to_goal = COALESCE(EXCLUDED.add_exercise_water_to_goal, user_preferences.add_exercise_water_to_goal),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        active_ai_service_id = CASE WHEN $39 THEN EXCLUDED.active_ai_service_id ELSE user_preferences.active_ai_service_id END,
+       active_vision_ai_service_id = CASE WHEN $43 THEN EXCLUDED.active_vision_ai_service_id ELSE user_preferences.active_vision_ai_service_id END,
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        updated_at = now()
      RETURNING *`,
@@ -280,6 +286,8 @@ async function upsertUserPreferences(preferenceData: any) {
         'active_ai_service_id' in preferenceData,
         preferenceData.add_exercise_water_to_goal,
         preferenceData.measurement_decimal_places,
+        preferenceData.active_vision_ai_service_id,
+        'active_vision_ai_service_id' in preferenceData,
       ]
     );
     return result.rows[0];
