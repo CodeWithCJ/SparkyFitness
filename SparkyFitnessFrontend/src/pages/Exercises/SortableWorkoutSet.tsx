@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import {
   Select,
   SelectTrigger,
@@ -162,18 +163,14 @@ export const SortableSetItem = React.memo(
             />
 
             {/* Duration */}
-            <Input
+            <NumericInput
               className="h-8 text-sm"
-              type="number"
               placeholder="—"
-              value={set.duration ?? ''}
-              onChange={(e) =>
-                onSetChange(
-                  exerciseIndex,
-                  setIndex,
-                  'duration',
-                  e.target.value === '' ? undefined : Number(e.target.value)
-                )
+              decimals={2}
+              step={0.01}
+              value={set.duration ?? null}
+              onValueChange={(v) =>
+                onSetChange(exerciseIndex, setIndex, 'duration', v ?? undefined)
               }
             />
 
