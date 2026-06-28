@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -146,9 +146,16 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const { mutateAsync: createMeal } = useCreateMealMutation();
   const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
   const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
+  // Tracks which source (meal/entry) has already seeded the form, so the load
+  // effect seeds once per source and does NOT re-run when an unrelated
+  // dependency changes (language, logging level, a new initialFoods array
+  // reference, etc.), which would otherwise wipe the user's in-progress edits.
+  // A ref (not state) so updating it neither triggers a render nor needs to be
+  // an effect dependency.
+  const loadedIdRef = useRef<string | null>(null);
   // String value (not the `t` function) so it is referentially stable across
-  // renders and safe to use as an effect dependency without re-running the
-  // seed on every render. It only changes when the active language changes.
+  // renders. It only changes when the active language changes, and even then
+  // the loadedId guard below prevents a re-seed.
   const copySuffix = t('mealManagement.copySuffix', '(copy)');
   useEffect(() => {
     const fetchMealData = async () => {
@@ -323,11 +330,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         if (initialServingUnit) setServingUnit(initialServingUnit);
       }
     };
-    if (
-      activeUserId &&
-      (mealId || duplicateFromMealId || initialFoods || foodEntryId)
-    ) {
-      // Check for foodEntryId
+    // Stable identity of the source to seed from. UUIDs never collide with the
+    // 'initial' sentinel used for the prop-seeded (food-diary quick-add) path.
+    const currentId =
+      mealId ??
+      duplicateFromMealId ??
+      foodEntryId ??
+      (initialFoods ? 'initial' : null);
+    if (activeUserId && currentId && loadedIdRef.current !== currentId) {
+      // Mark as seeded before the async fetch so a re-render mid-fetch does not
+      // kick off a second seed for the same source.
+      loadedIdRef.current = currentId;
       fetchMealData();
     }
   }, [
