@@ -41,6 +41,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
+  duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
@@ -56,6 +57,7 @@ const MEAL_SERVING_PRECISION = 6;
 
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
+  duplicateFromMealId,
   onCancel,
   initialFoods,
   source = 'meal-management', // Default to meal-management
@@ -144,17 +146,32 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const { mutateAsync: createMeal } = useCreateMealMutation();
   const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
   const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
+  // String value (not the `t` function) so it is referentially stable across
+  // renders and safe to use as an effect dependency without re-running the
+  // seed on every render. It only changes when the active language changes.
+  const copySuffix = t('mealManagement.copySuffix', '(copy)');
   useEffect(() => {
     const fetchMealData = async () => {
       if (!activeUserId) return;
 
-      if (source === 'meal-management' && mealId) {
+      // Duplicate reuses the edit fetch/seed path: read the source meal, then
+      // override name + privacy. mealId stays undefined, so the save routes
+      // through createMeal and assigns fresh meal/meal_food ids, leaving the
+      // original untouched (no server change needed). createMeal has no name
+      // dedup, so there is no barcode-style trap to avoid here.
+      const sourceMealId = mealId ?? duplicateFromMealId;
+      const isDuplicate = !mealId && !!duplicateFromMealId;
+      if (source === 'meal-management' && sourceMealId) {
         try {
-          const meal = await queryClient.fetchQuery(mealViewOptions(mealId));
+          const meal = await queryClient.fetchQuery(
+            mealViewOptions(sourceMealId)
+          );
           if (meal) {
-            setMealName(meal.name);
+            setMealName(isDuplicate ? `${meal.name} ${copySuffix}` : meal.name);
             setMealDescription(meal.description || '');
-            setIsPublic(meal.is_public || false);
+            // A duplicate is always a fresh private meal owned by the current
+            // user, even when cloning a Public, Family, or System meal.
+            setIsPublic(isDuplicate ? false : meal.is_public || false);
             const loadedServingSize = meal.serving_size ?? 1;
             const loadedTotalServings = meal.total_servings ?? 1;
             setServingSize(loadedServingSize.toString());
@@ -306,12 +323,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         if (initialServingUnit) setServingUnit(initialServingUnit);
       }
     };
-    if (activeUserId && (mealId || initialFoods || foodEntryId)) {
+    if (
+      activeUserId &&
+      (mealId || duplicateFromMealId || initialFoods || foodEntryId)
+    ) {
       // Check for foodEntryId
       fetchMealData();
     }
   }, [
     mealId,
+    duplicateFromMealId,
+    copySuffix,
     activeUserId,
     loggingLevel,
     source,
