@@ -176,6 +176,17 @@ function clampProgress(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function interpolateBottomOffset(
+  stackBottomOffset: number,
+  tabBarBottomOffset: number,
+  progress: number,
+) {
+  return (
+    stackBottomOffset +
+    (tabBarBottomOffset - stackBottomOffset) * clampProgress(progress)
+  );
+}
+
 interface ActiveWorkoutBarProps {
   /**
    * Kept for compatibility with older call sites. The workout HUD is now
@@ -350,12 +361,11 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         trackedPosition.usesNativeTabs &&
         trackedPosition.tabsUnderTop
       ) {
-        const progress = clampProgress(snapshot.progress);
-        bottomOffset.value =
-          trackedPosition.stackBottomOffset +
-          (trackedPosition.tabBarBottomOffset -
-            trackedPosition.stackBottomOffset) *
-            progress;
+        bottomOffset.value = interpolateBottomOffset(
+          trackedPosition.stackBottomOffset,
+          trackedPosition.tabBarBottomOffset,
+          snapshot.progress,
+        );
       }
 
       setStackTransition(prev => {
@@ -447,12 +457,15 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     if (isNativeClosingToTabs) {
       const progress =
         stackTransition.progress != null
-          ? clampProgress(stackTransition.progress)
+          ? stackTransition.progress
           : stackTransition.phase === 'end'
             ? 1
             : 0;
-      bottomOffset.value =
-        stackBottomOffset + (tabBarBottomOffset - stackBottomOffset) * progress;
+      bottomOffset.value = interpolateBottomOffset(
+        stackBottomOffset,
+        tabBarBottomOffset,
+        progress,
+      );
       return;
     }
 

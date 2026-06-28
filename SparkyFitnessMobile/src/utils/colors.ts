@@ -1,3 +1,10 @@
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function withAlpha(color: string, alpha: number): string {
   const trimmed = color.trim();
   if (trimmed === 'transparent') return trimmed;
@@ -10,19 +17,17 @@ export function withAlpha(color: string, alpha: number): string {
 
   const shortHexMatch = trimmed.match(/^#([0-9a-f]{3})$/i);
   if (shortHexMatch) {
-    const [r, g, b] = shortHexMatch[1].split('').map(value => value + value);
-    return `rgba(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(
-      b,
-      16,
-    )}, ${alpha})`;
+    return hexToRgba(
+      shortHexMatch[1]
+        .split('')
+        .map(value => value + value)
+        .join(''),
+      alpha,
+    );
   }
 
   const hexMatch = trimmed.match(/^#([0-9a-f]{6})$/i);
   if (!hexMatch) return trimmed;
 
-  const value = hexMatch[1];
-  const r = parseInt(value.slice(0, 2), 16);
-  const g = parseInt(value.slice(2, 4), 16);
-  const b = parseInt(value.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return hexToRgba(hexMatch[1], alpha);
 }

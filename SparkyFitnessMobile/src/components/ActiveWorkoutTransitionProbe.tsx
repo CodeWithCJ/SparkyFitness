@@ -4,6 +4,15 @@ import { useTransitionProgress } from 'react-native-screens';
 import { notifyActiveWorkoutBarStackTransition } from './ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 
+const NON_INTERACTIVE_BACK_ROUTES = new Set(['Tabs', 'Onboarding']);
+
+function getTabRevealProgress(startProgress: number, currentProgress: number) {
+  if (startProgress > 0.5) {
+    return (startProgress - currentProgress) / startProgress;
+  }
+  return (currentProgress - startProgress) / (1 - startProgress);
+}
+
 function ActiveWorkoutTransitionProgressProbe({
   enabled,
 }: {
@@ -49,14 +58,10 @@ function ActiveWorkoutTransitionProgressProbe({
       }
 
       const startProgress = startProgressRef.current ?? currentProgress;
-      const tabRevealProgress =
-        startProgress > 0.5
-          ? (startProgress - currentProgress) / startProgress
-          : (currentProgress - startProgress) / (1 - startProgress);
       notifyActiveWorkoutBarStackTransition(
         'start',
         true,
-        tabRevealProgress,
+        getTabRevealProgress(startProgress, currentProgress),
       );
     };
 
@@ -85,7 +90,7 @@ export function ActiveWorkoutTransitionScreenLayout({
   children: React.ReactNode;
   routeName: string;
 }) {
-  const canProbeInteractiveBack = routeName !== 'Tabs' && routeName !== 'Onboarding';
+  const canProbeInteractiveBack = !NON_INTERACTIVE_BACK_ROUTES.has(routeName);
 
   return (
     <>
