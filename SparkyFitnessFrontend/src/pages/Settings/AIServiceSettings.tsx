@@ -39,6 +39,7 @@ import {
   useUpdateUserAIPreferences,
 } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
+import { useTestAIServiceConnection } from '@/hooks/AI/useTestAIServiceConnection';
 import { AiServiceSettingsResponse } from '@workspace/shared';
 import {
   CreateAiServiceSettingsFormInput,
@@ -88,6 +89,11 @@ const AIServiceSettings = () => {
     useDeleteAIService();
   const { mutateAsync: updatePreferences, isPending: isUpdatingPrefs } =
     useUpdateUserAIPreferences();
+  const {
+    testConnection,
+    isPending: isTesting,
+    status: testStatus,
+  } = useTestAIServiceConnection();
 
   const loading = isAdding || isUpdating || isDeleting || isUpdatingPrefs;
 
@@ -628,6 +634,16 @@ const AIServiceSettings = () => {
                 onCancel={() => setShowAddForm(false)}
                 loading={loading}
                 translationPrefix="settings.aiService.userSettings"
+                onTestConnection={(model) =>
+                  testConnection({
+                    service_type: newService.service_type,
+                    api_key: newService.api_key,
+                    custom_url: newService.custom_url ?? undefined,
+                    model_name: model,
+                  })
+                }
+                testing={isTesting}
+                testStatus={testStatus}
               />
             </div>
           )}
@@ -760,6 +776,18 @@ const AIServiceSettings = () => {
                         isUserConfigAllowed={isUserConfigAllowed}
                         isOwner={isOwner}
                         isActiveProvider={service.id === activeServiceId}
+                        onTestConnection={(model) =>
+                          testConnection({
+                            id: service.id,
+                            service_type:
+                              editData.service_type || service.service_type,
+                            api_key: editData.api_key,
+                            custom_url: editData.custom_url ?? undefined,
+                            model_name: model,
+                          })
+                        }
+                        testing={isTesting}
+                        testStatus={testStatus}
                       />
                     );
                   })}

@@ -115,6 +115,48 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
     client.release();
   }
 }
+// Decrypt-and-return a single setting WITHOUT the `is_active = TRUE` filter that
+// getAiServiceSettingForBackend applies — the connection test must work for an
+// inactive service too. The user-scoped client preserves RLS: a user reads only
+// their own private rows plus `is_public` global rows, so this serves both the
+// per-user and admin/global test contexts without leaking other users' keys.
+async function getDecryptedAiServiceSettingById(id: string, userId: string) {
+  const client = await getClient(userId); // User-specific operation (RLS-scoped)
+  try {
+    const result = await client.query(
+      'SELECT * FROM ai_service_settings WHERE id = $1',
+      [id]
+    );
+    const setting = result.rows[0];
+    if (!setting) return null;
+    let decryptedApiKey = null;
+    if (
+      setting.encrypted_api_key &&
+      setting.api_key_iv &&
+      setting.api_key_tag
+    ) {
+      try {
+        decryptedApiKey = await decrypt(
+          setting.encrypted_api_key,
+          setting.api_key_iv,
+          setting.api_key_tag,
+          ENCRYPTION_KEY
+        );
+      } catch (e) {
+        log('error', 'Error decrypting API key for AI service setting:', id, e);
+      }
+    }
+    return {
+      service_type: setting.service_type,
+      api_key: decryptedApiKey,
+      custom_url: setting.custom_url,
+      model_name: setting.model_name,
+      is_public: setting.is_public,
+    };
+  } finally {
+    client.release();
+  }
+}
 async function getAiServiceSettingById(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -552,6 +594,7 @@ async function deleteGlobalAiServiceSetting(id: string) {
 export { upsertAiServiceSetting };
 export { getAiServiceSettingById };
 export { getAiServiceSettingForBackend };
+export { getDecryptedAiServiceSettingById };
 export { deleteAiServiceSetting };
 export { getAiServiceSettingsByUserId };
 export { getActiveAiServiceSetting };
@@ -572,6 +615,7 @@ export default {
   upsertAiServiceSetting,
   getAiServiceSettingById,
   getAiServiceSettingForBackend,
+  getDecryptedAiServiceSettingById,
   deleteAiServiceSetting,
   getAiServiceSettingsByUserId,
   getActiveAiServiceSetting,

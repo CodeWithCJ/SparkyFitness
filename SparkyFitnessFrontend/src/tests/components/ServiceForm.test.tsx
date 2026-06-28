@@ -118,3 +118,120 @@ describe('ServiceForm — model validation', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 });
+
+describe('ServiceForm — test connection button', () => {
+  function renderWithTest(
+    formData: AiServiceSettingsFormInput,
+    {
+      onTestConnection,
+      testing,
+      testStatus,
+    }: {
+      onTestConnection?: (model: string) => void;
+      testing?: boolean;
+      testStatus?:
+        | { state: 'success' }
+        | { state: 'error'; message: string }
+        | null;
+    } = {}
+  ) {
+    const onSubmit = jest.fn();
+    const utils = renderWithClient(
+      <ServiceForm
+        formData={formData}
+        onFormDataChange={jest.fn()}
+        onSubmit={onSubmit}
+        onCancel={jest.fn()}
+        translationPrefix="settings.aiService.userSettings"
+        onTestConnection={onTestConnection}
+        testing={testing}
+        testStatus={testStatus}
+      />
+    );
+    return { ...utils, onSubmit };
+  }
+
+  const testButton = (
+    utils: ReturnType<typeof renderWithTest>
+  ): HTMLElement | null =>
+    utils.queryByRole('button', {
+      name: /testConnection|\.testing$/,
+    });
+
+  it('does not render the button without the onTestConnection prop', () => {
+    const utils = renderWithTest(makeFormData());
+    expect(testButton(utils)).toBeNull();
+  });
+
+  it('renders the button when onTestConnection is provided', () => {
+    const utils = renderWithTest(makeFormData(), {
+      onTestConnection: jest.fn(),
+    });
+    expect(testButton(utils)).not.toBeNull();
+  });
+
+  it('fires onTestConnection (and not onSubmit) when clicked', () => {
+    const onTestConnection = jest.fn();
+    const utils = renderWithTest(makeFormData(), { onTestConnection });
+
+    fireEvent.click(testButton(utils)!);
+
+    expect(onTestConnection).toHaveBeenCalledTimes(1);
+    expect(utils.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('disables the button while testing', () => {
+    const utils = renderWithTest(makeFormData(), {
+      onTestConnection: jest.fn(),
+      testing: true,
+    });
+    expect((testButton(utils) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // Same guard as submit: a no-preset type with no model can't be tested either.
+  it('disables the button for a no-preset type with no model', () => {
+    const utils = renderWithTest(
+      makeFormData({
+        service_type: 'openai_compatible',
+        custom_url: 'http://localhost:1234/v1',
+        showCustomModelInput: true,
+        custom_model_name: '',
+        model_name: '',
+      }),
+      { onTestConnection: jest.fn() }
+    );
+    expect((testButton(utils) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('renders the success status text inline', () => {
+    const utils = renderWithTest(makeFormData(), {
+      onTestConnection: jest.fn(),
+      testStatus: { state: 'success' },
+    });
+    expect(
+      utils.getByText('settings.aiService.test.successTitle')
+    ).toBeTruthy();
+  });
+
+  it('renders the failure status text with the error message inline', () => {
+    const utils = renderWithTest(makeFormData(), {
+      onTestConnection: jest.fn(),
+      testStatus: { state: 'error', message: 'Bad API key' },
+    });
+    expect(
+      utils.getByText('settings.aiService.test.failureTitle: Bad API key')
+    ).toBeTruthy();
+  });
+
+  // The result is cleared while a fresh test is in flight.
+  it('hides the status text while a test is running', () => {
+    const utils = renderWithTest(makeFormData(), {
+      onTestConnection: jest.fn(),
+      testing: true,
+      testStatus: { state: 'success' },
+    });
+    expect(
+      utils.queryByText('settings.aiService.test.successTitle')
+    ).toBeNull();
+  });
+});

@@ -38,6 +38,7 @@ import {
   useUpdateGlobalAIService,
   useDeleteGlobalAIService,
 } from '@/hooks/AI/useGlobalAIServiceSettings';
+import { useTestAIServiceConnection } from '@/hooks/AI/useTestAIServiceConnection';
 import { GlobalSettings } from '@/types/admin';
 import { useAiConfigInvalidation } from '@/hooks/useInvalidateKeys';
 import { AiServiceSettingsResponse } from '@workspace/shared';
@@ -68,6 +69,11 @@ const GlobalAISettings = () => {
     useUpdateGlobalAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteGlobalAIService();
+  const {
+    testConnection,
+    isPending: isTesting,
+    status: testStatus,
+  } = useTestAIServiceConnection();
   const invalidateAiConfig = useAiConfigInvalidation();
 
   const loading = isCreating || isUpdating || isDeleting;
@@ -376,6 +382,16 @@ const GlobalAISettings = () => {
                 onCancel={() => setShowAddForm(false)}
                 loading={loading}
                 translationPrefix="settings.aiService.globalSettings"
+                onTestConnection={(model) =>
+                  testConnection({
+                    service_type: newService.service_type,
+                    api_key: newService.api_key,
+                    custom_url: newService.custom_url ?? undefined,
+                    model_name: model,
+                  })
+                }
+                testing={isTesting}
+                testStatus={testStatus}
               />
             </div>
           )}
@@ -394,6 +410,19 @@ const GlobalAISettings = () => {
             loading={loading}
             translationPrefix="settings.aiService.globalSettings"
             showGlobalBadge={true}
+            onTestConnection={(serviceId, model) => {
+              const original = services.find((s) => s.id === serviceId);
+              testConnection({
+                id: serviceId,
+                service_type:
+                  editData.service_type || original?.service_type || '',
+                api_key: editData.api_key,
+                custom_url: editData.custom_url ?? undefined,
+                model_name: model,
+              });
+            }}
+            testing={isTesting}
+            testStatus={testStatus}
           />
 
           {services.length === 0 && !showAddForm && (

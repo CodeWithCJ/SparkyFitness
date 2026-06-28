@@ -53,6 +53,25 @@ export const updateAiServiceSettingsRequestSchema =
     .extend({
       api_key: z.string().optional(),
     });
+
+// Test-connection contract. `api_key` is optional because on edit the field is
+// blank by design (the stored key is encrypted server-side and never sent to
+// the browser), so the server falls back to the stored key when an `id` is
+// supplied. The response is HTTP 200 for both pass and fail so the frontend can
+// show a category-specific toast instead of `apiCall`'s generic non-2xx toast.
+export const testAiServiceConnectionRequestSchema = z.object({
+  id: z.string().optional(),
+  service_type: z.string(),
+  api_key: z.string().optional(),
+  custom_url: z.string().optional(),
+  model_name: z.string().optional(),
+});
+
+export const testAiServiceConnectionResponseSchema = z.object({
+  ok: z.boolean(),
+  category: z.string().optional(),
+  detail: z.string().optional(),
+});
 export type AiServiceSettingsResponse = z.infer<
   typeof aiServiceSettingsResponseSchema
 >;
@@ -65,4 +84,11 @@ export type UpdateAiServiceSettingsRequest = z.infer<
 
 export type AiServiceSettingsPostResponse = z.infer<
   typeof aiServiceSettingsPostResponseSchema
+>;
+
+export type TestAiServiceConnectionRequest = z.infer<
+  typeof testAiServiceConnectionRequestSchema
+>;
+export type TestAiServiceConnectionResponse = z.infer<
+  typeof testAiServiceConnectionResponseSchema
 >;

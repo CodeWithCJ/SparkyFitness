@@ -1,6 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import chatRepository from '../models/chatRepository.js';
 import { getClient } from '../db/poolManager.js';
+import { decrypt } from '../security/encryption.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -67,6 +68,67 @@ describe('chatRepository.upsertAiServiceSetting', () => {
     expect(params[2]).toBeNull(); // $3 → custom_url explicitly cleared
     expect(params[3]).toBeNull(); // $4 → system_prompt explicitly cleared
     expect(params[5]).toBeNull(); // $6 → model_name explicitly cleared
+  });
+});
+
+describe('chatRepository.getDecryptedAiServiceSettingById', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    };
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  it('selects by id WITHOUT the is_active filter so inactive services can be tested', async () => {
+    mockClient.query.mockResolvedValue({
+      rows: [
+        {
+          service_type: 'openai',
+          encrypted_api_key: 'enc',
+          api_key_iv: 'iv',
+          api_key_tag: 'tag',
+          custom_url: null,
+          model_name: 'gpt-4o',
+          is_public: false,
+          is_active: false,
+        },
+      ],
+    });
+    vi.mocked(decrypt).mockResolvedValue('decrypted-key');
+
+    const result = await chatRepository.getDecryptedAiServiceSettingById(
+      'svc-1',
+      'user-1'
+    );
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).not.toContain('is_active');
+    expect(params).toEqual(['svc-1']);
+    // RLS scoping comes from the user-specific client.
+    expect(getClient).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({
+      service_type: 'openai',
+      api_key: 'decrypted-key',
+      custom_url: null,
+      model_name: 'gpt-4o',
+      is_public: false,
+    });
+  });
+
+  it('returns null when no row is visible to the user', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    const result = await chatRepository.getDecryptedAiServiceSettingById(
+      'missing',
+      'user-1'
+    );
+
+    expect(result).toBeNull();
   });
 });
 

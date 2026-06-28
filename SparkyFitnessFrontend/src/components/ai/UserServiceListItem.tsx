@@ -7,6 +7,7 @@ import { getServiceTypes } from '@/utils/aiServiceUtils';
 import { ServiceForm } from './ServiceForm';
 import { AiServiceSettingsResponse } from '@workspace/shared';
 import { UpdateAiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
+import type { TestConnectionStatus } from '@/hooks/AI/useTestAIServiceConnection';
 
 interface UserServiceListItemProps {
   service: AiServiceSettingsResponse;
@@ -22,6 +23,11 @@ interface UserServiceListItemProps {
   isUserConfigAllowed: boolean;
   isOwner: boolean;
   isActiveProvider: boolean;
+  // Forwarded to ServiceForm; this component only passes them through and never
+  // calls the test hook itself (query hooks aren't allowed inside components).
+  onTestConnection?: (selectedModel: string) => void;
+  testing?: boolean;
+  testStatus?: TestConnectionStatus;
 }
 
 export const UserServiceListItem = ({
@@ -38,6 +44,9 @@ export const UserServiceListItem = ({
   isUserConfigAllowed,
   isOwner,
   isActiveProvider,
+  onTestConnection,
+  testing = false,
+  testStatus = null,
 }: UserServiceListItemProps) => {
   const { t } = useTranslation();
   const serviceTypes = getServiceTypes(t);
@@ -75,6 +84,9 @@ export const UserServiceListItem = ({
           loading={loading}
           isEdit={true}
           translationPrefix="settings.aiService.userSettings"
+          onTestConnection={onTestConnection}
+          testing={testing}
+          testStatus={testStatus}
         />
       </div>
     );

@@ -191,6 +191,47 @@ describe('aiServiceSettingsService', () => {
     });
   });
 
+  describe('testAIServiceConnection', () => {
+    it('posts to the test endpoint and returns the parsed pass response', async () => {
+      const payload = {
+        service_type: 'openai',
+        api_key: 'sk-test',
+        model_name: 'gpt-4o',
+      };
+      mockApiCall.mockResolvedValue({ ok: true });
+
+      const result =
+        await aiServiceSettingsService.testAIServiceConnection(payload);
+
+      expect(mockApiCall).toHaveBeenCalledWith(
+        '/chat/ai-service-settings/test',
+        {
+          method: 'POST',
+          body: payload,
+        }
+      );
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('returns the parsed failure response with its category', async () => {
+      mockApiCall.mockResolvedValue({
+        ok: false,
+        category: 'upstream_error',
+        detail: 'AI service returned status 401',
+      });
+
+      const result = await aiServiceSettingsService.testAIServiceConnection({
+        service_type: 'openai',
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        category: 'upstream_error',
+        detail: 'AI service returned status 401',
+      });
+    });
+  });
+
   describe('updateAIServiceStatus', () => {
     it('updates service active status', async () => {
       const serviceId = '1';
