@@ -68,26 +68,98 @@ Actions:
                 args.target_date || todayInZone(tz)
               )) as Record<string, unknown>;
               let text = `### Goals for ${args.target_date || 'today'}\n\n`;
-              text += `- **Calories:** ${goals.calories || 2000} kcal\n`;
-              text += `- **Protein:** ${goals.protein || 150}g\n`;
-              text += `- **Carbs:** ${goals.carbs || 250}g\n`;
-              text += `- **Fat:** ${goals.fat || 67}g\n`;
-              text += `- **Water:** ${goals.water_goal_ml || 2000}ml\n`;
+              const DISPLAY_FIELDS = [
+                'calories',
+                'protein',
+                'carbs',
+                'fat',
+                'water_goal_ml',
+              ] as const;
+              for (const field of DISPLAY_FIELDS) {
+                if (goals[field] !== null && goals[field] !== undefined) {
+                  let label: string;
+                  let unit: string;
+                  switch (field) {
+                    case 'calories':
+                      label = 'Calories';
+                      unit = ' kcal';
+                      break;
+                    case 'water_goal_ml':
+                      label = 'Water';
+                      unit = 'ml';
+                      break;
+                    case 'protein':
+                      label = 'Protein';
+                      unit = 'g';
+                      break;
+                    case 'carbs':
+                      label = 'Carbs';
+                      unit = 'g';
+                      break;
+                    case 'fat':
+                      label = 'Fat';
+                      unit = 'g';
+                      break;
+                    default:
+                      label = field;
+                      unit = '';
+                  }
+                  text += `- **${label}:** ${goals[field]}${unit}\n`;
+                }
+              }
+              if (
+                (goals as any).custom_nutrients &&
+                typeof (goals as any).custom_nutrients === 'object'
+              ) {
+                const custom = (goals as any).custom_nutrients as Record<
+                  string,
+                  number
+                >;
+                for (const [name, amount] of Object.entries(custom)) {
+                  text += `- **${name}:** ${amount}\n`;
+                }
+              }
               return text;
             }
 
             case 'set_goals': {
-              // MCP's defaults; manageGoalTimeline stores 0 for omitted
-              // numeric fields, so they must be applied here.
-              await goalService.manageGoalTimeline(userId, {
+              // Fetch existing goals for the start date to preserve unchanged nutrients
+              const existingGoals: any = await goalService.getUserGoals(
+                userId,
+                args.start_date
+              );
+              // Build base payload with required fields, using existing goals as defaults
+              const payload: any = {
                 p_start_date: args.start_date,
                 p_cascade: true,
-                p_calories: args.calories ?? 2000,
-                p_protein: args.protein ?? 150,
-                p_carbs: args.carbs ?? 250,
-                p_fat: args.fat ?? 67,
-                p_water_goal_ml: args.water_goal_ml ?? 2000,
-              });
+                p_calories: args.calories ?? existingGoals.calories,
+                p_protein: args.protein ?? existingGoals.protein,
+                p_carbs: args.carbs ?? existingGoals.carbs,
+                p_fat: args.fat ?? existingGoals.fat,
+                p_water_goal_ml:
+                  args.water_goal_ml ?? existingGoals.water_goal_ml,
+                p_saturated_fat:
+                  args.saturated_fat ?? existingGoals.saturated_fat,
+                p_polyunsaturated_fat:
+                  args.polyunsaturated_fat ?? existingGoals.polyunsaturated_fat,
+                p_monounsaturated_fat:
+                  args.monounsaturated_fat ?? existingGoals.monounsaturated_fat,
+                p_trans_fat: args.trans_fat ?? existingGoals.trans_fat,
+                p_cholesterol: args.cholesterol ?? existingGoals.cholesterol,
+                p_sodium: args.sodium ?? existingGoals.sodium,
+                p_potassium: args.potassium ?? existingGoals.potassium,
+                p_dietary_fiber:
+                  args.dietary_fiber ?? existingGoals.dietary_fiber,
+                p_sugars: args.sugars ?? existingGoals.sugars,
+                p_vitamin_a: args.vitamin_a ?? existingGoals.vitamin_a,
+                p_vitamin_c: args.vitamin_c ?? existingGoals.vitamin_c,
+                p_calcium: args.calcium ?? existingGoals.calcium,
+                p_iron: args.iron ?? existingGoals.iron,
+                // Preserve custom nutrients if not provided
+                custom_nutrients:
+                  args.custom_nutrients ?? existingGoals.custom_nutrients,
+              };
+              await goalService.manageGoalTimeline(userId, payload);
               return formatConfirmation(
                 `Goals set successfully starting from ${args.start_date}.`
               );

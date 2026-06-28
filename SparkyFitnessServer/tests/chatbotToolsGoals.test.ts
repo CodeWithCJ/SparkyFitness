@@ -92,12 +92,18 @@ describe('sparky_manage_goals', () => {
     vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
       message: 'ok',
     });
-
+    // Mock existing goals to provide defaults for omitted fields
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 67,
+      water_goal_ml: 2000,
+    });
     const result = await tools.sparky_manage_goals.execute!(
       { action: 'set_goals', start_date: '2026-06-15', calories: 2200 },
       opts
     );
-
     expect(result).toBe('✅ Goals set successfully starting from 2026-06-15.');
     expect(goalService.manageGoalTimeline).toHaveBeenCalledWith('user-1', {
       p_start_date: '2026-06-15',
@@ -107,6 +113,20 @@ describe('sparky_manage_goals', () => {
       p_carbs: 250,
       p_fat: 67,
       p_water_goal_ml: 2000,
+      p_saturated_fat: undefined,
+      p_polyunsaturated_fat: undefined,
+      p_monounsaturated_fat: undefined,
+      p_trans_fat: undefined,
+      p_cholesterol: undefined,
+      p_sodium: undefined,
+      p_potassium: undefined,
+      p_dietary_fiber: undefined,
+      p_sugars: undefined,
+      p_vitamin_a: undefined,
+      p_vitamin_c: undefined,
+      p_calcium: undefined,
+      p_iron: undefined,
+      custom_nutrients: undefined,
     });
   });
 
