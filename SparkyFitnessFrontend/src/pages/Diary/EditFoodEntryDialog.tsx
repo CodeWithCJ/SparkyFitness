@@ -310,8 +310,8 @@ const EditFoodEntryDialog = ({
                   <Input
                     id="quantity"
                     type="number"
-                    step="0.1"
-                    min="0.1"
+                    step="any"
+                    min="0.01"
                     value={quantity}
                     ref={inputRef}
                     onChange={(e) => setQuantity(Number(e.target.value))}
