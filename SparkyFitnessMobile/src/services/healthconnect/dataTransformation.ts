@@ -208,9 +208,10 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
 
   Hydration: (rec) => {
     if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
-    const value = extractNestedValue(rec, 'volume', 'inLiters');
+    const liters = extractNestedValue(rec, 'volume', 'inLiters');
     const date = getDateString(rec.startTime);
-    return value !== null && date ? { value, date } : null;
+    // Convert L -> integer ml: synced as water intake (type 'water') which the server stores in ml.
+    return liters !== null && date ? { value: Math.round(liters * 1000), date } : null;
   },
 
   BodyTemperature: (rec) => {
