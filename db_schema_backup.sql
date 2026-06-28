@@ -362,7 +362,7 @@ $$;
 CREATE FUNCTION public.current_user_id() RETURNS uuid
     LANGUAGE sql STABLE
     AS $$
-  SELECT (current_setting('app.user_id'::text))::uuid;
+  SELECT NULLIF(current_setting('app.user_id', true), '')::uuid;
 $$;
 
 

@@ -97,7 +97,7 @@ END $$;
 CREATE OR REPLACE FUNCTION current_user_id() RETURNS uuid
 LANGUAGE sql STABLE
 AS $function$
-  SELECT (current_setting('app.user_id'::text))::uuid;
+  SELECT NULLIF(current_setting('app.user_id', true), '')::uuid;
 $function$;
 
 CREATE OR REPLACE FUNCTION authenticated_user_id() RETURNS uuid
