@@ -144,6 +144,18 @@ function requiresCustomUrl(serviceType: string): boolean {
   );
 }
 
+// Local / self-hosted server types (LM Studio, llama.cpp, Ollama) commonly run
+// without an API key, so a blank key must not hard-fail them. Cloud providers
+// always need one. This mirrors the chat path, which sends `api_key || 'no-key'`
+// for these same types instead of rejecting the request.
+function requiresApiKey(serviceType: string): boolean {
+  return (
+    serviceType !== 'ollama' &&
+    serviceType !== 'openai_compatible' &&
+    serviceType !== 'custom'
+  );
+}
+
 // Anthropic's Messages API rejects the non-standard 'image/jpg'; normalize it
 // to the canonical 'image/jpeg'. Shared transport concern, so it lives here.
 function normalizeMimeType(mimeType: string): string {
@@ -345,7 +357,9 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
         'HTTP-Referer': 'https://sparky-fitness.com',
         'X-Title': 'Sparky Fitness',
       }),
-      Authorization: `Bearer ${ctx.provider.api_key}`,
+      // Local/self-hosted types may have no key; send the chat path's `no-key`
+      // sentinel so a keyless server sees the same header from both paths.
+      Authorization: `Bearer ${ctx.provider.api_key || 'no-key'}`,
     },
     body,
   };
@@ -768,7 +782,7 @@ export async function dispatchAiRequest(
     };
   }
 
-  if (serviceType !== 'ollama' && !provider.api_key) {
+  if (requiresApiKey(serviceType) && !provider.api_key) {
     return {
       ok: false,
       category: 'api_key_missing',
