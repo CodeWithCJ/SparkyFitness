@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
+  duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
@@ -56,6 +57,7 @@ const MEAL_SERVING_PRECISION = 6;
 
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
+  duplicateFromMealId,
   onCancel,
   initialFoods,
   source = 'meal-management', // Default to meal-management
@@ -144,17 +146,39 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const { mutateAsync: createMeal } = useCreateMealMutation();
   const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
   const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
+  // Tracks which source (meal/entry) has already seeded the form, so the load
+  // effect seeds once per source and does NOT re-run when an unrelated
+  // dependency changes (language, logging level, a new initialFoods array
+  // reference, etc.), which would otherwise wipe the user's in-progress edits.
+  // A ref (not state) so updating it neither triggers a render nor needs to be
+  // an effect dependency.
+  const loadedIdRef = useRef<string | null>(null);
+  // String value (not the `t` function) so it is referentially stable across
+  // renders. It only changes when the active language changes, and even then
+  // the loadedId guard below prevents a re-seed.
+  const copySuffix = t('mealManagement.copySuffix', '(copy)');
   useEffect(() => {
     const fetchMealData = async () => {
       if (!activeUserId) return;
 
-      if (source === 'meal-management' && mealId) {
+      // Duplicate reuses the edit fetch/seed path: read the source meal, then
+      // override name + privacy. mealId stays undefined, so the save routes
+      // through createMeal and assigns fresh meal/meal_food ids, leaving the
+      // original untouched (no server change needed). createMeal has no name
+      // dedup, so there is no barcode-style trap to avoid here.
+      const sourceMealId = mealId ?? duplicateFromMealId;
+      const isDuplicate = !mealId && !!duplicateFromMealId;
+      if (source === 'meal-management' && sourceMealId) {
         try {
-          const meal = await queryClient.fetchQuery(mealViewOptions(mealId));
+          const meal = await queryClient.fetchQuery(
+            mealViewOptions(sourceMealId)
+          );
           if (meal) {
-            setMealName(meal.name);
+            setMealName(isDuplicate ? `${meal.name} ${copySuffix}` : meal.name);
             setMealDescription(meal.description || '');
-            setIsPublic(meal.is_public || false);
+            // A duplicate is always a fresh private meal owned by the current
+            // user, even when cloning a Public, Family, or System meal.
+            setIsPublic(isDuplicate ? false : meal.is_public || false);
             const loadedServingSize = meal.serving_size ?? 1;
             const loadedTotalServings = meal.total_servings ?? 1;
             setServingSize(loadedServingSize.toString());
@@ -306,12 +330,23 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         if (initialServingUnit) setServingUnit(initialServingUnit);
       }
     };
-    if (activeUserId && (mealId || initialFoods || foodEntryId)) {
-      // Check for foodEntryId
+    // Stable identity of the source to seed from. UUIDs never collide with the
+    // 'initial' sentinel used for the prop-seeded (food-diary quick-add) path.
+    const currentId =
+      mealId ??
+      duplicateFromMealId ??
+      foodEntryId ??
+      (initialFoods ? 'initial' : null);
+    if (activeUserId && currentId && loadedIdRef.current !== currentId) {
+      // Mark as seeded before the async fetch so a re-render mid-fetch does not
+      // kick off a second seed for the same source.
+      loadedIdRef.current = currentId;
       fetchMealData();
     }
   }, [
     mealId,
+    duplicateFromMealId,
+    copySuffix,
     activeUserId,
     loggingLevel,
     source,
