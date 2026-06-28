@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict e7B8Kh9QejIBnAVwUCmk04JSmuSs0GxCgobjEDxCN2pcbeeccMh67wsCqSal6rk
+\restrict t8COxUCrIiMOmkHjgelxRrYmfCiqacnJz4lBY5478hjWsFCRRCA5duhQ8UHcpkn
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -164,6 +164,9 @@ CREATE FUNCTION public.create_checkin_policy(table_name text) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_checkin_read_access(user_id));
@@ -198,6 +201,9 @@ CREATE FUNCTION public.create_diary_policy(table_name text) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_diary_read_access(user_id));
@@ -8713,5 +8719,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict e7B8Kh9QejIBnAVwUCmk04JSmuSs0GxCgobjEDxCN2pcbeeccMh67wsCqSal6rk
+\unrestrict t8COxUCrIiMOmkHjgelxRrYmfCiqacnJz4lBY5478hjWsFCRRCA5duhQ8UHcpkn
 
