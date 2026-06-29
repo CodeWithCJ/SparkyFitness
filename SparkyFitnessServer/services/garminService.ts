@@ -15,6 +15,7 @@ import sleepRepository from '../models/sleepRepository.js';
 import foodRepository from '../models/food.js';
 import foodEntryRepository from '../models/foodEntry.js';
 import mealTypeRepository from '../models/mealType.js';
+import type { GarminSyncResult } from './garminSyncResult.js';
 
 const GARMIN_CARDIO_CATEGORY_INDICATORS = [
   'running',
@@ -1145,11 +1146,7 @@ async function syncGarminData(
     'info',
     `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`
   );
-  const results: {
-    health: Record<string, unknown> | null;
-    activities: Record<string, unknown> | null;
-    nutrition: Record<string, unknown> | null;
-  } = {
+  const results: GarminSyncResult = {
     health: null,
     activities: null,
     nutrition: null,
