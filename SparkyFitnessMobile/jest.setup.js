@@ -416,8 +416,12 @@ jest.mock('uniwind', () => ({
 jest.mock('react-native-enriched-markdown', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  const Markdown = ({ markdown, onLinkPress }) =>
-    React.createElement(Text, { testID: 'enriched-markdown', onLinkPress }, markdown);
+  const Markdown = ({ markdown, onLinkPress, selectable, streamingAnimation }) =>
+    React.createElement(
+      Text,
+      { testID: 'enriched-markdown', onLinkPress, selectable, streamingAnimation },
+      markdown,
+    );
   return { __esModule: true, EnrichedMarkdownText: Markdown, default: Markdown };
 });
 

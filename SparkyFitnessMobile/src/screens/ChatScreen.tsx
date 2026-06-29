@@ -125,6 +125,14 @@ function MessageBubble({ role }: { role: MessageRole }) {
     );
   });
 
+  // Only the message currently being generated should fade in new tokens.
+  // Settled history renders immediately and, crucially, skips the native fade
+  // animator — its post-render setSpan triggers checkForResize() and NPE-crashes
+  // (Android) on a recycled FlatList cell whose layoutParams have gone null.
+  const isStreaming = useAuiState(
+    (s) => s.message.role === 'assistant' && s.message.status?.type === 'running',
+  );
+
   return (
     <MessagePrimitive.Root
       style={{
@@ -144,7 +152,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
               isUser ? (
                 <Text className="text-base text-white">{part.text}</Text>
               ) : (
-                <MarkdownMessage text={part.text} />
+                <MarkdownMessage text={part.text} streaming={isStreaming} />
               )
             }
             renderToolCall={({ part }) => <ToolCallCard part={part} />}
