@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, Alert, FlatList } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,16 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
 type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messages'];
+
+/**
+ * `ThreadPrimitive.Messages` renders a plain FlatList and spreads any extra props
+ * onto it, but its prop type omits `ref`. Re-type it so we can attach a FlatList
+ * ref (used for auto-scroll). Under React 19 a `ref` on a function component is a
+ * regular prop, so it rides the spread through to the inner FlatList.
+ */
+const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
+  React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
+>;
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -259,6 +269,42 @@ function ChatThread({
 }) {
   const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
+  // Keep the message list pinned to the bottom as content grows: lands on the
+  // latest message on mount (seeded history) and follows the stream.
+  const messagesRef = useRef<FlatList>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const scrollSettledFrameRef = useRef<number | null>(null);
+
+  const cancelScheduledScroll = useCallback(() => {
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+    if (scrollSettledFrameRef.current !== null) {
+      cancelAnimationFrame(scrollSettledFrameRef.current);
+      scrollSettledFrameRef.current = null;
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    cancelScheduledScroll();
+
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      messagesRef.current?.scrollToEnd({ animated: false });
+
+      scrollSettledFrameRef.current = requestAnimationFrame(() => {
+        scrollSettledFrameRef.current = null;
+        messagesRef.current?.scrollToEnd({ animated: false });
+      });
+    });
+  }, [cancelScheduledScroll]);
+
+  useEffect(() => {
+    scrollToBottom();
+    return cancelScheduledScroll;
+  }, [cancelScheduledScroll, scrollToBottom]);
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <RunningReporter onRunningChange={onRunningChange} />
@@ -283,12 +329,15 @@ function ChatThread({
             </View>
           </ThreadPrimitive.Empty>
 
-          <ThreadPrimitive.Messages
+          <ThreadMessages
+            ref={messagesRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16 }}
+            onContentSizeChange={scrollToBottom}
+            onLayout={scrollToBottom}
           >
             {({ message }) => <MessageBubble role={message.role} />}
-          </ThreadPrimitive.Messages>
+          </ThreadMessages>
         </View>
 
         <Composer />
