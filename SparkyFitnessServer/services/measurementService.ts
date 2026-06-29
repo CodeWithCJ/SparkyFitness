@@ -98,6 +98,9 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   respiratory_rate_min: 'breaths/min',
   respiratory_rate_max: 'breaths/min',
   respiratory_rate_avg: 'breaths/min',
+  HRV_min: 'ms',
+  HRV_max: 'ms',
+  HRV_avg: 'ms',
   // Chunk 2: Running metrics
   running_speed_min: 'm/s',
   running_speed_max: 'm/s',
