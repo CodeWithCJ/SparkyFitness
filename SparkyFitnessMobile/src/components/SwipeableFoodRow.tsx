@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
@@ -60,7 +60,22 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
 
   const confirmAndDelete = isMealComponent ? mealDelete.confirmAndDelete : foodEntryDelete.confirmAndDelete;
   const deleteEntry = isMealComponent ? mealDelete.deleteEntry : foodEntryDelete.deleteEntry;
-  invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
+
+  // Keep the latest invalidateCache in a ref so the post-collapse animation
+  // callback (`handleAnimationEnd`, run via runOnJS after the delete) always
+  // invokes the current one. Written in an effect rather than during render so
+  // the value stays mutable to React's compiler.
+  useEffect(() => {
+    invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
+  });
+
+  // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
+  // as modifying a value already consumed by a hook (a React compiler bailout).
+  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
+    if (rowHeight.value === null) {
+      rowHeight.value = event.nativeEvent.layout.height;
+    }
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     if (!isRemoving.value || rowHeight.value === null) {
@@ -71,12 +86,6 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       overflow: 'hidden' as const,
     };
   });
-
-  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
-    if (rowHeight.value === null) {
-      rowHeight.value = event.nativeEvent.layout.height;
-    }
-  };
 
   const renderRightActions = () => (
     <TouchableOpacity

@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
 import { Canvas, Rect, Group, rect, rrect } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
 interface MacroData {
@@ -28,15 +28,19 @@ const MacroRow: React.FC<{ macro: MacroData; overfillColor: string; unit: string
 
   const animatedProgress = useSharedValue(0);
 
-  useFocusEffect(
-    useCallback(() => {
-      animatedProgress.value = 0;
-      animatedProgress.value = withTiming(progress, {
-        duration: 500,
-        easing: Easing.out(Easing.cubic),
-      });
-    }, [progress, animatedProgress])
-  );
+  // Replay the 0 -> progress entrance animation while the screen is focused.
+  // Driven by useIsFocused()+useEffect (rather than useFocusEffect) so the
+  // shared-value write lives in a real effect that React's compiler can
+  // optimize around.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    animatedProgress.value = 0;
+    animatedProgress.value = withTiming(progress, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isFocused, progress, animatedProgress]);
 
   const fillWidth = useDerivedValue(() => {
     const p = animatedProgress.value;
