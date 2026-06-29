@@ -906,7 +906,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       </Button>
 
       <View
-        className="flex-1 flex-row items-center bg-raised rounded-lg px-3"
+        className="flex-1 flex-row items-center bg-raised rounded-lg px-3 py-2.5"
         style={{
           borderWidth: 1,
           borderColor: isSearchFocused ? accentColor : 'transparent',
@@ -921,7 +921,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16 }}
+            style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
             placeholder="Search foods..."
             placeholderTextColor={textMuted}
             value={searchText}
@@ -936,20 +936,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         </View>
         {searchText.length > 0 ? (
           <Button
-            variant="ghost"
+            variant="header"
             onPress={() => setSearchText('')}
             hitSlop={8}
-            className="ml-2 p-0"
+            className="ml-2"
             accessibilityLabel="Clear search"
           >
             <Icon name="close" size={20} color={textMuted} />
           </Button>
         ) : (
           <Button
-            variant="ghost"
+            variant="header"
             onPress={openFoodScan}
             hitSlop={8}
-            className="ml-2 p-0"
+            className="ml-2"
             accessibilityLabel="Scan Food"
           >
             <Icon name="scan" size={20} color={accentColor} />
