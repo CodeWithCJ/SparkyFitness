@@ -48,73 +48,56 @@ async function canAccessUserData(
              (fa.access_permissions->>$3)::boolean = TRUE
            OR
            -- Handle mapping for 'diary' permission to 'can_manage_diary' key in JSON
-           ($3 = 'diary' AND ((fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR (fa.access_permissions->>'can manage diary')::boolean = TRUE))
+           ($3 = 'diary' AND (fa.access_permissions->>'can_manage_diary')::boolean = TRUE)
            OR
             -- Handle mapping for 'goals' permission to 'can_manage_diary' key (goals are part of diary)
-            ($3 = 'goals' AND ((fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR (fa.access_permissions->>'can manage diary')::boolean = TRUE))
+            ($3 = 'goals' AND (fa.access_permissions->>'can_manage_diary')::boolean = TRUE)
             OR
             -- Handle mapping for 'exercise' permission to 'can_manage_diary' key
-            ($3 = 'exercise' AND ((fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR (fa.access_permissions->>'can manage diary')::boolean = TRUE))
+            ($3 = 'exercise' AND (fa.access_permissions->>'can_manage_diary')::boolean = TRUE)
             OR
             -- Handle mapping for 'water' permission to 'can_manage_diary' key
-            ($3 = 'water' AND ((fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR (fa.access_permissions->>'can manage diary')::boolean = TRUE))
+            ($3 = 'water' AND (fa.access_permissions->>'can_manage_diary')::boolean = TRUE)
             OR
             -- Handle mapping for 'checkin' permission to 'can_manage_checkin' key
-            ($3 = 'checkin' AND (
-              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR 
-              (fa.access_permissions->>'can manage checkin')::boolean = TRUE
-            ))
+            ($3 = 'checkin' AND (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE)
             OR
             -- Handle mapping for 'medications' permission to 'can_manage_medications' key
-            ($3 = 'medications' AND (
-              (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR 
-              (fa.access_permissions->>'can manage medications')::boolean = TRUE
-            ))
+            ($3 = 'medications' AND (fa.access_permissions->>'can_manage_medications')::boolean = TRUE)
             OR
             -- Handle mapping for 'medications_read' permission (read-only medications data)
             ($3 = 'medications_read' AND (
-              (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR 
-              (fa.access_permissions->>'can manage medications')::boolean = TRUE OR
-              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
-              (fa.access_permissions->>'can view reports')::boolean = TRUE
+              (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE
             ))
             OR
             -- Handle mapping for 'checkin_read' permission (read-only check-in data)
             ($3 = 'checkin_read' AND (
-              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR 
-              (fa.access_permissions->>'can manage checkin')::boolean = TRUE OR
-              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
-              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
-              (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
-              (fa.access_permissions->>'can manage diary')::boolean = TRUE
+              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can_manage_diary')::boolean = TRUE
             ))
             OR
             -- Handle mapping for 'reports' permission to 'can_view_reports', 'can_manage_diary', or 'can_manage_checkin' key
             ($3 = 'reports' AND (
-              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR 
-              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
               (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
-              (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
-              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR
-              (fa.access_permissions->>'can manage checkin')::boolean = TRUE
+              (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE
             ))
             OR
             -- Handle mapping for 'diary_read' permission (read-only diary data)
             ($3 = 'diary_read' AND (
               (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
-              (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
               (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
-              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
               (fa.access_permissions->>'can_view_food_library')::boolean = TRUE OR
-              (fa.access_permissions->>'can view food library')::boolean = TRUE OR
               (fa.access_permissions->>'calorie')::boolean = TRUE
             ))
             OR
             -- Inheritance: reports permission grants read access to read-only permission types only.
             -- Write-level permission types (diary, checkin, medications) are NOT inherited from reports.
             ($3 IN ('mood', 'goals', 'exercise', 'fasting', 'sleep', 'water', 'symptoms') AND (
-               ((fa.access_permissions->>'reports')::boolean = TRUE OR (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR (fa.access_permissions->>'can view reports')::boolean = TRUE)
-               OR 
+               ((fa.access_permissions->>'reports')::boolean = TRUE OR (fa.access_permissions->>'can_view_reports')::boolean = TRUE)
+               OR
                ((fa.access_permissions->>'calorie')::boolean = TRUE)
              ))
           )

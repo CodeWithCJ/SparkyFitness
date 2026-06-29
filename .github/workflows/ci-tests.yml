@@ -56,6 +56,7 @@ jobs:
               - 'SparkyFitnessServer/utils/dbMigrations.ts'
               - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
               - 'SparkyFitnessServer/tests/migrate.script.ts'
+              - 'SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts'
               - 'SparkyFitnessServer/package.json'
               - '.github/workflows/ci-tests.yml'
 
@@ -177,6 +178,10 @@ jobs:
         env:
           NODE_ENV: test
           SPARKY_FITNESS_API_ENCRYPTION_KEY: WBBc73sX/IpeLHlraZa73S1BfVBiUnmZXYyzQKNgMIk=
+          # This job has no database. The RLS matrix runs by default, so skip it
+          # here; it is exercised in the migration-check job (which provisions
+          # Postgres). Without this it would fail trying to connect.
+          SKIP_RLS_MATRIX: "1"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -233,6 +238,22 @@ jobs:
       - name: Apply migrations on an empty database (twice = restart simulation)
         run: pnpm run test:migrations && pnpm run test:migrations
         env:
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: postgres
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
+
+      # The schema + RLS policies are now applied and the non-superuser app role
+      # exists, so the permission matrix can verify every table's real RLS
+      # behaviour as the app role (superuser DB user seeds, app role is enforced).
+      - name: Verify RLS permission matrix
+        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts
+        env:
+          # Default-on (SKIP_RLS_MATRIX unset) — runs against the Postgres this
+          # job provisions, with policies already applied by the steps above.
           SPARKY_FITNESS_DB_HOST: localhost
           SPARKY_FITNESS_DB_PORT: "5432"
           SPARKY_FITNESS_DB_NAME: sparky_test

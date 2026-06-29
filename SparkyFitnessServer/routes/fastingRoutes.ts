@@ -12,8 +12,11 @@ const router = express.Router();
  *   name: Wellness & Metrics
  *   description: Health metrics, weight tracking, measurements, sleep, mood, and fasting.
  */
-// Apply reports permission check to most fasting routes by default, or specialize
 router.use(authenticate);
+// Fasting logs are check-in data (RLS uses the check-in policy). Guard every
+// endpoint with the matching permission: GET maps to checkin_read (also allows
+// can_view_reports), writes require can_manage_checkin.
+router.use(checkPermissionMiddleware('checkin'));
 // Get current active fast
 /**
  * @swagger
@@ -36,24 +39,20 @@ router.use(authenticate);
  *       500:
  *         description: Internal server error.
  */
-router.get(
-  '/current',
-  checkPermissionMiddleware('reports'),
-  async (req, res) => {
-    const { userId } = req.query;
+router.get('/current', async (req, res) => {
+  const { userId } = req.query;
 
-    const targetUserId = userId || req.userId;
-    log('debug', `GET /current: Fetching fast for userId: ${targetUserId}`);
-    try {
-      const currentFast = await fastingRepository.getCurrentFast(targetUserId);
-      res.json(currentFast || null);
-    } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      log('error', `Error fetching current fast: ${error.message}`, error);
-      res.status(500).json({ error: 'Failed to fetch current fast' });
-    }
+  const targetUserId = userId || req.userId;
+  log('debug', `GET /current: Fetching fast for userId: ${targetUserId}`);
+  try {
+    const currentFast = await fastingRepository.getCurrentFast(targetUserId);
+    res.json(currentFast || null);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    log('error', `Error fetching current fast: ${error.message}`, error);
+    res.status(500).json({ error: 'Failed to fetch current fast' });
   }
-);
+});
 // Start a new fast
 /**
  * @swagger

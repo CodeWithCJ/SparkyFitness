@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict jcDyU3cJnnevgJtui53QlCurhhqCMmZxpR6ev4ngm1BFDumCImjW1igJMfyfI2e
+\restrict KcGTcGDHZyWodjgtFoGkUDzES5prIhR7m3fDrwHwlGgmFUefVOCgjACXC2y7yoi
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -614,13 +614,9 @@ CREATE FUNCTION public.has_any_meaningful_permission(perms jsonb) RETURNS boolea
     AS $$
   SELECT (
     (perms->>'can_manage_diary')::boolean = true OR
-    (perms->>'can manage diary')::boolean = true OR
     (perms->>'can_manage_checkin')::boolean = true OR
-    (perms->>'can manage checkin')::boolean = true OR
     (perms->>'can_view_reports')::boolean = true OR
-    (perms->>'can view reports')::boolean = true OR
-    (perms->>'can_manage_medications')::boolean = true OR
-    (perms->>'can manage medications')::boolean = true
+    (perms->>'can_manage_medications')::boolean = true
   );
 $$;
 
@@ -640,9 +636,7 @@ CREATE FUNCTION public.has_checkin_read_access(owner_uuid uuid) RETURNS boolean
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-      (fa.access_permissions->>'can manage checkin')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $$;
@@ -661,10 +655,7 @@ CREATE FUNCTION public.has_diary_access(owner_uuid uuid) RETURNS boolean
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true
-    )
+    AND (fa.access_permissions->>'can_manage_diary')::boolean = true
   );
 $$;
 
@@ -684,9 +675,7 @@ CREATE FUNCTION public.has_diary_read_access(owner_uuid uuid) RETURNS boolean
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $$;
@@ -748,12 +737,11 @@ CREATE FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared
         AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
         AND (
           (fa.access_permissions->>'can_view_reports')::boolean = true OR
-          (fa.access_permissions->>'can view reports')::boolean = true OR
           EXISTS (
             SELECT 1 FROM unnest(perms) p
             WHERE (fa.access_permissions ->> p)::boolean = true
             AND (
-              p NOT IN ('can_manage_diary', 'can manage diary') 
+              p <> 'can_manage_diary'
               OR current_user_id() = owner_uuid
             )
           )
@@ -775,10 +763,7 @@ CREATE FUNCTION public.has_medication_access(owner_uuid uuid) RETURNS boolean
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true
-    )
+    AND (fa.access_permissions->>'can_manage_medications')::boolean = true
   );
 $$;
 
@@ -798,9 +783,7 @@ CREATE FUNCTION public.has_medication_read_access(owner_uuid uuid) RETURNS boole
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $$;
@@ -6483,7 +6466,7 @@ CREATE POLICY modify_policy ON public.daily_sleep_need USING (((public.authentic
 -- Name: day_classification_cache modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.day_classification_cache USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.day_classification_cache USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -6560,9 +6543,9 @@ CREATE POLICY modify_policy ON public.food_entry_meals USING (public.has_diary_a
 
 CREATE POLICY modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE ((f.id = food_variants.food_id) AND (public.authenticated_user_id() = f.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE ((f.id = food_variants.food_id) AND public.has_diary_access(f.user_id)))));
+  WHERE ((f.id = food_variants.food_id) AND (public.authenticated_user_id() = f.user_id)))));
 
 
 --
@@ -7004,7 +6987,7 @@ CREATE POLICY select_policy ON public.daily_sleep_need FOR SELECT USING (public.
 -- Name: day_classification_cache select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.day_classification_cache FOR SELECT USING (public.has_diary_read_access(user_id));
+CREATE POLICY select_policy ON public.day_classification_cache FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -8894,5 +8877,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict jcDyU3cJnnevgJtui53QlCurhhqCMmZxpR6ev4ngm1BFDumCImjW1igJMfyfI2e
+\unrestrict KcGTcGDHZyWodjgtFoGkUDzES5prIhR7m3fDrwHwlGgmFUefVOCgjACXC2y7yoi
 

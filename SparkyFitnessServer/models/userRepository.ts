@@ -101,13 +101,9 @@ async function getAccessibleUsers(userId: string) {
          AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())
          AND (
            (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
-           (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
            (fa.access_permissions->>'can_manage_checkin')::boolean = TRUE OR
-           (fa.access_permissions->>'can manage checkin')::boolean = TRUE OR
            (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
-           (fa.access_permissions->>'can view reports')::boolean = TRUE OR
-           (fa.access_permissions->>'can_manage_medications')::boolean = TRUE OR
-           (fa.access_permissions->>'can manage medications')::boolean = TRUE
+           (fa.access_permissions->>'can_manage_medications')::boolean = TRUE
          )`,
       [userId]
     );

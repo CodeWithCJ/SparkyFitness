@@ -185,10 +185,7 @@ AS $function$
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true
-    )
+    AND (fa.access_permissions->>'can_manage_diary')::boolean = true
   );
 $function$;
 
@@ -200,13 +197,9 @@ LANGUAGE sql IMMUTABLE
 AS $function$
   SELECT (
     (perms->>'can_manage_diary')::boolean = true OR
-    (perms->>'can manage diary')::boolean = true OR
     (perms->>'can_manage_checkin')::boolean = true OR
-    (perms->>'can manage checkin')::boolean = true OR
     (perms->>'can_view_reports')::boolean = true OR
-    (perms->>'can view reports')::boolean = true OR
-    (perms->>'can_manage_medications')::boolean = true OR
-    (perms->>'can manage medications')::boolean = true
+    (perms->>'can_manage_medications')::boolean = true
   );
 $function$;
 
@@ -237,9 +230,7 @@ AS $function$
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $function$;
@@ -255,9 +246,7 @@ AS $function$
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-      (fa.access_permissions->>'can manage checkin')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $function$;
@@ -271,10 +260,7 @@ AS $$
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true
-    )
+    AND (fa.access_permissions->>'can_manage_medications')::boolean = true
   );
 $$;
 
@@ -289,9 +275,7 @@ AS $$
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true
+      (fa.access_permissions->>'can_view_reports')::boolean = true
     )
   );
 $$;
@@ -309,12 +293,11 @@ AS $function$
         AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
         AND (
           (fa.access_permissions->>'can_view_reports')::boolean = true OR
-          (fa.access_permissions->>'can view reports')::boolean = true OR
           EXISTS (
             SELECT 1 FROM unnest(perms) p
             WHERE (fa.access_permissions ->> p)::boolean = true
             AND (
-              p NOT IN ('can_manage_diary', 'can manage diary') 
+              p <> 'can_manage_diary'
               OR current_user_id() = owner_uuid
             )
           )
@@ -719,19 +702,22 @@ USING (
       AND has_library_access_with_public(f.user_id, f.shared_with_public, ARRAY['can_view_food_library', 'can_manage_diary'])
   )
 );
+-- Food variants are library data: only the owner of the parent food may write
+-- them. Delegates (even can_manage_diary) get read-only access via select_policy
+-- so they can pick serving sizes while logging, but cannot mutate the library.
 CREATE POLICY modify_policy ON public.food_variants FOR ALL TO PUBLIC
 USING (
   EXISTS (
     SELECT 1 FROM public.foods f
     WHERE f.id = food_variants.food_id
-      AND has_diary_access(f.user_id)
+      AND authenticated_user_id() = f.user_id
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.foods f
     WHERE f.id = food_variants.food_id
-      AND has_diary_access(f.user_id)
+      AND authenticated_user_id() = f.user_id
   )
 );
 
@@ -818,7 +804,10 @@ SELECT create_checkin_policy('fasting_logs');
 SELECT create_diary_policy('user_meal_visibilities');
 SELECT create_checkin_policy('sleep_need_calculations');
 SELECT create_checkin_policy('daily_sleep_need');
-SELECT create_diary_policy('day_classification_cache');
+-- Day classification is a sleep/wellness (check-in) feature, used only by the
+-- sleep-science service. It must use the check-in policy so check-in delegates
+-- can manage it; the previous diary policy was a misclassification.
+SELECT create_checkin_policy('day_classification_cache');
 -- Onboarding data/status: delegates can read (to avoid repeated onboarding prompts when viewing
 -- another user's diary) but only the account owner can submit or reset their own onboarding.
 CREATE POLICY select_policy ON public.onboarding_data FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
