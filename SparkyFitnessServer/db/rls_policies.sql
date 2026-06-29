@@ -591,8 +591,13 @@ WITH CHECK (admin_user_id = current_user_id() AND is_admin());
 -- Diary access tables
 SELECT create_checkin_policy('check_in_measurements');
 SELECT create_checkin_policy('check_in_photos');
-SELECT create_diary_policy('custom_categories');
-SELECT create_diary_policy('custom_measurements');
+-- Custom categories/measurements are surfaced through the check-in feature and
+-- every /measurements route is guarded by checkPermissionMiddleware('checkin'),
+-- so their RLS must use the check-in policy. The previous diary policy required
+-- can_manage_diary to write, which blocked check-in delegates (e.g. the GLP-1
+-- daily check-in) from saving even though the route allowed them.
+SELECT create_checkin_policy('custom_categories');
+SELECT create_checkin_policy('custom_measurements');
 SELECT create_diary_policy('exercise_entries');
 -- Custom policy for exercise_entries to allow access if linked to an owned exercise_preset_entry
 CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entries FOR SELECT TO PUBLIC

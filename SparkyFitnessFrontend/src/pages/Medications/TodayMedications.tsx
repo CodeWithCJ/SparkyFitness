@@ -12,6 +12,7 @@ import {
   Activity,
   Trophy,
   Flame,
+  AlertTriangle,
 } from 'lucide-react';
 import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
   useCreateMedicationEntryMutation,
   useDeleteMedicationEntryMutation,
@@ -63,6 +65,13 @@ export default function TodayMedications({
 }: TodayMedicationsProps) {
   const { t } = useTranslation();
   const { timezone } = usePreferences();
+  const { hasPermission, activeUserName } = useActiveUser();
+
+  // The GLP-1 check-in stores its data as check-in custom measurements, so it
+  // requires check-in access. A delegate with only medications access would
+  // otherwise trigger a 403 loading custom categories.
+  const canViewGlpCheckIn = hasPermission('checkin');
+  const hasGlpMed = meds.some((m) => m.is_glp1);
 
   // Notes state for logging
   const [logNotes, setLogNotes] = useState<Record<string, string>>({});
@@ -580,9 +589,33 @@ export default function TodayMedications({
         </CardContent>
       </Card>
 
-      {meds.some((m) => m.is_glp1) && (
-        <GlpDailyCheckIn selectedDate={selectedDate} />
-      )}
+      {hasGlpMed &&
+        (canViewGlpCheckIn ? (
+          <GlpDailyCheckIn selectedDate={selectedDate} />
+        ) : (
+          <Card className="border-amber-300 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <CardContent className="flex items-start gap-3 py-4">
+              <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              </span>
+              <div className="space-y-0.5 text-sm">
+                <p className="font-medium">
+                  {t(
+                    'medications.checkin.noAccessTitle',
+                    'GLP-1 daily check-in needs check-in access'
+                  )}
+                </p>
+                <p className="text-muted-foreground">
+                  {t('medications.checkin.noAccessBody', {
+                    defaultValue:
+                      'Ask {{name}} to share Check-in access to track hunger, food noise, fullness and energy here.',
+                    name: activeUserName || 'this profile',
+                  })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
 
       <div className="grid gap-6 md:grid-cols-[1fr_350px]">
         {/* Scheduled & PRN Column */}

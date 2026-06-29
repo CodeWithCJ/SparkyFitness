@@ -32,21 +32,15 @@ async function getWorkoutPresets(userId: any, page: any, limit: any) {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWorkoutPresetById(userId: any, presetId: any) {
+  // RLS already gates read access (owner, public, or family-shared via
+  // can_view_exercise_library). If the row comes back, the caller is allowed to
+  // see it; an extra owner/public check here would wrongly 403 shared presets.
   const preset = await workoutPresetRepository.getWorkoutPresetById(
     presetId,
     userId
   );
   if (!preset) {
     throw new Error('Workout preset not found.');
-  }
-  const ownerId = await workoutPresetRepository.getWorkoutPresetOwnerId(
-    userId,
-    presetId
-  );
-  if (ownerId !== userId && !preset.is_public) {
-    throw new Error(
-      'Forbidden: You do not have access to this workout preset.'
-    );
   }
   return preset;
 }

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict zZNICty8ZHnTxpyhVWkEr7DJ9R4JKZAsvAeWGrvUcT8dw5SP3XTUr7f09bspV2N
+\restrict jcDyU3cJnnevgJtui53QlCurhhqCMmZxpR6ev4ngm1BFDumCImjW1igJMfyfI2e
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -6462,14 +6462,14 @@ CREATE POLICY modify_policy ON public.check_in_photos USING (((public.authentica
 -- Name: custom_categories modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.custom_categories USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.custom_categories USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
 -- Name: custom_measurements modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.custom_measurements USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.custom_measurements USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -6983,14 +6983,14 @@ CREATE POLICY select_policy ON public.check_in_photos FOR SELECT USING (public.h
 -- Name: custom_categories select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.custom_categories FOR SELECT USING (public.has_diary_read_access(user_id));
+CREATE POLICY select_policy ON public.custom_categories FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
 -- Name: custom_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (public.has_diary_read_access(user_id));
+CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -8894,5 +8894,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zZNICty8ZHnTxpyhVWkEr7DJ9R4JKZAsvAeWGrvUcT8dw5SP3XTUr7f09bspV2N
+\unrestrict jcDyU3cJnnevgJtui53QlCurhhqCMmZxpR6ev4ngm1BFDumCImjW1igJMfyfI2e
 

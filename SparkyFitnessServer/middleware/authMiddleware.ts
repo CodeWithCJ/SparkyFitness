@@ -106,12 +106,21 @@ const authenticate = async (req: any, res: any, next: any) => {
       // Handle 'sparky_active_user_id' cookie for context switching
       const activeUserId = req.cookies.sparky_active_user_id;
       if (activeUserId && activeUserId !== req.authenticatedUserId) {
-        const [hasReports, hasDiary, hasCheckin] = await Promise.all([
-          canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
-          canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
-          canAccessUserData(activeUserId, 'checkin', req.authenticatedUserId),
-        ]);
-        if (hasReports || hasDiary || hasCheckin) {
+        // Must stay in sync with authService.switchUserContext: any permission
+        // that lets a delegate switch context must also be honored here, or the
+        // cookie is set on switch but silently reverted on every later request.
+        const [hasReports, hasDiary, hasCheckin, hasMedications] =
+          await Promise.all([
+            canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
+            canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
+            canAccessUserData(activeUserId, 'checkin', req.authenticatedUserId),
+            canAccessUserData(
+              activeUserId,
+              'medications',
+              req.authenticatedUserId
+            ),
+          ]);
+        if (hasReports || hasDiary || hasCheckin || hasMedications) {
           req.activeUserId = activeUserId;
           log(
             'info',
