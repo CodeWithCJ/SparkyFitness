@@ -105,13 +105,15 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
-  const [accentColor, textMuted, proteinColor, carbsColor, fatColor] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-muted',
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-  ]) as [string, string, string, string, string];
+  const [accentColor, textMuted, proteinColor, carbsColor, fatColor, borderSubtle] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-text-muted',
+      '--color-macro-protein',
+      '--color-macro-carbs',
+      '--color-macro-fat',
+      '--color-border-subtle',
+    ]) as [string, string, string, string, string, string];
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
@@ -477,7 +479,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-safe-or-8 gap-4"
+        contentContainerClassName="px-4 pt-4 pb-8 gap-4"
         keyboardShouldPersistTaps="handled"
       >
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
@@ -729,24 +731,35 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           ) : null}
         </View>
 
-        {Platform.OS !== 'ios' && (
-        <Button
-          variant="primary"
-          onPress={() => {
-            void handleSaveMeal();
-          }}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-white text-base font-semibold">
-              {isEditMode ? 'Save Changes' : 'Save Meal'}
-            </Text>
-          )}
-        </Button>
-        )}
       </ScrollView>
+
+      {Platform.OS !== 'ios' && (
+        /* Sticky footer */
+        <View
+          className="px-4 py-3"
+          style={{
+            paddingBottom: Math.max(insets.bottom, 12),
+            borderTopWidth: 1,
+            borderTopColor: borderSubtle,
+          }}
+        >
+          <Button
+            variant="primary"
+            onPress={() => {
+              void handleSaveMeal();
+            }}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text className="text-white text-base font-semibold">
+                {isEditMode ? 'Save Changes' : 'Save Meal'}
+              </Text>
+            )}
+          </Button>
+        </View>
+      )}
     </View>
   );
 };

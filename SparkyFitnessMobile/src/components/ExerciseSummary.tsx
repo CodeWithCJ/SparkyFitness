@@ -51,7 +51,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
   }
 
   return (
-    <View className="bg-surface rounded-xl p-4 my-2 shadow-sm overflow-hidden">
+    <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm overflow-hidden">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={accentPrimary} />
         <Text className="text-base font-bold text-text-secondary">Exercise</Text>
