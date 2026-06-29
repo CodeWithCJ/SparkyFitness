@@ -879,7 +879,10 @@ function AppContent() {
               // native stack header on top of it (double header). Android
               // already defaults to headerShown: false.
               headerShown: false,
-              presentation: 'fullScreenModal',
+              // 'modal' (not 'fullScreenModal') so iOS keeps the swipe-down
+              // dismiss gesture — UIModalPresentationFullScreen has no
+              // interactive dismissal.
+              presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
           />

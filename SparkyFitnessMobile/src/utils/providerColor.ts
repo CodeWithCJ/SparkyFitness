@@ -9,7 +9,6 @@ import { ExternalProvider } from '../types/externalProviders';
 // and adapt to light/dark/amoled themes.
 const PROVIDER_PALETTE_VARS = [
   '--color-cat-green',
-  '--color-cat-orange',
   '--color-cat-violet',
   '--color-cat-pink',
   '--color-cat-slate',

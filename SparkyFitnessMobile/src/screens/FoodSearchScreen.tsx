@@ -8,6 +8,7 @@ import {
   SectionList,
   TextInput,
   Keyboard,
+  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -167,7 +168,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }));
     // Offer the aggregated view only when there is more than one provider.
     if (providers.length > 1) {
-      opts.unshift({ label: 'All Providers', value: ALL_PROVIDERS_VALUE });
+      opts.unshift({ label: 'All Sources', value: ALL_PROVIDERS_VALUE });
     }
     return opts;
   }, [providers]);
@@ -355,7 +356,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const landingSections = useMemo<LandingSection[]>(() => {
     return [
-      { title: 'Recently Logged', data: recentFoods },
+      { title: 'Recently Logged', data: recentFoods.slice(0, 6) },
       { title: 'Top Foods', data: topFoods },
     ].filter((section) => section.data.length > 0);
   }, [recentFoods, topFoods]);
@@ -535,7 +536,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     providerId?: string,
   ) => (
     <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
+      className="px-4 py-2 border-b border-border-subtle"
       activeOpacity={0.7}
       disabled={loadingFoodId !== null}
       onPress={() => {
@@ -562,7 +563,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
                       right: 0,
                       bottom: 0,
                       backgroundColor: getProviderColor(providerId),
-                      opacity: 0.13,
+                      opacity: 0.07,
                     }}
                   />
                   <Text
@@ -644,8 +645,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   );
 
   const renderSectionHeaderTitle = (title: string) => (
-    <View className="px-4 py-2 bg-surface">
-      <Text className="text-text-muted text-xs font-semibold uppercase">{title}</Text>
+    <View className="px-4 py-1 bg-surface">
+      <Text className="text-text-muted text-xs font-bold uppercase">{title}</Text>
     </View>
   );
 
@@ -702,17 +703,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (section.kind === 'online' || section.kind === 'online-top') {
       const canSwitch = providerOptions.length > 1;
       const label =
-        section.kind === 'online-top' ? 'Top Matches' : 'External Results';
-      const value = isAllProviders ? 'All Providers' : selectedProviderName;
+        section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
+      const value = isAllProviders ? 'All Sources' : selectedProviderName;
       const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
       const header = (
-        <View className="px-4 py-2 bg-surface flex-row items-center justify-between">
-          <Text className="text-text-muted text-xs font-semibold uppercase">
+        <View className="px-4 py-1 bg-surface flex-row items-center justify-between">
+          <Text className="text-text-muted text-xs font-bold uppercase">
             {label}
           </Text>
           <View className="flex-row items-center gap-1">
             <Text
-              className="text-xs font-medium"
+              className="text-sm font-bold"
               style={{ color: canSwitch ? accentColor : textSecondary }}
             >
               {value}
@@ -720,7 +721,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             {loading ? (
               <ActivityIndicator size="small" color={accentColor} />
             ) : canSwitch ? (
-              <Icon name="chevron-expand" size={16} color={accentColor} />
+              <Icon name="chevron-down" size={16} color={accentColor} />
             ) : null}
           </View>
         </View>
@@ -789,7 +790,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
               className="w-2 h-2 rounded-full"
               style={{ backgroundColor: color }}
             />
-            <Text className="text-text-primary text-sm font-semibold">
+            <Text className="text-text-primary text-base font-semibold">
               {provider.provider_name}
             </Text>
             {expandable ? (
@@ -1047,7 +1048,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {renderHeaderBar()}
       {renderBody()}
       <AnchoredMenu
