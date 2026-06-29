@@ -1,14 +1,13 @@
 import { Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import { supportsNativeIOSTabs } from '../utils/nativeTabs';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 
 export function resolveHeaderActionColors(
   os: string,
-  version: number | string,
+  _version: number | string,
   accentColor: string,
   textColor: string,
-  usesNativeTabs = supportsNativeIOSTabs(os, version),
+  usesNativeTabs = false,
 ) {
   if (os === 'ios') {
     const color = usesNativeTabs ? textColor : accentColor;

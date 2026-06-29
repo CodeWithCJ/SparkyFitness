@@ -14,7 +14,7 @@ import {
 } from '../services/themeService';
 import { setNotificationsEnabled } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { supportsNativeIOSTabs } from '../utils/nativeTabs';
+import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
@@ -45,10 +45,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
   );
-  const supportsLiquidGlassTabBar = supportsNativeIOSTabs(
-    Platform.OS,
-    Platform.Version,
-  );
+  const supportsLiquidGlassTabBar = canUseLiquidGlass();
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>

@@ -1,20 +1,15 @@
 import React from 'react';
 import {
-  Platform,
   StyleSheet,
   View,
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import {
-  GlassView,
-  isGlassEffectAPIAvailable,
-  isLiquidGlassAvailable,
-  type GlassViewProps,
-} from 'expo-glass-effect';
+import { GlassView, type GlassViewProps } from 'expo-glass-effect';
 import { useCSSVariable } from 'uniwind';
 
 import { withAlpha } from '../utils/colors';
+import { canUseLiquidGlass } from '../utils/liquidGlass';
 
 export const LIQUID_GLASS_HORIZONTAL_MARGIN = 20;
 export const LIQUID_GLASS_VERTICAL_GAP = 6;
@@ -37,20 +32,6 @@ export function createLiquidGlassPillStyle(
     overflow: 'hidden',
     ...overrides,
   };
-}
-
-let glassAvailable: boolean | undefined;
-
-function canUseLiquidGlass(): boolean {
-  if (Platform.OS !== 'ios') return false;
-  if (glassAvailable === undefined) {
-    try {
-      glassAvailable = isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
-    } catch {
-      glassAvailable = false;
-    }
-  }
-  return glassAvailable;
 }
 
 type LiquidGlassSurfaceProps = ViewProps & {

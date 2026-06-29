@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useTransitionProgress } from 'react-native-screens';
 
-import { notifyActiveWorkoutBarStackTransition } from './ActiveWorkoutBar';
+import {
+  notifyActiveWorkoutBarStackTransition,
+  notifyActiveWorkoutBarSwipeProgress,
+} from './ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 
 const NON_INTERACTIVE_BACK_ROUTES = new Set(['Tabs', 'Onboarding']);
@@ -28,16 +31,15 @@ function ActiveWorkoutTransitionProgressProbe({
   const closingValueRef = useRef(0);
   const progressValueRef = useRef<number | null>(null);
   const startProgressRef = useRef<number | null>(null);
+  const revealProgressRef = useRef(0);
   const triggeredRef = useRef(false);
 
   useEffect(() => {
     const reset = () => {
-      if (triggeredRef.current) {
-        notifyActiveWorkoutBarStackTransition('end', false, 0);
-      }
       triggeredRef.current = false;
       progressValueRef.current = null;
       startProgressRef.current = null;
+      revealProgressRef.current = 0;
     };
 
     if (!enabled || !usesNativeTabs || closing == null || progress == null) {
@@ -55,14 +57,13 @@ function ActiveWorkoutTransitionProgressProbe({
       if (!triggeredRef.current) {
         triggeredRef.current = true;
         startProgressRef.current = currentProgress;
+        notifyActiveWorkoutBarStackTransition('start', true);
       }
 
       const startProgress = startProgressRef.current ?? currentProgress;
-      notifyActiveWorkoutBarStackTransition(
-        'start',
-        true,
-        getTabRevealProgress(startProgress, currentProgress),
-      );
+      const revealProgress = getTabRevealProgress(startProgress, currentProgress);
+      revealProgressRef.current = revealProgress;
+      notifyActiveWorkoutBarSwipeProgress(revealProgress);
     };
 
     const closingListener = closing.addListener(({ value }) => {

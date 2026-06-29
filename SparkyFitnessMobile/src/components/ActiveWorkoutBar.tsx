@@ -56,36 +56,38 @@ const EMBEDDED_FAB_CLEARANCE = 6;
 type StackTransitionSnapshot = {
   phase: 'idle' | 'start' | 'end';
   closing: boolean;
-  progress: number | null;
   tick: number;
 };
 
 let stackTransitionSnapshot: StackTransitionSnapshot = {
   phase: 'idle',
   closing: false,
-  progress: null,
   tick: 0,
 };
+
 const stackTransitionListeners = new Set<
   (snapshot: StackTransitionSnapshot) => void
 >();
+const swipeProgressListeners = new Set<(progress: number) => void>();
 let measuredTabBarHeight: number | null = null;
 const tabBarHeightListeners = new Set<() => void>();
 
 export function notifyActiveWorkoutBarStackTransition(
   phase: 'start' | 'end',
   closing: boolean,
-  progress: number | null = null,
 ) {
   stackTransitionSnapshot = {
     phase,
     closing,
-    progress,
     tick: stackTransitionSnapshot.tick + 1,
   };
   stackTransitionListeners.forEach(listener =>
     listener(stackTransitionSnapshot),
   );
+}
+
+export function notifyActiveWorkoutBarSwipeProgress(progress: number) {
+  swipeProgressListeners.forEach(listener => listener(progress));
 }
 
 export function setActiveWorkoutBarTabBarHeight(height: number) {
@@ -354,23 +356,14 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   ]);
 
   useEffect(() => {
-    const listener = (snapshot: StackTransitionSnapshot) => {
-      const trackedPosition = positionTrackingRef.current;
-      if (
-        snapshot.progress != null &&
-        trackedPosition.usesNativeTabs &&
-        trackedPosition.tabsUnderTop
-      ) {
-        bottomOffset.value = interpolateBottomOffset(
-          trackedPosition.stackBottomOffset,
-          trackedPosition.tabBarBottomOffset,
-          snapshot.progress,
-        );
-      }
+    if (!usesNativeTabs) {
+      setStackTransition(stackTransitionSnapshot);
+      return;
+    }
 
+    const listener = (snapshot: StackTransitionSnapshot) => {
       setStackTransition(prev => {
         if (
-          snapshot.progress != null &&
           prev.phase === snapshot.phase &&
           prev.closing === snapshot.closing
         ) {
@@ -384,7 +377,28 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     return () => {
       stackTransitionListeners.delete(listener);
     };
-  }, [bottomOffset]);
+  }, [usesNativeTabs]);
+
+  useEffect(() => {
+    if (!usesNativeTabs) return;
+
+    const listener = (progress: number) => {
+      const trackedPosition = positionTrackingRef.current;
+      if (!trackedPosition.usesNativeTabs || !trackedPosition.tabsUnderTop) {
+        return;
+      }
+      bottomOffset.value = interpolateBottomOffset(
+        trackedPosition.stackBottomOffset,
+        trackedPosition.tabBarBottomOffset,
+        progress,
+      );
+    };
+
+    swipeProgressListeners.add(listener);
+    return () => {
+      swipeProgressListeners.delete(listener);
+    };
+  }, [bottomOffset, usesNativeTabs]);
 
   // Only kept as JS strings because `Icon` takes a `color` prop (not className),
   // and the outer floating wrapper needs a matching solid background underneath
@@ -447,32 +461,26 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   }, [activeSession, activeSetId, weightUnit]);
 
   useEffect(() => {
+    const targetBottomOffset = shouldSitAboveTabs
+      ? tabBarBottomOffset
+      : stackBottomOffset;
+
+    if (usesNativeTabs) {
+      const isNativeClosingToTabs =
+        navInfo.tabsUnderTop && stackTransition.closing;
+
+      if (!isNativeClosingToTabs) {
+        bottomOffset.value = targetBottomOffset;
+      }
+      return;
+    }
+
     const config = {
       duration: SLIDE_ANIMATION_DURATION_MS,
       easing: Easing.out(Easing.cubic),
     };
-    const isNativeClosingToTabs =
-      usesNativeTabs && navInfo.tabsUnderTop && stackTransition.closing;
 
-    if (isNativeClosingToTabs) {
-      const progress =
-        stackTransition.progress != null
-          ? stackTransition.progress
-          : stackTransition.phase === 'end'
-            ? 1
-            : 0;
-      bottomOffset.value = interpolateBottomOffset(
-        stackBottomOffset,
-        tabBarBottomOffset,
-        progress,
-      );
-      return;
-    }
-
-    bottomOffset.value = withTiming(
-      shouldSitAboveTabs ? tabBarBottomOffset : stackBottomOffset,
-      config,
-    );
+    bottomOffset.value = withTiming(targetBottomOffset, config);
   }, [
     bottomOffset,
     navInfo.tabsUnderTop,
@@ -480,7 +488,6 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     stackBottomOffset,
     stackTransition.closing,
     stackTransition.phase,
-    stackTransition.progress,
     stackTransition.tick,
     tabBarBottomOffset,
     usesNativeTabs,

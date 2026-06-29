@@ -5,25 +5,25 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
-import { shouldUseNativeIOSTabs } from '../../src/utils/nativeTabs';
+import { canUseLiquidGlass } from '../../src/utils/liquidGlass';
 
-jest.mock('../../src/utils/nativeTabs', () => ({
-  shouldUseNativeIOSTabs: jest.fn(),
+jest.mock('../../src/utils/liquidGlass', () => ({
+  canUseLiquidGlass: jest.fn(),
 }));
 
-const mockShouldUseNativeIOSTabs = shouldUseNativeIOSTabs as jest.MockedFunction<
-  typeof shouldUseNativeIOSTabs
+const mockCanUseLiquidGlass = canUseLiquidGlass as jest.MockedFunction<
+  typeof canUseLiquidGlass
 >;
 
 describe('useNativeIOSTabsActive', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
     __resetAppPreferencesStoreForTests();
-    mockShouldUseNativeIOSTabs.mockReset();
+    mockCanUseLiquidGlass.mockReset();
   });
 
-  it('is false when the device does not support native iOS tabs, even if enabled', () => {
-    mockShouldUseNativeIOSTabs.mockReturnValue(false);
+  it('is false when liquid glass is unavailable, even if enabled', () => {
+    mockCanUseLiquidGlass.mockReturnValue(false);
     useAppPreferencesStore.getState().setLiquidGlassTabBarEnabled(true);
 
     const { result } = renderHook(() => useNativeIOSTabsActive());
@@ -31,16 +31,16 @@ describe('useNativeIOSTabsActive', () => {
     expect(result.current).toBe(false);
   });
 
-  it('is false when supported but the toggle is disabled', () => {
-    mockShouldUseNativeIOSTabs.mockReturnValue(true);
+  it('is false when liquid glass is available but the toggle is disabled', () => {
+    mockCanUseLiquidGlass.mockReturnValue(true);
 
     const { result } = renderHook(() => useNativeIOSTabsActive());
 
     expect(result.current).toBe(false);
   });
 
-  it('is true only when supported and the toggle is enabled', () => {
-    mockShouldUseNativeIOSTabs.mockReturnValue(true);
+  it('is true only when liquid glass is available and the toggle is enabled', () => {
+    mockCanUseLiquidGlass.mockReturnValue(true);
     useAppPreferencesStore.getState().setLiquidGlassTabBarEnabled(true);
 
     const { result } = renderHook(() => useNativeIOSTabsActive());

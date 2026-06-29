@@ -100,9 +100,14 @@ import { toastConfig } from './src/components/ui/toastConfig';
 import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import { useHeaderActionColors } from './src/hooks/useHeaderActionColors';
-import ActiveWorkoutBar, { navigationRef as rootNavigationRef, notifyActiveWorkoutBarStackTransition } from './src/components/ActiveWorkoutBar';
+import ActiveWorkoutBar, {
+  navigationRef as rootNavigationRef,
+  notifyActiveWorkoutBarStackTransition,
+  notifyActiveWorkoutBarSwipeProgress,
+} from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
+import { useNativeIOSTabsActive } from './src/services/nativeTabBarPreference';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -241,6 +246,7 @@ function AppContent() {
   const wasInBackgroundRef = useRef(false);
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
+  const usesLiquidGlassNavigation = useNativeIOSTabsActive();
   const rememberActiveTab = useCallback((routeName: string) => {
     if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
       lastActiveTabRef.current = routeName as NonAddTabName;
@@ -769,22 +775,29 @@ function AppContent() {
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator
-          screenLayout={({ children, route }) => (
-            <ActiveWorkoutTransitionScreenLayout routeName={route.name}>
-              {children}
-            </ActiveWorkoutTransitionScreenLayout>
-          )}
-          screenListeners={{
-            transitionStart: (event) => {
-              notifyActiveWorkoutBarStackTransition('start', Boolean(event.data?.closing));
-            },
-            transitionEnd: (event) => {
-              notifyActiveWorkoutBarStackTransition('end', Boolean(event.data?.closing));
-            },
-            gestureCancel: () => {
-              notifyActiveWorkoutBarStackTransition('end', false);
-            },
-          }}
+          screenLayout={usesLiquidGlassNavigation
+            ? ({ children, route }) => (
+              <ActiveWorkoutTransitionScreenLayout routeName={route.name}>
+                {children}
+              </ActiveWorkoutTransitionScreenLayout>
+            )
+            : undefined}
+          screenListeners={usesLiquidGlassNavigation
+            ? {
+              transitionStart: (event) => {
+                notifyActiveWorkoutBarStackTransition('start', Boolean(event.data?.closing));
+              },
+              transitionEnd: (event) => {
+                const closing = Boolean(event.data?.closing);
+                if (!closing) notifyActiveWorkoutBarSwipeProgress(0);
+                notifyActiveWorkoutBarStackTransition('end', closing);
+              },
+              gestureCancel: () => {
+                notifyActiveWorkoutBarSwipeProgress(0);
+                notifyActiveWorkoutBarStackTransition('end', false);
+              },
+            }
+            : undefined}
           screenOptions={{
             headerShown: false,
             animation: 'default',
