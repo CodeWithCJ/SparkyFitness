@@ -42,6 +42,7 @@
     "expo-device": "~55.0.17",
     "expo-file-system": "~55.0.22",
     "expo-font": "~55.0.8",
+    "expo-glass-effect": "~55.0.11",
     "expo-haptics": "~55.0.14",
     "expo-health-connect": "^0.1.1",
     "expo-image-picker": "~55.0.20",

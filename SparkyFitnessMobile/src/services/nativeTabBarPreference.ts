@@ -1,5 +1,5 @@
-import { shouldUseNativeIOSTabs } from '../utils/nativeTabs';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { canUseLiquidGlass } from '../utils/liquidGlass';
 
 /**
  * Reactive "effective" flag for the native iOS tab bar: true only when the
@@ -9,5 +9,5 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
  */
 export function useNativeIOSTabsActive(): boolean {
   const enabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
-  return shouldUseNativeIOSTabs() && enabled;
+  return canUseLiquidGlass() && enabled;
 }
