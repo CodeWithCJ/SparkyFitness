@@ -179,14 +179,18 @@ function MessageBubble({ role }: { role: MessageRole }) {
           <ErrorPrimitive.Message style={{ flex: 1, color: dangerText, fontSize: 13 }} />
         </ErrorPrimitive.Root>
 
-        <MessagePrimitive.If last running={false}>
+        {/* Actions appear under every settled (non-running) assistant message:
+            Copy on all of them, Retry only on the latest reply. */}
+        <MessagePrimitive.If running={false}>
           <View className="flex-row gap-4 mt-1.5 ml-1">
-            <ActionBarPrimitive.Reload>
-              <View className="flex-row items-center gap-1">
-                <Icon name="sync" size={15} color={muted} />
-                <Text className="text-text-secondary text-xs">Retry</Text>
-              </View>
-            </ActionBarPrimitive.Reload>
+            <MessagePrimitive.If last>
+              <ActionBarPrimitive.Reload>
+                <View className="flex-row items-center gap-1">
+                  <Icon name="sync" size={15} color={muted} />
+                  <Text className="text-text-secondary text-xs">Retry</Text>
+                </View>
+              </ActionBarPrimitive.Reload>
+            </MessagePrimitive.If>
             <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
@@ -197,6 +201,21 @@ function MessageBubble({ role }: { role: MessageRole }) {
             </ActionBarPrimitive.Copy>
           </View>
         </MessagePrimitive.If>
+      </MessagePrimitive.If>
+
+      {/* User messages aren't selectable either, so give them their own Copy
+          button — right-aligned to sit under the right-aligned user bubble. */}
+      <MessagePrimitive.If user>
+        <View className="flex-row justify-end mt-1.5 mr-1">
+          <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
+            {({ isCopied }) => (
+              <View className="flex-row items-center gap-1">
+                <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
+                <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+              </View>
+            )}
+          </ActionBarPrimitive.Copy>
+        </View>
       </MessagePrimitive.If>
     </MessagePrimitive.Root>
   );
