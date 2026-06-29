@@ -295,6 +295,11 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;
   },
+  HeartRateVariabilitySDNN: (rec) => {
+    const value = extractDirectValue(rec, 'value');
+    const date = getDateString(rec.time);
+    return value !== null && date ? { value, date } : null;
+  },
 
   HeartRate: (rec) => {
     const samples = rec.samples as { beatsPerMinute: number }[] | undefined;

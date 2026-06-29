@@ -263,6 +263,13 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
     return avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : NO_DATA_DISPLAY;
   },
 
+  HeartRateVariabilitySDNN: (records) => {
+    const latest = (records as { time?: string; value?: number }[])
+      .filter(r => r.value != null && !isNaN(r.value))
+      .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())[0];
+    return latest?.value ? `${Math.round(latest.value)} ms` : NO_DATA_DISPLAY;
+  },
+
   Vo2Max: (records) => {
     const valid = records
       .map(r => ({

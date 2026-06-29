@@ -24,6 +24,7 @@ jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
+    { recordType: 'HeartRateVariabilitySDNN', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV', aggregationStrategy: 'last' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
@@ -124,6 +125,31 @@ describe('syncHealthData (iOS)', () => {
     expect(minRecord.value).toBe(64);
     expect(maxRecord.value).toBe(80);
     expect(avgRecord.value).toBe(72);
+  });
+
+  test('aggregates HeartRateVariabilitySDNN into one daily HRV record (last strategy)', async () => {
+    const today = new Date().toISOString();
+    // queryQuantitySamples returns newest-first (ascending: false); the newest reading
+    // of the day wins under aggregationStrategy: 'last'.
+    mockQueryQuantitySamples.mockResolvedValue([
+      { startDate: today, endDate: today, quantity: 48 },
+      { startDate: today, endDate: today, quantity: 30 },
+      { startDate: today, endDate: today, quantity: 52 },
+    ]);
+    api.syncHealthData.mockResolvedValue({ success: true });
+
+    const result = await syncHealthData('today' as SyncDuration, {
+      isHeartRateVariabilitySyncEnabled: true,
+    });
+
+    expect(result.success).toBe(true);
+
+    const sentData = api.syncHealthData.mock.calls[0][0];
+    const hrvRecords = sentData.filter((r: { type: string }) => r.type === 'HRV');
+
+    expect(hrvRecords).toHaveLength(1);
+    expect(hrvRecords[0].value).toBe(48); // newest reading of the day
+    expect(hrvRecords[0].unit).toBe('ms');
   });
 
   test('aggregates RunningSpeed into min/max/avg records', async () => {

@@ -192,6 +192,29 @@ describe('transformHealthRecords', () => {
     });
   });
 
+  describe('HeartRateVariabilitySDNN records', () => {
+    test('extracts SDNN value from record.value with record.time date', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', value: 42 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV' });
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(42);
+      expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-15');
+      expect((result[0] as TransformOutput & { type: string }).type).toBe('HRV');
+    });
+
+    test('skips record when value is missing', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV' });
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
   describe('percentage conversions (decimal to percentage)', () => {
     test('BloodAlcoholContent multiplies decimal by 100', () => {
       const records = [

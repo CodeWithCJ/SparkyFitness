@@ -228,6 +228,7 @@ describe('Aggregated health metric default units', () => {
     ['blood_glucose_avg', 'mmol/L'],
     ['blood_oxygen_saturation_min', 'percent'],
     ['respiratory_rate_max', 'breaths/min'],
+    ['HRV', 'ms'],
     // Chunk 2: Running metrics
     ['running_speed_avg', 'm/s'],
     ['running_power_avg', 'W'],

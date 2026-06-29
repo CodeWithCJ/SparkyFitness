@@ -52,6 +52,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   BodyTemperature: 'celsius',
   resting_heart_rate: 'bpm',
   RestingHeartRate: 'bpm',
+  HRV: 'ms',
   respiratory_rate: 'breaths/min',
   RespiratoryRate: 'breaths/min',
   oxygen_saturation: '%',
