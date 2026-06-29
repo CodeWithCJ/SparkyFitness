@@ -124,9 +124,8 @@ useEffect(() => {
       handleSelectExercise(exercise);
     } catch {
       // Silently fail — user can retry
-    } finally {
-      setImportingExerciseId(null);
     }
+    setImportingExerciseId(null);
   }, [queryClient, handleSelectExercise]);
 
   // --- Shared renderers ---

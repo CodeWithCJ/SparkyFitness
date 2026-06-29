@@ -434,9 +434,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       Alert.alert('Error', `Failed to generate health data report: ${errorMessage}`);
-    } finally {
-      setIsSharingReport(false);
     }
+    setIsSharingReport(false);
   };
 
   const handleSync = (): void => {
