@@ -343,36 +343,43 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   const location = useLocation();
 
-  useEffect(() => {
-    if (isActingOnBehalf && availableTabs.length > 0) {
-      const currentPath = location.pathname;
-      // Match exactly or as prefix (e.g. /medications/log should match /medications)
-      const isAllowed = availableTabs.some((tab) => {
-        if (tab.value === '/') {
-          return (
-            currentPath === '/' ||
-            currentPath === '/workout-playback' ||
-            currentPath.startsWith('/workout-playback/')
-          );
-        }
+  // Whether the current route is reachable for the active profile. When acting
+  // on behalf, a delegate only has a subset of tabs; landing on a disallowed
+  // route (e.g. staying on Diary after switching to a checkin-only profile)
+  // would otherwise mount that page and fire requests that 403.
+  const isCurrentPathAllowed = useMemo(() => {
+    if (!isActingOnBehalf || availableTabs.length === 0) {
+      return true;
+    }
+    const currentPath = location.pathname;
+    // Match exactly or as prefix (e.g. /medications/log should match /medications)
+    return availableTabs.some((tab) => {
+      if (tab.value === '/') {
         return (
-          currentPath === tab.value || currentPath.startsWith(tab.value + '/')
+          currentPath === '/' ||
+          currentPath === '/workout-playback' ||
+          currentPath.startsWith('/workout-playback/')
         );
-      });
+      }
+      return (
+        currentPath === tab.value || currentPath.startsWith(tab.value + '/')
+      );
+    });
+  }, [isActingOnBehalf, availableTabs, location.pathname]);
 
-      if (!isAllowed) {
-        const fallbackTab = availableTabs[0]?.value;
-        if (fallbackTab) {
-          debug(
-            loggingLevel,
-            `MainLayout: Redirecting from unauthorized path ${currentPath} to ${fallbackTab}`
-          );
-          navigate(fallbackTab, { replace: true });
-        }
+  useEffect(() => {
+    if (!isCurrentPathAllowed) {
+      const fallbackTab = availableTabs[0]?.value;
+      if (fallbackTab) {
+        debug(
+          loggingLevel,
+          `MainLayout: Redirecting from unauthorized path ${location.pathname} to ${fallbackTab}`
+        );
+        navigate(fallbackTab, { replace: true });
       }
     }
   }, [
-    isActingOnBehalf,
+    isCurrentPathAllowed,
     availableTabs,
     location.pathname,
     navigate,
@@ -508,7 +515,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         </nav>
 
         <div className="pb-16 sm:pb-0">
-          <Outlet />
+          {/* Don't mount a disallowed page while the redirect effect runs, or it
+              fires requests the active profile isn't permitted to make. */}
+          {isCurrentPathAllowed ? <Outlet /> : null}
         </div>
 
         <SparkyChat />
