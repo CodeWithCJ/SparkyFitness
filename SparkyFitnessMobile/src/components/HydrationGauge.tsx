@@ -118,7 +118,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const showChips = (containers?.length ?? 0) > 1;
 
   return (
-    <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">

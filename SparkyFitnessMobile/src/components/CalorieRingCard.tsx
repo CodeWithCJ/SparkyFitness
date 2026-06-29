@@ -43,7 +43,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
     : `+${Math.abs(displayRemaining).toLocaleString()}`;
 
   return (
-    <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-center">
         <SideStat label="Consumed" value={caloriesConsumed} />
 

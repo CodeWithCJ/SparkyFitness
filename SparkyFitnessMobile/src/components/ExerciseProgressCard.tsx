@@ -124,7 +124,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
   const hasEntries = exerciseMinutes > 0 || exerciseCalories > 0;
 
   return (
-    <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
       {hasEntries ? (
         <>
