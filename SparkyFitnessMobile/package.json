@@ -31,7 +31,7 @@
     "@shopify/react-native-skia": "2.4.18",
     "@tanstack/react-query": "^5.90.20",
     "@workspace/shared": "workspace:*",
-    "expo": "~55.0.26",
+    "expo": "~55.0.27",
     "expo-application": "~55.0.15",
     "expo-asset": "~55.0.17",
     "expo-background-task": "~55.0.18",
