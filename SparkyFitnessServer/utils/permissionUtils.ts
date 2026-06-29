@@ -99,16 +99,23 @@ async function canAccessUserData(
               (fa.access_permissions->>'can manage checkin')::boolean = TRUE
             ))
             OR
-            -- Inheritance: reports permission grants read access to all diary, wellness, and medication data
-            ($3 IN ('diary', 'checkin', 'mood', 'goals', 'exercise', 'fasting', 'sleep', 'water', 'medications', 'symptoms') AND (
+            -- Handle mapping for 'diary_read' permission (read-only diary data)
+            ($3 = 'diary_read' AND (
+              (fa.access_permissions->>'can_manage_diary')::boolean = TRUE OR
+              (fa.access_permissions->>'can manage diary')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can view reports')::boolean = TRUE OR
+              (fa.access_permissions->>'can_view_food_library')::boolean = TRUE OR
+              (fa.access_permissions->>'can view food library')::boolean = TRUE OR
+              (fa.access_permissions->>'calorie')::boolean = TRUE
+            ))
+            OR
+            -- Inheritance: reports permission grants read access to read-only permission types only.
+            -- Write-level permission types (diary, checkin, medications) are NOT inherited from reports.
+            ($3 IN ('mood', 'goals', 'exercise', 'fasting', 'sleep', 'water', 'symptoms') AND (
                ((fa.access_permissions->>'reports')::boolean = TRUE OR (fa.access_permissions->>'can_view_reports')::boolean = TRUE OR (fa.access_permissions->>'can view reports')::boolean = TRUE)
                OR 
                ((fa.access_permissions->>'calorie')::boolean = TRUE)
-             ))
-            OR
-            -- Inheritance: food_list permission grants read access to calorie data (foods table)
-            ($3 = 'diary' AND (
-               ((fa.access_permissions->>'food_list')::boolean = TRUE OR (fa.access_permissions->>'can_view_food_library')::boolean = TRUE OR (fa.access_permissions->>'can view food library')::boolean = TRUE)
              ))
           )
       `,

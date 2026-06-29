@@ -129,16 +129,7 @@ $function$;
       WHERE fa.family_user_id = p_user_id
         AND fa.is_active = true
         AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-        AND (
-          (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-          (fa.access_permissions->>'can manage diary')::boolean = true OR
-          (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-          (fa.access_permissions->>'can manage checkin')::boolean = true OR
-          (fa.access_permissions->>'can_view_reports')::boolean = true OR
-          (fa.access_permissions->>'can view reports')::boolean = true OR
-          (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-          (fa.access_permissions->>'can manage medications')::boolean = true
-        );
+        AND has_any_meaningful_permission(fa.access_permissions);
     END;
     $func$ LANGUAGE plpgsql STABLE;
 
@@ -188,7 +179,35 @@ $function$;
 CREATE OR REPLACE FUNCTION has_diary_access(owner_uuid uuid) RETURNS bool
 LANGUAGE sql STABLE
 AS $function$
-  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+      (fa.access_permissions->>'can manage diary')::boolean = true
+    )
+  );
+$function$;
+
+-- Centralized helper: returns true if the given permissions JSONB contains
+-- at least one meaningful delegation permission. Used by has_profile_read_access
+-- and get_accessible_users to avoid duplicating the permission key list.
+CREATE OR REPLACE FUNCTION has_any_meaningful_permission(perms jsonb) RETURNS bool
+LANGUAGE sql IMMUTABLE
+AS $function$
+  SELECT (
+    (perms->>'can_manage_diary')::boolean = true OR
+    (perms->>'can manage diary')::boolean = true OR
+    (perms->>'can_manage_checkin')::boolean = true OR
+    (perms->>'can manage checkin')::boolean = true OR
+    (perms->>'can_view_reports')::boolean = true OR
+    (perms->>'can view reports')::boolean = true OR
+    (perms->>'can_manage_medications')::boolean = true OR
+    (perms->>'can manage medications')::boolean = true
+  );
 $function$;
 
 CREATE OR REPLACE FUNCTION has_profile_read_access(owner_uuid uuid) RETURNS bool
@@ -203,16 +222,7 @@ AS $function$
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true OR
-      (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-      (fa.access_permissions->>'can manage checkin')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true OR
-      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true
-    )
+    AND has_any_meaningful_permission(fa.access_permissions)
   );
 $function$;
 
@@ -255,7 +265,17 @@ $function$;
 CREATE OR REPLACE FUNCTION public.has_medication_access(owner_uuid uuid) RETURNS boolean
 LANGUAGE sql STABLE
 AS $$
-  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_medications');
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can manage medications')::boolean = true
+    )
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION public.has_medication_read_access(owner_uuid uuid) RETURNS boolean
@@ -269,8 +289,9 @@ AS $$
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can manage medications')::boolean = true OR
       (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'reports')::boolean = true
+      (fa.access_permissions->>'can view reports')::boolean = true
     )
   );
 $$;
@@ -462,8 +483,8 @@ BEGIN
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_library_access_with_public(user_id, %s, ARRAY[%s]));
     CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
-    USING (current_user_id() = user_id)
-    WITH CHECK (current_user_id() = user_id);
+    USING (authenticated_user_id() = user_id)
+    WITH CHECK (authenticated_user_id() = user_id);
   ', table_name, shared_expression, quoted_permissions, table_name);
 END;
 $_$;
@@ -495,32 +516,32 @@ DROP POLICY IF EXISTS ai_service_settings_select_policy ON public.ai_service_set
 DROP POLICY IF EXISTS ai_service_settings_insert_policy ON public.ai_service_settings;
 DROP POLICY IF EXISTS ai_service_settings_update_policy ON public.ai_service_settings;
 DROP POLICY IF EXISTS ai_service_settings_delete_policy ON public.ai_service_settings;
--- SELECT policy: All authenticated users can read public settings, users can read their own or shared ones
+-- SELECT policy: All authenticated users can read public settings, users can read their own
 CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT TO PUBLIC
 USING (
   (is_public = TRUE AND authenticated_user_id() IS NOT NULL) OR 
-  (is_public = FALSE AND user_id = current_user_id())
+  (is_public = FALSE AND user_id = authenticated_user_id())
 );
 -- INSERT policy: Users can create their own settings, admins can create public settings
 CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT TO PUBLIC
 WITH CHECK (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 -- UPDATE policy: Users can update their own settings, admins can update public settings
 CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE TO PUBLIC
 USING (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 )
 WITH CHECK (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 -- DELETE policy: Users can delete their own settings, admins can delete public settings
 CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE TO PUBLIC
 USING (
-  (is_public = FALSE AND user_id = current_user_id()) OR
+  (is_public = FALSE AND user_id = authenticated_user_id()) OR
   (is_public = TRUE AND is_admin())
 );
 
@@ -537,8 +558,8 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
-USING (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'))
-WITH CHECK (authenticated_user_id() = user_id OR has_family_access(user_id, 'can_manage_diary'));
+USING (authenticated_user_id() = user_id)
+WITH CHECK (authenticated_user_id() = user_id);
 
 SELECT create_diary_policy('user_goals');
 SELECT create_diary_policy('weekly_goal_plans');
@@ -596,20 +617,11 @@ SELECT create_library_policy('foods', 'shared_with_public', ARRAY['can_view_food
 SELECT create_library_policy('meals', 'is_public', ARRAY['can_view_food_library', 'can_manage_diary']);
 SELECT create_library_policy('meal_plan_templates', 'false', ARRAY['can_view_food_library']);
 SELECT create_library_policy('workout_plan_templates', 'false', ARRAY['can_view_exercise_library']);
-SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exercise_library']);
+SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exercise_library','can_manage_diary']);
 
 -- Medication & GLP-1 tracker (see migration 20260624000000_add_medication_glp1_schema.sql).
--- `medications` is PRIVATE: sharing disabled ('false'); owner-only writes; caregivers act via
--- onBehalfOfMiddleware. Entry/child tables use the diary policy (owner + family diary access).
-SELECT create_library_policy('medications', 'false', ARRAY['can_manage_diary']);
-SELECT create_diary_policy('medication_schedules');
-SELECT create_diary_policy('medication_entries');
-SELECT create_diary_policy('medication_pens');
-SELECT create_diary_policy('injection_entries');
-SELECT create_diary_policy('medication_titration_steps');
-SELECT create_diary_policy('user_custom_symptoms');
-SELECT create_diary_policy('symptom_entries');
-SELECT create_diary_policy('user_custom_symptom_locations');
+-- These tables are managed by create_medication_policy at the bottom of this file (Tier 3).
+-- Do NOT apply create_library_policy or create_diary_policy to medication tables.
 SELECT create_owner_policy('user_medication_display_preferences');
 
 

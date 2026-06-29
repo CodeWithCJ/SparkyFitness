@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GbvayNVQfAvlOPpYkkqEcURAHfxYU13vbKT3UyF99HIOhLaXM9upV48Cep0hvmD
+\restrict zZNICty8ZHnTxpyhVWkEr7DJ9R4JKZAsvAeWGrvUcT8dw5SP3XTUr7f09bspV2N
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -292,8 +292,8 @@ BEGIN
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_library_access_with_public(user_id, %s, ARRAY[%s]));
     CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
-    USING (current_user_id() = user_id)
-    WITH CHECK (current_user_id() = user_id);
+    USING (authenticated_user_id() = user_id)
+    WITH CHECK (authenticated_user_id() = user_id);
   ', table_name, shared_expression, quoted_permissions, table_name);
 END;
 $$;
@@ -535,16 +535,7 @@ CREATE FUNCTION public.get_accessible_users(p_user_id uuid) RETURNS TABLE(user_i
       WHERE fa.family_user_id = p_user_id
         AND fa.is_active = true
         AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-        AND (
-          (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-          (fa.access_permissions->>'can manage diary')::boolean = true OR
-          (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-          (fa.access_permissions->>'can manage checkin')::boolean = true OR
-          (fa.access_permissions->>'can_view_reports')::boolean = true OR
-          (fa.access_permissions->>'can view reports')::boolean = true OR
-          (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-          (fa.access_permissions->>'can manage medications')::boolean = true
-        );
+        AND has_any_meaningful_permission(fa.access_permissions);
     END;
     $$;
 
@@ -615,6 +606,26 @@ $$;
 
 
 --
+-- Name: has_any_meaningful_permission(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.has_any_meaningful_permission(perms jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT (
+    (perms->>'can_manage_diary')::boolean = true OR
+    (perms->>'can manage diary')::boolean = true OR
+    (perms->>'can_manage_checkin')::boolean = true OR
+    (perms->>'can manage checkin')::boolean = true OR
+    (perms->>'can_view_reports')::boolean = true OR
+    (perms->>'can view reports')::boolean = true OR
+    (perms->>'can_manage_medications')::boolean = true OR
+    (perms->>'can manage medications')::boolean = true
+  );
+$$;
+
+
+--
 -- Name: has_checkin_read_access(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -644,7 +655,17 @@ $$;
 CREATE FUNCTION public.has_diary_access(owner_uuid uuid) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
-  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_diary');
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
+      (fa.access_permissions->>'can manage diary')::boolean = true
+    )
+  );
 $$;
 
 
@@ -748,7 +769,17 @@ $$;
 CREATE FUNCTION public.has_medication_access(owner_uuid uuid) RETURNS boolean
     LANGUAGE sql STABLE
     AS $$
-  SELECT authenticated_user_id() = owner_uuid OR has_family_access(owner_uuid, 'can_manage_medications');
+  SELECT authenticated_user_id() = owner_uuid OR EXISTS (
+    SELECT 1 FROM public.family_access fa
+    WHERE fa.owner_user_id = owner_uuid
+    AND fa.family_user_id = authenticated_user_id()
+    AND fa.is_active = true
+    AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
+    AND (
+      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can manage medications')::boolean = true
+    )
+  );
 $$;
 
 
@@ -767,8 +798,9 @@ CREATE FUNCTION public.has_medication_read_access(owner_uuid uuid) RETURNS boole
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
     AND (
       (fa.access_permissions->>'can_manage_medications')::boolean = true OR
+      (fa.access_permissions->>'can manage medications')::boolean = true OR
       (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'reports')::boolean = true
+      (fa.access_permissions->>'can view reports')::boolean = true
     )
   );
 $$;
@@ -790,16 +822,7 @@ CREATE FUNCTION public.has_profile_read_access(owner_uuid uuid) RETURNS boolean
     AND fa.family_user_id = authenticated_user_id()
     AND fa.is_active = true
     AND (fa.access_end_date IS NULL OR fa.access_end_date > now())
-    AND (
-      (fa.access_permissions->>'can_manage_diary')::boolean = true OR
-      (fa.access_permissions->>'can manage diary')::boolean = true OR
-      (fa.access_permissions->>'can_manage_checkin')::boolean = true OR
-      (fa.access_permissions->>'can manage checkin')::boolean = true OR
-      (fa.access_permissions->>'can_view_reports')::boolean = true OR
-      (fa.access_permissions->>'can view reports')::boolean = true OR
-      (fa.access_permissions->>'can_manage_medications')::boolean = true OR
-      (fa.access_permissions->>'can manage medications')::boolean = true
-    )
+    AND has_any_meaningful_permission(fa.access_permissions)
   );
 $$;
 
@@ -6166,28 +6189,28 @@ ALTER TABLE public.ai_service_settings ENABLE ROW LEVEL SECURITY;
 -- Name: ai_service_settings ai_service_settings_delete_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE USING ((((is_public = false) AND (user_id = public.authenticated_user_id())) OR ((is_public = true) AND public.is_admin())));
 
 
 --
 -- Name: ai_service_settings ai_service_settings_insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT WITH CHECK ((((is_public = false) AND (user_id = public.authenticated_user_id())) OR ((is_public = true) AND public.is_admin())));
 
 
 --
 -- Name: ai_service_settings ai_service_settings_select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT USING ((((is_public = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (user_id = public.current_user_id()))));
+CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT USING ((((is_public = true) AND (public.authenticated_user_id() IS NOT NULL)) OR ((is_public = false) AND (user_id = public.authenticated_user_id()))));
 
 
 --
 -- Name: ai_service_settings ai_service_settings_update_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin()))) WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE USING ((((is_public = false) AND (user_id = public.authenticated_user_id())) OR ((is_public = true) AND public.is_admin()))) WITH CHECK ((((is_public = false) AND (user_id = public.authenticated_user_id())) OR ((is_public = true) AND public.is_admin())));
 
 
 --
@@ -6507,7 +6530,7 @@ CREATE POLICY modify_policy ON public.exercise_preset_entries USING (public.has_
 -- Name: exercises modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.exercises USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.exercises USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6546,7 +6569,7 @@ CREATE POLICY modify_policy ON public.food_variants USING ((EXISTS ( SELECT 1
 -- Name: foods modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.foods USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.foods USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6582,7 +6605,7 @@ CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
 -- Name: meal_plan_templates modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6603,7 +6626,7 @@ CREATE POLICY modify_policy ON public.meal_types USING ((user_id = public.authen
 -- Name: meals modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.meals USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.meals USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6764,7 +6787,7 @@ CREATE POLICY modify_policy ON public.user_nutrient_display_preferences USING ((
 -- Name: user_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.user_preferences USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_diary'::text)));
+CREATE POLICY modify_policy ON public.user_preferences USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6799,7 +6822,7 @@ CREATE POLICY modify_policy ON public.weekly_goal_plans USING (public.has_diary_
 -- Name: workout_plan_templates modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.workout_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.workout_plan_templates USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -6830,7 +6853,7 @@ CREATE POLICY modify_policy ON public.workout_preset_exercises USING ((EXISTS ( 
 -- Name: workout_presets modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY modify_policy ON public.workout_presets USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+CREATE POLICY modify_policy ON public.workout_presets USING ((public.authenticated_user_id() = user_id)) WITH CHECK ((public.authenticated_user_id() = user_id));
 
 
 --
@@ -7347,7 +7370,7 @@ CREATE POLICY select_policy ON public.workout_preset_exercises FOR SELECT USING 
 -- Name: workout_presets select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_exercise_library'::text]));
+CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.has_library_access_with_public(user_id, is_public, ARRAY['can_view_exercise_library'::text, 'can_manage_diary'::text]));
 
 
 --
@@ -7776,6 +7799,15 @@ GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO 
 GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
 GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky uat";
+
+
+--
+-- Name: FUNCTION has_any_meaningful_permission(perms jsonb); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO sparky_uat;
 
 
 --
@@ -8862,5 +8894,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GbvayNVQfAvlOPpYkkqEcURAHfxYU13vbKT3UyF99HIOhLaXM9upV48Cep0hvmD
+\unrestrict zZNICty8ZHnTxpyhVWkEr7DJ9R4JKZAsvAeWGrvUcT8dw5SP3XTUr7f09bspV2N
 

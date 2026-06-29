@@ -23,7 +23,11 @@ const checkPermissionMiddleware = (permissionType: any) => {
 
     try {
       let resolvedPermission = permissionType;
-      if (permissionType === 'checkin') {
+      if (permissionType === 'diary') {
+        if (req.method === 'GET') {
+          resolvedPermission = 'diary_read';
+        }
+      } else if (permissionType === 'checkin') {
         if (req.originalUrl && req.originalUrl.includes('/water-intake')) {
           resolvedPermission = 'water';
         } else if (
