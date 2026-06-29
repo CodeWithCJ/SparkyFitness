@@ -321,9 +321,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
           Toast.show({ type: 'error', text1: 'Details unavailable', text2: message });
           showFoodInfo(externalFoodItemToFoodInfo(item));
-        } finally {
-          setLoadingFoodId(null);
         }
+        setLoadingFoodId(null);
         return;
       }
       showFoodInfo(externalFoodItemToFoodInfo(item));

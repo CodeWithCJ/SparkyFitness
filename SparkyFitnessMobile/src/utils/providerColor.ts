@@ -11,7 +11,6 @@ const PROVIDER_PALETTE_VARS = [
   '--color-cat-green',
   '--color-cat-violet',
   '--color-cat-pink',
-  '--color-cat-slate',
   '--color-cat-blue',
   '--color-cat-teal',
   '--color-cat-amber',
