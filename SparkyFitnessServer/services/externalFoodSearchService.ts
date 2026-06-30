@@ -9,11 +9,17 @@ import {
   searchUsdaFoods,
   mapUsdaBarcodeProduct,
 } from '../integrations/usda/usdaService.js';
-import { mapFatSecretSearchItem } from '../integrations/fatsecret/fatsecretService.js';
+import {
+  mapFatSecretSearchItem,
+  mapFatSecretFood,
+  foodNutrientCache,
+  getFatSecretAccessToken,
+} from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioFoods } from '../integrations/yazio/yazioService.js';
 import { searchSwissFoods } from '../integrations/swissfood/swissFoodService.js';
 import {
   searchFatSecretFoods,
+  getFatSecretNutrients,
   searchMealieFoods,
   searchTandoorFoods,
   searchNorishFoods,
@@ -161,6 +167,95 @@ const EMPTY_PAGINATION = (
   hasMore: false,
 });
 
+const ENRICH_SYNC_COUNT = 5;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FatSecretSearchItem = Record<string, any>;
+
+function applyDetailToItem(
+  item: FatSecretSearchItem,
+  detailData: unknown
+): FatSecretSearchItem {
+  if (!detailData) return item;
+  const mappedDetail = mapFatSecretFood(detailData);
+  if (mappedDetail?.default_variant) {
+    return {
+      ...item,
+      default_variant: mappedDetail.default_variant,
+      variants: mappedDetail.variants,
+    };
+  }
+  return item;
+}
+
+// Top ENRICH_SYNC_COUNT results are enriched with a real food.get.v4 call (parallel, all fire
+// at once) so their search-card calories match the edit form. Lower-ranked results fall back
+// to the in-memory cache if warm, otherwise stay as search-mapped. Failed detail fetches
+// log a warning and leave the item unchanged.
+export async function enrichFatSecretResults(
+  items: FatSecretSearchItem[],
+  appId: string | undefined,
+  appKey: string | undefined
+): Promise<FatSecretSearchItem[]> {
+  const top = items.slice(0, ENRICH_SYNC_COUNT);
+  const rest = items.slice(ENRICH_SYNC_COUNT);
+
+  // Prefetch the access token once before firing parallel detail requests, so the
+  // concurrent calls below hit the warm token cache instead of racing to fetch
+  // their own token when the cache is cold or about to expire.
+  if (top.some((item) => item?.provider_external_id)) {
+    try {
+      await getFatSecretAccessToken(appId, appKey);
+    } catch (err) {
+      log('warn', 'FatSecret access token prefetch failed:', err);
+    }
+  }
+
+  const enrichedTop = await Promise.all(
+    top.map(async (item) => {
+      if (!item?.provider_external_id) return item;
+      try {
+        const detail = await getFatSecretNutrients(
+          item.provider_external_id,
+          appId,
+          appKey
+        );
+        return applyDetailToItem(item, detail);
+      } catch (err) {
+        log(
+          'warn',
+          `FatSecret detail enrichment failed for ${item.provider_external_id}:`,
+          err
+        );
+        return item;
+      }
+    })
+  );
+
+  const enrichedRest = rest.map((item) => {
+    if (!item?.provider_external_id) return item;
+    const cached = foodNutrientCache.get(item.provider_external_id);
+    if (
+      !cached ||
+      typeof cached.expiry !== 'number' ||
+      Date.now() >= cached.expiry
+    )
+      return item;
+    try {
+      return applyDetailToItem(item, cached.data);
+    } catch (err) {
+      log(
+        'warn',
+        `FatSecret cache enrichment failed for ${item.provider_external_id}:`,
+        err
+      );
+      return item;
+    }
+  });
+
+  return [...enrichedTop, ...enrichedRest];
+}
+
 export async function searchProviderFoods(
   userId: string,
   providerType: ProviderType,
@@ -237,7 +332,16 @@ export async function searchProviderFoods(
         : rawFoods
           ? [rawFoods]
           : [];
-      foods = items.map(mapFatSecretSearchItem).filter(Boolean);
+      const mapped = items
+        .map(mapFatSecretSearchItem)
+        .filter(
+          (x): x is NonNullable<typeof x> => x !== null && x !== undefined
+        );
+      foods = await enrichFatSecretResults(
+        mapped,
+        credentials.app_id,
+        credentials.app_key
+      );
       pagination = result.pagination;
       break;
     }
