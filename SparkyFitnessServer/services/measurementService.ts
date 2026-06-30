@@ -53,6 +53,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   resting_heart_rate: 'bpm',
   RestingHeartRate: 'bpm',
   HRV: 'ms',
+  HRV_SDNN: 'ms',
   respiratory_rate: 'breaths/min',
   RespiratoryRate: 'breaths/min',
   oxygen_saturation: '%',
@@ -101,6 +102,9 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   HRV_min: 'ms',
   HRV_max: 'ms',
   HRV_avg: 'ms',
+  HRV_SDNN_min: 'ms',
+  HRV_SDNN_max: 'ms',
+  HRV_SDNN_avg: 'ms',
   // Chunk 2: Running metrics
   running_speed_min: 'm/s',
   running_speed_max: 'm/s',
@@ -1387,6 +1391,14 @@ async function processMobileHealthData(
     };
   }
 }
+// Friendly display names for health-derived categories whose `type` key is technical.
+// Surfaced via custom_categories.display_name, which the web renders as
+// `display_name || name` across check-in, reports, and CSV export.
+const HEALTH_TYPE_DISPLAY_NAMES: Record<string, string> = {
+  HRV: 'HRV (RMSSD)',
+  HRV_SDNN: 'HRV (SDNN)',
+};
+
 // Helper function to get or create a custom category
 async function getOrCreateCustomCategory(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1398,6 +1410,7 @@ async function getOrCreateCustomCategory(
   dataType = 'numeric',
   measurementType = 'N/A'
 ) {
+  const displayName = HEALTH_TYPE_DISPLAY_NAMES[categoryName as string];
   // Try to get existing category
   const existingCategories =
     await measurementRepository.getCustomCategories(userId);
@@ -1406,6 +1419,17 @@ async function getOrCreateCustomCategory(
     (cat: any) => cat.name === categoryName
   );
   if (category) {
+    // Backfill a friendly display_name for health-derived categories created
+    // before labels existed (e.g. the HRV category first added by Fitbit/Google).
+    if (displayName && !category.display_name) {
+      await measurementRepository.updateCustomCategory(
+        category.id,
+        userId,
+        actingUserId,
+        { display_name: displayName }
+      );
+      return { ...category, display_name: displayName };
+    }
     return category;
   } else {
     // Create new category if it doesn't exist
@@ -1413,6 +1437,7 @@ async function getOrCreateCustomCategory(
       user_id: userId,
       created_by_user_id: actingUserId, // Use actingUserId for audit
       name: categoryName,
+      display_name: displayName ?? null,
       measurement_type: measurementType, // Default to numeric for Health Connect data
       frequency: 'Daily', // Default frequency, can be refined later if needed
       data_type: dataType, // Default to numeric for new categories from health data

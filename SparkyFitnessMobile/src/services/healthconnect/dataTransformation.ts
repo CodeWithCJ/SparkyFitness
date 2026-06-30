@@ -275,6 +275,12 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     return value !== null && date ? { value, date } : null;
   },
 
+  HeartRateVariabilityRmssd: (rec) => {
+    const value = extractDirectValue(rec, 'heartRateVariabilityMillis');
+    const date = getDateString(rec.time);
+    return value !== null && date ? { value, date } : null;
+  },
+
   WheelchairPushes: (rec) => {
     const value = extractDirectValue(rec, 'count');
     const date = getDateString(rec.startTime);

@@ -267,7 +267,16 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
     const latest = (records as { time?: string; value?: number }[])
       .filter(r => r.value != null && !isNaN(r.value))
       .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())[0];
-    return latest?.value ? `${Math.round(latest.value)} ms` : NO_DATA_DISPLAY;
+    const value = latest?.value;
+    return value != null ? `${Math.round(value)} ms` : NO_DATA_DISPLAY;
+  },
+
+  HeartRateVariabilityRmssd: (records) => {
+    const latest = (records as { time?: string; heartRateVariabilityMillis?: number }[])
+      .filter(r => r.heartRateVariabilityMillis != null && !isNaN(r.heartRateVariabilityMillis))
+      .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())[0];
+    const value = latest?.heartRateVariabilityMillis;
+    return value != null ? `${Math.round(value)} ms` : NO_DATA_DISPLAY;
   },
 
   Vo2Max: (records) => {

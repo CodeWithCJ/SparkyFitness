@@ -197,19 +197,19 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', value: 42 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV' });
+      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV_SDNN' });
 
       expect(result).toHaveLength(1);
       expect((result[0] as TransformOutput & { value: number }).value).toBe(42);
       expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-15');
-      expect((result[0] as TransformOutput & { type: string }).type).toBe('HRV');
+      expect((result[0] as TransformOutput & { type: string }).type).toBe('HRV_SDNN');
     });
 
     test('skips record when value is missing', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV' });
+      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV_SDNN' });
 
       expect(result).toHaveLength(0);
     });

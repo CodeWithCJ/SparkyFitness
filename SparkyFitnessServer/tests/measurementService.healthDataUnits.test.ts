@@ -232,6 +232,10 @@ describe('Aggregated health metric default units', () => {
     ['HRV_min', 'ms'],
     ['HRV_max', 'ms'],
     ['HRV_avg', 'ms'],
+    ['HRV_SDNN', 'ms'],
+    ['HRV_SDNN_min', 'ms'],
+    ['HRV_SDNN_max', 'ms'],
+    ['HRV_SDNN_avg', 'ms'],
     // Chunk 2: Running metrics
     ['running_speed_avg', 'm/s'],
     ['running_power_avg', 'W'],

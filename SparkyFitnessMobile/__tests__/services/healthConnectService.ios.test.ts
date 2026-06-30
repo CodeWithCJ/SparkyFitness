@@ -24,7 +24,7 @@ jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
-    { recordType: 'HeartRateVariabilitySDNN', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV', aggregationStrategy: 'min-max-avg' },
+    { recordType: 'HeartRateVariabilitySDNN', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV_SDNN', aggregationStrategy: 'min-max-avg' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
@@ -146,15 +146,15 @@ describe('syncHealthData (iOS)', () => {
     const sentData = api.syncHealthData.mock.calls[0][0];
     const types = sentData.map((r: { type: string }) => r.type);
 
-    // Should contain aggregated HRV types, not a single raw 'HRV'
-    expect(types).toContain('HRV_min');
-    expect(types).toContain('HRV_max');
-    expect(types).toContain('HRV_avg');
-    expect(types).not.toContain('HRV');
+    // Apple HRV is SDNN (a distinct metric from RMSSD), sent as HRV_SDNN
+    expect(types).toContain('HRV_SDNN_min');
+    expect(types).toContain('HRV_SDNN_max');
+    expect(types).toContain('HRV_SDNN_avg');
+    expect(types).not.toContain('HRV_SDNN');
 
-    const minRecord = sentData.find((r: { type: string }) => r.type === 'HRV_min');
-    const maxRecord = sentData.find((r: { type: string }) => r.type === 'HRV_max');
-    const avgRecord = sentData.find((r: { type: string }) => r.type === 'HRV_avg');
+    const minRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_min');
+    const maxRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_max');
+    const avgRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_avg');
 
     expect(minRecord.value).toBe(30);
     expect(maxRecord.value).toBe(52);

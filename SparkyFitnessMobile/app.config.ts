@@ -31,6 +31,7 @@ const androidPermissions = [
   'android.permission.health.READ_ELEVATION_GAINED',
   'android.permission.health.READ_FLOORS_CLIMBED',
   'android.permission.health.READ_HEART_RATE',
+  'android.permission.health.READ_HEART_RATE_VARIABILITY',
   'android.permission.health.READ_HEIGHT',
   'android.permission.health.READ_HYDRATION',
   'android.permission.health.READ_NUTRITION',

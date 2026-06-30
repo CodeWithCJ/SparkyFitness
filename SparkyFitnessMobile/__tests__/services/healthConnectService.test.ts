@@ -37,6 +37,7 @@ jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
+    { recordType: 'HeartRateVariabilityRmssd', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV', aggregationStrategy: 'min-max-avg' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
     { recordType: 'Distance', stateKey: 'isDistanceSyncEnabled', unit: 'meters', type: 'distance' },
@@ -284,6 +285,32 @@ describe('healthConnectService.ts (Android)', () => {
       expect(hrMin.value).toBe(60);
       expect(hrMax.value).toBe(80);
       expect(hrAvg.value).toBe(70);
+    });
+
+    test('HeartRateVariabilityRmssd records are aggregated with min/max/avg by date', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { time: '2024-01-15T08:00:00Z', heartRateVariabilityMillis: 40 },
+          { time: '2024-01-15T12:00:00Z', heartRateVariabilityMillis: 60 },
+          { time: '2024-01-15T18:00:00Z', heartRateVariabilityMillis: 50 },
+        ],
+      });
+
+      const healthMetricStates: HealthMetricStates = { isHeartRateVariabilitySyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const hrvMin = payload.find((r: { type: string }) => r.type === 'HRV_min');
+      const hrvMax = payload.find((r: { type: string }) => r.type === 'HRV_max');
+      const hrvAvg = payload.find((r: { type: string }) => r.type === 'HRV_avg');
+
+      expect(hrvMin).toBeDefined();
+      expect(hrvMax).toBeDefined();
+      expect(hrvAvg).toBeDefined();
+      expect(hrvMin.value).toBe(40);
+      expect(hrvMax.value).toBe(60);
+      expect(hrvAvg.value).toBe(50);
     });
 
     test('TotalCalories are aggregated via native aggregateGroupByPeriod', async () => {
