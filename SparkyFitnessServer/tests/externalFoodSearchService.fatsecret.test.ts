@@ -12,6 +12,7 @@ vi.mock('../integrations/fatsecret/fatsecretService.js', () => ({
   mapFatSecretSearchItem: vi.fn((item) => item),
   mapFatSecretFood: vi.fn(),
   foodNutrientCache: new Map(),
+  getFatSecretAccessToken: vi.fn(),
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
@@ -40,12 +41,14 @@ import { getFatSecretNutrients } from '../services/foodIntegrationService.js';
 import {
   mapFatSecretFood,
   foodNutrientCache,
+  getFatSecretAccessToken,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { log } from '../config/logging.js';
 import { enrichFatSecretResults } from '../services/externalFoodSearchService.js';
 
 const mockGetFatSecretNutrients = vi.mocked(getFatSecretNutrients);
 const mockMapFatSecretFood = vi.mocked(mapFatSecretFood);
+const mockGetFatSecretAccessToken = vi.mocked(getFatSecretAccessToken);
 const mockLog = vi.mocked(log);
 const mockCache = foodNutrientCache as Map<
   string,
@@ -111,6 +114,49 @@ describe('enrichFatSecretResults', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCache.clear();
+    mockGetFatSecretAccessToken.mockResolvedValue('token');
+  });
+
+  it('prefetches the access token once before firing parallel detail requests', async () => {
+    const items = Array.from({ length: 5 }, (_, i) =>
+      makeSearchItem(String(i), 500)
+    );
+    mockGetFatSecretNutrients.mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue(
+      makeDetailResult('x', 370) as ReturnType<typeof mapFatSecretFood>
+    );
+
+    await enrichFatSecretResults(items, 'app_id', 'app_key');
+
+    expect(mockGetFatSecretAccessToken).toHaveBeenCalledTimes(1);
+    expect(mockGetFatSecretAccessToken).toHaveBeenCalledWith(
+      'app_id',
+      'app_key'
+    );
+  });
+
+  it('does not prefetch the token when there are no items to enrich', async () => {
+    await enrichFatSecretResults([], 'app_id', 'app_key');
+
+    expect(mockGetFatSecretAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('continues enrichment even if the token prefetch fails', async () => {
+    const items = [makeSearchItem('1', 300)];
+    mockGetFatSecretAccessToken.mockRejectedValue(new Error('token error'));
+    mockGetFatSecretNutrients.mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue(
+      makeDetailResult('1', 370) as ReturnType<typeof mapFatSecretFood>
+    );
+
+    const result = await enrichFatSecretResults(items, 'app_id', 'app_key');
+
+    expect(result[0]!.default_variant.calories).toBe(370);
+    expect(mockLog).toHaveBeenCalledWith(
+      'warn',
+      'FatSecret access token prefetch failed:',
+      expect.any(Error)
+    );
   });
 
   it('top 5 results are enriched via API call with detail default_variant and variants', async () => {
@@ -150,6 +196,22 @@ describe('enrichFatSecretResults', () => {
     expect(result[6]!.default_variant.calories).toBe(500); // unchanged
   });
 
+  it('treats a malformed cache entry (non-numeric expiry) as expired', async () => {
+    const items = Array.from({ length: 6 }, (_, i) =>
+      makeSearchItem(String(i), 500)
+    );
+    mockGetFatSecretNutrients.mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue(
+      makeDetailResult('x', 370) as ReturnType<typeof mapFatSecretFood>
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockCache.set('5', { data: { food: {} }, expiry: undefined as any });
+
+    const result = await enrichFatSecretResults(items, 'app_id', 'app_key');
+
+    expect(result[5]!.default_variant.calories).toBe(500); // unchanged, treated as expired
+  });
+
   it('results beyond top 5 stay as search-mapped when cache is cold', async () => {
     const items = Array.from({ length: 7 }, (_, i) =>
       makeSearchItem(String(i), i * 10)
@@ -177,6 +239,16 @@ describe('enrichFatSecretResults', () => {
       expect.stringContaining('bad'),
       expect.any(Error)
     );
+  });
+
+  it('returns original item unchanged when detail fetch resolves to null/undefined', async () => {
+    const items = [makeSearchItem('null-detail', 300)];
+    mockGetFatSecretNutrients.mockResolvedValue(null);
+
+    const result = await enrichFatSecretResults(items, 'app_id', 'app_key');
+
+    expect(result[0]!.default_variant.calories).toBe(300);
+    expect(mockMapFatSecretFood).not.toHaveBeenCalled();
   });
 
   it('preserves item order across top-5 and remainder', async () => {

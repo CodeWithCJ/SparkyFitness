@@ -13,6 +13,7 @@ import {
   mapFatSecretSearchItem,
   mapFatSecretFood,
   foodNutrientCache,
+  getFatSecretAccessToken,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioFoods } from '../integrations/yazio/yazioService.js';
 import { searchSwissFoods } from '../integrations/swissfood/swissFoodService.js';
@@ -175,6 +176,7 @@ function applyDetailToItem(
   item: FatSecretSearchItem,
   detailData: unknown
 ): FatSecretSearchItem {
+  if (!detailData) return item;
   const mappedDetail = mapFatSecretFood(detailData);
   if (mappedDetail?.default_variant) {
     return {
@@ -197,6 +199,17 @@ export async function enrichFatSecretResults(
 ): Promise<FatSecretSearchItem[]> {
   const top = items.slice(0, ENRICH_SYNC_COUNT);
   const rest = items.slice(ENRICH_SYNC_COUNT);
+
+  // Prefetch the access token once before firing parallel detail requests, so the
+  // concurrent calls below hit the warm token cache instead of racing to fetch
+  // their own token when the cache is cold or about to expire.
+  if (top.some((item) => item?.provider_external_id)) {
+    try {
+      await getFatSecretAccessToken(appId, appKey);
+    } catch (err) {
+      log('warn', 'FatSecret access token prefetch failed:', err);
+    }
+  }
 
   const enrichedTop = await Promise.all(
     top.map(async (item) => {
@@ -222,7 +235,12 @@ export async function enrichFatSecretResults(
   const enrichedRest = rest.map((item) => {
     if (!item?.provider_external_id) return item;
     const cached = foodNutrientCache.get(item.provider_external_id);
-    if (!cached || Date.now() >= cached.expiry) return item;
+    if (
+      !cached ||
+      typeof cached.expiry !== 'number' ||
+      Date.now() >= cached.expiry
+    )
+      return item;
     try {
       return applyDetailToItem(item, cached.data);
     } catch (err) {
@@ -316,7 +334,9 @@ export async function searchProviderFoods(
           : [];
       const mapped = items
         .map(mapFatSecretSearchItem)
-        .filter((x): x is NonNullable<typeof x> => x != null);
+        .filter(
+          (x): x is NonNullable<typeof x> => x !== null && x !== undefined
+        );
       foods = await enrichFatSecretResults(
         mapped,
         credentials.app_id,
