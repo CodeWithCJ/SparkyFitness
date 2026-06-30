@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutFo
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { formatDateLabel } from '../utils/dateUtils';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -56,7 +57,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { backColor } = useHeaderActionColors();
+  const { backColor, headerTintColor } = useHeaderActionColors();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -167,6 +168,24 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerBackVisible: false,
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'workout-add-cancel',
+          tintColor: headerTintColor,
+          onPress: () => {
+            void handleCancel();
+          },
+        }),
+      ],
+    });
+  }, [handleCancel, headerTintColor, navigation]);
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { Platform, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -8,6 +8,7 @@ import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -23,7 +24,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { backColor } = useHeaderActionColors();
+  const { backColor, headerTintColor } = useHeaderActionColors();
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -32,6 +33,26 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const { searchResults, isSearching, isSearchActive, isSearchError } = useWorkoutPresetSearch(searchText);
 
   useRefetchOnFocus(refetch, true);
+
+  const handleCancel = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerBackVisible: false,
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'preset-search-cancel',
+          tintColor: headerTintColor,
+          onPress: handleCancel,
+        }),
+      ],
+    });
+  }, [handleCancel, headerTintColor, navigation]);
 
   const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
     navigation.navigate('WorkoutAdd', { preset, date, popCount: 2 });
@@ -108,7 +129,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
-          onPress={() => navigation.goBack()}
+          onPress={handleCancel}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
         >

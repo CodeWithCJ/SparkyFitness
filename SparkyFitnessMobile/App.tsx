@@ -962,7 +962,7 @@ function AppContent() {
           <Stack.Screen
             name="Chat"
             component={SafeChat}
-            options={createStackScreenOptions('Sparky', { headerBackTitle: 'Dashboard' })}
+            options={createStackScreenOptions('Sparky', { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="MealAdd"

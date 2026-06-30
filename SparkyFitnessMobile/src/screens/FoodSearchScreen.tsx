@@ -117,7 +117,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     '--color-text-muted',
     '--color-text-secondary',
   ]) as [string, string, string];
-  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
+  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
 
   const { isConnected } = useServerConnection();
@@ -363,8 +363,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [insets.top, isMealBuilderMode, openCreateFood, windowWidth]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
     if (Platform.OS !== 'ios') return;
 
     navigation.setOptions({
@@ -390,7 +388,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [
     handleAddPress,
     headerActionColor,
-    headerTintColor,
     isMealBuilderMode,
     navigation,
   ]);
