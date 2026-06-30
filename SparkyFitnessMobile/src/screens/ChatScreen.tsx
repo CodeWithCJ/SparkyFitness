@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { View, Text, ActivityIndicator, Alert, Platform } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +30,8 @@ import { normalizeUrl } from '../services/api/apiClient';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
 import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
@@ -308,6 +310,7 @@ function Centered({ text }: { text: string }) {
 export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
+  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const queryClient = useQueryClient();
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
@@ -345,7 +348,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
 
   const serviceConfigId = setting?.id ?? null;
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     Alert.alert(
       'Clear chat',
       'This permanently deletes your Sparky chat history. This cannot be undone.',
@@ -374,14 +377,39 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         },
       ]
     );
-  };
+  }, [queryClient]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerTintColor });
+
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: baseUrl
+        ? () => [
+            createNativeHeaderIconButtonItem({
+              sfSymbol: 'trash',
+              identifier: 'chat-clear',
+              tintColor: headerActionColor,
+              accessibilityLabel: 'Clear chat',
+              disabled: running,
+              onPress: handleClear,
+            }),
+          ]
+        : undefined,
+    });
+  }, [baseUrl, handleClear, headerActionColor, headerTintColor, navigation, running]);
 
   return (
     <View
       className="flex-1 bg-background"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={{
+        paddingTop: Platform.OS === 'android' ? insets.top : undefined,
+        paddingBottom: insets.bottom,
+      }}
     >
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 pb-2 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -406,6 +434,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           </Button>
         ) : null}
       </View>
+      )}
 
       {/* keyboard-controller's reworked KeyboardAvoidingView supports `padding`
           on both platforms (RN-core's needs `undefined` on Android, but this is
