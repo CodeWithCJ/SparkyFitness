@@ -10,8 +10,11 @@ import goalPresetService from '../../services/goalPresetService.js';
 
 const router = express.Router();
 
-router.use(checkPermissionMiddleware('checkin'));
-// Goal presets are personal — no onBehalfOfMiddleware needed.
+// Goal presets are part of the Goals/diary domain (same as user_goals and
+// weekly_goal_plans), and their RLS uses the diary policy. Guard with 'diary'
+// so diary delegates can manage them; 'checkin' here was a copy-paste error
+// that blocked diary delegates while admitting check-in delegates to an RLS wall.
+router.use(checkPermissionMiddleware('diary'));
 
 /**
  * @swagger

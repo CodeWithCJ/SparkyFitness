@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { debug, info, error } from '@/utils/logging';
@@ -228,6 +228,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           icon: BarChart3,
         });
       }
+      if (hasWritePermission('can_manage_medications')) {
+        tabs.push({
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        });
+      }
     }
     if (user?.role === 'admin' && !isActingOnBehalf) {
       tabs.push({ value: '/admin', label: t('nav.admin'), icon: Shield });
@@ -279,6 +286,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           icon: BarChart3,
         });
       }
+      if (hasWritePermission('can_manage_medications')) {
+        mobileTabs.push({
+          value: '/medications',
+          label: t('nav.medications', 'Medications'),
+          icon: Pill,
+        });
+      }
     }
     if (user?.role === 'admin' && !isActingOnBehalf) {
       mobileTabs.push({ value: '/admin', label: t('nav.admin'), icon: Shield });
@@ -328,6 +342,50 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const mobileGridClass = getGridClassNormal(availableMobileTabs.length);
 
   const location = useLocation();
+
+  // Whether the current route is reachable for the active profile. When acting
+  // on behalf, a delegate only has a subset of tabs; landing on a disallowed
+  // route (e.g. staying on Diary after switching to a checkin-only profile)
+  // would otherwise mount that page and fire requests that 403.
+  const isCurrentPathAllowed = useMemo(() => {
+    if (!isActingOnBehalf || availableTabs.length === 0) {
+      return true;
+    }
+    const currentPath = location.pathname;
+    // Match exactly or as prefix (e.g. /medications/log should match /medications)
+    return availableTabs.some((tab) => {
+      if (tab.value === '/') {
+        return (
+          currentPath === '/' ||
+          currentPath === '/workout-playback' ||
+          currentPath.startsWith('/workout-playback/')
+        );
+      }
+      return (
+        currentPath === tab.value || currentPath.startsWith(tab.value + '/')
+      );
+    });
+  }, [isActingOnBehalf, availableTabs, location.pathname]);
+
+  useEffect(() => {
+    if (!isCurrentPathAllowed) {
+      const fallbackTab = availableTabs[0]?.value;
+      if (fallbackTab) {
+        debug(
+          loggingLevel,
+          `MainLayout: Redirecting from unauthorized path ${location.pathname} to ${fallbackTab}`
+        );
+        navigate(fallbackTab, { replace: true });
+      }
+    }
+  }, [
+    isCurrentPathAllowed,
+    availableTabs,
+    location.pathname,
+    navigate,
+    loggingLevel,
+  ]);
+
   const selectedDate = new URLSearchParams(location.search).get('date');
   const selectedDateRelation = selectedDate
     ? getDateRelationToToday(selectedDate)
@@ -457,7 +515,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         </nav>
 
         <div className="pb-16 sm:pb-0">
-          <Outlet />
+          {/* Don't mount a disallowed page while the redirect effect runs, or it
+              fires requests the active profile isn't permitted to make. */}
+          {isCurrentPathAllowed ? <Outlet /> : null}
         </div>
 
         <SparkyChat />

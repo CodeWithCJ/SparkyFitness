@@ -40,9 +40,9 @@ async function checkCopyPermissions(familyUserId: string, ownerUserId: string) {
          AND is_active = TRUE
          AND (access_end_date IS NULL OR access_end_date > NOW())
          AND (
-           ((access_permissions->>'can_manage_diary')::boolean = TRUE OR (access_permissions->>'can manage diary')::boolean = TRUE)
+           (access_permissions->>'can_manage_diary')::boolean = TRUE
            AND
-           ((access_permissions->>'can_view_food_library')::boolean = TRUE OR (access_permissions->>'can view food library')::boolean = TRUE OR (access_permissions->>'food_list')::boolean = TRUE)
+           ((access_permissions->>'can_view_food_library')::boolean = TRUE OR (access_permissions->>'food_list')::boolean = TRUE)
          )`,
       [familyUserId, ownerUserId]
     );

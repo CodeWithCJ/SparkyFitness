@@ -115,7 +115,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
     'info',
     `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(entryData)}, createdByUserId: ${createdByUserId}`
   );
-  const client = await getClient(createdByUserId); // User-specific operation
+  const client = await getClient(entryData.user_id, createdByUserId); // User-specific operation
   try {
     await client.query('BEGIN');
     let mealTypeId = entryData.meal_type_id;
@@ -417,7 +417,7 @@ async function updateFoodEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   snapshotData: any
 ) {
-  const client = await getClient(actingUserId); // User-specific operation
+  const client = await getClient(userId, actingUserId); // User-specific operation
   let mealTypeId = entryData.meal_type_id;
   if (!mealTypeId && entryData.meal_type) {
     // If we are updating the meal type and only have the name

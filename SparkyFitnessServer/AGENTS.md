@@ -142,7 +142,10 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Always release database clients in a `finally` block
 - New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
 - If you add or change a migration, also update `../db_schema_backup.sql` in the same change
-- If you add a table or change user-visible access behavior, also update `db/rls_policies.sql`
+- If you add a new table or change user-visible access behavior, you MUST:
+  1. Add/modify the RLS policies in `db/rls_policies.sql`.
+  2. Update the user-facing documentation in `../docs/content/2.features/9.family-friends-sharing.md`.
+  3. Update the developer-facing documentation in `../docs/content/8.developer/11.database-security-tiers.md` to define its security tier (Tier 1, Tier 2, or Tier 3).
 - Startup automatically applies migrations and then reapplies RLS policies; do not create alternate migration mechanisms
 
 ### Auth and Request Context

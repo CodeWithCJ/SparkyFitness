@@ -17,7 +17,7 @@ const router = express.Router();
 // Caregivers may manage a dependent's diary via the on-behalf-of header,
 // gated by the 'diary' permission.
 router.use(onBehalfOfMiddleware);
-router.use(checkPermissionMiddleware('diary'));
+router.use(checkPermissionMiddleware('medications'));
 
 function badRequest(res: express.Response, error: unknown): void {
   res.status(400).json({

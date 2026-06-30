@@ -202,17 +202,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const switchContext = useCallback(
     async (targetUserId: string) => {
       try {
-        const data = await switchUserContext(targetUserId);
-
-        setUser((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            activeUserId: data.activeUserId || targetUserId,
-          };
-        });
-
+        await switchUserContext(targetUserId);
         queryClient.clear();
+
+        // Pull the authoritative active-user identity for the new context.
+        // The session sync effect only refreshes name/email when the logged-in
+        // id changes, so switching back to self (same id) would otherwise leave
+        // the previously-active profile's name/email on screen.
+        const realUserData = await fetchIdentityUser();
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                activeUserId: realUserData.activeUserId || targetUserId,
+                fullName:
+                  realUserData.activeUserFullName ||
+                  realUserData.activeUserEmail ||
+                  null,
+                email: realUserData.activeUserEmail ?? prev.email,
+              }
+            : prev
+        );
+
         await refreshUser();
       } catch (error) {
         console.error(error);

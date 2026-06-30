@@ -111,9 +111,11 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
   const client = await getClient(userId); // User-specific operation
   try {
     const offset = (page - 1) * limit;
+    // Ownership/sharing visibility is enforced by RLS (owner, public, or
+    // family-shared via can_view_exercise_library). Do not re-filter here, or
+    // family-shared presets get dropped before they reach the response.
     const totalResult = await client.query(
-      'SELECT COUNT(*) FROM workout_presets WHERE is_public = TRUE OR user_id = $1',
-      [userId]
+      'SELECT COUNT(*) FROM workout_presets'
     );
     const total = parseInt(totalResult.rows[0].count, 10);
     const result = await client.query(
@@ -146,11 +148,10 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
            ), '[]'::json
          ) AS exercises
        FROM workout_presets wp
-       WHERE wp.is_public = TRUE OR wp.user_id = $1
        GROUP BY wp.id
        ORDER BY wp.name ASC
-       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
     return {
       presets: result.rows,
@@ -430,13 +431,14 @@ async function searchWorkoutPresets(
           ), '[]'::json
         ) AS exercises
       FROM workout_presets wp
-      WHERE (wp.is_public = TRUE OR wp.user_id = $2)
-      AND wp.name ILIKE $1
+      WHERE wp.name ILIKE $1
       GROUP BY wp.id
       ORDER BY wp.name ASC`;
-    const queryParams = [`%${searchTerm}%`, userId];
+    // Visibility (owner/public/family-shared) is enforced by RLS; $2 userId is
+    // intentionally unused in the filter so shared presets are not dropped.
+    const queryParams = [`%${searchTerm}%`];
     if (limit !== null) {
-      query += ' LIMIT $3';
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
     const result = await client.query(query, queryParams);
