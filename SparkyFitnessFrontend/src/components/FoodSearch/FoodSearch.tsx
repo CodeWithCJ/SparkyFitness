@@ -48,7 +48,10 @@ import {
 } from '@/hooks/Foods/useFoodsV2.ts';
 import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
 import { DataProvider } from '@/types/settings.ts';
-import { getProviderCategory } from '@/utils/settings.ts';
+import {
+  getProviderCategory,
+  resolveFoodProviderId,
+} from '@/utils/settings.ts';
 
 type FoodDataForBackend = Omit<CSVData, 'id'>;
 
@@ -203,11 +206,20 @@ const EnhancedFoodSearch = ({
   const topFoods = recentTopData?.topFoods || [];
   const foods = searchData?.searchResults || [];
 
-  const selectedFoodDataProvider =
-    manualProviderId ||
-    defaultFoodDataProviderId ||
-    foodDataProviders[0]?.id ||
-    null;
+  // Active food-category providers: the only valid options for the provider
+  // dropdown, so the resolved default must be drawn from this list (not the raw
+  // provider list) or the shadcn Select renders blank when it falls back to an
+  // inactive/non-food provider that has no matching SelectItem.
+  const foodProviderOptions = foodDataProviders.filter(
+    (provider) =>
+      getProviderCategory(provider).includes('food') && provider.is_active
+  );
+
+  const selectedFoodDataProvider = resolveFoodProviderId(
+    manualProviderId,
+    defaultFoodDataProviderId,
+    foodProviderOptions
+  );
   const selectedProviderName =
     foodDataProviders.find((p) => p.id === selectedFoodDataProvider)
       ?.provider_name ?? '';
@@ -623,10 +635,6 @@ const EnhancedFoodSearch = ({
 
   // --- Derived render state ---
 
-  const foodProviderOptions = foodDataProviders.filter(
-    (provider) =>
-      getProviderCategory(provider).includes('food') && provider.is_active
-  );
   const isDebouncePending =
     !isSearchEmpty && debouncedSearchTerm !== searchTerm;
   const localPending = isFetchingSearch || isMealLoading || isDebouncePending;

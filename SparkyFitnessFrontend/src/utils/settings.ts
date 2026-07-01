@@ -209,3 +209,20 @@ export const getProviderCategory = (
       : ['other']
   ) as ('food' | 'exercise' | 'other')[];
 };
+
+/**
+ * Resolve the food-search provider to select. Precedence: an explicit manual
+ * choice, then the user's persisted default, then the first *rendered* option.
+ * The final fallback must come from the filtered option list (active
+ * food-category providers) rather than the raw provider list, otherwise it can
+ * resolve to an id with no matching SelectItem and the dropdown renders blank.
+ */
+export const resolveFoodProviderId = (
+  manualProviderId: string | null,
+  defaultFoodDataProviderId: string | null,
+  foodProviderOptions: { id: string }[]
+): string | null =>
+  manualProviderId ||
+  defaultFoodDataProviderId ||
+  foodProviderOptions[0]?.id ||
+  null;
