@@ -1,8 +1,12 @@
 import { log } from '../config/logging.js';
-import { normalizeNutrientName } from '@workspace/shared';
+import {
+  normalizeNutrientName,
+  convertNutrientAmount,
+} from '@workspace/shared';
 
 export interface FoodVariantWithProviderNutrients {
   provider_nutrients?: Record<string, number | unknown>;
+  provider_nutrient_units?: Record<string, string>;
   custom_nutrients?: Record<string, number>;
   [key: string]: unknown;
 }
@@ -15,18 +19,24 @@ export interface FoodWithProviderNutrients {
 
 interface CustomNutrientDef {
   name: string;
+  unit?: string | null;
   aliases?: string[] | null;
+}
+
+export interface AliasTarget {
+  name: string;
+  unit?: string | null;
 }
 
 /**
  * Build a lookup from normalized nutrient name/alias -> the custom nutrient's
- * canonical `name`. Each nutrient's own name is included as an implicit alias.
- * Matching is case/punctuation-insensitive via normalizeNutrientName. On a
- * duplicate normalized key across nutrients, the first definition wins and a
- * warning is logged.
+ * canonical `name` and chosen `unit`. Each nutrient's own name is included as an
+ * implicit alias. Matching is case/punctuation-insensitive via
+ * normalizeNutrientName. On a duplicate normalized key across nutrients, the
+ * first definition wins and a warning is logged.
  */
-function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, string> {
-  const index = new Map<string, string>();
+function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, AliasTarget> {
+  const index = new Map<string, AliasTarget>();
   if (!Array.isArray(defs)) return index;
   for (const def of defs) {
     if (!def || typeof def.name !== 'string') continue;
@@ -37,15 +47,15 @@ function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, string> {
       if (!normalized) continue;
       const existing = index.get(normalized);
       if (existing !== undefined) {
-        if (existing !== def.name) {
+        if (existing.name !== def.name) {
           log(
             'warn',
-            `Custom nutrient alias "${key}" (normalized "${normalized}") maps to both "${existing}" and "${def.name}"; keeping "${existing}".`
+            `Custom nutrient alias "${key}" (normalized "${normalized}") maps to both "${existing.name}" and "${def.name}"; keeping "${existing.name}".`
           );
         }
         continue;
       }
-      index.set(normalized, def.name);
+      index.set(normalized, { name: def.name, unit: def.unit });
     }
   }
   return index;
@@ -60,7 +70,7 @@ function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, string> {
  */
 function applyCustomNutrientMatches(
   foods: FoodWithProviderNutrients[],
-  aliasIndex: Map<string, string>
+  aliasIndex: Map<string, AliasTarget>
 ): FoodWithProviderNutrients[] {
   if (!Array.isArray(foods) || aliasIndex.size === 0) return foods;
   for (const food of foods) {
@@ -75,15 +85,27 @@ function applyCustomNutrientMatches(
     for (const variant of variants) {
       const raw = variant.provider_nutrients;
       if (!raw || typeof raw !== 'object') continue;
+      const units = variant.provider_nutrient_units;
       for (const [rawKey, rawValue] of Object.entries(raw)) {
-        const nutrientName = aliasIndex.get(normalizeNutrientName(rawKey));
-        if (!nutrientName) continue;
+        const target = aliasIndex.get(normalizeNutrientName(rawKey));
+        if (!target) continue;
         const value =
           typeof rawValue === 'number' ? rawValue : Number(rawValue);
         if (!Number.isFinite(value) || value <= 0) continue;
+        // Convert the provider's amount into the custom nutrient's unit when
+        // both are known and compatible; otherwise store the raw value.
+        const providerUnit =
+          units && typeof units === 'object' ? units[rawKey] : undefined;
+        const converted = convertNutrientAmount(
+          value,
+          providerUnit,
+          target.unit ?? undefined
+        );
+        const finalValue =
+          converted === null ? value : Math.round(converted * 1e6) / 1e6;
         variant.custom_nutrients = {
           ...(variant.custom_nutrients || {}),
-          [nutrientName]: value,
+          [target.name]: finalValue,
         };
       }
     }

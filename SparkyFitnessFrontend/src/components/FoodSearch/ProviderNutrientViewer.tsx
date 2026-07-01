@@ -46,8 +46,12 @@ function getProviderFoodUrl(food: Food): string | null {
 interface ProviderNutrientViewerProps {
   food?: Food;
   // Fill the matched nutrient's value onto the food being imported, using the
-  // provider field the user just mapped.
-  onApplyMatch?: (nutrientName: string, providerLabel: string) => void;
+  // provider field the user just mapped (converted into nutrientUnit when known).
+  onApplyMatch?: (
+    nutrientName: string,
+    providerLabel: string,
+    nutrientUnit?: string
+  ) => void;
 }
 
 /**
@@ -64,19 +68,24 @@ export const ProviderNutrientViewer = ({
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogLabel, setDialogLabel] = useState('');
+  const [dialogUnit, setDialogUnit] = useState('');
   const { toast } = useToast();
   const { data: customNutrients } = useCustomNutrients();
   const { mutateAsync: updateCustomNutrient } =
     useUpdateCustomNutrientMutation();
 
-  const providerNutrients = useMemo(() => {
+  const { providerNutrients, providerUnits } = useMemo(() => {
     const variant =
       food?.default_variant ??
       food?.variants?.find((v) => v.is_default) ??
       food?.variants?.[0];
     const entries = Object.entries(variant?.provider_nutrients ?? {});
     // Stable alphabetical order for scanning.
-    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return {
+      providerNutrients: entries,
+      providerUnits: variant?.provider_nutrient_units ?? {},
+    };
   }, [food]);
 
   // Map a normalized provider label -> the custom nutrient it already matches.
@@ -119,7 +128,7 @@ export const ProviderNutrientViewer = ({
         unit: nutrient.unit,
         aliases: [...aliases, label],
       });
-      onApplyMatch?.(nutrient.name, label);
+      onApplyMatch?.(nutrient.name, label, nutrient.unit);
       toast({
         title: 'Alias added',
         description: `"${label}" will now import into ${nutrient.name}.`,
@@ -135,6 +144,7 @@ export const ProviderNutrientViewer = ({
 
   const openCreateDialog = (label: string) => {
     setDialogLabel(label);
+    setDialogUnit(providerUnits[label] ?? '');
     setDialogOpen(true);
   };
 
@@ -197,6 +207,7 @@ export const ProviderNutrientViewer = ({
                     <span className="text-sm font-mono break-all">{label}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
                       {value}
+                      {providerUnits[label] ? ` ${providerUnits[label]}` : ''}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -257,9 +268,10 @@ export const ProviderNutrientViewer = ({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initialName={dialogLabel}
+        initialUnit={dialogUnit}
         initialAliases={dialogLabel ? [dialogLabel] : []}
-        onCreated={(name) => {
-          if (dialogLabel) onApplyMatch?.(name, dialogLabel);
+        onCreated={(name, unit) => {
+          if (dialogLabel) onApplyMatch?.(name, dialogLabel, unit);
         }}
       />
     </>

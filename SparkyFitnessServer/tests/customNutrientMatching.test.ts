@@ -20,12 +20,12 @@ describe('normalizeNutrientName', () => {
 });
 
 describe('buildAliasIndex', () => {
-  it('indexes the name and aliases case-insensitively', () => {
+  it('indexes the name and aliases case-insensitively, carrying the unit', () => {
     const index = buildAliasIndex([
-      { name: 'Magnesium', aliases: ['Magnesium, Mg'] },
+      { name: 'Magnesium', unit: 'mg', aliases: ['Magnesium, Mg'] },
     ]);
-    expect(index.get('magnesium')).toBe('Magnesium');
-    expect(index.get('magnesium mg')).toBe('Magnesium');
+    expect(index.get('magnesium')).toEqual({ name: 'Magnesium', unit: 'mg' });
+    expect(index.get('magnesium mg')?.name).toBe('Magnesium');
   });
 
   it('keeps the first nutrient on a duplicate normalized alias', () => {
@@ -33,7 +33,7 @@ describe('buildAliasIndex', () => {
       { name: 'Magnesium', aliases: ['mag'] },
       { name: 'Manganese', aliases: ['mag'] },
     ]);
-    expect(index.get('mag')).toBe('Magnesium');
+    expect(index.get('mag')?.name).toBe('Magnesium');
   });
 
   it('ignores blank/non-string aliases', () => {
@@ -41,7 +41,7 @@ describe('buildAliasIndex', () => {
       // @ts-expect-error testing defensive handling of bad input
       { name: 'Zinc', aliases: ['', '  ', 5, null] },
     ]);
-    expect(index.get('zinc')).toBe('Zinc');
+    expect(index.get('zinc')?.name).toBe('Zinc');
     expect(index.size).toBe(1);
   });
 });
@@ -88,6 +88,48 @@ describe('applyCustomNutrientMatches', () => {
       (variant as { custom_nutrients?: Record<string, number> })
         .custom_nutrients
     ).toBeUndefined();
+  });
+
+  it('converts the provider amount into the custom nutrient unit', () => {
+    const index = buildAliasIndex([
+      { name: 'Magnesium', unit: 'µg', aliases: ['Magnesium, Mg'] },
+    ]);
+    const variant = {
+      provider_nutrients: { 'Magnesium, Mg': 0.4 },
+      provider_nutrient_units: { 'Magnesium, Mg': 'mg' },
+    };
+    applyCustomNutrientMatches([{ default_variant: variant }], index);
+    expect(
+      (variant as { custom_nutrients?: Record<string, number> })
+        .custom_nutrients
+    ).toEqual({ Magnesium: 400 });
+  });
+
+  it('retains the raw provider value when units are incompatible (e.g. IU)', () => {
+    const index = buildAliasIndex([
+      { name: 'Vitamin D', unit: 'mg', aliases: ['vitd'] },
+    ]);
+    const variant = {
+      provider_nutrients: { vitd: 10 },
+      provider_nutrient_units: { vitd: 'IU' },
+    };
+    applyCustomNutrientMatches([{ default_variant: variant }], index);
+    expect(
+      (variant as { custom_nutrients?: Record<string, number> })
+        .custom_nutrients
+    ).toEqual({ 'Vitamin D': 10 });
+  });
+
+  it('retains the raw value when the provider reports no unit', () => {
+    const index = buildAliasIndex([
+      { name: 'Magnesium', unit: 'mg', aliases: ['magnesium'] },
+    ]);
+    const variant = { provider_nutrients: { magnesium: 18 } };
+    applyCustomNutrientMatches([{ default_variant: variant }], index);
+    expect(
+      (variant as { custom_nutrients?: Record<string, number> })
+        .custom_nutrients
+    ).toEqual({ Magnesium: 18 });
   });
 });
 

@@ -3,6 +3,7 @@ import {
   invalidateOpenFoodFactsSession,
 } from './openFoodFactsAuth.js';
 import { log } from '../../config/logging.js';
+import { normalizeNutrientUnit } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import { normalizeBarcode } from '../../utils/foodUtils.js';
 const { name, version } = package$0;
@@ -225,8 +226,9 @@ const OFF_NON_NUTRIENT_KEYS = new Set([
 function extractOffProviderNutrients(
   nutriments: Record<string, unknown>,
   scale: number
-): Record<string, number> {
-  const out: Record<string, number> = {};
+): { values: Record<string, number>; units: Record<string, string> } {
+  const values: Record<string, number> = {};
+  const units: Record<string, string> = {};
   for (const key of Object.keys(nutriments)) {
     if (!key.endsWith('_100g')) continue;
     const value = nutriments[key];
@@ -239,9 +241,12 @@ function extractOffProviderNutrients(
     // spaced label as the provider field name.
     const name = base.replace(/-/g, ' ').trim();
     if (!name) continue;
-    out[name] = Math.round(value * factor * scale * 1000) / 1000;
+    // The extracted value is expressed in the field's declared unit (the factor
+    // converts OFF's grams to it), so that unit describes the shown value.
+    values[name] = Math.round(value * factor * scale * 1000) / 1000;
+    if (unit) units[name] = normalizeNutrientUnit(unit);
   }
-  return out;
+  return { values, units };
 }
 
 function mapOpenFoodFactsProduct(
@@ -298,7 +303,13 @@ function mapOpenFoodFactsProduct(
     iron: nutriments['iron_100g']
       ? Math.round(getNutrient('iron_100g') * 1000 * scale * 10) / 10
       : 0,
-    provider_nutrients: extractOffProviderNutrients(nutriments, scale),
+    ...(() => {
+      const extracted = extractOffProviderNutrients(nutriments, scale);
+      return {
+        provider_nutrients: extracted.values,
+        provider_nutrient_units: extracted.units,
+      };
+    })(),
     is_default: true,
   };
   // Language fallback priority:

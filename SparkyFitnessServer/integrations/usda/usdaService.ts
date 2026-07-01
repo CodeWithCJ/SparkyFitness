@@ -1,4 +1,5 @@
 import { log } from '../../config/logging.js';
+import { normalizeNutrientUnit } from '@workspace/shared';
 import {
   normalizeBarcode,
   normalizeServingUnit,
@@ -272,6 +273,7 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
   // e.g. "Magnesium, Mg". Shown to the user for alias discovery and matched
   // against their custom nutrients on import.
   const providerNutrientsByLabel: Record<string, number> = {};
+  const providerNutrientUnitsByLabel: Record<string, string> = {};
   for (const n of food.foodNutrients || []) {
     const id = n.nutrientId ?? n.nutrient?.id;
     const value = n.value ?? n.amount ?? 0;
@@ -281,6 +283,10 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
     const rawName = (n.nutrient?.name ?? n.nutrientName)?.trim();
     if (rawName) {
       providerNutrientsByLabel[rawName] = value;
+      const unit = n.nutrient?.unitName;
+      if (unit) {
+        providerNutrientUnitsByLabel[rawName] = normalizeNutrientUnit(unit);
+      }
     }
   }
 
@@ -334,6 +340,7 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
           providerNutrientsByLabel,
           scale
         ),
+        provider_nutrient_units: providerNutrientUnitsByLabel,
         is_default,
       });
     }

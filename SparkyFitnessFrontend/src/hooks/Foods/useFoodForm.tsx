@@ -24,6 +24,7 @@ import { nutrientFields } from '@/constants/foodForm';
 import {
   getConversionFactor,
   shouldOfferAiConversion,
+  convertNutrientAmount,
 } from '@workspace/shared';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import type {
@@ -364,25 +365,42 @@ export function useCustomFoodForm({
   });
 
   // Provider nutrient values the user mapped onto this food (custom nutrient
-  // name -> provider field label). Re-applied whenever variants are rebuilt so
-  // the imported value survives — notably the rebuild the effect below runs
-  // when creating a custom nutrient refetches the list. Kept in a ref so
-  // recording a match doesn't retrigger that rebuild effect.
-  const pendingProviderMatchesRef = useRef<Map<string, string>>(new Map());
+  // name -> { provider field label, the nutrient's chosen unit }). Re-applied
+  // whenever variants are rebuilt so the imported value survives — notably the
+  // rebuild the effect below runs when creating a custom nutrient refetches the
+  // list. Kept in a ref so recording a match doesn't retrigger that effect.
+  const pendingProviderMatchesRef = useRef<
+    Map<string, { label: string; unit?: string }>
+  >(new Map());
 
   const applyProviderMatchesToVariants = useCallback(
     <T extends FormFoodVariant>(list: T[]): T[] => {
       if (pendingProviderMatchesRef.current.size === 0) return list;
       return list.map((variant) => {
         let next = variant;
-        for (const [name, label] of pendingProviderMatchesRef.current) {
+        for (const [
+          name,
+          { label, unit },
+        ] of pendingProviderMatchesRef.current) {
           const providerValue = Number(next.provider_nutrients?.[label]);
           if (!Number.isFinite(providerValue) || providerValue <= 0) continue;
+          // Convert the provider amount into the nutrient's unit when both are
+          // known and compatible; otherwise keep the provider's raw value.
+          const providerUnit = next.provider_nutrient_units?.[label];
+          const converted = convertNutrientAmount(
+            providerValue,
+            providerUnit,
+            unit
+          );
+          const value =
+            converted === null
+              ? providerValue
+              : Math.round(converted * 1e6) / 1e6;
           next = {
             ...next,
             custom_nutrients: {
               ...next.custom_nutrients,
-              [name]: providerValue,
+              [name]: value,
             },
             // A concrete provider value counts as a manual edit for AI rows.
             ...(next.source === 'ai_estimate'
@@ -940,9 +958,13 @@ export function useCustomFoodForm({
   // setState passes to avoid stale-state overwrites across variants.
   const applyProviderNutrientMatch = (
     nutrientName: string,
-    providerLabel: string
+    providerLabel: string,
+    nutrientUnit?: string
   ) => {
-    pendingProviderMatchesRef.current.set(nutrientName, providerLabel);
+    pendingProviderMatchesRef.current.set(nutrientName, {
+      label: providerLabel,
+      unit: nutrientUnit,
+    });
     setVariants((prev) => applyProviderMatchesToVariants(prev));
     setOriginalVariants((prev) => applyProviderMatchesToVariants(prev));
     setServingSizeScalingBaseVariants((prev) =>
