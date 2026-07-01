@@ -33,8 +33,15 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
   const isFocused = useIsFocused();
   const wasFocused = useRef(false);
   useEffect(() => {
-    const justFocused = isFocused && !wasFocused.current;
-    wasFocused.current = isFocused;
+    // Skip animating while blurred so a mounted-but-hidden ring (e.g. the
+    // fasting/calorie ring on the Dashboard while another screen is on top)
+    // doesn't schedule frames for a per-second progress tick no one can see.
+    if (!isFocused) {
+      wasFocused.current = false;
+      return;
+    }
+    const justFocused = !wasFocused.current;
+    wasFocused.current = true;
     if (justFocused) {
       animatedProgress.value = 0;
     }

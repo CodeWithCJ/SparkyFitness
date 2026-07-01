@@ -88,7 +88,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   // the value stays mutable to React's compiler.
   useEffect(() => {
     invalidateCacheRef.current = invalidateCache;
-  });
+  }, [invalidateCache]);
 
   // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
   // as modifying a value already consumed by a hook (a React compiler bailout).

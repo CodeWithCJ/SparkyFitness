@@ -67,7 +67,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   // the value stays mutable to React's compiler.
   useEffect(() => {
     invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
-  });
+  }, [isMealComponent, mealDelete.invalidateCache, foodEntryDelete.invalidateCache]);
 
   // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
   // as modifying a value already consumed by a hook (a React compiler bailout).
