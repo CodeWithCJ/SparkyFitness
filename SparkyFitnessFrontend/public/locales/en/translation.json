@@ -676,7 +676,13 @@
     "addNewFood": "Add New Food",
     "addNewFoodDescription": "Enter the details for a new food item to add to your database.",
     "scanBarcodeDescription": "Position the product barcode in front of your camera.",
-    "importFromCSVDescription": "Import a CSV file to add multiple foods at once."
+    "importFromCSVDescription": "Import a CSV file to add multiple foods at once.",
+    "allProviders": "All Providers",
+    "topMatches": "Top Matches",
+    "bySource": "By Source",
+    "noResults": "No results",
+    "couldntLoad": "Couldn't load",
+    "showAllResults": "Show all {{count}} {{provider}} results"
   },
   "sync": {
     "syncAll": "Sync all active providers",

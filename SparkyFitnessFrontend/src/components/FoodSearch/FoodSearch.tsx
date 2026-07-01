@@ -9,7 +9,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Loader2, Camera } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Loader2,
+  Camera,
+  ChevronDown,
+  ChevronRight,
+  RotateCw,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -47,6 +55,12 @@ import {
   foodDetailsV2Options,
 } from '@/hooks/Foods/useFoodsV2.ts';
 import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
+import {
+  useAllProvidersFoodSearch,
+  type ExternalResultWrapper,
+} from '@/hooks/Foods/useAllProvidersFoodSearch.ts';
+import { interleaveTopMatches } from '@/utils/topMatches.ts';
+import { makeProviderColorResolver } from '@/utils/providerColor.ts';
 import { DataProvider } from '@/types/settings.ts';
 import { getProviderCategory } from '@/utils/settings.ts';
 
@@ -56,44 +70,9 @@ type FoodDataForBackend = Omit<CSVData, 'id'>;
 // (an inline [] default would re-run the online search effect during loading).
 const EMPTY_PROVIDERS: DataProvider[] = [];
 
-export type ExternalResultWrapper =
-  | {
-      provider_type: 'openfoodfacts';
-      food: Food;
-    }
-  | {
-      provider_type: 'nutritionix';
-      raw: NutritionixItem;
-      food: Food;
-    }
-  | {
-      provider_type: 'fatsecret';
-      food: Food;
-    }
-  | {
-      provider_type: 'usda';
-      food: Food;
-    }
-  | {
-      provider_type: 'mealie';
-      food: Food;
-    }
-  | {
-      provider_type: 'tandoor';
-      food: Food;
-    }
-  | {
-      provider_type: 'yazio';
-      food: Food;
-    }
-  | {
-      provider_type: 'norish';
-      food: Food;
-    }
-  | {
-      provider_type: 'swissfood';
-      food: Food;
-    };
+// Sentinel provider id for the aggregated "All Providers" mode (offered only
+// when more than one food provider is active).
+const ALL_PROVIDERS_VALUE = '__all__';
 
 interface EnhancedFoodSearchProps {
   onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
@@ -225,6 +204,84 @@ const EnhancedFoodSearch = ({
 
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
+
+  // Active food providers (used for the selector, the All Providers fan-out, and
+  // colour coding).
+  const foodProviderOptions = useMemo(
+    () =>
+      foodDataProviders.filter(
+        (provider) =>
+          getProviderCategory(provider).includes('food') && provider.is_active
+      ),
+    [foodDataProviders]
+  );
+
+  // Aggregated "All Providers" mode: offered only when more than one food
+  // provider is active. selectedFoodDataProvider holds the sentinel while it is
+  // active (so the single-provider online effect below no-ops). The
+  // length > 1 guard prevents rendering the aggregated view if providers drop
+  // to one while the sentinel is still selected (its dropdown option is hidden
+  // in that case).
+  const isAllProviders =
+    selectedFoodDataProvider === ALL_PROVIDERS_VALUE &&
+    foodProviderOptions.length > 1;
+
+  // If providers drop to one while the "All Providers" sentinel is still
+  // selected, clear it so we fall back to a real provider instead of stranding
+  // the selector on __all__ (which would show a blank value and no results).
+  useEffect(() => {
+    if (
+      manualProviderId === ALL_PROVIDERS_VALUE &&
+      foodProviderOptions.length <= 1
+    ) {
+      setManualProviderId(null);
+    }
+  }, [manualProviderId, foodProviderOptions.length]);
+
+  // Which By Source provider sections are expanded (All Providers mode). Reset
+  // when the query changes so stale sections don't stay open.
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
+    () => new Set()
+  );
+  const toggleProvider = useCallback((id: string) => {
+    setExpandedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Per-provider signature colour resolver for the All Providers badges/dots.
+  const getProviderColor = useMemo(
+    () => makeProviderColorResolver(foodProviderOptions),
+    [foodProviderOptions]
+  );
+
+  // All Providers fan-out: parallel per-provider searches that stream in.
+  const {
+    providerResults,
+    anyLoading: anyProviderLoading,
+    isSearchActive: isAllProvidersSearchActive,
+    debouncedSearch: allProvidersDebouncedSearch,
+  } = useAllProvidersFoodSearch(searchTerm, foodProviderOptions, {
+    enabled: isAllProviders,
+    autoScale: autoScaleOpenFoodFactsImports,
+    foodDisplayLimit,
+  });
+
+  // Collapse expanded By Source sections when the aggregated query changes.
+  // Keyed on the hook's debounced term (not the faster local debounce) so it
+  // fires in step with the results the sections are showing, not ~300ms early.
+  useEffect(() => {
+    setExpandedProviders(new Set());
+  }, [allProvidersDebouncedSearch]);
+
+  // Top Matches: interleave each provider's top results (round-robin by rank).
+  const topMatches = useMemo(
+    () => interleaveTopMatches(providerResults),
+    [providerResults]
+  );
 
   // --- Local meals: searched alongside foods, guarded against stale resolves ---
 
@@ -527,15 +584,22 @@ const EnhancedFoodSearch = ({
     setShowImportFromCsvDialog(false);
   };
 
-  const handleNutritionixEdit = async (item: NutritionixItem) => {
+  const handleNutritionixEdit = async (
+    item: NutritionixItem,
+    providerIdOverride?: string
+  ) => {
+    // In All Providers mode searchProviderId isn't set (the single-provider
+    // search no-ops), so callers pass the result's own provider id to fetch
+    // detailed nutrients with the right credentials.
+    const providerId = providerIdOverride || searchProviderId;
     let nutrientData: NutritionixItem;
     if (item.brand) {
       nutrientData = await queryClient.fetchQuery(
-        nutritionixBrandedNutrientsOptions(item.id ?? ' ', searchProviderId)
+        nutritionixBrandedNutrientsOptions(item.id ?? ' ', providerId)
       );
     } else {
       nutrientData = await queryClient.fetchQuery(
-        nutritionixNaturalNutrientsOptions(item.name, searchProviderId)
+        nutritionixNaturalNutrientsOptions(item.name, providerId)
       );
     }
 
@@ -551,7 +615,10 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleExternalFoodEdit = async (food: Food) => {
+  const handleExternalFoodEdit = async (
+    food: Food,
+    providerIdOverride?: string
+  ) => {
     const needsDetailFetch =
       (food.provider_type === 'fatsecret' ||
         food.provider_type === 'usda' ||
@@ -560,7 +627,9 @@ const EnhancedFoodSearch = ({
       food.provider_external_id;
 
     if (needsDetailFetch) {
-      const providerId = searchProviderId || undefined;
+      // In All Providers mode searchProviderId isn't set, so callers pass the
+      // result's own provider id to fetch full nutrients with the right creds.
+      const providerId = providerIdOverride || searchProviderId || undefined;
       if (!providerId && food.provider_type !== 'swissfood') {
         // No provider credentials available — data is already complete (barcode flow)
         setEditingProduct(food);
@@ -623,10 +692,6 @@ const EnhancedFoodSearch = ({
 
   // --- Derived render state ---
 
-  const foodProviderOptions = foodDataProviders.filter(
-    (provider) =>
-      getProviderCategory(provider).includes('food') && provider.is_active
-  );
   const isDebouncePending =
     !isSearchEmpty && debouncedSearchTerm !== searchTerm;
   const localPending = isFetchingSearch || isMealLoading || isDebouncePending;
@@ -636,18 +701,30 @@ const EnhancedFoodSearch = ({
   const showLocalSpinner =
     showLocalFoods && !isSearchEmpty && localPending && noLocalResults;
 
-  const renderExternalCard = (result: ExternalResultWrapper) => (
+  const renderExternalCard = (
+    result: ExternalResultWrapper,
+    opts?: {
+      keyPrefix?: string;
+      providerLabel?: string;
+      badgeColor?: string;
+      // Provider id for this specific result, so the edit handler fetches
+      // detailed nutrients with the right credentials in All Providers mode
+      // (where the shared searchProviderId isn't set).
+      providerId?: string;
+    }
+  ) => (
     <FoodResultCard
-      key={`${result.provider_type}-${result.food.provider_external_id}`}
+      key={`${opts?.keyPrefix ?? ''}-${result.provider_type}-${result.food.provider_external_id}`}
       item={result.food}
       isOnline={true}
-      providerLabel={result.provider_type.toUpperCase()}
+      providerLabel={opts?.providerLabel ?? result.provider_type.toUpperCase()}
+      providerBadgeColor={opts?.badgeColor}
       nutrientConfig={nutrientConfig}
       onEditClick={() => {
         if (result.provider_type === 'nutritionix') {
-          handleNutritionixEdit(result.raw);
+          handleNutritionixEdit(result.raw, opts?.providerId);
         } else {
-          handleExternalFoodEdit(result.food);
+          handleExternalFoodEdit(result.food, opts?.providerId);
         }
       }}
     />
@@ -695,7 +772,7 @@ const EnhancedFoodSearch = ({
             className="pl-9"
           />
         </div>
-        {(isOnlineLoading || localPending) && (
+        {(isOnlineLoading || localPending || anyProviderLoading) && (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         )}
         {foodProviderOptions.length > 0 && (
@@ -720,6 +797,12 @@ const EnhancedFoodSearch = ({
               />
             </SelectTrigger>
             <SelectContent>
+              {/* Aggregated view, offered only with more than one provider. */}
+              {foodProviderOptions.length > 1 && (
+                <SelectItem value={ALL_PROVIDERS_VALUE}>
+                  {t('enhancedFoodSearch.allProviders', 'All Providers')}
+                </SelectItem>
+              )}
               {foodProviderOptions.map((provider) => (
                 <SelectItem key={provider.id} value={provider.id}>
                   {' '}
@@ -851,8 +934,8 @@ const EnhancedFoodSearch = ({
               </div>
             )}
 
-            {/* Online provider results */}
-            {selectedProviderName && (
+            {/* Single-provider online results */}
+            {!isAllProviders && selectedProviderName && (
               <>
                 <SectionHeader>{selectedProviderName}</SectionHeader>
                 {isOnlineLoading && externalResults.length === 0 && (
@@ -860,7 +943,7 @@ const EnhancedFoodSearch = ({
                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </div>
                 )}
-                {externalResults.map(renderExternalCard)}
+                {externalResults.map((result) => renderExternalCard(result))}
                 {!isOnlineLoading &&
                   hasOnlineSearchBeenPerformed &&
                   externalResults.length === 0 && (
@@ -871,6 +954,134 @@ const EnhancedFoodSearch = ({
                       )}
                     </div>
                   )}
+              </>
+            )}
+
+            {/* Aggregated "All Providers" results: Top Matches + By Source */}
+            {isAllProviders && isAllProvidersSearchActive && (
+              <>
+                <SectionHeader>
+                  <span className="flex items-center justify-between">
+                    {t('enhancedFoodSearch.topMatches', 'Top Matches')}
+                    {anyProviderLoading && (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    )}
+                  </span>
+                </SectionHeader>
+                {topMatches.length > 0
+                  ? topMatches.map((match) =>
+                      renderExternalCard(match.result, {
+                        keyPrefix: `top-${match.providerId}`,
+                        providerLabel: match.providerName,
+                        badgeColor: getProviderColor(match.providerId),
+                        providerId: match.providerId,
+                      })
+                    )
+                  : !anyProviderLoading && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        {t('enhancedFoodSearch.noResults', 'No results')}
+                      </div>
+                    )}
+
+                <SectionHeader>
+                  {t('enhancedFoodSearch.bySource', 'By Source')}
+                </SectionHeader>
+                {providerResults.map((r) => {
+                  const expanded = expandedProviders.has(r.provider.id);
+                  const color = getProviderColor(r.provider.id);
+                  const loading = r.isLoading;
+                  const errored = r.isError && !loading;
+                  const count = r.totalCount;
+                  const empty = !loading && !errored && count === 0;
+                  const expandable = !loading && !errored && count > 0;
+                  return (
+                    <div
+                      key={r.provider.id}
+                      className="border rounded-md overflow-hidden"
+                    >
+                      <button
+                        type="button"
+                        disabled={!expandable && !errored}
+                        onClick={() => {
+                          if (errored) r.refetch();
+                          else if (expandable) toggleProvider(r.provider.id);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-left disabled:cursor-default"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="text-sm font-medium">
+                            {r.provider.provider_name}
+                          </span>
+                          {expandable && (
+                            <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                              {count}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                          {loading && (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          )}
+                          {errored && (
+                            <>
+                              <span>
+                                {t(
+                                  'enhancedFoodSearch.couldntLoad',
+                                  "Couldn't load"
+                                )}
+                              </span>
+                              <RotateCw className="w-4 h-4" />
+                            </>
+                          )}
+                          {empty && (
+                            <span>
+                              {t('enhancedFoodSearch.noResults', 'No results')}
+                            </span>
+                          )}
+                          {expandable &&
+                            (expanded ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            ))}
+                        </span>
+                      </button>
+                      {expanded && expandable && (
+                        <div className="px-2 pb-2 space-y-2">
+                          {r.items.map((item) =>
+                            renderExternalCard(item, {
+                              keyPrefix: r.provider.id,
+                              providerId: r.provider.id,
+                            })
+                          )}
+                          {count > r.items.length && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExternalResults([]);
+                                setManualProviderId(r.provider.id);
+                              }}
+                              className="text-sm font-medium text-primary px-1 py-2"
+                            >
+                              {t(
+                                'enhancedFoodSearch.showAllResults',
+                                'Show all {{count}} {{provider}} results',
+                                {
+                                  count,
+                                  provider: r.provider.provider_name,
+                                }
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </>
             )}
           </>
