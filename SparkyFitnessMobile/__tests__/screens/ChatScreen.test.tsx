@@ -125,7 +125,7 @@ const mockUseActiveAiServiceSetting = useActiveAiServiceSetting as jest.MockedFu
 >;
 const mockUseChatHistory = useChatHistory as jest.MockedFunction<typeof useChatHistory>;
 
-const navigation = { goBack: jest.fn() } as any;
+const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
 const route = { params: {} } as any;
 
 const initialMetrics = {
