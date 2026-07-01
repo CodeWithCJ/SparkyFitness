@@ -134,12 +134,9 @@ const ExternalProviderSettings = () => {
                   </Label>
                   <Select
                     value={
-                      defaultFoodDataProviderId &&
-                      foodProviders.some(
+                      foodProviders.find(
                         (p) => p.id === defaultFoodDataProviderId
-                      )
-                        ? defaultFoodDataProviderId
-                        : ''
+                      )?.id ?? ''
                     }
                     onValueChange={(value) => {
                       const id = value || null;
