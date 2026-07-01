@@ -13,6 +13,19 @@ import preferenceService from '../services/preferenceService.js';
 import { searchFatSecretByBarcode } from '../integrations/fatsecret/fatsecretService.js';
 import { lookupBarcode } from '../services/foodCoreService.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
+
+// provider_nutrients is the provider's full field dump surfaced for the alias
+// viewer (covered by customNutrientMatching.test.ts). Drop it here so these
+// exact-shape mapping assertions stay focused on the standard fields.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripProviderNutrients<T>(food: any): T {
+  if (food?.default_variant) delete food.default_variant.provider_nutrients;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (Array.isArray(food?.variants))
+    food.variants.forEach((v: any) => delete v?.provider_nutrients);
+  return food;
+}
+
 vi.mock('../models/foodRepository.js');
 vi.mock('../services/externalProviderService.js');
 vi.mock('../services/preferenceService.js');
@@ -198,7 +211,7 @@ const makeOffResponse = (overrides = {}) => ({
 describe('mapOpenFoodFactsProduct', () => {
   it('should map a full OFF product to the local food schema', () => {
     const offProduct = makeOffResponse().product;
-    const result = mapOpenFoodFactsProduct(offProduct);
+    const result = stripProviderNutrients(mapOpenFoodFactsProduct(offProduct));
     // serving_quantity=37, scale=0.37, all per-100g values scaled to per-serving
     expect(result).toEqual({
       name: 'Nutella',
@@ -370,7 +383,7 @@ describe('mapOpenFoodFactsProduct', () => {
 describe('mapUsdaBarcodeProduct', () => {
   it('should map a full USDA branded food to the local food schema', () => {
     const usdaFood = makeUsdaFood();
-    const result = mapUsdaBarcodeProduct(usdaFood);
+    const result = stripProviderNutrients(mapUsdaBarcodeProduct(usdaFood));
     // servingSize=37, scale=0.37, all per-100g values scaled to per-serving
     expect(result).toEqual({
       name: 'CHOCOLATE HAZELNUT SPREAD',

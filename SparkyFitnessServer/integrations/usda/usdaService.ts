@@ -3,6 +3,18 @@ import {
   normalizeBarcode,
   normalizeServingUnit,
 } from '../../utils/foodUtils.js';
+// Scale a per-100g map of provider nutrient values to a variant's serving and
+// round to keep small micronutrient values (e.g. 18 mg magnesium) meaningful.
+function scaleProviderNutrients(
+  base: Record<string, number>,
+  scale: number
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(base)) {
+    out[key] = Math.round(value * scale * 1000) / 1000;
+  }
+  return out;
+}
 // Using native fetch (standard in Node 22+)
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
@@ -31,6 +43,8 @@ const STANDARD_UNITS = new Set([
 
 export interface UsdaNutrient {
   nutrientId?: number;
+  // Search results expose the nutrient name flatly; detail results nest it.
+  nutrientName?: string;
   nutrient?: {
     id?: number;
     name?: string;
@@ -254,10 +268,19 @@ function parsePackageWeight(packageWeight: string | null | undefined) {
 
 function mapUsdaBarcodeProduct(food: UsdaFood) {
   const nutrients: Record<string | number, number> = {};
+  // Every provider nutrient field keyed by USDA's EXACT label (per-100g base),
+  // e.g. "Magnesium, Mg". Shown to the user for alias discovery and matched
+  // against their custom nutrients on import.
+  const providerNutrientsByLabel: Record<string, number> = {};
   for (const n of food.foodNutrients || []) {
     const id = n.nutrientId ?? n.nutrient?.id;
+    const value = n.value ?? n.amount ?? 0;
     if (id !== undefined && id !== null) {
-      nutrients[id] = n.value ?? n.amount ?? 0;
+      nutrients[id] = value;
+    }
+    const rawName = (n.nutrient?.name ?? n.nutrientName)?.trim();
+    if (rawName) {
+      providerNutrientsByLabel[rawName] = value;
     }
   }
 
@@ -307,6 +330,10 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
           Math.round((nutrients[1292] || 0) * scale * 10) / 10,
         vitamin_a: Math.round((nutrients[1104] || 0) * 0.3 * scale),
         vitamin_c: Math.round((nutrients[1162] || 0) * scale * 10) / 10,
+        provider_nutrients: scaleProviderNutrients(
+          providerNutrientsByLabel,
+          scale
+        ),
         is_default,
       });
     }

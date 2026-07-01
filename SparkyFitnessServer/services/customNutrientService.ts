@@ -3,6 +3,26 @@ import { log } from '../config/logging.js';
 import { v4 as uuidv4 } from 'uuid';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone } from '@workspace/shared';
+
+// Coerce arbitrary input into a clean string[] of aliases: drop non-strings,
+// trim, and remove blanks/duplicates. Returns [] for any non-array input.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeAliases(aliases: any): string[] {
+  if (!Array.isArray(aliases)) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const alias of aliases) {
+    if (typeof alias !== 'string') continue;
+    const trimmed = alias.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 class CustomNutrientService {
   /**
    * Creates a new custom nutrient for a user.
@@ -17,6 +37,7 @@ class CustomNutrientService {
     {
       name,
       unit,
+      aliases,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }: any
   ) {
@@ -24,10 +45,10 @@ class CustomNutrientService {
     try {
       const id = uuidv4();
       const result = await client.query(
-        `INSERT INTO user_custom_nutrients (id, user_id, name, unit)
-                     VALUES ($1, $2, $3, $4)
+        `INSERT INTO user_custom_nutrients (id, user_id, name, unit, aliases)
+                     VALUES ($1, $2, $3, $4, $5::jsonb)
                      RETURNING *`,
-        [id, userId, name, unit]
+        [id, userId, name, unit, JSON.stringify(sanitizeAliases(aliases))]
       );
       log('info', `Custom nutrient created: ${name} for user ${userId}`);
       // Automatically add to specific views (Food Database, Goal, Reports)
@@ -128,19 +149,25 @@ class CustomNutrientService {
     {
       name,
       unit,
+      aliases,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }: any
   ) {
     const client = await getClient(userId);
     try {
+      // `aliases` omitted (undefined) keeps the existing value; an explicit
+      // array (including []) replaces it.
+      const aliasesParam =
+        aliases === undefined ? null : JSON.stringify(sanitizeAliases(aliases));
       const result = await client.query(
         `UPDATE user_custom_nutrients
                      SET name = COALESCE($1, name),
                          unit = COALESCE($2, unit),
+                         aliases = COALESCE($3::jsonb, aliases),
                          updated_at = NOW()
-                     WHERE id = $3 AND user_id = $4
+                     WHERE id = $4 AND user_id = $5
                      RETURNING *`,
-        [name, unit, id, userId]
+        [name, unit, aliasesParam, id, userId]
       );
       if (result.rows.length > 0) {
         log('info', `Custom nutrient updated: ${id} for user ${userId}`);

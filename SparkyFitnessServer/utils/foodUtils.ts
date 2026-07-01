@@ -1,3 +1,84 @@
+import { log } from '../config/logging.js';
+import { normalizeNutrientName } from '@workspace/shared';
+
+interface CustomNutrientDef {
+  name: string;
+  aliases?: string[] | null;
+}
+
+/**
+ * Build a lookup from normalized nutrient name/alias -> the custom nutrient's
+ * canonical `name`. Each nutrient's own name is included as an implicit alias.
+ * Matching is case/punctuation-insensitive via normalizeNutrientName. On a
+ * duplicate normalized key across nutrients, the first definition wins and a
+ * warning is logged.
+ */
+function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, string> {
+  const index = new Map<string, string>();
+  if (!Array.isArray(defs)) return index;
+  for (const def of defs) {
+    if (!def || typeof def.name !== 'string') continue;
+    const keys = [def.name, ...(Array.isArray(def.aliases) ? def.aliases : [])];
+    for (const key of keys) {
+      if (typeof key !== 'string') continue;
+      const normalized = normalizeNutrientName(key);
+      if (!normalized) continue;
+      const existing = index.get(normalized);
+      if (existing !== undefined) {
+        if (existing !== def.name) {
+          log(
+            'warn',
+            `Custom nutrient alias "${key}" (normalized "${normalized}") maps to both "${existing}" and "${def.name}"; keeping "${existing}".`
+          );
+        }
+        continue;
+      }
+      index.set(normalized, def.name);
+    }
+  }
+  return index;
+}
+
+/**
+ * Populate each mapped provider food's custom_nutrients by exact-matching the
+ * (normalized) provider nutrient labels it carries on `provider_nutrients`
+ * against the user's alias index. Mutates the foods in place. `provider_nutrients`
+ * is left on the food so the client can show users the exact field names a
+ * provider reports; it is import-only and never persisted (no DB column).
+ */
+function applyCustomNutrientMatches(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foods: any[],
+  aliasIndex: Map<string, string>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any[] {
+  if (!Array.isArray(foods) || aliasIndex.size === 0) return foods;
+  for (const food of foods) {
+    if (!food) continue;
+    // default_variant is often the same object reference as an entry in
+    // variants[]; dedupe by reference so we only process each variant once.
+    const variants = new Set(
+      [food.default_variant, ...(food.variants || [])].filter(Boolean)
+    );
+    for (const variant of variants) {
+      const raw = variant.provider_nutrients;
+      if (!raw || typeof raw !== 'object') continue;
+      for (const [rawKey, rawValue] of Object.entries(raw)) {
+        const nutrientName = aliasIndex.get(normalizeNutrientName(rawKey));
+        if (!nutrientName) continue;
+        const value =
+          typeof rawValue === 'number' ? rawValue : Number(rawValue);
+        if (!Number.isFinite(value) || value <= 0) continue;
+        variant.custom_nutrients = {
+          ...(variant.custom_nutrients || {}),
+          [nutrientName]: value,
+        };
+      }
+    }
+  }
+  return foods;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitizeCustomNutrients(customNutrients: any) {
   if (!customNutrients || typeof customNutrients !== 'object') return {};
@@ -108,8 +189,12 @@ function normalizeBarcode(barcode: any) {
 export { sanitizeCustomNutrients };
 export { normalizeServingUnit };
 export { normalizeBarcode };
+export { buildAliasIndex };
+export { applyCustomNutrientMatches };
 export default {
   sanitizeCustomNutrients,
   normalizeServingUnit,
   normalizeBarcode,
+  buildAliasIndex,
+  applyCustomNutrientMatches,
 };

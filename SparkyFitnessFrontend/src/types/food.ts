@@ -36,6 +36,10 @@ export interface FoodVariant {
   is_locked?: boolean;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, string | number>;
+  // All nutrient fields the provider reported, keyed by the provider's EXACT
+  // label (e.g. "Magnesium, Mg"). Import-only (present on provider search/detail
+  // results, never persisted); used to let users discover and add aliases.
+  provider_nutrients?: Record<string, number>;
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;
   allergens?: string[] | null;
@@ -204,6 +208,7 @@ export type NumericFoodVariantKeys = Exclude<
   | 'is_locked'
   | 'glycemic_index'
   | 'custom_nutrients'
+  | 'provider_nutrients'
   // AI-Assisted Unit Conversions provenance — these are strings/enums, not
   // numerics, so the form-variant `string | ''` mapping must not include them.
   | 'user_id'

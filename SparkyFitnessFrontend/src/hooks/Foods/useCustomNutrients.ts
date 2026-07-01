@@ -21,8 +21,15 @@ export const useCustomNutrients = () => {
 export const useCreateCustomNutrientMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, unit }: { name: string; unit: string }) =>
-      customNutrientService.createCustomNutrient({ name, unit }),
+    mutationFn: ({
+      name,
+      unit,
+      aliases,
+    }: {
+      name: string;
+      unit: string;
+      aliases?: string[];
+    }) => customNutrientService.createCustomNutrient({ name, unit, aliases }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['preferences', 'nutrients'],
@@ -46,12 +53,18 @@ export const useUpdateCustomNutrientMutation = () => {
       nutrientId,
       name,
       unit,
+      aliases,
     }: {
       nutrientId: string;
       name: string;
       unit: string;
+      aliases?: string[];
     }) =>
-      customNutrientService.updateCustomNutrient(nutrientId, { name, unit }),
+      customNutrientService.updateCustomNutrient(nutrientId, {
+        name,
+        unit,
+        aliases,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['preferences', 'nutrients'],

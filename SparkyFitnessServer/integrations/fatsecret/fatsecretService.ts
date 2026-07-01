@@ -1,6 +1,38 @@
 import { log } from '../../config/logging.js';
 // Cache tokens by scope
 const tokensByScope = new Map();
+
+// Serving fields that describe the serving itself rather than a nutrient value;
+// excluded when harvesting all nutrient fields for custom-nutrient matching.
+const FATSECRET_NON_NUTRIENT_SERVING_KEYS = new Set([
+  'serving_id',
+  'serving_description',
+  'serving_url',
+  'metric_serving_amount',
+  'metric_serving_unit',
+  'number_of_units',
+  'measurement_description',
+  'is_default',
+]);
+
+// Harvest every numeric nutrient field FatSecret reports on a serving (including
+// ones with no standard column, e.g. vitamin_d, added_sugars), keyed by a
+// readable label, so users can discover them and custom nutrients can match.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFatSecretProviderNutrients(
+  serving: any
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!serving || typeof serving !== 'object') return out;
+  for (const [key, value] of Object.entries(serving)) {
+    if (FATSECRET_NON_NUTRIENT_SERVING_KEYS.has(key)) continue;
+    const num = parseFloat(value as string);
+    if (!Number.isFinite(num)) continue;
+    const name = key.replace(/_/g, ' ').trim();
+    if (name) out[name] = num;
+  }
+  return out;
+}
 // In-memory cache for FatSecret food nutrient data
 const foodNutrientCache = new Map();
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -292,6 +324,7 @@ function mapFatSecretFood(data: any) {
       calcium: Math.round(parseFloat(serving.calcium) || 0),
       iron: Math.round(parseFloat(serving.iron) || 0),
     };
+    const rawNutrients = extractFatSecretProviderNutrients(serving);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const addVariant = (size: any, unit: any, isDefault: any) => {
       if (isNaN(size) || !unit) return;
@@ -306,6 +339,7 @@ function mapFatSecretFood(data: any) {
           serving_size: size,
           serving_unit: normalizedUnit,
           ...baseNutrients,
+          provider_nutrients: rawNutrients,
           is_default: isDefault,
         });
       }

@@ -1,5 +1,24 @@
 import { log } from '../../config/logging.js';
 // Using native fetch (standard in Node 22+)
+
+// Harvest every numeric field from Mealie's schema.org nutrition object (keys
+// like "proteinContent"), keyed by a readable label with the "Content" suffix
+// dropped, for alias discovery and custom-nutrient matching on import.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMealieProviderNutrients(
+  nutrition: any
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!nutrition || typeof nutrition !== 'object') return out;
+  for (const [key, value] of Object.entries(nutrition)) {
+    const num = parseFloat(value as string);
+    if (!Number.isFinite(num)) continue;
+    const name = key.replace(/Content$/i, '').trim();
+    if (name) out[name] = num;
+  }
+  return out;
+}
+
 class MealieService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   accessToken: any;
@@ -157,6 +176,7 @@ class MealieService {
         vitamin_c: 0, // Mealie doesn't explicitly provide this
         calcium: 0, // Mealie doesn't explicitly provide this
         iron: 0, // Mealie doesn't explicitly provide this
+        provider_nutrients: extractMealieProviderNutrients(nutrition),
         is_default: true,
       },
     };

@@ -1,5 +1,27 @@
 import { log } from '../../config/logging.js';
 import { normalizeBarcode } from '../../utils/foodUtils.js';
+// Harvest every nutrient YAZIO reports (keyed like "mineral.magnesium",
+// "vitamin.a", "nutrient.protein") into a readable label -> value map scaled to
+// the variant, for alias discovery and custom-nutrient matching. Note: YAZIO
+// carries no per-nutrient unit, so mineral/vitamin values stay in YAZIO's
+// native unit (grams).
+function extractYazioProviderNutrients(
+  nutrients: Record<string, unknown>,
+  scale: number
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(nutrients)) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) continue;
+    const dot = key.indexOf('.');
+    const prefix = dot >= 0 ? key.slice(0, dot) : '';
+    const rest = dot >= 0 ? key.slice(dot + 1) : key;
+    const name = (prefix === 'vitamin' ? `vitamin ${rest}` : rest).trim();
+    if (!name) continue;
+    out[name] = Math.round(num * scale * 1000) / 1000;
+  }
+  return out;
+}
 
 const DEFAULT_YAZIO_API_BASE_URL = 'https://yzapi.yazio.com/v18';
 const TOKEN_CACHE_SKEW_MS = 60_000;
@@ -422,6 +444,7 @@ function mapYazioVariantNutrition(
     iron: round(scaledNutrient(nutrients, 'mineral.iron', scale) * 1000),
     vitamin_a: scaledMicrogramNutrient(nutrients, 'vitamin.a', scale),
     vitamin_c: round(scaledNutrient(nutrients, 'vitamin.c', scale) * 1000),
+    provider_nutrients: extractYazioProviderNutrients(nutrients, scale),
   };
 }
 

@@ -3,6 +3,7 @@ import express from 'express';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supe... Remove this comment to see the full error message
 import request from 'supertest';
 import foodCoreService from '../services/foodCoreService.js';
+import customNutrientService from '../services/customNutrientService.js';
 import { searchProviderFoods } from '../services/externalFoodSearchService.js';
 // @ts-expect-error TS(2691): An import path cannot end with a '.ts' extension. ... Remove this comment to see the full error message
 import foodRoutesV2 from '../routes/v2/foodRoutes.js';
@@ -25,6 +26,12 @@ vi.mock('../services/externalFoodSearchService.js', async (importOriginal) => {
 vi.mock('../services/foodCoreService.js', () => ({
   default: {
     lookupBarcode: vi.fn(),
+  },
+}));
+
+vi.mock('../services/customNutrientService.js', () => ({
+  default: {
+    getCustomNutrients: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -239,6 +246,51 @@ describe('GET /v2/foods/search/:providerType', () => {
     expect(res.body.foods[0].default_variant).not.toHaveProperty(
       'saturated_fat'
     );
+  });
+
+  it('matches provider_nutrients into custom_nutrients and surfaces provider_nutrients', async () => {
+    vi.mocked(customNutrientService.getCustomNutrients).mockResolvedValueOnce([
+      { name: 'Magnesium', aliases: ['Magnesium, Mg'] },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          id: null,
+          name: 'Fish, salmon, smoked',
+          brand: null,
+          barcode: null,
+          provider_external_id: 'usda-2706292',
+          provider_type: 'usda',
+          is_custom: false,
+          default_variant: {
+            id: null,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 117,
+            protein: 18.3,
+            carbs: 0,
+            fat: 4.3,
+            is_default: true,
+            custom_nutrients: null,
+            provider_nutrients: { 'Magnesium, Mg': 18, Sodium: 600 },
+          },
+          variants: null,
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const res = await request(app).get('/v2/foods/search/usda?query=salmon');
+
+    expect(res.statusCode).toBe(200);
+    const variant = res.body.foods[0].default_variant;
+    expect(variant.custom_nutrients).toEqual({ Magnesium: 18 });
+    // The full provider field list survives to the client for the alias viewer.
+    expect(variant.provider_nutrients).toEqual({
+      'Magnesium, Mg': 18,
+      Sodium: 600,
+    });
   });
 
   it('rejects an invalid provider type without calling the service', async () => {

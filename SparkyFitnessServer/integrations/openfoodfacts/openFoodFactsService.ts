@@ -164,6 +164,40 @@ function normalizeAllergenTags(tags: string[] | undefined): string[] | null {
   return tags.map((t) => t.replace(/^[a-z]{2}:/, ''));
 }
 
+// OpenFoodFacts stores every nutrient's `*_100g` value in grams but exposes the
+// label's display unit on `*_unit`. Convert grams to that unit (e.g. magnesium
+// 0.018 g -> 18 mg) so matched custom nutrients carry sensible values, then
+// scale to the variant's serving. Keyed by normalized nutrient name.
+const GRAMS_TO_UNIT: Record<string, number> = {
+  g: 1,
+  mg: 1000,
+  µg: 1000000,
+  mcg: 1000000,
+  ug: 1000000,
+};
+
+function extractOffProviderNutrients(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nutriments: Record<string, any>,
+  scale: number
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const key of Object.keys(nutriments)) {
+    if (!key.endsWith('_100g')) continue;
+    const value = nutriments[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    const base = key.slice(0, -'_100g'.length);
+    const unit = String(nutriments[`${base}_unit`] || '').toLowerCase();
+    const factor = GRAMS_TO_UNIT[unit] ?? 1;
+    // OFF keys are lowercase hyphenated (e.g. "vitamin-a"); use the readable
+    // spaced label as the provider field name.
+    const name = base.replace(/-/g, ' ').trim();
+    if (!name) continue;
+    out[name] = Math.round(value * factor * scale * 1000) / 1000;
+  }
+  return out;
+}
+
 function mapOpenFoodFactsProduct(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   product: any,
@@ -218,6 +252,7 @@ function mapOpenFoodFactsProduct(
     iron: nutriments['iron_100g']
       ? Math.round(nutriments['iron_100g'] * 1000 * scale * 10) / 10
       : 0,
+    provider_nutrients: extractOffProviderNutrients(nutriments, scale),
     is_default: true,
   };
   // Language fallback priority:

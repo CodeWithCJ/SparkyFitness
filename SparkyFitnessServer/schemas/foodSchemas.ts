@@ -30,6 +30,11 @@ export const FoodVariantSchema = z.object({
   custom_nutrients: z
     .record(z.string(), z.union([z.string(), z.number()]))
     .optional(),
+  // Every nutrient field the provider reported for this food, keyed by the
+  // provider's EXACT label (e.g. "Magnesium, Mg"). Surfaced to the client so
+  // users can see what a provider calls each nutrient and add it as a custom
+  // nutrient alias. Transient/import-only; never persisted.
+  provider_nutrients: z.record(z.string(), z.number()).optional(),
   source: z.enum(['manual', 'ai_estimate', 'imported']).optional(),
   ai_confidence: z.enum(['high', 'medium', 'low']).nullable().optional(),
   allergens: z.array(z.string()).nullable().optional(),

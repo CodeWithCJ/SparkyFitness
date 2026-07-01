@@ -1,5 +1,48 @@
 import { log } from '../../config/logging.js';
 
+// Harvest every nutrient/property Tandoor exposes (structured nutrition, the
+// food_properties dictionary, and the generic properties array — which is where
+// instance-defined custom properties like "Magnesium" live), keyed by the
+// property's exact name, for alias discovery and custom-nutrient matching on
+// import. Values are per serving, matching the standard fields.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTandoorProviderNutrients(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nutritionData: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodProperties: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  properties: any
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  const add = (rawName: unknown, rawValue: unknown) => {
+    if (typeof rawName !== 'string') return;
+    const num = Number(rawValue);
+    if (!Number.isFinite(num)) return;
+    const name = rawName.trim();
+    if (name) out[name] = num;
+  };
+  if (Array.isArray(nutritionData)) {
+    for (const item of nutritionData) add(item?.name, item?.value);
+  } else if (nutritionData && typeof nutritionData === 'object') {
+    for (const [key, value] of Object.entries(nutritionData)) add(key, value);
+  }
+  if (foodProperties && typeof foodProperties === 'object') {
+    for (const key of Object.keys(foodProperties)) {
+      const prop = foodProperties[key];
+      if (prop && prop.total_value !== undefined) {
+        add(prop.name, prop.total_value);
+      }
+    }
+  }
+  if (Array.isArray(properties)) {
+    for (const prop of properties) {
+      add(prop?.property_type?.name, prop?.property_amount);
+    }
+  }
+  return out;
+}
+
 export interface TandoorPropertyType {
   id?: number;
   name: string;
@@ -67,6 +110,7 @@ export interface SparkyFoodMapping {
     vitamin_c: number;
     calcium: number;
     iron: number;
+    provider_nutrients?: Record<string, number>;
     is_default: boolean;
   };
 }
@@ -731,6 +775,11 @@ class TandoorService {
         vitamin_c: Number(vitamin_c) || 0,
         calcium: Number(calcium) || 0,
         iron: Number(iron) || 0,
+        provider_nutrients: extractTandoorProviderNutrients(
+          nutritionData,
+          foodProperties,
+          properties
+        ),
         is_default: true,
       },
     };

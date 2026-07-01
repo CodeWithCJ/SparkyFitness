@@ -5,8 +5,8 @@ export const customNutrientService = {
   async createCustomNutrient(
     nutrientData: Omit<
       UserCustomNutrient,
-      'id' | 'user_id' | 'created_at' | 'updated_at'
-    >
+      'id' | 'user_id' | 'created_at' | 'updated_at' | 'aliases'
+    > & { aliases?: string[] }
   ): Promise<UserCustomNutrient> {
     const response = await api.post('/custom-nutrients', {
       body: nutrientData,
