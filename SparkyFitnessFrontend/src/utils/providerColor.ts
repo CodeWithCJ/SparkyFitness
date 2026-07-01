@@ -36,7 +36,7 @@ export function buildProviderColorMap(
   const byId = new Map<string, string>();
   if (palette.length > 0) {
     providers.forEach((p, i) => {
-      byId.set(p.id, palette[i % palette.length]);
+      byId.set(p.id, palette[i % palette.length] ?? FALLBACK_COLOR);
     });
   }
   return byId;
