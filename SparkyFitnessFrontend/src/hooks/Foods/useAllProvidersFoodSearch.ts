@@ -133,8 +133,9 @@ async function fetchProviderResults(
     pageSize,
     provider.provider_type === 'openfoodfacts' ? options.autoScale : undefined
   );
-  // Fall back to an empty list if a provider returns a malformed payload.
-  const items = (data?.foods ?? []).map(
+  // Fall back to an empty list if a provider returns a malformed payload
+  // (foods missing, null, or a non-array), so .map() can't crash the query.
+  const items = (Array.isArray(data?.foods) ? data.foods : []).map(
     (food: Food) =>
       ({
         provider_type: provider.provider_type,
