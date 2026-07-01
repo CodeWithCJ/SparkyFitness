@@ -53,11 +53,13 @@ interface AddCompItem {
 interface MainLayoutProps {
   onShowAboutDialog: () => void;
   onShowNewReleaseDialog: () => void;
+  onStartOnboarding?: () => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
   onShowAboutDialog,
   onShowNewReleaseDialog,
+  onStartOnboarding,
 }) => {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
@@ -418,6 +420,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               Welcome {activeUserName}
             </span>
 
+            {onStartOnboarding && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onStartOnboarding}
+                className="flex items-center gap-2"
+                title="Complete your setup"
+              >
+                <span className="hidden sm:inline">
+                  {t('onboarding.completeSetup', 'Complete Setup')}
+                </span>
+                <span className="sm:hidden">Setup</span>
+              </Button>
+            )}
             <GlobalNotificationIcon />
             <GlobalSyncButton />
             <ThemeToggle />

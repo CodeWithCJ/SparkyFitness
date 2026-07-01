@@ -2329,6 +2329,7 @@ CREATE TABLE public.onboarding_status (
     user_id uuid NOT NULL,
     full_name text,
     onboarding_complete boolean DEFAULT false NOT NULL,
+    onboarding_skipped boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );

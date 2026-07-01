@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getOnboardingStatus,
   resetOnboardingStatus,
+  skipOnboarding,
   submitOnboardingData,
 } from '@/api/Onboarding/onboarding';
 import { onboardingKeys } from '@/api/keys/onboarding';
@@ -60,6 +61,26 @@ export const useResetOnboarding = () => {
       successMessage: t(
         'goals.goalsSettings.resetOnboardingSuccess',
         'Onboarding status has been reset.'
+      ),
+    },
+  });
+};
+
+export const useSkipOnboarding = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: skipOnboarding,
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: onboardingKeys.status(),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'onboarding.skipFailed',
+        'Could not skip onboarding. Please try again.'
       ),
     },
   });

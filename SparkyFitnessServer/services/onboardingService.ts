@@ -26,12 +26,15 @@ async function checkOnboardingStatus(userId: any) {
   try {
     const statusRecord = await onboardingRepository.getOnboardingStatus(userId);
     if (!statusRecord) {
-      return false;
+      return { onboarding_complete: false, onboarding_skipped: false };
     }
-    return statusRecord.onboarding_complete;
+    return {
+      onboarding_complete: statusRecord.onboarding_complete,
+      onboarding_skipped: statusRecord.onboarding_skipped,
+    };
   } catch (error) {
     log('error', `Error checking onboarding status for user ${userId}:`, error);
-    return true;
+    return { onboarding_complete: true, onboarding_skipped: false };
   }
 }
 /**
@@ -53,11 +56,28 @@ async function resetOnboardingStatus(userId: any) {
     throw new Error('Failed to reset onboarding status.', { cause: error });
   }
 }
+/**
+ * Marks the onboarding wizard as skipped for a given user.
+ * @param {string} userId - The UUID of the user.
+ * @returns {Promise<void>}
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function skipOnboarding(userId: any) {
+  try {
+    await onboardingRepository.setOnboardingSkipped(userId);
+    log('info', `Successfully set onboarding skipped for user: ${userId}`);
+  } catch (error) {
+    log('error', `Error setting onboarding skipped for user ${userId}:`, error);
+    throw new Error('Failed to skip onboarding.', { cause: error });
+  }
+}
 export { processOnboardingData };
 export { checkOnboardingStatus };
 export { resetOnboardingStatus };
+export { skipOnboarding };
 export default {
   processOnboardingData,
   checkOnboardingStatus,
   resetOnboardingStatus,
+  skipOnboarding,
 };

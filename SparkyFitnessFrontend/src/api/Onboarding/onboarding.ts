@@ -24,17 +24,34 @@ export const submitOnboardingData = async (data: OnboardingData) => {
 
 /**
  * Fetches the user's onboarding completion status from the backend.
- * @returns {Promise<{ onboardingComplete: boolean }>}
+ * @returns {Promise<{ onboardingComplete: boolean; onboardingSkipped: boolean }>}
  */
 export const getOnboardingStatus = async (): Promise<{
   onboardingComplete: boolean;
+  onboardingSkipped: boolean;
 }> => {
   try {
     const response = await apiCall('/onboarding/status');
     return response;
   } catch (error) {
     console.error('Error fetching onboarding status:', error);
-    return { onboardingComplete: true };
+    return { onboardingComplete: true, onboardingSkipped: false };
+  }
+};
+
+/**
+ * Marks the onboarding wizard as skipped on the backend, so it persists across reloads.
+ * @returns {Promise<any>} The response from the server.
+ */
+export const skipOnboarding = async () => {
+  try {
+    const response = await apiCall('/onboarding/skip', {
+      method: 'POST',
+    });
+    return response;
+  } catch (error) {
+    console.error('Error skipping onboarding:', error);
+    throw error;
   }
 };
 

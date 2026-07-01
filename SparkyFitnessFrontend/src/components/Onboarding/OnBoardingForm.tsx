@@ -9,6 +9,7 @@ import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
 import { RecentCheckInMeasurementsResponse } from '@workspace/shared';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings';
+import { useSkipOnboarding } from '@/hooks/Onboarding/useOnboarding';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -46,6 +47,8 @@ export const OnBoardingForm = ({
     measurementUnit: preferredMeasurementUnit,
     dateFormat,
   } = usePreferences();
+
+  const skipOnboardingMutation = useSkipOnboarding();
 
   // State management
   const [step, setStep] = useState(1);
@@ -192,9 +195,14 @@ export const OnBoardingForm = ({
 
         {step <= lastInputStep && (
           <Button
-            onClick={onOnboardingComplete}
+            onClick={() => {
+              skipOnboardingMutation.mutate(undefined, {
+                onSettled: onOnboardingComplete,
+              });
+            }}
             variant="ghost"
             className="text-muted-foreground hover:text-foreground font-semibold ml-2 w-16"
+            disabled={skipOnboardingMutation.isPending}
           >
             Skip
           </Button>
