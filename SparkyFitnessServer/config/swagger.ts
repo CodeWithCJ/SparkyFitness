@@ -1127,6 +1127,7 @@ const options = {
           type: 'object',
           properties: {
             onboarding_complete: { type: 'boolean' },
+            onboarding_skipped: { type: 'boolean' },
           },
         },
         OidcProvider: {
