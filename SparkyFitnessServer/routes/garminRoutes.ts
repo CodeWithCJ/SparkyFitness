@@ -7,6 +7,7 @@ import garminMeasurementMapping from '../integrations/garminconnect/garminMeasur
 import { log } from '../config/logging.js';
 import moment from 'moment';
 import garminService from '../services/garminService.js';
+import { getGarminSyncPhaseErrors } from '../services/garminSyncResult.js';
 const router = express.Router();
 router.use(express.json());
 // Date validation constants
@@ -476,16 +477,22 @@ router.post('/sync', authenticate, async (req, res, next) => {
       startDate,
       endDate
     );
+    const failedPhases = getGarminSyncPhaseErrors(result);
     // Update the last sync timestamp
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
         'garmin'
       );
-    if (provider) {
+    if (provider && failedPhases.length === 0) {
       await externalProviderRepository.updateProviderLastSync(
         provider.id,
         new Date()
+      );
+    } else if (failedPhases.length > 0) {
+      log(
+        'warn',
+        `[garminRoutes] Skipping Garmin last_sync_at update for user ${userId}; failed phases: ${failedPhases.join(', ')}`
       );
     }
     res.status(200).json(result);

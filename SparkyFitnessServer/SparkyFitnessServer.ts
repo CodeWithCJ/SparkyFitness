@@ -74,6 +74,7 @@ import cron from 'node-cron';
 import { scheduleBackupsOnStartup } from './services/backupScheduler.js';
 import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
+import { getGarminSyncPhaseErrors } from './services/garminSyncResult.js';
 import fitbitService from './services/fitbitService.js';
 import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
@@ -548,11 +549,21 @@ const scheduleGarminSyncs = async () => {
     for (const provider of providers) {
       if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
-          await garminService.syncGarminData(provider.user_id, 'scheduled');
-          await externalProviderRepository.updateProviderLastSync(
-            provider.id,
-            new Date()
+          const result = await garminService.syncGarminData(
+            provider.user_id,
+            'scheduled'
           );
+          const failedPhases = getGarminSyncPhaseErrors(result);
+          if (failedPhases.length === 0) {
+            await externalProviderRepository.updateProviderLastSync(
+              provider.id,
+              new Date()
+            );
+          } else {
+            console.warn(
+              `[CRON] Garmin sync completed with failed phases for user ${provider.user_id}; last_sync_at not updated: ${failedPhases.join(', ')}`
+            );
+          }
         } catch (error) {
           console.error(
             `[CRON] Garmin sync failed for user ${provider.user_id}:`,
