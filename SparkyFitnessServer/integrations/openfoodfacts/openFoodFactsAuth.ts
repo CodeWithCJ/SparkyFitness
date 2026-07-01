@@ -1,5 +1,8 @@
 import { log } from '../../config/logging.js';
 import pkg from '../../package.json' with { type: 'json' };
+const OFF_BASE_URL = (
+  process.env.OPENFOODFACTS_BASE_URL || 'https://world.openfoodfacts.org'
+).replace(/\/+$/, '');
 
 interface SessionCacheEntry {
   session: string | null;
@@ -24,7 +27,7 @@ const inFlightLogins = new Map<string, Promise<string | null>>();
 
 const POSITIVE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 const NEGATIVE_TTL_MS = 30 * 1000; // 30 seconds
-const LOGIN_URL = 'https://world.openfoodfacts.org/cgi/session.pl';
+const LOGIN_URL = `${OFF_BASE_URL}/cgi/session.pl`;
 const USER_AGENT = `${pkg.name}/${pkg.version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 
 function cacheKey(userId: string, providerId: string): string {
