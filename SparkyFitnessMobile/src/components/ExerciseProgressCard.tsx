@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
 interface ProgressBarProps {
@@ -23,15 +23,19 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
 
   const animatedProgress = useSharedValue(0);
 
-  useFocusEffect(
-    useCallback(() => {
-      animatedProgress.value = 0;
-      animatedProgress.value = withTiming(progress, {
-        duration: 500,
-        easing: Easing.out(Easing.cubic),
-      });
-    }, [progress, animatedProgress])
-  );
+  // Replay the 0 -> progress entrance animation while the screen is focused.
+  // Driven by useIsFocused()+useEffect (rather than useFocusEffect) so the
+  // shared-value write lives in a real effect that React's compiler can
+  // optimize around.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    animatedProgress.value = 0;
+    animatedProgress.value = withTiming(progress, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isFocused, progress, animatedProgress]);
 
   const fillWidth = useDerivedValue(() => {
     const p = animatedProgress.value;
@@ -124,7 +128,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
   const hasEntries = exerciseMinutes > 0 || exerciseCalories > 0;
 
   return (
-    <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
       {hasEntries ? (
         <>

@@ -1,6 +1,5 @@
 import React, {
   useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -438,7 +437,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // against the session snapshot since `steps` only holds name/restSec.
   // Split into discrete fields so the rendering can stack "status: name -
   // set N/M" on one row and the load ("135 lbs × 8") on a second row.
-  const activeSetLabel = useMemo(() => {
+  const activeSetLabel = (() => {
     if (activeSession == null || activeSetId == null) return null;
     for (const exercise of activeSession.exercises) {
       const set = exercise.sets.find(st => String(st.id) === activeSetId);
@@ -458,7 +457,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       return { exerciseName, setNumber, loadText };
     }
     return null;
-  }, [activeSession, activeSetId, weightUnit]);
+  })();
 
   useEffect(() => {
     const targetBottomOffset = shouldSitAboveTabs

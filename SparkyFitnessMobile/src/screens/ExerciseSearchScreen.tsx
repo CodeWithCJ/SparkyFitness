@@ -124,9 +124,8 @@ useEffect(() => {
       handleSelectExercise(exercise);
     } catch {
       // Silently fail — user can retry
-    } finally {
-      setImportingExerciseId(null);
     }
+    setImportingExerciseId(null);
   }, [queryClient, handleSelectExercise]);
 
   // --- Shared renderers ---
@@ -172,7 +171,7 @@ useEffect(() => {
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16 }}
+            style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
             placeholder="Search exercises..."
             placeholderTextColor={textMuted}
             value={searchText}
@@ -185,7 +184,7 @@ useEffect(() => {
           />
         </View>
         {searchText.length > 0 && (
-          <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
+          <Button variant="header" onPress={() => setSearchText('')} hitSlop={8}>
             <Icon name="close" size={16} color={textMuted} />
           </Button>
         )}

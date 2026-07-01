@@ -95,6 +95,13 @@ export default function MarkdownMessage({
       markdownStyle={markdownStyle}
       md4cFlags={MD4C_FLAGS}
       streamingAnimation={streaming}
+      // A selectable native TextView uses ArrowKeyMovementMethod, whose
+      // setText path adds a selection span that triggers checkForResize() —
+      // which dereferences layoutParams and NPE-crashes (Android only) when a
+      // recycled FlatList cell applies its async render after layoutParams has
+      // gone null. Chat copies via the message action bar's Copy button, so we
+      // don't need drag-to-select here.
+      selectable={false}
       onLinkPress={openLink}
     />
   );

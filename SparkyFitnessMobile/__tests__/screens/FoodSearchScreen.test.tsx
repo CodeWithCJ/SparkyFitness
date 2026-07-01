@@ -241,7 +241,7 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('Lunch Bowl')).toBeTruthy();
     // The single default provider's results stream in under the External
     // Results header, with the provider name shown as the switchable source.
-    expect(screen.getByText('External Results')).toBeTruthy();
+    expect(screen.getByText('Online Results')).toBeTruthy();
     expect(screen.getByText('FatSecret')).toBeTruthy();
     expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
   });

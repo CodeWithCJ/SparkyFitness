@@ -653,10 +653,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const scaled = (value: number) => value * servings;
 
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary] = useCSSVariable([
+  const [accentColor, textPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
-  ]) as [string, string];
+    '--color-border-subtle',
+  ]) as [string, string, string];
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const buildSaveFoodPayload = useCallback(
@@ -1198,7 +1199,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       </View>
       )}
 
-      <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-safe-or-4 gap-4">
+      <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-4 gap-4">
         <FoodNutritionSummary
           name={adjustedValues?.name || activeItem.name}
           brand={adjustedValues?.brand ?? activeItem.brand}
@@ -1367,9 +1368,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           </>
         ) : null}
 
+      </ScrollView>
+
+      {/* Sticky footer */}
+      <View
+        className="px-4 py-3"
+        style={{
+          paddingBottom: Math.max(insets.bottom, 12),
+          borderTopWidth: 1,
+          borderTopColor: borderSubtle,
+        }}
+      >
         <Button
           variant="primary"
-          className="mt-2"
           disabled={
             isActionPending ||
             (!isMealBuilderMode && !effectiveMealId) ||
@@ -1414,7 +1425,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             </Text>
           )}
         </Button>
-      </ScrollView>
+      </View>
+
       <CalendarSheet
         ref={calendarRef}
         selectedDate={selectedDate}

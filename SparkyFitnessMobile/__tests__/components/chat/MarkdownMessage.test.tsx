@@ -25,6 +25,18 @@ describe('MarkdownMessage', () => {
     expect(getByTestId('enriched-markdown').props.children).toBe('see docs');
   });
 
+  it('renders the native text non-selectable (avoids the Android setText NPE crash)', () => {
+    const { getByTestId } = render(<MarkdownMessage text="hi" />);
+    expect(getByTestId('enriched-markdown').props.selectable).toBe(false);
+  });
+
+  it('forwards the streaming flag to the native fade animation', () => {
+    const { getByTestId, rerender } = render(<MarkdownMessage text="hi" streaming={false} />);
+    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(false);
+    rerender(<MarkdownMessage text="hi" streaming />);
+    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(true);
+  });
+
   it('opens tapped links via Linking', () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     const { getByTestId } = render(<MarkdownMessage text="hi" />);

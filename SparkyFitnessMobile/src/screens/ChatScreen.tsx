@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, Alert, FlatList } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,16 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
 type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messages'];
+
+/**
+ * `ThreadPrimitive.Messages` renders a plain FlatList and spreads any extra props
+ * onto it, but its prop type omits `ref`. Re-type it so we can attach a FlatList
+ * ref (used for auto-scroll). Under React 19 a `ref` on a function component is a
+ * regular prop, so it rides the spread through to the inner FlatList.
+ */
+const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
+  React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
+>;
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -115,6 +125,14 @@ function MessageBubble({ role }: { role: MessageRole }) {
     );
   });
 
+  // Only the message currently being generated should fade in new tokens.
+  // Settled history renders immediately and, crucially, skips the native fade
+  // animator — its post-render setSpan triggers checkForResize() and NPE-crashes
+  // (Android) on a recycled FlatList cell whose layoutParams have gone null.
+  const isStreaming = useAuiState(
+    (s) => s.message.role === 'assistant' && s.message.status?.type === 'running',
+  );
+
   return (
     <MessagePrimitive.Root
       style={{
@@ -134,7 +152,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
               isUser ? (
                 <Text className="text-base text-white">{part.text}</Text>
               ) : (
-                <MarkdownMessage text={part.text} />
+                <MarkdownMessage text={part.text} streaming={isStreaming} />
               )
             }
             renderToolCall={({ part }) => <ToolCallCard part={part} />}
@@ -161,14 +179,18 @@ function MessageBubble({ role }: { role: MessageRole }) {
           <ErrorPrimitive.Message style={{ flex: 1, color: dangerText, fontSize: 13 }} />
         </ErrorPrimitive.Root>
 
-        <MessagePrimitive.If last running={false}>
+        {/* Actions appear under every settled (non-running) assistant message:
+            Copy on all of them, Retry only on the latest reply. */}
+        <MessagePrimitive.If running={false}>
           <View className="flex-row gap-4 mt-1.5 ml-1">
-            <ActionBarPrimitive.Reload>
-              <View className="flex-row items-center gap-1">
-                <Icon name="sync" size={15} color={muted} />
-                <Text className="text-text-secondary text-xs">Retry</Text>
-              </View>
-            </ActionBarPrimitive.Reload>
+            <MessagePrimitive.If last>
+              <ActionBarPrimitive.Reload>
+                <View className="flex-row items-center gap-1">
+                  <Icon name="sync" size={15} color={muted} />
+                  <Text className="text-text-secondary text-xs">Retry</Text>
+                </View>
+              </ActionBarPrimitive.Reload>
+            </MessagePrimitive.If>
             <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
@@ -179,6 +201,21 @@ function MessageBubble({ role }: { role: MessageRole }) {
             </ActionBarPrimitive.Copy>
           </View>
         </MessagePrimitive.If>
+      </MessagePrimitive.If>
+
+      {/* User messages aren't selectable either, so give them their own Copy
+          button — right-aligned to sit under the right-aligned user bubble. */}
+      <MessagePrimitive.If user>
+        <View className="flex-row justify-end mt-1.5 mr-1">
+          <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
+            {({ isCopied }) => (
+              <View className="flex-row items-center gap-1">
+                <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
+                <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+              </View>
+            )}
+          </ActionBarPrimitive.Copy>
+        </View>
       </MessagePrimitive.If>
     </MessagePrimitive.Root>
   );
@@ -259,6 +296,42 @@ function ChatThread({
 }) {
   const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
+  // Keep the message list pinned to the bottom as content grows: lands on the
+  // latest message on mount (seeded history) and follows the stream.
+  const messagesRef = useRef<FlatList>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const scrollSettledFrameRef = useRef<number | null>(null);
+
+  const cancelScheduledScroll = useCallback(() => {
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+    if (scrollSettledFrameRef.current !== null) {
+      cancelAnimationFrame(scrollSettledFrameRef.current);
+      scrollSettledFrameRef.current = null;
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    cancelScheduledScroll();
+
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      messagesRef.current?.scrollToEnd({ animated: false });
+
+      scrollSettledFrameRef.current = requestAnimationFrame(() => {
+        scrollSettledFrameRef.current = null;
+        messagesRef.current?.scrollToEnd({ animated: false });
+      });
+    });
+  }, [cancelScheduledScroll]);
+
+  useEffect(() => {
+    scrollToBottom();
+    return cancelScheduledScroll;
+  }, [cancelScheduledScroll, scrollToBottom]);
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <RunningReporter onRunningChange={onRunningChange} />
@@ -283,12 +356,15 @@ function ChatThread({
             </View>
           </ThreadPrimitive.Empty>
 
-          <ThreadPrimitive.Messages
+          <ThreadMessages
+            ref={messagesRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16 }}
+            onContentSizeChange={scrollToBottom}
+            onLayout={scrollToBottom}
           >
             {({ message }) => <MessageBubble role={message.role} />}
-          </ThreadPrimitive.Messages>
+          </ThreadMessages>
         </View>
 
         <Composer />

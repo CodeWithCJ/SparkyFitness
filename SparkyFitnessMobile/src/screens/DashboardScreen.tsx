@@ -382,7 +382,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
         {summary.foodEntries.length === 0 && (
           <Pressable
-            className="bg-surface rounded-xl p-4 mb-2 shadow-sm"
+            className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
             onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
           >
             <Text className="text-md font-bold text-text-primary mb-4">Food</Text>
@@ -426,7 +426,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <FastingGoalReconciler />
         {fastingCardVisible && <FastingCard navigation={navigation} />}
 
-        <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
+        <Text className="text-text-primary text-xl font-bold mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager

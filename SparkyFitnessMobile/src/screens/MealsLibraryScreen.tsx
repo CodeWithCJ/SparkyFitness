@@ -86,14 +86,14 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const renderSearchBar = () => (
     <View className="px-4 pb-3">
       <View
-        className="flex-row items-center bg-raised rounded-lg px-3"
+        className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
         style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
       >
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
+            style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
             placeholder="Search meals..."
             placeholderTextColor={textMuted}
             value={searchText}

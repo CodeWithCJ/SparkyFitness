@@ -43,7 +43,12 @@ jest.mock('@assistant-ui/react-native', () => {
         (global as any).__mockChatIsEmpty === false
           ? null
           : React.createElement(React.Fragment, null, children),
-      Messages: () => null,
+      Messages: React.forwardRef(({ children: _children, ...props }: any, ref: any) => {
+        React.useImperativeHandle(ref, () => ({
+          scrollToEnd: (options: unknown) => (global as any).__mockMessagesScrollToEnd?.(options),
+        }));
+        return React.createElement(View, { testID: 'thread-messages', ...props });
+      }),
       If: ({ children, running, empty }: any) => {
         if (running !== undefined) {
           return running === !!(global as any).__mockChatIsRunning ? children : null;
@@ -155,6 +160,7 @@ beforeEach(() => {
   (global as any).__mockChatIsEmpty = true;
   (global as any).__mockCapturedOnError = undefined;
   (global as any).__mockCapturedMessages = undefined;
+  (global as any).__mockMessagesScrollToEnd = undefined;
   mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
   mockUseActiveAiServiceSetting.mockReturnValue({ data: ACTIVE_SETTING, isLoading: false } as any);
   mockUseChatHistory.mockReturnValue({ data: [], isLoading: false } as any);
@@ -219,6 +225,37 @@ describe('ChatScreen thread', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'error', text1: 'Chat error', text2: 'bad config' })
     );
+  });
+
+  it('scrolls the message list to the bottom after the thread mounts', async () => {
+    const scrollToEnd = jest.fn();
+    const animationFrames: FrameRequestCallback[] = [];
+    (global as any).__mockChatIsEmpty = false;
+    (global as any).__mockMessagesScrollToEnd = scrollToEnd;
+    const requestAnimationFrameSpy = jest
+      .spyOn(global, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      });
+    const cancelAnimationFrameSpy = jest
+      .spyOn(global, 'cancelAnimationFrame')
+      .mockImplementation(() => undefined);
+
+    const { findByTestId } = renderScreen();
+    await findByTestId('thread-messages');
+
+    await act(async () => {
+      while (animationFrames.length > 0) {
+        const callbacks = animationFrames.splice(0);
+        callbacks.forEach((callback) => callback(0));
+      }
+    });
+
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
   });
 });
 

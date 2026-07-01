@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { View, TextInput, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
@@ -25,14 +25,14 @@ const LibrarySearchBar: React.FC<LibrarySearchBarProps> = ({
   return (
     <View className="px-4 pb-3">
       <View
-        className="flex-row items-center bg-raised rounded-lg px-3"
+        className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
         style={{ borderWidth: 1, borderColor: isFocused ? accentColor : 'transparent' }}
       >
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 0 }}
+            style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
             placeholder={placeholder}
             placeholderTextColor={textMuted}
             value={value}
