@@ -1,12 +1,40 @@
 import { log } from '../../config/logging.js';
 // Using native fetch (standard in Node 22+)
 
+interface MealieNutrition {
+  calories?: string | number;
+  proteinContent?: string | number;
+  carbohydrateContent?: string | number;
+  fatContent?: string | number;
+  saturatedFatContent?: string | number;
+  unsaturatedFatContent?: string | number;
+  transFatContent?: string | number;
+  cholesterolContent?: string | number;
+  sodiumContent?: string | number;
+  fiberContent?: string | number;
+  sugarContent?: string | number;
+  [key: string]: string | number | undefined;
+}
+
+interface MealieRecipe {
+  name: string;
+  orgURL?: string;
+  slug: string;
+  recipeServings?: number;
+  recipeYield?: string;
+  nutrition?: MealieNutrition;
+}
+
+interface MealieSearchResponse {
+  items: MealieRecipe[];
+  total: number;
+}
+
 // Harvest every numeric field from Mealie's schema.org nutrition object (keys
 // like "proteinContent"), keyed by a readable label with the "Content" suffix
 // dropped, for alias discovery and custom-nutrient matching on import.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractMealieProviderNutrients(
-  nutrition: any
+  nutrition: MealieNutrition
 ): Record<string, number> {
   const out: Record<string, number> = {};
   if (!nutrition || typeof nutrition !== 'object') return out;
@@ -20,12 +48,9 @@ function extractMealieProviderNutrients(
 }
 
 class MealieService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  accessToken: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(baseUrl: any, apiKey: any) {
+  accessToken?: string;
+  baseUrl: string;
+  constructor(baseUrl: string, apiKey?: string) {
     if (
       baseUrl &&
       !baseUrl.startsWith('http://') &&
@@ -37,25 +62,33 @@ class MealieService {
     }
     this.accessToken = apiKey; // Directly use the provided API key as the access token
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async searchRecipes(query: any, page = 1, options = {}) {
+  async searchRecipes(
+    query: string,
+    page = 1,
+    options: { headers?: Record<string, string> } = {}
+  ): Promise<{
+    items: MealieRecipe[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      hasMore: boolean;
+    };
+  }> {
     if (!this.accessToken) {
       throw new Error('Mealie API key not provided.');
     }
     const perPage = 10;
     const url = new URL(`${this.baseUrl}/api/recipes`);
     url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
-    // @ts-expect-error TS(2345): Argument of type 'number' is not assignable to par... Remove this comment to see the full error message
-    url.searchParams.append('perPage', perPage);
-    // @ts-expect-error TS(2345): Argument of type 'number' is not assignable to par... Remove this comment to see the full error message
-    url.searchParams.append('page', page);
+    url.searchParams.append('perPage', String(perPage));
+    url.searchParams.append('page', String(page));
     try {
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
           Accept: 'application/json',
-          // @ts-expect-error TS(2339): Property 'headers' does not exist on type '{}'.
           ...options.headers,
         },
       });
@@ -74,7 +107,7 @@ class MealieService {
           );
         }
       }
-      const data = await response.json();
+      const data = (await response.json()) as MealieSearchResponse;
       log(
         'debug',
         `Found ${data.items.length} recipes for query: ${query} (page ${page})`
@@ -89,16 +122,21 @@ class MealieService {
         },
       };
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      log('error', 'Error during Mealie recipe search:', error.message);
+      log(
+        'error',
+        'Error during Mealie recipe search:',
+        error instanceof Error ? error.message : String(error)
+      );
       return {
         items: [],
         pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
       };
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getRecipeDetails(slug: any, options = {}) {
+  async getRecipeDetails(
+    slug: string,
+    options: { headers?: Record<string, string> } = {}
+  ): Promise<MealieRecipe | null> {
     // Added options parameter
     if (!this.accessToken) {
       throw new Error('Mealie API key not provided.');
@@ -110,31 +148,28 @@ class MealieService {
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
           Accept: 'application/json',
-          // @ts-expect-error TS(2339): Property 'headers' does not exist on type '{}'.
           ...options.headers, // Apply custom headers
         },
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { detail?: string };
         throw new Error(
           `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData.detail}`
         );
       }
-      const data = await response.json();
+      const data = (await response.json()) as MealieRecipe;
       log('debug', `Successfully retrieved details for recipe: ${slug}`);
       return data;
     } catch (error) {
       log(
         'error',
         'Error during Mealie recipe details retrieval:',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error.message
+        error instanceof Error ? error.message : String(error)
       );
       return null;
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mapMealieRecipeToSparkyFood(mealieRecipe: any, userId: any) {
+  mapMealieRecipeToSparkyFood(mealieRecipe: MealieRecipe, userId: string) {
     log(
       'debug',
       'Raw Mealie Recipe Data:',
@@ -159,19 +194,52 @@ class MealieService {
       variant: {
         serving_size: defaultServing,
         serving_unit: servingUnit,
-        calories: parseFloat(nutrition?.calories) || 0,
-        protein: parseFloat(nutrition?.proteinContent) || 0,
-        carbs: parseFloat(nutrition?.carbohydrateContent) || 0,
-        fat: parseFloat(nutrition?.fatContent) || 0,
-        saturated_fat: parseFloat(nutrition?.saturatedFatContent) || 0,
-        polyunsaturated_fat: parseFloat(nutrition?.unsaturatedFatContent) || 0,
+        calories:
+          typeof nutrition.calories === 'number'
+            ? nutrition.calories
+            : parseFloat(String(nutrition.calories || '')) || 0,
+        protein:
+          typeof nutrition.proteinContent === 'number'
+            ? nutrition.proteinContent
+            : parseFloat(String(nutrition.proteinContent || '')) || 0,
+        carbs:
+          typeof nutrition.carbohydrateContent === 'number'
+            ? nutrition.carbohydrateContent
+            : parseFloat(String(nutrition.carbohydrateContent || '')) || 0,
+        fat:
+          typeof nutrition.fatContent === 'number'
+            ? nutrition.fatContent
+            : parseFloat(String(nutrition.fatContent || '')) || 0,
+        saturated_fat:
+          typeof nutrition.saturatedFatContent === 'number'
+            ? nutrition.saturatedFatContent
+            : parseFloat(String(nutrition.saturatedFatContent || '')) || 0,
+        polyunsaturated_fat:
+          typeof nutrition.unsaturatedFatContent === 'number'
+            ? nutrition.unsaturatedFatContent
+            : parseFloat(String(nutrition.unsaturatedFatContent || '')) || 0,
         monounsaturated_fat: 0, // Mealie doesn't explicitly provide this
-        trans_fat: parseFloat(nutrition?.transFatContent) || 0,
-        cholesterol: parseFloat(nutrition?.cholesterolContent) || 0,
-        sodium: parseFloat(nutrition?.sodiumContent) || 0,
+        trans_fat:
+          typeof nutrition.transFatContent === 'number'
+            ? nutrition.transFatContent
+            : parseFloat(String(nutrition.transFatContent || '')) || 0,
+        cholesterol:
+          typeof nutrition.cholesterolContent === 'number'
+            ? nutrition.cholesterolContent
+            : parseFloat(String(nutrition.cholesterolContent || '')) || 0,
+        sodium:
+          typeof nutrition.sodiumContent === 'number'
+            ? nutrition.sodiumContent
+            : parseFloat(String(nutrition.sodiumContent || '')) || 0,
         potassium: 0, // Mealie doesn't explicitly provide this
-        dietary_fiber: parseFloat(nutrition?.fiberContent) || 0,
-        sugars: parseFloat(nutrition?.sugarContent) || 0,
+        dietary_fiber:
+          typeof nutrition.fiberContent === 'number'
+            ? nutrition.fiberContent
+            : parseFloat(String(nutrition.fiberContent || '')) || 0,
+        sugars:
+          typeof nutrition.sugarContent === 'number'
+            ? nutrition.sugarContent
+            : parseFloat(String(nutrition.sugarContent || '')) || 0,
         vitamin_a: 0, // Mealie doesn't explicitly provide this
         vitamin_c: 0, // Mealie doesn't explicitly provide this
         calcium: 0, // Mealie doesn't explicitly provide this

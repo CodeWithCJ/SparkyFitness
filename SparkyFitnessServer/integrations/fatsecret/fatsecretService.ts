@@ -1,6 +1,67 @@
 import { log } from '../../config/logging.js';
+
+interface FatSecretServing {
+  serving_id?: string;
+  serving_description?: string;
+  serving_url?: string;
+  metric_serving_amount?: string;
+  metric_serving_unit?: string;
+  number_of_units?: string;
+  measurement_description?: string;
+  is_default?: string;
+  calories?: string;
+  protein?: string;
+  carbohydrate?: string;
+  fat?: string;
+  saturated_fat?: string;
+  polyunsaturated_fat?: string;
+  monounsaturated_fat?: string;
+  trans_fat?: string;
+  cholesterol?: string;
+  sodium?: string;
+  potassium?: string;
+  fiber?: string;
+  sugar?: string;
+  vitamin_a?: string;
+  vitamin_c?: string;
+  calcium?: string;
+  iron?: string;
+  [key: string]: string | number | undefined;
+}
+
+interface FatSecretFood {
+  food_name: string;
+  brand_name?: string | null;
+  barcode?: string;
+  food_id: string | number;
+  servings?: {
+    serving?: FatSecretServing | FatSecretServing[];
+  };
+}
+
+interface FatSecretFoodResponse {
+  food?: FatSecretFood;
+}
+
+interface FatSecretSearchItem {
+  food_name: string;
+  brand_name?: string | null;
+  food_id?: string | number;
+  food_description?: string;
+}
+
+interface FatSecretApiError {
+  code: number | string;
+  message?: string;
+}
+
+interface FatSecretApiResponse {
+  error?: FatSecretApiError;
+  [key: string]: unknown;
+}
+
 // Cache tokens by scope
-const tokensByScope = new Map();
+const tokensByScope = new Map<string, { token: string; expiry: number }>();
 
 // Serving fields that describe the serving itself rather than a nutrient value;
 // excluded when harvesting all nutrient fields for custom-nutrient matching.
@@ -18,9 +79,8 @@ const FATSECRET_NON_NUTRIENT_SERVING_KEYS = new Set([
 // Harvest every numeric nutrient field FatSecret reports on a serving (including
 // ones with no standard column, e.g. vitamin_d, added_sugars), keyed by a
 // readable label, so users can discover them and custom nutrients can match.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractFatSecretProviderNutrients(
-  serving: any
+  serving: FatSecretServing
 ): Record<string, number> {
   const out: Record<string, number> = {};
   if (!serving || typeof serving !== 'object') return out;
@@ -102,24 +162,22 @@ const SERVING_UNIT_ALIASES = {
   'large (edible portion)': 'large',
   'extra large (edible portion)': 'extra large',
 };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeServingUnit(unit: any) {
+function normalizeServingUnit(unit?: string): string {
   if (!unit) return 'g';
   // Strip anything in parentheses at the end: "serving (237g)" -> "serving"
   const clean = unit
     .replace(/\s*\([^)]*\)\s*$/i, '')
     .toLowerCase()
     .trim();
+  const cleanFirstWord = clean.split(/\s+/)[0];
   const result =
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    SERVING_UNIT_ALIASES[clean] ||
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    SERVING_UNIT_ALIASES[clean.split(/\s+/)[0]] ||
+    SERVING_UNIT_ALIASES[clean as keyof typeof SERVING_UNIT_ALIASES] ||
+    SERVING_UNIT_ALIASES[cleanFirstWord as keyof typeof SERVING_UNIT_ALIASES] ||
     clean;
   return result;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function evaluateFraction(fractionStr: any) {
+
+function evaluateFraction(fractionStr?: string): number {
   if (!fractionStr) return 0;
   // Handle strings like "1 1/4 cup" by only taking the leading number/fraction part
   const match = fractionStr.trim().match(/^([\d\s./]+)/);
@@ -143,8 +201,7 @@ function evaluateFraction(fractionStr: any) {
 // error as { error: { code, message } } (e.g. code 21 "Invalid IP" when the
 // server IP isn't whitelisted). Surface it instead of letting it fall through
 // as empty "No results found".
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function assertNoFatSecretApiError(data: any) {
+function assertNoFatSecretApiError(data?: FatSecretApiResponse | null): void {
   const apiError = data?.error;
   const hasCode = apiError?.code !== undefined && apiError?.code !== null;
   const hasMessage =
@@ -165,12 +222,13 @@ function assertNoFatSecretApiError(data: any) {
 }
 // Function to get FatSecret OAuth 2.0 Access Token
 async function getFatSecretAccessToken(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clientId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clientSecret: any,
+  clientId: string | undefined,
+  clientSecret: string | undefined,
   requestedScope = 'basic'
-) {
+): Promise<string> {
+  if (!clientId || !clientSecret) {
+    throw new Error('FatSecret API credentials are not configured.');
+  }
   const cached = tokensByScope.get(requestedScope);
   if (cached && Date.now() < cached.expiry) {
     return cached.token;
@@ -193,7 +251,10 @@ async function getFatSecretAccessToken(
       }).toString(),
     });
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = (await response.json()) as {
+        error?: string;
+        error_description?: string;
+      };
       log(
         'error',
         `FatSecret OAuth Token API error for scope "${requestedScope}":`,
@@ -214,7 +275,10 @@ async function getFatSecretAccessToken(
         `FatSecret authentication failed: ${errorData.error_description || response.statusText}`
       );
     }
-    const data = await response.json();
+    const data = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+    };
     const token = data.access_token;
     const expiry = Date.now() + data.expires_in * 1000 - 60000; // Set expiry 1 minute early
     tokensByScope.set(requestedScope, { token, expiry });
@@ -233,12 +297,9 @@ async function getFatSecretAccessToken(
 }
 
 async function searchFatSecretByBarcode(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  barcode: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clientId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clientSecret: any
+  barcode: string,
+  clientId: string,
+  clientSecret: string
 ) {
   try {
     // Specifically request barcode scope for this call
@@ -287,46 +348,49 @@ async function searchFatSecretByBarcode(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapFatSecretFood(data: any) {
+function mapFatSecretFood(data: FatSecretFoodResponse) {
   const food = data.food;
   if (!food) return null;
   // Servings can be an array or a single object in FatSecret API
-  let servingsList = food.servings?.serving || [];
-  if (!Array.isArray(servingsList)) {
-    servingsList = [servingsList];
-  }
+  const servingsList: FatSecretServing[] = Array.isArray(food.servings?.serving)
+    ? food.servings.serving
+    : food.servings?.serving
+      ? [food.servings.serving]
+      : [];
   const variantsMap = new Map();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  servingsList.forEach((serving: any) => {
+  servingsList.forEach((serving: FatSecretServing) => {
     // We will attempt to create TWO variants per FatSecret serving:
     // 1. Household variant (e.g., "1 serving", "1/4 cup")
     // 2. Metric variant (e.g., "237 g", "100 ml")
     const baseNutrients = {
-      calories: Math.round(parseFloat(serving.calories) || 0),
-      protein: Math.round((parseFloat(serving.protein) || 0) * 10) / 10,
-      carbs: Math.round((parseFloat(serving.carbohydrate) || 0) * 10) / 10,
-      fat: Math.round((parseFloat(serving.fat) || 0) * 10) / 10,
+      calories: Math.round(parseFloat(serving.calories || '') || 0),
+      protein: Math.round((parseFloat(serving.protein || '') || 0) * 10) / 10,
+      carbs:
+        Math.round((parseFloat(serving.carbohydrate || '') || 0) * 10) / 10,
+      fat: Math.round((parseFloat(serving.fat || '') || 0) * 10) / 10,
       saturated_fat:
-        Math.round((parseFloat(serving.saturated_fat) || 0) * 10) / 10,
+        Math.round((parseFloat(serving.saturated_fat || '') || 0) * 10) / 10,
       polyunsaturated_fat:
-        Math.round((parseFloat(serving.polyunsaturated_fat) || 0) * 10) / 10,
+        Math.round((parseFloat(serving.polyunsaturated_fat || '') || 0) * 10) /
+        10,
       monounsaturated_fat:
-        Math.round((parseFloat(serving.monounsaturated_fat) || 0) * 10) / 10,
-      trans_fat: Math.round((parseFloat(serving.trans_fat) || 0) * 10) / 10,
-      cholesterol: Math.round(parseFloat(serving.cholesterol) || 0),
-      sodium: Math.round(parseFloat(serving.sodium) || 0),
-      potassium: Math.round(parseFloat(serving.potassium) || 0),
-      dietary_fiber: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
-      sugars: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
-      vitamin_a: Math.round(parseFloat(serving.vitamin_a) || 0),
-      vitamin_c: Math.round(parseFloat(serving.vitamin_c) || 0),
-      calcium: Math.round(parseFloat(serving.calcium) || 0),
-      iron: Math.round(parseFloat(serving.iron) || 0),
+        Math.round((parseFloat(serving.monounsaturated_fat || '') || 0) * 10) /
+        10,
+      trans_fat:
+        Math.round((parseFloat(serving.trans_fat || '') || 0) * 10) / 10,
+      cholesterol: Math.round(parseFloat(serving.cholesterol || '') || 0),
+      sodium: Math.round(parseFloat(serving.sodium || '') || 0),
+      potassium: Math.round(parseFloat(serving.potassium || '') || 0),
+      dietary_fiber:
+        Math.round((parseFloat(serving.fiber || '') || 0) * 10) / 10,
+      sugars: Math.round((parseFloat(serving.sugar || '') || 0) * 10) / 10,
+      vitamin_a: Math.round(parseFloat(serving.vitamin_a || '') || 0),
+      vitamin_c: Math.round(parseFloat(serving.vitamin_c || '') || 0),
+      calcium: Math.round(parseFloat(serving.calcium || '') || 0),
+      iron: Math.round(parseFloat(serving.iron || '') || 0),
     };
     const rawNutrients = extractFatSecretProviderNutrients(serving);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const addVariant = (size: any, unit: any, isDefault: any) => {
+    const addVariant = (size: number, unit: string, isDefault: boolean) => {
       if (isNaN(size) || !unit) return;
       const normalizedUnit = normalizeServingUnit(unit);
       const key = `${size}_${normalizedUnit}`.toLowerCase();
@@ -345,7 +409,7 @@ function mapFatSecretFood(data: any) {
       }
     };
     // 1. Try to create Household variant
-    let hhSize = parseFloat(serving.number_of_units);
+    let hhSize = parseFloat(serving.number_of_units || '');
     let hhUnit = serving.measurement_description;
     const isGenericHH =
       !hhUnit ||
@@ -370,7 +434,7 @@ function mapFatSecretFood(data: any) {
     }
     addVariant(hhSize, hhUnit, serving.is_default === '1');
     // 2. Try to create Metric variant
-    const mSize = parseFloat(serving.metric_serving_amount);
+    const mSize = parseFloat(serving.metric_serving_amount || '');
     const mUnit = serving.metric_serving_unit;
     if (!isNaN(mSize) && mUnit) {
       // Only add metric if it's different from household (to avoid duplicates like "100 g" and "100 g")
@@ -395,17 +459,17 @@ function mapFatSecretFood(data: any) {
     variants: mappedVariants,
   };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapFatSecretSearchItem(item: any) {
+function mapFatSecretSearchItem(item: FatSecretSearchItem) {
   if (!item) return null;
   // FatSecret search descriptions look like:
   // "Per 100g - Calories: 165kcal | Fat: 3.57g | Carbs: 0.00g | Protein: 31.02g"
   // "Per 1 serving (28g) - Calories: 110kcal | Fat: 2.00g | Carbs: 15.00g | Protein: 7.00g"
   const desc = item.food_description || '';
-  const calories = parseFloat(desc.match(/Calories:\s*([\d.]+)/)?.[1]) || 0;
-  const fat = parseFloat(desc.match(/Fat:\s*([\d.]+)/)?.[1]) || 0;
-  const carbs = parseFloat(desc.match(/Carbs:\s*([\d.]+)/)?.[1]) || 0;
-  const protein = parseFloat(desc.match(/Protein:\s*([\d.]+)/)?.[1]) || 0;
+  const calories =
+    parseFloat(desc.match(/Calories:\s*([\d.]+)/)?.[1] || '') || 0;
+  const fat = parseFloat(desc.match(/Fat:\s*([\d.]+)/)?.[1] || '') || 0;
+  const carbs = parseFloat(desc.match(/Carbs:\s*([\d.]+)/)?.[1] || '') || 0;
+  const protein = parseFloat(desc.match(/Protein:\s*([\d.]+)/)?.[1] || '') || 0;
   // Extract serving info from formats like:
   //   "Per 100g - ..."           → 100 g
   //   "Per 250ml - ..."          → 250 ml
@@ -509,7 +573,8 @@ function mapFatSecretSearchItem(item: any) {
   return {
     name: item.food_name,
     brand: item.brand_name || null,
-    provider_external_id: String(item.food_id),
+    provider_external_id:
+      item.food_id !== undefined ? String(item.food_id) : '',
     provider_type: 'fatsecret',
     is_custom: false,
     default_variant: {

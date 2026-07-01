@@ -12,6 +12,7 @@ import customNutrientService from '../../services/customNutrientService.js';
 import {
   buildAliasIndex,
   applyCustomNutrientMatches,
+  FoodWithProviderNutrients,
 } from '../../utils/foodUtils.js';
 import preferenceService from '../../services/preferenceService.js';
 import {
@@ -138,8 +139,7 @@ function normalizeFoodForResponse(food: unknown): unknown {
 // on the mapped foods. Mutates in place; safe to call with an empty list.
 async function enrichWithCustomNutrients(
   userId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foods: any[]
+  foods: FoodWithProviderNutrients[]
 ): Promise<void> {
   try {
     const defs = await customNutrientService.getCustomNutrients(userId);
@@ -241,7 +241,10 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
       { page, pageSize, providerId, autoScale }
     );
 
-    await enrichWithCustomNutrients(req.userId, foods);
+    await enrichWithCustomNutrients(
+      req.userId,
+      foods as FoodWithProviderNutrients[]
+    );
 
     const normalizedFoods = foods.map((food) => normalizeFoodForResponse(food));
     const response = SearchResponseSchema.parse({
@@ -259,10 +262,13 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
       );
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (error instanceof Error && (error as any).status) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      res.status((error as any).status).json({ error: error.message });
+    if (
+      error instanceof Error &&
+      typeof (error as unknown as Record<string, unknown>).status === 'number'
+    ) {
+      res
+        .status((error as unknown as Record<string, unknown>).status as number)
+        .json({ error: error.message });
       return;
     }
     next(error);
@@ -423,7 +429,9 @@ const detailHandler: RequestHandler<{
       return;
     }
 
-    await enrichWithCustomNutrients(req.userId, [food]);
+    await enrichWithCustomNutrients(req.userId, [
+      food,
+    ] as FoodWithProviderNutrients[]);
 
     const response = NormalizedFoodSchema.parse(normalizeFoodForResponse(food));
     res.status(200).json(response);
@@ -437,10 +445,13 @@ const detailHandler: RequestHandler<{
       );
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (error instanceof Error && (error as any).status) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      res.status((error as any).status).json({ error: error.message });
+    if (
+      error instanceof Error &&
+      typeof (error as unknown as Record<string, unknown>).status === 'number'
+    ) {
+      res
+        .status((error as unknown as Record<string, unknown>).status as number)
+        .json({ error: error.message });
       return;
     }
     next(error);

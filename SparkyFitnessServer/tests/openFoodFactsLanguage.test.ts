@@ -47,7 +47,6 @@ describe('OpenFoodFacts Language Handling', () => {
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
       await searchOpenFoodFacts('spaghetti', 1, 'fr');
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('product_name_fr'),
@@ -64,7 +63,6 @@ describe('OpenFoodFacts Language Handling', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
       await searchOpenFoodFactsByBarcodeFields('12345678', undefined, 'it');
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('product_name_it'),
@@ -77,7 +75,6 @@ describe('OpenFoodFacts Language Handling', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
       await searchOpenFoodFactsByBarcodeFields('12345678', undefined, 'en');
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       const url = fetch.mock.calls[0][0];

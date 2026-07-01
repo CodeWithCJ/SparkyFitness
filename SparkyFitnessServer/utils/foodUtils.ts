@@ -1,6 +1,18 @@
 import { log } from '../config/logging.js';
 import { normalizeNutrientName } from '@workspace/shared';
 
+export interface FoodVariantWithProviderNutrients {
+  provider_nutrients?: Record<string, number | unknown>;
+  custom_nutrients?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface FoodWithProviderNutrients {
+  default_variant?: FoodVariantWithProviderNutrients;
+  variants?: FoodVariantWithProviderNutrients[];
+  [key: string]: unknown;
+}
+
 interface CustomNutrientDef {
   name: string;
   aliases?: string[] | null;
@@ -47,18 +59,18 @@ function buildAliasIndex(defs: CustomNutrientDef[]): Map<string, string> {
  * provider reports; it is import-only and never persisted (no DB column).
  */
 function applyCustomNutrientMatches(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foods: any[],
+  foods: FoodWithProviderNutrients[],
   aliasIndex: Map<string, string>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): any[] {
+): FoodWithProviderNutrients[] {
   if (!Array.isArray(foods) || aliasIndex.size === 0) return foods;
   for (const food of foods) {
     if (!food) continue;
     // default_variant is often the same object reference as an entry in
     // variants[]; dedupe by reference so we only process each variant once.
-    const variants = new Set(
-      [food.default_variant, ...(food.variants || [])].filter(Boolean)
+    const variants = new Set<FoodVariantWithProviderNutrients>(
+      [food.default_variant, ...(food.variants || [])].filter(
+        (v): v is FoodVariantWithProviderNutrients => !!v
+      )
     );
     for (const variant of variants) {
       const raw = variant.provider_nutrients;
@@ -79,14 +91,14 @@ function applyCustomNutrientMatches(
   return foods;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeCustomNutrients(customNutrients: any) {
+function sanitizeCustomNutrients(
+  customNutrients: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
   if (!customNutrients || typeof customNutrients !== 'object') return {};
-  const sanitized = {};
+  const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(customNutrients)) {
     // Only keep non-empty, non-null, and non-whitespace-only string values
     if (value !== null && value !== undefined && String(value).trim() !== '') {
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       sanitized[key] = value;
     }
   }
