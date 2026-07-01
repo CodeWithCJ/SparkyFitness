@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -363,19 +363,53 @@ export function useCustomFoodForm({
     barcode: '',
   });
 
+  // Provider nutrient values the user mapped onto this food (custom nutrient
+  // name -> provider field label). Re-applied whenever variants are rebuilt so
+  // the imported value survives — notably the rebuild the effect below runs
+  // when creating a custom nutrient refetches the list. Kept in a ref so
+  // recording a match doesn't retrigger that rebuild effect.
+  const pendingProviderMatchesRef = useRef<Map<string, string>>(new Map());
+
+  const applyProviderMatchesToVariants = useCallback(
+    <T extends FormFoodVariant>(list: T[]): T[] => {
+      if (pendingProviderMatchesRef.current.size === 0) return list;
+      return list.map((variant) => {
+        let next = variant;
+        for (const [name, label] of pendingProviderMatchesRef.current) {
+          const providerValue = Number(next.provider_nutrients?.[label]);
+          if (!Number.isFinite(providerValue) || providerValue <= 0) continue;
+          next = {
+            ...next,
+            custom_nutrients: {
+              ...next.custom_nutrients,
+              [name]: providerValue,
+            },
+            // A concrete provider value counts as a manual edit for AI rows.
+            ...(next.source === 'ai_estimate'
+              ? { source: 'manual' as const, ai_confidence: null }
+              : {}),
+          };
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   const initializeVariantState = useCallback(
     (
       grouped: GroupedFormFoodVariant[],
       options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
     ) => {
-      const trustedSnapshot = deepClone(grouped);
-      const scalingSnapshot = deepClone(grouped);
-      setVariants(grouped);
+      const withMatches = applyProviderMatchesToVariants(grouped);
+      const trustedSnapshot = deepClone(withMatches);
+      const scalingSnapshot = deepClone(withMatches);
+      setVariants(withMatches);
       setOriginalVariants(trustedSnapshot);
       setServingSizeScalingBaseVariants(scalingSnapshot);
-      setLoadedVariants(deepClone(grouped));
+      setLoadedVariants(deepClone(withMatches));
       setVariantMeta(
-        grouped.map((v) => ({
+        withMatches.map((v) => ({
           ...DEFAULT_VARIANT_META,
           aiEstimatedUnit: v.source === 'ai_estimate' ? v.serving_unit : null,
           autoScaleIntent: options.autoScaleIntent,
@@ -383,7 +417,7 @@ export function useCustomFoodForm({
         }))
       );
     },
-    []
+    [applyProviderMatchesToVariants]
   );
 
   const resetForm = useCallback(() => {
@@ -897,6 +931,25 @@ export function useCustomFoodForm({
     }
   };
 
+  // Fill a custom nutrient's value across every variant from the matching
+  // provider field (kept per-variant on provider_nutrients, already scaled).
+  // Called when a user adds an alias / creates a nutrient from the provider
+  // nutrient viewer, so the food being imported reflects it immediately.
+  // Records the match so it survives the variant rebuild the create/update
+  // triggers (custom nutrient list refetch), and applies it now in single
+  // setState passes to avoid stale-state overwrites across variants.
+  const applyProviderNutrientMatch = (
+    nutrientName: string,
+    providerLabel: string
+  ) => {
+    pendingProviderMatchesRef.current.set(nutrientName, providerLabel);
+    setVariants((prev) => applyProviderMatchesToVariants(prev));
+    setOriginalVariants((prev) => applyProviderMatchesToVariants(prev));
+    setServingSizeScalingBaseVariants((prev) =>
+      applyProviderMatchesToVariants(prev)
+    );
+  };
+
   // Apply an AI-estimated conversion to a row. Anchor is always the food's
   // default variant (so AI estimates don't compound on prior AI values); when
   // the row IS the default, fall back to originalVariants[default] (the
@@ -1186,6 +1239,7 @@ export function useCustomFoodForm({
     duplicateVariant,
     removeVariant,
     updateVariant,
+    applyProviderNutrientMatch,
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,

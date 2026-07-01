@@ -90,7 +90,7 @@ export const NutrientGrid = ({
         }
 
         return (
-          <div key={nutrient} className="whitespace-nowrap">
+          <div key={nutrient} className="min-w-0 break-words">
             <span className={`font-medium ${details.color}`}>
               {displayValue}
               {details.unit}

@@ -21,6 +21,8 @@ interface CustomNutrientDialogProps {
   initialName?: string;
   initialUnit?: string;
   initialAliases?: string[];
+  // Fires with the created nutrient's name after a successful create.
+  onCreated?: (name: string) => void;
 }
 
 /**
@@ -35,6 +37,7 @@ export const CustomNutrientDialog = ({
   initialName = '',
   initialUnit = '',
   initialAliases = [],
+  onCreated,
 }: CustomNutrientDialogProps) => {
   const { toast } = useToast();
   const { loadNutrientDisplayPreferences } = usePreferences();
@@ -72,6 +75,7 @@ export const CustomNutrientDialog = ({
         aliases,
       });
       await loadNutrientDisplayPreferences();
+      onCreated?.(name.trim());
       toast({
         title: 'Custom nutrient created',
         description: `"${name.trim()}" was added.`,

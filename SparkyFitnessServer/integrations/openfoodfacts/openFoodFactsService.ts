@@ -208,6 +208,20 @@ const GRAMS_TO_UNIT: Record<string, number> = {
   ug: 1000000,
 };
 
+// OFF ships several `*_100g` fields that are scores/estimates, not nutrients.
+// They clutter the "add as alias" list and should never be offered, so skip them.
+const OFF_NON_NUTRIENT_KEYS = new Set([
+  'nova-group',
+  'nutrition-score-fr',
+  'nutrition-score-uk',
+  'fruits-vegetables-nuts',
+  'fruits-vegetables-nuts-estimate',
+  'fruits-vegetables-nuts-estimate-from-ingredients',
+  'fruits-vegetables-legumes-estimate-from-ingredients',
+  'carbon-footprint',
+  'carbon-footprint-from-known-ingredients',
+]);
+
 function extractOffProviderNutrients(
   nutriments: Record<string, unknown>,
   scale: number
@@ -218,6 +232,7 @@ function extractOffProviderNutrients(
     const value = nutriments[key];
     if (typeof value !== 'number' || !Number.isFinite(value)) continue;
     const base = key.slice(0, -'_100g'.length);
+    if (OFF_NON_NUTRIENT_KEYS.has(base)) continue;
     const unit = String(nutriments[`${base}_unit`] || '').toLowerCase();
     const factor = GRAMS_TO_UNIT[unit] ?? 1;
     // OFF keys are lowercase hyphenated (e.g. "vitamin-a"); use the readable

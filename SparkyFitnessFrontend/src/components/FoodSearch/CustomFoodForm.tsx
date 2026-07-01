@@ -72,6 +72,7 @@ const CustomFoodForm = ({
     duplicateVariant,
     removeVariant,
     updateVariant,
+    applyProviderNutrientMatch,
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
@@ -228,7 +229,10 @@ const CustomFoodForm = ({
               </Label>
             </div>
 
-            <ProviderNutrientViewer food={food} />
+            <ProviderNutrientViewer
+              food={food}
+              onApplyMatch={applyProviderNutrientMatch}
+            />
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">

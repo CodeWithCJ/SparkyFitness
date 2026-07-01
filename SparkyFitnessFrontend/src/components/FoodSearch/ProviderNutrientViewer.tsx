@@ -45,6 +45,9 @@ function getProviderFoodUrl(food: Food): string | null {
 
 interface ProviderNutrientViewerProps {
   food?: Food;
+  // Fill the matched nutrient's value onto the food being imported, using the
+  // provider field the user just mapped.
+  onApplyMatch?: (nutrientName: string, providerLabel: string) => void;
 }
 
 /**
@@ -56,6 +59,7 @@ interface ProviderNutrientViewerProps {
  */
 export const ProviderNutrientViewer = ({
   food,
+  onApplyMatch,
 }: ProviderNutrientViewerProps) => {
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -115,6 +119,7 @@ export const ProviderNutrientViewer = ({
         unit: nutrient.unit,
         aliases: [...aliases, label],
       });
+      onApplyMatch?.(nutrient.name, label);
       toast({
         title: 'Alias added',
         description: `"${label}" will now import into ${nutrient.name}.`,
@@ -253,6 +258,9 @@ export const ProviderNutrientViewer = ({
         onOpenChange={setDialogOpen}
         initialName={dialogLabel}
         initialAliases={dialogLabel ? [dialogLabel] : []}
+        onCreated={(name) => {
+          if (dialogLabel) onApplyMatch?.(name, dialogLabel);
+        }}
       />
     </>
   );
