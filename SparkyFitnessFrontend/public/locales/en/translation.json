@@ -2574,5 +2574,8 @@
     "noDataDesc": "Start tracking your sleep to unlock advanced insights.",
     "baselineCalculated": "Sleep need baseline calculated successfully",
     "baselineError": "Failed to calculate sleep need baseline"
+  },
+  "onboarding": {
+    "completeSetup": "Complete Setup"
   }
 }

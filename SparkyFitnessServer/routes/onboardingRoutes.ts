@@ -93,8 +93,32 @@ router.post('/', authenticate, async (req, res, next) => {
 router.get('/status', authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
-    const isComplete = await onboardingService.checkOnboardingStatus(userId);
-    res.status(200).json({ onboardingComplete: isComplete });
+    const status = await onboardingService.checkOnboardingStatus(userId);
+    res.status(200).json({
+      onboardingComplete: status.onboarding_complete,
+      onboardingSkipped: status.onboarding_skipped,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /onboarding/skip:
+ *   post:
+ *     summary: Mark onboarding as skipped for the user
+ *     tags: [Goals & Personalization]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Onboarding skipped successfully.
+ */
+router.post('/skip', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    await onboardingService.skipOnboarding(userId);
+    res.status(200).json({ message: 'Onboarding skipped successfully.' });
   } catch (error) {
     next(error);
   }

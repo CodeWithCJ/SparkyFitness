@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 /**
  * Saves onboarding data and updates the user's status to complete.
  * This function uses a transaction to ensure atomicity.
@@ -49,10 +50,10 @@ async function saveOnboardingData(userId: any, data: any) {
       activityLevel,
       addBurnedCalories,
     ]);
-    // Query 2: Mark onboarding as complete in the status table.
+    // Query 2: Mark onboarding as complete and clear any skipped flag.
     const statusQuery = `
       UPDATE onboarding_status
-      SET onboarding_complete = TRUE, updated_at = NOW()
+      SET onboarding_complete = TRUE, onboarding_skipped = FALSE, updated_at = NOW()
       WHERE user_id = $1;
     `;
     await client.query(statusQuery, [userId]);
@@ -75,7 +76,7 @@ async function getOnboardingStatus(userId: any) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'SELECT onboarding_complete FROM onboarding_status WHERE user_id = $1',
+      'SELECT onboarding_complete, onboarding_skipped FROM onboarding_status WHERE user_id = $1',
       [userId]
     );
     return result.rows[0] || null;
@@ -108,11 +109,35 @@ async function resetOnboardingStatus(userId: any) {
     client.release();
   }
 }
+/**
+ * Marks the onboarding wizard as skipped for a given user.
+ * @param {string} userId - The UUID of the user.
+ * @returns {Promise<void>}
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function setOnboardingSkipped(userId: any) {
+  const client = await getClient(userId);
+  try {
+    const query = `
+      UPDATE onboarding_status
+      SET onboarding_skipped = TRUE, updated_at = NOW()
+      WHERE user_id = $1;
+    `;
+    await client.query(query, [userId]);
+  } catch (error) {
+    log('error', 'Error in setOnboardingSkipped repository:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 export { saveOnboardingData };
 export { getOnboardingStatus };
 export { resetOnboardingStatus };
+export { setOnboardingSkipped };
 export default {
   saveOnboardingData,
   getOnboardingStatus,
   resetOnboardingStatus,
+  setOnboardingSkipped,
 };
