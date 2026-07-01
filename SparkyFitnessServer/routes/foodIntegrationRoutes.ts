@@ -399,16 +399,20 @@ router.get(
  *         description: Missing search query.
  */
 router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
-  const { query } = req.query;
+  const query =
+    typeof req.query.query === 'string'
+      ? req.query.query
+      : String(req.query.query || '');
   if (!query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
-  // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const page = Math.max(
+    1,
+    parseInt(typeof req.query.page === 'string' ? req.query.page : '1', 10) || 1
+  );
   try {
     const userPrefs = await preferenceService.getUserPreferences(
       req.userId,
-
       req.userId
     );
     const language = userPrefs?.language || 'en';

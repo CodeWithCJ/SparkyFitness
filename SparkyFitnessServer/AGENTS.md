@@ -125,7 +125,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - `eslint.config.js` enforces file extensions in imports
 - `tsconfig.json` uses `NodeNext`, `noEmit`, and `allowJs: false`
 - `@workspace/shared` resolves directly to `../shared/src/index.ts` here and in Vitest
-- Avoid using `any` declarations in models and repositories. Instead, use base datatypes (like `string`) or import strict type schemas directly from `@workspace/shared`.
+- Avoid using `any` declarations in models, repositories, and integration services (e.g. `integrations/fatsecret/fatsecretService.ts`). Instead, use base datatypes (like `string`), proper types/interfaces, or import strict type schemas directly from `@workspace/shared`.
 - New public endpoints should include TypeScript code, Zod validation, and automated tests
 
 ### Logging

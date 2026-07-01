@@ -30,7 +30,6 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
       await searchOpenFoodFacts('pizza', 1, 'fr');
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=fr'),
@@ -44,7 +43,6 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 2.
       await searchOpenFoodFacts('pizza', 1);
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=en'),
@@ -60,7 +58,6 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 3.
       await searchOpenFoodFactsByBarcodeFields('12345678', undefined, 'it');
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=it'),
@@ -74,7 +71,6 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 1.
       await searchOpenFoodFactsByBarcodeFields('12345678');
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=en'),
@@ -119,7 +115,6 @@ describe('openFoodFactsService', () => {
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
 
-      // @ts-expect-error TS(2554): Expected 5 arguments, but got 1.
       await searchOpenFoodFactsByBarcodeFields('12345678');
 
       expect(getOpenFoodFactsSessionCookie).not.toHaveBeenCalled();
@@ -195,7 +190,6 @@ describe('openFoodFactsService', () => {
       });
 
       await expect(
-        // @ts-expect-error TS(2554): Expected 5 arguments, but got 1.
         searchOpenFoodFactsByBarcodeFields('12345678')
       ).rejects.toThrow('OpenFoodFacts API error');
       expect(fetch).toHaveBeenCalledTimes(1);

@@ -10,6 +10,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog';
+import { ProviderNutrientViewer } from './ProviderNutrientViewer';
 import type { Food, FoodVariant } from '@/types/food';
 
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
@@ -71,6 +72,7 @@ const CustomFoodForm = ({
     duplicateVariant,
     removeVariant,
     updateVariant,
+    applyProviderNutrientMatch,
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
@@ -226,6 +228,11 @@ const CustomFoodForm = ({
                 Quick Add (don't save to my food list for future use)
               </Label>
             </div>
+
+            <ProviderNutrientViewer
+              food={food}
+              onApplyMatch={applyProviderNutrientMatch}
+            />
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">

@@ -3,6 +3,37 @@ import { log } from '../config/logging.js';
 import { v4 as uuidv4 } from 'uuid';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone } from '@workspace/shared';
+
+interface CreateCustomNutrientPayload {
+  name: string;
+  unit: string;
+  aliases?: string[];
+}
+
+interface UpdateCustomNutrientPayload {
+  name?: string;
+  unit?: string;
+  aliases?: string[];
+}
+
+// Coerce arbitrary input into a clean string[] of aliases: drop non-strings,
+// trim, and remove blanks/duplicates. Returns [] for any non-array input.
+function sanitizeAliases(aliases: unknown): string[] {
+  if (!Array.isArray(aliases)) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const alias of aliases) {
+    if (typeof alias !== 'string') continue;
+    const trimmed = alias.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 class CustomNutrientService {
   /**
    * Creates a new custom nutrient for a user.
@@ -12,22 +43,17 @@ class CustomNutrientService {
    */
 
   static async createCustomNutrient(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: any,
-    {
-      name,
-      unit,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }: any
+    userId: string,
+    { name, unit, aliases }: CreateCustomNutrientPayload
   ) {
     const client = await getClient(userId);
     try {
       const id = uuidv4();
       const result = await client.query(
-        `INSERT INTO user_custom_nutrients (id, user_id, name, unit)
-                     VALUES ($1, $2, $3, $4)
+        `INSERT INTO user_custom_nutrients (id, user_id, name, unit, aliases)
+                     VALUES ($1, $2, $3, $4, $5::jsonb)
                      RETURNING *`,
-        [id, userId, name, unit]
+        [id, userId, name, unit, JSON.stringify(sanitizeAliases(aliases))]
       );
       log('info', `Custom nutrient created: ${name} for user ${userId}`);
       // Automatically add to specific views (Food Database, Goal, Reports)
@@ -59,8 +85,7 @@ class CustomNutrientService {
       } catch (autoAddError) {
         log(
           'error',
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          `Failed to automatically add custom nutrient ${name} to views or goals: ${autoAddError.message}`
+          `Failed to automatically add custom nutrient ${name} to views or goals: ${autoAddError instanceof Error ? autoAddError.message : String(autoAddError)}`
         );
         // We don't want to fail the whole creation if preference/goal update fails
       }
@@ -74,8 +99,7 @@ class CustomNutrientService {
    * @param {string} userId - The ID of the user.
    * @returns {Array<object>} An array of custom nutrient objects.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static async getCustomNutrients(userId: any) {
+  static async getCustomNutrients(userId: string) {
     const client = await getClient(userId);
     try {
       const result = await client.query(
@@ -98,8 +122,7 @@ class CustomNutrientService {
    * @param {string} id - The ID of the custom nutrient.
    * @returns {object|null} The custom nutrient object if found, otherwise null.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static async getCustomNutrientById(userId: any, id: any) {
+  static async getCustomNutrientById(userId: string, id: string) {
     const client = await getClient(userId);
     try {
       const result = await client.query(
@@ -121,26 +144,25 @@ class CustomNutrientService {
    */
 
   static async updateCustomNutrient(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    id: any,
-    {
-      name,
-      unit,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }: any
+    userId: string,
+    id: string,
+    { name, unit, aliases }: UpdateCustomNutrientPayload
   ) {
     const client = await getClient(userId);
     try {
+      // `aliases` omitted (undefined) keeps the existing value; an explicit
+      // array (including []) replaces it.
+      const aliasesParam =
+        aliases === undefined ? null : JSON.stringify(sanitizeAliases(aliases));
       const result = await client.query(
         `UPDATE user_custom_nutrients
                      SET name = COALESCE($1, name),
                          unit = COALESCE($2, unit),
+                         aliases = COALESCE($3::jsonb, aliases),
                          updated_at = NOW()
-                     WHERE id = $3 AND user_id = $4
+                     WHERE id = $4 AND user_id = $5
                      RETURNING *`,
-        [name, unit, id, userId]
+        [name, unit, aliasesParam, id, userId]
       );
       if (result.rows.length > 0) {
         log('info', `Custom nutrient updated: ${id} for user ${userId}`);
@@ -160,10 +182,8 @@ class CustomNutrientService {
    */
 
   static async deleteCustomNutrient(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    id: any,
+    userId: string,
+    id: string,
     deleteAllHistory = false
   ) {
     const client = await getClient(userId);
@@ -242,8 +262,7 @@ class CustomNutrientService {
       await client.query('ROLLBACK');
       log(
         'error',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        `Failed to delete custom nutrient ${id} for user ${userId}: ${error.message}`
+        `Failed to delete custom nutrient ${id} for user ${userId}: ${error instanceof Error ? error.message : String(error)}`
       );
       throw error;
     } finally {

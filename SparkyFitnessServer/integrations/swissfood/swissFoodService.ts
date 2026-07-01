@@ -1,5 +1,4 @@
 import { log } from '../../config/logging.js';
-
 const DEFAULT_BASE_URL =
   'https://api.webapp.prod.blv.foodcase-services.com/BLV_WebApp_WS/webresources/BLV-api';
 
@@ -42,10 +41,17 @@ export function mapSwissFood(food: SwissFoodDetail) {
     throw new Error('Food detail is required for mapping');
   }
   const nutrients: Record<string, number> = {};
+  // All components keyed by SwissFood's exact component name (per 100 g), for
+  // alias discovery and custom-nutrient matching on import.
+  const providerNutrientsByLabel: Record<string, number> = {};
   for (const v of food.values || []) {
     const code = v.component?.code;
     if (code) {
       nutrients[code] = v.value ?? 0;
+    }
+    const name = v.component?.name?.trim();
+    if (name) {
+      providerNutrientsByLabel[name] = v.value ?? 0;
     }
   }
 
@@ -70,6 +76,7 @@ export function mapSwissFood(food: SwissFoodDetail) {
     vitamin_a:
       Math.round((nutrients['VITARAE'] ?? nutrients['VITARE'] ?? 0) * 10) / 10,
     vitamin_c: Math.round((nutrients['VITC'] ?? 0) * 10) / 10,
+    provider_nutrients: providerNutrientsByLabel,
     is_default: true,
   };
 

@@ -32,6 +32,11 @@ router.use(authenticate);
  *         unit:
  *           type: string
  *           description: The unit of measurement for the custom nutrient.
+ *         aliases:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Alternate nutrient names online food providers may use, matched (case-insensitively) on import.
  *         created_at:
  *           type: string
  *           format: date-time
@@ -71,6 +76,11 @@ router.use(authenticate);
  *               unit:
  *                 type: string
  *                 description: The unit of measurement for the custom nutrient.
+ *               aliases:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Alternate nutrient names online food providers may use for this nutrient.
  *     responses:
  *       201:
  *         description: The new custom nutrient was created successfully.
@@ -85,10 +95,10 @@ router.use(authenticate);
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { name, unit } = req.body;
+    const { name, unit, aliases } = req.body;
     const newCustomNutrient = await customNutrientService.createCustomNutrient(
       req.userId,
-      { name, unit }
+      { name, unit, aliases }
     );
     res.status(201).json(newCustomNutrient);
   } catch (error) {
@@ -223,6 +233,11 @@ router.get('/:id', async (req, res, next) => {
  *               unit:
  *                 type: string
  *                 description: The new unit of measurement for the custom nutrient.
+ *               aliases:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Alternate nutrient names online food providers may use for this nutrient.
  *     responses:
  *       200:
  *         description: The custom nutrient was updated successfully.
@@ -240,11 +255,12 @@ router.get('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, unit } = req.body;
+    const { name, unit, aliases } = req.body;
     const updatedCustomNutrient =
       await customNutrientService.updateCustomNutrient(req.userId, id, {
         name,
         unit,
+        aliases,
       });
     if (updatedCustomNutrient) {
       res.status(200).json(updatedCustomNutrient);

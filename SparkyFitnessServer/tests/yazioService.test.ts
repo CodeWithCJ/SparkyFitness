@@ -10,6 +10,18 @@ import {
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
+// provider_nutrients is the provider's full field dump surfaced for the alias
+// viewer (covered by customNutrientMatching.test.ts). Drop it here so this
+// exact-shape mapping assertion stays focused on the standard fields.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripProviderNutrients<T>(food: any): T {
+  if (food?.default_variant) delete food.default_variant.provider_nutrients;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (Array.isArray(food?.variants))
+    food.variants.forEach((v: any) => delete v?.provider_nutrients);
+  return food;
+}
+
 const originalFetch = global.fetch;
 const yazioClientCredentials = {
   clientId: 'test-client-id',
@@ -50,30 +62,32 @@ describe('yazioService', () => {
   });
 
   it('maps YAZIO product nutrition into Sparky food shape', () => {
-    const result = mapYazioProduct({
-      id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
-      name: 'Protein Joghurt',
-      producer: 'Test Brand',
-      serving_quantity: 1,
-      amount: 20,
-      base_unit: 'GRAM',
-      eans: ['4001234567890'],
-      nutrients: {
-        'energy.energy': 0.64,
-        'nutrient.protein': 0.152,
-        'nutrient.carb': 0.084,
-        'nutrient.fat': 0.021,
-        'nutrient.dietaryfiber': 0.004,
-        'nutrient.sugar': 0.079,
-        'nutrient.saturated': 0.01,
-        'nutrient.sodium': 0.0004,
-        'mineral.potassium': 0.0018,
-        'mineral.calcium': 0.0012,
-        'mineral.iron': 0.000002,
-        'vitamin.a': 0.0000002,
-        'vitamin.c': 0.000001,
-      },
-    });
+    const result = stripProviderNutrients(
+      mapYazioProduct({
+        id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
+        name: 'Protein Joghurt',
+        producer: 'Test Brand',
+        serving_quantity: 1,
+        amount: 20,
+        base_unit: 'GRAM',
+        eans: ['4001234567890'],
+        nutrients: {
+          'energy.energy': 0.64,
+          'nutrient.protein': 0.152,
+          'nutrient.carb': 0.084,
+          'nutrient.fat': 0.021,
+          'nutrient.dietaryfiber': 0.004,
+          'nutrient.sugar': 0.079,
+          'nutrient.saturated': 0.01,
+          'nutrient.sodium': 0.0004,
+          'mineral.potassium': 0.0018,
+          'mineral.calcium': 0.0012,
+          'mineral.iron': 0.000002,
+          'vitamin.a': 0.0000002,
+          'vitamin.c': 0.000001,
+        },
+      })
+    );
 
     expect(result).toEqual({
       name: 'Protein Joghurt',

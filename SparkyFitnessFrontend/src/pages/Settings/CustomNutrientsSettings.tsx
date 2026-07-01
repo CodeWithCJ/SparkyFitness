@@ -33,13 +33,16 @@ import {
   useUpdateCustomNutrientMutation,
 } from '@/hooks/Foods/useCustomNutrients';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { AliasChipInput } from '@/components/Foods/AliasChipInput';
 
 const CustomNutrientsSettings: React.FC = () => {
   const { loadNutrientDisplayPreferences } = usePreferences();
   const [newNutrientName, setNewNutrientName] = useState('');
   const [newNutrientUnit, setNewNutrientUnit] = useState('');
+  const [newNutrientAliases, setNewNutrientAliases] = useState<string[]>([]);
   const [editingNutrient, setEditingNutrient] =
     useState<UserCustomNutrient | null>(null);
+  const [editingAliases, setEditingAliases] = useState<string[]>([]);
   const [deleteAllHistory, setDeleteAllHistory] = useState(false);
   const { toast } = useToast();
 
@@ -63,10 +66,12 @@ const CustomNutrientsSettings: React.FC = () => {
     await createCustomNutrient({
       name: newNutrientName,
       unit: newNutrientUnit,
+      aliases: newNutrientAliases,
     });
     await loadNutrientDisplayPreferences();
     setNewNutrientName('');
     setNewNutrientUnit('');
+    setNewNutrientAliases([]);
   };
 
   const handleEditNutrient = async () => {
@@ -82,8 +87,15 @@ const CustomNutrientsSettings: React.FC = () => {
       nutrientId: editingNutrient.id,
       name: editingNutrient.name,
       unit: editingNutrient.unit,
+      aliases: editingAliases,
     });
     setEditingNutrient(null);
+    setEditingAliases([]);
+  };
+
+  const startEditing = (nutrient: UserCustomNutrient) => {
+    setEditingNutrient(nutrient);
+    setEditingAliases(nutrient.aliases ?? []);
   };
 
   const handleDeleteNutrient = async (id: string) => {
@@ -116,7 +128,22 @@ const CustomNutrientsSettings: React.FC = () => {
               placeholder="e.g., g, mg, IU"
             />
           </div>
+          <div>
+            <Label htmlFor="newNutrientAliases">Provider aliases</Label>
+            <AliasChipInput
+              value={newNutrientAliases}
+              onChange={setNewNutrientAliases}
+              placeholder="Type a name, press Enter"
+            />
+          </div>
         </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Aliases are the exact names online food databases use for this
+          nutrient (press Enter to add each). On import, provider nutrient
+          fields are matched (case-insensitively) against the name and these
+          aliases. Tip: use the "Nutrient fields reported by…" panel when
+          importing a food to add a provider's exact name in one click.
+        </p>
         <Button onClick={handleAddNutrient} className="mt-4">
           Add Custom Nutrient
         </Button>
@@ -134,6 +161,7 @@ const CustomNutrientsSettings: React.FC = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Unit</TableHead>
+                <TableHead>Provider aliases</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -171,6 +199,17 @@ const CustomNutrientsSettings: React.FC = () => {
                         nutrient.unit
                       )}
                     </TableCell>
+                    <TableCell>
+                      {editingNutrient?.id === nutrient.id ? (
+                        <AliasChipInput
+                          value={editingAliases}
+                          onChange={setEditingAliases}
+                          placeholder="Type a name, press Enter"
+                        />
+                      ) : (
+                        (nutrient.aliases ?? []).join(', ')
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       {editingNutrient?.id === nutrient.id ? (
                         <>
@@ -179,7 +218,10 @@ const CustomNutrientsSettings: React.FC = () => {
                           </Button>
                           <Button
                             variant="ghost"
-                            onClick={() => setEditingNutrient(null)}
+                            onClick={() => {
+                              setEditingNutrient(null);
+                              setEditingAliases([]);
+                            }}
                           >
                             Cancel
                           </Button>
@@ -189,7 +231,7 @@ const CustomNutrientsSettings: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setEditingNutrient(nutrient)}
+                            onClick={() => startEditing(nutrient)}
                             title="Edit"
                           >
                             <Pencil className="h-4 w-4" />

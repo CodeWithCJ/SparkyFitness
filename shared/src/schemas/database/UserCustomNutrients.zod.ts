@@ -14,6 +14,7 @@ export const userCustomNutrientsSchema = z.object({
   user_id: userIdSchema,
   name: z.string(),
   unit: z.string(),
+  aliases: z.array(z.string()),
   created_at: z.date(),
   updated_at: z.date(),
 });
@@ -23,6 +24,7 @@ export const userCustomNutrientsInitializerSchema = z.object({
   user_id: userIdSchema,
   name: z.string(),
   unit: z.string(),
+  aliases: z.array(z.string()).optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });
@@ -32,6 +34,7 @@ export const userCustomNutrientsMutatorSchema = z.object({
   user_id: userIdSchema.optional(),
   name: z.string().optional(),
   unit: z.string().optional(),
+  aliases: z.array(z.string()).optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });
