@@ -210,9 +210,13 @@ const EnhancedFoodSearch = ({
   // dropdown, so the resolved default must be drawn from this list (not the raw
   // provider list) or the shadcn Select renders blank when it falls back to an
   // inactive/non-food provider that has no matching SelectItem.
-  const foodProviderOptions = foodDataProviders.filter(
-    (provider) =>
-      getProviderCategory(provider).includes('food') && provider.is_active
+  const foodProviderOptions = useMemo(
+    () =>
+      foodDataProviders.filter(
+        (provider) =>
+          getProviderCategory(provider).includes('food') && provider.is_active
+      ),
+    [foodDataProviders]
   );
 
   const selectedFoodDataProvider = resolveFoodProviderId(

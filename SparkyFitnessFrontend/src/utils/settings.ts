@@ -212,17 +212,26 @@ export const getProviderCategory = (
 
 /**
  * Resolve the food-search provider to select. Precedence: an explicit manual
- * choice, then the user's persisted default, then the first *rendered* option.
- * The final fallback must come from the filtered option list (active
- * food-category providers) rather than the raw provider list, otherwise it can
- * resolve to an id with no matching SelectItem and the dropdown renders blank.
+ * choice, then the user's persisted default, then the first available option.
+ * Every returned id is validated against the rendered option list (active
+ * food-category providers); a manual pick or persisted default that points at a
+ * now-inactive/non-food provider is ignored rather than returned, since an id
+ * with no matching SelectItem makes the dropdown render blank.
  */
 export const resolveFoodProviderId = (
   manualProviderId: string | null,
   defaultFoodDataProviderId: string | null,
   foodProviderOptions: { id: string }[]
-): string | null =>
-  manualProviderId ||
-  defaultFoodDataProviderId ||
-  foodProviderOptions[0]?.id ||
-  null;
+): string | null => {
+  const optionIds = foodProviderOptions.map((o) => o.id);
+  if (manualProviderId && optionIds.includes(manualProviderId)) {
+    return manualProviderId;
+  }
+  if (
+    defaultFoodDataProviderId &&
+    optionIds.includes(defaultFoodDataProviderId)
+  ) {
+    return defaultFoodDataProviderId;
+  }
+  return foodProviderOptions[0]?.id ?? null;
+};
