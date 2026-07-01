@@ -10,19 +10,26 @@ import type { DataProvider } from '@/types/settings';
 // the palette, and still covers providers past that by wrapping. It is not
 // stable across reordering, which is fine for at-a-glance grouping.
 //
-// The palette reuses the hex values already used by the web app's report charts
-// (see NutritionChartsGrid / FastingReport) so provider colours look native to
-// the rest of the UI. These are static hex values (like the existing chart
-// palettes) and intentionally do not adapt to light/dark themes.
+// The palette reuses hex values already used by the web app's report charts and
+// nutrient config (see NutritionChartsGrid / FastingReport / CENTRAL_NUTRIENT_CONFIG)
+// so provider colours look native to the rest of the UI. These are static hex
+// values (like the existing chart palettes) and intentionally do not adapt to
+// light/dark themes.
+//
+// Ordering matters: colours are assigned by list position, so the sequence is
+// arranged to keep *adjacent* entries in clearly different hue families (e.g.
+// indigo -> amber -> green -> pink -> cyan). This avoids the earlier problem
+// where neighbouring providers landed on near-identical cyan/teal swatches that
+// were hard to tell apart, especially as small dots on a dark background.
 export const PROVIDER_COLOR_PALETTE = [
-  '#6366f1', // Indigo
-  '#06b6d4', // Cyan
-  '#22a6b3', // Teal
-  '#f59e0b', // Amber
-  '#e056fd', // Violet
-  '#22c55e', // Green
-  '#ef4444', // Red
-  '#45B7D1', // Blue
+  '#6366f1', // Indigo (indigo-500)
+  '#f59e0b', // Amber (amber-500)
+  '#22c55e', // Green (green-500)
+  '#ec4899', // Pink (pink-500)
+  '#06b6d4', // Cyan (cyan-500)
+  '#a855f7', // Purple (purple-500)
+  '#ef4444', // Red (red-500)
+  '#eab308', // Yellow (yellow-500)
 ];
 
 const FALLBACK_COLOR = '#94a3b8'; // slate-400, matches muted-foreground tone
