@@ -41,6 +41,16 @@ describe('transformHealthRecords', () => {
       expect(result[0]).toMatchObject({ date: '2024-01-15', value: 72, type: 'heart_rate' });
     });
 
+    test('transforms raw HeartRateVariabilityRmssd records via value transformer', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', heartRateVariabilityMillis: 48 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilityRmssd', unit: 'ms', type: 'HRV' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ date: '2024-01-15', value: 48, type: 'HRV' });
+    });
+
     test('passes through ActiveCaloriesBurned aggregated records', () => {
       const records = [
         { date: '2024-01-15', value: 500, type: 'Active Calories' },

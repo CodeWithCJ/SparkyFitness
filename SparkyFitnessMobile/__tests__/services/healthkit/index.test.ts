@@ -512,6 +512,27 @@ describe('readHealthRecords', () => {
     expect((result[0] as { samples: { beatsPerMinute: number }[] }).samples).toEqual([{ beatsPerMinute: 72 }]);
   });
 
+  test('transforms HeartRateVariabilitySDNN records as direct ms value', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockResolvedValue([
+      {
+        startDate: '2024-01-15T10:00:00Z',
+        endDate: '2024-01-15T10:00:00Z',
+        quantity: 48,
+      },
+    ]);
+
+    const result = await readHealthRecords(
+      'HeartRateVariabilitySDNN',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    expect((result[0] as { value: number }).value).toBe(48);
+  });
+
   test('transforms Weight records with weight object', async () => {
     await initHealthConnect();
 

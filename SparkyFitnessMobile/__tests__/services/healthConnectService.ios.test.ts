@@ -24,6 +24,7 @@ jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
+    { recordType: 'HeartRateVariabilitySDNN', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV_SDNN', aggregationStrategy: 'min-max-avg' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
@@ -124,6 +125,41 @@ describe('syncHealthData (iOS)', () => {
     expect(minRecord.value).toBe(64);
     expect(maxRecord.value).toBe(80);
     expect(avgRecord.value).toBe(72);
+  });
+
+  test('aggregates HeartRateVariabilitySDNN into min/max/avg daily HRV records', async () => {
+    const today = new Date().toISOString();
+    mockQueryQuantitySamples.mockResolvedValue([
+      { startDate: today, endDate: today, quantity: 48 },
+      { startDate: today, endDate: today, quantity: 30 },
+      { startDate: today, endDate: today, quantity: 52 },
+    ]);
+    api.syncHealthData.mockResolvedValue({ success: true });
+
+    const result = await syncHealthData('today' as SyncDuration, {
+      isHeartRateVariabilitySyncEnabled: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(api.syncHealthData).toHaveBeenCalledTimes(1);
+
+    const sentData = api.syncHealthData.mock.calls[0][0];
+    const types = sentData.map((r: { type: string }) => r.type);
+
+    // Apple HRV is SDNN (a distinct metric from RMSSD), sent as HRV_SDNN
+    expect(types).toContain('HRV_SDNN_min');
+    expect(types).toContain('HRV_SDNN_max');
+    expect(types).toContain('HRV_SDNN_avg');
+    expect(types).not.toContain('HRV_SDNN');
+
+    const minRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_min');
+    const maxRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_max');
+    const avgRecord = sentData.find((r: { type: string }) => r.type === 'HRV_SDNN_avg');
+
+    expect(minRecord.value).toBe(30);
+    expect(maxRecord.value).toBe(52);
+    expect(avgRecord.value).toBe(43.33); // (48 + 30 + 52) / 3, rounded to 2 decimals
+    expect(minRecord.unit).toBe('ms');
   });
 
   test('aggregates RunningSpeed into min/max/avg records', async () => {

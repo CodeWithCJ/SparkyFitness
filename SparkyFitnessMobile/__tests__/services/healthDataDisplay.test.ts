@@ -249,6 +249,22 @@ describe('fetchHealthDisplayData', () => {
         expected: '60 bpm',
       },
       {
+        recordType: 'HeartRateVariabilitySDNN',
+        records: [
+          { time: '2026-06-01T08:00:00Z', value: 30 },
+          { time: '2026-06-02T08:00:00Z', value: 48 },
+        ],
+        expected: '48 ms',
+      },
+      {
+        recordType: 'HeartRateVariabilityRmssd',
+        records: [
+          { time: '2026-06-01T08:00:00Z', heartRateVariabilityMillis: 30 },
+          { time: '2026-06-02T08:00:00Z', heartRateVariabilityMillis: 48 },
+        ],
+        expected: '48 ms',
+      },
+      {
         recordType: 'Vo2Max',
         records: [{ time: '2026-06-01T00:00:00Z', vo2Max: 42 }],
         expected: '42.0 ml/min/kg',

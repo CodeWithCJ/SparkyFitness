@@ -64,6 +64,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierOxygenSaturation',
   'HKQuantityTypeIdentifierVO2Max',
   'HKQuantityTypeIdentifierRestingHeartRate',
+  'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
   'HKQuantityTypeIdentifierRespiratoryRate',
   'HKQuantityTypeIdentifierDistanceWalkingRunning',
   'HKQuantityTypeIdentifierFlightsClimbed',
@@ -114,6 +115,7 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   'BodyTemperature': 'degC',
   'BasalBodyTemperature': 'degC',
   'BloodGlucose': 'mg/dL',
+  'HeartRateVariabilitySDNN': 'ms',
   // Add other metrics that need explicit units as needed
 };
 
@@ -135,6 +137,7 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'OxygenSaturation': 'HKQuantityTypeIdentifierOxygenSaturation',
   'Vo2Max': 'HKQuantityTypeIdentifierVO2Max',
   'RestingHeartRate': 'HKQuantityTypeIdentifierRestingHeartRate',
+  'HeartRateVariabilitySDNN': 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
   'RespiratoryRate': 'HKQuantityTypeIdentifierRespiratoryRate',
   'Distance': 'HKQuantityTypeIdentifierDistanceWalkingRunning',
   'FloorsClimbed': 'HKQuantityTypeIdentifierFlightsClimbed',
