@@ -65,17 +65,25 @@ export const CustomNutrientDialog = ({
       });
       return;
     }
-    await createCustomNutrient({
-      name: name.trim(),
-      unit: unit.trim(),
-      aliases,
-    });
-    await loadNutrientDisplayPreferences();
-    toast({
-      title: 'Custom nutrient created',
-      description: `"${name.trim()}" was added.`,
-    });
-    onOpenChange(false);
+    try {
+      await createCustomNutrient({
+        name: name.trim(),
+        unit: unit.trim(),
+        aliases,
+      });
+      await loadNutrientDisplayPreferences();
+      toast({
+        title: 'Custom nutrient created',
+        description: `"${name.trim()}" was added.`,
+      });
+      onOpenChange(false);
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to create custom nutrient. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

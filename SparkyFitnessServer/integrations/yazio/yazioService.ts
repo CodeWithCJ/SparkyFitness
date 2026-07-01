@@ -10,6 +10,7 @@ function extractYazioProviderNutrients(
   scale: number
 ): Record<string, number> {
   const out: Record<string, number> = {};
+  if (!nutrients || typeof nutrients !== 'object') return out;
   for (const [key, value] of Object.entries(nutrients)) {
     const num = Number(value);
     if (!Number.isFinite(num)) continue;

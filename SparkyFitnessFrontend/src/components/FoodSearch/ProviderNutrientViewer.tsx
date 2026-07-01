@@ -108,16 +108,24 @@ export const ProviderNutrientViewer = ({
       });
       return;
     }
-    await updateCustomNutrient({
-      nutrientId: nutrient.id,
-      name: nutrient.name,
-      unit: nutrient.unit,
-      aliases: [...aliases, label],
-    });
-    toast({
-      title: 'Alias added',
-      description: `"${label}" will now import into ${nutrient.name}.`,
-    });
+    try {
+      await updateCustomNutrient({
+        nutrientId: nutrient.id,
+        name: nutrient.name,
+        unit: nutrient.unit,
+        aliases: [...aliases, label],
+      });
+      toast({
+        title: 'Alias added',
+        description: `"${label}" will now import into ${nutrient.name}.`,
+      });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to add alias. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const openCreateDialog = (label: string) => {
