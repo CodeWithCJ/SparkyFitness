@@ -1016,7 +1016,7 @@ const EnhancedFoodSearch = ({
                           if (errored) r.refetch();
                           else if (expandable) toggleProvider(r.provider.id);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left disabled:cursor-default"
+                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 disabled:hover:bg-transparent disabled:cursor-default"
                       >
                         <span className="flex items-center gap-2">
                           <span
@@ -1071,9 +1071,15 @@ const EnhancedFoodSearch = ({
                           {count > r.items.length && (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
                                 setExternalResults([]);
                                 setManualProviderId(r.provider.id);
+                                // Switching to the single-provider view reuses
+                                // the same scroll container; reset it to the top
+                                // so the user isn't left stranded at the bottom.
+                                const container =
+                                  e.currentTarget.closest('.overflow-y-auto');
+                                if (container) container.scrollTop = 0;
                               }}
                               className="text-sm font-medium text-primary px-1 py-2"
                             >
