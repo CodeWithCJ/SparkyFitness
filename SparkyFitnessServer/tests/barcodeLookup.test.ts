@@ -14,15 +14,21 @@ import { searchFatSecretByBarcode } from '../integrations/fatsecret/fatsecretSer
 import { lookupBarcode } from '../services/foodCoreService.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
 
-// provider_nutrients is the provider's full field dump surfaced for the alias
-// viewer (covered by customNutrientMatching.test.ts). Drop it here so these
-// exact-shape mapping assertions stay focused on the standard fields.
+// provider_nutrients / provider_nutrient_units are the provider's full field
+// dump + units surfaced for the alias viewer (covered by
+// customNutrientMatching.test.ts). Drop them here so these exact-shape mapping
+// assertions stay focused on the standard fields.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function stripProviderNutrients<T>(food: any): T {
-  if (food?.default_variant) delete food.default_variant.provider_nutrients;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (Array.isArray(food?.variants))
-    food.variants.forEach((v: any) => delete v?.provider_nutrients);
+  const strip = (v: any) => {
+    if (!v) return;
+    delete v.provider_nutrients;
+    delete v.provider_nutrient_units;
+  };
+  strip(food?.default_variant);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (Array.isArray(food?.variants)) food.variants.forEach(strip);
   return food;
 }
 
