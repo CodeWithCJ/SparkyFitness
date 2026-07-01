@@ -437,6 +437,15 @@ const EnhancedFoodSearch = ({
   // Online results stream in alongside local results, using the default
   // provider. Online searches start at 3 characters to limit provider calls.
   useEffect(() => {
+    // In All Providers mode the aggregated hook owns the online results, so this
+    // single-provider effect must fully no-op. Without this guard it runs on
+    // every keystroke (searchTerm is a dependency), finds no matching provider
+    // for the __all__ sentinel, and calls setExternalResults([]) each time; a
+    // fresh [] is never === the previous one, so it re-renders the whole
+    // component on every keystroke and lags typing.
+    if (selectedFoodDataProvider === ALL_PROVIDERS_VALUE) {
+      return;
+    }
     const term = searchTerm.trim();
     if (term.length < 3) {
       setExternalResults([]);
@@ -1002,6 +1011,7 @@ const EnhancedFoodSearch = ({
                       <button
                         type="button"
                         disabled={!expandable && !errored}
+                        aria-expanded={expandable ? expanded : undefined}
                         onClick={() => {
                           if (errored) r.refetch();
                           else if (expandable) toggleProvider(r.provider.id);
