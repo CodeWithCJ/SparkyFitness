@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import Icon, { IconName } from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import { markFoodPhotoIntroSeen } from '../services/foodPhotoIntro';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type Props = RootStackScreenProps<'FoodPhotoIntro'>;
 
@@ -36,6 +37,7 @@ const Bullet: React.FC<{
 
 const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, accentPrimary, catViolet, catOrange] = useCSSVariable([
     '--color-text-primary',
     '--color-accent-primary',
@@ -56,7 +58,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-2">
         <TouchableOpacity
           onPress={() => navigation.goBack()}

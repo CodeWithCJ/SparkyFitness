@@ -50,6 +50,7 @@ import {
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -461,6 +462,7 @@ function BarcodeField({
 
 function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary, formEnabled, formDisabled] = useCSSVariable(['--color-text-primary', '--color-text-secondary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
@@ -754,7 +756,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
     const saveLabel = isLibraryMode ? 'Save Food' : 'Save';
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -777,12 +779,12 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, isLibraryMode]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, isLibraryMode, usesNativeHeader]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -805,7 +807,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         isSubmitting={isSubmitting}
         initialValues={initialFood}
         submitLabel={isLibraryMode ? 'Save Food' : undefined}
-        hideSubmitButton={Platform.OS === 'ios'}
+        hideSubmitButton={usesNativeHeader}
         showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
@@ -926,6 +928,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     selectedUnitSelection,
   } = params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [formEnabled, formDisabled] = useCSSVariable(['--color-form-enabled', '--color-form-disabled']) as [string, string];
   const queryClient = useQueryClient();
   const { createVariant } = useCreateFoodVariant();
@@ -1376,7 +1379,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({
@@ -1396,11 +1399,11 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor]);
+  }, [navigation, headerActionColor, headerSaveColor, usesNativeHeader]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1420,7 +1423,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
         submitLabel="Update Values"
-        hideSubmitButton={Platform.OS === 'ios'}
+        hideSubmitButton={usesNativeHeader}
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
@@ -1464,6 +1467,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createVariant } = useCreateFoodVariant();
@@ -1850,7 +1854,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({
@@ -1872,11 +1876,11 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, usesNativeHeader]);
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -1898,7 +1902,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         initialValues={initialValues}
         submitLabel="Save Changes"
         isSubmitting={isSubmitting}
-        hideSubmitButton={Platform.OS === 'ios'}
+        hideSubmitButton={usesNativeHeader}
         unitSelector={
           availableUnitVariants.length > 0
             ? {

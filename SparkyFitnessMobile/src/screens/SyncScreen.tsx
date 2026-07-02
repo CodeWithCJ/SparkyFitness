@@ -48,6 +48,7 @@ import {
 } from '../services/storage';
 import type { TimeRange } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
@@ -80,6 +81,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});
   const dateRangeSheetRef = useRef<DateRangeSheetRef>(null);
@@ -447,13 +449,13 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         {/* Header */}
-        {Platform.OS !== 'ios' && (
+        {!usesNativeHeader && (
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Button

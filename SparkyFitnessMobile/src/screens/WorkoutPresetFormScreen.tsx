@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import FormInput from '../components/FormInput';
@@ -16,6 +16,7 @@ import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCSSVariable } from 'uniwind';
 import { buildPresetExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -230,9 +231,10 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
   });
 
   const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -255,7 +257,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         }),
       ],
     });
-  }, [navigation, presetHeaderTintColor, isPending]);
+  }, [navigation, presetHeaderTintColor, isPending, usesNativeHeader]);
 
   return (
     <FormScreenChrome
@@ -424,9 +426,10 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   });
 
   const presetHeaderTintColor = String(useCSSVariable('--color-text-primary'));
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -449,7 +452,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         }),
       ],
     });
-  }, [navigation, presetHeaderTintColor, isPending]);
+  }, [navigation, presetHeaderTintColor, isPending, usesNativeHeader]);
 
   return (
     <FormScreenChrome

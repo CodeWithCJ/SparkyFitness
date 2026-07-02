@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Platform,
   TextInput,
   type TextInputProps,
 } from 'react-native';
@@ -40,6 +39,7 @@ import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
@@ -58,7 +58,6 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
   React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
 >;
 
-const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
 const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 
 /**
@@ -449,11 +448,14 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
   const { defaultColor: headerActionColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
-  const keyboardVerticalOffset =
-    Platform.OS === 'ios'
-      ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT + CHAT_KEYBOARD_EXTRA_SPACING
-      : CHAT_KEYBOARD_EXTRA_SPACING;
+  // The KeyboardAvoidingView measures its own window-bottom, which already sits
+  // below the native header and above the bottom safe-area inset. So the offset
+  // only needs a small breathing gap between the composer and the keyboard —
+  // adding the header/status-bar height on top double-counts and leaves a large
+  // empty band above the keyboard.
+  const keyboardVerticalOffset = CHAT_KEYBOARD_EXTRA_SPACING;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -522,7 +524,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   }, [queryClient]);
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerRightItems: baseUrl
@@ -538,18 +540,18 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           ]
         : undefined,
     });
-  }, [baseUrl, handleClear, headerActionColor, navigation, running]);
+  }, [baseUrl, handleClear, headerActionColor, navigation, running, usesNativeHeader]);
 
   return (
     <View
       className="flex-1 bg-background"
       style={{
-        paddingTop: Platform.OS === 'android' ? insets.top : undefined,
+        paddingTop: usesNativeHeader ? undefined : insets.top,
         paddingBottom: insets.bottom,
       }}
     >
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 pb-2 border-b border-border-subtle">
         <Button
           variant="ghost"

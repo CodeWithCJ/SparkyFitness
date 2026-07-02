@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -24,6 +23,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   getLogs,
   clearLogs,
@@ -131,6 +131,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const accentPrimary = (useCSSVariable('--color-accent-primary') as string | undefined) ?? '#0A84FF';
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<LogStatus[]>([]);
 
@@ -196,7 +197,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerRightItems: () => [
@@ -217,6 +218,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     headerTintColor,
     hasLogs,
     handleClearLogs,
+    usesNativeHeader,
   ]);
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
@@ -289,8 +291,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && (
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3">
         <Button
           variant="ghost"

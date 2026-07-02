@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View, Text, ScrollView, Switch } from 'react-native';
+import { View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -14,6 +14,7 @@ import {
 } from '../services/themeService';
 import { setNotificationsEnabled } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -46,17 +47,18 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
     (s) => s.setLiquidGlassTabBarEnabled,
   );
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {Platform.OS !== 'ios' && (
+        {!usesNativeHeader && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"
@@ -85,7 +87,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
         {supportsLiquidGlassTabBar && (
           <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Liquid Glass tab bar</Text>
+              <Text className="text-base text-text-primary">Liquid Glass navigation</Text>
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
@@ -94,7 +96,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
               />
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              Use the iOS 26 glass tab bar.
+              Use the iOS 26 glass tab bar and screen headers.
             </Text>
           </View>
         )}

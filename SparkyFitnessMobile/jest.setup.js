@@ -291,6 +291,20 @@ jest.mock('react-native-keyboard-controller', () => {
   };
 });
 
+// Mock expo-glass-effect. Availability is false so iOS tests exercise the
+// classic native-header path (useNativeIOSHeadersActive() → true) instead of
+// the Liquid Glass fallback; tests that need glass-on mock
+// src/utils/liquidGlass locally.
+jest.mock('expo-glass-effect', () => {
+  const { View } = require('react-native');
+  return {
+    GlassView: View,
+    GlassContainer: View,
+    isLiquidGlassAvailable: () => false,
+    isGlassEffectAPIAvailable: () => false,
+  };
+});
+
 // Mock expo-web-browser
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),

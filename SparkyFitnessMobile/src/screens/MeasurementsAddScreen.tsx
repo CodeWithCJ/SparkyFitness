@@ -33,6 +33,7 @@ import {
 import { parseDecimalInput } from '../utils/numericInput';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -108,6 +109,7 @@ const joinWithAnd = (items: string[]): string => {
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
   const [accentPrimary, borderSubtle, textSecondary] = useCSSVariable([
@@ -428,7 +430,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
     navigation.setOptions({
       unstable_headerLeftItems: () => [
         createNativeHeaderTextButtonItem({
@@ -450,7 +452,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaveDisabled, handleSave]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaveDisabled, handleSave, usesNativeHeader]);
 
   return (
     <View
@@ -458,7 +460,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -636,7 +638,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       </KeyboardAwareScrollView>
 
       {/* Sticky footer */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View
         className="px-4 py-3"
         style={{

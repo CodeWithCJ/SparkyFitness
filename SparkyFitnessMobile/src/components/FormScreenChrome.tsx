@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 interface FormScreenChromeProps {
   title: string;
@@ -29,13 +30,16 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   children,
 }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   return (
     <View
       className="flex-1 bg-background"
+      // iOS keeps no top inset even without the native header: this chrome is
+      // used by modal sheets, which already start below the status bar.
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
           <TouchableOpacity
             onPress={onCancel}
@@ -66,7 +70,7 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
           className="flex-1"
           contentContainerClassName="px-4 pt-4 pb-20 gap-4"
           keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+          contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
         >
           {children}
         </ScrollView>

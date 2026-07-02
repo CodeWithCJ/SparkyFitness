@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -15,6 +15,7 @@ import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
@@ -100,6 +101,7 @@ function buildMealDisplayValues(
 const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }) => {
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
@@ -130,14 +132,15 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   );
   const displayValues = viewMode === 'perServing' ? perServingValues : totalValues;
 
-  // iOS uses the native glass header (configured in App.tsx). The title stays
-  // blank — the meal name is shown in the body's nutrition card, so a bar title
-  // would just duplicate it; we only drive the owner-gated Edit action here once
-  // the meal loads. Android keeps the custom in-screen header below.
+  // Native-header mode uses the native stack header (configured in App.tsx).
+  // The title stays blank — the meal name is shown in the body's nutrition
+  // card, so a bar title would just duplicate it; we only drive the
+  // owner-gated Edit action here once the meal loads. Fallback mode keeps the
+  // custom in-screen header below.
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerRightItems: canManageMeal
@@ -157,7 +160,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           ]
         : undefined,
     });
-  }, [navigation, meal, canManageMeal, headerActionColor, headerTintColor]);
+  }, [navigation, meal, canManageMeal, headerActionColor, headerTintColor, usesNativeHeader]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -201,7 +204,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
         className="flex-1 bg-background"
         contentContainerClassName="px-4 py-4 gap-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + activeWorkoutBarPadding + 16 }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
       >
         <View className="gap-2">
           <SegmentedControl
@@ -327,7 +330,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   // content (a ScrollView in the loaded state) as the screen root — UIKit only
   // attaches the large-title collapse to a scroll view it finds at the top of
   // the screen, so wrapping it in another View breaks the inset + collapse.
-  if (Platform.OS === 'ios') {
+  if (usesNativeHeader) {
     return renderContent();
   }
 

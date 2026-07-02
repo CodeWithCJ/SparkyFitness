@@ -33,6 +33,7 @@ import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   ExerciseEntryResponse,
@@ -284,6 +285,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
   ]) as [string, string, string, string];
   const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -638,23 +640,29 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  // iOS swipe-back must stay disabled while editing even when the native
+  // header is off (Cancel/Save own the exit paths in the fallback header).
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({ gestureEnabled: !isEditing });
+  }, [navigation, isEditing]);
+
   // iOS: drive the native glass header. We use a SMALL inline title (set in
   // App.tsx), never a large one — re-applying a large title via setOptions (as
   // this screen must, for edit mode) makes it "fly in" on every return. A small
   // title updates in place. The glass material is the same either way.
   // - View mode: small title = workout name + an Edit action (owner only). The
-  //   in-body name <Text> stays iOS-suppressed since the name lives in the bar.
+  //   in-body name <Text> stays suppressed since the name lives in the bar.
   // - Edit mode: title becomes "Edit Workout", the back button is hidden (+
   //   swipe-back disabled) so Cancel owns the left slot, Save on the right; the
   //   name is edited inline in the body.
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     if (isEditing) {
       navigation.setOptions({
         title: 'Edit Workout',
         headerBackVisible: false,
-        gestureEnabled: false,
         unstable_headerLeftItems: () => [
           createNativeHeaderTextButtonItem({
             label: 'Cancel',
@@ -681,7 +689,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.setOptions({
         title: name,
         headerBackVisible: true,
-        gestureEnabled: true,
         unstable_headerLeftItems: undefined,
         unstable_headerRightItems: isSparky
           ? () => [
@@ -698,6 +705,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [
     navigation,
+    usesNativeHeader,
     isEditing,
     isSaving,
     hasEditedExercisesWithSets,
@@ -710,12 +718,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     handleSave,
   ]);
 
-  // iOS: native glass header (above) replaces the custom header, and the
-  // KeyboardAwareScrollView must be the screen root for the large title to
-  // attach. Android keeps the custom header + padded wrapper.
+  // Native-header mode: the glass header (above) replaces the custom header,
+  // and the KeyboardAwareScrollView must be the screen root for the large
+  // title to attach. Fallback mode keeps the custom header + padded wrapper.
   const content = (
     <>
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3">
         {isEditing ? (
           <FadeView
@@ -780,7 +788,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 + activeWorkoutBarPadding }}
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
       >
         {/* Title area */}
         <View className="mb-4">
@@ -794,7 +802,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
               />
             </FadeView>
-          ) : Platform.OS !== 'ios' ? (
+          ) : !usesNativeHeader ? (
             <FadeView key="view-title">
               <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
             </FadeView>
@@ -903,7 +911,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     </>
   );
 
-  if (Platform.OS === 'ios') return content;
+  if (usesNativeHeader) return content;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

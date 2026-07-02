@@ -107,7 +107,7 @@ import ActiveWorkoutBar, {
 } from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
-import { useNativeIOSTabsActive } from './src/services/nativeTabBarPreference';
+import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -247,6 +247,7 @@ function AppContent() {
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
+  const usesNativeIOSHeaders = useNativeIOSHeadersActive();
   const rememberActiveTab = useCallback((routeName: string) => {
     if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
       lastActiveTabRef.current = routeName as NonAddTabName;
@@ -282,7 +283,7 @@ function AppContent() {
       title: string,
       options: NativeStackNavigationOptions = {},
     ): NativeStackNavigationOptions => (
-      Platform.OS === 'ios'
+      usesNativeIOSHeaders
         ? {
             ...iosSmallHeaderOptions,
             title,
@@ -295,7 +296,7 @@ function AppContent() {
             ...options,
           }
     ),
-    [iosSmallHeaderOptions],
+    [iosSmallHeaderOptions, usesNativeIOSHeaders],
   );
 
   // Determine if we're in dark mode based on current theme
@@ -854,7 +855,7 @@ function AppContent() {
             name="MealDetail"
             component={SafeMealDetail}
             options={
-              Platform.OS === 'ios'
+              usesNativeIOSHeaders
                 ? {
                     ...iosSmallHeaderOptions,
                     title: '',
@@ -1016,7 +1017,7 @@ function AppContent() {
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
             options={({ route }) =>
-              Platform.OS === 'ios'
+              usesNativeIOSHeaders
                 ? {
                     ...iosSmallHeaderOptions,
                     title: route.params?.session?.name ?? 'Workout',

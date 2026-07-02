@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Pressable,
   ScrollView,
-  Platform,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import Animated, {
@@ -41,6 +40,7 @@ import type {
 } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   formatVariantLabel,
   formatServingUnit,
@@ -110,6 +110,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const [createdVariantOverride, setCreatedVariantOverride] =
     useState<FoodUnitVariant | null>(null);
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -726,7 +727,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       headerBackVisible: true,
@@ -760,11 +761,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     headerSaveColor,
     headerTintColor,
     updateEdit,
+    usesNativeHeader,
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && (
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}

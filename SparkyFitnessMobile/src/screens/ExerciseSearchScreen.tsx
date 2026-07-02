@@ -23,6 +23,7 @@ import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -53,6 +54,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const { backColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { isConnected } = useServerConnection();
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
@@ -425,7 +427,7 @@ useEffect(() => {
   return (
       <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button
           variant="ghost"

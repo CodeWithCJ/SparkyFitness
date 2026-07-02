@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
@@ -17,6 +17,7 @@ import type {
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 const CATEGORY_OPTIONS = [
   { label: 'General', value: 'general' },
@@ -413,6 +414,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const handleSaveRef = useRef(handleSave);
   // Keep the ref pointing at the latest closure so the native header button
@@ -426,7 +428,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -449,7 +451,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending, usesNativeHeader]);
 
   return (
     <FormScreenChrome
@@ -597,6 +599,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
     useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const handleSaveRef = useRef(handleSave);
   // Keep the ref pointing at the latest closure so the native header button
@@ -610,7 +613,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -633,7 +636,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending, usesNativeHeader]);
 
   return (
     <FormScreenChrome

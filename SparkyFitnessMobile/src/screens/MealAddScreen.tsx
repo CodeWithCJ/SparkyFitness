@@ -34,6 +34,7 @@ import {
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -105,6 +106,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor, textMuted, proteinColor, carbsColor, fatColor, borderSubtle] =
     useCSSVariable([
       '--color-accent-primary',
@@ -416,7 +418,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -439,9 +441,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         }),
       ],
     });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaving, isEditMode, saveLabel]);
+  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaving, isEditMode, saveLabel, usesNativeHeader]);
 
-  const renderHeader = () => Platform.OS === 'ios' ? null : (
+  const renderHeader = () => usesNativeHeader ? null : (
     <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
       <TouchableOpacity
         onPress={() => navigation.goBack()}
@@ -762,7 +764,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
       </ScrollView>
 
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
         /* Sticky footer */
         <View
           className="px-4 py-3"

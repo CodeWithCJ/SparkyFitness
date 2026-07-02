@@ -6,7 +6,6 @@ import {
   Pressable,
   Keyboard,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -21,6 +20,7 @@ import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivit
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
@@ -48,6 +48,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-raised',
   ]) as [string, string, string, string, string];
   const { backColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
     state,
@@ -105,7 +106,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       headerBackVisible: false,
@@ -120,7 +121,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       ],
     });
-  }, [handleCancel, headerTintColor, navigation]);
+  }, [handleCancel, headerTintColor, navigation, usesNativeHeader]);
 
   const handleSave = useCallback(async () => {
     if (!submission.exerciseId || !submission.canSave) return;
@@ -157,9 +158,9 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-3 py-3">
         <Button
           variant="ghost"

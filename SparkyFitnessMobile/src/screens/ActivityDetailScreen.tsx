@@ -13,6 +13,7 @@ import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
@@ -53,6 +54,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
   ]) as [string, string, string];
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -456,16 +458,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     handleSaveRef.current = handleSave;
   });
 
+  // iOS swipe-back must stay disabled while editing even when the native
+  // header is off (Cancel/Save own the exit paths in the fallback header).
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    navigation.setOptions({ gestureEnabled: !isEditing });
+  }, [navigation, isEditing]);
+
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     if (isEditing) {
       navigation.setOptions({
         title: 'Edit Activity',
         headerBackVisible: false,
-        gestureEnabled: false,
         unstable_headerLeftItems: () => [
           createNativeHeaderTextButtonItem({
             label: 'Cancel',
@@ -492,7 +500,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.setOptions({
         title: name,
         headerBackVisible: true,
-        gestureEnabled: true,
         unstable_headerLeftItems: undefined,
         unstable_headerRightItems: isSparky
           ? () => [
@@ -509,6 +516,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [
     navigation,
+    usesNativeHeader,
     isEditing,
     isSaving,
     name,
@@ -519,9 +527,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {/* Header */}
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 ">
         {isEditing ? (
           <FadeView

@@ -7,7 +7,6 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -29,6 +28,7 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   CreatePresetSessionRequest,
@@ -58,6 +58,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const { backColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -178,7 +179,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       headerBackVisible: false,
@@ -193,7 +194,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       ],
     });
-  }, [handleCancel, headerTintColor, navigation]);
+  }, [handleCancel, headerTintColor, navigation, usesNativeHeader]);
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
@@ -255,7 +256,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {isInitializingEditForm ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={accentPrimary} />
@@ -263,7 +264,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       ) : (
         <>
           {/* Header */}
-          {Platform.OS !== 'ios' && (
+          {!usesNativeHeader && (
           <View className="flex-row items-center px-3 py-3">
             <Button
               variant="ghost"

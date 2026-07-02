@@ -28,6 +28,7 @@ import {
 } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useServerConfigs, useServerConnection } from '../hooks';
 import { serverConfigsQueryKey, serverConnectionQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -37,6 +38,7 @@ type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
 const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentPrimary, textSecondary, textLink, success, danger, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
@@ -205,15 +207,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {Platform.OS !== 'ios' && (
+        {!usesNativeHeader && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"

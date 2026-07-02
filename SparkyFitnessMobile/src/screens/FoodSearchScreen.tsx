@@ -52,6 +52,7 @@ import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -119,6 +120,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   ]) as [string, string, string];
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
@@ -346,7 +348,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       openCreateFood();
       return;
     }
-    if (Platform.OS === 'ios') {
+    if (usesNativeHeader) {
       setMenuAnchor({
         x: windowWidth - 48,
         y: insets.top,
@@ -360,10 +362,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       setMenuAnchor({ x, y, width, height });
       setMenuVisible(true);
     });
-  }, [insets.top, isMealBuilderMode, openCreateFood, windowWidth]);
+  }, [insets.top, isMealBuilderMode, openCreateFood, usesNativeHeader, windowWidth]);
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerLeftItems: () => [
@@ -390,6 +392,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     headerActionColor,
     isMealBuilderMode,
     navigation,
+    usesNativeHeader,
   ]);
 
   const handleExternalFoodTap = useCallback(
@@ -1073,7 +1076,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderHeaderBar = () => (
     <View className="flex-row items-center px-4 py-2 gap-3">
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
         <Button
           variant="ghost"
           onPress={() => navigation.goBack()}
@@ -1146,7 +1149,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         )}
       </View>
 
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
         <View ref={addButtonRef} collapsable={false}>
           <Button
             variant="ghost"

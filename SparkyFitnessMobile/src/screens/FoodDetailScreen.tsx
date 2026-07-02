@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -12,6 +12,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useDeleteFood, useFoodVariants, useProfile, useServerConnection, usePreferences } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -29,6 +30,7 @@ const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string
 const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
   const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } = route.params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -171,7 +173,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       unstable_headerRightItems: canManageFood
@@ -187,7 +189,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           ]
         : undefined,
     });
-  }, [navigation, canManageFood, selectedVariantId, headerActionColor, headerTintColor]);
+  }, [navigation, canManageFood, selectedVariantId, headerActionColor, headerTintColor, usesNativeHeader]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -314,8 +316,8 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && (
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}

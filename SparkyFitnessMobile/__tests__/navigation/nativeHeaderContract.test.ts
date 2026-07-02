@@ -224,13 +224,21 @@ function getStackScreenBlock(source: string, routeName: string): string | undefi
   return source.slice(start, end);
 }
 
-function hidesReactHeaderOnIOS(source: string): boolean {
-  const formScreenChromeSource = readMobileFile('src/components/FormScreenChrome.tsx');
+function hasNativeHeaderSuppressionGuard(source: string): boolean {
   return (
     /Platform\.OS\s*!==\s*'ios'\s*&&/.test(source) ||
     /Platform\.OS\s*===\s*'ios'\s*\?\s*null\s*:/.test(source) ||
+    /!usesNativeHeader\s*&&/.test(source) ||
+    /usesNativeHeader\s*\?\s*null\s*:/.test(source)
+  );
+}
+
+function hidesReactHeaderOnIOS(source: string): boolean {
+  const formScreenChromeSource = readMobileFile('src/components/FormScreenChrome.tsx');
+  return (
+    hasNativeHeaderSuppressionGuard(source) ||
     (source.includes('FormScreenChrome') &&
-      /Platform\.OS\s*!==\s*'ios'\s*&&/.test(formScreenChromeSource))
+      hasNativeHeaderSuppressionGuard(formScreenChromeSource))
   );
 }
 
@@ -250,7 +258,7 @@ function failNativeHeaderContract(message: string): never {
       '- Root-stack screens with a screen-owned React header must hide that React header on iOS because the native stack header owns the iOS chrome.',
       '- If a screen-owned React header has custom actions beyond the native back button, mirror those actions with unstable_headerLeftItems or unstable_headerRightItems in the same screen.',
       '- When adding a new root-stack screen that is intentionally presented above Tabs instead of inside native tabs mode, add it to NATIVE_TABS_ROUTE_EXCLUSIONS with a short reason.',
-      '- Use patterns like {Platform.OS !== \'ios\' && <Header />} or const renderHeader = () => Platform.OS === \'ios\' ? null : <Header /> for Android-only React headers. Otherwise iOS shows two headers.',
+      '- Gate screen-owned React headers on the Liquid Glass header preference: const usesNativeHeader = useNativeIOSHeadersActive(); then {!usesNativeHeader && <Header />} or usesNativeHeader ? null : <Header />. The hook is false on Android and on iOS 26+ when the Liquid Glass toggle is off, so the same guard covers both fallback paths. Otherwise iOS shows two headers.',
     ].join('\n'),
   );
 }

@@ -14,6 +14,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import HealthSourceLabel, { healthSourceName } from '../components/HealthSourceLabel';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -54,6 +55,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentPrimary, formEnabled, formDisabled, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-form-enabled',
@@ -183,13 +185,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
   }, [normalized.mode, normalized.includeBmrInNetCalories, normalized.exerciseCaloriePercentage]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         {/* Header */}
-        {Platform.OS !== 'ios' && (
+        {!usesNativeHeader && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"

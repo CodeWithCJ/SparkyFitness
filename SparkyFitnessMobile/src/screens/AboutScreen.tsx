@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View, Text, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import * as Application from 'expo-application';
@@ -7,6 +7,7 @@ import * as Application from 'expo-application';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AboutScreenProps = RootStackScreenProps<'About'>;
@@ -18,6 +19,7 @@ const DOCUMENTATION_URL = 'https://codewithcj.github.io/SparkyFitness/';
 const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   const openUrl = (url: string) => {
@@ -27,12 +29,12 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {Platform.OS !== 'ios' && (
+        {!usesNativeHeader && (
         <View className="flex-row items-center mb-4">
           <Button
             variant="ghost"

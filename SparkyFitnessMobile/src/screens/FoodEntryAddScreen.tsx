@@ -25,6 +25,7 @@ import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes, usePreferences, useServerConnection } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
   useCreateFoodVariant,
@@ -659,6 +660,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     '--color-border-subtle',
   ]) as [string, string, string];
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const buildSaveFoodPayload = useCallback(
     () => ({
@@ -1094,7 +1096,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
 
-    if (Platform.OS !== 'ios') return;
+    if (!usesNativeHeader) return;
 
     navigation.setOptions({
       title: '',
@@ -1144,6 +1146,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     showSaveExternalAction,
     isActionPending,
     handleAdjustNutrition,
+    usesNativeHeader,
   ]);
 
   return (
@@ -1151,7 +1154,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      {Platform.OS !== 'ios' && (
+      {!usesNativeHeader && (
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
