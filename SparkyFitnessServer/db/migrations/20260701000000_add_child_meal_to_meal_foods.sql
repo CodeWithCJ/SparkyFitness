@@ -17,7 +17,7 @@ ALTER TABLE public.meal_foods
 
 ALTER TABLE public.meal_foods
     ADD CONSTRAINT meal_foods_child_meal_id_fkey
-    FOREIGN KEY (child_meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
+    FOREIGN KEY (child_meal_id) REFERENCES public.meals(id) ON DELETE SET NULL;
 
 ALTER TABLE public.meal_foods
     ADD CONSTRAINT chk_meal_foods_item_type CHECK (
@@ -28,7 +28,6 @@ ALTER TABLE public.meal_foods
         )
         OR (
             (item_type)::text = 'meal'::text
-            AND child_meal_id IS NOT NULL
             AND food_id IS NULL
         )
     );

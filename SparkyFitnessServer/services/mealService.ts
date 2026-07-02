@@ -150,9 +150,8 @@ async function validateMealIngredients(
   for (const item of foods) {
     if (isMealIngredient(item)) {
       if (!item.child_meal_id) {
-        throw new ValidationError(
-          'A linked-meal ingredient requires child_meal_id.'
-        );
+        // Allow deleted/unlinked sub-meals to remain as static snapshots
+        continue;
       }
       if (item.food_id) {
         throw new ValidationError(
@@ -183,11 +182,14 @@ async function validateMealIngredients(
           );
         }
       }
+      const ancestorHeight = currentMealId
+        ? await mealRepository.getMealAncestryHeight(currentMealId, userId)
+        : 0;
       const childDepth = await mealRepository.getMealSubtreeDepth(
         item.child_meal_id,
         userId
       );
-      if (childDepth + 1 > MAX_MEAL_NESTING_DEPTH) {
+      if (ancestorHeight + 1 + childDepth > MAX_MEAL_NESTING_DEPTH) {
         throw new ValidationError(
           `Meal nesting is too deep (max ${MAX_MEAL_NESTING_DEPTH} levels).`
         );
@@ -217,33 +219,33 @@ async function flattenMealFoodsForPlan(
   }> = [];
   if (depth > MAX_MEAL_NESTING_DEPTH + 1) return leaves;
   for (const item of foods || []) {
-    if (isMealIngredient(item)) {
-      if (!item.child_meal_id) continue;
+    if (isMealIngredient(item) && item.child_meal_id) {
       const child = await mealRepository.getMealById(
         item.child_meal_id,
         userId
       );
-      if (!child) continue;
-      const servingSize = Number(child.serving_size) || 1.0;
-      const totalServings = Number(child.total_servings) || 1.0;
-      const denominator = servingSize * totalServings;
-      const quantityInBaseUnit =
-        item.unit === 'serving' &&
-        child.serving_unit &&
-        child.serving_unit !== 'serving'
-          ? (Number(item.quantity) || 0) * servingSize
-          : Number(item.quantity) || 0;
-      const childFactor =
-        denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
-      leaves.push(
-        ...(await flattenMealFoodsForPlan(
-          userId,
-          child.foods,
-          factor * childFactor,
-          depth + 1
-        ))
-      );
-      continue;
+      if (child) {
+        const servingSize = Number(child.serving_size) || 1.0;
+        const totalServings = Number(child.total_servings) || 1.0;
+        const denominator = servingSize * totalServings;
+        const quantityInBaseUnit =
+          item.unit === 'serving' &&
+          child.serving_unit &&
+          child.serving_unit !== 'serving'
+            ? (Number(item.quantity) || 0) * servingSize
+            : Number(item.quantity) || 0;
+        const childFactor =
+          denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
+        leaves.push(
+          ...(await flattenMealFoodsForPlan(
+            userId,
+            child.foods,
+            factor * childFactor,
+            depth + 1
+          ))
+        );
+        continue;
+      }
     }
     leaves.push({
       food_id: item.food_id,
@@ -312,35 +314,45 @@ async function resolveChildMealSnapshot(
     }
   };
   for (const row of child.foods || []) {
-    if (isMealIngredient(row)) {
+    if (isMealIngredient(row) && row.child_meal_id) {
       const sub = await resolveChildMealSnapshot(
         userId,
         row.child_meal_id,
         cache,
         depth + 1
       );
-      if (!sub) continue;
-      const subServing = Number(sub.serving_size) || 1;
-      const quantityInBaseUnit =
-        row.unit === 'serving' &&
-        sub.serving_unit &&
-        sub.serving_unit !== 'serving'
-          ? (Number(row.quantity) || 0) *
-            (Number(row.child_meal_serving_size) || 1)
-          : Number(row.quantity) || 0;
-      const factor = subServing > 0 ? quantityInBaseUnit / subServing : 0;
-      for (const key of RESOLVED_NUTRIENT_KEYS) {
-        totals[key] += (Number(sub[key]) || 0) * factor;
+      if (sub) {
+        const subServing = Number(sub.serving_size) || 1;
+        const quantityInBaseUnit =
+          row.unit === 'serving' &&
+          sub.serving_unit &&
+          sub.serving_unit !== 'serving'
+            ? (Number(row.quantity) || 0) *
+              (Number(row.child_meal_serving_size) || 1)
+            : Number(row.quantity) || 0;
+        const factor = subServing > 0 ? quantityInBaseUnit / subServing : 0;
+        for (const key of RESOLVED_NUTRIENT_KEYS) {
+          totals[key] += (Number(sub[key]) || 0) * factor;
+        }
+        addCustom(sub.custom_nutrients, factor);
+        continue;
       }
-      addCustom(sub.custom_nutrients, factor);
-    } else {
-      const serving = Number(row.serving_size) || 1;
-      const per = serving > 0 ? (Number(row.quantity) || 0) / serving : 0;
-      for (const key of RESOLVED_NUTRIENT_KEYS) {
-        totals[key] += (Number(row[key]) || 0) * per;
-      }
-      addCustom(row.custom_nutrients, per);
     }
+
+    // Fallback for foods or deleted sub-meals (where child_meal_id is null or not found)
+    const serving = Number(row.serving_size) || 1;
+    const quantityInBaseUnit =
+      row.unit === 'serving' &&
+      row.serving_unit &&
+      row.serving_unit !== 'serving'
+        ? (Number(row.quantity) || 0) *
+          (Number(row.child_meal_serving_size) || 1)
+        : Number(row.quantity) || 0;
+    const per = serving > 0 ? quantityInBaseUnit / serving : 0;
+    for (const key of RESOLVED_NUTRIENT_KEYS) {
+      totals[key] += (Number(row[key]) || 0) * per;
+    }
+    addCustom(row.custom_nutrients, per);
   }
   const servingSize =
     (Number(child.serving_size) || 1) * (Number(child.total_servings) || 1);

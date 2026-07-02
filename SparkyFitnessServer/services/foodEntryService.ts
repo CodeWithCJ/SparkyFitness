@@ -995,45 +995,74 @@ async function buildLeafFoodEntries(
     return entries;
   }
   for (const component of components || []) {
-    const isMeal =
-      component.item_type === 'meal' ||
-      (!!component.child_meal_id && !component.food_id);
+    const isMeal = component.item_type === 'meal';
     if (isMeal) {
       const childMealId = component.child_meal_id;
-      if (!childMealId) continue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let child: any;
-      try {
-        child = await mealRepository.getMealById(
-          childMealId,
-          ctx.authenticatedUserId
-        );
-      } catch {
-        log(
-          'warn',
-          `Linked meal ${childMealId} not found/accessible while flattening; skipping.`
-        );
-        continue;
+      if (childMealId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let child: any;
+        try {
+          child = await mealRepository.getMealById(
+            childMealId,
+            ctx.authenticatedUserId
+          );
+        } catch {
+          log(
+            'warn',
+            `Linked meal ${childMealId} not found/accessible while flattening; falling back to snapshot.`
+          );
+        }
+        if (child) {
+          const servingSize = Number(child.serving_size) || 1.0;
+          const totalServings = Number(child.total_servings) || 1.0;
+          const denominator = servingSize * totalServings;
+          const quantityInBaseUnit =
+            component.unit === 'serving' &&
+            child.serving_unit &&
+            child.serving_unit !== 'serving'
+              ? (Number(component.quantity) || 0) * servingSize
+              : Number(component.quantity) || 0;
+          const childFactor =
+            denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
+          const childEntries = await buildLeafFoodEntries(
+            child.foods,
+            multiplier * childFactor,
+            ctx,
+            depth + 1
+          );
+          entries.push(...childEntries);
+          continue;
+        }
       }
-      if (!child) continue;
-      const servingSize = Number(child.serving_size) || 1.0;
-      const totalServings = Number(child.total_servings) || 1.0;
-      const denominator = servingSize * totalServings;
-      const quantityInBaseUnit =
-        component.unit === 'serving' &&
-        child.serving_unit &&
-        child.serving_unit !== 'serving'
-          ? (Number(component.quantity) || 0) * servingSize
-          : Number(component.quantity) || 0;
-      const childFactor =
-        denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
-      const childEntries = await buildLeafFoodEntries(
-        child.foods,
-        multiplier * childFactor,
-        ctx,
-        depth + 1
-      );
-      entries.push(...childEntries);
+
+      // Fallback for deleted sub-meals (where child_meal_id is null or not found):
+      // Treat as a static custom food entry using its snapshot nutrients
+      entries.push({
+        food_name: component.food_name || 'Deleted Sub-Meal',
+        quantity: (Number(component.quantity) || 0) * multiplier,
+        unit: component.unit || 'serving',
+        calories: (Number(component.calories) || 0) * multiplier,
+        protein: (Number(component.protein) || 0) * multiplier,
+        carbs: (Number(component.carbs) || 0) * multiplier,
+        fat: (Number(component.fat) || 0) * multiplier,
+        saturated_fat: (Number(component.saturated_fat) || 0) * multiplier,
+        polyunsaturated_fat:
+          (Number(component.polyunsaturated_fat) || 0) * multiplier,
+        monounsaturated_fat:
+          (Number(component.monounsaturated_fat) || 0) * multiplier,
+        trans_fat: (Number(component.trans_fat) || 0) * multiplier,
+        cholesterol: (Number(component.cholesterol) || 0) * multiplier,
+        sodium: (Number(component.sodium) || 0) * multiplier,
+        potassium: (Number(component.potassium) || 0) * multiplier,
+        dietary_fiber: (Number(component.dietary_fiber) || 0) * multiplier,
+        sugars: (Number(component.sugars) || 0) * multiplier,
+        vitamin_a: (Number(component.vitamin_a) || 0) * multiplier,
+        vitamin_c: (Number(component.vitamin_c) || 0) * multiplier,
+        calcium: (Number(component.calcium) || 0) * multiplier,
+        iron: (Number(component.iron) || 0) * multiplier,
+        glycemic_index: component.glycemic_index || null,
+        custom_nutrients: component.custom_nutrients || null,
+      });
       continue;
     }
     const food = await foodRepository.getFoodById(

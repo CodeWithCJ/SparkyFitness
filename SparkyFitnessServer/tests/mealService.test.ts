@@ -30,6 +30,7 @@ vi.mock('../models/mealRepository.js', () => ({
     mealContainsMeal: vi.fn().mockResolvedValue(false),
     getMealComponentUsage: vi.fn().mockResolvedValue([]),
     getMealSubtreeDepth: vi.fn().mockResolvedValue(0),
+    getMealAncestryHeight: vi.fn().mockResolvedValue(0),
   },
 }));
 vi.mock('../models/foodRepository.js', () => ({
@@ -521,6 +522,31 @@ describe('mealService validation', () => {
       });
       mockedMealRepository.mealContainsMeal.mockResolvedValue(false);
       mockedMealRepository.getMealSubtreeDepth.mockResolvedValue(5);
+      await expect(
+        mealService.updateMeal('user-1', 'meal-1', {
+          foods: [
+            {
+              item_type: 'meal',
+              child_meal_id: 'meal-2',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('too deep'),
+      });
+    });
+
+    it('rejects a link if the ancestor height plus child depth exceeds max nesting depth', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue({
+        id: 'meal-2',
+        name: 'Deep child',
+      });
+      mockedMealRepository.mealContainsMeal.mockResolvedValue(false);
+      mockedMealRepository.getMealSubtreeDepth.mockResolvedValue(2);
+      mockedMealRepository.getMealAncestryHeight.mockResolvedValue(3);
       await expect(
         mealService.updateMeal('user-1', 'meal-1', {
           foods: [

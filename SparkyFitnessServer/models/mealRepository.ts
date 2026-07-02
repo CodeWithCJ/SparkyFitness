@@ -742,6 +742,30 @@ async function getMealSubtreeDepth(mealId: string, userId: string) {
     client.release();
   }
 }
+// Returns the max height of the ancestors chain pointing to `mealId` (0 when
+// it is not referenced by any other sub-meals). Used to bound nesting depth.
+async function getMealAncestryHeight(mealId: string, userId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `WITH RECURSIVE tree AS (
+         SELECT meal_id, 1 AS height
+         FROM meal_foods
+         WHERE child_meal_id = $1
+         UNION ALL
+         SELECT mf.meal_id, t.height + 1
+         FROM meal_foods mf
+         JOIN tree t ON mf.child_meal_id = t.meal_id
+         WHERE t.height < 20
+       )
+       SELECT COALESCE(MAX(height), 0)::int AS height FROM tree`,
+      [mealId]
+    );
+    return result.rows[0]?.height ?? 0;
+  } finally {
+    client.release();
+  }
+}
 // Returns the parent meals that reference `mealId` as a linked sub-meal, so
 // callers can warn about (or block) deleting a meal still used as a component.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -884,6 +908,7 @@ export { clearUserIgnoredUpdate };
 export { mealContainsMeal };
 export { getMealComponentUsage };
 export { getMealSubtreeDepth };
+export { getMealAncestryHeight };
 export default {
   createMeal,
   getMeals,
@@ -912,4 +937,5 @@ export default {
   mealContainsMeal,
   getMealComponentUsage,
   getMealSubtreeDepth,
+  getMealAncestryHeight,
 };

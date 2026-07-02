@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WBM08FVUEt8ErXgev7ii3g3rIMwVy5pbswVbXNwIJ4R3aXRVUCi6i0XmTzSLk7Z
+\restrict N96YCPYcg3UJtCdpA8mYWlcYGUKPcIVgqng4bEFvYOO0BsBL0DmEFCvczLYlqnn
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1911,8 +1911,6 @@ CREATE TABLE public.meal_foods (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     meal_id uuid NOT NULL,
     food_id uuid,
-    child_meal_id uuid,
-    item_type character varying(50) DEFAULT 'food'::character varying NOT NULL,
     variant_id uuid,
     quantity numeric NOT NULL,
     unit character varying(50) NOT NULL,
@@ -1939,7 +1937,9 @@ CREATE TABLE public.meal_foods (
     iron numeric,
     glycemic_index text,
     custom_nutrients jsonb,
-    CONSTRAINT chk_meal_foods_item_type CHECK (((((item_type)::text = 'food'::text) AND (food_id IS NOT NULL) AND (child_meal_id IS NULL)) OR (((item_type)::text = 'meal'::text) AND (child_meal_id IS NOT NULL) AND (food_id IS NULL))))
+    child_meal_id uuid,
+    item_type character varying(50) DEFAULT 'food'::character varying NOT NULL,
+    CONSTRAINT chk_meal_foods_item_type CHECK (((((item_type)::text = 'food'::text) AND (food_id IS NOT NULL) AND (child_meal_id IS NULL)) OR (((item_type)::text = 'meal'::text) AND (food_id IS NULL))))
 );
 
 
@@ -4502,13 +4502,6 @@ CREATE INDEX idx_food_entries_food_entry_meal_id ON public.food_entries USING bt
 
 
 --
--- Name: idx_meal_foods_child_meal_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_meal_foods_child_meal_id ON public.meal_foods USING btree (child_meal_id);
-
-
---
 -- Name: idx_food_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4562,6 +4555,13 @@ CREATE INDEX idx_injection_entries_medication_id ON public.injection_entries USI
 --
 
 CREATE INDEX idx_injection_entries_user_id ON public.injection_entries USING btree (user_id);
+
+
+--
+-- Name: idx_meal_foods_child_meal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_meal_foods_child_meal_id ON public.meal_foods USING btree (child_meal_id);
 
 
 --
@@ -5504,7 +5504,7 @@ ALTER TABLE ONLY public.injection_entries
 --
 
 ALTER TABLE ONLY public.meal_foods
-    ADD CONSTRAINT meal_foods_child_meal_id_fkey FOREIGN KEY (child_meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
+    ADD CONSTRAINT meal_foods_child_meal_id_fkey FOREIGN KEY (child_meal_id) REFERENCES public.meals(id) ON DELETE SET NULL;
 
 
 --
@@ -6612,11 +6612,11 @@ CREATE POLICY modify_policy ON public.injection_entries USING (public.has_medica
 
 CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
    FROM public.meals m
-  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))))) WITH CHECK (((EXISTS ( SELECT 1
    FROM public.meals m
-  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))) AND (((meal_foods.food_id IS NOT NULL) AND (EXISTS ( SELECT 1
+  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id)))) AND (((food_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE (f.id = meal_foods.food_id)))) OR ((meal_foods.child_meal_id IS NOT NULL) AND (EXISTS ( SELECT 1
+  WHERE (f.id = meal_foods.food_id)))) OR ((child_meal_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.meals cm
   WHERE ((cm.id = meal_foods.child_meal_id) AND public.has_library_access_with_public(cm.user_id, cm.is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text]))))))));
 
@@ -8914,5 +8914,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WBM08FVUEt8ErXgev7ii3g3rIMwVy5pbswVbXNwIJ4R3aXRVUCi6i0XmTzSLk7Z
+\unrestrict N96YCPYcg3UJtCdpA8mYWlcYGUKPcIVgqng4bEFvYOO0BsBL0DmEFCvczLYlqnn
 
