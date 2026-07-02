@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ToastConfig } from 'react-native-toast-message';

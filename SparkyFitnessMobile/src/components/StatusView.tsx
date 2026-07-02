@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';

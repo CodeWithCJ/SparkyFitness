@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
