@@ -409,6 +409,7 @@ describe('mealService validation', () => {
       getMealById: ReturnType<typeof vi.fn>;
       mealContainsMeal: ReturnType<typeof vi.fn>;
       getMealSubtreeDepth: ReturnType<typeof vi.fn>;
+      getMealAncestryHeight: ReturnType<typeof vi.fn>;
       createMeal: ReturnType<typeof vi.fn>;
       updateMeal: ReturnType<typeof vi.fn>;
     };
