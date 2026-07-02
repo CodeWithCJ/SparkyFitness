@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -35,8 +35,20 @@ jest.mock('@assistant-ui/react-native', () => {
     __esModule: true,
     AssistantRuntimeProvider: ({ children }: any) =>
       React.createElement(React.Fragment, null, children),
+    useAui: () => ({
+      composer: () => ({
+        setText: (value: string) => {
+          (global as any).__mockComposerText = value;
+          (global as any).__mockComposerSetText?.(value);
+        },
+      }),
+    }),
+    useAuiEvent: () => undefined,
     useAuiState: (selector: (s: any) => any) =>
-      selector({ thread: { isRunning: !!(global as any).__mockChatIsRunning } }),
+      selector({
+        thread: { isRunning: !!(global as any).__mockChatIsRunning },
+        composer: { text: (global as any).__mockComposerText ?? '' },
+      }),
     ThreadPrimitive: {
       Root: Box,
       Empty: ({ children }: any) =>
@@ -161,6 +173,8 @@ beforeEach(() => {
   (global as any).__mockCapturedOnError = undefined;
   (global as any).__mockCapturedMessages = undefined;
   (global as any).__mockMessagesScrollToEnd = undefined;
+  (global as any).__mockComposerText = '';
+  (global as any).__mockComposerSetText = jest.fn();
   mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
   mockUseActiveAiServiceSetting.mockReturnValue({ data: ACTIVE_SETTING, isLoading: false } as any);
   mockUseChatHistory.mockReturnValue({ data: [], isLoading: false } as any);
@@ -225,6 +239,16 @@ describe('ChatScreen thread', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'error', text1: 'Chat error', text2: 'bad config' })
     );
+  });
+
+  it('keeps typed composer text local while forwarding it to assistant-ui', async () => {
+    const { findByPlaceholderText, getByPlaceholderText } = renderScreen();
+    await findByPlaceholderText('Message Sparky…');
+
+    fireEvent.changeText(getByPlaceholderText('Message Sparky…'), 'hello');
+
+    expect((global as any).__mockComposerSetText).toHaveBeenCalledWith('hello');
+    expect(getByPlaceholderText('Message Sparky…').props.value).toBe('hello');
   });
 
   it('scrolls the message list to the bottom after the thread mounts', async () => {
