@@ -409,7 +409,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   // (configured once in the layout effect below) always calls the current
   // handler. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleSaveMealRef.current = handleSaveMeal;
   });
 

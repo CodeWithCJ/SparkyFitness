@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
@@ -419,7 +419,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   // (configured once in the layout effect below) always calls the current
   // handler. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleSaveRef.current = handleSave;
   });
 
@@ -603,7 +603,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   // (configured once in the layout effect below) always calls the current
   // handler. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleSaveRef.current = handleSave;
   });
 

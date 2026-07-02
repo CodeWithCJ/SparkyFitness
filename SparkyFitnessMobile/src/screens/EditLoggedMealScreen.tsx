@@ -206,7 +206,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   // the meal-builder focus effect) unscale consumed amounts using the latest
   // scale. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     displayScaleRef.current = templateScale * scaleFactor;
   });
 
@@ -300,7 +300,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   // (configured once in the layout effect below) always calls the current
   // handler. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleSaveRef.current = handleSave;
   });
 

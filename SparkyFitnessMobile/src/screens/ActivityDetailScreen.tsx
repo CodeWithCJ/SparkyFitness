@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Platform, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import FadeView from '../components/FadeView';
 import EditableSetList from '../components/EditableSetList';
@@ -450,7 +450,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Keep the refs pointing at the latest closures so the native header buttons
   // (configured once in the layout effect below) always call current handlers.
   // Updated in an effect rather than during render to satisfy react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     startEditingRef.current = startEditing;
     cancelEditingRef.current = cancelEditing;
     handleSaveRef.current = handleSave;

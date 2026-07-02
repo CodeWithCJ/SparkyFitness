@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -121,7 +121,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   // (configured once in the layout effect below) always calls the current
   // handler. Updated in an effect rather than during render to satisfy
   // react-hooks/refs.
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleEditRef.current = handleEdit;
   });
 
