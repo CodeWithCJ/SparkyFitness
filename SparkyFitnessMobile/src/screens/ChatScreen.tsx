@@ -58,6 +58,7 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
   React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
 >;
 
+const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
 const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 
 /**
@@ -450,12 +451,16 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
-  // The KeyboardAvoidingView measures its own window-bottom, which already sits
-  // below the native header and above the bottom safe-area inset. So the offset
-  // only needs a small breathing gap between the composer and the keyboard —
-  // adding the header/status-bar height on top double-counts and leaves a large
-  // empty band above the keyboard.
-  const keyboardVerticalOffset = CHAT_KEYBOARD_EXTRA_SPACING;
+  // The offset depends on which header is on screen. With the native stack
+  // header, the header sits above the KeyboardAvoidingView's frame, so the
+  // status-bar + header height has to be added back for the composer to land
+  // just above the keyboard. With the screen-owned header, that header lives
+  // inside the KAV's parent flow (and is already reflected in the KAV frame),
+  // so only a small breathing gap is needed — adding the header height there
+  // double-counts and leaves a large empty band above the keyboard.
+  const keyboardVerticalOffset = usesNativeHeader
+    ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT + CHAT_KEYBOARD_EXTRA_SPACING
+    : CHAT_KEYBOARD_EXTRA_SPACING;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
