@@ -143,4 +143,17 @@ describe('Measurement Routes - POST /health-data', () => {
       'test-user-id'
     );
   });
+
+  it('returns 400 when the array contains non-object elements', async () => {
+    const res = await request(app)
+      .post('/api/measurements/health-data')
+      .set('Content-Type', 'application/json')
+      .send([null]);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error:
+        'Invalid health data format. All entries must be non-null objects.',
+    });
+  });
 });

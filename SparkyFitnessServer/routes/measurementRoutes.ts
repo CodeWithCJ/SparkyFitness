@@ -69,8 +69,7 @@ router.post(
       } else if (rawBody.includes('}{')) {
         const jsonStrings = rawBody
           .split('}{')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((part: any, index: any, arr: any) => {
+          .map((part: string, index: number, arr: string[]) => {
             if (index === 0) return part + '}';
             if (index === arr.length - 1) return '{' + part;
             return '{' + part + '}';
@@ -96,6 +95,16 @@ router.post(
       }
     } else {
       return res.status(400).json({ error: 'Invalid request body format.' });
+    }
+    if (
+      healthDataArray.some(
+        (item: unknown) => typeof item !== 'object' || item === null
+      )
+    ) {
+      return res.status(400).json({
+        error:
+          'Invalid health data format. All entries must be non-null objects.',
+      });
     }
     try {
       const result = await measurementService.processHealthData(
