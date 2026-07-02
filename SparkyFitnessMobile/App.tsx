@@ -983,7 +983,7 @@ function AppContent() {
           <Stack.Screen
             name="EditLoggedMeal"
             component={SafeEditLoggedMeal}
-            options={createStackScreenOptions('Edit Meal')}
+            options={createStackScreenOptions('Edit Meal', { headerBackTitle: 'Diary' })}
           />
           <Stack.Screen
             name="MealTypeDetail"
