@@ -17,7 +17,7 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
   },
 }));
 
-vi.mock('../services/mealService.js', () => ({
+vi.mock('../models/mealRepository.js', () => ({
   default: {
     getMealById: vi.fn(),
   },
@@ -33,7 +33,7 @@ import {
 } from '../services/foodEntryService.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
-import mealService from '../services/mealService.js';
+import mealRepository from '../models/mealRepository.js';
 
 describe('foodEntryMealService', () => {
   beforeEach(() => {
@@ -43,7 +43,7 @@ describe('foodEntryMealService', () => {
   describe('createFoodEntryMeal', () => {
     it('inherits name and description from meal template if not provided', async () => {
       // Mock mealTemplate
-      (mealService.getMealById as any).mockResolvedValue({
+      (mealRepository.getMealById as any).mockResolvedValue({
         id: 'template-1',
         name: 'Template Meal Name',
         description: 'Template Description',
@@ -121,7 +121,7 @@ describe('foodEntryMealService', () => {
 
     it('falls back to food default_variant when foodItem variant_id is missing or null', async () => {
       // Mock mealTemplate
-      (mealService.getMealById as any).mockResolvedValue({
+      (mealRepository.getMealById as any).mockResolvedValue({
         id: 'template-1',
         name: 'Template Meal Name',
         serving_size: 1.0,
@@ -187,7 +187,7 @@ describe('foodEntryMealService', () => {
       });
 
       // Mock getMealById for scaling reference
-      (mealService.getMealById as any).mockResolvedValue({
+      (mealRepository.getMealById as any).mockResolvedValue({
         id: 'template-1',
         serving_size: 1.0,
         total_servings: 1.0,
@@ -245,8 +245,8 @@ describe('foodEntryMealService', () => {
     // to leaf food_entries at log time (see MEAL_COMPOSITION_PLAN.md), composing
     // the parent's portion multiplier with the child meal's own serving yield.
     it('recursively flattens a linked sub-meal to leaf food_entries', async () => {
-      (mealService.getMealById as any).mockImplementation(
-        (_userId: string, id: string) => {
+      (mealRepository.getMealById as any).mockImplementation(
+        (id: string, _userId: string) => {
           if (id === 'parent-template') {
             return Promise.resolve({
               id: 'parent-template',

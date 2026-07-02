@@ -227,8 +227,14 @@ async function flattenMealFoodsForPlan(
       const servingSize = Number(child.serving_size) || 1.0;
       const totalServings = Number(child.total_servings) || 1.0;
       const denominator = servingSize * totalServings;
+      const quantityInBaseUnit =
+        item.unit === 'serving' &&
+        child.serving_unit &&
+        child.serving_unit !== 'serving'
+          ? (Number(item.quantity) || 0) * servingSize
+          : Number(item.quantity) || 0;
       const childFactor =
-        denominator > 0 ? (Number(item.quantity) || 1) / denominator : 1.0;
+        denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
       leaves.push(
         ...(await flattenMealFoodsForPlan(
           userId,
@@ -315,8 +321,14 @@ async function resolveChildMealSnapshot(
       );
       if (!sub) continue;
       const subServing = Number(sub.serving_size) || 1;
-      const factor =
-        subServing > 0 ? (Number(row.quantity) || 0) / subServing : 0;
+      const quantityInBaseUnit =
+        row.unit === 'serving' &&
+        sub.serving_unit &&
+        sub.serving_unit !== 'serving'
+          ? (Number(row.quantity) || 0) *
+            (Number(row.child_meal_serving_size) || 1)
+          : Number(row.quantity) || 0;
+      const factor = subServing > 0 ? quantityInBaseUnit / subServing : 0;
       for (const key of RESOLVED_NUTRIENT_KEYS) {
         totals[key] += (Number(sub[key]) || 0) * factor;
       }

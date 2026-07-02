@@ -6612,11 +6612,7 @@ CREATE POLICY modify_policy ON public.injection_entries USING (public.has_medica
 
 CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
    FROM public.meals m
-  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))) AND (((meal_foods.food_id IS NOT NULL) AND (EXISTS ( SELECT 1
-   FROM public.foods f
-  WHERE (f.id = meal_foods.food_id)))) OR ((meal_foods.child_meal_id IS NOT NULL) AND (EXISTS ( SELECT 1
-   FROM public.meals cm
-  WHERE ((cm.id = meal_foods.child_meal_id) AND public.has_library_access_with_public(cm.user_id, cm.is_public, ARRAY['can_view_food_library'::text, 'can_manage_diary'::text])))))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM public.meals m
   WHERE ((m.id = meal_foods.meal_id) AND (public.authenticated_user_id() = m.user_id))) AND (((meal_foods.food_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.foods f

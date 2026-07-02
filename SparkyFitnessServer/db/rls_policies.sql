@@ -731,11 +731,6 @@ USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND 
 CREATE POLICY modify_policy ON public.meal_foods FOR ALL TO PUBLIC
 USING (
   EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id)
-  AND (
-    (meal_foods.food_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id))
-    OR
-    (meal_foods.child_meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals cm WHERE cm.id = meal_foods.child_meal_id AND has_library_access_with_public(cm.user_id, cm.is_public, ARRAY['can_view_food_library', 'can_manage_diary'])))
-  )
 )
 WITH CHECK (
   EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id)

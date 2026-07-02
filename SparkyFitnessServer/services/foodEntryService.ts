@@ -1,6 +1,6 @@
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
-import mealService from './mealService.js';
+import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import mealTypeRepository from '../models/mealType.js';
@@ -1004,9 +1004,9 @@ async function buildLeafFoodEntries(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let child: any;
       try {
-        child = await mealService.getMealById(
-          ctx.authenticatedUserId,
-          childMealId
+        child = await mealRepository.getMealById(
+          childMealId,
+          ctx.authenticatedUserId
         );
       } catch {
         log(
@@ -1019,8 +1019,14 @@ async function buildLeafFoodEntries(
       const servingSize = Number(child.serving_size) || 1.0;
       const totalServings = Number(child.total_servings) || 1.0;
       const denominator = servingSize * totalServings;
+      const quantityInBaseUnit =
+        component.unit === 'serving' &&
+        child.serving_unit &&
+        child.serving_unit !== 'serving'
+          ? (Number(component.quantity) || 0) * servingSize
+          : Number(component.quantity) || 0;
       const childFactor =
-        denominator > 0 ? (Number(component.quantity) || 1) / denominator : 1.0;
+        denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
       const childEntries = await buildLeafFoodEntries(
         child.foods,
         multiplier * childFactor,
@@ -1137,9 +1143,9 @@ async function createFoodEntryMeal(
         'info',
         `Fetching meal template ${mealData.meal_template_id} for serving size, name, description, and foods.`
       );
-      const mealTemplate = await mealService.getMealById(
-        authenticatedUserId,
-        mealData.meal_template_id
+      const mealTemplate = await mealRepository.getMealById(
+        mealData.meal_template_id,
+        authenticatedUserId
       );
       if (mealTemplate) {
         mealServingSize = mealTemplate.serving_size || 1.0;
@@ -1300,9 +1306,9 @@ async function updateFoodEntryMeal(
     const newQuantity = updatedMealData.quantity || 1.0;
     const legacyMath = updatedFoodEntryMeal.legacy_serving_unit_math === true;
     if (updatedMealData.meal_template_id) {
-      const mealTemplate = await mealService.getMealById(
-        authenticatedUserId,
-        updatedMealData.meal_template_id
+      const mealTemplate = await mealRepository.getMealById(
+        updatedMealData.meal_template_id,
+        authenticatedUserId
       );
       if (mealTemplate && mealTemplate.serving_size) {
         const referenceServingSize = mealTemplate.serving_size || 1.0;
@@ -1450,9 +1456,9 @@ async function getFoodEntryMealWithComponents(
     let storedMultiplier = 1.0;
     if (foodEntryMeal.meal_template_id) {
       try {
-        const mealTemplate = await mealService.getMealById(
-          authenticatedUserId,
-          foodEntryMeal.meal_template_id
+        const mealTemplate = await mealRepository.getMealById(
+          foodEntryMeal.meal_template_id,
+          authenticatedUserId
         );
         if (mealTemplate) {
           const consumedQuantity = foodEntryMeal.quantity || 1.0;

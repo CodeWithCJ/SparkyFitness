@@ -471,6 +471,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     unit: string
   ) => {
     const totals = computeMealFullRecipeTotals(meal);
+    const isServingUnitMismatch =
+      unit === 'serving' &&
+      meal.serving_unit &&
+      meal.serving_unit !== 'serving';
+    const resolvedQuantity = isServingUnitMismatch
+      ? quantity * (meal.serving_size || 1)
+      : quantity;
+    const resolvedUnit = isServingUnitMismatch
+      ? meal.serving_unit || 'serving'
+      : unit;
+
     const updatedComponent: MealFood = {
       item_type: 'meal',
       child_meal_id: meal.id,
@@ -479,8 +490,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       child_meal_serving_unit: meal.serving_unit,
       child_meal_total_servings: meal.total_servings,
       food_name: meal.name,
-      quantity,
-      unit,
+      quantity: resolvedQuantity,
+      unit: resolvedUnit,
       serving_size: (meal.serving_size || 1) * (meal.total_servings || 1),
       serving_unit: meal.serving_unit,
       ...totals,
