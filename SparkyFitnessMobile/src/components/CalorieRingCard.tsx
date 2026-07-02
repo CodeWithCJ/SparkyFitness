@@ -37,7 +37,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
     '--color-calories',
   ]) as [string, string];
 
-  const displayRemaining = Math.round(remainingCalories);
+  const displayRemaining = Math.round(remainingCalories) || 0;
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
