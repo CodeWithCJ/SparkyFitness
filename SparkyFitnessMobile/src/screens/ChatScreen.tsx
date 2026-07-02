@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, FlatList, TextInput, type TextInputProps } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,8 @@ import {
   MessagePrimitive,
   ErrorPrimitive,
   ActionBarPrimitive,
+  useAui,
+  useAuiEvent,
   useAuiState,
   type MessageRole,
 } from '@assistant-ui/react-native';
@@ -221,7 +223,51 @@ function MessageBubble({ role }: { role: MessageRole }) {
   );
 }
 
-/** The bottom input row. ComposerInput/Send manage their own state + actions. */
+type LocalComposerInputProps = Omit<TextInputProps, 'value' | 'onChangeText'>;
+
+function LocalComposerInput(props: LocalComposerInputProps) {
+  const aui = useAui();
+  const composerText = useAuiState((s) => s.composer.text);
+  const [localText, setLocalText] = useState(composerText);
+  const localTextRef = useRef(composerText);
+  const pendingLocalTextsRef = useRef<string[]>([]);
+
+  const applyLocalText = useCallback((value: string) => {
+    localTextRef.current = value;
+    setLocalText(value);
+  }, []);
+
+  useEffect(() => {
+    const pendingLocalTexts = pendingLocalTextsRef.current;
+    const index = pendingLocalTexts.indexOf(composerText);
+    if (index !== -1) {
+      pendingLocalTexts.splice(0, index + 1);
+      return;
+    }
+
+    if (composerText !== localTextRef.current) {
+      applyLocalText(composerText);
+    }
+  }, [applyLocalText, composerText]);
+
+  useAuiEvent('composer.send', () => {
+    pendingLocalTextsRef.current = [];
+    applyLocalText('');
+  });
+
+  const handleChangeText = useCallback(
+    (value: string) => {
+      pendingLocalTextsRef.current.push(value);
+      applyLocalText(value);
+      aui.composer().setText(value);
+    },
+    [applyLocalText, aui],
+  );
+
+  return <TextInput {...props} value={localText} onChangeText={handleChangeText} />;
+}
+
+/** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer() {
   const [muted, raised, textPrimary] = useCSSVariable([
     '--color-text-muted',
@@ -233,7 +279,7 @@ function Composer() {
     <ComposerPrimitive.Root
       style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, gap: 8 }}
     >
-      <ComposerPrimitive.Input
+      <LocalComposerInput
         placeholder="Message Sparky…"
         placeholderTextColor={muted}
         autoFocus
