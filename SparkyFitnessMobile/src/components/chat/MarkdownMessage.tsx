@@ -16,8 +16,9 @@ import { addLog } from '../../services/LogService';
  * `markdownStyle` defaults are light-mode colors that would be invisible on the
  * dark/AMOLED themes, so we override every text-bearing element's color from
  * theme CSS vars (the native side merges per-element, keeping its default sizes
- * and margins). LaTeX math is disabled via `md4cFlags` so prebuild doesn't pull
- * in the optional native math libs.
+ * and margins). LaTeX math parsing is disabled at runtime via `md4cFlags`; the
+ * optional native math libs are excluded from the build separately by the
+ * `withEnrichedMarkdownNoMath` config plugin.
  *
  * While the model streams, it emits partial markdown (an unclosed `**`, a
  * half-typed link). We repair the tail on the JS thread with `remend` before
