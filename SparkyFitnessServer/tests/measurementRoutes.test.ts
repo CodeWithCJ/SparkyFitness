@@ -12,13 +12,24 @@ vi.mock('../services/measurementService.js', () => ({
   },
 }));
 
+import type { Request, Response, NextFunction } from 'express';
+
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  default: vi.fn(() => (req: any, res: any, next: any) => next()),
+  default: vi.fn(
+    () => (req: Request, res: Response, next: NextFunction) => next()
+  ),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const injectUser = (req: any, res: any, next: any) => {
+vi.mock('../middleware/authMiddleware.js', () => ({
+  authenticate: (req: Request, _res: Response, next: NextFunction) => {
+    req.userId = 'test-user-id';
+    req.authenticatedUserId = 'test-user-id';
+    next();
+  },
+  isAdmin: (req: Request, _res: Response, next: NextFunction) => next(),
+}));
+
+const injectUser = (req: Request, res: Response, next: NextFunction) => {
   req.userId = 'test-user-id';
   next();
 };
