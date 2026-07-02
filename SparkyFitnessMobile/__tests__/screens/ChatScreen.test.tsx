@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -187,6 +188,18 @@ beforeEach(() => {
 });
 
 describe('ChatScreen config gating', () => {
+  it('offsets keyboard avoidance by the native iOS header height', async () => {
+    const { getByTestId } = renderScreen();
+
+    expect(getByTestId('chat-keyboard-avoiding-view').props.keyboardVerticalOffset).toBe(
+      Platform.OS === 'ios' ? 44 : 0
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
   it('prompts to set up a server when none is configured', async () => {
     mockGetActiveServerConfig.mockResolvedValue(null);
     const { findByText } = renderScreen();

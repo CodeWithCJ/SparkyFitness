@@ -58,6 +58,8 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
   React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
 >;
 
+const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
+
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
  * streaming endpoint (`/api/chat/stream`).
@@ -443,6 +445,8 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   const accent = useCSSVariable('--color-accent-primary') as string;
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const queryClient = useQueryClient();
+  const keyboardVerticalOffset =
+    Platform.OS === 'ios' ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT : 0;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -569,7 +573,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           on both platforms (RN-core's needs `undefined` on Android, but this is
           not that component). Padding shrinks the message list by the keyboard
           height so the composer stays pinned just above the keyboard. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <KeyboardAvoidingView
+        testID="chat-keyboard-avoiding-view"
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={keyboardVerticalOffset}
+      >
         {loadingConfig || loadingSetting || loadingHistory ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={accent} />
