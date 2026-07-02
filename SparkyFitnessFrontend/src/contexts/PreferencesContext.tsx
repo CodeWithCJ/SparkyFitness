@@ -819,9 +819,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
         logging_level: newPrefs?.loggingLevel ?? loggingLevel,
         default_food_data_provider_id:
-          newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
+          newPrefs?.defaultFoodDataProviderId !== undefined
+            ? newPrefs.defaultFoodDataProviderId
+            : defaultFoodDataProviderId,
         default_barcode_provider_id:
-          newPrefs?.defaultBarcodeProviderId ?? defaultBarcodeProviderId,
+          newPrefs?.defaultBarcodeProviderId !== undefined
+            ? newPrefs.defaultBarcodeProviderId
+            : defaultBarcodeProviderId,
         barcode_fallback_open_food_facts:
           newPrefs?.barcodeFallbackOpenFoodFacts ??
           barcodeFallbackOpenFoodFacts,
