@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
+import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
@@ -46,7 +47,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
     '--color-raised',
   ]) as [string, string, string, string, string];
-  const { backColor } = useHeaderActionColors();
+  const { backColor, headerTintColor } = useHeaderActionColors();
 
   const {
     state,
@@ -102,6 +103,24 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      headerBackVisible: false,
+      unstable_headerLeftItems: () => [
+        createNativeHeaderTextButtonItem({
+          label: 'Cancel',
+          identifier: 'activity-add-cancel',
+          tintColor: headerTintColor,
+          onPress: () => {
+            void handleCancel();
+          },
+        }),
+      ],
+    });
+  }, [handleCancel, headerTintColor, navigation]);
 
   const handleSave = useCallback(async () => {
     if (!submission.exerciseId || !submission.canSave) return;

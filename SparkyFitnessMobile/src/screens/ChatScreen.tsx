@@ -1,5 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert, FlatList, TextInput, type TextInputProps } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  TextInput,
+  type TextInputProps,
+} from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +41,8 @@ import { normalizeUrl } from '../services/api/apiClient';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
 import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
@@ -46,6 +57,9 @@ type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messag
 const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
   React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
 >;
+
+const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
+const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -430,7 +444,12 @@ function Centered({ text }: { text: string }) {
 export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
+  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const queryClient = useQueryClient();
+  const keyboardVerticalOffset =
+    Platform.OS === 'ios'
+      ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT + CHAT_KEYBOARD_EXTRA_SPACING
+      : CHAT_KEYBOARD_EXTRA_SPACING;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -467,7 +486,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
 
   const serviceConfigId = setting?.id ?? null;
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     Alert.alert(
       'Clear chat',
       'This permanently deletes your Sparky chat history. This cannot be undone.',
@@ -496,14 +515,37 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         },
       ]
     );
-  };
+  }, [queryClient]);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    navigation.setOptions({
+      unstable_headerRightItems: baseUrl
+        ? () => [
+            createNativeHeaderIconButtonItem({
+              sfSymbol: 'trash',
+              identifier: 'chat-clear',
+              tintColor: headerActionColor,
+              accessibilityLabel: 'Clear chat',
+              disabled: running,
+              onPress: handleClear,
+            }),
+          ]
+        : undefined,
+    });
+  }, [baseUrl, handleClear, headerActionColor, navigation, running]);
 
   return (
     <View
       className="flex-1 bg-background"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={{
+        paddingTop: Platform.OS === 'android' ? insets.top : undefined,
+        paddingBottom: insets.bottom,
+      }}
     >
       {/* Header */}
+      {Platform.OS !== 'ios' && (
       <View className="flex-row items-center px-4 pb-2 border-b border-border-subtle">
         <Button
           variant="ghost"
@@ -528,12 +570,18 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           </Button>
         ) : null}
       </View>
+      )}
 
       {/* keyboard-controller's reworked KeyboardAvoidingView supports `padding`
           on both platforms (RN-core's needs `undefined` on Android, but this is
           not that component). Padding shrinks the message list by the keyboard
           height so the composer stays pinned just above the keyboard. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <KeyboardAvoidingView
+        testID="chat-keyboard-avoiding-view"
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={keyboardVerticalOffset}
+      >
         {loadingConfig || loadingSetting || loadingHistory ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={accent} />
