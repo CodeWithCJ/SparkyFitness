@@ -1,6 +1,6 @@
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
-import mealService from './mealService.js';
+import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import mealTypeRepository from '../models/mealType.js';
@@ -959,6 +959,182 @@ async function getDailyNutritionSummary(userId: any, date: any) {
   }
 }
 // New functions for food_entry_meals logic
+// Safety net for the recursive flatten. The meal service validates template
+// nesting at <= MAX_MEAL_NESTING_DEPTH (5) at write time; this slightly higher
+// cap protects the diary expansion against unexpectedly deep/legacy structures.
+const MAX_MEAL_FLATTEN_DEPTH = 6;
+
+interface FlattenContext {
+  authenticatedUserId: string;
+  actingUserId: string;
+  targetUserId: string;
+  mealTypeId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryDate: any;
+  foodEntryMealId: string;
+}
+
+// Recursively flattens a meal's ingredient list (foods and linked sub-meals)
+// into leaf food_entries, composing the portion multiplier down the tree so a
+// linked meal scales by its own serving yield. Sub-meals never produce their
+// own diary rows — only leaf foods do, which keeps diary/reporting unchanged.
+async function buildLeafFoodEntries(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  components: any,
+  multiplier: number,
+  ctx: FlattenContext,
+  depth = 0
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const entries: any[] = [];
+  if (depth > MAX_MEAL_FLATTEN_DEPTH) {
+    log(
+      'warn',
+      `Max meal nesting depth (${MAX_MEAL_FLATTEN_DEPTH}) exceeded while flattening meal for diary; stopping recursion.`
+    );
+    return entries;
+  }
+  for (const component of components || []) {
+    const isMeal = component.item_type === 'meal';
+    if (isMeal) {
+      const childMealId = component.child_meal_id;
+      if (childMealId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let child: any;
+        try {
+          child = await mealRepository.getMealById(
+            childMealId,
+            ctx.authenticatedUserId
+          );
+        } catch {
+          log(
+            'warn',
+            `Linked meal ${childMealId} not found/accessible while flattening; falling back to snapshot.`
+          );
+        }
+        if (child) {
+          const servingSize = Number(child.serving_size) || 1.0;
+          const totalServings = Number(child.total_servings) || 1.0;
+          const denominator = servingSize * totalServings;
+          const quantityInBaseUnit =
+            component.unit === 'serving' &&
+            child.serving_unit &&
+            child.serving_unit !== 'serving'
+              ? (Number(component.quantity) || 0) * servingSize
+              : Number(component.quantity) || 0;
+          const childFactor =
+            denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
+          const childEntries = await buildLeafFoodEntries(
+            child.foods,
+            multiplier * childFactor,
+            ctx,
+            depth + 1
+          );
+          entries.push(...childEntries);
+          continue;
+        }
+      }
+
+      // Fallback for deleted sub-meals (where child_meal_id is null or not found):
+      // Treat as a static custom food entry using its snapshot nutrients
+      entries.push({
+        food_name: component.food_name || 'Deleted Sub-Meal',
+        quantity: (Number(component.quantity) || 0) * multiplier,
+        unit: component.unit || 'serving',
+        calories: (Number(component.calories) || 0) * multiplier,
+        protein: (Number(component.protein) || 0) * multiplier,
+        carbs: (Number(component.carbs) || 0) * multiplier,
+        fat: (Number(component.fat) || 0) * multiplier,
+        saturated_fat: (Number(component.saturated_fat) || 0) * multiplier,
+        polyunsaturated_fat:
+          (Number(component.polyunsaturated_fat) || 0) * multiplier,
+        monounsaturated_fat:
+          (Number(component.monounsaturated_fat) || 0) * multiplier,
+        trans_fat: (Number(component.trans_fat) || 0) * multiplier,
+        cholesterol: (Number(component.cholesterol) || 0) * multiplier,
+        sodium: (Number(component.sodium) || 0) * multiplier,
+        potassium: (Number(component.potassium) || 0) * multiplier,
+        dietary_fiber: (Number(component.dietary_fiber) || 0) * multiplier,
+        sugars: (Number(component.sugars) || 0) * multiplier,
+        vitamin_a: (Number(component.vitamin_a) || 0) * multiplier,
+        vitamin_c: (Number(component.vitamin_c) || 0) * multiplier,
+        calcium: (Number(component.calcium) || 0) * multiplier,
+        iron: (Number(component.iron) || 0) * multiplier,
+        glycemic_index: component.glycemic_index || null,
+        custom_nutrients: component.custom_nutrients || null,
+      });
+      continue;
+    }
+    const food = await foodRepository.getFoodById(
+      component.food_id,
+      ctx.authenticatedUserId
+    );
+    if (!food) {
+      log(
+        'warn',
+        `Food with ID ${component.food_id} not found while flattening meal. Skipping.`
+      );
+      continue;
+    }
+    const variantId = component.variant_id || food.default_variant?.id;
+    if (!variantId) {
+      log(
+        'warn',
+        `No variant ID found for food ${component.food_id} while flattening meal. Skipping.`
+      );
+      continue;
+    }
+    const variant = await foodRepository.getFoodVariantById(
+      variantId,
+      ctx.authenticatedUserId
+    );
+    if (!variant) {
+      log(
+        'warn',
+        `Food variant ${variantId} not found for food ${component.food_id} while flattening meal. Skipping.`
+      );
+      continue;
+    }
+    const snapshot = {
+      food_name: food.name,
+      brand_name: food.brand,
+      serving_size: variant.serving_size,
+      serving_unit: variant.serving_unit,
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fat: variant.fat,
+      saturated_fat: variant.saturated_fat,
+      polyunsaturated_fat: variant.polyunsaturated_fat,
+      monounsaturated_fat: variant.monounsaturated_fat,
+      trans_fat: variant.trans_fat,
+      cholesterol: variant.cholesterol,
+      sodium: variant.sodium,
+      potassium: variant.potassium,
+      dietary_fiber: variant.dietary_fiber,
+      sugars: variant.sugars,
+      vitamin_a: variant.vitamin_a,
+      vitamin_c: variant.vitamin_c,
+      calcium: variant.calcium,
+      iron: variant.iron,
+      glycemic_index: variant.glycemic_index,
+      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
+    };
+    entries.push({
+      user_id: ctx.targetUserId,
+      created_by_user_id: ctx.actingUserId,
+      food_id: component.food_id,
+      meal_type_id: ctx.mealTypeId,
+      quantity: (Number(component.quantity) || 0) * multiplier,
+      unit: component.unit,
+      variant_id: variantId,
+      entry_date: ctx.entryDate,
+      food_entry_meal_id: ctx.foodEntryMealId,
+      ...snapshot,
+    });
+  }
+  return entries;
+}
 async function createFoodEntryMeal(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -996,9 +1172,9 @@ async function createFoodEntryMeal(
         'info',
         `Fetching meal template ${mealData.meal_template_id} for serving size, name, description, and foods.`
       );
-      const mealTemplate = await mealService.getMealById(
-        authenticatedUserId,
-        mealData.meal_template_id
+      const mealTemplate = await mealRepository.getMealById(
+        mealData.meal_template_id,
+        authenticatedUserId
       );
       if (mealTemplate) {
         mealServingSize = mealTemplate.serving_size || 1.0;
@@ -1069,79 +1245,21 @@ async function createFoodEntryMeal(
       'info',
       `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, total_servings: ${mealTotalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
     );
-    // 2. Create component food_entries records with scaled quantities
-    const entriesToCreate = [];
-    for (const foodItem of foodsToProcess) {
-      const food = await foodRepository.getFoodById(
-        foodItem.food_id,
-        authenticatedUserId
-      );
-      if (!food) {
-        log(
-          'warn',
-          `Food with ID ${foodItem.food_id} not found when creating food entry meal. Skipping.`
-        );
-        continue;
+    // 2. Create component food_entries records with scaled quantities.
+    // buildLeafFoodEntries recursively flattens any linked sub-meals so the
+    // diary only ever stores leaf foods (see MEAL_COMPOSITION_PLAN.md).
+    const entriesToCreate = await buildLeafFoodEntries(
+      foodsToProcess,
+      multiplier,
+      {
+        authenticatedUserId,
+        actingUserId,
+        targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
+        mealTypeId: resolvedMealTypeId,
+        entryDate: mealData.entry_date,
+        foodEntryMealId: newFoodEntryMeal.id,
       }
-      const variantId = foodItem.variant_id || food.default_variant?.id;
-      if (!variantId) {
-        log(
-          'warn',
-          `No variant ID found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
-        );
-        continue;
-      }
-      const variant = await foodRepository.getFoodVariantById(
-        variantId,
-        authenticatedUserId
-      );
-      if (!variant) {
-        log(
-          'warn',
-          `Food variant with ID ${variantId} not found for food ${foodItem.food_id} when creating food entry meal. Skipping.`
-        );
-        continue;
-      }
-      const snapshot = {
-        food_name: food.name,
-        brand_name: food.brand,
-        serving_size: variant.serving_size,
-        serving_unit: variant.serving_unit,
-        calories: variant.calories,
-        protein: variant.protein,
-        carbs: variant.carbs,
-        fat: variant.fat,
-        saturated_fat: variant.saturated_fat,
-        polyunsaturated_fat: variant.polyunsaturated_fat,
-        monounsaturated_fat: variant.monounsaturated_fat,
-        trans_fat: variant.trans_fat,
-        cholesterol: variant.cholesterol,
-        sodium: variant.sodium,
-        potassium: variant.potassium,
-        dietary_fiber: variant.dietary_fiber,
-        sugars: variant.sugars,
-        vitamin_a: variant.vitamin_a,
-        vitamin_c: variant.vitamin_c,
-        calcium: variant.calcium,
-        iron: variant.iron,
-        glycemic_index: variant.glycemic_index,
-        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
-      };
-      // Scale the food quantity by the multiplier
-      const scaledQuantity = foodItem.quantity * multiplier;
-      entriesToCreate.push({
-        user_id: newFoodEntryMeal.user_id, // Use the user_id from the created meal (target user)
-        created_by_user_id: actingUserId,
-        food_id: foodItem.food_id,
-        meal_type_id: resolvedMealTypeId,
-        quantity: scaledQuantity, // SCALED quantity
-        unit: foodItem.unit,
-        variant_id: variantId,
-        entry_date: mealData.entry_date,
-        food_entry_meal_id: newFoodEntryMeal.id, // Link to the new food_entry_meals ID
-        ...snapshot,
-      });
-    }
+    );
     if (entriesToCreate.length > 0) {
       await foodRepository.bulkCreateFoodEntries(
         entriesToCreate,
@@ -1217,9 +1335,9 @@ async function updateFoodEntryMeal(
     const newQuantity = updatedMealData.quantity || 1.0;
     const legacyMath = updatedFoodEntryMeal.legacy_serving_unit_math === true;
     if (updatedMealData.meal_template_id) {
-      const mealTemplate = await mealService.getMealById(
-        authenticatedUserId,
-        updatedMealData.meal_template_id
+      const mealTemplate = await mealRepository.getMealById(
+        updatedMealData.meal_template_id,
+        authenticatedUserId
       );
       if (mealTemplate && mealTemplate.serving_size) {
         const referenceServingSize = mealTemplate.serving_size || 1.0;
@@ -1367,9 +1485,9 @@ async function getFoodEntryMealWithComponents(
     let storedMultiplier = 1.0;
     if (foodEntryMeal.meal_template_id) {
       try {
-        const mealTemplate = await mealService.getMealById(
-          authenticatedUserId,
-          foodEntryMeal.meal_template_id
+        const mealTemplate = await mealRepository.getMealById(
+          foodEntryMeal.meal_template_id,
+          authenticatedUserId
         );
         if (mealTemplate) {
           const consumedQuantity = foodEntryMeal.quantity || 1.0;

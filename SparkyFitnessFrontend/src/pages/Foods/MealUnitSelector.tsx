@@ -20,6 +20,9 @@ interface MealUnitSelectorProps {
   onSelect: (meal: Meal, quantity: number, unit: string) => void;
   initialQuantity?: number;
   initialUnit?: string;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
 const MealUnitSelector = ({
@@ -29,6 +32,9 @@ const MealUnitSelector = ({
   onSelect,
   initialQuantity,
   initialUnit,
+  title,
+  description,
+  confirmLabel,
 }: MealUnitSelectorProps) => {
   const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
   debug(loggingLevel, 'MealUnitSelector component rendered.', { meal, open });
@@ -116,14 +122,16 @@ const MealUnitSelector = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {initialQuantity
-              ? `Edit ${meal?.name}`
-              : `Add ${meal?.name} to Meal Plan`}
+            {title ??
+              (initialQuantity
+                ? `Edit ${meal?.name}`
+                : `Add ${meal?.name} to Meal Plan`)}
           </DialogTitle>
           <DialogDescription>
-            {initialQuantity
-              ? `Edit the quantity for ${meal?.name}.`
-              : `Select the quantity for this meal in your meal plan.`}
+            {description ??
+              (initialQuantity
+                ? `Edit the quantity for ${meal?.name}.`
+                : `Select the quantity for this meal in your meal plan.`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -186,7 +194,8 @@ const MealUnitSelector = ({
                 Cancel
               </Button>
               <Button type="submit">
-                {initialQuantity ? 'Update Meal' : 'Add to Meal Plan'}
+                {confirmLabel ??
+                  (initialQuantity ? 'Update Meal' : 'Add to Meal Plan')}
               </Button>
             </div>
           </div>

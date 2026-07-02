@@ -673,6 +673,29 @@ describe('search_meal', () => {
     );
     expect(mealService.searchMeals).toHaveBeenCalledWith('user-1', 'oat');
   });
+
+  it('marks linked sub-meal ingredients distinctly from foods', async () => {
+    vi.mocked(mealService.searchMeals).mockResolvedValue([
+      {
+        id: MEAL_ID,
+        name: 'Big Bowl',
+        description: null,
+        foods: [
+          { food_name: 'Chicken' },
+          { item_type: 'meal', child_meal_name: 'Egg Fried Rice' },
+        ],
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_meal', meal_name: 'bowl' },
+      opts
+    );
+
+    expect(result).toBe(
+      `# Meal Search: "bowl"\n\n**Big Bowl**\n  Foods: 2 items (Chicken, [meal] Egg Fried Rice)\n  ID: ${MEAL_ID}`
+    );
+  });
 });
 
 describe('log_meal', () => {

@@ -267,7 +267,7 @@ export const mealIngredientDraftToFoodInfo = (
     'serving';
 
   return {
-    id: ingredient.food_id,
+    id: ingredient.food_id || '',
     name: ingredient.food_name || 'Food',
     brand: ingredient.brand,
     servingSize: toFiniteNumber(ingredient.serving_size),

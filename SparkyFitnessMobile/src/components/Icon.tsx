@@ -35,6 +35,7 @@ const ICON_MAP = {
   'share': { sf: 'square.and.arrow.up', ion: 'share-outline' },
   'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
+  'link': { sf: 'link', ion: 'link-outline' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
   'radio-button-on': { sf: 'circle.inset.filled', ion: 'radio-button-on' },
   'radio-button-off': { sf: 'circle', ion: 'radio-button-off' },
