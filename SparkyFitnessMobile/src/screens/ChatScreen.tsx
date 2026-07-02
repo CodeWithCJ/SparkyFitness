@@ -230,7 +230,7 @@ function LocalComposerInput(props: LocalComposerInputProps) {
   const composerText = useAuiState((s) => s.composer.text);
   const [localText, setLocalText] = useState(composerText);
   const localTextRef = useRef(composerText);
-  const pendingLocalTextsRef = useRef(new Set<string>());
+  const pendingLocalTextsRef = useRef<string[]>([]);
 
   const applyLocalText = useCallback((value: string) => {
     localTextRef.current = value;
@@ -239,8 +239,9 @@ function LocalComposerInput(props: LocalComposerInputProps) {
 
   useEffect(() => {
     const pendingLocalTexts = pendingLocalTextsRef.current;
-    if (pendingLocalTexts.delete(composerText)) {
-      if (composerText === localTextRef.current) pendingLocalTexts.clear();
+    const index = pendingLocalTexts.indexOf(composerText);
+    if (index !== -1) {
+      pendingLocalTexts.splice(0, index + 1);
       return;
     }
 
@@ -250,13 +251,13 @@ function LocalComposerInput(props: LocalComposerInputProps) {
   }, [applyLocalText, composerText]);
 
   useAuiEvent('composer.send', () => {
-    pendingLocalTextsRef.current.clear();
+    pendingLocalTextsRef.current = [];
     applyLocalText('');
   });
 
   const handleChangeText = useCallback(
     (value: string) => {
-      pendingLocalTextsRef.current.add(value);
+      pendingLocalTextsRef.current.push(value);
       applyLocalText(value);
       aui.composer().setText(value);
     },
