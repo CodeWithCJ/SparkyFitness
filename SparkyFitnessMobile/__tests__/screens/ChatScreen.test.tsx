@@ -192,7 +192,7 @@ describe('ChatScreen config gating', () => {
     const { getByTestId } = renderScreen();
 
     expect(getByTestId('chat-keyboard-avoiding-view').props.keyboardVerticalOffset).toBe(
-      Platform.OS === 'ios' ? 44 : 0
+      Platform.OS === 'ios' ? 56 : 12
     );
 
     await act(async () => {

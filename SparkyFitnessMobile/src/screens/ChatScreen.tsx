@@ -59,6 +59,7 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
 >;
 
 const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
+const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -446,7 +447,9 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const queryClient = useQueryClient();
   const keyboardVerticalOffset =
-    Platform.OS === 'ios' ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT : 0;
+    Platform.OS === 'ios'
+      ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT + CHAT_KEYBOARD_EXTRA_SPACING
+      : CHAT_KEYBOARD_EXTRA_SPACING;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
