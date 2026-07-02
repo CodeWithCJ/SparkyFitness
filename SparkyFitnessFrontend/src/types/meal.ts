@@ -12,9 +12,19 @@ export interface Meal {
   foods?: MealFood[];
 }
 
+export type MealComponentType = 'food' | 'meal';
+
 export interface MealFood {
   id?: string;
-  food_id: string;
+  // 'food' (default) or 'meal' when this ingredient links a reusable sub-meal.
+  item_type?: MealComponentType;
+  food_id?: string;
+  // Set when item_type === 'meal': the linked sub-meal being composed in.
+  child_meal_id?: string;
+  child_meal_name?: string;
+  child_meal_serving_size?: number;
+  child_meal_serving_unit?: string;
+  child_meal_total_servings?: number;
   quantity: number;
   unit: string;
   food_name?: string;
@@ -54,7 +64,9 @@ export interface MealPayload {
 }
 
 export interface MealFoodPayload {
-  food_id: string;
+  item_type?: MealComponentType;
+  food_id?: string;
+  child_meal_id?: string;
   quantity: number;
   unit: string;
   food_name?: string;

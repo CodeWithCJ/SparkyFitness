@@ -186,11 +186,14 @@ export function buildMealIngredientDraftFromEntryMealFood(
 
 export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngredientDraft {
   return normalizeMealIngredientDraft({
+    item_type: food.item_type,
     food_id: food.food_id,
+    child_meal_id: food.child_meal_id,
     variant_id: food.variant_id,
     quantity: food.quantity,
     unit: food.unit,
-    food_name: food.food_name,
+    food_name:
+      food.item_type === 'meal' ? food.child_meal_name || food.food_name : food.food_name,
     brand: food.brand,
     serving_size: food.serving_size,
     serving_unit: food.serving_unit,

@@ -102,6 +102,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const textMuted = useCSSVariable('--color-text-muted') as string;
   const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
@@ -235,17 +236,22 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             const protein = Math.round(food.protein * scale);
             const carbs = Math.round(food.carbs * scale);
             const fat = Math.round(food.fat * scale);
+            const isLinkedMeal = food.item_type === 'meal';
 
-            return (
+            const row = (
               <View
-                key={food.id}
                 className={`flex-row items-start justify-between gap-3 py-3 ${
                   index === 0 ? '' : 'border-t border-border-subtle'
                 }`}
               >
                 <View className="flex-1">
-                  <Text className="text-text-primary text-base font-semibold" numberOfLines={1}>
-                    {food.food_name || 'Food'}
+                  <Text
+                    className={`text-base font-semibold ${
+                      isLinkedMeal ? 'text-accent-primary' : 'text-text-primary'
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || 'Food'}
                     {food.brand ? (
                       <Text className="text-text-secondary font-normal">
                         {' · '}
@@ -253,6 +259,12 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                       </Text>
                     ) : null}
                   </Text>
+                  {isLinkedMeal ? (
+                    <View className="flex-row items-center gap-1 mt-1">
+                      <Icon name="link" size={12} color={textMuted} />
+                      <Text className="text-text-muted text-xs font-medium">Linked meal</Text>
+                    </View>
+                  ) : null}
                   <Text className="text-text-muted text-sm mt-1">
                     {protein}g protein{' · '}{carbs}g carbs{' · '}{fat}g fat
                   </Text>
@@ -267,6 +279,24 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                 </View>
               </View>
             );
+
+            if (isLinkedMeal && food.child_meal_id) {
+              return (
+                <TouchableOpacity
+                  key={food.id}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    navigation.push('MealDetail', { mealId: food.child_meal_id! })
+                  }
+                  accessibilityLabel={`View linked meal ${food.child_meal_name || ''}`}
+                  accessibilityRole="button"
+                >
+                  {row}
+                </TouchableOpacity>
+              );
+            }
+
+            return <View key={food.id}>{row}</View>;
           })}
         </View>
 

@@ -238,6 +238,17 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   };
 
   const editIngredient = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
+    // Linked sub-meal ingredients aren't editable in the mobile builder yet
+    // (quantity editing for a linked meal needs a meal-serving picker, not the
+    // food/variant editor below) — remove and re-add via the web app instead.
+    if (ingredient.item_type === 'meal') {
+      Toast.show({
+        type: 'info',
+        text1: 'Linked meal',
+        text2: 'Edit this sub-meal ingredient in the web app.',
+      });
+      return;
+    }
     // Pass the ingredient's stored unit snapshot as a selectedVariantOverride so
     // FoodEntryAdd opens with the actual unit/nutrition rather than the default variant.
     const variantOverride: FoodUnitVariant = {
@@ -650,6 +661,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                               </Text>
                             ) : null}
                           </Text>
+                          {ingredient.item_type === 'meal' ? (
+                            <View
+                              className="self-start rounded-full px-2 py-0.5 mt-1"
+                              style={{ backgroundColor: `${textMuted}1A` }}
+                            >
+                              <Text className="text-xs font-medium" style={{ color: textMuted }}>
+                                Linked meal
+                              </Text>
+                            </View>
+                          ) : null}
                           <Text className="text-text-muted text-sm mt-1">
                             {ingredientProtein}g protein{' \u00b7 '}{ingredientCarbs}g carbs{' \u00b7 '}{ingredientFat}g fat
                           </Text>

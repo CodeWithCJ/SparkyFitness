@@ -27,12 +27,16 @@ vi.mock('../models/mealRepository.js', () => ({
     getMealsNeedingReview: vi.fn(),
     updateMealEntriesSnapshot: vi.fn(),
     clearUserIgnoredUpdate: vi.fn(),
+    mealContainsMeal: vi.fn().mockResolvedValue(false),
+    getMealComponentUsage: vi.fn().mockResolvedValue([]),
+    getMealSubtreeDepth: vi.fn().mockResolvedValue(0),
   },
 }));
 vi.mock('../models/foodRepository.js', () => ({
   default: {
     getFoodById: vi.fn(),
     getFoodVariantsByFoodId: vi.fn(),
+    createFoodEntry: vi.fn(),
   },
 }));
 vi.mock('../models/foodEntry.js', () => ({
@@ -394,6 +398,247 @@ describe('mealService validation', () => {
           false
         )
       ).rejects.toThrow('The following foods or their variants are missing');
+    });
+  });
+
+  // Linked-meal ingredient validation (meal-to-meal composition). See
+  // MEAL_COMPOSITION_PLAN.md.
+  describe('linked-meal ingredient validation', () => {
+    const mockedMealRepository = mealRepository as unknown as {
+      getMealById: ReturnType<typeof vi.fn>;
+      mealContainsMeal: ReturnType<typeof vi.fn>;
+      getMealSubtreeDepth: ReturnType<typeof vi.fn>;
+      createMeal: ReturnType<typeof vi.fn>;
+      updateMeal: ReturnType<typeof vi.fn>;
+    };
+
+    it('rejects an ingredient row with both food_id and child_meal_id', async () => {
+      await expect(
+        mealService.createMeal('user-1', {
+          name: 'Bad',
+          foods: [
+            {
+              item_type: 'meal',
+              food_id: 'food-1',
+              child_meal_id: 'meal-2',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('cannot reference both'),
+      });
+    });
+
+    it('rejects a food ingredient row missing food_id', async () => {
+      await expect(
+        mealService.createMeal('user-1', {
+          name: 'Bad',
+          foods: [{ quantity: 1, unit: 'serving' }],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('requires food_id'),
+      });
+    });
+
+    it('rejects linking a meal that does not exist or is inaccessible', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue(null);
+      await expect(
+        mealService.createMeal('user-1', {
+          name: 'Bad',
+          foods: [
+            {
+              item_type: 'meal',
+              child_meal_id: 'meal-missing',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('not found or is not accessible'),
+      });
+    });
+
+    it('rejects a meal linking itself on update', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue({
+        id: 'meal-1',
+        name: 'Self',
+      });
+      await expect(
+        mealService.updateMeal('user-1', 'meal-1', {
+          foods: [
+            {
+              item_type: 'meal',
+              child_meal_id: 'meal-1',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('cannot contain itself'),
+      });
+    });
+
+    it('rejects a link that would create a cycle', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue({
+        id: 'meal-2',
+        name: 'Child',
+      });
+      mockedMealRepository.mealContainsMeal.mockResolvedValue(true);
+      await expect(
+        mealService.updateMeal('user-1', 'meal-1', {
+          foods: [
+            {
+              item_type: 'meal',
+              child_meal_id: 'meal-2',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('cycle'),
+      });
+      expect(mockedMealRepository.mealContainsMeal).toHaveBeenCalledWith(
+        'meal-2',
+        'meal-1',
+        'user-1'
+      );
+    });
+
+    it('rejects a link that would exceed the max nesting depth', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue({
+        id: 'meal-2',
+        name: 'Deep child',
+      });
+      mockedMealRepository.mealContainsMeal.mockResolvedValue(false);
+      mockedMealRepository.getMealSubtreeDepth.mockResolvedValue(5);
+      await expect(
+        mealService.updateMeal('user-1', 'meal-1', {
+          foods: [
+            {
+              item_type: 'meal',
+              child_meal_id: 'meal-2',
+              quantity: 1,
+              unit: 'serving',
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: expect.stringContaining('too deep'),
+      });
+    });
+
+    it('accepts a valid linked-meal ingredient and forwards it to the repository', async () => {
+      mockedMealRepository.getMealById.mockResolvedValue({
+        id: 'meal-2',
+        name: 'Egg Fried Rice',
+      });
+      mockedMealRepository.mealContainsMeal.mockResolvedValue(false);
+      mockedMealRepository.getMealSubtreeDepth.mockResolvedValue(0);
+      mockedMealRepository.createMeal.mockResolvedValue({
+        id: 'meal-1',
+        serving_size: 1,
+        serving_unit: 'serving',
+        total_servings: 1,
+      });
+
+      await mealService.createMeal('user-1', {
+        name: 'Big Bowl',
+        foods: [
+          {
+            item_type: 'meal',
+            child_meal_id: 'meal-2',
+            quantity: 2,
+            unit: 'serving',
+          },
+        ],
+      });
+
+      const payload = mockedMealRepository.createMeal.mock.calls[0][0];
+      expect(payload.foods[0]).toMatchObject({
+        item_type: 'meal',
+        child_meal_id: 'meal-2',
+        quantity: 2,
+      });
+    });
+  });
+
+  describe('logMealPlanEntryToDiary with a linked sub-meal', () => {
+    it('recursively flattens the meal-plan meal to leaf food entries', async () => {
+      const mockedFoodRepository = foodRepository as unknown as {
+        createFoodEntry: ReturnType<typeof vi.fn>;
+      };
+      const mockedMealRepositoryPlan = mealRepository as unknown as {
+        getMealPlanEntryById: ReturnType<typeof vi.fn>;
+        getMealById: ReturnType<typeof vi.fn>;
+      };
+
+      mockedMealRepositoryPlan.getMealPlanEntryById.mockResolvedValue({
+        id: 'plan-1',
+        meal_id: 'parent-meal',
+        meal_type_id: 'lunch-id',
+        plan_date: '2026-07-01',
+      });
+      mockedMealRepositoryPlan.getMealById.mockImplementation((id: string) => {
+        if (id === 'parent-meal') {
+          return Promise.resolve({
+            id: 'parent-meal',
+            serving_size: 1,
+            total_servings: 1,
+            foods: [
+              {
+                item_type: 'meal',
+                child_meal_id: 'sub-meal',
+                quantity: 1,
+                unit: 'serving',
+              },
+            ],
+          });
+        }
+        if (id === 'sub-meal') {
+          return Promise.resolve({
+            id: 'sub-meal',
+            serving_size: 1,
+            total_servings: 1,
+            foods: [
+              {
+                food_id: 'rice',
+                variant_id: 'rice-variant',
+                quantity: 100,
+                unit: 'g',
+              },
+            ],
+          });
+        }
+        return Promise.resolve(null);
+      });
+      mockedFoodRepository.createFoodEntry.mockImplementation(
+        (data: any) => data
+      );
+
+      const result = await mealService.logMealPlanEntryToDiary(
+        'user-1',
+        'plan-1',
+        null
+      );
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          food_id: 'rice',
+          variant_id: 'rice-variant',
+          quantity: 100,
+        }),
+      ]);
     });
   });
 });

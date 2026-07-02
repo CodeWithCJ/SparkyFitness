@@ -721,11 +721,30 @@ WITH CHECK (
   )
 );
 
+-- meal_foods is polymorphic: a row references either a food (item_type='food')
+-- or another meal (item_type='meal', a reusable sub-meal). Read access follows
+-- the parent meal. Write access requires the caller owns the parent meal AND the
+-- referenced ingredient is accessible to them: a food they can view, or a child
+-- meal they have library access to (prevents linking a meal you cannot see).
 CREATE POLICY select_policy ON public.meal_foods FOR SELECT TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND has_library_access_with_public(m.user_id, m.is_public, ARRAY['can_view_food_library', 'can_manage_diary'])));
 CREATE POLICY modify_policy ON public.meal_foods FOR ALL TO PUBLIC
-USING (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id)));
+USING (
+  EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id)
+  AND (
+    (meal_foods.food_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id))
+    OR
+    (meal_foods.child_meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals cm WHERE cm.id = meal_foods.child_meal_id AND has_library_access_with_public(cm.user_id, cm.is_public, ARRAY['can_view_food_library', 'can_manage_diary'])))
+  )
+)
+WITH CHECK (
+  EXISTS (SELECT 1 FROM public.meals m WHERE m.id = meal_foods.meal_id AND authenticated_user_id() = m.user_id)
+  AND (
+    (meal_foods.food_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = meal_foods.food_id))
+    OR
+    (meal_foods.child_meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals cm WHERE cm.id = meal_foods.child_meal_id AND has_library_access_with_public(cm.user_id, cm.is_public, ARRAY['can_view_food_library', 'can_manage_diary'])))
+  )
+);
 
 CREATE POLICY owner_policy ON public.meal_plan_template_assignments FOR ALL TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.meal_plan_templates mpt WHERE mpt.id = meal_plan_template_assignments.template_id AND has_diary_access(mpt.user_id)) AND

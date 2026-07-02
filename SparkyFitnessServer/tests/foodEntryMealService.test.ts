@@ -240,5 +240,94 @@ describe('foodEntryMealService', () => {
         'user-1'
       );
     });
+
+    // Meal-to-meal composition: a meal template linking a sub-meal must flatten
+    // to leaf food_entries at log time (see MEAL_COMPOSITION_PLAN.md), composing
+    // the parent's portion multiplier with the child meal's own serving yield.
+    it('recursively flattens a linked sub-meal to leaf food_entries', async () => {
+      (mealService.getMealById as any).mockImplementation(
+        (_userId: string, id: string) => {
+          if (id === 'parent-template') {
+            return Promise.resolve({
+              id: 'parent-template',
+              name: 'Big Bowl',
+              serving_size: 1.0,
+              total_servings: 1.0,
+              foods: [
+                {
+                  item_type: 'meal',
+                  child_meal_id: 'sub-meal-1',
+                  quantity: 2, // 2 servings of the sub-meal (serving_size=1 each)
+                  unit: 'serving',
+                },
+              ],
+            });
+          }
+          if (id === 'sub-meal-1') {
+            return Promise.resolve({
+              id: 'sub-meal-1',
+              name: 'Egg Fried Rice',
+              serving_size: 1.0,
+              total_servings: 2.0, // yields 2 servings total
+              foods: [
+                {
+                  food_id: 'rice',
+                  variant_id: 'rice-variant',
+                  quantity: 100,
+                  unit: 'g',
+                },
+              ],
+            });
+          }
+          return Promise.resolve(null);
+        }
+      );
+
+      (foodEntryMealRepository.createFoodEntryMeal as any).mockImplementation(
+        (data: any) => ({
+          id: 'new-meal-entry-id',
+          ...data,
+        })
+      );
+
+      (foodRepository.getFoodById as any).mockResolvedValue({
+        id: 'rice',
+        name: 'Rice',
+        default_variant: { id: 'rice-variant' },
+      });
+      (foodRepository.getFoodVariantById as any).mockResolvedValue({
+        id: 'rice-variant',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 130,
+        protein: 3,
+        carbs: 28,
+        fat: 0.3,
+      });
+
+      await createFoodEntryMeal('user-1', 'user-1', {
+        meal_template_id: 'parent-template',
+        meal_type_id: 'lunch-id',
+        meal_type: 'lunch',
+        entry_date: '2026-07-01',
+        quantity: 1, // consuming 1x the parent template (serving_size=1, total_servings=1)
+        unit: 'serving',
+        _clientMealModelVersion: 2,
+      });
+
+      // rootMultiplier = 1 / (1 * 1) = 1
+      // childFactor = component.quantity(2) / (child.serving_size(1) * child.total_servings(2)) = 1
+      // leaf quantity = rice(100g) * rootMultiplier(1) * childFactor(1) = 100
+      expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            food_id: 'rice',
+            variant_id: 'rice-variant',
+            quantity: 100,
+          }),
+        ],
+        'user-1'
+      );
+    });
   });
 });

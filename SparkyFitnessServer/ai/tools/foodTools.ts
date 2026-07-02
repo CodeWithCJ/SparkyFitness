@@ -695,7 +695,11 @@ Actions:
                   if (m.foods.length > 0) {
                     text += ` (${m.foods
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      .map((f: any) => f.food_name)
+                      .map((f: any) =>
+                        f.item_type === 'meal'
+                          ? `[meal] ${f.child_meal_name || f.food_name}`
+                          : f.food_name
+                      )
                       .join(', ')})`;
                   }
                   text += `\n  ID: ${m.id}`;

@@ -53,6 +53,10 @@ export const mealViewOptions = (mealId?: string) => ({
   },
 });
 
+export const useMeal = (mealId?: string, enabled = true) => {
+  return useQuery({ ...mealViewOptions(mealId), enabled: enabled && !!mealId });
+};
+
 export const useDeleteMealMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
