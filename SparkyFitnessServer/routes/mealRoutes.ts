@@ -271,18 +271,35 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
  *                 description: How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.
  *               foods:
  *                 type: array
+ *                 description: >
+ *                   The meal's flat ingredient list. Each item is either a food
+ *                   (item_type "food", default) or a reusable sub-meal
+ *                   (item_type "meal"). A linked meal's quantity/unit scale its
+ *                   full recipe (serving_size × total_servings) the same way a
+ *                   food's quantity scales its serving_size. Linking a meal that
+ *                   would create a cycle, exceed the max nesting depth, or that
+ *                   the caller cannot access is rejected with a 400.
  *                 items:
  *                   type: object
  *                   properties:
+ *                     item_type:
+ *                       type: string
+ *                       enum: [food, meal]
+ *                       default: food
+ *                       description: Discriminates a food ingredient from a linked sub-meal.
  *                     food_id:
  *                       type: string
  *                       format: uuid
+ *                       description: Required when item_type is "food".
+ *                     child_meal_id:
+ *                       type: string
+ *                       format: uuid
+ *                       description: Required when item_type is "meal"; the linked sub-meal's id.
  *                     quantity:
  *                       type: number
  *                     unit:
  *                       type: string
  *                   required:
- *                     - food_id
  *                     - quantity
  *                     - unit
  *             required:
@@ -292,7 +309,7 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
  *       201:
  *         description: The meal was created successfully.
  *       400:
- *         description: Validation error (e.g. serving_size or total_servings not positive).
+ *         description: Validation error (e.g. serving_size/total_servings not positive, ambiguous or inaccessible ingredient, cycle, or nesting depth exceeded).
  *       403:
  *         description: User does not have permission to create a meal.
  */
@@ -423,7 +440,17 @@ router.get('/search', authenticate, async (req, res, next) => {
  *         description: The ID of the meal template to retrieve.
  *     responses:
  *       200:
- *         description: The requested meal template.
+ *         description: >
+ *           The requested meal template. Each entry in `foods` carries
+ *           `item_type` ("food" or "meal"). Food rows have `food_id`,
+ *           `food_name`, `variant_id`, and a nutrition snapshot. Linked-meal
+ *           rows have `child_meal_id`, `child_meal_name`,
+ *           `child_meal_serving_unit`, `child_meal_total_servings`, and the
+ *           same nutrition fields populated with the sub-meal's *resolved*
+ *           full-recipe totals (recursively aggregated through any further
+ *           nested sub-meals) so external tools can compute a scaled
+ *           contribution the same way as for a food row: value × quantity /
+ *           serving_size.
  *       403:
  *         description: User does not have permission to access this resource.
  *       404:
@@ -490,18 +517,33 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *                 description: How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.
  *               foods:
  *                 type: array
+ *                 description: >
+ *                   The meal's flat ingredient list. Each item is either a food
+ *                   (item_type "food", default) or a reusable sub-meal
+ *                   (item_type "meal"). Linking a meal that would create a
+ *                   cycle, exceed the max nesting depth, or that the caller
+ *                   cannot access is rejected with a 400.
  *                 items:
  *                   type: object
  *                   properties:
+ *                     item_type:
+ *                       type: string
+ *                       enum: [food, meal]
+ *                       default: food
+ *                       description: Discriminates a food ingredient from a linked sub-meal.
  *                     food_id:
  *                       type: string
  *                       format: uuid
+ *                       description: Required when item_type is "food".
+ *                     child_meal_id:
+ *                       type: string
+ *                       format: uuid
+ *                       description: Required when item_type is "meal"; the linked sub-meal's id.
  *                     quantity:
  *                       type: number
  *                     unit:
  *                       type: string
  *                   required:
- *                     - food_id
  *                     - quantity
  *                     - unit
  *             required:
@@ -511,7 +553,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       200:
  *         description: The meal template was updated successfully.
  *       400:
- *         description: Validation error (e.g. serving_size or total_servings not positive).
+ *         description: Validation error (e.g. serving_size/total_servings not positive, ambiguous or inaccessible ingredient, cycle, or nesting depth exceeded).
  *       403:
  *         description: User does not have permission to update this meal.
  *       404:

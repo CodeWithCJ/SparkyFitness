@@ -23,8 +23,10 @@ interface CreateMealData {
   serving_unit?: string;
   total_servings?: unknown;
   foods?: Array<{
-    food_id: string;
-    variant_id: string;
+    food_id?: string;
+    child_meal_id?: string;
+    item_type?: 'food' | 'meal';
+    variant_id?: string;
     quantity: number;
     unit: string;
     [key: string]: unknown;
@@ -121,6 +123,264 @@ function normalizeServingFields(
     data.serving_size = 1;
   }
 }
+// Maximum linked-sub-meal nesting depth. A meal that links other meals may be
+// nested at most this many levels deep; deeper links are rejected to bound
+// recursive resolution/flatten cost. See MEAL_COMPOSITION_PLAN.md.
+const MAX_MEAL_NESTING_DEPTH = 5;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isMealIngredient(item: any): boolean {
+  return (
+    item?.item_type === 'meal' || (!!item?.child_meal_id && !item?.food_id)
+  );
+}
+
+// Validates a meal's ingredient list (foods and linked sub-meals). Ensures each
+// row references exactly one of food/meal, and that linked meals are accessible,
+// non-self-referential, cycle-free, and within the nesting-depth limit.
+// `currentMealId` is null on create (a brand-new meal has no incoming links yet,
+// so it cannot be part of a cycle).
+async function validateMealIngredients(
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foods: any,
+  currentMealId: string | null
+) {
+  if (!Array.isArray(foods)) return;
+  for (const item of foods) {
+    if (isMealIngredient(item)) {
+      if (!item.child_meal_id) {
+        throw new ValidationError(
+          'A linked-meal ingredient requires child_meal_id.'
+        );
+      }
+      if (item.food_id) {
+        throw new ValidationError(
+          'An ingredient cannot reference both a food and a meal.'
+        );
+      }
+      if (currentMealId && item.child_meal_id === currentMealId) {
+        throw new ValidationError('A meal cannot contain itself.');
+      }
+      const child = await mealRepository.getMealById(
+        item.child_meal_id,
+        userId
+      );
+      if (!child) {
+        throw new ValidationError(
+          `Linked meal ${item.child_meal_id} was not found or is not accessible.`
+        );
+      }
+      if (currentMealId) {
+        const createsCycle = await mealRepository.mealContainsMeal(
+          item.child_meal_id,
+          currentMealId,
+          userId
+        );
+        if (createsCycle) {
+          throw new ValidationError(
+            `Linking meal "${child.name}" would create a cycle.`
+          );
+        }
+      }
+      const childDepth = await mealRepository.getMealSubtreeDepth(
+        item.child_meal_id,
+        userId
+      );
+      if (childDepth + 1 > MAX_MEAL_NESTING_DEPTH) {
+        throw new ValidationError(
+          `Meal nesting is too deep (max ${MAX_MEAL_NESTING_DEPTH} levels).`
+        );
+      }
+    } else if (!item.food_id) {
+      throw new ValidationError('A food ingredient requires food_id.');
+    }
+  }
+}
+// Recursively flattens a meal's ingredient list into leaf food items for
+// meal-plan -> diary logging, composing quantities through any linked sub-meals
+// (a child meal contributes its foods scaled by its own serving yield).
+async function flattenMealFoodsForPlan(
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foods: any,
+  factor: number,
+  depth = 0
+): Promise<
+  Array<{ food_id: string; variant_id: string; quantity: number; unit: string }>
+> {
+  const leaves: Array<{
+    food_id: string;
+    variant_id: string;
+    quantity: number;
+    unit: string;
+  }> = [];
+  if (depth > MAX_MEAL_NESTING_DEPTH + 1) return leaves;
+  for (const item of foods || []) {
+    if (isMealIngredient(item)) {
+      if (!item.child_meal_id) continue;
+      const child = await mealRepository.getMealById(
+        item.child_meal_id,
+        userId
+      );
+      if (!child) continue;
+      const servingSize = Number(child.serving_size) || 1.0;
+      const totalServings = Number(child.total_servings) || 1.0;
+      const denominator = servingSize * totalServings;
+      const quantityInBaseUnit =
+        item.unit === 'serving' &&
+        child.serving_unit &&
+        child.serving_unit !== 'serving'
+          ? (Number(item.quantity) || 0) * servingSize
+          : Number(item.quantity) || 0;
+      const childFactor =
+        denominator > 0 ? quantityInBaseUnit / denominator : 1.0;
+      leaves.push(
+        ...(await flattenMealFoodsForPlan(
+          userId,
+          child.foods,
+          factor * childFactor,
+          depth + 1
+        ))
+      );
+      continue;
+    }
+    leaves.push({
+      food_id: item.food_id,
+      variant_id: item.variant_id,
+      quantity: (Number(item.quantity) || 0) * factor,
+      unit: item.unit,
+    });
+  }
+  return leaves;
+}
+// Nutrient columns carried on meal_foods rows and aggregated for linked meals.
+const RESOLVED_NUTRIENT_KEYS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+] as const;
+
+interface ResolvedChildSnapshot {
+  serving_size: number;
+  serving_unit: string;
+  name: string;
+  custom_nutrients: Record<string, number>;
+  [key: string]: number | string | Record<string, number>;
+}
+
+// Computes a child meal's FULL-recipe nutrition (recursively resolving nested
+// sub-meals), shaped so the standard per-food formula (value * quantity /
+// serving_size) reproduces the correctly-scaled contribution when applied to
+// the parent's linked-meal row. serving_size is the child's total yield
+// (serving_size × total_servings). Results are memoized per request via `cache`.
+async function resolveChildMealSnapshot(
+  userId: string,
+  childMealId: string,
+  cache: Map<string, ResolvedChildSnapshot | null>,
+  depth: number
+): Promise<ResolvedChildSnapshot | null> {
+  if (cache.has(childMealId)) return cache.get(childMealId) ?? null;
+  if (depth > MAX_MEAL_NESTING_DEPTH + 1) return null;
+  // Reserve the slot up front so a cyclic structure (should be prevented at
+  // write time) cannot recurse infinitely here.
+  cache.set(childMealId, null);
+  const child = await mealRepository.getMealById(childMealId, userId);
+  if (!child) return null;
+  const totals: Record<string, number> = {};
+  for (const key of RESOLVED_NUTRIENT_KEYS) totals[key] = 0;
+  const custom: Record<string, number> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const addCustom = (source: any, factor: number) => {
+    if (!source) return;
+    for (const [name, value] of Object.entries(source)) {
+      custom[name] = (custom[name] || 0) + (Number(value) || 0) * factor;
+    }
+  };
+  for (const row of child.foods || []) {
+    if (isMealIngredient(row)) {
+      const sub = await resolveChildMealSnapshot(
+        userId,
+        row.child_meal_id,
+        cache,
+        depth + 1
+      );
+      if (!sub) continue;
+      const subServing = Number(sub.serving_size) || 1;
+      const quantityInBaseUnit =
+        row.unit === 'serving' &&
+        sub.serving_unit &&
+        sub.serving_unit !== 'serving'
+          ? (Number(row.quantity) || 0) *
+            (Number(row.child_meal_serving_size) || 1)
+          : Number(row.quantity) || 0;
+      const factor = subServing > 0 ? quantityInBaseUnit / subServing : 0;
+      for (const key of RESOLVED_NUTRIENT_KEYS) {
+        totals[key] += (Number(sub[key]) || 0) * factor;
+      }
+      addCustom(sub.custom_nutrients, factor);
+    } else {
+      const serving = Number(row.serving_size) || 1;
+      const per = serving > 0 ? (Number(row.quantity) || 0) / serving : 0;
+      for (const key of RESOLVED_NUTRIENT_KEYS) {
+        totals[key] += (Number(row[key]) || 0) * per;
+      }
+      addCustom(row.custom_nutrients, per);
+    }
+  }
+  const servingSize =
+    (Number(child.serving_size) || 1) * (Number(child.total_servings) || 1);
+  const snapshot: ResolvedChildSnapshot = {
+    ...totals,
+    custom_nutrients: custom,
+    serving_size: servingSize,
+    serving_unit: child.serving_unit || 'serving',
+    name: child.name,
+  };
+  cache.set(childMealId, snapshot);
+  return snapshot;
+}
+
+// Fills each linked-meal row (item_type='meal') with a food-shaped nutrition
+// snapshot (aggregated child totals + serving metadata) so existing per-food
+// nutrition/report/UI math treats it like any other ingredient row.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function attachResolvedMealNutrition(userId: string, meals: any) {
+  const list = Array.isArray(meals) ? meals : meals ? [meals] : [];
+  const cache = new Map<string, ResolvedChildSnapshot | null>();
+  for (const meal of list) {
+    for (const row of meal?.foods || []) {
+      if (!isMealIngredient(row) || !row.child_meal_id) continue;
+      const snap = await resolveChildMealSnapshot(
+        userId,
+        row.child_meal_id,
+        cache,
+        0
+      );
+      if (!snap) continue;
+      for (const key of RESOLVED_NUTRIENT_KEYS) row[key] = snap[key];
+      row.custom_nutrients = snap.custom_nutrients;
+      row.serving_size = snap.serving_size;
+      row.serving_unit = snap.serving_unit;
+      if (!row.food_name) row.food_name = row.child_meal_name || snap.name;
+    }
+  }
+  return meals;
+}
 // --- Meal Template Service Functions ---
 async function resolveMealTypeId(userId: string, mealTypeName: string) {
   try {
@@ -140,6 +400,7 @@ async function createMeal(userId: string, mealData: CreateMealData) {
   try {
     mealData.user_id = userId;
     normalizeServingFields(mealData, { mode: 'create' });
+    await validateMealIngredients(userId, mealData.foods, null);
     const newMeal = await mealRepository.createMeal(mealData);
     log(
       'info',
@@ -178,6 +439,7 @@ async function getMeals(userId: string, filter = 'all', searchTerm = '') {
           break;
       }
     }
+    await attachResolvedMealNutrition(userId, meals);
     return meals;
   } catch (error) {
     log(
@@ -190,7 +452,9 @@ async function getMeals(userId: string, filter = 'all', searchTerm = '') {
 }
 async function getRecentMeals(userId: string, limit = 3) {
   try {
-    return await mealRepository.getRecentMeals(userId, limit);
+    const meals = await mealRepository.getRecentMeals(userId, limit);
+    await attachResolvedMealNutrition(userId, meals);
+    return meals;
   } catch (error) {
     log(
       'error',
@@ -220,6 +484,7 @@ async function getMealById(userId: string, mealId: string) {
     );
     // Authorization check: User can access their own meals or public meals
     log('info', `Access granted for meal ${mealId} to user ${userId}.`);
+    await attachResolvedMealNutrition(userId, meal);
     return meal;
   } catch (error) {
     log(
@@ -250,6 +515,9 @@ async function updateMeal(
       updateData.serving_size = 1;
     }
     normalizeServingFields(updateData, { mode: 'update' });
+    if (updateData.foods !== undefined) {
+      await validateMealIngredients(userId, updateData.foods, mealId);
+    }
     // Authorization check: User can only update their own meals
     const updatedMeal = await mealRepository.updateMeal(
       mealId,
@@ -505,15 +773,18 @@ async function logMealPlanEntryToDiary(
       if (!meal) {
         throw new Error('Associated meal template not found.');
       }
-      for (const foodItem of meal.foods) {
+      // Flatten the meal (including any linked sub-meals) to leaf foods so the
+      // diary stores only atomic food entries.
+      const leafFoods = await flattenMealFoodsForPlan(userId, meal.foods, 1.0);
+      for (const leaf of leafFoods) {
         entriesToCreate.push({
           user_id: userId,
-          food_id: foodItem.food_id,
+          food_id: leaf.food_id,
           meal_type_id: mealTypeId,
-          quantity: foodItem.quantity,
-          unit: foodItem.unit,
+          quantity: leaf.quantity,
+          unit: leaf.unit,
           entry_date: targetDate || mealPlanEntry.plan_date,
-          variant_id: foodItem.variant_id,
+          variant_id: leaf.variant_id,
           meal_plan_id: mealPlanId,
         });
       }
@@ -586,6 +857,7 @@ async function searchMeals(
 ) {
   try {
     const meals = await mealRepository.searchMeals(searchTerm, userId, limit);
+    await attachResolvedMealNutrition(userId, meals);
     return meals;
   } catch (error) {
     log(
