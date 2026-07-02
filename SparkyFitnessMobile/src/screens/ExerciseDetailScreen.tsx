@@ -117,7 +117,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   };
 
   const handleEditRef = useRef(handleEdit);
-  handleEditRef.current = handleEdit;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    handleEditRef.current = handleEdit;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

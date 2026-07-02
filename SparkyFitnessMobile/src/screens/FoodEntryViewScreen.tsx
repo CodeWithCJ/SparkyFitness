@@ -401,6 +401,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       const isKnownVariant = (variants ?? []).some(
         (variant) => variant.id === adjustedUnitSelectionFromNav.variant.id,
       );
+      // Reacting to a unit selection returned via navigation params; a
+      // multi-state effect that can't collapse to a render-time derive.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCreatedVariantOverride(
         isKnownVariant ? null : adjustedUnitSelectionFromNav.variant,
       );
@@ -712,7 +715,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       : `${Math.round(scaledValue(value, entry))}${unit}`;
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

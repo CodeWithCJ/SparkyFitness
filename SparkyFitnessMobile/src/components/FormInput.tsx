@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 

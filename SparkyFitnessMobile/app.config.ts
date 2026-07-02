@@ -140,9 +140,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         backgroundColor: '#FFFFFF',
       }
     },
-    androidNavigationBar: {
-      enforceContrast: false,
-    },
     plugins: [
       ...(config.plugins ?? []),
       './plugins/withGlanceAndroidSupport',

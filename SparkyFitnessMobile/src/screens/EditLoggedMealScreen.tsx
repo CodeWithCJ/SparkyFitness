@@ -95,6 +95,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   // never clobbers in-progress edits.
   useEffect(() => {
     if (!meal || initializedMealId === meal.id) return;
+    // One-time form initialization from the async-loaded meal, guarded by its id.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIngredients(meal.foods.map(buildMealIngredientDraftFromEntryMealFood));
     setInitializedMealId(meal.id);
   }, [meal, initializedMealId]);
@@ -200,6 +202,14 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     return base > 0 ? meal.calories / base : 1;
   }, [meal]);
 
+  // Keep displayScaleRef current so the deferred handlers (editIngredient and
+  // the meal-builder focus effect) unscale consumed amounts using the latest
+  // scale. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    displayScaleRef.current = templateScale * scaleFactor;
+  });
+
   const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
@@ -286,7 +296,13 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   };
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
@@ -325,7 +341,6 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   // change in servings). Used by both the nutrition card and the rows so they
   // always agree with each other and with the saved payload.
   const displayScale = templateScale * scaleFactor;
-  displayScaleRef.current = displayScale;
   const scaledCalories = baseTotals.calories * displayScale;
   const scaledProtein = baseTotals.protein * displayScale;
   const scaledCarbs = baseTotals.carbs * displayScale;

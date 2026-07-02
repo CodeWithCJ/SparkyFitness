@@ -309,6 +309,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ex.sets.some(s => String(s.id) === activeSetId),
     );
     if (!activeExercise) return;
+    // Syncs the expanded section to the external active-workout store; guarded so
+    // it only auto-expands the active exercise, never collapses a user's choice.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setExpandedSections(prev =>
       prev[activeExercise.id] ? prev : { ...prev, [activeExercise.id]: true },
     );

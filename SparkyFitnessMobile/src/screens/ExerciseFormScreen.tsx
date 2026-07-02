@@ -415,7 +415,13 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     useHeaderActionColors();
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });
@@ -593,7 +599,13 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     useHeaderActionColors();
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useLayoutEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

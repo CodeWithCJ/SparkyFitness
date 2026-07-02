@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, Platform } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
 import { matchFont } from '@shopify/react-native-skia';
@@ -89,9 +89,14 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  useEffect(() => {
+  // Clear a lingering tooltip when the dataset or range changes. Done during
+  // render (instead of in an effect) so the tooltip is already reset on the
+  // first render after the data changes.
+  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
+  if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
+    setTooltipResetKey({ data, range });
     setTooltipText(DEFAULT_TOOLTIP);
-  }, [data, range]);
+  }
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {

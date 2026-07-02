@@ -56,6 +56,12 @@
         "expo-notifications"
       ],
       [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false
+        }
+      ],
+      [
         "@bacons/apple-targets"
       ]
     ],

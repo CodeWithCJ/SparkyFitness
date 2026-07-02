@@ -167,6 +167,10 @@ function BottomSheetPicker<T extends string | number>({
   return (
     <>
       {renderTrigger ? (
+        // renderTrigger is a render prop; invoking it during render is intended.
+        // handleOpen closes over bottomSheetRef but only reads it inside the
+        // deferred onPress, so no ref is actually accessed during render.
+        // eslint-disable-next-line react-hooks/refs
         renderTrigger({ onPress: handleOpen, selectedOption })
       ) : (
         <TouchableOpacity

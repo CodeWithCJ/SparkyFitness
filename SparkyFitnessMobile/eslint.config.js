@@ -13,10 +13,13 @@ const reactPlugin = expoConfig.find(
 const importPlugin = expoConfig.find(
   (config) => config.plugins && config.plugins["import"],
 )?.plugins?.["import"];
+const reactHooksPlugin = expoConfig.find(
+  (config) => config.plugins && config.plugins["react-hooks"],
+)?.plugins?.["react-hooks"];
 
-if (!tsEslintPlugin || !reactPlugin || !importPlugin) {
+if (!tsEslintPlugin || !reactPlugin || !importPlugin || !reactHooksPlugin) {
   throw new Error(
-    "eslint-config-expo/flat failed to find required plugins (@typescript-eslint, react, import) - it may have changed in an expo upgrade",
+    "eslint-config-expo/flat failed to find required plugins (@typescript-eslint, react, import, react-hooks) - it may have changed in an expo upgrade",
   );
 }
 
@@ -24,6 +27,24 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
+  },
+  {
+    // Expo SDK 56's eslint-config enables eslint-plugin-react-hooks' React
+    // Compiler rules. The pre-existing backlog these surfaced has been worked
+    // down to zero, so they are enforced as errors (and "lint" runs with
+    // --max-warnings 0). Genuine violations were fixed; the handful of
+    // intentional exceptions (Reanimated shared-value writes, deliberate
+    // render-time Date.now(), one-shot navigation-param effects, etc.) carry
+    // scoped `// eslint-disable-next-line` comments explaining why. Use
+    // `pnpm run lint:compiler` to see the wider compiler-bailout backlog.
+    files: ["**/*.ts", "**/*.tsx"],
+    plugins: { "react-hooks": reactHooksPlugin },
+    rules: {
+      "react-hooks/refs": "error",
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/immutability": "error",
+      "react-hooks/purity": "error",
+    },
   },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.d.ts"],

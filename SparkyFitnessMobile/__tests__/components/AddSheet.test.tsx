@@ -23,8 +23,12 @@ jest.mock('@gorhom/bottom-sheet', () => {
   return {
     BottomSheetModal: React.forwardRef(
       ({ children, onDismiss, onAnimate }: any, ref) => {
+        // Test mock stashes the latest handlers for assertions; writing to the
+        // module-scoped controls during the mock's render is intentional.
+        /* eslint-disable react-hooks/immutability */
         mockBottomSheetControls.onDismiss = onDismiss;
         mockBottomSheetControls.onAnimate = onAnimate;
+        /* eslint-enable react-hooks/immutability */
 
         React.useImperativeHandle(ref, () => ({
           present: mockBottomSheetControls.present,

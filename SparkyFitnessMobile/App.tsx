@@ -1,5 +1,5 @@
 import './global.css'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -983,7 +983,7 @@ function AppContent() {
           <Stack.Screen
             name="EditLoggedMeal"
             component={SafeEditLoggedMeal}
-            options={createStackScreenOptions('Edit Meal')}
+            options={createStackScreenOptions('Edit Meal', { headerBackTitle: 'Diary' })}
           />
           <Stack.Screen
             name="MealTypeDetail"

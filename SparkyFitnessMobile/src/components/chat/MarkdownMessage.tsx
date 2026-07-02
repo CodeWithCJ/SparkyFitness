@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Linking } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import {

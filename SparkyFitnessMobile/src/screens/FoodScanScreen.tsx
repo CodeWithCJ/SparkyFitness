@@ -504,12 +504,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         barcodeScannerSettings={scanMode === 'barcode' ? {
           barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'],
         } : undefined}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         enableTorch={flashlight}
       />
 
       {scanMode === 'barcode' && !notFoundBarcode && !lookupError && !loading && !manualEntryVisible ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
+        <View pointerEvents="none" style={StyleSheet.absoluteFill} className="justify-center items-center">
           <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 120 }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
@@ -554,7 +554,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
       {capturedPhoto && !labelProcessing ? (
         <View className="absolute inset-0">
-          <Image source={{ uri: capturedPhoto.uri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <Image source={{ uri: capturedPhoto.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           <View className="absolute bottom-12 left-4 right-4 flex-row gap-3" style={{ paddingBottom: insets.bottom }}>
             <TouchableOpacity
               onPress={handleRetake}
@@ -618,7 +618,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       ) : null}
 
       {scanMode === 'photo' && !capturedPhoto && !loading && !manualEntryVisible && !photoGateVisible && photoModeAvailable ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
+        <View pointerEvents="none" style={StyleSheet.absoluteFill} className="justify-center items-center">
           <View
             style={{
               width: GUIDE_WIDTH,

@@ -103,6 +103,9 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 useEffect(() => {
     if (providers.length === 0) return;
     if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
+    // Default the provider once the list loads; guarded by a ref tracking an
+    // explicit user selection, which keeps this from moving to a render-time derive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedProvider(providers[0].id);
   }, [providers, selectedProvider]);
 

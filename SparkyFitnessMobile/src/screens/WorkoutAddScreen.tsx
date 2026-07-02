@@ -126,20 +126,25 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
-  const hasPopulatedRef = useRef(false);
+  // Tracked in state (not a ref) so the loading gate below re-renders
+  // deterministically once population completes.
+  const [hasPopulatedEdit, setHasPopulatedEdit] = useState(false);
   useEffect(() => {
     if (
       !isEditMode ||
       !session ||
-      hasPopulatedRef.current ||
+      hasPopulatedEdit ||
       isPreferencesLoading
     ) {
       return;
     }
 
-    hasPopulatedRef.current = true;
+    // One-time initialization from the async-loaded session; setting state
+    // synchronously here is intentional and mirrors the populate() side effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasPopulatedEdit(true);
     populate(session, weightUnit as 'kg' | 'lbs');
-  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit]);
+  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, hasPopulatedEdit]);
 
   // Populate from preset once after preferences load
   const hasPopulatedPresetRef = useRef(false);
@@ -147,6 +152,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!preset || isEditMode || hasPopulatedPresetRef.current || isPreferencesLoading) return;
     hasPopulatedPresetRef.current = true;
     const populatedIds = populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+    // One-time initialization from the async-loaded preset; setting state
+    // synchronously here is intentional and mirrors the populateFromPreset side effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEligibleIds(prev => {
       const next = new Set(prev);
       populatedIds.forEach(id => next.add(id));
@@ -154,7 +162,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, initialDate]);
 
-  const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
+  const isInitializingEditForm = isEditMode && !hasPopulatedEdit;
 
   useSelectedExercise(route.params, handleAddExercise);
 

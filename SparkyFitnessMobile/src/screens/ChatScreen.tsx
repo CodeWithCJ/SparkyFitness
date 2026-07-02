@@ -251,6 +251,9 @@ function LocalComposerInput(props: LocalComposerInputProps) {
     setLocalText(value);
   }, []);
 
+  // Sync the locally-controlled input from the external assistant-ui composer
+  // store, but drop echoes of the user's own keystrokes (tracked in the pending
+  // queue) so we only adopt store-driven changes (suggestions, resets).
   useEffect(() => {
     const pendingLocalTexts = pendingLocalTextsRef.current;
     const index = pendingLocalTexts.indexOf(composerText);
@@ -260,6 +263,7 @@ function LocalComposerInput(props: LocalComposerInputProps) {
     }
 
     if (composerText !== localTextRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       applyLocalText(composerText);
     }
   }, [applyLocalText, composerText]);

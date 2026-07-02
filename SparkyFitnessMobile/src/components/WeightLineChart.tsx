@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, Platform } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { matchFont } from '@shopify/react-native-skia';
@@ -85,9 +85,18 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  useEffect(() => {
+  // Clear a lingering tooltip when the dataset, range, or unit changes. Done
+  // during render (instead of in an effect) so the tooltip is already reset on
+  // the first render after the data changes.
+  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range, unit });
+  if (
+    tooltipResetKey.data !== data ||
+    tooltipResetKey.range !== range ||
+    tooltipResetKey.unit !== unit
+  ) {
+    setTooltipResetKey({ data, range, unit });
     setTooltipText(DEFAULT_TOOLTIP);
-  }, [data, range, unit]);
+  }
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {

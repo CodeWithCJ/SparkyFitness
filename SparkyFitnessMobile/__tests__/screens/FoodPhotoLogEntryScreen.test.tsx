@@ -54,6 +54,14 @@ jest.mock('../../src/components/CalendarSheet', () => {
   };
 });
 
+jest.mock('../../src/components/MacroCompositionRing', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <View testID="macro-composition-ring" />,
+  };
+});
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 

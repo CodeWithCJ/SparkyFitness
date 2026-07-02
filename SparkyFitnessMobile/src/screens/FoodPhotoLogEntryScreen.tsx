@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -105,11 +105,11 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     fat: goalPercent(displayValues.fat * servingsNumber, goals?.fat),
   };
 
-  useEffect(() => {
-    if (!selectedMealTypeId && defaultMealTypeId) {
-      setSelectedMealTypeId(defaultMealTypeId);
-    }
-  }, [defaultMealTypeId, selectedMealTypeId]);
+  // Default the meal type once the default arrives. Done during render (instead
+  // of in an effect); the `!selectedMealTypeId` guard makes it self-limiting.
+  if (!selectedMealTypeId && defaultMealTypeId) {
+    setSelectedMealTypeId(defaultMealTypeId);
+  }
 
   const { addEntryAsync, isPending, invalidateCache } = useAddFoodEntry({
     onSuccess: () => {

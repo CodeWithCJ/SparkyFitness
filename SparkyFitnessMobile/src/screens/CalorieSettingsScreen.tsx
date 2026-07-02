@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Switch, ScrollView, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -69,9 +69,16 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
     () => String(normalized.exerciseCaloriePercentage),
   );
 
-  useEffect(() => {
+  // Re-sync the input text when the saved percentage changes (e.g. a background
+  // refetch). Done during render (instead of in an effect) so the field shows
+  // the latest saved value on the first render after it changes.
+  const [syncedPercentage, setSyncedPercentage] = useState(
+    normalized.exerciseCaloriePercentage,
+  );
+  if (syncedPercentage !== normalized.exerciseCaloriePercentage) {
+    setSyncedPercentage(normalized.exerciseCaloriePercentage);
     setPercentageText(String(normalized.exerciseCaloriePercentage));
-  }, [normalized.exerciseCaloriePercentage]);
+  }
 
   const mutation = useMutation({
     mutationFn: (data: Partial<UserPreferences>) => updatePreferences(data),
