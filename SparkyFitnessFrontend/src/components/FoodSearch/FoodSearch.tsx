@@ -44,6 +44,7 @@ import {
 } from '@/hooks/Foods/useNutrionix.ts';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
 import { convertNutritionixToFood } from '@/utils/foodSearch.ts';
+import { dedupeAppend } from '@/utils/dedupeAppend.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
 import { CsvImportDialog } from './CsvImportDialog.tsx';
@@ -76,6 +77,13 @@ const EMPTY_PROVIDERS: DataProvider[] = [];
 // Sentinel provider id for the aggregated "All Providers" mode (offered only
 // when more than one food provider is active).
 const ALL_PROVIDERS_VALUE = '__all__';
+
+// One page of provider results plus whether the provider reports more pages
+// behind it, so the caller can offer a "Load more" affordance.
+type ProviderSearchPage = {
+  items: ExternalResultWrapper[];
+  hasMore: boolean;
+};
 
 interface EnhancedFoodSearchProps {
   onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
@@ -155,6 +163,16 @@ const EnhancedFoodSearch = ({
   const [externalResults, setExternalResults] = useState<
     ExternalResultWrapper[]
   >([]);
+  // Pagination for the single-provider online results: the last page fetched,
+  // whether the provider reports more behind it, and a separate spinner for the
+  // "Load more" fetch so it does not swap out the results already on screen.
+  const [externalPage, setExternalPage] = useState(1);
+  const [externalHasMore, setExternalHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Bumped on every new online search (term or provider change). A "Load more"
+  // fetch captures the token at click time and discards its result if the token
+  // has moved on, so a slow page cannot append onto a newer search's results.
+  const searchToken = useRef(0);
   // A product resolved from a barcode scan, shown even with an empty query.
   // Kept separate from live online-search results (which clear on an empty
   // query) so a scan result is not hidden or flickered away.
@@ -220,17 +238,6 @@ const EnhancedFoodSearch = ({
 
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
-
-  // Active food providers (used for the selector, the All Providers fan-out, and
-  // colour coding).
-  const foodProviderOptions = useMemo(
-    () =>
-      foodDataProviders.filter(
-        (provider) =>
-          getProviderCategory(provider).includes('food') && provider.is_active
-      ),
-    [foodDataProviders]
-  );
 
   // Aggregated "All Providers" mode: offered only when more than one food
   // provider is active. selectedFoodDataProvider holds the sentinel while it is
@@ -353,98 +360,157 @@ const EnhancedFoodSearch = ({
       (
         term: string,
         providerId: string,
-        provider: DataProvider
-      ) => Promise<ExternalResultWrapper[]>
+        provider: DataProvider,
+        page?: number
+      ) => Promise<ProviderSearchPage>
     >
   >(
     () => ({
-      openfoodfacts: async (term) => {
+      openfoodfacts: async (term, _id, _provider, page) => {
         const data = await queryClient.fetchQuery(
           searchFoodsV2Options(
             'openfoodfacts',
             term,
             undefined,
             undefined,
-            autoScaleOpenFoodFactsImports
+            autoScaleOpenFoodFactsImports,
+            page
           )
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'openfoodfacts' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'openfoodfacts' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
       nutritionix: async (term, id) => {
+        // Nutritionix uses a separate endpoint that returns the full result set
+        // in one shot, so there is no further page to load.
         const data: NutritionixItem[] = await queryClient.fetchQuery(
           searchNutritionixOptions(term, id)
         );
-        return data.map((item) => ({
-          provider_type: 'nutritionix' as const,
-          raw: item,
-          food: convertNutritionixToFood(item),
-        }));
+        return {
+          items: data.map((item) => ({
+            provider_type: 'nutritionix' as const,
+            raw: item,
+            food: convertNutritionixToFood(item),
+          })),
+          hasMore: false,
+        };
       },
-      fatsecret: async (term, id) => {
+      fatsecret: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('fatsecret', term, id)
+          searchFoodsV2Options(
+            'fatsecret',
+            term,
+            id,
+            undefined,
+            undefined,
+            page
+          )
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'fatsecret' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'fatsecret' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      usda: async (term, id) => {
+      usda: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('usda', term, id, foodDisplayLimit)
+          searchFoodsV2Options(
+            'usda',
+            term,
+            id,
+            foodDisplayLimit,
+            undefined,
+            page
+          )
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'usda' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'usda' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      mealie: async (term, id) => {
+      mealie: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('mealie', term, id)
+          searchFoodsV2Options('mealie', term, id, undefined, undefined, page)
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'mealie' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'mealie' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      tandoor: async (term, id) => {
+      tandoor: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('tandoor', term, id)
+          searchFoodsV2Options('tandoor', term, id, undefined, undefined, page)
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'tandoor' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'tandoor' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      yazio: async (term, id) => {
+      yazio: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('yazio', term, id, foodDisplayLimit)
+          searchFoodsV2Options(
+            'yazio',
+            term,
+            id,
+            foodDisplayLimit,
+            undefined,
+            page
+          )
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'yazio' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'yazio' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      norish: async (term, id) => {
+      norish: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('norish', term, id)
+          searchFoodsV2Options('norish', term, id, undefined, undefined, page)
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'norish' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'norish' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
-      swissfood: async (term, id) => {
+      swissfood: async (term, id, _provider, page) => {
         const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('swissfood', term, id)
+          searchFoodsV2Options(
+            'swissfood',
+            term,
+            id,
+            undefined,
+            undefined,
+            page
+          )
         );
-        return data.foods.map((food: Food) => ({
-          provider_type: 'swissfood' as const,
-          food,
-        }));
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: 'swissfood' as const,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
       },
     }),
     [queryClient, autoScaleOpenFoodFactsImports, foodDisplayLimit]
@@ -463,6 +529,16 @@ const EnhancedFoodSearch = ({
       return;
     }
     const term = searchTerm.trim();
+    // Each new search (or provider switch) starts a fresh page 1, so reset the
+    // paging cursor and "has more" flag alongside the results below, and
+    // invalidate any "Load more" fetch still in flight from the previous search.
+    // Clear isLoadingMore too, so a Load more that was in flight during the
+    // switch does not leave the new search's button stuck disabled/spinning
+    // until the stale request resolves.
+    searchToken.current += 1;
+    setExternalPage(1);
+    setExternalHasMore(false);
+    setIsLoadingMore(false);
     if (term.length < 3) {
       setExternalResults([]);
       setHasOnlineSearchBeenPerformed(false);
@@ -491,11 +567,20 @@ const EnhancedFoodSearch = ({
       setSearchProviderId(provider.id);
       setHasOnlineSearchBeenPerformed(true);
       try {
-        const results = await providerSearch(term, provider.id, provider);
-        if (active) setExternalResults(results);
+        const { items, hasMore } = await providerSearch(
+          term,
+          provider.id,
+          provider,
+          1
+        );
+        if (active) {
+          setExternalResults(items);
+          setExternalHasMore(hasMore);
+        }
       } catch {
         if (active) {
           setExternalResults([]);
+          setExternalHasMore(false);
           toast({
             title: t('common.error'),
             description: t(
@@ -515,6 +600,65 @@ const EnhancedFoodSearch = ({
     };
   }, [
     searchTerm,
+    selectedFoodDataProvider,
+    foodDataProviders,
+    searchHandlers,
+    t,
+  ]);
+
+  // Fetch the next page for the current single-provider search and append it to
+  // the results already on screen. Providers that report no further pages hide
+  // the trigger, so this only runs when there is genuinely more to load.
+  const handleLoadMore = useCallback(async () => {
+    const term = searchTerm.trim();
+    if (term.length < 3 || isLoadingMore) return;
+    const provider = foodDataProviders.find(
+      (p) => p.id === selectedFoodDataProvider
+    );
+    const providerSearch = provider
+      ? searchHandlers[provider.provider_type]
+      : undefined;
+    if (!provider || !providerSearch) return;
+    const nextPage = externalPage + 1;
+    const token = searchToken.current;
+    setIsLoadingMore(true);
+    try {
+      const { items, hasMore } = await providerSearch(
+        term,
+        provider.id,
+        provider,
+        nextPage
+      );
+      // A newer search started while this page was in flight; drop it so it
+      // cannot append onto the newer search's results.
+      if (token !== searchToken.current) return;
+      // Dedupe by external id so an overlapping page boundary cannot produce
+      // duplicate React keys or repeated rows.
+      setExternalResults((prev) =>
+        dedupeAppend(
+          prev,
+          items,
+          (r) => `${r.provider_type}-${r.food.provider_external_id}`
+        )
+      );
+      setExternalHasMore(hasMore);
+      setExternalPage(nextPage);
+    } catch {
+      toast({
+        title: t('common.error'),
+        description: t(
+          'enhancedFoodSearch.loadMoreFailed',
+          'Failed to load more results.'
+        ),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [
+    searchTerm,
+    isLoadingMore,
+    externalPage,
     selectedFoodDataProvider,
     foodDataProviders,
     searchHandlers,
@@ -808,8 +952,10 @@ const EnhancedFoodSearch = ({
             onValueChange={(value) => {
               // Clear the previous provider's results so the loading spinner
               // shows under the new header instead of stale rows (which reads as
-              // if the swap did nothing on a slow connection).
+              // if the swap did nothing on a slow connection). Hide the paging
+              // trigger too, until the new provider reports its own next page.
               setExternalResults([]);
+              setExternalHasMore(false);
               setManualProviderId(value);
             }}
           >
@@ -969,6 +1115,22 @@ const EnhancedFoodSearch = ({
                   </div>
                 )}
                 {externalResults.map((result) => renderExternalCard(result))}
+                {externalHasMore && !isOnlineLoading && (
+                  <div className="flex justify-center py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isLoadingMore}
+                      onClick={handleLoadMore}
+                    >
+                      {isLoadingMore ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        t('enhancedFoodSearch.loadMore', 'Load more')
+                      )}
+                    </Button>
+                  </div>
+                )}
                 {!isOnlineLoading &&
                   hasOnlineSearchBeenPerformed &&
                   externalResults.length === 0 && (
