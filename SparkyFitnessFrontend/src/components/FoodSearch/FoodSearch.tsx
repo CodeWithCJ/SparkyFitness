@@ -221,17 +221,6 @@ const EnhancedFoodSearch = ({
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
 
-  // Active food providers (used for the selector, the All Providers fan-out, and
-  // colour coding).
-  const foodProviderOptions = useMemo(
-    () =>
-      foodDataProviders.filter(
-        (provider) =>
-          getProviderCategory(provider).includes('food') && provider.is_active
-      ),
-    [foodDataProviders]
-  );
-
   // Aggregated "All Providers" mode: offered only when more than one food
   // provider is active. selectedFoodDataProvider holds the sentinel while it is
   // active (so the single-provider online effect below no-ops). The
