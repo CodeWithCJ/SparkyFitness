@@ -53,6 +53,15 @@ npx expo prebuild -c
 - Navigation source of truth is `App.tsx` plus `src/types/navigation.ts`; update both and the linking config when routes change.
 - Root stack uses `@react-navigation/native-stack`. Tabs use `@react-navigation/bottom-tabs`.
 - Tabs are `Dashboard`, `Diary`, `Add`, `Library`, and `Settings`. `Add` is a center action in `CustomTabBar`, not a content screen.
+- Native iOS Liquid Glass tabs use `@bottom-tabs/react-navigation` in `src/components/TabsLayout.tsx`; each content tab is wrapped in its own `createNativeStackNavigator` so the tab path still gets native headers.
+- When adding a root-stack screen, add the route to `RootStackParamList` and register a matching `<Stack.Screen>` in `App.tsx` with `createStackScreenOptions(...)` or equivalent explicit iOS native-stack header options.
+- Root-stack screens with a screen-owned React header are automatically checked by `__tests__/navigation/nativeHeaderContract.test.ts`; do not add screen-specific native-header allowlists.
+- Root-stack screens with a screen-owned React header and a real back button must set `headerBackTitle` or `headerBackButtonDisplayMode: 'minimal'` in `App.tsx` so iOS back labels stay explicit or intentionally hidden; close/cancel modal headers do not need either option.
+- If a root-stack screen has custom React-header actions beyond the native back button, mirror them with `unstable_headerLeftItems` or `unstable_headerRightItems` and hide the React header on iOS.
+- If a root-stack screen is intentionally presented above `Tabs` instead of inside native-tabs mode, document it in `NATIVE_TABS_ROUTE_EXCLUSIONS` in `__tests__/navigation/nativeHeaderContract.test.ts` with a short reason.
+- If a screen uses native header items (`unstable_headerRightItems` / `unstable_headerLeftItems`), hide its screen-owned React header on iOS with a guard such as `{Platform.OS !== 'ios' && <Header />}` or `Platform.OS === 'ios' ? null : <Header />`; otherwise iOS renders both headers.
+- When adding a tab, update `TabParamList`, `NativeTab.Screen`, and `FallbackTab.Screen`; for content tabs also add a tab-local native stack screen using `createIOSNativeHeaderOptions(...)`.
+- `__tests__/navigation/nativeHeaderContract.test.ts` enforces this native-header wiring. If it fails, fix the route/type/navigator alignment instead of weakening the test.
 - Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
 - `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
 - `ActiveWorkoutBar` is mounted outside normal screen trees, uses the root navigation ref, and hides itself on modal/editor routes such as food search/forms/scan/photo, exercise search, workout/activity add, measurements, and barcode edit.
