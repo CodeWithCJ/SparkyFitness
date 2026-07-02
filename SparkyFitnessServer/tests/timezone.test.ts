@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   isDayString,
   dayOfWeek,
@@ -170,6 +170,31 @@ describe('instantToDay', () => {
     const ms = new Date(isoStr).getTime();
     expect(instantToDay(isoStr, 'UTC')).toBe('2024-06-15');
     expect(instantToDay(ms, 'UTC')).toBe('2024-06-15');
+  });
+  it('reads named date parts instead of trusting locale output ordering', () => {
+    const parts: Intl.DateTimeFormatPart[] = [
+      { type: 'month', value: '07' },
+      { type: 'literal', value: '/' },
+      { type: 'day', value: '15' },
+      { type: 'literal', value: '/' },
+      { type: 'year', value: '2026' },
+    ];
+    const dateTimeFormatSpy = vi
+      .spyOn(Intl, 'DateTimeFormat')
+      .mockImplementation(
+        () =>
+          ({
+            format: () => '07/15/2026',
+            formatToParts: () => parts,
+          }) as Intl.DateTimeFormat
+      );
+
+    const ts = new Date('2026-07-15T12:00:00Z');
+    try {
+      expect(instantToDay(ts, 'UTC')).toBe('2026-07-15');
+    } finally {
+      dateTimeFormatSpy.mockRestore();
+    }
   });
 });
 // ---------------------------------------------------------------------------

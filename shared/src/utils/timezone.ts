@@ -84,21 +84,37 @@ export function isValidTimeZone(tz: string): boolean {
 
 /**
  * Returns today's date as YYYY-MM-DD in the given timezone.
- * Uses `Intl.DateTimeFormat` with 'en-CA' locale which natively formats as YYYY-MM-DD.
  */
 export function todayInZone(tz: string): string {
   return instantToDay(new Date(), tz);
 }
 
-/** Converts an arbitrary instant to a YYYY-MM-DD string in the given timezone. */
+/**
+ * Converts an arbitrary instant to a YYYY-MM-DD string in the given timezone.
+ *
+ * Assembles the string from `formatToParts` rather than relying on a locale
+ * (e.g. 'en-CA') to imply YYYY-MM-DD ordering. Some runtimes — notably Firefox
+ * on Linux, which applies OS regional preferences to explicitly-requested
+ * locales — format 'en-CA' as MM/DD/YYYY, which would leak a non-ISO date into
+ * API params and date parsing. Reading named parts is ordering-independent.
+ */
 export function instantToDay(ts: Date | string | number, tz: string): string {
   const date = ts instanceof Date ? ts : new Date(ts);
-  return Intl.DateTimeFormat('en-CA', {
+  const parts = Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(date);
+  }).formatToParts(date);
+  let year = '';
+  let month = '';
+  let day = '';
+  for (const p of parts) {
+    if (p.type === 'year') year = p.value;
+    if (p.type === 'month') month = p.value;
+    if (p.type === 'day') day = p.value;
+  }
+  return `${year}-${month}-${day}`;
 }
 
 /** Returns the current hour and minute in the given timezone. */
