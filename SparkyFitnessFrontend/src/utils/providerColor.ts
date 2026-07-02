@@ -44,7 +44,11 @@ export function makeProviderColorResolver(
 ): (providerId?: string | null) => string {
   const byId = new Map<string, string>();
   providers.forEach((p, i) => {
-    byId.set(p.id, PROVIDER_COLOR_PALETTE[i % PROVIDER_COLOR_PALETTE.length]);
+    byId.set(
+      p.id,
+      PROVIDER_COLOR_PALETTE[i % PROVIDER_COLOR_PALETTE.length] ??
+        FALLBACK_COLOR
+    );
   });
   return (providerId?: string | null): string => {
     if (!providerId) return FALLBACK_COLOR;
