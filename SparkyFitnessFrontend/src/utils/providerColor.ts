@@ -34,29 +34,18 @@ export const PROVIDER_COLOR_PALETTE = [
 
 const FALLBACK_COLOR = '#94a3b8'; // slate-400, matches muted-foreground tone
 
-// Maps each provider id to a palette colour by list position. Collision-free
-// while the active providers fit the palette; wraps past that.
-export function buildProviderColorMap(
-  providers: DataProvider[],
-  palette: string[] = PROVIDER_COLOR_PALETTE
-): Map<string, string> {
-  const byId = new Map<string, string>();
-  if (palette.length > 0) {
-    providers.forEach((p, i) => {
-      byId.set(p.id, palette[i % palette.length] ?? FALLBACK_COLOR);
-    });
-  }
-  return byId;
-}
-
-// Returns a resolver mapping a provider id to its assigned colour. Build the map
-// once (e.g. via useMemo on the providers list) and call the returned function
-// while rendering rows.
+// Returns a resolver mapping a provider id to its assigned colour, by the
+// provider's position in the active list (palette[i % length]). Collision-free
+// while the active providers fit the palette; wraps past that. Build the
+// resolver once (e.g. via useMemo on the providers list) and call it while
+// rendering rows.
 export function makeProviderColorResolver(
-  providers: DataProvider[],
-  palette: string[] = PROVIDER_COLOR_PALETTE
+  providers: DataProvider[]
 ): (providerId?: string | null) => string {
-  const byId = buildProviderColorMap(providers, palette);
+  const byId = new Map<string, string>();
+  providers.forEach((p, i) => {
+    byId.set(p.id, PROVIDER_COLOR_PALETTE[i % PROVIDER_COLOR_PALETTE.length]);
+  });
   return (providerId?: string | null): string => {
     if (!providerId) return FALLBACK_COLOR;
     return byId.get(providerId) ?? FALLBACK_COLOR;
