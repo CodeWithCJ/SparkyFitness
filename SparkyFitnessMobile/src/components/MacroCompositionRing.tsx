@@ -39,26 +39,26 @@ const MacroCompositionRing: React.FC<MacroCompositionRingProps> = ({
   }, [progress, proteinShare, carbsShare, fatShare]);
 
   const proteinPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const sweep = proteinShare * 360 * progress.value;
-    if (sweep > 0) path.addArc(oval, -90, sweep);
-    return path;
+    if (sweep > 0) builder.addArc(oval, -90, sweep);
+    return builder.build();
   });
 
   const carbsPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const start = -90 + proteinShare * 360 * progress.value;
     const sweep = carbsShare * 360 * progress.value;
-    if (sweep > 0) path.addArc(oval, start, sweep);
-    return path;
+    if (sweep > 0) builder.addArc(oval, start, sweep);
+    return builder.build();
   });
 
   const fatPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const start = -90 + (proteinShare + carbsShare) * 360 * progress.value;
     const sweep = fatShare * 360 * progress.value;
-    if (sweep > 0) path.addArc(oval, start, sweep);
-    return path;
+    if (sweep > 0) builder.addArc(oval, start, sweep);
+    return builder.build();
   });
 
   return (

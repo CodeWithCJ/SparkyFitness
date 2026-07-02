@@ -59,12 +59,12 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
   }), [center, radius]);
 
   const progressPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const sweepAngle = animatedProgress.value * 360;
     if (sweepAngle > 0) {
-      path.addArc(oval, -90, sweepAngle);
+      builder.addArc(oval, -90, sweepAngle);
     }
-    return path;
+    return builder.build();
   });
 
   return (
