@@ -38,9 +38,6 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   ]) as [string, string];
 
   const displayRemaining = Math.round(remainingCalories);
-  const remainingText = displayRemaining >= 0
-    ? `${displayRemaining.toLocaleString()}`
-    : `+${Math.abs(displayRemaining).toLocaleString()}`;
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
@@ -59,10 +56,10 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
           </View>
           <View className="absolute items-center justify-center">
             <Text className="text-2xl font-bold text-text-primary">
-              {remainingText}
+              {displayRemaining.toLocaleString()}
             </Text>
             <Text className="text-text-secondary text-xs">
-              {displayRemaining >= 0 ? 'remaining' : 'over goal'}
+              remaining
             </Text>
             <Text className="text-text-muted text-[10px] mt-0.5">
               of {calorieGoal.toLocaleString()} kcal
