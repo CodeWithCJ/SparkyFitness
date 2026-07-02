@@ -53,39 +53,58 @@ router.post(
   async (req, res, next) => {
     const rawBody = req.body;
     let healthDataArray = [];
-    if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
-      try {
-        healthDataArray = JSON.parse(rawBody);
-      } catch {
-        return res.status(400).json({ error: 'Invalid JSON array format.' });
+    if (typeof rawBody === 'object' && rawBody !== null) {
+      if (Array.isArray(rawBody)) {
+        healthDataArray = rawBody;
+      } else {
+        healthDataArray = [rawBody];
       }
-    } else if (rawBody.includes('}{')) {
-      const jsonStrings = rawBody
-        .split('}{')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((part: any, index: any, arr: any) => {
-          if (index === 0) return part + '}';
-          if (index === arr.length - 1) return '{' + part;
-          return '{' + part + '}';
-        });
-      for (const jsonStr of jsonStrings) {
+    } else if (typeof rawBody === 'string') {
+      if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
         try {
-          healthDataArray.push(JSON.parse(jsonStr));
-        } catch (parseError) {
-          log(
-            'error',
-            'Error parsing individual concatenated JSON string:',
-            jsonStr,
-            parseError
-          );
+          healthDataArray = JSON.parse(rawBody);
+        } catch {
+          return res.status(400).json({ error: 'Invalid JSON array format.' });
+        }
+      } else if (rawBody.includes('}{')) {
+        const jsonStrings = rawBody
+          .split('}{')
+          .map((part: string, index: number, arr: string[]) => {
+            if (index === 0) return part + '}';
+            if (index === arr.length - 1) return '{' + part;
+            return '{' + part + '}';
+          });
+        for (const jsonStr of jsonStrings) {
+          try {
+            healthDataArray.push(JSON.parse(jsonStr));
+          } catch (parseError) {
+            log(
+              'error',
+              'Error parsing individual concatenated JSON string:',
+              jsonStr,
+              parseError
+            );
+          }
+        }
+      } else {
+        try {
+          healthDataArray.push(JSON.parse(rawBody));
+        } catch {
+          return res.status(400).json({ error: 'Invalid single JSON format.' });
         }
       }
     } else {
-      try {
-        healthDataArray.push(JSON.parse(rawBody));
-      } catch {
-        return res.status(400).json({ error: 'Invalid single JSON format.' });
-      }
+      return res.status(400).json({ error: 'Invalid request body format.' });
+    }
+    if (
+      healthDataArray.some(
+        (item: unknown) => typeof item !== 'object' || item === null
+      )
+    ) {
+      return res.status(400).json({
+        error:
+          'Invalid health data format. All entries must be non-null objects.',
+      });
     }
     try {
       const result = await measurementService.processHealthData(
