@@ -37,6 +37,9 @@ interface FoodResultCardProps {
   isMeal?: boolean;
   isOnline?: boolean;
   providerLabel?: string;
+  // When set, the provider badge is tinted with this colour (used by the All
+  // Providers "Top Matches" section to tell sources apart at a glance).
+  providerBadgeColor?: string;
   imageUrl?: string;
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
@@ -48,6 +51,7 @@ const FoodResultCard = ({
   isMeal = false,
   isOnline = false,
   providerLabel,
+  providerBadgeColor,
   imageUrl,
   nutrientConfig,
   onCardClick,
@@ -58,6 +62,12 @@ const FoodResultCard = ({
   const isFood = !isMeal;
   const foodItem = item as Food;
   const mealItem = item as Meal;
+  // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
+  // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
+  const badgeIsHex =
+    !!providerBadgeColor &&
+    providerBadgeColor.startsWith('#') &&
+    providerBadgeColor.length === 7;
 
   return (
     <Card
@@ -80,7 +90,23 @@ const FoodResultCard = ({
                 </Badge>
               )}
               {providerLabel && (
-                <Badge variant="outline" className="text-xs">
+                <Badge
+                  variant="outline"
+                  className="text-xs"
+                  style={
+                    providerBadgeColor
+                      ? {
+                          color: providerBadgeColor,
+                          borderColor: badgeIsHex
+                            ? `${providerBadgeColor}55`
+                            : providerBadgeColor,
+                          backgroundColor: badgeIsHex
+                            ? `${providerBadgeColor}1f`
+                            : undefined,
+                        }
+                      : undefined
+                  }
+                >
                   {providerLabel}
                 </Badge>
               )}
