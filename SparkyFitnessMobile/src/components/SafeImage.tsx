@@ -30,10 +30,15 @@ const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null })
   const [attempt, setAttempt] = useState(0);
   const sourceSignature = getImageSourceSignature(source);
 
-  useEffect(() => {
+  // Reset the retry state when the image source changes. Done during render
+  // (rather than in an effect) so the fallback/attempt state is correct on the
+  // first render after a source change, with no intermediate flash.
+  const [prevSignature, setPrevSignature] = useState(sourceSignature);
+  if (sourceSignature !== prevSignature) {
+    setPrevSignature(sourceSignature);
     setError(false);
     setAttempt(0);
-  }, [sourceSignature]);
+  }
 
   useEffect(() => {
     if (!error || attempt >= MAX_RETRIES) return;

@@ -481,6 +481,9 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 
   useEffect(() => {
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
+    // Consume a one-shot navigation param: guarded by the nonce and paired with
+    // clearing the param via setParams, so it can't move to a render-time derive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBarcodeInput(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
@@ -970,16 +973,18 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
   const [equivalentBaseline, setEquivalentBaseline] = useState<EquivalentUnit[]>([]);
 
-  const seedKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const seedKey = `${currentVariantId}|${otherSiblings
-      .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
-      .join(',')}`;
-    if (seedKeyRef.current === seedKey) return;
-    seedKeyRef.current = seedKey;
+  // Seed the editable equivalents from the current variant's siblings whenever
+  // the source signature changes. Done during render (instead of in an effect)
+  // so the draft matches the active variant on the first render after a switch.
+  const seedKey = `${currentVariantId}|${otherSiblings
+    .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
+    .join(',')}`;
+  const [seededKey, setSeededKey] = useState<string | null>(null);
+  if (seededKey !== seedKey) {
+    setSeededKey(seedKey);
     setEquivalentDraft(otherSiblings);
     setEquivalentBaseline(otherSiblings);
-  }, [currentVariantId, otherSiblings]);
+  }
 
   const isSavingRef = useRef(false);
 
@@ -1543,16 +1548,18 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     [],
   );
 
-  const seedKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const seedKey = `${currentVariantId}|${otherSiblings
-      .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
-      .join(',')}`;
-    if (seedKeyRef.current === seedKey) return;
-    seedKeyRef.current = seedKey;
+  // Seed the editable equivalents from the current variant's siblings whenever
+  // the source signature changes. Done during render (instead of in an effect)
+  // so the draft matches the active variant on the first render after a switch.
+  const seedKey = `${currentVariantId}|${otherSiblings
+    .map((eq) => `${eq.id ?? ''}:${eq.serving_size}:${eq.serving_unit}`)
+    .join(',')}`;
+  const [seededKey, setSeededKey] = useState<string | null>(null);
+  if (seededKey !== seedKey) {
+    setSeededKey(seedKey);
     setEquivalentDraft(otherSiblings);
     setEquivalentBaseline(otherSiblings);
-  }, [currentVariantId, otherSiblings]);
+  }
 
   const isSavingRef = useRef(false);
 

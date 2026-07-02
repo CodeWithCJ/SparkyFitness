@@ -12,7 +12,7 @@
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "lint": "expo lint src App.tsx index.js __tests__",
+    "lint": "expo lint src App.tsx index.js __tests__ --max-warnings 0",
     "lint:compiler": "eslint --no-config-lookup --config eslint.compiler.config.js src App.tsx",
     "start": "expo start",
     "test": "jest",

@@ -43,6 +43,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
   // Apply a barcode handed back from the FoodScan capture-barcode flow.
   useEffect(() => {
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
+    // Consume a one-shot navigation param: guarded by the nonce and paired with
+    // clearing the param via setParams, so it can't move to a render-time derive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
@@ -172,7 +175,13 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
   };
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

@@ -139,6 +139,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode || !editMeal || initializedMealId === editMeal.id) return;
 
+    // One-time form initialization from the async-loaded meal, guarded by its id.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMealName(editMeal.name);
     setDescription(editMeal.description ?? '');
     const loadedServingSize = editMeal.serving_size ?? 1;
@@ -403,7 +405,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
   const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
   const handleSaveMealRef = useRef(handleSaveMeal);
-  handleSaveMealRef.current = handleSaveMeal;
+  // Keep the ref pointing at the latest closure so the native header button
+  // (configured once in the layout effect below) always calls the current
+  // handler. Updated in an effect rather than during render to satisfy
+  // react-hooks/refs.
+  useEffect(() => {
+    handleSaveMealRef.current = handleSaveMeal;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

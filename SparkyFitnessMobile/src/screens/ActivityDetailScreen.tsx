@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Platform, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import FadeView from '../components/FadeView';
 import EditableSetList from '../components/EditableSetList';
@@ -136,6 +136,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // --- Set editing callbacks ---
+  // The React Compiler can't preserve this manual memoization because the
+  // callback mutates nextSetIdRef to generate unique client ids. The useCallback
+  // is still honored at runtime; the compiler just skips optimizing this
+  // component. Suppress the bailout rather than rewrite the working id counter.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const addDraftSet = useCallback((_exerciseId?: string) => {
     const id = `set-${nextSetIdRef.current++}`;
     setDraftSets(prev => {
@@ -442,9 +447,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const startEditingRef = useRef(startEditing);
   const cancelEditingRef = useRef(cancelEditing);
   const handleSaveRef = useRef(handleSave);
-  startEditingRef.current = startEditing;
-  cancelEditingRef.current = cancelEditing;
-  handleSaveRef.current = handleSave;
+  // Keep the refs pointing at the latest closures so the native header buttons
+  // (configured once in the layout effect below) always call current handlers.
+  // Updated in an effect rather than during render to satisfy react-hooks/refs.
+  useEffect(() => {
+    startEditingRef.current = startEditing;
+    cancelEditingRef.current = cancelEditing;
+    handleSaveRef.current = handleSave;
+  });
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTintColor });

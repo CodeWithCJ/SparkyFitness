@@ -151,6 +151,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const dirtyFields = new Set(dirtyFieldsRef.current);
 
     if (isLoading || isPreferencesLoading) {
+      // Syncs the form to the latest measurements snapshot (cached-then-fresh)
+      // with dirty-field tracking; a legitimate external-data sync effect.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(EMPTY_FORM);
       setPrefilledKeys(new Set());
       return;

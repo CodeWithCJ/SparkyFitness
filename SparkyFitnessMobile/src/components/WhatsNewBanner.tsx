@@ -46,6 +46,9 @@ export function useWhatsNewBannerState(): WhatsNewBannerState {
   );
 
   useEffect(() => {
+    // Async evaluation effect: reset to the loading phase before the async
+    // version lookup below resolves to eligible/ineligible.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPhase('evaluating');
     let cancelled = false;
     void (async () => {

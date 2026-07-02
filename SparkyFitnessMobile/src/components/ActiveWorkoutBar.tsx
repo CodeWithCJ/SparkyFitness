@@ -469,6 +469,9 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         navInfo.tabsUnderTop && stackTransition.closing;
 
       if (!isNativeClosingToTabs) {
+        // Writing a Reanimated shared value from an effect is the supported API;
+        // the compiler's immutability rule flags it as a mutation regardless.
+        // eslint-disable-next-line react-hooks/immutability
         bottomOffset.value = targetBottomOffset;
       }
       return;
@@ -507,6 +510,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       // Read `Date.now()` fresh at render time — caching it in state would
       // briefly display a stale value on the first render after a new rest
       // starts (the `tick` state only advances via the 1s interval).
+      // eslint-disable-next-line react-hooks/purity
       return Math.max(0, endsAt - Date.now());
     }
     if (restState === 'paused' && pausedRemainingMs != null)

@@ -165,6 +165,9 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   useEffect(() => {
     if (!isHealthConnectInitialized) return;
     let cancelled = false;
+    // Async data-load effect: flip the loading flag synchronously to show the
+    // spinner before the fetch resolves and clears it below.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingHealthData(true);
     fetchHealthDisplayData(selectedTimeRange).then(data => {
       if (!cancelled) {

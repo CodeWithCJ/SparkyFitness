@@ -25,6 +25,9 @@ export function useFastingTimer(
     }, [active, startTime]),
   );
 
+  // Read `Date.now()` fresh at render time (see the note in this file's header);
+  // the timer values are recomputed each render and on the 1s tick.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   // When idle (no fast) the consuming component ignores these values; fall back
   // to a zero-elapsed result rather than computing from the epoch.

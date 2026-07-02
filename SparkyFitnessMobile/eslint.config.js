@@ -29,18 +29,21 @@ module.exports = defineConfig([
     ignores: ["dist/*"],
   },
   {
-    // Expo SDK 56's eslint-config enables eslint-plugin-react-hooks' React Compiler
-    // rules, which flag ~35 pre-existing violations across the app. Relaxed to warnings
-    // (and --max-warnings 0 dropped from the "validate" script) so the SDK upgrade isn't
-    // blocked. These should be fixed and the rules returned to "error" (and --max-warnings
-    // 0 restored). Run `pnpm run lint` to list the current violations.
+    // Expo SDK 56's eslint-config enables eslint-plugin-react-hooks' React
+    // Compiler rules. The pre-existing backlog these surfaced has been worked
+    // down to zero, so they are enforced as errors (and "lint" runs with
+    // --max-warnings 0). Genuine violations were fixed; the handful of
+    // intentional exceptions (Reanimated shared-value writes, deliberate
+    // render-time Date.now(), one-shot navigation-param effects, etc.) carry
+    // scoped `// eslint-disable-next-line` comments explaining why. Use
+    // `pnpm run lint:compiler` to see the wider compiler-bailout backlog.
     files: ["**/*.ts", "**/*.tsx"],
     plugins: { "react-hooks": reactHooksPlugin },
     rules: {
-      "react-hooks/refs": "warn",
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/immutability": "warn",
-      "react-hooks/purity": "warn",
+      "react-hooks/refs": "error",
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/immutability": "error",
+      "react-hooks/purity": "error",
     },
   },
   {
