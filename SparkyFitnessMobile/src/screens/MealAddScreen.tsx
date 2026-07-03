@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-han
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
@@ -33,8 +32,8 @@ import {
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -404,61 +403,25 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const isSaving = isPending || isUpdatePending;
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
-  const saveLabel = isEditMode ? 'Save Changes' : 'Save Meal';
-  const handleSaveMealRef = useRef(handleSaveMeal);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleSaveMealRef.current = handleSaveMeal;
+  const header = useScreenHeader({
+    title: isEditMode ? 'Edit Meal' : 'Create Meal',
+    left: {
+      kind: 'dismiss',
+      onPress: () => navigation.goBack(),
+      disabled: isSaving,
+      identifier: isEditMode ? 'meal-edit-cancel' : 'meal-create-cancel',
+    },
+    right: {
+      kind: 'primary',
+      label: SAVE_LABEL,
+      busyLabel: SAVING_LABEL,
+      busy: isSaving,
+      disabled: isSaving,
+      placement: 'native-only',
+      onPress: () => void handleSaveMeal(),
+      identifier: isEditMode ? 'meal-edit-save' : 'meal-create-save',
+    },
   });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: isEditMode ? 'meal-edit-cancel' : 'meal-create-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isSaving,
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: saveLabel,
-          identifier: isEditMode ? 'meal-edit-save' : 'meal-create-save',
-          tintColor: headerSaveColor,
-          onPress: () => void handleSaveMealRef.current(),
-          disabled: isSaving,
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSaving, isEditMode, saveLabel, usesNativeHeader]);
-
-  const renderHeader = () => usesNativeHeader ? null : (
-    <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="z-10"
-        accessibilityLabel="Back"
-        accessibilityRole="button"
-      >
-        <Icon name="chevron-back" size={22} color={headerActionColor} />
-      </TouchableOpacity>
-      <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-        {isEditMode ? 'Edit Meal' : 'Create Meal'}
-      </Text>
-    </View>
-  );
 
   if (isEditMode && isEditMealLoading && !editMeal) {
     return (
@@ -466,7 +429,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         className="flex-1 bg-background"
         style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
-        {renderHeader()}
+        {header}
         <StatusView loading title="Loading meal..." />
       </View>
     );
@@ -478,7 +441,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         className="flex-1 bg-background"
         style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
-        {renderHeader()}
+        {header}
         <StatusView
           icon="alert-circle"
           iconColor="#EF4444"
@@ -496,7 +459,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      {renderHeader()}
+      {header}
 
       <ScrollView
         className="flex-1"
@@ -785,7 +748,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text className="text-white text-base font-semibold">
-                {isEditMode ? 'Save Changes' : 'Save Meal'}
+                {SAVE_LABEL}
               </Text>
             )}
           </Button>

@@ -5,29 +5,27 @@ import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExternalProviders } from '../hooks/useExternalProviders';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodSettingsScreenProps = RootStackScreenProps<'FoodSettings'>;
 
-const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) => {
+const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [formEnabled, formDisabled, textPrimary] = useCSSVariable([
+  const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
-    '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
@@ -98,27 +96,15 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
     [mutation],
   );
 
+  const header = useScreenHeader({ title: 'Food Settings', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {/* Header */}
-        {!usesNativeHeader && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">Food Settings</Text>
-        </View>
-        )}
-
         {/* Show Net Carbs */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

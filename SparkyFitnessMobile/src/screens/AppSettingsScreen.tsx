@@ -3,8 +3,6 @@ import { View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
@@ -15,6 +13,7 @@ import {
 import { setNotificationsEnabled } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -27,14 +26,13 @@ const themeOptions: { label: string; value: ThemePreference }[] = [
   { label: 'System', value: 'System' },
 ];
 
-const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => {
+const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled, textPrimary] = useCSSVariable([
+  const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
-    '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const appTheme = useThemePreference();
   const hapticsEnabled = useAppPreferencesStore((s) => s.hapticsEnabled);
@@ -49,8 +47,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
+  const header = useScreenHeader({ title: 'App Settings', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
@@ -58,19 +59,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {!usesNativeHeader && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">App Settings</Text>
-        </View>
-        )}
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

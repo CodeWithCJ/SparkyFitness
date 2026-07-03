@@ -1,5 +1,5 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Platform, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import FadeView from '../components/FadeView';
 import EditableSetList from '../components/EditableSetList';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -11,9 +11,8 @@ import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
@@ -48,12 +47,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textPrimary, borderSubtle] = useCSSVariable([
+  const [accentPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-primary',
     '--color-border-subtle',
-  ]) as [string, string, string];
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
+  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
@@ -446,148 +443,48 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  const startEditingRef = useRef(startEditing);
-  const cancelEditingRef = useRef(cancelEditing);
-  const handleSaveRef = useRef(handleSave);
-  // Keep the refs pointing at the latest closures so the native header buttons
-  // (configured once in the layout effect below) always call current handlers.
-  // Updated in an effect rather than during render to satisfy react-hooks/refs.
-  useLayoutEffect(() => {
-    startEditingRef.current = startEditing;
-    cancelEditingRef.current = cancelEditing;
-    handleSaveRef.current = handleSave;
+  // View mode: name title + owner-only Edit. Edit mode: "Edit Activity" title,
+  // X-dismiss owning the left slot with swipe-back disabled, Save on the right.
+  const header = useScreenHeader({
+    nativeTitle: isEditing ? 'Edit Activity' : name,
+    animateKey: isEditing ? 'edit' : 'view',
+    borderless: true,
+    nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
+    left: isEditing
+      ? {
+          kind: 'dismiss',
+          onPress: cancelEditing,
+          disabled: isSaving,
+          accessibilityLabel: 'Cancel',
+          identifier: 'activity-detail-cancel',
+        }
+      : { kind: 'back' },
+    right: isEditing
+      ? {
+          kind: 'primary',
+          label: SAVE_LABEL,
+          busyLabel: SAVING_LABEL,
+          busy: isSaving,
+          disabled: isSaving,
+          onPress: handleSave,
+          accessibilityLabel: 'Save',
+          identifier: 'activity-detail-save',
+        }
+      : isSparky
+        ? {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: startEditing,
+            accessibilityLabel: 'Edit activity',
+            identifier: 'activity-detail-edit',
+          }
+        : null,
   });
-
-  // iOS swipe-back must stay disabled while editing even when the native
-  // header is off (Cancel/Save own the exit paths in the fallback header).
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    navigation.setOptions({ gestureEnabled: !isEditing });
-  }, [navigation, isEditing]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-
-    if (isEditing) {
-      navigation.setOptions({
-        title: 'Edit Activity',
-        headerBackVisible: false,
-        unstable_headerLeftItems: () => [
-          createNativeHeaderTextButtonItem({
-            label: 'Cancel',
-            identifier: 'activity-detail-cancel',
-            tintColor: headerActionColor,
-            accessibilityLabel: 'Cancel',
-            disabled: isSaving,
-            onPress: () => cancelEditingRef.current(),
-          }),
-        ],
-        unstable_headerRightItems: () => [
-          createNativeHeaderTextButtonItem({
-            label: 'Save',
-            identifier: 'activity-detail-save',
-            tintColor: headerSaveColor,
-            accessibilityLabel: 'Save',
-            fontWeight: '600',
-            disabled: isSaving,
-            onPress: () => handleSaveRef.current(),
-          }),
-        ],
-      });
-    } else {
-      navigation.setOptions({
-        title: name,
-        headerBackVisible: true,
-        unstable_headerLeftItems: undefined,
-        unstable_headerRightItems: isSparky
-          ? () => [
-              createNativeHeaderTextButtonItem({
-                label: 'Edit',
-                identifier: 'activity-detail-edit',
-                tintColor: headerActionColor,
-                accessibilityLabel: 'Edit activity',
-                onPress: () => startEditingRef.current(),
-              }),
-            ]
-          : undefined,
-      });
-    }
-  }, [
-    navigation,
-    usesNativeHeader,
-    isEditing,
-    isSaving,
-    name,
-    isSparky,
-    headerActionColor,
-    headerSaveColor,
-    headerTintColor,
-  ]);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {/* Header */}
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 ">
-        {isEditing ? (
-          <FadeView
-            key="header-edit"
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Button
-              variant="ghost"
-              onPress={cancelEditing}
-              disabled={isSaving}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              <Text className="text-text-primary text-base font-medium">Cancel</Text>
-            </Button>
-            <View className="flex-1" />
-            <Button
-              variant="ghost"
-              onPress={handleSave}
-              disabled={isSaving}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={accentPrimary} />
-              ) : (
-                <Text className="text-accent-primary text-base font-semibold">Save</Text>
-              )}
-            </Button>
-          </FadeView>
-        ) : (
-          <FadeView
-            key="header-view"
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Button
-              variant="ghost"
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              <Icon name="chevron-back" size={22} color={textPrimary} />
-            </Button>
-            <View className="flex-1" />
-            {isSparky && (
-              <Button
-                variant="ghost"
-                onPress={startEditing}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                className="py-0 px-0"
-              >
-                <Text className="text-text-primary text-base font-medium">Edit</Text>
-              </Button>
-            )}
-          </FadeView>
-        )}
-      </View>
-      )}
+      {header}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"

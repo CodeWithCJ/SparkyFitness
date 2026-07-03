@@ -844,33 +844,22 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutPresetDetail"
             component={SafeWorkoutPresetDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name, { headerBackTitle: 'Presets' })}
           />
           <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Foods' })}
           />
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={
-              usesNativeIOSHeaders
-                ? {
-                    ...iosSmallHeaderOptions,
-                    title: '',
-                    gestureEnabled: true,
-                  }
-                : {
-                    headerShown: false,
-                    gestureEnabled: true,
-                  }
-            }
+            options={createStackScreenOptions('', { headerBackTitle: 'Meals' })}
           />
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Exercises' })}
           />
           <Stack.Screen
             name="FoodSearch"
@@ -1017,17 +1006,9 @@ function AppContent() {
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
             options={({ route }) =>
-              usesNativeIOSHeaders
-                ? {
-                    ...iosSmallHeaderOptions,
-                    title: route.params?.session?.name ?? 'Workout',
-                    headerBackTitle: 'Diary',
-                    gestureEnabled: true,
-                  }
-                : {
-                    headerShown: false,
-                    gestureEnabled: true,
-                  }
+              createStackScreenOptions(route.params?.session?.name ?? 'Workout', {
+                headerBackTitle: 'Diary',
+              })
             }
           />
           <Stack.Screen

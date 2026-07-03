@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getTodayDate } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -215,8 +216,6 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
-
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
@@ -242,8 +241,11 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
     },
   ];
 
+  const header = useScreenHeader({ title: "What's New", left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
@@ -251,20 +253,6 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {!usesNativeHeader && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">What&apos;s New</Text>
-        </View>
-        )}
-
         {features.map((feature) => (
           <View
             key={feature.headline}

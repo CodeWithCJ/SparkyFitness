@@ -118,7 +118,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     '--color-text-muted',
     '--color-text-secondary',
   ]) as [string, string, string];
-  const { defaultColor: headerActionColor } = useHeaderActionColors();
+  const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
   const iconSuccess = String(useCSSVariable('--color-icon-success'));
   const usesNativeHeader = useNativeIOSHeadersActive();
 
@@ -381,7 +381,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         createNativeHeaderIconButtonItem({
           sfSymbol: 'plus',
           identifier: 'food-search-add',
-          tintColor: headerActionColor,
+          tintColor: headerSaveColor,
           accessibilityLabel: isMealBuilderMode ? 'Add Food' : 'Add Food or Meal',
           onPress: handleAddPress,
         }),
@@ -390,6 +390,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [
     handleAddPress,
     headerActionColor,
+    headerSaveColor,
     isMealBuilderMode,
     navigation,
     usesNativeHeader,
@@ -1084,7 +1085,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           className="p-0"
           accessibilityLabel="Close"
         >
-          <Icon name="close" size={22} color={accentColor} />
+          <Icon name="close" size={22} color={headerActionColor} />
         </Button>
       )}
 
@@ -1144,7 +1145,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             className="ml-2"
             accessibilityLabel="Scan Food"
           >
-            <Icon name="scan" size={20} color={accentColor} />
+            <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
         )}
       </View>

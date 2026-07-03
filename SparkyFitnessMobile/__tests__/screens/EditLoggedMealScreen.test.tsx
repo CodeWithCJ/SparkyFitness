@@ -13,12 +13,20 @@ import type { MealIngredientDraft } from '../../src/types/meals';
 
 let focusCallback: (() => void) | undefined;
 const mockUseFocusEffect = jest.fn();
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  push: jest.fn(),
+  setParams: jest.fn(),
+} as any;
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
     useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
+    useNavigation: () => mockNavigation,
   };
 });
 
@@ -231,13 +239,7 @@ const buildIngredient = (overrides: Partial<MealIngredientDraft> = {}): MealIngr
 });
 
 describe('EditLoggedMealScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    push: jest.fn(),
-    setParams: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const mockUpdateMeal = jest.fn();
   const mockConfirmAndDelete = jest.fn();

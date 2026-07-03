@@ -95,8 +95,11 @@ function extractSafeComponentNamesByScreen(source: string): Map<string, string> 
 }
 
 function extractStackComponentsByRoute(source: string): Map<string, string> {
+  // Stay inside a single opening tag ([^>] instead of [\s\S]) so a screen with
+  // a children render callback and no component prop (e.g. Tabs) cannot
+  // swallow the next screen's component into its match.
   return new Map(
-    [...source.matchAll(/<Stack\.Screen[\s\S]*?name="([^"]+)"[\s\S]*?component=\{([^}]+)\}/g)]
+    [...source.matchAll(/<Stack\.Screen[^>]*?name="([^"]+)"[^>]*?component=\{([^}]+)\}/g)]
       .map(([, routeName, componentName]) => [routeName, componentName.trim()]),
   );
 }
@@ -132,17 +135,38 @@ function formatList(items: string[]): string {
   return items.length > 0 ? items.join(', ') : 'none';
 }
 
-function hasNativeHeaderItems(source: string): boolean {
-  return /unstable_header(?:Right|Left)Items/.test(source);
+/**
+ * Screens on the useScreenHeader abstraction (directly, via the <ScreenHeader>
+ * wrapper, or via FormScreenChrome) get both header paths from the hook: it
+ * mirrors the descriptor into unstable_header*Items on the native path and
+ * returns the custom bar (or null on native) on the other.
+ */
+function usesScreenHeaderAbstraction(source: string): boolean {
+  return (
+    /\buseScreenHeader\(/.test(source) ||
+    /<ScreenHeader\b/.test(source) ||
+    source.includes('FormScreenChrome')
+  );
 }
 
-function hasScreenOwnedHeader(source: string): boolean {
+function hasHandRolledHeaderMarker(source: string): boolean {
   return (
-    source.includes('FormScreenChrome') ||
+    /unstable_header(?:Right|Left)Items/.test(source) ||
     /\brenderHeader(?:Bar)?\b/.test(source) ||
     /{\s*\/\*\s*Header\s*\*\/\s*}/.test(source) ||
     /\/\/\s*-+\s*Header\s*-+/.test(source)
   );
+}
+
+function hasNativeHeaderItems(source: string): boolean {
+  return (
+    /unstable_header(?:Right|Left)Items/.test(source) ||
+    usesScreenHeaderAbstraction(source)
+  );
+}
+
+function hasScreenOwnedHeader(source: string): boolean {
+  return usesScreenHeaderAbstraction(source) || hasHandRolledHeaderMarker(source);
 }
 
 function extractScreenOwnedHeaderSource(source: string): string {
@@ -183,14 +207,19 @@ function hasHeaderActionBeyondNativeBack(source: string): boolean {
   const onPressTargets = [...headerSource.matchAll(/onPress=\{([^}]+)\}/g)]
     .map(([, target]) => target.trim())
     .filter((target) => !target.includes('navigation.goBack'))
-    .filter((target) => !target.includes('handleCancel'))
-    .filter((target) => !target.includes('setSearchText'))
-    .filter((target) => !target.includes('openFoodScan'));
+    .filter((target) => !target.includes('handleCancel'));
 
   return onPressTargets.length > 0;
 }
 
 function hasNativeBackButton(source: string): boolean {
+  // Hook-based screens declare the back affordance in the descriptor: a
+  // `kind: 'back'` left item leaves the system back button in the native
+  // header (a dismiss/text left item replaces it).
+  if (usesScreenHeaderAbstraction(source)) {
+    return /kind:\s*['"]back['"]/.test(source);
+  }
+
   const headerSource = extractScreenOwnedHeaderSource(source);
   if (!headerSource) return false;
 
@@ -229,16 +258,20 @@ function hasNativeHeaderSuppressionGuard(source: string): boolean {
     /Platform\.OS\s*!==\s*'ios'\s*&&/.test(source) ||
     /Platform\.OS\s*===\s*'ios'\s*\?\s*null\s*:/.test(source) ||
     /!usesNativeHeader\s*&&/.test(source) ||
-    /usesNativeHeader\s*\?\s*null\s*:/.test(source)
+    /usesNativeHeader\s*\?\s*null\s*:/.test(source) ||
+    /if\s*\(usesNativeHeader\)\s*return null/.test(source)
   );
 }
 
 function hidesReactHeaderOnIOS(source: string): boolean {
-  const formScreenChromeSource = readMobileFile('src/components/FormScreenChrome.tsx');
+  // Hook-based screens hide by construction: useScreenHeader returns null on
+  // the native path, so the custom bar never coexists with the native header.
+  // The hook itself is asserted to carry that guard in its own test below.
+  const useScreenHeaderSource = readMobileFile('src/hooks/useScreenHeader.tsx');
   return (
     hasNativeHeaderSuppressionGuard(source) ||
-    (source.includes('FormScreenChrome') &&
-      hasNativeHeaderSuppressionGuard(formScreenChromeSource))
+    (usesScreenHeaderAbstraction(source) &&
+      hasNativeHeaderSuppressionGuard(useScreenHeaderSource))
   );
 }
 
@@ -256,9 +289,10 @@ function failNativeHeaderContract(message: string): never {
       '- Root-stack screens with a screen-owned React header must use the native iOS stack header in App.tsx through createStackScreenOptions(...) or equivalent explicit iOS options. Do not set headerShown: false for those routes.',
       '- Root-stack screens with a screen-owned React header and a real iOS back button must either set headerBackTitle or use headerBackButtonDisplayMode: \'minimal\' in App.tsx so iOS does not inherit a stale or misleading back-button label. Screens that replace the iOS back button with a native Cancel header item do not need either option.',
       '- Root-stack screens with a screen-owned React header must hide that React header on iOS because the native stack header owns the iOS chrome.',
-      '- If a screen-owned React header has custom actions beyond the native back button, mirror those actions with unstable_headerLeftItems or unstable_headerRightItems in the same screen.',
+      '- Declare screen headers with useScreenHeader(...) (src/hooks/useScreenHeader.tsx). It renders the custom bar on the fallback path, mirrors the same descriptor into unstable_header*Items on the native path, and returns null on native so the two never coexist.',
+      '- A screen on useScreenHeader must not keep hand-rolled header code: no unstable_header*Items blocks, renderHeader()/renderHeaderBar() functions, or {/* Header */} custom bars alongside the hook.',
+      '- Screens intentionally off the hook (e.g. FoodSearchScreen with its anchored + menu) must mirror custom actions with unstable_headerLeftItems or unstable_headerRightItems themselves and gate the custom bar on useNativeIOSHeadersActive().',
       '- When adding a new root-stack screen that is intentionally presented above Tabs instead of inside native tabs mode, add it to NATIVE_TABS_ROUTE_EXCLUSIONS with a short reason.',
-      '- Gate screen-owned React headers on the Liquid Glass header preference: const usesNativeHeader = useNativeIOSHeadersActive(); then {!usesNativeHeader && <Header />} or usesNativeHeader ? null : <Header />. The hook is false on Android and on iOS 26+ when the Liquid Glass toggle is off, so the same guard covers both fallback paths. Otherwise iOS shows two headers.',
     ].join('\n'),
   );
 }
@@ -427,6 +461,41 @@ describe('native header navigation contract', () => {
           `Content tabs missing from NativeTab.Screen: ${formatList(missingContentTabs)}.`,
           `Content tabs missing a ${'<Tab>'}StackScreen with ${'<Tab>'}Stack.Navigator, ${'<Tab>'}Stack.Screen, and a matching native title: ${formatList(missingStackScreens)}.`,
         ].join('\n'),
+      );
+    }
+  });
+
+  it('keeps the useScreenHeader hook suppressing its custom bar on the native path', () => {
+    const hookSource = readMobileFile('src/hooks/useScreenHeader.tsx');
+
+    if (!hasNativeHeaderSuppressionGuard(hookSource)) {
+      failNativeHeaderContract(
+        'useScreenHeader no longer returns null on the native-header path, so hook screens would render two headers on iOS.',
+      );
+    }
+    if (!/unstable_header(?:Right|Left)Items/.test(hookSource)) {
+      failNativeHeaderContract(
+        'useScreenHeader no longer mirrors header descriptors into unstable_header*Items, so hook screens would lose their native iOS header actions.',
+      );
+    }
+  });
+
+  it('keeps screens on the useScreenHeader abstraction free of leftover hand-rolled header code', () => {
+    // FoodSearchScreen keeps its bespoke bar (anchored + menu) and is NOT on
+    // the hook, so usesScreenHeaderAbstraction() excludes it here. If it ever
+    // adopts the hook, its renderHeaderBar must go too.
+    const offenders = fs
+      .readdirSync(path.join(mobileRoot, 'src/screens'))
+      .filter((fileName) => fileName.endsWith('.tsx'))
+      .map((fileName) => `src/screens/${fileName}`)
+      .filter((relativePath) => {
+        const source = readMobileFile(relativePath);
+        return usesScreenHeaderAbstraction(source) && hasHandRolledHeaderMarker(source);
+      });
+
+    if (offenders.length > 0) {
+      failNativeHeaderContract(
+        `Screens using useScreenHeader/FormScreenChrome still contain hand-rolled header code (stray custom bar or unstable_header*Items block): ${formatList(offenders)}.`,
       );
     }
   });

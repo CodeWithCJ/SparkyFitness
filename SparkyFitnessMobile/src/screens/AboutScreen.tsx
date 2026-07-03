@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import * as Application from 'expo-application';
 
-import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AboutScreenProps = RootStackScreenProps<'About'>;
@@ -16,11 +15,10 @@ const PROJECT_URL = 'https://github.com/CodeWithCJ/SparkyFitness';
 const PRIVACY_POLICY_URL = 'https://codewithcj.github.io/SparkyFitness/privacy_policy';
 const DOCUMENTATION_URL = 'https://codewithcj.github.io/SparkyFitness/';
 
-const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
+const AboutScreen: React.FC<AboutScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   const openUrl = (url: string) => {
     Linking.openURL(url).catch(() => {
@@ -28,25 +26,15 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ navigation }) => {
     });
   };
 
+  const header = useScreenHeader({ title: 'About', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {!usesNativeHeader && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">About</Text>
-        </View>
-        )}
 
         <View className="bg-surface rounded-xl p-5 mb-4 items-center shadow-sm">
           <Image source={require('../../assets/images/logo.png')} className="w-20 h-20 mb-4" resizeMode="contain" />

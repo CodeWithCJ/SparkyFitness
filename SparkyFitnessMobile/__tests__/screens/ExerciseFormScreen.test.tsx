@@ -54,6 +54,18 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   };
 });
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  replace: jest.fn(),
+  dispatch: jest.fn(),
+  navigate: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const mockUseCreateExercise = useCreateExercise as jest.MockedFunction<typeof useCreateExercise>;
 const mockUseUpdateExercise = useUpdateExercise as jest.MockedFunction<typeof useUpdateExercise>;
 
@@ -221,13 +233,7 @@ describe('ExerciseFormScreen — buildEditPayload', () => {
 });
 
 describe('ExerciseFormScreen — create mode', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    replace: jest.fn(),
-    dispatch: jest.fn(),
-    navigate: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -264,13 +270,7 @@ describe('ExerciseFormScreen — create mode', () => {
 });
 
 describe('ExerciseFormScreen — edit mode', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    replace: jest.fn(),
-    dispatch: jest.fn(),
-    navigate: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const updateExerciseAsync = jest.fn();
 
@@ -303,7 +303,7 @@ describe('ExerciseFormScreen — edit mode', () => {
       </SafeAreaProvider>,
     );
 
-    pressAction(screen, navigation, 'Save Changes');
+    pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
       expect(navigation.goBack).toHaveBeenCalled();
@@ -332,7 +332,7 @@ describe('ExerciseFormScreen — edit mode', () => {
     const nameInput = screen.getByPlaceholderText('e.g. Bulgarian Split Squat');
     fireEvent.changeText(nameInput, 'Bench Press 2');
 
-    pressAction(screen, navigation, 'Save Changes');
+    pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
       expect(updateExerciseAsync).toHaveBeenCalledWith({

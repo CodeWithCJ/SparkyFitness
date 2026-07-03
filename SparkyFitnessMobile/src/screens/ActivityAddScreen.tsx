@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,11 +19,10 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
@@ -47,7 +46,6 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
     '--color-raised',
   ]) as [string, string, string, string, string];
-  const { backColor, headerTintColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
@@ -105,23 +103,16 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
-  useLayoutEffect(() => {
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      headerBackVisible: false,
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'activity-add-cancel',
-          tintColor: headerTintColor,
-          onPress: () => {
-            void handleCancel();
-          },
-        }),
-      ],
-    });
-  }, [handleCancel, headerTintColor, navigation, usesNativeHeader]);
+  // Footer-save form: Save lives in the always-on sticky footer, so the header
+  // carries only the dismiss — a header Save would double the footer's.
+  const header = useScreenHeader({
+    left: {
+      kind: 'dismiss',
+      onPress: () => void handleCancel(),
+      disabled: isPending,
+      identifier: 'activity-add-cancel',
+    },
+  });
 
   const handleSave = useCallback(async () => {
     if (!submission.exerciseId || !submission.canSave) return;
@@ -159,19 +150,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {/* Header */}
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-3 py-3">
-        <Button
-          variant="ghost"
-          onPress={handleCancel}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="py-0 px-0"
-        >
-          <Icon name="close" size={24} color={backColor} />
-        </Button>
-      </View>
-      )}
+      {header}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"
@@ -354,7 +333,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              Save
+              {SAVE_LABEL}
             </Text>
           )}
         </Button>

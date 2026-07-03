@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -39,7 +38,7 @@ import type {
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   formatVariantLabel,
@@ -649,7 +648,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       '--color-macro-carbs',
       '--color-macro-fat',
     ]) as [string, string, string, string, string];
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -715,92 +713,36 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? `${Math.round(scaled(value))}${unit}`
       : `${Math.round(scaledValue(value, entry))}${unit}`;
 
-  const handleSaveRef = useRef(handleSave);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleSaveRef.current = handleSave;
+  // View mode: back + owner-gated Edit. Edit mode: 'Done' (not 'Save') commits
+  // the changes — the entry stays on screen, so Done reads as "finish editing".
+  const header = useScreenHeader({
+    borderless: true,
+    animateKey: isEditing ? 'edit' : 'view',
+    left: { kind: 'back' },
+    right: canEdit
+      ? isEditing
+        ? {
+            kind: 'primary',
+            label: 'Done',
+            disabled: isUpdatePending || quantity <= 0,
+            onPress: handleSave,
+            accessibilityLabel: 'Save food entry changes',
+            identifier: 'food-entry-view-done',
+          }
+        : {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: () => updateEdit({ isEditing: true }),
+            accessibilityLabel: 'Edit food entry',
+            identifier: 'food-entry-view-edit',
+          }
+      : null,
   });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      headerBackVisible: true,
-      unstable_headerRightItems: canEdit
-        ? () => [
-            createNativeHeaderTextButtonItem({
-              label: isEditing ? 'Done' : 'Edit',
-              identifier: isEditing ? 'food-entry-view-done' : 'food-entry-view-edit',
-              tintColor: isEditing ? headerSaveColor : headerActionColor,
-              accessibilityLabel: isEditing ? 'Save food entry changes' : 'Edit food entry',
-              fontWeight: isEditing ? '600' : '500',
-              disabled: isEditing && (isUpdatePending || quantity <= 0),
-              onPress: () => {
-                if (isEditing) {
-                  handleSaveRef.current();
-                  return;
-                }
-                updateEdit({ isEditing: true });
-              },
-            }),
-          ]
-        : undefined,
-    });
-  }, [
-    navigation,
-    canEdit,
-    isEditing,
-    isUpdatePending,
-    quantity,
-    headerActionColor,
-    headerSaveColor,
-    headerTintColor,
-    updateEdit,
-    usesNativeHeader,
-  ]);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        {canEdit && !isEditing && (
-          <FadeView style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <Button
-              variant="ghost"
-              onPress={() => updateEdit({ isEditing: true })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="text-text-primary font-medium"
-            >
-              Edit
-            </Button>
-          </FadeView>
-        )}
-        {isEditing && (
-          <FadeView style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <Button
-              variant="ghost"
-              onPress={handleSave}
-              disabled={isUpdatePending || quantity <= 0}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              Done
-            </Button>
-          </FadeView>
-        )}
-      </View>
-      )}
+      {header}
 
       <ScrollView
         className="flex-1"

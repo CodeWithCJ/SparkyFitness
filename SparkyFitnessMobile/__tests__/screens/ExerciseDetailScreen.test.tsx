@@ -37,6 +37,17 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setParams: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
@@ -69,12 +80,7 @@ const ownedCustomExercise: Exercise = {
 };
 
 describe('ExerciseDetailScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-    setParams: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const buildRoute = (overrides: Partial<Exercise> = {}) => ({
     key: 'ExerciseDetail-key',

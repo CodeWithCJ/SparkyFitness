@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -7,9 +7,8 @@ import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -25,7 +24,6 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { backColor, headerTintColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const [searchText, setSearchText] = useState('');
@@ -40,21 +38,10 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     navigation.goBack();
   }, [navigation]);
 
-  useLayoutEffect(() => {
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      headerBackVisible: false,
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'preset-search-cancel',
-          tintColor: headerTintColor,
-          onPress: handleCancel,
-        }),
-      ],
-    });
-  }, [handleCancel, headerTintColor, navigation, usesNativeHeader]);
+  const header = useScreenHeader({
+    title: 'Presets',
+    left: { kind: 'dismiss', onPress: handleCancel, identifier: 'preset-search-cancel' },
+  });
 
   const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
     navigation.navigate('WorkoutAdd', { preset, date, popCount: 2 });
@@ -126,23 +113,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {/* Header */}
-      {!usesNativeHeader && (
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <Button
-          variant="ghost"
-          onPress={handleCancel}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10 p-0"
-        >
-          <Icon name="close" size={22} color={backColor} />
-        </Button>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Presets
-        </Text>
-        <View style={{ width: 22 }} />
-      </View>
-      )}
+      {header}
 
       {/* Search bar */}
       <View className="px-4 py-2">

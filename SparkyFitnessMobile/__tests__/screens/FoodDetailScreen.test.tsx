@@ -60,6 +60,17 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   };
 });
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setParams: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockUseDeleteFood = useDeleteFood as jest.MockedFunction<typeof useDeleteFood>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
@@ -70,12 +81,7 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodDetailScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    setParams: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const baseItem = {
     id: 'food-1',

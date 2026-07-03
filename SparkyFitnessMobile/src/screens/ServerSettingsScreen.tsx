@@ -29,24 +29,24 @@ import {
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
 import { serverConfigsQueryKey, serverConnectionQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
 
-const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation }) => {
+const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentPrimary, textSecondary, textLink, success, danger, textPrimary] = useCSSVariable([
+  const [accentPrimary, textSecondary, textLink, success, danger] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
     '--color-text-link',
     '--color-icon-success',
     '--color-bg-danger',
-    '--color-text-primary',
-  ]) as [string, string, string, string, string, string];
+  ]) as [string, string, string, string, string];
 
   const queryClient = useQueryClient();
   const { allConfigs, activeConfig, refetch: refetchServerConfigs } = useServerConfigs();
@@ -206,8 +206,11 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     );
   };
 
+  const header = useScreenHeader({ title: 'Server Settings', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
@@ -215,20 +218,6 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {!usesNativeHeader && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">Server Settings</Text>
-        </View>
-        )}
-
         {activeConfig && (
           <>
             <Text className="text-text-secondary text-xs font-semibold uppercase px-2 mb-2">

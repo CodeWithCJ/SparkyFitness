@@ -19,6 +19,16 @@ const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
 
+const mockNavigation = {
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -54,10 +64,7 @@ function createMeal(id: string, name: string, calories: number) {
 }
 
 describe('MealsLibraryScreen', () => {
-  const navigation = {
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const route = {
     key: 'MealsLibrary-key',

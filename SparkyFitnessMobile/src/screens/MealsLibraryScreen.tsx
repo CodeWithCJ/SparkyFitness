@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import MealLibraryRow from '../components/MealLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useMealSearch, useMeals, useServerConnection } from '../hooks';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
 
@@ -25,11 +25,10 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textMuted, textPrimary] = useCSSVariable([
+  const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
-    '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -69,20 +68,6 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     }
     setRefreshing(false);
   }, [isSearchActive, refetchMeals, refetchSearch]);
-
-  const renderHeader = () => (
-    <View className="flex-row items-center px-4 pt-4 pb-5">
-      <Button
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="py-0 px-0 mr-2"
-      >
-        <Icon name="chevron-back" size={22} color={textPrimary} />
-      </Button>
-      <Text className="text-2xl font-bold text-text-primary">Meals</Text>
-    </View>
-  );
 
   const renderSearchBar = () => (
     <View className="px-4 pb-3">
@@ -178,9 +163,11 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
+  const header = useScreenHeader({ title: 'Meals', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {!usesNativeHeader && renderHeader()}
+      {header}
       {isConnected ? renderSearchBar() : null}
       {renderContent()}
     </View>

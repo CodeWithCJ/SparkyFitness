@@ -44,6 +44,16 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
   };
 });
 
+const mockNavigation = {
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const mockUseDeleteMeal = useDeleteMeal as jest.MockedFunction<typeof useDeleteMeal>;
 const mockUseMeal = useMeal as jest.MockedFunction<typeof useMeal>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
@@ -87,11 +97,7 @@ function buildMeal(overrides: Partial<Meal> = {}): Meal {
 
 describe('MealDetailScreen', () => {
   const meal = buildMeal();
-  const navigation = {
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    setOptions: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
   const route = {
     key: 'MealDetail-key',
     name: 'MealDetail' as const,

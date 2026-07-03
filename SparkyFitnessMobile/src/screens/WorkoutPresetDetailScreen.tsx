@@ -1,13 +1,10 @@
-import React, { useCallback, useLayoutEffect } from 'react';
-import { Alert, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback } from 'react';
+import { Alert, View, Text, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
   useDeleteWorkoutPreset,
@@ -15,7 +12,7 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { weightFromKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -81,10 +78,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [textPrimary] = useCSSVariable([
-    '--color-text-primary',
-  ]) as [string];
-  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { preferences } = usePreferences();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -150,50 +143,24 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     });
   }, [navigation, preset, route.key]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      unstable_headerRightItems: canManagePreset
-        ? () => [
-            createNativeHeaderTextButtonItem({
-              label: 'Edit',
-              identifier: 'workout-preset-detail-edit',
-              tintColor: headerActionColor,
-              accessibilityLabel: 'Edit workout preset',
-              onPress: () => handleEdit(),
-            }),
-          ]
-        : undefined,
-    });
-  }, [navigation, headerTintColor, headerActionColor, canManagePreset, handleEdit, usesNativeHeader]);
+  const header = useScreenHeader({
+    borderless: true,
+    left: { kind: 'back' },
+    right: canManagePreset
+      ? {
+          kind: 'text',
+          label: 'Edit',
+          role: 'secondary',
+          onPress: handleEdit,
+          accessibilityLabel: 'Edit workout preset',
+          identifier: 'workout-preset-detail-edit',
+        }
+      : null,
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        {canManagePreset && (
-          <View className="ml-auto">
-            <Button
-              variant="ghost"
-              onPress={handleEdit}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="text-text-primary font-medium"
-            >
-              Edit
-            </Button>
-          </View>
-        )}
-      </View>
-      )}
+      {header}
 
       <ScrollView
         className="flex-1"

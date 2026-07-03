@@ -56,13 +56,19 @@ const buildRoute = (paramsOverrides: Record<string, unknown> = {}) => ({
   },
 });
 
-const navigation = {
+const mockNavigation = {
   setOptions: jest.fn(),
   goBack: jest.fn(),
   navigate: jest.fn(),
   setParams: jest.fn(),
   dispatch: jest.fn(),
 } as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
+const navigation = mockNavigation;
 
 const renderScreen = (paramsOverrides: Record<string, unknown> = {}) => {
   const queryClient = new QueryClient({

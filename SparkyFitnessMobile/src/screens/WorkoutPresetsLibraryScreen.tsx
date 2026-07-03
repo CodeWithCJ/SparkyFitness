@@ -2,14 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useWorkoutPresetsLibrary } from '../hooks';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -19,11 +18,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textSecondary, textPrimary] = useCSSVariable([
+  const [accentColor, textSecondary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
-    '--color-text-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
 
@@ -45,20 +43,6 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       navigation.navigate('WorkoutPresetDetail', { preset });
     },
     [navigation],
-  );
-
-  const renderHeader = () => (
-    <View className="flex-row items-center px-4 pt-4 pb-5">
-      <Button
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="py-0 px-0 mr-2"
-      >
-        <Icon name="chevron-back" size={22} color={textPrimary} />
-      </Button>
-      <Text className="text-2xl font-bold text-text-primary">Workout presets</Text>
-    </View>
   );
 
   const renderEmpty = () => (
@@ -160,9 +144,11 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     );
   };
 
+  const header = useScreenHeader({ title: 'Workout presets', left: { kind: 'back' } });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {!usesNativeHeader && renderHeader()}
+      {header}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}

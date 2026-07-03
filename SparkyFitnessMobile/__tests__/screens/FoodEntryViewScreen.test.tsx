@@ -12,6 +12,19 @@ import { useDeleteFoodEntry } from '../../src/hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../../src/hooks/useUpdateFoodEntry';
 import { useProfile } from '../../src/hooks/useProfile';
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setParams: jest.fn(),
+  replace: jest.fn(),
+} as any;
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
@@ -156,13 +169,7 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodEntryViewScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    setParams: jest.fn(),
-    replace: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const mockCreateVariant = jest.fn();
   const mockUpdateEntry = jest.fn();

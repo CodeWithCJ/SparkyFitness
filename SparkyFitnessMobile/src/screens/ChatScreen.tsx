@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,6 @@ import {
   type MessageRole,
 } from '@assistant-ui/react-native';
 import { useChatRuntime, AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
-import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
@@ -41,8 +40,7 @@ import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
-import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
@@ -448,7 +446,6 @@ function Centered({ text }: { text: string }) {
 export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
-  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   // The offset depends on which header is on screen. With the native stack
@@ -528,24 +525,24 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
     );
   }, [queryClient]);
 
-  useLayoutEffect(() => {
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      unstable_headerRightItems: baseUrl
-        ? () => [
-            createNativeHeaderIconButtonItem({
-              sfSymbol: 'trash',
-              identifier: 'chat-clear',
-              tintColor: headerActionColor,
-              accessibilityLabel: 'Clear chat',
-              disabled: running,
-              onPress: handleClear,
-            }),
-          ]
-        : undefined,
-    });
-  }, [baseUrl, handleClear, headerActionColor, navigation, running, usesNativeHeader]);
+  // Clear chat is disabled while a stream runs so the server's in-flight
+  // onFinish save can't resurrect the exchange after the DELETE.
+  const header = useScreenHeader({
+    title: 'Sparky',
+    left: { kind: 'back' },
+    right: baseUrl
+      ? {
+          kind: 'icon',
+          sfSymbol: 'trash',
+          ionicon: 'trash-outline',
+          role: 'secondary',
+          disabled: running,
+          onPress: handleClear,
+          accessibilityLabel: 'Clear chat',
+          identifier: 'chat-clear',
+        }
+      : null,
+  });
 
   return (
     <View
@@ -555,33 +552,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         paddingBottom: insets.bottom,
       }}
     >
-      {/* Header */}
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 pb-2 border-b border-border-subtle">
-        <Button
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="py-0 px-0 mr-2"
-        >
-          <Icon name="chevron-back" size={22} color={accent} />
-        </Button>
-        <Text className="text-2xl font-bold text-text-primary">Sparky</Text>
-        {/* Clear chat. Disabled while a stream runs so the server's in-flight
-            onFinish save can't resurrect the exchange after the DELETE. */}
-        {baseUrl ? (
-          <Button
-            variant="ghost"
-            onPress={handleClear}
-            disabled={running}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 ml-auto"
-          >
-            <Icon name="trash" size={20} color={accent} />
-          </Button>
-        ) : null}
-      </View>
-      )}
+      {header}
 
       {/* keyboard-controller's reworked KeyboardAvoidingView supports `padding`
           on both platforms (RN-core's needs `undefined` on Android, but this is

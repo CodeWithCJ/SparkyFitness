@@ -24,6 +24,16 @@ jest.mock('../../src/services/workoutDraftService', () => ({
   clearDraft: jest.fn(),
 }));
 
+const mockNavigation = {
+  setOptions: jest.fn(),
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
 const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
 
@@ -59,11 +69,7 @@ function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
 }
 
 describe('WorkoutPresetDetailScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const renderScreen = (preset: WorkoutPreset) => {
     const route = {

@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,14 +7,13 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
   useProfile,
   useServerConnection,
 } from '../hooks';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -44,7 +43,6 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
-  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const { getImageSource } = useExerciseImageSource();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
@@ -118,59 +116,24 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     });
   };
 
-  const handleEditRef = useRef(handleEdit);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleEditRef.current = handleEdit;
+  const header = useScreenHeader({
+    borderless: true,
+    left: { kind: 'back' },
+    right: canManageExercise
+      ? {
+          kind: 'text',
+          label: 'Edit',
+          role: 'secondary',
+          onPress: handleEdit,
+          accessibilityLabel: 'Edit exercise',
+          identifier: 'exercise-detail-edit',
+        }
+      : null,
   });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-
-    navigation.setOptions({
-      unstable_headerRightItems: canManageExercise
-        ? () => [
-            createNativeHeaderTextButtonItem({
-              label: 'Edit',
-              identifier: 'exercise-detail-edit',
-              tintColor: headerActionColor,
-              accessibilityLabel: 'Edit exercise',
-              onPress: () => handleEditRef.current(),
-            }),
-          ]
-        : undefined,
-    });
-  }, [navigation, canManageExercise, headerActionColor, headerTintColor, usesNativeHeader]);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        {canManageExercise && (
-          <View className="ml-auto">
-            <Button
-              variant="ghost"
-              onPress={handleEdit}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="text-text-primary font-medium"
-            >
-              Edit
-            </Button>
-          </View>
-        )}
-      </View>
-      )}
+      {header}
 
       <ScrollView
         className="flex-1"

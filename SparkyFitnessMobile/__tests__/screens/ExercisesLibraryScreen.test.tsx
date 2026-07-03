@@ -18,6 +18,16 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 const mockUseExercisesLibrary = useExercisesLibrary as jest.MockedFunction<typeof useExercisesLibrary>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
 
+const mockNavigation = {
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -52,10 +62,7 @@ const buildHookReturn = (overrides: Partial<LibraryHookReturn> = {}): LibraryHoo
 });
 
 describe('ExercisesLibraryScreen', () => {
-  const navigation = {
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const route = {
     key: 'ExercisesLibrary-key',

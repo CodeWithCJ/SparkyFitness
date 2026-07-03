@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
@@ -49,8 +48,8 @@ import {
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -511,6 +510,9 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
   // need to be listed as a useEffect dependency.
   const equivalentBaselineRef = useRef<EquivalentUnit[]>([]);
   const isSavingRef = useRef(false);
+  // FoodForm assigns its submit handler here; the native header Save invokes it
+  // (the body submit button is hidden on the native path).
+  const submitRequestRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
@@ -750,63 +752,43 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     });
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
-    useHeaderActionColors();
+  // Library mode saves a food record (a form Save); the diary/meal-builder
+  // modes commit the food to the diary, so keep the "Add Food" verb there.
+  const primaryLabel = isLibraryMode ? SAVE_LABEL : 'Add Food';
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-    const saveLabel = isLibraryMode ? 'Save Food' : 'Save';
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'food-create-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isSubmitting,
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: saveLabel,
-          identifier: 'food-create-save',
-          tintColor: headerSaveColor,
-          onPress: () => { /* submit handled by FoodForm */ },
-          disabled: isSubmitting,
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, isLibraryMode, usesNativeHeader]);
+  const header = useScreenHeader({
+    title: 'New Food',
+    left: {
+      kind: 'dismiss',
+      onPress: () => navigation.goBack(),
+      disabled: isSubmitting,
+      identifier: 'food-create-cancel',
+    },
+    right: {
+      kind: 'primary',
+      label: primaryLabel,
+      busyLabel: SAVING_LABEL,
+      busy: isSubmitting,
+      disabled: isSubmitting,
+      placement: 'native-only',
+      onPress: () => submitRequestRef.current?.(),
+      identifier: 'food-create-save',
+    },
+  });
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {/* Header */}
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={headerActionColor} />
-        </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          New Food
-        </Text>
-      </View>
-      )}
+      {header}
 
       <FoodForm
         onSubmit={(data) => {
           void handleSubmit(data);
         }}
         onServingChange={handleServingChange}
+        submitRequestRef={submitRequestRef}
         isSubmitting={isSubmitting}
         initialValues={initialFood}
-        submitLabel={isLibraryMode ? 'Save Food' : undefined}
+        submitLabel={primaryLabel}
         hideSubmitButton={usesNativeHeader}
         showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
@@ -1374,55 +1356,33 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     navigation.goBack();
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } =
-    useHeaderActionColors();
   const submitRequestRef = useRef<(() => void) | null>(null);
 
-  useLayoutEffect(() => {
-    if (!usesNativeHeader) return;
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'food-adjust-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Update Values',
-          identifier: 'food-adjust-save',
-          tintColor: headerSaveColor,
-          onPress: () => submitRequestRef.current?.(),
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, usesNativeHeader]);
+  const header = useScreenHeader({
+    title: 'Adjust Nutrition',
+    left: {
+      kind: 'dismiss',
+      onPress: () => navigation.goBack(),
+      identifier: 'food-adjust-cancel',
+    },
+    right: {
+      kind: 'primary',
+      label: SAVE_LABEL,
+      placement: 'native-only',
+      onPress: () => submitRequestRef.current?.(),
+      identifier: 'food-adjust-save',
+    },
+  });
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={headerActionColor} />
-        </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Adjust Nutrition
-        </Text>
-      </View>
-      )}
+      {header}
 
       <FoodForm
         onSubmit={handleSubmit}
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
-        submitLabel="Update Values"
+        submitLabel={SAVE_LABEL}
         hideSubmitButton={usesNativeHeader}
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
@@ -1848,59 +1808,39 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
-    useHeaderActionColors();
+  const submitRequestRef = useRef<(() => void) | null>(null);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (!usesNativeHeader) return;
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'food-edit-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isSubmitting,
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Save Changes',
-          identifier: 'food-edit-save',
-          tintColor: headerSaveColor,
-          onPress: () => { /* submit handled by FoodForm */ },
-          disabled: isSubmitting,
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isSubmitting, usesNativeHeader]);
+  const header = useScreenHeader({
+    title: 'Edit Food',
+    left: {
+      kind: 'dismiss',
+      onPress: () => navigation.goBack(),
+      disabled: isSubmitting,
+      identifier: 'food-edit-cancel',
+    },
+    right: {
+      kind: 'primary',
+      label: SAVE_LABEL,
+      busyLabel: SAVING_LABEL,
+      busy: isSubmitting,
+      disabled: isSubmitting,
+      placement: 'native-only',
+      onPress: () => submitRequestRef.current?.(),
+      identifier: 'food-edit-save',
+    },
+  });
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {!usesNativeHeader && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={headerActionColor} />
-        </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Edit Food
-        </Text>
-      </View>
-      )}
+      {header}
 
       <FoodForm
         onSubmit={(data) => {
           void handleSubmit(data);
         }}
+        submitRequestRef={submitRequestRef}
         initialValues={initialValues}
-        submitLabel="Save Changes"
+        submitLabel={SAVE_LABEL}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
         unitSelector={
