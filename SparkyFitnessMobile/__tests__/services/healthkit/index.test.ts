@@ -376,6 +376,9 @@ describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
     const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
     expect(result).toEqual([]);
+    // The availability guard must short-circuit before any statistics query — without
+    // this the mock defaults to [] and the test would pass even if the guard were gone.
+    expect(mockQueryStatisticsCollection).not.toHaveBeenCalled();
   });
 
   test('sums basal + active per day across two collection queries', async () => {

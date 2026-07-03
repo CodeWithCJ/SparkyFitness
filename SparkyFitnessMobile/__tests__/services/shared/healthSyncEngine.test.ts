@@ -3,6 +3,7 @@ import {
   runForegroundSync,
   type HealthReadProvider,
 } from '../../../src/services/shared/healthSyncEngine';
+import { createTransformHealthRecords } from '../../../src/services/shared/dataTransformation';
 import type { HealthMetric } from '../../../src/HealthMetrics';
 import type { SyncWindows } from '../../../src/utils/syncUtils';
 
@@ -101,10 +102,24 @@ describe('collectHealthData', () => {
 
   test('preserves pre-aggregated record types instead of stamping the metric config type', async () => {
     // TotalCaloriesBurned's config type is the legacy 'Active Calories', but its
-    // aggregate reads emit type 'total_calories' — the engine must not rewrite it.
-    const records = [{ date: '2026-07-02', value: 2000, type: 'total_calories' }];
+    // aggregate reads emit type 'total_calories'. Drive the REAL platform transform
+    // through the engine (not the identity stub) so the `rec.type || metric.type`
+    // preservation actually runs: a record with its own type keeps it, while a
+    // type-less pre-aggregated record still falls back to the metric config type.
+    const records = [
+      { date: '2026-07-02', value: 2000, type: 'total_calories' },
+      { date: '2026-07-02', value: 1500 },
+    ];
+    const realTransform = createTransformHealthRecords({
+      source: 'Health Connect',
+      logTag: '[TestService]',
+      valueTransformers: {},
+      directTransformers: {},
+      extractTimezoneMetadata: () => ({}),
+    });
     const provider = fakeProvider({
       readCumulativeByDay: jest.fn().mockResolvedValue({ records }),
+      transform: jest.fn(realTransform),
     });
     const totalCalories = metric({
       recordType: 'TotalCaloriesBurned',
@@ -115,7 +130,8 @@ describe('collectHealthData', () => {
     const outcomes = await collectHealthData(provider, [totalCalories], windows, { timeoutLabelPrefix: 'Test query' });
 
     expect(outcomes[0].data).toEqual([
-      expect.objectContaining({ type: 'total_calories' }),
+      expect.objectContaining({ value: 2000, type: 'total_calories' }),
+      expect.objectContaining({ value: 1500, type: 'Active Calories' }),
     ]);
   });
 
