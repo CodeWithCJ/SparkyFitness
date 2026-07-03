@@ -34,14 +34,18 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
 }));
 
 jest.mock('../../src/HealthMetrics', () => ({
+  // Real derivation logic — the facade's readKind triage depends on it.
+  metricReadKind: jest.requireActual('../../src/HealthMetrics').metricReadKind,
   HEALTH_METRICS: [
-    { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
+    { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step', readKind: 'cumulative-day' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'HeartRateVariabilityRmssd', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV', aggregationStrategy: 'min-max-avg' },
-    { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
-    { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
-    { recordType: 'Distance', stateKey: 'isDistanceSyncEnabled', unit: 'meters', type: 'distance' },
-    { recordType: 'FloorsClimbed', stateKey: 'isFloorsClimbedSyncEnabled', unit: 'count', type: 'floors_climbed' },
+    { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories', readKind: 'cumulative-day' },
+    { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories', readKind: 'cumulative-day' },
+    { recordType: 'Distance', stateKey: 'isDistanceSyncEnabled', unit: 'meters', type: 'distance', readKind: 'cumulative-day' },
+    { recordType: 'FloorsClimbed', stateKey: 'isFloorsClimbedSyncEnabled', unit: 'count', type: 'floors_climbed', readKind: 'cumulative-day' },
+    { recordType: 'BasalMetabolicRate', stateKey: 'isBasalMetabolicRateSyncEnabled', unit: 'kcal', type: 'basal_metabolic_rate', readKind: 'cumulative-day' },
+    { recordType: 'Nutrition', stateKey: 'isNutritionSyncEnabled', unit: 'kcal', type: 'nutrition', rollingLookbackDays: 2 },
   ],
 }));
 
@@ -418,6 +422,51 @@ describe('healthConnectService.ts (Android)', () => {
       expect(result.uploadErrors).toEqual(recordErrors);
       // Upload rejections are not read errors — the cursor logic keys off syncErrors.
       expect(result.syncErrors).toEqual([]);
+    });
+
+    test('BasalMetabolicRate falls back to raw records (no Android aggregation capability)', async () => {
+      // BMR carries readKind 'cumulative-day' (intent), but Android has no basal-energy
+      // aggregation — the provider returns null and the metric must ride the raw path.
+      // HC BMR records carry kcal/day values that must not be treated as day totals.
+      mockReadRecords.mockResolvedValue({
+        records: [{ time: '2024-01-15T08:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1650 } }],
+      });
+
+      await androidService.syncHealthData('today', { isBasalMetabolicRateSyncEnabled: true });
+
+      expect(mockReadRecords).toHaveBeenCalledWith('BasalMetabolicRate', expect.anything());
+      expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
+    });
+
+    describe('nutrition rolling lookback', () => {
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      test('Nutrition reads widen to the 2-day day-aligned lookback while other raw reads keep the session window', async () => {
+        // Regression: Android foreground had no nutrition lookback (iOS foreground and
+        // background both do), so meals logged in Health Connect with yesterday's event
+        // time were silently missed by a 'today' sync.
+        jest.useFakeTimers({ now: new Date(2026, 6, 3, 15, 30, 0) });
+        mockReadRecords.mockResolvedValue({ records: [] });
+
+        await androidService.syncHealthData('today', {
+          isNutritionSyncEnabled: true,
+          isHeartRateSyncEnabled: true,
+        });
+
+        const callFor = (recordType: string) =>
+          mockReadRecords.mock.calls.find((call) => call[0] === recordType);
+
+        // Nutrition: min(today-midnight session start, midnight two days back) = the lookback.
+        expect(callFor('Nutrition')?.[1].timeRangeFilter.startTime)
+          .toBe(new Date(2026, 6, 1, 0, 0, 0, 0).toISOString());
+
+        // HeartRate rides the raw path (Android has no min-max-avg day statistics) and
+        // must keep the unwidened session window.
+        expect(callFor('HeartRate')?.[1].timeRangeFilter.startTime)
+          .toBe(new Date(2026, 6, 3, 0, 0, 0, 0).toISOString());
+      });
     });
 
     test('Distance is aggregated via native aggregateGroupByPeriod', async () => {

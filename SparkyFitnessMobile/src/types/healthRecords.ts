@@ -125,6 +125,16 @@ export interface TransformedExerciseSession extends RecordTimezoneMetadata {
  */
 export type MetricConfig = Pick<HealthMetric, 'recordType' | 'unit' | 'type'>;
 
+/**
+ * Platform-neutral read envelope. Read failures return the error alongside any
+ * partially collected records instead of throwing, so callers can surface the
+ * error (holding the sync cursor) while still syncing what was read.
+ */
+export interface ReadResult<T = unknown> {
+  records: T[];
+  error?: string;
+}
+
 /** Simple transformed record for API */
 export interface TransformedRecord extends RecordTimezoneMetadata {
   value: number;

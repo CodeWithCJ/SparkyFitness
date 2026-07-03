@@ -1,6 +1,7 @@
 import {
   syncHealthData,
   initHealthConnect,
+  enrichExerciseSessions,
 } from '../../src/services/healthConnectService.ios';
 
 import {
@@ -21,12 +22,14 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
 }));
 
 jest.mock('../../src/HealthMetrics', () => ({
+  // Real derivation logic — the facade's readKind triage depends on it.
+  metricReadKind: jest.requireActual('../../src/HealthMetrics').metricReadKind,
   HEALTH_METRICS: [
-    { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
+    { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step', readKind: 'cumulative-day' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'HeartRateVariabilitySDNN', stateKey: 'isHeartRateVariabilitySyncEnabled', unit: 'ms', type: 'HRV_SDNN', aggregationStrategy: 'min-max-avg' },
-    { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
-    { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
+    { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories', readKind: 'cumulative-day' },
+    { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories', readKind: 'cumulative-day' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
   ],
 }));
@@ -72,6 +75,11 @@ describe('syncHealthData (iOS)', () => {
     mockIsHealthDataAvailable.mockResolvedValue(true);
     mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
     await initHealthConnect();
+  });
+
+  test('enrichExerciseSessions is a passthrough (HealthKit enriches inside the read layer)', async () => {
+    const sessions = [{ workoutActivityType: 37 }];
+    await expect(enrichExerciseSessions(sessions)).resolves.toBe(sessions);
   });
 
   test('returns success with no data when no metrics enabled', async () => {
@@ -283,6 +291,43 @@ describe('syncHealthData (iOS)', () => {
     const sentData = api.syncHealthData.mock.calls[0][0];
     const types = sentData.map((r: { type: string }) => r.type);
     expect(types).toContain('heart_rate_min');
+  });
+
+  describe("'24h' day-aligned cumulative windows", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('cumulative reads filter from local midnight while raw reads keep the rolling start', async () => {
+      // Regression: cumulative reads emit per-day totals, so a mid-afternoon '24h' sync
+      // with the raw rolling start produced a partial first day that overwrote yesterday's
+      // full-day server value. Pin the clock mid-afternoon so the rolling start (yesterday
+      // 15:30) is distinguishable from its local midnight.
+      jest.useFakeTimers({ now: new Date(2026, 6, 3, 15, 30, 0) });
+
+      mockQueryStatisticsCollection.mockResolvedValue([sumBucket(5000, 'count')]);
+      mockQueryQuantitySamples.mockResolvedValue([]);
+      api.syncHealthData.mockResolvedValue({ success: true });
+
+      const result = await syncHealthData('24h' as SyncDuration, {
+        isStepsSyncEnabled: true,
+        isRunningSpeedSyncEnabled: true,
+      });
+
+      expect(result.success).toBe(true);
+
+      // Steps (cumulative): the native FILTER start — not just the bucket anchor, which
+      // was already midnight — must be the local midnight of the rolling start.
+      expect(mockQueryStatisticsCollection).toHaveBeenCalledTimes(1);
+      const statsOptions = mockQueryStatisticsCollection.mock.calls[0][4];
+      expect(statsOptions.filter.date.startDate).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
+
+      // RunningSpeed (raw sample fallback — no day-statistics spec) must keep the
+      // requested rolling window untouched.
+      expect(mockQueryQuantitySamples).toHaveBeenCalledTimes(1);
+      const sampleOptions = mockQueryQuantitySamples.mock.calls[0][1];
+      expect(sampleOptions.filter.date.startDate).toEqual(new Date(2026, 6, 2, 15, 30, 0));
+    });
   });
 
   test('locked-device read failures surface as sync errors instead of "synced, 0 records"', async () => {

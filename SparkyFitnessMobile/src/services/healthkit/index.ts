@@ -17,6 +17,7 @@ import {
   PermissionRequest,
   TransformedRecord,
   HEALTHKIT_SOURCE,
+  type ReadResult,
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
@@ -68,13 +69,10 @@ const recordReadError = (error: unknown, label: string): string => {
   return message;
 };
 
-// Read-result envelope mirroring Android's HealthConnectReadResult: callers surface
-// `error` in sync results and hold the sync cursor instead of treating a failed read
-// as "synced, 0 records".
-export interface HealthKitReadResult<T = unknown> {
-  records: T[];
-  error?: string;
-}
+// Read-result envelope: callers surface `error` in sync results and hold the sync
+// cursor instead of treating a failed read as "synced, 0 records". Alias of the
+// platform-neutral ReadResult shared with Android.
+export type HealthKitReadResult<T = unknown> = ReadResult<T>;
 
 // Define all supported HealthKit type identifiers for this app
 const SUPPORTED_HK_TYPES = new Set<string>([
