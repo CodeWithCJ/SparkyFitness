@@ -1,0 +1,112 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import path from 'path';
+import { VitePWA } from 'vite-plugin-pwa';
+import { reactClickToComponent } from 'vite-plugin-react-click-to-component';
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
+  const backendHost = process.env.VITE_BACKEND_HOST || 'localhost';
+  const target = `http://${backendHost}:3010`;
+  return {
+    // react-grid-layout reads process.env["NODE_ENV"] at runtime, but the
+    // browser has no `process`. Shim just the env object so it resolves in both
+    // dev and the production/Docker build (where mode === 'production'). Client
+    // code here uses import.meta.env, so nothing else is affected.
+    define: {
+      'process.env': JSON.stringify({ NODE_ENV: mode }),
+    },
+    server: {
+      host: '::',
+      port: 8080,
+      allowedHosts: true, // Allow all hosts in development to prevent HMR connection failures
+      proxy: {
+        '/health-data': {
+          target: target,
+          changeOrigin: true,
+          rewrite: (path) => `/api${path}`, // Add /api/ prefix
+        },
+        '/api': {
+          target: target,
+          changeOrigin: true,
+        },
+        '/mcp': {
+          target: target,
+          changeOrigin: true,
+        },
+        '/uploads': {
+          target: target,
+          changeOrigin: true,
+        },
+      },
+    },
+    plugins: [
+      tailwindcss(),
+      react(),
+      // Option+Right Click any element in dev to open its source in your editor.
+      // Self-guards to `command === 'serve'`, so it's a no-op in production builds.
+      reactClickToComponent(),
+      // Temporarily disabled for development to debug refresh issue
+      // mode === "production" && VitePWA({...})
+      mode === 'production' &&
+        VitePWA({
+          registerType: 'autoUpdate',
+          manifest: {
+            name: 'SparkyFitness',
+            short_name: 'SparkyFitness',
+            description: 'Your personal fitness companion',
+            theme_color: '#000000',
+            icons: [
+              {
+                src: 'images/icons/icon-192x192.png',
+                sizes: '192x192',
+                type: 'image/png',
+              },
+              {
+                src: 'images/icons/icon-512x512.png',
+                sizes: '512x512',
+                type: 'image/png',
+              },
+            ],
+          },
+          workbox: {
+            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+            navigateFallback: '/index.html',
+            navigateFallbackDenylist: [/^\/api/, /^\/uploads/], // Don't serve index.html for API or Uploads
+          },
+        }),
+    ].filter(Boolean),
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // Large independent packages in their own chunks
+              if (id.includes('recharts')) return 'vendor-recharts';
+              if (id.includes('@radix-ui')) return 'vendor-radix';
+              if (
+                id.includes('@ericblade/quagga2') ||
+                id.includes('html5-qrcode') ||
+                id.includes('@zxing/library')
+              )
+                return 'vendor-scanners';
+              if (id.includes('@dnd-kit')) return 'vendor-dnd';
+              // Everything else (React, utilities, auth ) together to avoid dependency issues
+              // This ensures React loads before anything that depends on it
+              return 'vendor-others';
+            }
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@workspace/shared': path.resolve(__dirname, '../shared'),
+      },
+      dedupe: ['react', 'react-dom'],
+    },
+  };
+});

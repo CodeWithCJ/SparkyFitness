@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "sparkyfitness.fullname" . }}-test-connection"
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: wget
+      image: busybox:1.37
+      imagePullPolicy: IfNotPresent
+      command: ['wget']
+      args:
+        - '--spider'
+        - '--timeout=5'
+        - '{{ include "sparkyfitness.fullname" . }}-frontend:{{ .Values.frontend.service.port | default .Values.frontend.port }}'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]

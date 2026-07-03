@@ -1,0 +1,196 @@
+import React, { useMemo, useEffect } from 'react';
+import { View, Text, Pressable } from 'react-native';
+import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
+import Button from './ui/Button';
+import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
+import { useCSSVariable } from 'uniwind';
+import Icon from './Icon';
+import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+
+interface ContainerOption {
+  id: number;
+  name: string;
+}
+
+interface HydrationGaugeProps {
+  consumed: number; // ml
+  goal: number;     // ml
+  unit?: string;
+  containerVolume?: number; // ml per button press
+  onIncrement?: () => void;
+  onDecrement?: () => void;
+  disableDecrement?: boolean;
+  containers?: ContainerOption[];
+  activeContainerId?: number;
+  onSelectContainer?: (id: number) => void;
+}
+
+function convertFromMl(ml: number, unit: string): number {
+  switch (unit) {
+    case 'oz': return ml / 29.5735;
+    case 'liter': return ml / 1000;
+    default: return ml;
+  }
+}
+
+const CANVAS_WIDTH = 70;
+const CANVAS_HEIGHT = 130;
+
+// Fillable region (bottom of lip to bottom of bottle)
+const FILL_TOP = 28;
+const FILL_BOTTOM = 124;
+const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
+
+const HydrationGauge: React.FC<HydrationGaugeProps> = ({
+  consumed, goal, unit = 'ml', containerVolume,
+  onIncrement, onDecrement, disableDecrement,
+  containers, activeContainerId, onSelectContainer,
+}) => {
+  const hydrationColor = useCSSVariable('--color-hydration') as string;
+  const trackColor = useCSSVariable('--color-progress-track') as string;
+  const outlineColor = useCSSVariable('--color-border-strong') as string;
+
+  const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
+
+  const animatedProgress = useSharedValue(0);
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(progress, {
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [progress, animatedProgress]);
+
+  const bottlePath = useMemo(() => {
+    const b = Skia.PathBuilder.Make();
+
+    // Neck
+    b.moveTo(26, 6);
+    b.lineTo(26, 23);
+
+    // Lip (cap ridge)
+    b.lineTo(23, 23);
+    b.lineTo(23, 28);
+
+    // Left shoulder curve
+    b.cubicTo(23, 34, 12, 37, 12, 42);
+
+    // Left body
+    b.lineTo(12, 112);
+
+    // Bottom curves
+    b.cubicTo(12, 121, 20, 124, 35, 124);
+    b.cubicTo(50, 124, 58, 121, 58, 112);
+
+    // Right body
+    b.lineTo(58, 42);
+
+    // Right shoulder curve
+    b.cubicTo(58, 37, 47, 34, 47, 28);
+
+    // Lip right
+    b.lineTo(47, 23);
+    b.lineTo(44, 23);
+
+    // Right neck
+    b.lineTo(44, 6);
+
+    b.close();
+    return b.build();
+  }, []);
+
+  const fillPath = useDerivedValue(() => {
+    const y = FILL_BOTTOM - FILL_HEIGHT * animatedProgress.value;
+    return Skia.Path.Rect(Skia.XYWHRect(0, y, CANVAS_WIDTH, CANVAS_HEIGHT - y));
+  });
+
+  const convertedConsumed = convertFromMl(consumed, unit);
+  const convertedGoal = convertFromMl(goal, unit);
+  const useDecimals = unit === 'liter' || unit === 'oz';
+  const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
+  const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
+  const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
+
+  const showButtons = !!onIncrement || !!onDecrement;
+  const noContainer = containerVolume == null;
+  const showChips = (containers?.length ?? 0) > 1;
+
+  return (
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+      <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
+      <View className="flex-row items-center">
+        <View className="flex-row items-center mr-4">
+          {showButtons && (
+            <Button
+              variant="ghost"
+              onPress={onDecrement}
+              disabled={disableDecrement || noContainer}
+              className="p-2"
+              style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
+            >
+              <Icon name="remove-circle" size={28} color={hydrationColor} />
+            </Button>
+          )}
+          <Canvas style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
+            {/* Fill clipped to bottle shape */}
+            <Group clip={bottlePath}>
+              <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} color={trackColor} />
+              <Path path={fillPath} color={hydrationColor} />
+            </Group>
+            {/* Bottle outline */}
+            <Path path={bottlePath} style="stroke" strokeWidth={2} color={outlineColor} />
+          </Canvas>
+          {showButtons && (
+            <Button
+              variant="ghost"
+              onPress={onIncrement}
+              disabled={noContainer}
+              className="p-2"
+              style={noContainer ? { opacity: 0.3 } : undefined}
+            >
+              <Icon name="add-circle" size={28} color={hydrationColor} />
+            </Button>
+          )}
+        </View>
+        <View className="flex-1 items-center mr-2">
+          <Text className="text-2xl font-bold text-text-primary">
+            {displayConsumed.toLocaleString()} {unitLabel}
+          </Text>
+          <Text className="text-sm text-text-secondary mt-0.5">
+            of {displayGoal.toLocaleString()} {unitLabel}
+          </Text>
+          {showChips && (
+            <View className="flex-row flex-wrap justify-center mt-2 gap-1">
+              {containers!.map(c => {
+                const active = c.id === activeContainerId;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => onSelectContainer?.(c.id)}
+                    className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
+                  >
+                    <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+      {showButtons && containerVolume != null && !showChips && (
+        <Text className="text-xs text-text-muted text-center mt-2">
+          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+        </Text>
+      )}
+      {showButtons && containerVolume == null && (
+        <Text className="text-xs text-text-muted text-center mt-2">
+          Configure water container on server to{'\n'}enable quick add/remove buttons
+        </Text>
+      )}
+    </View>
+  );
+};
+
+export default HydrationGauge;

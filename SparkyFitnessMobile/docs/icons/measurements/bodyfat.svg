@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke: #030004;
+        stroke-linejoin: round;
+      }
+
+      .cls-1, .cls-2 {
+        fill: none;
+        stroke-linecap: round;
+        stroke-width: 10px;
+      }
+
+      .cls-2 {
+        stroke: #518df1;
+        stroke-miterlimit: 10;
+      }
+    </style>
+  </defs>
+  <g id="bodyfat">
+    <g>
+      <circle class="cls-2" cx="227.11" cy="302.73" r="15.19"/>
+      <circle class="cls-2" cx="285.9" cy="360.9" r="15.19"/>
+      <line class="cls-2" x1="224.1" y1="375.53" x2="289.6" y2="287.67"/>
+    </g>
+  </g>
+  <g id="Layer_9" data-name="Layer 9">
+    <g>
+      <path class="cls-1" d="M345.84,433.86c-17.74-88.15,18.16-173.13,21.55-212.45"/>
+      <path class="cls-1" d="M420.94,240.22c2.06-60.3,2.49-83.55-63.27-104.32-52.27-16.51-63.67-25.61-61.21-56.27"/>
+    </g>
+    <g>
+      <path class="cls-1" d="M167.17,433.86c17.74-88.15-18.16-173.13-21.55-212.45"/>
+      <path class="cls-1" d="M92.06,240.22c-2.06-60.3-2.49-83.55,63.27-104.32,52.27-16.51,63.67-25.61,61.21-56.27"/>
+    </g>
+  </g>
+</svg>

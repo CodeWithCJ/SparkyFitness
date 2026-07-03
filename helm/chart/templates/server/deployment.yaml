@@ -1,0 +1,203 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-server
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  strategy:
+    {{- toYaml .Values.server.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/server/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      {{- if and .Values.global.serviceAccount.create .Values.server.serviceAccount.create }}
+      serviceAccountName: {{ include "sparkyfitness.fullname" . }}-server
+      {{- end }}
+      {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- with .Values.server.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-db
+          {{- /*
+          Image is constructed as repository:tag to exactly match how the
+          HelmForge postgresql subchart references its own image. HelmForge
+          exposes no image helper and does not honour global.imageRegistry,
+          so using sparkyfitness.image here would be inconsistent and could
+          double-apply a registry prefix. Set postgresql.image.repository to
+          the full registry path if mirroring to a private registry.
+          */}}
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ include "sparkyfitness.databaseHost" . }} -p {{ include "sparkyfitness.databasePort" . }}; do echo "Waiting for database..."; sleep 2; done
+          securityContext:
+            runAsUser: {{ .Values.postgresql.podSecurityContext.runAsUser | default 999 }}
+            runAsGroup: {{ .Values.postgresql.podSecurityContext.runAsGroup | default 999 }}
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+        {{- end }}
+        {{- with .Values.server.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: server
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+          {{- with .Values.server.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.server.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "sparkyfitness.configmapName" . }}
+            {{- with .Values.server.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            # --- App secrets ---
+            - name: SPARKY_FITNESS_API_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appSecretName" . }}
+                  key: api_encryption_key
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appSecretName" . }}
+                  key: better_auth_secret
+            # --- App database credentials (limited-privilege user) ---
+            - name: SPARKY_FITNESS_APP_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appDbSecretName" . }}
+                  key: username
+            - name: SPARKY_FITNESS_APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appDbSecretName" . }}
+                  key: password
+            # --- Database credentials (owner) ---
+            - name: SPARKY_FITNESS_DB_USER
+              {{- if .Values.postgresql.enabled }}
+              value: {{ .Values.postgresql.auth.username | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  key: username
+              {{- end }}
+            - name: SPARKY_FITNESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  {{- if .Values.postgresql.enabled }}
+                  key: user-password
+                  {{- else }}
+                  key: password
+                  {{- end }}
+            {{- if .Values.config.oidc.enabled }}
+            # --- OIDC credentials ---
+            - name: SPARKY_FITNESS_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.oidcSecretName" . }}
+                  key: client_id
+            - name: SPARKY_FITNESS_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.oidcSecretName" . }}
+                  key: client_secret
+            {{- end }}
+            {{- if .Values.config.email.enabled }}
+            # --- SMTP credentials ---
+            - name: SPARKY_FITNESS_EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.smtpSecretName" . }}
+                  key: username
+            - name: SPARKY_FITNESS_EMAIL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.smtpSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- range $k, $v := .Values.server.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- with .Values.server.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.server.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: backup
+              mountPath: {{ .Values.server.persistence.backup.mountPath }}
+            - name: uploads
+              mountPath: {{ .Values.server.persistence.uploads.mountPath }}
+            - name: temp-uploads
+              mountPath: {{ .Values.server.persistence.tempUploads.mountPath }}
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.server.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: backup
+          persistentVolumeClaim:
+            claimName: {{ include "sparkyfitness.fullname" . }}-server-backup
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
+        - name: temp-uploads
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.server.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

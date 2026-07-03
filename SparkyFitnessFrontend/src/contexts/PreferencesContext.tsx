@@ -1,0 +1,1296 @@
+import type React from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { debug, info, error } from '@/utils/logging';
+import { format, parseISO, startOfDay } from 'date-fns';
+import {
+  FatBreakdownAlgorithm,
+  MineralCalculationAlgorithm,
+  VitaminCalculationAlgorithm,
+  SugarCalculationAlgorithm,
+} from '@/types/nutrientAlgorithms';
+import { BmrAlgorithm } from '@/services/bmrService';
+import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
+import {
+  preferencesOptions,
+  useUpdatePreferencesMutation,
+} from '@/hooks/Settings/usePreferences';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useCreateWaterContainerMutation,
+  useSetPrimaryWaterContainerMutation,
+} from '@/hooks/Settings/useWaterContainers';
+import { getErrorMessage } from '@/utils/api';
+import { CalorieGoalAdjustmentMode } from '@/utils/calorieCalculations';
+import { GoalMode, GoalModeCalculationMethod } from '@workspace/shared';
+
+import {
+  kgToLbs,
+  lbsToKg,
+  cmToInches,
+  inchesToCm,
+  stonesLbsToKg,
+  feetInchesToCm,
+} from '@/utils/unitConversions';
+import { DayOfWeek } from '@/types/settings';
+import { todayInZone } from '@workspace/shared';
+
+// Function to fetch user preferences from the backend
+
+// Function to upsert user preferences to the backend
+
+export type EnergyUnit = 'kcal' | 'kJ';
+export type ActivityLevel =
+  | 'none'
+  | 'not_much'
+  | 'light'
+  | 'moderate'
+  | 'heavy';
+export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
+export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
+export type DistanceUnit = 'km' | 'miles';
+export type LoggingLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
+export type calorieGoalAdjustmentMode =
+  | 'dynamic'
+  | 'fixed'
+  | 'percentage'
+  | 'tdee'
+  | 'adaptive';
+export type WaterDisplayUnit = 'ml' | 'oz' | 'liter';
+
+// Conversion constant
+const KCAL_TO_KJ = 4.184;
+
+interface NutrientPreference {
+  view_group: string;
+  platform: 'desktop' | 'mobile';
+  visible_nutrients: string[];
+}
+interface PreferencesContextType {
+  weightUnit: WeightUnit;
+  measurementUnit: MeasurementUnit;
+  distanceUnit: DistanceUnit;
+  dateFormat: string;
+  autoClearHistory: string;
+  loggingLevel: LoggingLevel;
+  defaultFoodDataProviderId: string | null;
+  defaultBarcodeProviderId: string | null;
+  barcodeFallbackOpenFoodFacts: boolean;
+  timezone: string;
+  foodDisplayLimit: number;
+  itemDisplayLimit: number;
+  calorieGoalAdjustmentMode: CalorieGoalAdjustmentMode;
+  energyUnit: EnergyUnit;
+  autoScaleOpenFoodFactsImports: boolean;
+  autoScaleOnlineImports: boolean;
+  nutrientDisplayPreferences: NutrientPreference[];
+  water_display_unit: WaterDisplayUnit;
+  addExerciseWaterToGoal: boolean;
+  language: string;
+  bmrAlgorithm: BmrAlgorithm;
+  bodyFatAlgorithm: BodyFatAlgorithm;
+  includeBmrInNetCalories: boolean;
+  showNetCarbs: boolean;
+  aiAssistedConversions: boolean;
+  fatBreakdownAlgorithm: FatBreakdownAlgorithm;
+  mineralCalculationAlgorithm: MineralCalculationAlgorithm;
+  vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
+  sugarCalculationAlgorithm: SugarCalculationAlgorithm;
+  exerciseCaloriePercentage: number;
+  activityLevel: ActivityLevel;
+  tdeeAllowNegativeAdjustment: boolean;
+  selectedDiet: string;
+  firstDayOfWeek: DayOfWeek;
+  measurementDecimalPlaces: number;
+  goalMode: GoalMode;
+  goalModeCalculationMethod: GoalModeCalculationMethod;
+  goalModeCustomPercentage: number;
+  setMeasurementDecimalPlaces: (places: number) => void;
+  setGoalMode: (mode: GoalMode) => void;
+  setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
+  setGoalModeCustomPercentage: (pct: number) => void;
+  setWeightUnit: (unit: WeightUnit) => void;
+  setMeasurementUnit: (unit: MeasurementUnit) => void;
+  setDistanceUnit: (unit: DistanceUnit) => void;
+  setDateFormat: (format: string) => void;
+  setAutoClearHistory: (value: string) => void;
+  setLoggingLevel: (level: LoggingLevel) => void;
+  setDefaultFoodDataProviderId: (id: string | null) => void;
+  setDefaultBarcodeProviderId: (id: string | null) => void;
+  setBarcodeFallbackOpenFoodFacts: (enabled: boolean) => void;
+  setTimezone: (timezone: string) => void;
+  setItemDisplayLimit: (limit: number) => void;
+  setCalorieGoalAdjustmentMode: (mode: CalorieGoalAdjustmentMode) => void;
+  setExerciseCaloriePercentage: (percentage: number) => void;
+  setActivityLevel: (level: ActivityLevel) => void;
+  setTdeeAllowNegativeAdjustment: (allow: boolean) => void;
+  setEnergyUnit: (unit: EnergyUnit) => void;
+  setAutoScaleOpenFoodFactsImports: (enabled: boolean) => void;
+  setAutoScaleOnlineImports: (enabled: boolean) => void;
+  loadNutrientDisplayPreferences: () => Promise<void>;
+  setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
+  setAddExerciseWaterToGoal: (enabled: boolean) => void;
+  setLanguage: (language: string) => void;
+  setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
+  setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
+  setIncludeBmrInNetCalories: (include: boolean) => void;
+  setShowNetCarbs: (show: boolean) => void;
+  setAiAssistedConversions: (enabled: boolean) => void;
+  setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
+  setMineralCalculationAlgorithm: (
+    algorithm: MineralCalculationAlgorithm
+  ) => void;
+  setVitaminCalculationAlgorithm: (
+    algorithm: VitaminCalculationAlgorithm
+  ) => void;
+  setSugarCalculationAlgorithm: (algorithm: SugarCalculationAlgorithm) => void;
+  setSelectedDiet: (diet: string) => void;
+  setFirstDayOfWeek: (day: DayOfWeek) => void;
+  convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
+  convertMeasurement: (
+    value: number,
+    from: MeasurementUnit,
+    to: MeasurementUnit
+  ) => number;
+  convertDistance: (
+    value: number,
+    from: DistanceUnit,
+    to: DistanceUnit
+  ) => number;
+  convertEnergy: (
+    value: number,
+    fromUnit: EnergyUnit,
+    toUnit: EnergyUnit
+  ) => number;
+  getEnergyUnitString: (unit: EnergyUnit) => string;
+  formatDate: (date: string | Date) => string;
+  formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  getDateRelationToToday: (date: string | Date) => string;
+  parseDateInUserTimezone: (dateString: string) => Date;
+  loadPreferences: () => Promise<void>;
+  saveAllPreferences: (
+    newPrefs?: Partial<PreferencesContextType>
+  ) => Promise<void>;
+}
+
+export interface DefaultPreferences {
+  user_id: string;
+  date_format: string;
+  default_weight_unit: WeightUnit;
+  default_measurement_unit: MeasurementUnit;
+  default_distance_unit: DistanceUnit;
+  system_prompt: string;
+  auto_clear_history: string;
+  logging_level: LoggingLevel;
+  timezone: string;
+  item_display_limit: number;
+  food_display_limit: number;
+  water_display_unit: WaterDisplayUnit;
+  add_exercise_water_to_goal: boolean;
+  language: string;
+  calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
+  energy_unit: EnergyUnit;
+  auto_scale_open_food_facts_imports: boolean;
+  auto_scale_online_imports: boolean;
+  selected_diet: string;
+  updated_at?: string;
+  default_food_data_provider_id: string | null;
+  default_barcode_provider_id: string | null;
+  barcode_fallback_open_food_facts: boolean;
+  exercise_calorie_percentage: number;
+  activity_level: ActivityLevel;
+  tdee_allow_negative_adjustment: boolean;
+  bmr_algorithm: BmrAlgorithm;
+  body_fat_algorithm: BodyFatAlgorithm;
+  include_bmr_in_net_calories: boolean;
+  show_net_carbs: boolean;
+  ai_assisted_conversions: boolean;
+  fat_breakdown_algorithm: FatBreakdownAlgorithm;
+  mineral_calculation_algorithm: MineralCalculationAlgorithm;
+  vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
+  sugar_calculation_algorithm: SugarCalculationAlgorithm;
+  first_day_of_week: number;
+  measurement_decimal_places: number;
+  goal_mode: GoalMode;
+  goal_mode_calculation_method: GoalModeCalculationMethod;
+  goal_mode_custom_percentage: number;
+}
+
+const PreferencesContext = createContext<PreferencesContextType | undefined>(
+  undefined
+);
+
+export const usePreferences = () => {
+  const context = useContext(PreferencesContext);
+  if (!context) {
+    throw new Error('usePreferences must be used within a PreferencesProvider');
+  }
+  return context;
+};
+
+export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const { mutateAsync: upsertUserPreferences } = useUpdatePreferencesMutation();
+
+  const { mutateAsync: createWaterContainer } =
+    useCreateWaterContainerMutation();
+  const { mutateAsync: setPrimaryWaterContainer } =
+    useSetPrimaryWaterContainerMutation();
+  const [weightUnit, setWeightUnitState] = useState<WeightUnit>('kg');
+  const [measurementUnit, setMeasurementUnitState] =
+    useState<MeasurementUnit>('cm');
+  const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km');
+  const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
+  const [autoClearHistory, setAutoClearHistoryState] =
+    useState<string>('never');
+  const [loggingLevel, setLoggingLevelState] = useState<
+    'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'
+  >('ERROR');
+  const [defaultFoodDataProviderId, setDefaultFoodDataProviderIdState] =
+    useState<string | null>(null);
+  const [defaultBarcodeProviderId, setDefaultBarcodeProviderIdState] = useState<
+    string | null
+  >(null);
+  const [barcodeFallbackOpenFoodFacts, setBarcodeFallbackOpenFoodFactsState] =
+    useState<boolean>(false);
+  const [timezone, setTimezoneState] = useState<string>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+  const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
+  const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
+  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
+    useState<'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'>(
+      'dynamic'
+    );
+  const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
+    useState<number>(100);
+  const [activityLevel, setActivityLevelState] =
+    useState<ActivityLevel>('not_much');
+  const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustmentState] =
+    useState<boolean>(false);
+  const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal');
+  const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] =
+    useState<boolean>(false);
+  const [autoScaleOnlineImports, setAutoScaleOnlineImportsState] =
+    useState<boolean>(true);
+  const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<
+    NutrientPreference[]
+  >([]);
+  const [waterDisplayUnit, setWaterDisplayUnitState] = useState<
+    'ml' | 'oz' | 'liter'
+  >('ml');
+  const [language, setLanguageState] = useState<string>('en');
+  const [bmrAlgorithm, setBmrAlgorithmState] = useState<BmrAlgorithm>(
+    BmrAlgorithm.MIFFLIN_ST_JEOR
+  );
+  const [bodyFatAlgorithm, setBodyFatAlgorithmState] =
+    useState<BodyFatAlgorithm>(BodyFatAlgorithm.US_NAVY);
+  const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] =
+    useState<boolean>(false);
+  const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
+  const [addExerciseWaterToGoal, setAddExerciseWaterToGoalState] =
+    useState<boolean>(false);
+  // AI-Assisted Unit Conversions: per-user toggle for the diary/food-form AI
+  // estimate path. Default true matches the server migration (DEFAULT TRUE).
+  const [aiAssistedConversions, setAiAssistedConversionsState] =
+    useState<boolean>(true);
+  const [fatBreakdownAlgorithm, setFatBreakdownAlgorithmState] =
+    useState<FatBreakdownAlgorithm>(FatBreakdownAlgorithm.AHA_GUIDELINES);
+  const [mineralCalculationAlgorithm, setMineralCalculationAlgorithmState] =
+    useState<MineralCalculationAlgorithm>(
+      MineralCalculationAlgorithm.RDA_STANDARD
+    );
+  const [vitaminCalculationAlgorithm, setVitaminCalculationAlgorithmState] =
+    useState<VitaminCalculationAlgorithm>(
+      VitaminCalculationAlgorithm.RDA_STANDARD
+    );
+  const [sugarCalculationAlgorithm, setSugarCalculationAlgorithmState] =
+    useState<SugarCalculationAlgorithm>(
+      SugarCalculationAlgorithm.WHO_GUIDELINES
+    );
+  const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
+  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
+  const [measurementDecimalPlaces, setMeasurementDecimalPlacesState] =
+    useState<number>(0);
+  const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
+  const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
+    useState<GoalModeCalculationMethod>('manual');
+  const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
+    useState<number>(0);
+
+  const fetchUserPreferences = useCallback(async () => {
+    try {
+      const data = await queryClient.fetchQuery(preferencesOptions.user());
+      return data;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      if (message && message.includes('404')) {
+        return null;
+      }
+      console.error('Error fetching user preferences:', err);
+      throw err;
+    }
+  }, [queryClient]);
+  // --- Utilities ---
+
+  const convertWeight = useCallback(
+    (
+      value: number | string | null | undefined,
+      from: WeightUnit,
+      to: WeightUnit
+    ) => {
+      const numValue =
+        typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+      if (isNaN(numValue) || from === to) return numValue;
+
+      // Convert from source unit to kg first
+      let kgValue = numValue;
+      if (from === 'lbs') kgValue = lbsToKg(numValue);
+      else if (from === 'st_lbs') kgValue = stonesLbsToKg(numValue, 0); // Simplified for single-value conversion
+
+      // Convert from kg to target unit
+      if (to === 'lbs') return kgToLbs(kgValue);
+      if (to === 'st_lbs') return kgToLbs(kgValue) / 14; // Returns decimal stones
+
+      return kgValue;
+    },
+    []
+  );
+
+  const convertMeasurement = useCallback(
+    (
+      value: number | string | null | undefined,
+      from: MeasurementUnit,
+      to: MeasurementUnit
+    ) => {
+      const numValue =
+        typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+      if (isNaN(numValue) || from === to) return numValue;
+
+      // Convert from source unit to cm first
+      let cmValue = numValue;
+      if (from === 'inches') cmValue = inchesToCm(numValue);
+      else if (from === 'ft_in') cmValue = feetInchesToCm(numValue, 0);
+
+      // Convert from cm to target unit
+      if (to === 'inches') return cmToInches(cmValue);
+      if (to === 'ft_in') return cmToInches(cmValue) / 12; // Returns decimal feet
+
+      return cmValue;
+    },
+    []
+  );
+
+  const convertDistance = useCallback(
+    (
+      value: number | string | null | undefined,
+      from: 'km' | 'miles',
+      to: 'km' | 'miles'
+    ) => {
+      const numValue =
+        typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+      if (isNaN(numValue) || from === to) return numValue;
+      return from === 'km' ? numValue * 0.621371 : numValue / 0.621371;
+    },
+    []
+  );
+
+  const convertEnergy = useCallback(
+    (
+      value: number | string | null | undefined,
+      fromUnit: EnergyUnit,
+      toUnit: EnergyUnit
+    ) => {
+      const numValue =
+        typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
+      if (isNaN(numValue) || fromUnit === toUnit) return numValue;
+      return fromUnit === 'kcal'
+        ? numValue * KCAL_TO_KJ
+        : numValue / KCAL_TO_KJ;
+    },
+    []
+  );
+
+  const getEnergyUnitString = useCallback((unit: EnergyUnit) => unit, []);
+
+  // --- Date Utilities ---
+
+  // Project a UTC instant into the user's preferred timezone, returning a
+  // local Date whose year/month/day/h/m/s match the wall clock in that zone.
+  // This lets date-fns format() produce output in the user's timezone.
+  const toUserTimezone = useCallback(
+    (date: Date): Date => {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+
+      const get = (type: Intl.DateTimeFormatPartTypes) =>
+        parseInt(parts.find((p) => p.type === type)?.value ?? '0');
+
+      const hour = get('hour');
+      return new Date(
+        get('year'),
+        get('month') - 1,
+        get('day'),
+        hour === 24 ? 0 : hour,
+        get('minute'),
+        get('second')
+      );
+    },
+    [timezone]
+  );
+
+  const isLiteralDateString = (s: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(s) ||
+    s.includes('T00:00:00') ||
+    (s.endsWith('Z') && s.includes('T00:00'));
+
+  const parseLiteralDate = (s: string): Date | null => {
+    const datePart = s.split('T')[0];
+    if (datePart) {
+      const [year, month, day] = datePart.split('-').map(Number);
+      if (year && month && day) {
+        return new Date(year, month - 1, day);
+      }
+    }
+    return null;
+  };
+
+  const isLocalCalendarDate = (date: Date) =>
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getMilliseconds() === 0;
+
+  const formatDateInUserTimezone = useCallback(
+    (date: string | Date, formatStr?: string) => {
+      let dateToFormat: Date;
+
+      if (typeof date === 'string') {
+        if (isLiteralDateString(date)) {
+          // Literal date string — treat as a calendar date, no TZ projection
+          dateToFormat = parseLiteralDate(date) ?? new Date();
+        } else {
+          // Full datetime — parse then project into user timezone
+          dateToFormat = toUserTimezone(parseISO(date));
+        }
+      } else if (isLocalCalendarDate(date)) {
+        // Calendar widgets hand us local-midnight Dates that represent a
+        // literal day selection, not an instant that should be shifted.
+        dateToFormat = date;
+      } else {
+        // Date object — project into user timezone
+        dateToFormat = toUserTimezone(date);
+      }
+
+      if (isNaN(dateToFormat.getTime())) {
+        error(
+          loggingLevel,
+          `PreferencesProvider: Invalid date value provided for formatting:`,
+          date
+        );
+        return '';
+      }
+
+      const formatString = formatStr || 'yyyy-MM-dd';
+      return format(dateToFormat, formatString);
+    },
+    [loggingLevel, toUserTimezone]
+  );
+
+  const formatDate = useCallback(
+    (date: string | Date) => {
+      return formatDateInUserTimezone(date, dateFormat);
+    },
+    [formatDateInUserTimezone, dateFormat]
+  );
+
+  /**
+   * Returns whether the given date is in the past, today, or in the future.
+   *
+   * @param date - A date string or Date to compare with today.
+   * @returns "past", "today", or "future".
+   */
+  const getDateRelationToToday = useCallback(
+    (date: string | Date) => {
+      const dateToCompare = formatDateInUserTimezone(date, 'yyyy-MM-dd');
+      const todayDate = todayInZone(timezone);
+
+      if (!dateToCompare || dateToCompare === todayDate) {
+        return 'today';
+      }
+
+      return dateToCompare < todayDate ? 'past' : 'future';
+    },
+    [formatDateInUserTimezone, timezone]
+  );
+
+  const parseDateInUserTimezone = useCallback(
+    (dateString: string): Date => {
+      debug(
+        loggingLevel,
+        `PreferencesProvider: Parsing date string "${dateString}".`
+      );
+
+      // Literal date strings — treat as calendar dates, no TZ projection
+      if (isLiteralDateString(dateString)) {
+        const literal = parseLiteralDate(dateString);
+        if (literal) return literal;
+      }
+
+      // Full datetime — project into user timezone, then start of day
+      const projected = toUserTimezone(parseISO(dateString));
+      return startOfDay(projected);
+    },
+    [loggingLevel, toUserTimezone]
+  );
+
+  // --- Creation and Loading ---
+
+  const createDefaultPreferences = useCallback(async () => {
+    if (!user) return;
+    try {
+      const defaultPrefs: Partial<DefaultPreferences> = {
+        user_id: user.id,
+        date_format: 'MM/dd/yyyy',
+        default_weight_unit: 'kg',
+        default_measurement_unit: 'cm',
+        default_distance_unit: 'km',
+        system_prompt:
+          'You are Sparky, a helpful AI assistant for health and fitness tracking.',
+        auto_clear_history: 'never',
+        logging_level: 'ERROR' as const,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        item_display_limit: 10,
+        food_display_limit: 10,
+        water_display_unit: waterDisplayUnit,
+        language: 'en',
+        calorie_goal_adjustment_mode: 'dynamic' as const,
+        energy_unit: 'kcal' as const,
+        auto_scale_open_food_facts_imports: false,
+        auto_scale_online_imports: true,
+        selected_diet: 'balanced',
+        first_day_of_week: 0,
+        show_net_carbs: false,
+        ai_assisted_conversions: true,
+      };
+      await upsertUserPreferences(defaultPrefs);
+    } catch (err) {
+      error(
+        loggingLevel,
+        'PreferencesContext: Unexpected error creating default preferences:',
+        err
+      );
+    }
+  }, [user, loggingLevel, waterDisplayUnit, upsertUserPreferences]);
+
+  const createDefaultWaterContainer = useCallback(async () => {
+    if (!user) return;
+    try {
+      const defaultContainer = {
+        name: 'My Glass',
+        volume: 240,
+        unit: 'ml' as const,
+        is_primary: true,
+        servings_per_container: 1,
+      };
+      const createdContainer = await createWaterContainer(defaultContainer);
+      if (createdContainer?.id) {
+        await setPrimaryWaterContainer(createdContainer.id);
+      }
+    } catch (err) {
+      error(
+        loggingLevel,
+        'PreferencesContext: Error creating default water container:',
+        err
+      );
+    }
+  }, [user, loggingLevel, createWaterContainer, setPrimaryWaterContainer]);
+
+  const loadPreferences = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await fetchUserPreferences();
+      if (data) {
+        setWeightUnitState(data.default_weight_unit);
+        setMeasurementUnitState(data.default_measurement_unit);
+        setDistanceUnitState(data.default_distance_unit);
+        setDateFormatState(
+          data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
+        );
+        setAutoClearHistoryState(data.auto_clear_history || 'never');
+        setLoggingLevelState(data.logging_level || 'INFO');
+        setDefaultFoodDataProviderIdState(
+          data.default_food_data_provider_id || null
+        );
+        setDefaultBarcodeProviderIdState(
+          data.default_barcode_provider_id || null
+        );
+        setBarcodeFallbackOpenFoodFactsState(
+          data.barcode_fallback_open_food_facts ?? false
+        );
+        setTimezoneState(
+          data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+        );
+        setItemDisplayLimitState(data.item_display_limit || 10);
+        setFoodDisplayLimitState(data.food_display_limit || 10);
+        setWaterDisplayUnitState(data.water_display_unit || 'ml');
+        setLanguageState(data.language || 'en');
+        setCalorieGoalAdjustmentModeState(
+          data.calorie_goal_adjustment_mode || 'dynamic'
+        );
+        setExerciseCaloriePercentageState(
+          data.exercise_calorie_percentage ?? 100
+        );
+        setActivityLevelState(
+          (data.activity_level as ActivityLevel) || 'not_much'
+        );
+        setTdeeAllowNegativeAdjustmentState(
+          data.tdee_allow_negative_adjustment ?? false
+        );
+        setEnergyUnitState(data.energy_unit || 'kcal');
+        setAutoScaleOpenFoodFactsImportsState(
+          data.auto_scale_open_food_facts_imports ?? false
+        );
+        setAutoScaleOnlineImportsState(data.auto_scale_online_imports ?? true);
+        setBmrAlgorithmState(
+          data.bmr_algorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
+        );
+        setBodyFatAlgorithmState(
+          data.body_fat_algorithm || BodyFatAlgorithm.US_NAVY
+        );
+        setIncludeBmrInNetCaloriesState(
+          data.include_bmr_in_net_calories ?? false
+        );
+        setShowNetCarbsState(data.show_net_carbs ?? false);
+        setAddExerciseWaterToGoalState(
+          data.add_exercise_water_to_goal ?? false
+        );
+        setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
+        setFatBreakdownAlgorithmState(
+          data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
+        );
+        setMineralCalculationAlgorithmState(
+          data.mineral_calculation_algorithm ||
+            MineralCalculationAlgorithm.RDA_STANDARD
+        );
+        setVitaminCalculationAlgorithmState(
+          data.vitamin_calculation_algorithm ||
+            VitaminCalculationAlgorithm.RDA_STANDARD
+        );
+        setSugarCalculationAlgorithmState(
+          data.sugar_calculation_algorithm ||
+            SugarCalculationAlgorithm.WHO_GUIDELINES
+        );
+        setSelectedDietState(data.selected_diet || 'balanced');
+        setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+        setMeasurementDecimalPlacesState(data.measurement_decimal_places ?? 0);
+        setGoalModeState(data.goal_mode || 'maintain');
+        setGoalModeCalculationMethodState(
+          data.goal_mode_calculation_method || 'manual'
+        );
+        setGoalModeCustomPercentageState(data.goal_mode_custom_percentage ?? 0);
+      } else {
+        await createDefaultPreferences();
+        await createDefaultWaterContainer();
+      }
+    } catch (err) {
+      error(
+        loggingLevel,
+        'PreferencesContext: Unexpected error in loadPreferences:',
+        err
+      );
+    }
+  }, [
+    user,
+    loggingLevel,
+    createDefaultPreferences,
+    createDefaultWaterContainer,
+    fetchUserPreferences,
+  ]);
+
+  const loadNutrientDisplayPreferences = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await queryClient.fetchQuery(preferencesOptions.nutrients());
+      setNutrientDisplayPreferences(data);
+    } catch (err: unknown) {
+      console.error('Error fetching nutrient display preferences:', err);
+    }
+  }, [user, queryClient]);
+
+  // --- Persistence and Updates ---
+
+  const updatePreferences = useCallback(
+    async (updates: Partial<DefaultPreferences>) => {
+      debug(
+        loggingLevel,
+        'PreferencesProvider: Attempting to update preferences with:',
+        updates
+      );
+      if (!user) {
+        if (updates.default_weight_unit)
+          localStorage.setItem('weightUnit', updates.default_weight_unit);
+        if (updates.default_measurement_unit)
+          localStorage.setItem(
+            'measurementUnit',
+            updates.default_measurement_unit
+          );
+        if (updates.default_distance_unit)
+          localStorage.setItem('distanceUnit', updates.default_distance_unit);
+        if (updates.date_format)
+          localStorage.setItem('dateFormat', updates.date_format);
+        if (updates.language)
+          localStorage.setItem('language', updates.language);
+        if (updates.calorie_goal_adjustment_mode)
+          localStorage.setItem(
+            'calorieGoalAdjustmentMode',
+            updates.calorie_goal_adjustment_mode
+          );
+        if (updates.energy_unit)
+          localStorage.setItem('energyUnit', updates.energy_unit);
+        if (updates.auto_scale_open_food_facts_imports !== undefined) {
+          localStorage.setItem(
+            'autoScaleOpenFoodFactsImports',
+            String(updates.auto_scale_open_food_facts_imports)
+          );
+        }
+        if (updates.auto_scale_online_imports !== undefined) {
+          localStorage.setItem(
+            'autoScaleOnlineImports',
+            String(updates.auto_scale_online_imports)
+          );
+        }
+        return;
+      }
+
+      try {
+        const updateData: Partial<DefaultPreferences> = {
+          user_id: user.id,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+        await upsertUserPreferences(updateData);
+        info(
+          loggingLevel,
+          'PreferencesContext: Preferences updated successfully.'
+        );
+      } catch (err) {
+        error(
+          loggingLevel,
+          'PreferencesContext: Unexpected error updating preferences:',
+          err
+        );
+        throw err;
+      }
+    },
+    [user, loggingLevel, upsertUserPreferences]
+  );
+
+  const saveAllPreferences = useCallback(
+    async (newPrefs?: Partial<PreferencesContextType>) => {
+      info(
+        loggingLevel,
+        'PreferencesProvider: Saving all preferences to backend.'
+      );
+
+      const prefsToSave = {
+        default_weight_unit: newPrefs?.weightUnit ?? weightUnit,
+        default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
+        default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
+        date_format: newPrefs?.dateFormat ?? dateFormat,
+        auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
+        logging_level: newPrefs?.loggingLevel ?? loggingLevel,
+        default_food_data_provider_id:
+          newPrefs?.defaultFoodDataProviderId !== undefined
+            ? newPrefs.defaultFoodDataProviderId
+            : defaultFoodDataProviderId,
+        default_barcode_provider_id:
+          newPrefs?.defaultBarcodeProviderId !== undefined
+            ? newPrefs.defaultBarcodeProviderId
+            : defaultBarcodeProviderId,
+        barcode_fallback_open_food_facts:
+          newPrefs?.barcodeFallbackOpenFoodFacts ??
+          barcodeFallbackOpenFoodFacts,
+        timezone: newPrefs?.timezone ?? timezone,
+        item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
+        food_display_limit: foodDisplayLimit,
+        water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
+        language: newPrefs?.language ?? language,
+        calorie_goal_adjustment_mode:
+          newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
+        exercise_calorie_percentage:
+          newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
+        activity_level: newPrefs?.activityLevel ?? activityLevel,
+        tdee_allow_negative_adjustment:
+          newPrefs?.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
+        energy_unit: newPrefs?.energyUnit ?? energyUnit,
+        auto_scale_open_food_facts_imports:
+          newPrefs?.autoScaleOpenFoodFactsImports ??
+          autoScaleOpenFoodFactsImports,
+        auto_scale_online_imports:
+          newPrefs?.autoScaleOnlineImports ?? autoScaleOnlineImports,
+        bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
+        body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
+        include_bmr_in_net_calories:
+          newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
+        show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
+        add_exercise_water_to_goal:
+          newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
+        ai_assisted_conversions:
+          newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
+        fat_breakdown_algorithm:
+          newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
+        mineral_calculation_algorithm:
+          newPrefs?.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
+        vitamin_calculation_algorithm:
+          newPrefs?.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
+        sugar_calculation_algorithm:
+          newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
+        selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
+        first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
+        measurement_decimal_places:
+          newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
+        goal_mode: newPrefs?.goalMode ?? goalMode,
+        goal_mode_calculation_method:
+          newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
+        goal_mode_custom_percentage:
+          newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
+      };
+
+      try {
+        await updatePreferences(prefsToSave);
+        await loadPreferences(); // Refresh local state from the newly saved data
+        info(
+          loggingLevel,
+          'PreferencesProvider: All preferences saved successfully.'
+        );
+      } catch (err) {
+        error(
+          loggingLevel,
+          'PreferencesContext: Error saving all preferences:',
+          err
+        );
+        throw err;
+      }
+    },
+    [
+      loggingLevel,
+      weightUnit,
+      measurementUnit,
+      distanceUnit,
+      dateFormat,
+      autoClearHistory,
+      defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
+      timezone,
+      itemDisplayLimit,
+      foodDisplayLimit,
+      waterDisplayUnit,
+      addExerciseWaterToGoal,
+      language,
+      calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
+      energyUnit,
+      autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
+      bmrAlgorithm,
+      bodyFatAlgorithm,
+      includeBmrInNetCalories,
+      showNetCarbs,
+      aiAssistedConversions,
+      fatBreakdownAlgorithm,
+      mineralCalculationAlgorithm,
+      vitaminCalculationAlgorithm,
+      sugarCalculationAlgorithm,
+      selectedDiet,
+      firstDayOfWeek,
+      measurementDecimalPlaces,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
+      updatePreferences,
+      loadPreferences,
+    ]
+  );
+
+  // --- Setters ---
+
+  const setWeightUnit = useCallback((unit: WeightUnit) => {
+    setWeightUnitState(unit);
+  }, []);
+
+  const setMeasurementUnit = useCallback((unit: MeasurementUnit) => {
+    setMeasurementUnitState(unit);
+  }, []);
+
+  const setDistanceUnit = useCallback((unit: 'km' | 'miles') => {
+    setDistanceUnitState(unit);
+  }, []);
+
+  const setDateFormat = useCallback((formatStr: string) => {
+    setDateFormatState(formatStr.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy'));
+  }, []);
+
+  const setAutoClearHistory = useCallback((value: string) => {
+    setAutoClearHistoryState(value);
+  }, []);
+
+  const setLoggingLevel = useCallback(
+    (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT') => {
+      setLoggingLevelState(level);
+    },
+    []
+  );
+
+  const setCalorieGoalAdjustmentMode = useCallback(
+    (mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive') => {
+      setCalorieGoalAdjustmentModeState(mode);
+      saveAllPreferences({ calorieGoalAdjustmentMode: mode });
+    },
+    [saveAllPreferences]
+  );
+
+  const setExerciseCaloriePercentage = useCallback((percentage: number) => {
+    setExerciseCaloriePercentageState(percentage);
+  }, []);
+
+  const setActivityLevel = useCallback(
+    (level: ActivityLevel) => {
+      setActivityLevelState(level);
+      saveAllPreferences({ activityLevel: level });
+    },
+    [saveAllPreferences]
+  );
+
+  const setTdeeAllowNegativeAdjustment = useCallback(
+    (allow: boolean) => {
+      setTdeeAllowNegativeAdjustmentState(allow);
+      saveAllPreferences({ tdeeAllowNegativeAdjustment: allow });
+    },
+    [saveAllPreferences]
+  );
+
+  const setDefaultFoodDataProviderId = useCallback((id: string | null) => {
+    setDefaultFoodDataProviderIdState(id);
+  }, []);
+
+  const setDefaultBarcodeProviderId = useCallback((id: string | null) => {
+    setDefaultBarcodeProviderIdState(id);
+  }, []);
+
+  const setBarcodeFallbackOpenFoodFacts = useCallback(
+    (enabled: boolean) => {
+      setBarcodeFallbackOpenFoodFactsState(enabled);
+      saveAllPreferences({ barcodeFallbackOpenFoodFacts: enabled });
+    },
+    [saveAllPreferences]
+  );
+
+  const setTimezone = useCallback((newTimezone: string) => {
+    setTimezoneState(newTimezone);
+  }, []);
+
+  const setItemDisplayLimit = useCallback((limit: number) => {
+    setItemDisplayLimitState(limit);
+  }, []);
+
+  const setEnergyUnit = useCallback(
+    (unit: EnergyUnit) => {
+      setEnergyUnitState(unit);
+      saveAllPreferences({ energyUnit: unit });
+    },
+    [saveAllPreferences]
+  );
+
+  const setAutoScaleOpenFoodFactsImports = useCallback(
+    (enabled: boolean) => {
+      setAutoScaleOpenFoodFactsImportsState(enabled);
+      saveAllPreferences({ autoScaleOpenFoodFactsImports: enabled });
+    },
+    [saveAllPreferences]
+  );
+
+  const setAutoScaleOnlineImports = useCallback(
+    (enabled: boolean) => {
+      setAutoScaleOnlineImportsState(enabled);
+      saveAllPreferences({ autoScaleOnlineImports: enabled });
+    },
+    [saveAllPreferences]
+  );
+
+  const setGoalMode = useCallback(
+    (mode: GoalMode) => {
+      setGoalModeState(mode);
+      saveAllPreferences({ goalMode: mode });
+    },
+    [saveAllPreferences]
+  );
+
+  const setGoalModeCalculationMethod = useCallback(
+    (method: GoalModeCalculationMethod) => {
+      setGoalModeCalculationMethodState(method);
+      saveAllPreferences({ goalModeCalculationMethod: method });
+    },
+    [saveAllPreferences]
+  );
+
+  const setGoalModeCustomPercentage = useCallback(
+    (pct: number) => {
+      setGoalModeCustomPercentageState(pct);
+      saveAllPreferences({ goalModeCustomPercentage: pct });
+    },
+    [saveAllPreferences]
+  );
+
+  // --- Effects ---
+
+  useEffect(() => {
+    info(
+      loggingLevel,
+      'PreferencesProvider: Initializing PreferencesProvider.'
+    );
+  }, [loggingLevel]);
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        loadPreferences();
+        loadNutrientDisplayPreferences();
+      } else {
+        const savedWeightUnit = localStorage.getItem(
+          'weightUnit'
+        ) as WeightUnit;
+        const savedMeasurementUnit = localStorage.getItem(
+          'measurementUnit'
+        ) as MeasurementUnit;
+        const savedDistanceUnit = localStorage.getItem('distanceUnit') as
+          | 'km'
+          | 'miles';
+        const savedDateFormat = localStorage.getItem('dateFormat');
+        const savedLanguage = localStorage.getItem('language');
+        const savedCalorieGoalAdjustmentMode = localStorage.getItem(
+          'calorieGoalAdjustmentMode'
+        ) as 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive';
+        const savedEnergyUnit = localStorage.getItem(
+          'energyUnit'
+        ) as EnergyUnit;
+        const savedAutoScaleOpenFoodFactsImports = localStorage.getItem(
+          'autoScaleOpenFoodFactsImports'
+        );
+
+        if (savedWeightUnit) setWeightUnitState(savedWeightUnit);
+        if (savedMeasurementUnit) setMeasurementUnitState(savedMeasurementUnit);
+        if (savedDateFormat) setDateFormatState(savedDateFormat);
+        if (savedDistanceUnit) setDistanceUnitState(savedDistanceUnit);
+        if (savedLanguage) setLanguageState(savedLanguage);
+        if (savedCalorieGoalAdjustmentMode)
+          setCalorieGoalAdjustmentModeState(savedCalorieGoalAdjustmentMode);
+        if (savedEnergyUnit) setEnergyUnitState(savedEnergyUnit);
+        if (savedAutoScaleOpenFoodFactsImports !== null)
+          setAutoScaleOpenFoodFactsImportsState(
+            savedAutoScaleOpenFoodFactsImports === 'true'
+          );
+        const savedAutoScaleOnlineImports = localStorage.getItem(
+          'autoScaleOnlineImports'
+        );
+        if (savedAutoScaleOnlineImports !== null)
+          setAutoScaleOnlineImportsState(
+            savedAutoScaleOnlineImports === 'true'
+          );
+      }
+    }
+  }, [user, loading, loadPreferences, loadNutrientDisplayPreferences]);
+
+  // --- Context Value Memoization ---
+
+  const contextValue = useMemo(
+    () => ({
+      weightUnit,
+      measurementUnit,
+      distanceUnit,
+      dateFormat,
+      autoClearHistory,
+      loggingLevel,
+      defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
+      timezone,
+      itemDisplayLimit,
+      foodDisplayLimit,
+      calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
+      energyUnit,
+      autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
+      nutrientDisplayPreferences,
+      water_display_unit: waterDisplayUnit,
+      addExerciseWaterToGoal,
+      language,
+      bmrAlgorithm,
+      bodyFatAlgorithm,
+      includeBmrInNetCalories,
+      showNetCarbs,
+      aiAssistedConversions,
+      fatBreakdownAlgorithm,
+      mineralCalculationAlgorithm,
+      vitaminCalculationAlgorithm,
+      sugarCalculationAlgorithm,
+      selectedDiet,
+      firstDayOfWeek,
+      measurementDecimalPlaces,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
+      setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
+      setGoalMode,
+      setGoalModeCalculationMethod,
+      setGoalModeCustomPercentage,
+      setWeightUnit,
+      setMeasurementUnit,
+      setDistanceUnit,
+      setDateFormat,
+      setAutoClearHistory,
+      setLoggingLevel,
+      setDefaultFoodDataProviderId,
+      setDefaultBarcodeProviderId,
+      setBarcodeFallbackOpenFoodFacts,
+      setTimezone,
+      setItemDisplayLimit,
+      setCalorieGoalAdjustmentMode,
+      setExerciseCaloriePercentage,
+      setActivityLevel,
+      setTdeeAllowNegativeAdjustment,
+      setEnergyUnit,
+      setAutoScaleOpenFoodFactsImports,
+      setAutoScaleOnlineImports,
+      loadNutrientDisplayPreferences,
+      setWaterDisplayUnit: setWaterDisplayUnitState,
+      setAddExerciseWaterToGoal: setAddExerciseWaterToGoalState,
+      setLanguage: setLanguageState,
+      setBmrAlgorithm: setBmrAlgorithmState,
+      setBodyFatAlgorithm: setBodyFatAlgorithmState,
+      setIncludeBmrInNetCalories: setIncludeBmrInNetCaloriesState,
+      setShowNetCarbs: setShowNetCarbsState,
+      setAiAssistedConversions: setAiAssistedConversionsState,
+      setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
+      setMineralCalculationAlgorithm: setMineralCalculationAlgorithmState,
+      setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
+      setSugarCalculationAlgorithm: setSugarCalculationAlgorithmState,
+      setSelectedDiet: setSelectedDietState,
+      setFirstDayOfWeek: setFirstDayOfWeekState,
+      convertWeight,
+      convertMeasurement,
+      convertDistance,
+      convertEnergy,
+      getEnergyUnitString,
+      formatDate,
+      formatDateInUserTimezone,
+      getDateRelationToToday,
+      parseDateInUserTimezone,
+      loadPreferences,
+      saveAllPreferences,
+    }),
+    [
+      weightUnit,
+      measurementUnit,
+      distanceUnit,
+      dateFormat,
+      autoClearHistory,
+      loggingLevel,
+      defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
+      timezone,
+      itemDisplayLimit,
+      foodDisplayLimit,
+      calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
+      energyUnit,
+      autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
+      nutrientDisplayPreferences,
+      waterDisplayUnit,
+      addExerciseWaterToGoal,
+      language,
+      bmrAlgorithm,
+      bodyFatAlgorithm,
+      includeBmrInNetCalories,
+      showNetCarbs,
+      aiAssistedConversions,
+      fatBreakdownAlgorithm,
+      mineralCalculationAlgorithm,
+      vitaminCalculationAlgorithm,
+      sugarCalculationAlgorithm,
+      selectedDiet,
+      firstDayOfWeek,
+      measurementDecimalPlaces,
+      goalMode,
+      goalModeCalculationMethod,
+      goalModeCustomPercentage,
+      setGoalMode,
+      setGoalModeCalculationMethod,
+      setGoalModeCustomPercentage,
+      setWeightUnit,
+      setMeasurementUnit,
+      setDistanceUnit,
+      setDateFormat,
+      setAutoClearHistory,
+      setLoggingLevel,
+      setDefaultFoodDataProviderId,
+      setDefaultBarcodeProviderId,
+      setBarcodeFallbackOpenFoodFacts,
+      setTimezone,
+      setItemDisplayLimit,
+      setCalorieGoalAdjustmentMode,
+      setExerciseCaloriePercentage,
+      setActivityLevel,
+      setTdeeAllowNegativeAdjustment,
+      setEnergyUnit,
+      setAutoScaleOpenFoodFactsImports,
+      setAutoScaleOnlineImports,
+      loadNutrientDisplayPreferences,
+      convertWeight,
+      convertMeasurement,
+      convertDistance,
+      convertEnergy,
+      getEnergyUnitString,
+      formatDate,
+      formatDateInUserTimezone,
+      getDateRelationToToday,
+      parseDateInUserTimezone,
+      loadPreferences,
+      saveAllPreferences,
+    ]
+  );
+
+  return (
+    <PreferencesContext.Provider value={contextValue}>
+      {children}
+    </PreferencesContext.Provider>
+  );
+};

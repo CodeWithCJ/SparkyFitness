@@ -1,0 +1,439 @@
+import { renderHook, waitFor, act } from '@testing-library/react-native';
+import { useDailySummary } from '../../src/hooks/useDailySummary';
+import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
+import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
+import { fetchFoodEntryMealsByDate } from '../../src/services/api/foodEntryMealsApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+
+jest.mock('../../src/services/api/dailySummaryApi', () => ({
+  fetchDailySummary: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/foodEntryMealsApi', () => ({
+  fetchFoodEntryMealsByDate: jest.fn(),
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn((callback) => {
+    callback();
+  }),
+}));
+
+const mockFetchDailySummary = fetchDailySummary as jest.MockedFunction<typeof fetchDailySummary>;
+const mockFetchFoodEntryMealsByDate = fetchFoodEntryMealsByDate as jest.MockedFunction<
+  typeof fetchFoodEntryMealsByDate
+>;
+
+const makeGoals = (overrides = {}) => ({
+  calories: 2000,
+  protein: 150,
+  carbs: 200,
+  fat: 65,
+  water_goal_ml: 2500,
+  saturated_fat: 20,
+  polyunsaturated_fat: 10,
+  monounsaturated_fat: 15,
+  trans_fat: 0,
+  cholesterol: 300,
+  sodium: 2300,
+  potassium: 3500,
+  dietary_fiber: 30,
+  sugars: 50,
+  vitamin_a: 900,
+  vitamin_c: 90,
+  calcium: 1000,
+  iron: 18,
+  target_exercise_calories_burned: 300,
+  target_exercise_duration_minutes: 30,
+  protein_percentage: null,
+  carbs_percentage: null,
+  fat_percentage: null,
+  breakfast_percentage: 25,
+  lunch_percentage: 35,
+  dinner_percentage: 30,
+  snacks_percentage: 10,
+  ...overrides,
+});
+
+const makeCalorieBalance = (overrides: Record<string, unknown> = {}) => ({
+  eaten: 0,
+  burned: 0,
+  remaining: 2000,
+  goal: 2000,
+  net: 0,
+  progress: 0,
+  bmr: 1700,
+  exerciseSource: 'none' as const,
+  tdeeProjection: null,
+  ...overrides,
+});
+
+const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
+  goals: makeGoals(overrides.goals as Record<string, unknown>),
+  foodEntries: (overrides.foodEntries ?? []) as any[],
+  exerciseSessions: (overrides.exerciseSessions ?? []) as any[],
+  waterIntake: (overrides.waterIntake ?? 0) as number,
+  stepCalories: (overrides.stepCalories ?? 0) as number,
+  calorieBalance: makeCalorieBalance(overrides.calorieBalance as Record<string, unknown>),
+});
+
+describe('useDailySummary', () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient = createTestQueryClient();
+    mockFetchFoodEntryMealsByDate.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const testDate = '2024-06-15';
+
+  describe('query behavior', () => {
+    test('calls fetchDailySummary with the date', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse());
+
+      renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(mockFetchDailySummary).toHaveBeenCalledWith(testDate);
+      });
+    });
+
+    test('returns summary with calculated values', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
+          { type: 'individual', id: '1', calories_burned: 200, exercise_snapshot: { name: 'Running' }, duration_minutes: 30 },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary).toBeDefined();
+      expect(result.current.summary?.date).toBe(testDate);
+      expect(result.current.summary?.calorieGoal).toBe(2000);
+      expect(result.current.summary?.caloriesConsumed).toBe(1000);
+      expect(result.current.summary?.protein.consumed).toBe(60);
+      expect(result.current.summary?.carbs.consumed).toBe(100);
+      expect(result.current.summary?.fat.consumed).toBe(30);
+      expect(result.current.summary?.fiber.consumed).toBe(10);
+      expect(result.current.summary?.caloriesBurned).toBe(200);
+      expect(result.current.summary?.exerciseMinutes).toBe(30);
+      expect(result.current.summary?.foodEntries).toHaveLength(1);
+    });
+
+    test('collapses logged meal components into a parent meal row', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          {
+            id: 'component-1',
+            food_id: 'food-1',
+            food_entry_meal_id: 'fem-1',
+            food_name: 'Rice',
+            calories: 100,
+            protein: 2,
+            carbs: 20,
+            fat: 1,
+            dietary_fiber: 1,
+            quantity: 100,
+            serving_size: 100,
+            meal_type: 'lunch',
+            unit: 'g',
+            entry_date: testDate,
+          },
+          {
+            id: 'component-2',
+            food_id: 'food-2',
+            food_entry_meal_id: 'fem-1',
+            food_name: 'Chicken',
+            calories: 200,
+            protein: 30,
+            carbs: 0,
+            fat: 5,
+            dietary_fiber: 0,
+            quantity: 100,
+            serving_size: 100,
+            meal_type: 'lunch',
+            unit: 'g',
+            entry_date: testDate,
+          },
+          {
+            id: 'standalone-1',
+            food_id: 'food-3',
+            food_name: 'Apple',
+            calories: 50,
+            protein: 0,
+            carbs: 14,
+            fat: 0,
+            dietary_fiber: 3,
+            quantity: 1,
+            serving_size: 1,
+            meal_type: 'lunch',
+            unit: 'item',
+            entry_date: testDate,
+          },
+        ],
+      }));
+      mockFetchFoodEntryMealsByDate.mockResolvedValue([
+        {
+          id: 'fem-1',
+          user_id: 'user-1',
+          meal_template_id: 'meal-template-1',
+          meal_type: 'lunch',
+          meal_type_id: 'mt-lunch',
+          entry_date: testDate,
+          name: 'Burrito Bowl',
+          description: null,
+          quantity: 2,
+          unit: 'serving',
+          foods: [],
+          calories: 300,
+          protein: 32,
+          carbs: 20,
+          fat: 6,
+          dietary_fiber: 1,
+        },
+      ]);
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(mockFetchFoodEntryMealsByDate).toHaveBeenCalledWith(testDate);
+      expect(result.current.summary?.foodEntries).toEqual([
+        expect.objectContaining({
+          id: 'fem-1',
+          food_entry_meal_id: 'fem-1',
+          food_name: 'Burrito Bowl',
+          quantity: 2,
+          serving_size: 2,
+          calories: 300,
+          protein: 32,
+        }),
+        expect.objectContaining({
+          id: 'standalone-1',
+          food_name: 'Apple',
+        }),
+      ]);
+      expect(result.current.summary?.caloriesConsumed).toBe(350);
+      expect(result.current.summary?.protein.consumed).toBe(32);
+      expect(result.current.summary?.fiber.consumed).toBe(4);
+    });
+
+    test('preserves the server-computed calorie balance', async () => {
+      const serverBalance = makeCalorieBalance({
+        eaten: 1600,
+        burned: 1200,
+        remaining: 1800,
+        goal: 2200,
+        net: 400,
+        progress: 18,
+        bmr: 1700,
+        exerciseSource: 'active' as const,
+      });
+
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        calorieBalance: serverBalance,
+        foodEntries: [
+          { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
+          { type: 'individual', id: '1', calories_burned: 300, exercise_snapshot: { name: 'Running' }, duration_minutes: 45 },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.calorieBalance).toEqual(serverBalance);
+    });
+
+    test('includes water intake from API', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { water_goal_ml: 3000 },
+        waterIntake: 1500,
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.waterConsumed).toBe(1500);
+      expect(result.current.summary?.waterGoal).toBe(3000);
+    });
+
+    test('defaults water goal to 2500 when not set in goals', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { water_goal_ml: null },
+        waterIntake: 750,
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.waterConsumed).toBe(750);
+      expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+
+    test('includes server-computed stepCalories from daily summary response', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({ stepCalories: 105 }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.stepCalories).toBe(105);
+    });
+
+    test('calculates net and remaining calories correctly', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
+          { type: 'individual', id: '1', calories_burned: 300, exercise_snapshot: { name: 'Running' }, duration_minutes: 45 },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      // netCalories = consumed - burned = 800 - 300 = 500
+      expect(result.current.summary?.netCalories).toBe(500);
+      // remainingCalories = goal - net = 2000 - 500 = 1500
+      expect(result.current.summary?.remainingCalories).toBe(1500);
+    });
+
+  });
+
+  describe('goal fallback defaults', () => {
+    test('defaults falsy goal values to 0 and water_goal_ml to 2500', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: {
+          calories: 0,
+          protein: undefined,
+          carbs: null,
+          fat: 0,
+          dietary_fiber: undefined,
+          target_exercise_duration_minutes: 0,
+          target_exercise_calories_burned: undefined,
+          water_goal_ml: null,
+        },
+        waterIntake: 0,
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.calorieGoal).toBe(0);
+      expect(result.current.summary?.protein.goal).toBe(0);
+      expect(result.current.summary?.carbs.goal).toBe(0);
+      expect(result.current.summary?.fat.goal).toBe(0);
+      expect(result.current.summary?.fiber.goal).toBe(0);
+      expect(result.current.summary?.exerciseMinutesGoal).toBe(0);
+      expect(result.current.summary?.exerciseCaloriesGoal).toBe(0);
+      expect(result.current.summary?.waterConsumed).toBe(0);
+      expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+  });
+
+  describe('options', () => {
+    test('respects enabled option', () => {
+      renderHook(() => useDailySummary({ date: testDate, enabled: false }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      expect(mockFetchDailySummary).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refetch', () => {
+    test('refetch updates data', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.summary?.calorieGoal).toBe(2000);
+      });
+
+      // Update mock to return different data
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { calories: 2500 },
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+      }));
+
+      await act(async () => {
+        await result.current.refetch();
+      });
+
+      await waitFor(() => {
+        expect(result.current.summary?.calorieGoal).toBe(2500);
+      });
+    });
+  });
+
+  describe('query key', () => {
+    test('exports correct query key function', () => {
+      expect(dailySummaryQueryKey('2024-06-15')).toEqual(['dailySummary', '2024-06-15']);
+    });
+
+    test('query key changes with date', () => {
+      expect(dailySummaryQueryKey('2024-06-15')).not.toEqual(dailySummaryQueryKey('2024-06-16'));
+    });
+  });
+});

@@ -1,0 +1,228 @@
+import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const SHARED_SCHEMA_FILE =
+  '../../shared/src/schemas/api/ExerciseEntries.api.zod.ts';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function runSchema(schemaName: any, payload: any) {
+  // ÄNDERUNG: import * as schemaModule verwenden
+  const script = `
+    import * as schemaModule from '${SHARED_SCHEMA_FILE}';
+    const schema = schemaModule.${schemaName};
+    const result = schema.safeParse(${JSON.stringify(payload)});
+    const output = result.success
+      ? { success: true, data: result.data }
+      : { success: false, issues: result.error.issues.map((issue) => issue.message) };
+    console.log(JSON.stringify(output));
+  `;
+
+  return JSON.parse(
+    execFileSync(process.execPath, ['--import', 'tsx', '-e', script], {
+      encoding: 'utf8',
+      cwd: __dirname,
+    }).trim()
+  );
+}
+
+describe('Exercise entry API schemas', () => {
+  const exerciseId = '11111111-1111-4111-8111-111111111111';
+
+  it('accepts preset-based create payloads', () => {
+    const result = runSchema('createPresetSessionRequestSchema', {
+      workout_preset_id: 42,
+      entry_date: '2026-03-12',
+      notes: null,
+    });
+    expect(result).toEqual({
+      success: true,
+      data: {
+        workout_preset_id: 42,
+        entry_date: '2026-03-12',
+        notes: null,
+        source: 'manual',
+      },
+    });
+  });
+
+  it('accepts freeform inline create payloads', () => {
+    const result = runSchema('createPresetSessionRequestSchema', {
+      name: 'Morning Workout',
+      entry_date: '2026-03-12',
+      description: null,
+      notes: null,
+      source: 'sparky',
+      exercises: [
+        {
+          exercise_id: exerciseId,
+          sort_order: 0,
+          duration_minutes: 0,
+          notes: null,
+          sets: [
+            {
+              set_number: 1,
+              set_type: 'working',
+              reps: 10,
+              weight: 60,
+              notes: null,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.name).toBe('Morning Workout');
+    expect(result.data.exercises).toHaveLength(1);
+  });
+
+  it('rejects create payloads that provide both workout sources', () => {
+    const result = runSchema('createPresetSessionRequestSchema', {
+      workout_preset_id: 42,
+      name: 'Morning Workout',
+      entry_date: '2026-03-12',
+      exercises: [
+        {
+          exercise_id: exerciseId,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects create payloads that provide neither workout source', () => {
+    const result = runSchema('createPresetSessionRequestSchema', {
+      entry_date: '2026-03-12',
+      name: 'Morning Workout',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty exercise arrays', () => {
+    const result = runSchema('createPresetSessionRequestSchema', {
+      name: 'Morning Workout',
+      entry_date: '2026-03-12',
+      exercises: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts nullable fields in update payloads', () => {
+    const result = runSchema('updatePresetSessionRequestSchema', {
+      description: null,
+      notes: null,
+    });
+    expect(result).toEqual({
+      success: true,
+      data: {
+        description: null,
+        notes: null,
+      },
+    });
+  });
+
+  it('rejects empty update payloads', () => {
+    const result = runSchema('updatePresetSessionRequestSchema', {});
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a stats payload with both bestSet and lastSet populated', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5,
+        setNumber: 3,
+      },
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: 80,
+        reps: 8,
+        setNumber: 1,
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.bestSet.weight).toBe(100);
+    expect(result.data.lastSet.setNumber).toBe(1);
+  });
+
+  it('accepts a stats payload with both nulls (no history)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+    });
+    expect(result).toEqual({
+      success: true,
+      data: { bestSet: null, lastSet: null },
+    });
+  });
+
+  it('accepts lastSet with null weight (bodyweight exercise)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: {
+        entryDate: '2026-05-19',
+        weight: null,
+        reps: 10,
+        setNumber: 2,
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.lastSet.weight).toBeNull();
+  });
+
+  it('rejects stats payloads with non-YYYY-MM-DD entryDate', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '05/20/2026',
+        weight: 100,
+        reps: 5,
+        setNumber: 1,
+      },
+      lastSet: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects stats payloads with unknown keys (strict)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      extra: 'nope',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects non-integer reps in a set stats row', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: {
+        entryDate: '2026-05-20',
+        weight: 100,
+        reps: 5.5,
+        setNumber: 1,
+      },
+      lastSet: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // #1353: RN's whatwg-fetch appends `_=<timestamp>` to GET URLs when callers
+  // pass `cache: 'no-store'`. The strict history query schema must tolerate it.
+  it('accepts the whatwg-fetch `_` cache-buster param', () => {
+    const result = runSchema('exerciseHistoryQuerySchema', {
+      page: '2',
+      _: '1733419200000',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // Keeping `.strict()` so genuine client typos still fail loudly.
+  it('still rejects unknown keys like a misspelled param', () => {
+    const result = runSchema('exerciseHistoryQuerySchema', { pageSzie: '50' });
+    expect(result.success).toBe(false);
+  });
+});

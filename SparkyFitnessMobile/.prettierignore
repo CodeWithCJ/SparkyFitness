@@ -1,0 +1,10 @@
+.eas/
+android/
+assets/
+docs/
+ios/
+node_modules/
+coverage/
+.expo/
+plans/
+devdocs/

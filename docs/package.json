@@ -1,0 +1,22 @@
+{
+  "name": "docus-starter",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nuxi dev",
+    "build": "NUXT_APP_BASE_URL=/SparkyFitness/ nuxt build --preset github_pages",
+    "generate": "nuxi generate",
+    "preview": "nuxi preview",
+    "clean": "nuxi cleanup",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@nuxt-themes/docus": "^1.15.1",
+    "@nuxt/devtools": "latest",
+    "@nuxt/eslint-config": "^0.3.13",
+    "@nuxtjs/plausible": "^1.0.0",
+    "@types/node": "^20.12.12",
+    "eslint": "^9.3.0",
+    "nuxt": "^3.17.7"
+  }
+}

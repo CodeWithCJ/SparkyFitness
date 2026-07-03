@@ -1,0 +1,75 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Generic
+postgresql
+!helm/chart/charts/postgresql/
+!helm/chart/charts/postgresql/**
+node_modules
+.cache
+.pnpm-store
+pnpm-store
+dist
+dist-ssr
+*.local
+.env
+
+# Private folder contents
+private/
+coverage/
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Supabase
+supabase/.temp/
+supabase/config.toml
+supabase/functions/**/*.d.ts
+supabase/functions/**/*.full.ts
+
+# Private folder contents
+private/
+
+# Python
+__pycache__/
+
+# Server specific
+SparkyFitnessServer/uploads/
+SparkyFitnessServer/backup/
+SparkyFitnessServer/temp_uploads/
+
+# Garmin microservice specific
+SparkyFitnessGarmin/mock_data/
+
+# Fitbit mock data (cached API responses)
+SparkyFitnessServer/mock_data/
+
+WIP/
+
+# Docker Volume
+docker/docker_volume/
+
+# TypeScript
+*.tsbuildinfo
+dossier sans titre/
+
+# Nix build outputs
+/result
+/result-*

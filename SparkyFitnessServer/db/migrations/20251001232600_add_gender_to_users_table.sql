@@ -1,0 +1,2 @@
+ALTER TABLE profiles
+ADD COLUMN gender VARCHAR(10);

@@ -1,0 +1,34 @@
+import express from 'express';
+import foodIntegrationRoutes from './foodIntegrationRoutes.js';
+import foodCrudRoutes from './foodCrudRoutes.js';
+import foodEntryRoutes from './foodEntryRoutes.js';
+const router = express.Router();
+// Mount the new routers
+router.use('/', foodIntegrationRoutes);
+router.use('/', foodCrudRoutes);
+/**
+ * @swagger
+ * /foods/food-entries/{date}:
+ *   get:
+ *     summary: Get food entries by date (re-routed)
+ *     tags: [Nutrition & Meals]
+ *     description: This endpoint re-routes requests to the foodEntryRoutes for retrieving food entries by date.
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: true
+ *         description: The date to retrieve food entries for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of food entries for the specified date.
+ *       400:
+ *         description: Invalid date parameter.
+ */
+router.get('/food-entries/:date', (req, res, next) => {
+  req.url = `/by-date/${req.params.date}`; // Modify URL to match foodEntryRoutes expectation
+  foodEntryRoutes(req, res, next);
+});
+export default router;

@@ -1,0 +1,58 @@
+/* Basic styling for the SVG container */
+#body-map-container {
+  width: 100%;
+  max-width: 400px; /* Adjust as needed */
+  margin: 0 auto;
+}
+
+#body-map-container svg {
+  width: 100%;
+  height: auto;
+}
+
+/* Default muscle styling */
+#body-map-container path {
+  fill: #757575; /* Default muscle color */
+  stroke: black;
+  stroke-width: 0.5;
+  transition: fill 0.2s ease-in-out;
+}
+
+/* Enabled muscles (those with exercises) */
+#body-map-container path.enabled {
+  fill: #bdbdbd; /* Lighter grey for enabled but not selected */
+  cursor: pointer;
+}
+
+/* Hover effect for enabled muscles */
+#body-map-container path.enabled.hover {
+  fill: #69b0ee; /* Blue on hover */
+}
+
+/* Active (selected) muscles */
+#body-map-container path.enabled.active {
+  fill: #228be6; /* Darker blue when active */
+}
+
+/* Disabled muscles (no exercises) */
+#body-map-container path.disabled {
+  fill: #424242; /* Darker grey for disabled */
+  cursor: not-allowed;
+}
+
+/* Ensure muscleContainer paths are clickable */
+#body-map-container path.muscleContainer {
+  fill: transparent; /* Make the overlay transparent */
+  stroke: transparent; /* Hide the stroke */
+  stroke-width: 0;
+  cursor: pointer; /* Indicate interactivity */
+}
+
+/* Hover and active states for muscleContainer to ensure they work */
+#body-map-container path.muscleContainer.enabled:hover {
+  fill: rgba(105, 176, 238, 0.3); /* Light blue overlay on hover */
+}
+
+#body-map-container path.muscleContainer.enabled.active {
+  fill: rgba(34, 139, 230, 0.5); /* Darker blue overlay when active */
+}

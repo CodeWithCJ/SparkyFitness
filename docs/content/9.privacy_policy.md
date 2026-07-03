@@ -1,0 +1,88 @@
+# Privacy Policy
+
+SparkyFitness is committed to protecting your privacy. This Privacy Policy explains how information is handled when you use the SparkyFitness mobile application.
+
+## Overview
+
+SparkyFitness is designed with a privacy-first architecture. The app does not collect, store, or process personal or health data on SparkyFitness-operated servers. All data remains under your control on your device and, if configured by you, on your own self-hosted SparkyFitness server.
+
+## Data Collection and Handling
+
+### Information You Provide and Control
+
+*   **Self-Hosted Server Connection Information:** If you choose to enable synchronization with a self-hosted SparkyFitness server, the app stores your server URL and authentication token **locally on your device**. This information is used only to connect to your server and is never transmitted to SparkyFitness or any third party.
+
+*   **Health Data:** With your explicit permission, the app may access health data provided by platform services such as Apple Health or Google Health Connect. This data is:
+    *   Accessed only for app functionality
+    *   Stored locally on your device
+    *   Synced only to your self-hosted SparkyFitness server, if configured
+
+    SparkyFitness does not receive, store, or process this data.
+
+*   **Camera:** Sparky accesses your device's camera for two purposes: (1) scanning barcodes on food packaging, which is decoded entirely on your device — no image is transmitted, and (2) capturing nutrition label photos, which are transmitted to your Sparky server only when you have enabled this optional feature.
+
+*   **AI-Powered Nutrition Label Scanning:** This feature is disabled by default. When you enable it, nutrition label images are sent from your device to your Sparky server, which then forwards them to a cloud AI provider you have configured on the server (e.g., OpenAI, Google, Anthropic). Your AI provider credentials are never stored on your mobile device. The mobile app has no knowledge of which AI provider is configured.
+
+*   **Your Server is Yours:** Because Sparky is self-hosted, your server's data handling, retention, and AI provider choices are governed by your own configuration and the privacy policies of any AI provider you choose to integrate. We do not have access to your server or its data.
+
+### Information We Do Not Collect
+
+*   **Personal identifiers** (name, email, address, etc.)
+*   **Health or fitness data** on SparkyFitness servers
+*   **Usage analytics** or tracking data
+*   **Advertising identifiers**
+*   **Device or network identifiers**
+
+## How Your Information Is Used
+
+All data handled by the app is used solely to provide core functionality, including displaying fitness information and synchronizing with your self-hosted server. We do not sell, rent, share, or monetize user data in any way.
+
+## Data Storage and Security
+
+*   Data is stored **locally on your device** using platform-provided security mechanisms.
+*   If enabled, data is transmitted directly to your **self-hosted server**.
+*   SparkyFitness does not operate or have access to these servers.
+
+## Data Retention and Deletion
+
+SparkyFitness does not retain user data on developer-operated servers.
+
+### On-device data
+- Health data and configuration data are stored locally on the user’s device.
+- This data is retained only for as long as the app remains installed or until the user deletes it.
+
+### Deleting data
+- Users can delete all locally stored data at any time by clearing the app’s data or uninstalling the SparkyFitness app from their device.
+- Once the app is uninstalled, all locally stored data is permanently removed from the device.
+
+### User Self-hosted server data
+- If the user enables synchronization, health data is stored on the user’s own self-hosted SparkyFitness server.
+- Data retention and deletion on the self-hosted server are fully controlled by the user.
+- Users can delete their server-side data at any time by removing it from their self-hosted SparkyFitness server.
+
+SparkyFitness does not have access to, cannot delete, and does not retain any user data stored on user-managed servers.
+
+
+## Third-Party Services
+
+SparkyFitness does not use third-party analytics, advertising, or tracking services. Any data stored on your self-hosted server is governed by your own server configuration and security practices.
+
+## Children’s Privacy
+
+SparkyFitness is not intended for children under the age of 13. We do not knowingly collect personal information from children.
+
+## Limitation of Liability
+
+The SparkyFitness mobile application is provided "as is," without warranty of any kind, express or implied. The developer of SparkyFitness shall not be liable for any damages, direct or indirect, arising from the use or inability to use the application, including but not limited to data loss, system errors, or any other issues that may arise.
+
+Users are solely responsible for the security and integrity of their self-hosted SparkyFitness server and any data stored thereon. The developer is not responsible for any breaches, data loss, or other security incidents that may occur on a user's self-hosted server.
+
+## Changes to This Privacy Policy
+
+Developer reserves the right to change or modify this Privacy Policy at any time, and any changes will be effective upon being posted unless otherwise indicated. You are encouraged to periodically review this policy for the latest information on privacy practices. If you do not accept the terms of this Privacy Policy, you are asked to discontinue using SparkyFitness.
+
+
+
+## Contact Us
+
+If you have any questions about this Privacy Policy, please contact us at: codewithcj001@gmail.com

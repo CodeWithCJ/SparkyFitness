@@ -1,0 +1,94 @@
+name: Sync Translations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout the main repository (SparkyFitness)
+      - name: Checkout SparkyFitness
+        uses: actions/checkout@v4
+        with:
+          path: main-repo
+
+      # 2. Checkout the translation repository (SparkyFitnessTranslations)
+      # Uses the user's PAT to authenticate so we can push updates back to it.
+      - name: Checkout SparkyFitnessTranslations
+        uses: actions/checkout@v4
+        with:
+          repository: CodeWithCJ/SparkyFitnessTranslations
+          token: ${{ secrets.TRANSLATIONS_PAT }}
+          path: translation-repo
+
+      # 3. Synchronize files:
+      # - Copy non-English translation files from translation-repo to main-repo
+      # - Copy English translation files from main-repo to translation-repo
+      - name: Sync translation files
+        run: |
+          echo "=== Copying non-English translations from translation repo to main repo ==="
+          mkdir -p main-repo/SparkyFitnessFrontend/public/locales
+          for dir in translation-repo/locales/*; do
+            if [ -d "$dir" ] && [ "$(basename "$dir")" != "en" ]; then
+              locale=$(basename "$dir")
+              echo "Updating $locale..."
+              rm -rf main-repo/SparkyFitnessFrontend/public/locales/$locale
+              cp -r "$dir" main-repo/SparkyFitnessFrontend/public/locales/
+            fi
+          done
+
+          echo "=== Copying English translation from main repo to translation repo ==="
+          mkdir -p translation-repo/locales
+          if [ -d "main-repo/SparkyFitnessFrontend/public/locales/en" ]; then
+            rm -rf translation-repo/locales/en
+            cp -r main-repo/SparkyFitnessFrontend/public/locales/en translation-repo/locales/
+            echo "Copied English translation successfully."
+          else
+            echo "Error: English locale (en) folder not found in main-repo!"
+            exit 1
+          fi
+
+      # 3.5 Format the updated localization files with Prettier
+      - name: Format localization files with Prettier
+        run: |
+          echo "=== Formatting synced files to match codebase styling ==="
+          npx prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
+          npx prettier --write "translation-repo/locales/**/*.json"
+
+      # 4. Create a Pull Request in the translation repository for English locales
+      - name: Create Pull Request in SparkyFitnessTranslations
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.TRANSLATIONS_PAT }}
+          path: translation-repo
+          commit-message: "chore(i18n): update English locales from main repo"
+          branch: i18n/update-english-locales
+          delete-branch: true
+          title: "chore(i18n): update English locales from SparkyFitness"
+          body: |
+            This pull request was automatically created by the **Sync Translations** workflow.
+
+            It updates the English translation files (`locales/en`) with the latest keys from the main repository.
+
+      # 5. Create a Pull Request in the main repository for other language files
+      - name: Create Pull Request in SparkyFitness
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: main-repo
+          commit-message: "chore(i18n): sync non-English translations from Weblate"
+          branch: i18n/sync-weblate-translations
+          delete-branch: true
+          title: "chore(i18n): sync translations from Weblate"
+          body: |
+            This pull request was automatically created by the **Sync Translations** workflow.
+
+            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository.
+          labels: |
+            i18n
+            translations

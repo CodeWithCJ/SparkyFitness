@@ -1,0 +1,313 @@
+import type React from 'react';
+import { useState } from 'react';
+import type { UserCustomNutrient } from '../../types/customNutrient';
+import { useToast } from '../../hooks/use-toast';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Checkbox } from '../../components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../components/ui/alert-dialog';
+import {
+  useCreateCustomNutrientMutation,
+  useCustomNutrients,
+  useDeleteCustomNutrientMutation,
+  useUpdateCustomNutrientMutation,
+} from '@/hooks/Foods/useCustomNutrients';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { AliasChipInput } from '@/components/Foods/AliasChipInput';
+
+const CustomNutrientsSettings: React.FC = () => {
+  const { loadNutrientDisplayPreferences } = usePreferences();
+  const [newNutrientName, setNewNutrientName] = useState('');
+  const [newNutrientUnit, setNewNutrientUnit] = useState('');
+  const [newNutrientAliases, setNewNutrientAliases] = useState<string[]>([]);
+  const [editingNutrient, setEditingNutrient] =
+    useState<UserCustomNutrient | null>(null);
+  const [editingAliases, setEditingAliases] = useState<string[]>([]);
+  const [deleteAllHistory, setDeleteAllHistory] = useState(false);
+  const { toast } = useToast();
+
+  const { data: customNutrients } = useCustomNutrients();
+  const { mutateAsync: createCustomNutrient } =
+    useCreateCustomNutrientMutation();
+  const { mutateAsync: updateCustomNutrient } =
+    useUpdateCustomNutrientMutation();
+  const { mutateAsync: deleteCustomNutrient } =
+    useDeleteCustomNutrientMutation();
+  const handleAddNutrient = async () => {
+    if (!newNutrientName || !newNutrientUnit) {
+      toast({
+        title: 'Error',
+        description: 'Nutrient name and unit are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await createCustomNutrient({
+      name: newNutrientName,
+      unit: newNutrientUnit,
+      aliases: newNutrientAliases,
+    });
+    await loadNutrientDisplayPreferences();
+    setNewNutrientName('');
+    setNewNutrientUnit('');
+    setNewNutrientAliases([]);
+  };
+
+  const handleEditNutrient = async () => {
+    if (!editingNutrient || !editingNutrient.name || !editingNutrient.unit) {
+      toast({
+        title: 'Error',
+        description: 'Nutrient name and unit are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    await updateCustomNutrient({
+      nutrientId: editingNutrient.id,
+      name: editingNutrient.name,
+      unit: editingNutrient.unit,
+      aliases: editingAliases,
+    });
+    setEditingNutrient(null);
+    setEditingAliases([]);
+  };
+
+  const startEditing = (nutrient: UserCustomNutrient) => {
+    setEditingNutrient(nutrient);
+    setEditingAliases(nutrient.aliases ?? []);
+  };
+
+  const handleDeleteNutrient = async (id: string) => {
+    await deleteCustomNutrient({ id, deleteAllHistory });
+    setDeleteAllHistory(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">Custom Nutrients Management</h2>
+
+      <div className="p-4 border rounded-md shadow-sm">
+        <h3 className="text-xl font-semibold mb-4">Add New Custom Nutrient</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="newNutrientName">Nutrient Name</Label>
+            <Input
+              id="newNutrientName"
+              value={newNutrientName}
+              onChange={(e) => setNewNutrientName(e.target.value)}
+              placeholder="e.g., Added Sugars"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newNutrientUnit">Unit</Label>
+            <Input
+              id="newNutrientUnit"
+              value={newNutrientUnit}
+              onChange={(e) => setNewNutrientUnit(e.target.value)}
+              placeholder="e.g., g, mg, IU"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newNutrientAliases">Provider aliases</Label>
+            <AliasChipInput
+              value={newNutrientAliases}
+              onChange={setNewNutrientAliases}
+              placeholder="Type a name, press Enter"
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Aliases are the exact names online food databases use for this
+          nutrient (press Enter to add each). On import, provider nutrient
+          fields are matched (case-insensitively) against the name and these
+          aliases. Tip: use the "Nutrient fields reported by…" panel when
+          importing a food to add a provider's exact name in one click.
+        </p>
+        <Button onClick={handleAddNutrient} className="mt-4">
+          Add Custom Nutrient
+        </Button>
+      </div>
+
+      <div className="p-4 border rounded-md shadow-sm">
+        <h3 className="text-xl font-semibold mb-4">
+          Existing Custom Nutrients
+        </h3>
+        {customNutrients && customNutrients.length === 0 ? (
+          <p>No custom nutrients defined yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Provider aliases</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customNutrients &&
+                customNutrients.map((nutrient) => (
+                  <TableRow key={nutrient.id}>
+                    <TableCell>
+                      {editingNutrient?.id === nutrient.id ? (
+                        <Input
+                          value={editingNutrient.name}
+                          onChange={(e) =>
+                            setEditingNutrient({
+                              ...editingNutrient,
+                              name: e.target.value,
+                            })
+                          }
+                        />
+                      ) : (
+                        nutrient.name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingNutrient?.id === nutrient.id ? (
+                        <Input
+                          value={editingNutrient.unit}
+                          onChange={(e) =>
+                            setEditingNutrient({
+                              ...editingNutrient,
+                              unit: e.target.value,
+                            })
+                          }
+                        />
+                      ) : (
+                        nutrient.unit
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingNutrient?.id === nutrient.id ? (
+                        <AliasChipInput
+                          value={editingAliases}
+                          onChange={setEditingAliases}
+                          placeholder="Type a name, press Enter"
+                        />
+                      ) : (
+                        (nutrient.aliases ?? []).join(', ')
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editingNutrient?.id === nutrient.id ? (
+                        <>
+                          <Button variant="ghost" onClick={handleEditNutrient}>
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingNutrient(null);
+                              setEditingAliases([]);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditing(nutrient)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete your custom nutrient
+                                  definition.
+                                </AlertDialogDescription>
+                                <div className="flex items-start space-x-3 pt-4">
+                                  <Checkbox
+                                    id={`delete-history-${nutrient.id}`}
+                                    checked={deleteAllHistory}
+                                    onCheckedChange={(checked) =>
+                                      setDeleteAllHistory(checked === true)
+                                    }
+                                  />
+                                  <div className="grid gap-1.5 leading-none">
+                                    <label
+                                      htmlFor={`delete-history-${nutrient.id}`}
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                      Also remove from past goals and diary
+                                      entries?
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                      If unchecked, old values remain in your
+                                      history but the nutrient will be hidden
+                                      from UI.
+                                    </p>
+                                  </div>
+                                </div>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel
+                                  onClick={() => setDeleteAllHistory(false)}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    handleDeleteNutrient(nutrient.id)
+                                  }
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CustomNutrientsSettings;

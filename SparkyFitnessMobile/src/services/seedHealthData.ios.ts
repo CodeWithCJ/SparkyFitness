@@ -1,0 +1,1004 @@
+import {
+  saveQuantitySample,
+  saveCategorySample,
+  saveWorkoutSample,
+  requestAuthorization,
+} from '@kingstinct/react-native-healthkit';
+import { addLog } from './LogService';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SeedResult {
+  success: boolean;
+  recordsInserted: number;
+  error?: string;
+}
+
+interface QuantitySeedConfig {
+  identifier: string;
+  unit: string;
+  range: [number, number];
+  samplesPerDay?: number;
+}
+
+// Sleep analysis values from HKCategoryValueSleepAnalysis
+// Defined locally to avoid issues with enum being undefined when library is mocked in tests
+const SleepAnalysisValue = {
+  inBed: 0,
+  asleepUnspecified: 1,
+  awake: 2,
+  asleepCore: 3,  // Light sleep
+  asleepDeep: 4,
+  asleepREM: 5,
+} as const;
+
+// Workout activity types from HKWorkoutActivityType
+// Defined locally to avoid issues with enum being undefined when library is mocked in tests
+const WorkoutType = {
+  running: 37,
+  walking: 52,
+  cycling: 13,
+  traditionalStrengthTraining: 50,
+  yoga: 57,
+  highIntensityIntervalTraining: 63,
+  swimming: 46,
+  hiking: 24,
+} as const;
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+const randomInt = (min: number, max: number): number =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const randomFloat = (min: number, max: number): number =>
+  Math.random() * (max - min) + min;
+
+// Distribute a total into count random-ish parts, each at least ~10% of the average
+const splitIntoChunks = (total: number, count: number): number[] => {
+  if (count <= 1) return [total];
+
+  const minPerChunk = Math.max(1, Math.floor(total / count * 0.1));
+  const chunks: number[] = [];
+  let remaining = total;
+
+  for (let i = 0; i < count - 1; i++) {
+    const avgRemaining = remaining / (count - i);
+    const lower = Math.max(minPerChunk, avgRemaining * 0.5);
+    const upper = avgRemaining * 1.5;
+    const chunk = Math.min(Math.floor(randomFloat(lower, upper)), remaining - minPerChunk * (count - i - 1));
+    chunks.push(Math.max(minPerChunk, chunk));
+    remaining -= chunks[i];
+  }
+
+  chunks.push(Math.max(minPerChunk, remaining));
+  return chunks;
+};
+
+const isToday = (date: Date): boolean => {
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+};
+
+const getPastDates = (days: number): Date[] => {
+  const dates: Date[] = [];
+  const now = new Date();
+  for (let i = 0; i < days; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    date.setHours(12, 0, 0, 0);
+    dates.push(date);
+  }
+  return dates;
+};
+
+// ============================================================================
+// Permissions
+// ============================================================================
+
+const WRITE_PERMISSIONS = [
+  'HKQuantityTypeIdentifierStepCount',
+  'HKQuantityTypeIdentifierActiveEnergyBurned',
+  'HKQuantityTypeIdentifierBasalEnergyBurned',
+  'HKQuantityTypeIdentifierDistanceWalkingRunning',
+  'HKQuantityTypeIdentifierFlightsClimbed',
+  'HKQuantityTypeIdentifierDietaryWater',
+  'HKQuantityTypeIdentifierBodyTemperature',
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKQuantityTypeIdentifierBodyMass',
+  'HKQuantityTypeIdentifierHeight',
+  'HKCategoryTypeIdentifierSleepAnalysis',
+  'HKWorkoutTypeIdentifier',
+  'HKQuantityTypeIdentifierRunningSpeed',
+  'HKQuantityTypeIdentifierRunningPower',
+] as const;
+
+const requestWritePermissions = async (): Promise<boolean> => {
+  try {
+    const granted = await requestAuthorization({
+      toShare: WRITE_PERMISSIONS as unknown as Parameters<typeof requestAuthorization>[0]['toShare'],
+      toRead: [],
+    });
+    if (!granted) {
+      addLog(`[SeedHealthData] Write permissions were denied by user`, 'WARNING');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'ERROR');
+    return false;
+  }
+};
+
+// ============================================================================
+// Quantity Sample Seeders
+// ============================================================================
+
+const QUANTITY_CONFIGS: QuantitySeedConfig[] = [
+  // Steps: 5000-12000 per day
+  { identifier: 'HKQuantityTypeIdentifierStepCount', unit: 'count', range: [5000, 12000], samplesPerDay: 8 },
+  // Active Calories: 200-600 kcal per day
+  { identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned', unit: 'kcal', range: [200, 600], samplesPerDay: 6 },
+  // Basal Calories: 1400-1800 kcal per day
+  { identifier: 'HKQuantityTypeIdentifierBasalEnergyBurned', unit: 'kcal', range: [1400, 1800], samplesPerDay: 4 },
+  // Distance: 3000-8000 meters per day
+  { identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning', unit: 'm', range: [3000, 8000], samplesPerDay: 6 },
+  // Floors climbed: 5-25 flights per day
+  { identifier: 'HKQuantityTypeIdentifierFlightsClimbed', unit: 'count', range: [5, 25], samplesPerDay: 4 },
+];
+
+const seedQuantitySamples = async (
+  config: QuantitySeedConfig,
+  dates: Date[]
+): Promise<number> => {
+  let count = 0;
+  const numSamples = config.samplesPerDay ?? 1;
+
+  for (const date of dates) {
+    try {
+      if (numSamples <= 1) {
+        // Single record per day (original behavior)
+        const startTime = new Date(date);
+        const endTime = new Date(date);
+
+        if (isToday(date)) {
+          const now = new Date();
+          startTime.setHours(0, 0, 0, 0);
+          endTime.setTime(now.getTime() - 60000);
+
+          if (endTime <= startTime) {
+            continue;
+          }
+        } else {
+          startTime.setHours(8, 0, 0, 0);
+          endTime.setHours(20, 0, 0, 0);
+        }
+
+        const value = randomInt(config.range[0], config.range[1]);
+
+        const success = await saveQuantitySample(
+          config.identifier as Parameters<typeof saveQuantitySample>[0],
+          config.unit,
+          value,
+          startTime,
+          endTime,
+          {}
+        );
+
+        if (success) {
+          count++;
+        }
+      } else {
+        // Multiple records per day to mimic real HealthKit data
+        const dailyTotal = randomInt(config.range[0], config.range[1]);
+        const todayDate = isToday(date);
+        const samplesForDay = todayDate ? Math.ceil(numSamples / 3) : numSamples;
+        const chunks = splitIntoChunks(dailyTotal, samplesForDay);
+
+        // Define the active window for the day
+        let windowStartHour: number;
+        let windowEndHour: number;
+
+        if (todayDate) {
+          const now = new Date();
+          windowStartHour = 6;
+          // End window at current hour (or at least 7 AM to allow some room)
+          windowEndHour = Math.max(windowStartHour + 1, now.getHours());
+
+          // Skip if it's too early in the day
+          if (now.getHours() < windowStartHour) {
+            continue;
+          }
+        } else {
+          windowStartHour = 6;
+          windowEndHour = 22;
+        }
+
+        const totalWindowMinutes = (windowEndHour - windowStartHour) * 60;
+        const slotMinutes = Math.floor(totalWindowMinutes / samplesForDay);
+
+        for (let i = 0; i < samplesForDay; i++) {
+          try {
+            const slotStartMinutes = windowStartHour * 60 + i * slotMinutes;
+            // Offset within the slot, leaving room for duration
+            const maxOffset = Math.max(0, slotMinutes - 45);
+            const offsetMinutes = randomInt(0, maxOffset);
+            const durationMinutes = randomInt(15, 45);
+
+            const startTime = new Date(date);
+            startTime.setHours(0, 0, 0, 0);
+            startTime.setMinutes(slotStartMinutes + offsetMinutes);
+
+            const endTime = new Date(startTime);
+            endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+
+            // Clamp end time to not exceed the slot boundary
+            const slotEnd = new Date(date);
+            slotEnd.setHours(0, 0, 0, 0);
+            slotEnd.setMinutes(slotStartMinutes + slotMinutes);
+            if (endTime > slotEnd) {
+              endTime.setTime(slotEnd.getTime());
+            }
+
+            // For today, ensure we don't write samples in the future
+            if (todayDate) {
+              const now = new Date();
+              if (startTime >= now || endTime >= now) {
+                continue;
+              }
+            }
+
+            const success = await saveQuantitySample(
+              config.identifier as Parameters<typeof saveQuantitySample>[0],
+              config.unit,
+              chunks[i],
+              startTime,
+              endTime,
+              {}
+            );
+
+            if (success) {
+              count++;
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
+          }
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Heart Rate Seeder (multiple samples per day)
+// ============================================================================
+
+const seedHeartRate = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    // 3 heart rate samples per day: morning, afternoon, evening
+    // For today, filter to hours that have already passed
+    const allHours = [6, 8, 14, 20];
+    const currentHour = new Date().getHours();
+    const sampleHours = isToday(date)
+      ? allHours.filter(h => h < currentHour)
+      : allHours.slice(1); // Skip 6 AM for past days
+
+    for (const hour of sampleHours) {
+      try {
+        const sampleTime = new Date(date);
+        sampleTime.setHours(hour, randomInt(0, 30), 0, 0);
+
+        // For today, skip future samples
+        if (isToday(date) && sampleTime > new Date()) {
+          continue;
+        }
+
+        const endTime = new Date(sampleTime);
+        endTime.setMinutes(endTime.getMinutes() + 1);
+
+        const bpm = randomInt(60, 100);
+
+        const success = await saveQuantitySample(
+          'HKQuantityTypeIdentifierHeartRate',
+          'count/min',
+          bpm,
+          sampleTime,
+          endTime,
+          {}
+        );
+
+        if (success) {
+          count++;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed heart rate: ${message}`, 'WARNING');
+      }
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Weight Seeder (trending weight)
+// ============================================================================
+
+const seedWeight = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+  const baseWeight = randomFloat(65, 85); // kg
+
+  for (let i = 0; i < dates.length; i++) {
+    const date = dates[i];
+    try {
+      const sampleTime = new Date(date);
+
+      if (isToday(date)) {
+        // For today, use 1 minute ago to ensure sample is in the past
+        const now = new Date();
+        sampleTime.setTime(now.getTime() - 60000);
+      } else {
+        sampleTime.setHours(7, 15, 0, 0);
+      }
+
+      const endTime = new Date(sampleTime);
+      endTime.setMinutes(endTime.getMinutes() + 1);
+
+      // Add slight variation and downward trend
+      const weightVariation = (Math.random() - 0.5) * 0.5;
+      const trendAdjustment = i * 0.02;
+      const weight = baseWeight + weightVariation - trendAdjustment;
+
+      const success = await saveQuantitySample(
+        'HKQuantityTypeIdentifierBodyMass',
+        'kg',
+        weight,
+        sampleTime,
+        endTime,
+        {}
+      );
+
+      if (success) {
+        count++;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed weight: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Height Seeder (single static value)
+// ============================================================================
+
+const seedHeight = async (): Promise<number> => {
+  try {
+    const sampleTime = new Date();
+    sampleTime.setDate(sampleTime.getDate() - 1);
+    sampleTime.setHours(10, 0, 0, 0);
+
+    const endTime = new Date(sampleTime);
+    endTime.setMinutes(endTime.getMinutes() + 1);
+
+    const height = randomFloat(1.65, 1.85); // meters
+
+    const success = await saveQuantitySample(
+      'HKQuantityTypeIdentifierHeight',
+      'm',
+      height,
+      sampleTime,
+      endTime,
+      {}
+    );
+
+    return success ? 1 : 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHealthData] Failed to seed height: ${message}`, 'WARNING');
+    return 0;
+  }
+};
+
+// ============================================================================
+// Hydration Seeder (multiple water intake records per day)
+// ============================================================================
+
+const seedHydration = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    const entriesPerDay = isToday(date) ? 2 : randomInt(4, 8);
+
+    for (let i = 0; i < entriesPerDay; i++) {
+      try {
+        let startTime: Date;
+
+        if (isToday(date)) {
+          const now = new Date();
+          // Place entries earlier today
+          startTime = new Date(date);
+          startTime.setHours(0, 0, 0, 0);
+          startTime.setMinutes(i * 10 + 5);
+
+          if (startTime >= now) continue;
+        } else {
+          const hour = 7 + Math.floor((i / entriesPerDay) * 14); // Spread 7 AM to 9 PM
+          startTime = new Date(date);
+          startTime.setHours(hour, randomInt(0, 59), 0, 0);
+        }
+
+        const endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + 5);
+
+        const volumeMl = randomInt(200, 500);
+
+        const success = await saveQuantitySample(
+          'HKQuantityTypeIdentifierDietaryWater',
+          'mL',
+          volumeMl,
+          startTime,
+          endTime,
+          {}
+        );
+
+        if (success) {
+          count++;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed hydration: ${message}`, 'WARNING');
+      }
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Body Temperature Seeder (one reading per day)
+// ============================================================================
+
+const seedBodyTemperature = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    try {
+      const sampleTime = new Date(date);
+
+      if (isToday(date)) {
+        const now = new Date();
+        sampleTime.setTime(now.getTime() - 60000);
+      } else {
+        sampleTime.setHours(7, randomInt(0, 30), 0, 0);
+      }
+
+      const endTime = new Date(sampleTime);
+      endTime.setMinutes(endTime.getMinutes() + 1);
+
+      // Normal body temperature range: 36.1–37.2°C
+      const temperature = randomFloat(36.1, 37.2);
+
+      const success = await saveQuantitySample(
+        'HKQuantityTypeIdentifierBodyTemperature',
+        'degC',
+        parseFloat(temperature.toFixed(1)),
+        sampleTime,
+        endTime,
+        {}
+      );
+
+      if (success) {
+        count++;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed body temperature: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Sleep Seeder
+// ============================================================================
+
+const SLEEP_STAGE_SEQUENCE = [
+  SleepAnalysisValue.asleepCore,    // Light sleep
+  SleepAnalysisValue.asleepDeep,    // Deep sleep
+  SleepAnalysisValue.asleepREM,     // REM
+  SleepAnalysisValue.asleepCore,    // Light sleep
+  SleepAnalysisValue.awake,         // Brief wake
+  SleepAnalysisValue.asleepCore,    // Light sleep
+  SleepAnalysisValue.asleepDeep,    // Deep sleep
+  SleepAnalysisValue.asleepREM,     // REM
+];
+
+const seedSleep = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    // Skip today (sleep data is typically for the previous night)
+    if (isToday(date)) continue;
+
+    try {
+      // Sleep starts the night before
+      const bedtimeHour = randomInt(21, 23);
+      const sleepDurationHours = randomFloat(6, 8);
+
+      const sleepStart = new Date(date);
+      sleepStart.setDate(sleepStart.getDate() - 1);
+      sleepStart.setHours(bedtimeHour, randomInt(0, 59), 0, 0);
+
+      const sleepEnd = new Date(sleepStart);
+      sleepEnd.setHours(sleepEnd.getHours() + Math.floor(sleepDurationHours));
+      sleepEnd.setMinutes(sleepEnd.getMinutes() + Math.floor((sleepDurationHours % 1) * 60));
+
+      // Create sleep stages
+      const totalMinutes = (sleepEnd.getTime() - sleepStart.getTime()) / 60000;
+      const stageCount = SLEEP_STAGE_SEQUENCE.length;
+      const avgStageDuration = totalMinutes / stageCount;
+
+      let currentTime = new Date(sleepStart);
+
+      for (let i = 0; i < stageCount; i++) {
+        const stageDuration = avgStageDuration + randomInt(-15, 15);
+        const stageEnd = new Date(currentTime);
+        stageEnd.setMinutes(stageEnd.getMinutes() + Math.max(10, stageDuration));
+
+        // Don't exceed total sleep duration
+        if (stageEnd > sleepEnd) {
+          stageEnd.setTime(sleepEnd.getTime());
+        }
+
+        const stageValue = SLEEP_STAGE_SEQUENCE[i];
+
+        try {
+          const success = await saveCategorySample(
+            'HKCategoryTypeIdentifierSleepAnalysis',
+            stageValue,
+            currentTime,
+            stageEnd,
+            {}
+          );
+
+          if (success) {
+            count++;
+          }
+        } catch {
+          // Continue with other stages even if one fails
+        }
+
+        currentTime = stageEnd;
+        if (currentTime >= sleepEnd) break;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed sleep: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Workout Seeder
+// ============================================================================
+
+const WORKOUT_TYPES = [
+  { type: WorkoutType.running, name: 'Running', durationMin: 20, durationMax: 60 },
+  { type: WorkoutType.walking, name: 'Walking', durationMin: 15, durationMax: 45 },
+  { type: WorkoutType.cycling, name: 'Cycling', durationMin: 20, durationMax: 60 },
+  { type: WorkoutType.traditionalStrengthTraining, name: 'Strength Training', durationMin: 30, durationMax: 60 },
+  { type: WorkoutType.yoga, name: 'Yoga', durationMin: 20, durationMax: 45 },
+  { type: WorkoutType.highIntensityIntervalTraining, name: 'HIIT', durationMin: 15, durationMax: 30 },
+  { type: WorkoutType.swimming, name: 'Swimming', durationMin: 20, durationMax: 45 },
+  { type: WorkoutType.hiking, name: 'Hiking', durationMin: 30, durationMax: 120 },
+];
+
+const seedWorkouts = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    // 50% chance of a workout on any given day, except today (always one)
+    if (!isToday(date) && Math.random() > 0.5) continue;
+
+    try {
+      const workout = WORKOUT_TYPES[randomInt(0, WORKOUT_TYPES.length - 1)];
+      const now = new Date();
+
+      let startTime: Date;
+      let endTime: Date;
+      let durationMinutes: number;
+
+      if (isToday(date)) {
+        // For today, place workout ending 2 minutes ago
+        durationMinutes = Math.min(20, workout.durationMin);
+        endTime = new Date(now.getTime() - 120000); // 2 minutes ago
+        startTime = new Date(endTime.getTime() - durationMinutes * 60000);
+
+        // Skip if we don't have enough time since midnight
+        const midnight = new Date(date);
+        midnight.setHours(0, 0, 0, 0);
+        if (startTime < midnight) {
+          continue;
+        }
+      } else {
+        durationMinutes = randomInt(workout.durationMin, workout.durationMax);
+        const startHour = randomInt(6, 18);
+        startTime = new Date(date);
+        startTime.setHours(startHour, randomInt(0, 30), 0, 0);
+        endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+      }
+
+      // Estimated calories based on workout type and duration
+      const caloriesPerMinute = workout.type === WorkoutType.highIntensityIntervalTraining ? 12 :
+        workout.type === WorkoutType.running ? 10 :
+        workout.type === WorkoutType.cycling ? 8 :
+        workout.type === WorkoutType.swimming ? 9 :
+        6;
+      const totalCalories = durationMinutes * caloriesPerMinute;
+
+      // Estimated distance for applicable workouts (in meters)
+      let totalDistance: number | undefined;
+      const distanceWorkoutTypes = [WorkoutType.running, WorkoutType.walking, WorkoutType.cycling, WorkoutType.hiking] as number[];
+      if (distanceWorkoutTypes.includes(workout.type)) {
+        const speedMperMin = workout.type === WorkoutType.running ? 150 :
+          workout.type === WorkoutType.cycling ? 300 :
+          workout.type === WorkoutType.hiking ? 80 :
+          90; // walking
+        totalDistance = durationMinutes * speedMperMin;
+      }
+
+      await saveWorkoutSample(
+        workout.type,
+        [], // quantities (empty array for basic workout)
+        startTime,
+        endTime,
+        {
+          energyBurned: totalCalories,
+          ...(totalDistance !== undefined && { distance: totalDistance }),
+        },
+        {}
+      );
+
+      count++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed workout: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Running Metrics Seeder (many samples per day to test daily aggregation)
+// ============================================================================
+
+interface RunningMetricConfig {
+  identifier: string;
+  unit: string;
+  label: string;
+  range: [number, number]; // [min, max] for sample values
+}
+
+const RUNNING_METRIC_CONFIGS: RunningMetricConfig[] = [
+  // Running speed: 2.5-5.0 m/s (9-18 km/h, easy jog to fast run)
+  { identifier: 'HKQuantityTypeIdentifierRunningSpeed', unit: 'm/s', label: 'RunningSpeed', range: [2.5, 5.0] },
+  // Running power: 200-450 W
+  { identifier: 'HKQuantityTypeIdentifierRunningPower', unit: 'W', label: 'RunningPower', range: [200, 450] },
+];
+
+/**
+ * Seeds running metric samples that simulate Apple Watch data during a run.
+ * Writes ~20 samples per day during a 30-minute workout window, producing
+ * enough variation for min/max/avg aggregation to be meaningful.
+ */
+const seedRunningMetric = async (
+  config: RunningMetricConfig,
+  dates: Date[]
+): Promise<number> => {
+  let count = 0;
+  const samplesPerRun = 20;
+
+  for (const date of dates) {
+    // 60% chance of a run on any given day (skip some days for realism)
+    if (!isToday(date) && Math.random() > 0.6) continue;
+
+    try {
+      const todayDate = isToday(date);
+
+      // Pick a workout start time
+      let runStartHour: number;
+      let runStartMinute: number;
+      if (todayDate) {
+        const now = new Date();
+        // Place run ending 5 minutes ago
+        const runEndTime = new Date(now.getTime() - 5 * 60000);
+        const runStartTime = new Date(runEndTime.getTime() - 30 * 60000);
+        if (runStartTime.getHours() < 1) continue; // Skip if too early
+        runStartHour = runStartTime.getHours();
+        runStartMinute = runStartTime.getMinutes();
+      } else {
+        runStartHour = randomInt(6, 18);
+        runStartMinute = randomInt(0, 30);
+      }
+
+      // Simulate a ~30 minute run with samples every ~90 seconds
+      const runDurationMinutes = todayDate ? 20 : randomInt(25, 40);
+      const intervalSeconds = Math.floor((runDurationMinutes * 60) / samplesPerRun);
+
+      // Base pace for this run (varies day to day)
+      const [minVal, maxVal] = config.range;
+      const midpoint = (minVal + maxVal) / 2;
+      const dayBaseline = midpoint + randomFloat(-0.3, 0.3) * (maxVal - minVal);
+
+      for (let i = 0; i < samplesPerRun; i++) {
+        const sampleStart = new Date(date);
+        sampleStart.setHours(runStartHour, runStartMinute, 0, 0);
+        sampleStart.setSeconds(sampleStart.getSeconds() + i * intervalSeconds);
+
+        const sampleEnd = new Date(sampleStart);
+        sampleEnd.setSeconds(sampleEnd.getSeconds() + intervalSeconds);
+
+        // Skip future samples for today
+        if (todayDate && sampleStart >= new Date()) continue;
+
+        // Vary around the day's baseline — warm-up slower, middle faster, cool-down slower
+        const progressRatio = i / (samplesPerRun - 1); // 0 to 1
+        // Bell curve: slower at start/end, faster in the middle
+        const phaseFactor = -4 * (progressRatio - 0.5) ** 2 + 1; // peaks at 0.5
+        const phaseAdjustment = phaseFactor * (maxVal - minVal) * 0.15;
+        const noise = randomFloat(-0.1, 0.1) * (maxVal - minVal);
+        const value = Math.max(minVal, Math.min(maxVal, dayBaseline + phaseAdjustment + noise));
+
+        try {
+          const success = await saveQuantitySample(
+            config.identifier as Parameters<typeof saveQuantitySample>[0],
+            config.unit,
+            parseFloat(value.toFixed(2)),
+            sampleStart,
+            sampleEnd,
+            {}
+          );
+          if (success) count++;
+        } catch {
+          // Continue with remaining samples
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Main Seed Function
+// ============================================================================
+
+/**
+ * Seeds a sparse set of step records across the past year for testing
+ * long-range sync. Places 2-3 records in the 3-6 month range and
+ * 2-3 records in the 6-12 month range.
+ */
+export const seedHistoricalSteps = async (): Promise<SeedResult> => {
+  addLog('[SeedHealthData] Starting to seed historical step data (past year)...', 'INFO');
+
+  try {
+    const permissionsGranted = await requestWritePermissions();
+    if (!permissionsGranted) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Write permissions not granted. Please grant permissions in Health app settings.',
+      };
+    }
+
+    const now = new Date();
+    let totalRecords = 0;
+
+    // Pick random dates in each range
+    const pickRandomDates = (minDaysAgo: number, maxDaysAgo: number, count: number): Date[] => {
+      const dates: Date[] = [];
+      for (let i = 0; i < count; i++) {
+        const daysAgo = randomInt(minDaysAgo, maxDaysAgo);
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        date.setHours(12, 0, 0, 0);
+        dates.push(date);
+      }
+      return dates;
+    };
+
+    const stepsConfig: QuantitySeedConfig = {
+      identifier: 'HKQuantityTypeIdentifierStepCount',
+      unit: 'count',
+      range: [5000, 12000],
+      samplesPerDay: 8,
+    };
+
+    // 2-3 records between 3-6 months ago (~90-180 days)
+    const midRangeDates = pickRandomDates(90, 180, randomInt(2, 3));
+    const midCount = await seedQuantitySamples(stepsConfig, midRangeDates);
+    totalRecords += midCount;
+    addLog(`[SeedHistoricalSteps] Seeded ${midCount} step records in 3-6 month range`, 'INFO');
+
+    // 2-3 records between 6-12 months ago (~180-365 days)
+    const farRangeDates = pickRandomDates(180, 365, randomInt(2, 3));
+    const farCount = await seedQuantitySamples(stepsConfig, farRangeDates);
+    totalRecords += farCount;
+    addLog(`[SeedHistoricalSteps] Seeded ${farCount} step records in 6-12 month range`, 'INFO');
+
+    addLog(`[SeedHistoricalSteps] Done — ${totalRecords} total step records seeded`, 'INFO');
+
+    return { success: true, recordsInserted: totalRecords };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHistoricalSteps] Error: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
+  }
+};
+
+export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
+  addLog(`[SeedHealthData] Starting to seed ${days} days of health data for iOS...`, 'INFO');
+
+  try {
+    const permissionsGranted = await requestWritePermissions();
+    if (!permissionsGranted) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Write permissions not granted. Please grant permissions in Health app settings.',
+      };
+    }
+
+    const dates = getPastDates(days);
+    let totalRecords = 0;
+    const results: { type: string; count: number }[] = [];
+
+    // Seed quantity samples
+    for (const config of QUANTITY_CONFIGS) {
+      try {
+        const count = await seedQuantitySamples(config, dates);
+        totalRecords += count;
+        results.push({ type: config.identifier.split('Identifier')[1], count });
+        addLog(`[SeedHealthData] Seeded ${config.identifier.split('Identifier')[1]}: ${count} records`, 'INFO');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
+      }
+    }
+
+    // Seed heart rate
+    try {
+      const count = await seedHeartRate(dates);
+      totalRecords += count;
+      results.push({ type: 'HeartRate', count });
+      addLog(`[SeedHealthData] Seeded HeartRate: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed HeartRate: ${message}`, 'WARNING');
+    }
+
+    // Seed weight
+    try {
+      const count = await seedWeight(dates);
+      totalRecords += count;
+      results.push({ type: 'Weight', count });
+      addLog(`[SeedHealthData] Seeded Weight: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Weight: ${message}`, 'WARNING');
+    }
+
+    // Seed height (single record)
+    try {
+      const count = await seedHeight();
+      totalRecords += count;
+      results.push({ type: 'Height', count });
+      addLog(`[SeedHealthData] Seeded Height: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Height: ${message}`, 'WARNING');
+    }
+
+    // Seed hydration
+    try {
+      const count = await seedHydration(dates);
+      totalRecords += count;
+      results.push({ type: 'Hydration', count });
+      addLog(`[SeedHealthData] Seeded Hydration: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Hydration: ${message}`, 'WARNING');
+    }
+
+    // Seed body temperature
+    try {
+      const count = await seedBodyTemperature(dates);
+      totalRecords += count;
+      results.push({ type: 'BodyTemperature', count });
+      addLog(`[SeedHealthData] Seeded BodyTemperature: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed BodyTemperature: ${message}`, 'WARNING');
+    }
+
+    // Seed sleep
+    try {
+      const count = await seedSleep(dates);
+      totalRecords += count;
+      results.push({ type: 'Sleep', count });
+      addLog(`[SeedHealthData] Seeded Sleep: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Sleep: ${message}`, 'WARNING');
+    }
+
+    // Seed workouts
+    try {
+      const count = await seedWorkouts(dates);
+      totalRecords += count;
+      results.push({ type: 'Workout', count });
+      addLog(`[SeedHealthData] Seeded Workout: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Workout: ${message}`, 'WARNING');
+    }
+
+    // Seed running metrics (many samples per day for aggregation testing)
+    for (const config of RUNNING_METRIC_CONFIGS) {
+      try {
+        const count = await seedRunningMetric(config, dates);
+        totalRecords += count;
+        results.push({ type: config.label, count });
+        addLog(`[SeedHealthData] Seeded ${config.label}: ${count} records`, 'INFO');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
+      }
+    }
+
+    const successTypes = results.filter(r => r.count > 0).length;
+    const totalTypes = results.length;
+
+    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records (${successTypes}/${totalTypes} types)`, 'INFO');
+
+    return {
+      success: true,
+      recordsInserted: totalRecords,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'ERROR');
+    return {
+      success: false,
+      recordsInserted: 0,
+      error: message,
+    };
+  }
+};

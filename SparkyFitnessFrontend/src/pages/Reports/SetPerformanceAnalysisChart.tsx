@@ -1,0 +1,192 @@
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
+import ZoomableChart from '@/components/ZoomableChart';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatWeight } from '@/utils/numberFormatting';
+
+interface SetPerformanceAnalysisChartProps {
+  setPerformanceData: {
+    setName: string;
+    avgWeight: number;
+    avgReps: number;
+  }[];
+  exerciseName?: string; // New prop for exercise name
+}
+
+const SetPerformanceAnalysisChart = ({
+  setPerformanceData,
+  exerciseName,
+}: SetPerformanceAnalysisChartProps) => {
+  const { t } = useTranslation();
+  const { weightUnit } = usePreferences();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!setPerformanceData || setPerformanceData.length === 0) {
+    return null;
+  }
+
+  if (!isMounted) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">
+            {exerciseName
+              ? t(
+                  'reports.setPerformanceAnalysis.titleWithExercise',
+                  `Set Performance Analysis - ${exerciseName}`,
+                  { exerciseName }
+                )
+              : t(
+                  'reports.setPerformanceAnalysis.title',
+                  'Set Performance Analysis'
+                )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+            <span className="text-xs text-muted-foreground">
+              {t('common.loading', 'Loading Analysis...')}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const chartTitle = exerciseName
+    ? t(
+        'reports.setPerformanceAnalysis.titleWithExercise',
+        `Set Performance Analysis - ${exerciseName}`,
+        { exerciseName }
+      )
+    : t('reports.setPerformanceAnalysis.title', 'Set Performance Analysis');
+
+  return (
+    <ZoomableChart title={chartTitle}>
+      {(isMaximized, zoomLevel) => (
+        <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{chartTitle}</CardTitle>
+          </CardHeader>
+          <CardContent
+            className={`grow min-h-0 ${isMaximized ? 'flex flex-col' : ''}`}
+          >
+            <div className={isMaximized ? 'grow min-h-0' : 'h-48'}>
+              <ResponsiveContainer
+                width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                height="100%"
+                minWidth={0}
+                minHeight={0}
+                debounce={100}
+              >
+                <BarChart data={setPerformanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="setName"
+                    tickCount={
+                      isMaximized
+                        ? Math.max(setPerformanceData.length, 10)
+                        : undefined
+                    }
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    tickFormatter={(value) =>
+                      weightUnit === 'st_lbs'
+                        ? typeof value === 'number'
+                          ? value.toFixed(1)
+                          : String(value)
+                        : String(value)
+                    }
+                    label={{
+                      value: t(
+                        'reports.setPerformanceAnalysis.avgWeightHeader',
+                        `Avg. Weight (${weightUnit})`,
+                        { weightUnit }
+                      ),
+                      angle: -90,
+                      position: 'insideLeft',
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    label={{
+                      value: t(
+                        'reports.setPerformanceAnalysis.avgReps',
+                        'Avg. Reps'
+                      ),
+                      angle: -90,
+                      position: 'insideRight',
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                    formatter={(
+                      value:
+                        | string
+                        | number
+                        | ReadonlyArray<string | number>
+                        | undefined,
+                      name: string | number | undefined
+                    ) => {
+                      const val = Array.isArray(value) ? value[0] : value;
+                      if (String(name) === 'avgWeight') {
+                        return [
+                          formatWeight(Number(val ?? 0), weightUnit),
+                          t(
+                            'reports.setPerformanceAnalysis.avgWeight',
+                            'Avg. Weight'
+                          ),
+                        ];
+                      }
+                      return [String(val ?? ''), String(name ?? '')];
+                    }}
+                  />
+                  <Legend />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="avgWeight"
+                    fill="#8884d8"
+                    name={t(
+                      'reports.setPerformanceAnalysis.avgWeight',
+                      'Avg. Weight'
+                    )}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="avgReps"
+                    fill="#82ca9d"
+                    name={t(
+                      'reports.setPerformanceAnalysis.avgReps',
+                      'Avg. Reps'
+                    )}
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </ZoomableChart>
+  );
+};
+
+export default SetPerformanceAnalysisChart;

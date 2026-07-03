@@ -1,0 +1,58 @@
+# Stage 1: Build the React application
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+
+# Copy global lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all workspace member package.json files for dependency graph resolution
+COPY SparkyFitnessServer/package.json ./SparkyFitnessServer/
+COPY SparkyFitnessFrontend/package.json ./SparkyFitnessFrontend/
+COPY SparkyFitnessMobile/package.json ./SparkyFitnessMobile/
+COPY shared/package.json ./shared/
+
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ ./patches/
+
+RUN pnpm install --frozen-lockfile --filter sparkyfitnessfrontend...
+
+# Copy the frontend and shared source code
+COPY SparkyFitnessFrontend/ ./SparkyFitnessFrontend/
+COPY shared/ ./shared/
+
+# Build the application
+RUN pnpm --filter sparkyfitnessfrontend run build
+
+# Stage 2: Serve the application with Nginx
+FROM nginx:alpine3.22
+
+# Install bash for console access and gettext for envsubst
+RUN apk add --no-cache bash gettext
+
+# Copy the build output from the builder stage
+COPY --from=builder /app/SparkyFitnessFrontend/dist /usr/share/nginx/html
+
+# Copy the nginx configuration template
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+
+# Copy and set up the entrypoint script
+COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh \
+    && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d
+
+# Set default values for environment variables
+ENV SPARKY_FITNESS_SERVER_HOST=sparkyfitness-server
+ENV SPARKY_FITNESS_SERVER_PORT=3010
+ENV NGINX_RATE_LIMIT=5r/s
+
+# Expose port 80
+EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["curl", "-f", "http://127.0.0.1"]
+
+# Start with our custom entrypoint
+CMD ["/docker-entrypoint.sh"]

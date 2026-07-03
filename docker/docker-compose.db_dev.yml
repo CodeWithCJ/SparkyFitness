@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: sparkyfitness_db
+      POSTGRES_USER: sparky
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data
+
+  # sparkyfitness-garmin:
+  #   build:
+  #     context: ./SparkyFitnessGarmin
+  #     dockerfile: Dockerfile.garmin_microservice
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000
+  #   volumes:
+  #     - ./SparkyFitnessGarmin:/app
+  #   depends_on:
+  #     - db

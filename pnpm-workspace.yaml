@@ -1,0 +1,31 @@
+packages:
+  - "frontend"
+  - "SparkyFitnessFrontend"
+  - "shared"
+  - "SparkyFitnessMobile"
+  - "SparkyFitnessServer"
+  - "docs"
+  - "SparkyFitnessMCP"
+
+packageExtensions:
+  "@kingstinct/react-native-healthkit@13":
+    dependencies:
+      "@expo/config-plugins": "^55.0.0"
+  # uniwind's metro plugin does `require("metro/private/DeltaBundler/Graph")` and
+  # `require("metro-cache/private/stores/FileStore")` but doesn't declare those as deps.
+  # Inject them so pnpm puts them in uniwind's resolution scope.
+  "uniwind":
+    dependencies:
+      "metro": "*"
+      "metro-cache": "*"
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+
+minimumReleaseAge: 4320
+
+minimumReleaseAgeExclude: []
+
+patchedDependencies:
+  "react-native-health-connect@3.5.3": "patches/react-native-health-connect@3.5.3.patch"

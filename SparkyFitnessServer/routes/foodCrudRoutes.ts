@@ -1,0 +1,1200 @@
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodService from '../services/foodService.js';
+import labelScanService, {
+  type LabelScanErrorCategory,
+} from '../services/labelScanService.js';
+import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
+import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
+import { backfillOffAllergens } from '../utils/backfillAllergens.js';
+const router = express.Router();
+router.use(express.json());
+
+function getErrorMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null;
+}
+
+// Apply diary permission check to all food routes
+router.use(checkPermissionMiddleware('diary'));
+// AI-dedicated food search route to handle /api/foods/search
+/**
+ * @swagger
+ * /foods/search:
+ *   get:
+ *     summary: Search for foods (AI-dedicated)
+ *     tags: [Nutrition & Meals]
+ *     description: Searches for foods based on a name query. This endpoint is dedicated for AI-powered searches.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The name of the food to search for.
+ *       - in: query
+ *         name: exactMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs an exact match search.
+ *       - in: query
+ *         name: broadMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs a broad match search.
+ *       - in: query
+ *         name: checkCustom
+ *         schema:
+ *           type: boolean
+ *         description: If true, includes custom foods in the search.
+ *     responses:
+ *       200:
+ *         description: A list of foods matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid request parameters.
+ */
+router.get('/search', authenticate, async (req, res, next) => {
+  const { name, exactMatch, broadMatch, checkCustom } = req.query;
+  if (!name) {
+    return res.status(400).json({ error: 'Food name is required.' });
+  }
+  try {
+    const foods = await foodService.searchFoods(
+      req.userId,
+      name,
+
+      req.userId,
+      exactMatch === 'true',
+      broadMatch === 'true',
+      checkCustom === 'true'
+    );
+    res.status(200).json(foods);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Invalid search parameters.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+// General food search route (should come before specific ID routes)
+/**
+ * @swagger
+ * /foods:
+ *   get:
+ *     summary: Search for foods
+ *     tags: [Nutrition & Meals]
+ *     description: Searches for foods based on various criteria.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: The name of the food to search for.
+ *       - in: query
+ *         name: exactMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs an exact match search.
+ *       - in: query
+ *         name: broadMatch
+ *         schema:
+ *           type: boolean
+ *         description: If true, performs a broad match search.
+ *       - in: query
+ *         name: checkCustom
+ *         schema:
+ *           type: boolean
+ *         description: If true, includes custom foods in the search.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: The maximum number of results to return.
+ *       - in: query
+ *         name: mealType
+ *         schema:
+ *           type: string
+ *         description: The type of meal to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of foods matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid request parameters.
+ */
+router.get('/', authenticate, async (req, res, next) => {
+  const { name, exactMatch, broadMatch, checkCustom, limit, mealType } =
+    req.query;
+  try {
+    const result = await foodService.searchFoods(
+      req.userId,
+      name,
+
+      req.userId,
+      exactMatch === 'true',
+      broadMatch === 'true',
+      checkCustom === 'true',
+      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
+      parseInt(limit, 10),
+      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
+      mealType
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Invalid search parameters.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods:
+ *   post:
+ *     summary: Create a new food
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new food item.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Food'
+ *     responses:
+ *       201:
+ *         description: The food was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       403:
+ *         description: User does not have permission to create a food.
+ */
+router.post('/', authenticate, async (req, res, next) => {
+  try {
+    const foodData = { ...req.body, user_id: req.userId }; // Ensure user_id is set for the food
+
+    const newFood = await foodService.createFood(req.userId, foodData);
+    res.status(201).json(newFood);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/foods-paginated:
+ *   get:
+ *     summary: Get foods with pagination
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a paginated list of foods.
+ *     parameters:
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: The term to search for.
+ *       - in: query
+ *         name: foodFilter
+ *         schema:
+ *           type: string
+ *         description: The filter to apply to the food list.
+ *       - in: query
+ *         name: currentPage
+ *         schema:
+ *           type: integer
+ *         description: The current page number.
+ *       - in: query
+ *         name: itemsPerPage
+ *         schema:
+ *           type: integer
+ *         description: The number of items to return per page.
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *         description: The field to sort by.
+ *     responses:
+ *       200:
+ *         description: A paginated list of foods.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 foods:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Food'
+ *                 totalCount:
+ *                   type: integer
+ */
+router.get('/foods-paginated', authenticate, async (req, res, next) => {
+  const { searchTerm, foodFilter, currentPage, itemsPerPage, sortBy } =
+    req.query;
+  try {
+    const { foods, totalCount } = await foodService.getFoodsWithPagination(
+      req.userId,
+      searchTerm,
+      foodFilter,
+      currentPage,
+      itemsPerPage,
+      sortBy
+    );
+    res.status(200).json({ foods, totalCount });
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants:
+ *   post:
+ *     summary: Create a new food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Creates a new variant for a food item.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       201:
+ *         description: The food variant was created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       403:
+ *         description: User does not have permission to create a food variant.
+ *       404:
+ *         description: Food not found.
+ */
+router.post('/food-variants', authenticate, async (req, res, next) => {
+  try {
+    const newVariant = await foodService.createFoodVariant(
+      req.authenticatedUserId || req.userId,
+      req.body
+    );
+    res.status(201).json(newVariant);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Food not found.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants:
+ *   get:
+ *     summary: Get food variants by food ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves all variants for a specific food item.
+ *     parameters:
+ *       - in: query
+ *         name: food_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to retrieve variants for.
+ *     responses:
+ *       200:
+ *         description: A list of food variants.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food ID is required.
+ */
+router.get('/food-variants', authenticate, async (req, res, next) => {
+  const { food_id } = req.query;
+  if (!food_id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
+  }
+  try {
+    const variants = await foodService.getFoodVariantsByFoodId(
+      req.userId,
+      food_id
+    );
+    res.status(200).json(variants);
+  } catch (error) {
+    // Let the centralized error handler manage the status codes and messages
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants/bulk:
+ *   post:
+ *     summary: Bulk create food variants
+ *     tags: [Nutrition & Meals]
+ *     description: Creates multiple food variants in a single request.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       201:
+ *         description: The food variants were created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/FoodVariant'
+ *       403:
+ *         description: User does not have permission to create food variants.
+ */
+router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
+  try {
+    const variantsData = req.body;
+    const createdVariants = await foodService.bulkCreateFoodVariants(
+      req.authenticatedUserId || req.userId,
+      variantsData
+    );
+    res.status(201).json(createdVariants);
+  } catch (error) {
+    const message = getErrorMessage(error);
+    if (message?.startsWith('Forbidden')) {
+      return res.status(403).json({ error: message });
+    }
+    if (message?.startsWith('Food not found')) {
+      return res.status(404).json({ error: message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants/{id}:
+ *   get:
+ *     summary: Get a food variant by ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a specific food variant by its ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested food variant.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food Variant ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food variant not found.
+ */
+router.get('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food Variant ID is required.' });
+  }
+  try {
+    const variant = await foodService.getFoodVariantById(req.userId, id);
+    res.status(200).json(variant);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Food variant not found.' ||
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Associated food not found.'
+    ) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants/{id}:
+ *   put:
+ *     summary: Update a food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Updates an existing food variant.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/FoodVariant'
+ *     responses:
+ *       200:
+ *         description: The updated food variant.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FoodVariant'
+ *       400:
+ *         description: Food Variant ID and Food ID are required.
+ *       403:
+ *         description: User does not have permission to update this food variant.
+ *       404:
+ *         description: Food variant not found.
+ */
+router.put('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  const { food_id } = req.body; // food_id is needed for authorization in service layer
+  if (!id || !food_id) {
+    return res
+      .status(400)
+      .json({ error: 'Food Variant ID and Food ID are required.' });
+  }
+  try {
+    const updatedVariant = await foodService.updateFoodVariant(
+      req.authenticatedUserId || req.userId,
+      id,
+      req.body
+    );
+    res.status(200).json(updatedVariant);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Food variant not found.' ||
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Associated food not found.'
+    ) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/food-variants/{id}:
+ *   delete:
+ *     summary: Delete a food variant
+ *     tags: [Nutrition & Meals]
+ *     description: Deletes a specific food variant.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food variant to delete.
+ *     responses:
+ *       200:
+ *         description: Food variant deleted successfully.
+ *       400:
+ *         description: Food Variant ID is required.
+ *       403:
+ *         description: User does not have permission to delete this food variant.
+ *       404:
+ *         description: Food variant not found.
+ */
+router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food Variant ID is required.' });
+  }
+  try {
+    await foodService.deleteFoodVariant(
+      req.authenticatedUserId || req.userId,
+      id
+    );
+    res.status(200).json({ message: 'Food variant deleted successfully.' });
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Food variant not found.' ||
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Associated food not found.'
+    ) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/barcode/{barcode}:
+ *   get:
+ *     summary: Look up a food by barcode
+ *     tags: [Nutrition & Meals]
+ *     description: Checks the local database first, then queries an external barcode provider (USDA, FatSecret, YAZIO, or OpenFoodFacts). The provider can be specified via the providerId query parameter or the user's default_barcode_provider_id preference. If the chosen provider returns no results, OpenFoodFacts is tried as a fallback.
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The barcode to look up (8-14 digits).
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional external data provider ID to use for barcode lookup (e.g. a USDA provider). Falls back to the user's default barcode provider preference if not specified.
+ *     responses:
+ *       200:
+ *         description: Barcode lookup result.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 source:
+ *                   type: string
+ *                   enum: [local, openfoodfacts, usda, fatsecret, yazio, not_found]
+ *                 food:
+ *                   $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid barcode format.
+ */
+router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
+  const { barcode } = req.params;
+  if (!/^\d{8,14}$/.test(barcode)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid barcode format. Must be 8-14 digits.' });
+  }
+  try {
+    const result = await foodService.lookupBarcode(
+      barcode,
+
+      req.userId,
+      req.query.providerId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+const LABEL_SCAN_ERROR_HTTP_STATUS: Record<LabelScanErrorCategory, number> = {
+  no_ai_configured: 422,
+  unsupported_provider: 422,
+  api_key_missing: 422,
+  custom_url_missing: 422,
+  unsupported_media: 400,
+  refused: 422,
+  truncated: 422,
+  no_content: 422,
+  parse_error: 422,
+  upstream_error: 502,
+  timeout: 504,
+};
+
+router.post('/scan-label', authenticate, async (req, res, next) => {
+  const { image, mime_type } = req.body;
+  if (!image || !mime_type) {
+    return res.status(400).json({ error: 'image and mime_type are required.' });
+  }
+  try {
+    const result = await labelScanService.extractNutritionFromLabel(
+      image,
+      mime_type,
+
+      req.userId
+    );
+    if (!result.success) {
+      const status = LABEL_SCAN_ERROR_HTTP_STATUS[result.category] ?? 500;
+      return res.status(status).json({ error: result.error });
+    }
+    res.status(200).json(result.nutrition);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024;
+const MAX_DESCRIPTION_LENGTH = 500;
+const OZ_TO_GRAMS = 28.3495;
+const MAX_PHOTO_IMAGES = (() => {
+  const raw = Number(process.env.AI_PHOTO_ESTIMATE_MAX_IMAGES);
+  return Number.isInteger(raw) && raw > 0 ? raw : 6;
+})();
+// Cap the combined base64 payload across all images. The per-image 8MB limit
+// alone allows up to MAX_PHOTO_IMAGES * 8MB, which (parsed, mapped, and
+// re-stringified for the provider) can spike memory enough to OOM a small box
+// under concurrent load.
+const MAX_TOTAL_BASE64_LENGTH = 24 * 1024 * 1024;
+
+const PHOTO_ESTIMATION_ERROR_HTTP_STATUS: Record<
+  FoodPhotoEstimateErrorCode,
+  number
+> = {
+  INVALID_REQUEST: 400,
+  IMAGE_TOO_LARGE: 400,
+  UNSUPPORTED_MIME_TYPE: 400,
+  NO_AI_CONFIGURED: 422,
+  UNSUPPORTED_PROVIDER: 422,
+  API_KEY_MISSING: 422,
+  CONTENT_BLOCKED: 422,
+  PARSE_ERROR: 422,
+  UPSTREAM_ERROR: 502,
+  TIMEOUT: 504,
+};
+
+router.post(
+  '/estimate-food-photo',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const { image, mime_type, images, description, total_weight, weight_unit } =
+      req.body ?? {};
+
+    // Normalize to an array of { image, mime_type } entries. Accepts the
+    // multi-image `images[]` shape or the legacy single `image`/`mime_type`
+    // fields (kept for backward compatibility).
+    let rawImages: unknown[];
+    if (images !== undefined) {
+      if (!Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({
+          error: 'images must be a non-empty array.',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      rawImages = images;
+    } else if (image !== undefined || mime_type !== undefined) {
+      rawImages = [{ image, mime_type }];
+    } else {
+      return res
+        .status(400)
+        .json({ error: 'image is required.', code: 'INVALID_REQUEST' });
+    }
+
+    if (rawImages.length > MAX_PHOTO_IMAGES) {
+      return res.status(400).json({
+        error: `A maximum of ${MAX_PHOTO_IMAGES} images is allowed per estimate.`,
+        code: 'INVALID_REQUEST',
+      });
+    }
+
+    const photoImages: { base64: string; mimeType: string }[] = [];
+    let totalBase64Length = 0;
+    for (const entry of rawImages) {
+      const img = (entry as { image?: unknown } | null)?.image;
+      const mt = (entry as { mime_type?: unknown } | null)?.mime_type;
+      if (typeof img !== 'string' || img.length === 0) {
+        return res
+          .status(400)
+          .json({ error: 'image is required.', code: 'INVALID_REQUEST' });
+      }
+      if (typeof mt !== 'string' || mt.length === 0) {
+        return res
+          .status(400)
+          .json({ error: 'mime_type is required.', code: 'INVALID_REQUEST' });
+      }
+      if (img.length > MAX_BASE64_IMAGE_LENGTH) {
+        return res.status(400).json({
+          error: 'image exceeds the maximum allowed size of 8MB (base64).',
+          code: 'IMAGE_TOO_LARGE',
+        });
+      }
+      totalBase64Length += img.length;
+      if (totalBase64Length > MAX_TOTAL_BASE64_LENGTH) {
+        return res.status(400).json({
+          error:
+            'The combined size of all images exceeds the allowed limit of 24MB (base64).',
+          code: 'IMAGE_TOO_LARGE',
+        });
+      }
+      if (!ALLOWED_PHOTO_MIME_TYPES.has(mt)) {
+        return res.status(400).json({
+          error: `Unsupported mime_type '${mt}'. Allowed: ${[...ALLOWED_PHOTO_MIME_TYPES].join(', ')}.`,
+          code: 'UNSUPPORTED_MIME_TYPE',
+        });
+      }
+      photoImages.push({ base64: img, mimeType: mt });
+    }
+
+    if (description !== undefined) {
+      if (
+        typeof description !== 'string' ||
+        description.length > MAX_DESCRIPTION_LENGTH
+      ) {
+        return res.status(400).json({
+          error: `description must be a string of at most ${MAX_DESCRIPTION_LENGTH} characters.`,
+          code: 'INVALID_REQUEST',
+        });
+      }
+    }
+
+    const hasWeight = total_weight !== undefined;
+    const hasUnit = weight_unit !== undefined;
+    if (hasWeight !== hasUnit) {
+      return res.status(400).json({
+        error: 'total_weight and weight_unit must be provided together.',
+        code: 'INVALID_REQUEST',
+      });
+    }
+
+    let weightSlot = '';
+    if (hasWeight && hasUnit) {
+      if (
+        typeof total_weight !== 'number' ||
+        !Number.isFinite(total_weight) ||
+        total_weight <= 0
+      ) {
+        return res.status(400).json({
+          error: 'total_weight must be a positive finite number.',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      if (weight_unit !== 'g' && weight_unit !== 'oz') {
+        return res.status(400).json({
+          error: "weight_unit must be 'g' or 'oz'.",
+          code: 'INVALID_REQUEST',
+        });
+      }
+      if (weight_unit === 'oz') {
+        const weightGrams = Math.round(total_weight * OZ_TO_GRAMS);
+        weightSlot = `${total_weight} oz (approximately ${weightGrams} g)`;
+      } else {
+        weightSlot = `${total_weight} g`;
+      }
+    }
+
+    try {
+      const result =
+        await foodPhotoEstimationService.estimateFoodPhotoNutrition({
+          images: photoImages,
+          userId: req.userId,
+          description: typeof description === 'string' ? description : '',
+          weightSlot,
+        });
+      if (result.success) {
+        return res.status(200).json(result.estimate);
+      }
+      const status = PHOTO_ESTIMATION_ERROR_HTTP_STATUS[result.code] ?? 500;
+      return res
+        .status(status)
+        .json({ error: result.error, code: result.code });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /foods/{foodId}:
+ *   get:
+ *     summary: Get a food by ID
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a specific food item by its ID.
+ *     parameters:
+ *       - in: path
+ *         name: foodId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested food item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food not found.
+ */
+router.get('/:foodId', authenticate, async (req, res, next) => {
+  const { foodId } = req.params;
+  if (!foodId) {
+    return res.status(400).json({ error: 'Food ID is required.' });
+  }
+  try {
+    const food = await foodService.getFoodById(req.userId, foodId);
+    res.status(200).json(food);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Food not found.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/{id}:
+ *   put:
+ *     summary: Update a food
+ *     tags: [Nutrition & Meals]
+ *     description: Updates an existing food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Food'
+ *     responses:
+ *       200:
+ *         description: The updated food item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to update this food.
+ *       404:
+ *         description: Food not found or not authorized to update.
+ */
+router.put('/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
+  }
+  try {
+    const updatedFood = await foodService.updateFood(req.userId, id, req.body);
+    res.status(200).json(updatedFood);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Food not found or not authorized to update.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/{id}/deletion-impact:
+ *   get:
+ *     summary: Get food deletion impact
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves the impact of deleting a specific food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to check.
+ *     responses:
+ *       200:
+ *         description: The deletion impact report.
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ *       404:
+ *         description: Food not found.
+ */
+router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
+  }
+  try {
+    const impact = await foodService.getFoodDeletionImpact(req.userId, id);
+    res.status(200).json(impact);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message === 'Food not found.') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/{id}:
+ *   delete:
+ *     summary: Delete a food
+ *     tags: [Nutrition & Meals]
+ *     description: Deletes a specific food item.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to delete.
+ *       - in: query
+ *         name: forceDelete
+ *         schema:
+ *           type: boolean
+ *         description: If true, forces deletion even if there are dependencies.
+ *     responses:
+ *       200:
+ *         description: Food deleted successfully.
+ *       400:
+ *         description: Food ID is required.
+ *       403:
+ *         description: User does not have permission to delete this food.
+ *       404:
+ *         description: Food not found.
+ */
+router.delete('/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  const { forceDelete } = req.query; // Get forceDelete from query parameters
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
+  }
+  try {
+    const result = await foodService.deleteFood(
+      req.userId,
+      id,
+      forceDelete === 'true'
+    );
+    // Based on the result status, return appropriate messages and status codes
+    if (result.status === 'deleted') {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === 'force_deleted') {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === 'hidden') {
+      res.status(200).json({ message: result.message });
+    } else {
+      // Fallback for unexpected status
+      res
+        .status(500)
+        .json({ error: 'An unexpected error occurred during deletion.' });
+    }
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Food not found.' ||
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error.message === 'Food not found or not authorized to delete.'
+    ) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/import-from-csv:
+ *   post:
+ *     summary: Import foods from CSV
+ *     tags: [Nutrition & Meals]
+ *     description: Imports a list of foods from a CSV file.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foods:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/Food'
+ *     responses:
+ *       200:
+ *         description: Food data imported successfully.
+ *       400:
+ *         description: Food data is required.
+ */
+router.post('/import-from-csv', authenticate, async (req, res, next) => {
+  const { foods } = req.body;
+  if (!foods) {
+    return res.status(400).json({ error: 'Food data is required.' });
+  }
+  try {
+    await foodService.importFoodsInBulk(req.userId, foods);
+    res.status(200).json({ message: 'Food data imported successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/needs-review:
+ *   get:
+ *     summary: Get foods needing review
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves a list of foods that need to be reviewed.
+ *     responses:
+ *       200:
+ *         description: A list of foods needing review.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Food'
+ */
+router.get('/needs-review', authenticate, async (req, res, next) => {
+  try {
+    const foodsNeedingReview = await foodService.getFoodsNeedingReview(
+      req.userId
+    );
+    res.status(200).json(foodsNeedingReview);
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /foods/update-snapshot:
+ *   post:
+ *     summary: Update food entries snapshot
+ *     tags: [Nutrition & Meals]
+ *     description: Updates the snapshot of food entries.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foodId:
+ *                 type: string
+ *                 format: uuid
+ *               variantId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: The result of the snapshot update.
+ *       400:
+ *         description: foodId is required.
+ */
+router.post('/update-snapshot', authenticate, async (req, res, next) => {
+  const { foodId, variantId } = req.body;
+  if (!foodId) {
+    return res.status(400).json({ error: 'foodId is required.' });
+  }
+  try {
+    const result = await foodService.updateFoodEntriesSnapshot(
+      req.userId,
+      foodId,
+      variantId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/sync-allergens', authenticate, async (req, res, next) => {
+  try {
+    const result = await backfillOffAllergens(req.userId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1.4
+
+# Stage 1: Install workspace dependencies and deploy server
+FROM --platform=$BUILDPLATFORM node:24-alpine AS backend_builder
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Copy workspace root files for pnpm resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all workspace member package.json files for dependency graph resolution
+COPY SparkyFitnessServer/package.json SparkyFitnessServer/
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
+COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
+COPY shared/package.json shared/
+
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ patches/
+
+# Install workspace dependencies
+RUN pnpm install --frozen-lockfile --filter sparkyfitnessserver...
+
+# Copy server and shared source
+COPY SparkyFitnessServer/ SparkyFitnessServer/
+COPY shared/ shared/
+
+# Deploy server to standalone directory (flat node_modules, no workspace symlinks)
+RUN pnpm --filter=sparkyfitnessserver deploy --legacy /deploy
+
+# Stage 2: Runtime container for backend
+FROM node:24-alpine
+
+WORKDIR /app/SparkyFitnessServer
+
+RUN apk add --no-cache curl postgresql18-client tar gzip
+
+# Copy the deployed server (includes source + standalone node_modules)
+COPY --from=backend_builder /deploy ./
+COPY --from=backend_builder /deploy/package.json /app/package.json
+
+# Expose the port your backend server listens on
+EXPOSE 3010
+
+# Healthcheck
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "-f", "http://127.0.0.1:3010/api/health"]
+
+# Command to run the backend server (tsx handles .ts imports transparently)
+CMD ["./node_modules/.bin/tsx", "index.ts"]
+
+

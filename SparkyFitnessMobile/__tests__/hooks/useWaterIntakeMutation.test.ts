@@ -1,0 +1,499 @@
+import { renderHook, waitFor, act } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
+import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
+import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
+import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+
+jest.mock('../../src/services/api/measurementsApi', () => ({
+  fetchWaterContainers: jest.fn(),
+  changeWaterIntake: jest.fn(),
+}));
+
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
+}));
+
+const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<typeof fetchWaterContainers>;
+const mockChangeWaterIntake = changeWaterIntake as jest.MockedFunction<typeof changeWaterIntake>;
+
+const primaryContainer = {
+  id: 1,
+  name: 'Glass',
+  volume: 250,
+  unit: 'ml',
+  is_primary: true,
+  servings_per_container: 1,
+};
+
+const makeRawData = (waterMl = 500): DailySummaryRawData => ({
+  goals: {
+    calories: 2000,
+    protein: 150,
+    carbs: 250,
+    fat: 70,
+    dietary_fiber: 30,
+    water_goal_ml: 2500,
+    target_exercise_calories_burned: 300,
+    target_exercise_duration_minutes: 60,
+  },
+  foodEntries: [],
+  exerciseEntries: [],
+  waterIntake: { water_ml: waterMl },
+});
+
+describe('useWaterIntakeMutation', () => {
+  let queryClient: QueryClient;
+  const testDate = '2024-06-15';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  test('isReady is false when containers have not loaded', () => {
+    mockFetchWaterContainers.mockReturnValue(new Promise(() => {})); // never resolves
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    expect(result.current.isReady).toBe(false);
+  });
+
+  test('isReady is true when primary container is loaded', async () => {
+    mockFetchWaterContainers.mockResolvedValue([primaryContainer]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+  });
+
+  test('isReady is true when single container exists but is not primary', async () => {
+    mockFetchWaterContainers.mockResolvedValue([
+      { ...primaryContainer, is_primary: false },
+    ]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+  });
+
+  test('increment uses the only container when it is not marked primary', async () => {
+    mockFetchWaterContainers.mockResolvedValue([
+      {
+        ...primaryContainer,
+        id: 9,
+        is_primary: false,
+        volume: 600,
+        servings_per_container: 2,
+      },
+    ]);
+    mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 800, entry_date: testDate });
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+      expect(result.current.servingVolume).toBe(300);
+    });
+
+    await act(async () => {
+      result.current.increment();
+    });
+
+    await waitFor(() => {
+      expect(mockChangeWaterIntake).toHaveBeenCalledWith({
+        entryDate: testDate,
+        changeDrinks: 1,
+        containerId: 9,
+      });
+    });
+  });
+
+  test('isReady is false when multiple containers exist but none is primary', async () => {
+    mockFetchWaterContainers.mockResolvedValue([
+      { ...primaryContainer, id: 1, is_primary: false },
+      { ...primaryContainer, id: 2, is_primary: false },
+    ]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockFetchWaterContainers).toHaveBeenCalled();
+    });
+
+    expect(result.current.isReady).toBe(false);
+  });
+
+  test('increment shows toast when no primary container', async () => {
+    mockFetchWaterContainers.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockFetchWaterContainers).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.increment();
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'No Water Containers',
+      text2: 'Please configure a water container on the server to track hydration.',
+      visibilityTime: 4000,
+    });
+    expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+  });
+
+  test('decrement shows toast when no primary container', async () => {
+    mockFetchWaterContainers.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockFetchWaterContainers).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.decrement();
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'No Water Containers',
+      text2: 'Please configure a water container on the server to track hydration.',
+      visibilityTime: 4000,
+    });
+    expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+  });
+
+  describe('with primary container loaded', () => {
+    beforeEach(() => {
+      mockFetchWaterContainers.mockResolvedValue([primaryContainer]);
+    });
+
+    test('increment calls changeWaterIntake with +1', async () => {
+      mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 750, entry_date: testDate });
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() => {
+        expect(mockChangeWaterIntake).toHaveBeenCalledWith({
+          entryDate: testDate,
+          changeDrinks: 1,
+          containerId: 1,
+        });
+      });
+    });
+
+    test('decrement calls changeWaterIntake with -1', async () => {
+      mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 250, entry_date: testDate });
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.decrement();
+      });
+
+      await waitFor(() => {
+        expect(mockChangeWaterIntake).toHaveBeenCalledWith({
+          entryDate: testDate,
+          changeDrinks: -1,
+          containerId: 1,
+        });
+      });
+    });
+
+    test('optimistic update adjusts waterConsumed in cache', async () => {
+      const summary = makeRawData(500);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      // Hold the mutation so we can check the optimistic state
+      let resolveMutation: (value: { id: string; water_ml: number; entry_date: string }) => void;
+      mockChangeWaterIntake.mockImplementation(
+        () => new Promise((resolve) => { resolveMutation = resolve; })
+      );
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      act(() => {
+        result.current.increment();
+      });
+
+      // Check optimistic update applied
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(750); // 500 + 250 (container volume)
+      });
+
+      // Resolve with server truth
+      await act(async () => {
+        resolveMutation!({ id: '1', water_ml: 760, entry_date: testDate });
+      });
+
+      // Server truth overwrites optimistic value
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(760);
+      });
+    });
+
+    test('server truth overwrites optimistic value on success', async () => {
+      const summary = makeRawData(1000);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 1300, entry_date: testDate });
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(1300);
+      });
+    });
+
+    test('invalidates query on error', async () => {
+      const summary = makeRawData(500);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      mockChangeWaterIntake.mockRejectedValue(new Error('Network error'));
+
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: dailySummaryQueryKey(testDate),
+        });
+      });
+
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update water intake. Please try again.',
+      });
+
+      invalidateSpy.mockRestore();
+    });
+
+    test('optimistic decrement clamps to zero', async () => {
+      const summary = makeRawData(100); // Less than container volume (250)
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      let resolveMutation: (value: { id: string; water_ml: number; entry_date: string }) => void;
+      mockChangeWaterIntake.mockImplementation(
+        () => new Promise((resolve) => { resolveMutation = resolve; })
+      );
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      act(() => {
+        result.current.decrement();
+      });
+
+      // Optimistic should clamp to 0, not go negative
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(0);
+      });
+
+      await act(async () => {
+        resolveMutation!({ id: '1', water_ml: 0, entry_date: testDate });
+      });
+    });
+
+    test('rapid taps: each mutation sends to server', async () => {
+      const summary = makeRawData(500);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      let callCount = 0;
+      mockChangeWaterIntake.mockImplementation(async () => {
+        callCount++;
+        return { id: String(callCount), water_ml: 500 + callCount * 250, entry_date: testDate };
+      });
+
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      // Rapid taps
+      await act(async () => {
+        result.current.increment();
+        result.current.increment();
+        result.current.increment();
+      });
+
+      await waitFor(() => {
+        expect(mockChangeWaterIntake).toHaveBeenCalledTimes(3);
+      });
+    });
+  });
+
+  describe('container selection (AsyncStorage persistence)', () => {
+    const containerA = { id: 1, name: 'Glass', volume: 250, unit: 'ml', is_primary: true, servings_per_container: 1 };
+    const containerB = { id: 2, name: 'Bottle', volume: 750, unit: 'ml', is_primary: false, servings_per_container: 1 };
+    const containerC = { id: 3, name: 'Mug', volume: 300, unit: 'ml', is_primary: false, servings_per_container: 1 };
+
+    beforeEach(() => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    });
+
+    test('returns all containers via containers field', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.containers).toEqual([containerA, containerB]);
+    });
+
+    test('activeContainer is primary when no saved selection', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(1);
+    });
+
+    test('saved selection overrides primary container', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('2');
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      await waitFor(() => expect(result.current.activeContainer?.id).toBe(2));
+    });
+
+    test('NaN guard: corrupted AsyncStorage value falls back to primary', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('not-a-number');
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(1);
+    });
+
+    test('single non-primary container is used as fallback when no selection', async () => {
+      const onlyContainer = { ...containerB, is_primary: false };
+      mockFetchWaterContainers.mockResolvedValue([onlyContainer]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.activeContainer?.id).toBe(2);
+      expect(result.current.isReady).toBe(true);
+    });
+
+    test('selectContainer saves to AsyncStorage and updates activeContainer', async () => {
+      mockFetchWaterContainers.mockResolvedValue([containerA, containerB, containerC]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      act(() => { result.current.selectContainer(3); });
+
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@SparkyFitness/selected-water-container', '3');
+      await waitFor(() => expect(result.current.activeContainer?.id).toBe(3));
+    });
+
+    test('noContainerAlert shows "No Primary Container" when multiple containers but none selected', async () => {
+      mockFetchWaterContainers.mockResolvedValue([
+        { ...containerA, is_primary: false },
+        { ...containerB, is_primary: false },
+      ]);
+      const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+      expect(result.current.isReady).toBe(false);
+
+      act(() => { result.current.increment(); });
+
+      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({
+        text1: 'No Primary Container',
+      }));
+    });
+  });
+});

@@ -1,0 +1,31 @@
+# Use an official Node.js runtime as a parent image
+FROM node:24-alpine
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Copy workspace root files for pnpm resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all workspace member package.json files for dependency graph resolution
+COPY SparkyFitnessServer/package.json SparkyFitnessServer/
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
+COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
+COPY shared/package.json shared/
+
+# Copy patch files referenced by pnpm.patchedDependencies in root package.json
+COPY patches/ patches/
+
+# Install workspace dependencies
+RUN pnpm install --filter sparkyfitnessfrontend...
+
+# Copy shared source (frontend imports @workspace/shared)
+COPY shared/ shared/
+
+# Set working directory to frontend for runtime
+WORKDIR /app/SparkyFitnessFrontend
+
+EXPOSE 8080
+
+CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]

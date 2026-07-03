@@ -1,0 +1,369 @@
+import {
+  linkFitbitAccount,
+  linkGoogleHealthAccount,
+  linkPolarFlowAccount,
+  linkWithingsAccount,
+  linkStravaAccount,
+  syncHevyData,
+  loginGarmin,
+  GarminLoginPayload,
+} from '@/api/Integrations/integrations';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+
+import {
+  handleConnectWithings,
+  handleDisconnectWithings,
+  handleManualSync,
+  handleDisconnectGarmin,
+  handleManualSyncGarmin,
+  handleConnectFitbit,
+  handleDisconnectFitbit,
+  handleManualSyncFitbit,
+  handleConnectPolar,
+  handleDisconnectPolar,
+  handleManualSyncPolar,
+  handleConnectGoogleHealth,
+  handleDisconnectGoogleHealth,
+  handleManualSyncGoogleHealth,
+  handleConnectStrava,
+  handleDisconnectStrava,
+  handleManualSyncStrava,
+  fetchGarminStatus,
+  GarminMfaPayload,
+  resumeGarminLogin,
+} from '@/api/Settings/externalProviderService';
+import { garminKeys } from '@/api/keys/integrations';
+import { externalProviderKeys } from '@/api/keys/settings';
+import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+export const useLinkFitbitMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkFitbitAccount,
+    onSuccess: invalidate,
+    meta: {
+      errorMessage: t(
+        'integrations.fitbitLinkError',
+        'Failed to link Fitbit account.'
+      ),
+      successMessage: t(
+        'integrations.fitbitLinkSuccess',
+        'Fitbit account successfully linked!'
+      ),
+    },
+  });
+};
+
+export const useLinkGoogleHealthMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkGoogleHealthAccount,
+    onSuccess: invalidate,
+    meta: {
+      errorMessage: t(
+        'integrations.googleHealthLinkError',
+        'Failed to link Google Health account.'
+      ),
+      successMessage: t(
+        'integrations.googleHealthLinkSuccess',
+        'Google Health account successfully linked!'
+      ),
+    },
+  });
+};
+
+export const useLinkWithingsMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkWithingsAccount,
+    onSuccess: invalidate,
+    meta: {
+      successMessage: t(
+        'integrations.withingsSuccess',
+        'Your Withings account has been successfully linked.'
+      ),
+      errorMessage: t(
+        'integrations.withingsError',
+        'Failed to link Withings account. Please try again.'
+      ),
+    },
+  });
+};
+
+export const useLinkStravaMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkStravaAccount,
+    onSuccess: invalidate,
+    meta: {
+      successMessage: t(
+        'integrations.stravaSuccess',
+        'Your Strava account has been successfully linked.'
+      ),
+      errorMessage: t(
+        'integrations.stravaError',
+        'Failed to link Strava account. Please try again.'
+      ),
+    },
+  });
+};
+
+export const usePolarFlowMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: linkPolarFlowAccount,
+    onSuccess: invalidate,
+    meta: {
+      successMessage: t(
+        'integrations.polarSuccess',
+        'Your Polar account has been successfully linked.'
+      ),
+      errorMessage: t(
+        'integrations.polarError',
+        'Failed to link Polar account. Please try again.'
+      ),
+    },
+  });
+};
+
+interface SyncHevyVariables {
+  fullSync?: boolean;
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useSyncHevyMutation = () => {
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: ({
+      fullSync = false,
+      providerId,
+      startDate,
+      endDate,
+    }: SyncHevyVariables) =>
+      syncHevyData(fullSync, providerId, startDate, endDate),
+    meta: {
+      successMessage: t(
+        'integrations.hevySyncSuccess',
+        'Hevy data synced successfully.'
+      ),
+      errorMessage: t(
+        'integrations.hevySyncError',
+        'Hevy sync failed. Please check your API key in settings.'
+      ),
+    },
+  });
+};
+export const useLoginGarminMutation = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: GarminLoginPayload) => loginGarmin(payload),
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.garminLoginError',
+        'Failed to connect to Garmin.'
+      ),
+      successMessage: t(
+        'integrations.garminLoginSuccess',
+        'Garmin connected successfully.'
+      ),
+    },
+  });
+};
+
+export const useConnectWithingsMutation = () => {
+  return useMutation({
+    mutationFn: handleConnectWithings,
+  });
+};
+
+export const useDisconnectWithingsMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectWithings,
+  });
+};
+
+interface SyncVariables {
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useManualSyncWithingsMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSync(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export const useDisconnectGarminMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectGarmin,
+  });
+};
+
+export const useManualSyncGarminMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncGarmin(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export const useConnectFitbitMutation = () => {
+  return useMutation({
+    mutationFn: handleConnectFitbit,
+  });
+};
+
+export const useDisconnectFitbitMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectFitbit,
+  });
+};
+
+export const useManualSyncFitbitMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncFitbit(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export const useConnectPolarMutation = () => {
+  return useMutation({
+    mutationFn: (providerId: string) => handleConnectPolar(providerId),
+  });
+};
+
+export const useDisconnectPolarMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectPolar,
+  });
+};
+
+interface SyncPolarVariables extends SyncVariables {
+  providerId: string;
+}
+
+export const useManualSyncPolarMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ providerId, startDate, endDate }: SyncPolarVariables) =>
+      handleManualSyncPolar(providerId, startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export const useConnectStravaMutation = () => {
+  return useMutation({
+    mutationFn: handleConnectStrava,
+  });
+};
+
+export const useDisconnectStravaMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectStrava,
+  });
+};
+
+export const useManualSyncStravaMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncStrava(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export const useConnectGoogleHealthMutation = () => {
+  return useMutation({
+    mutationFn: handleConnectGoogleHealth,
+  });
+};
+
+export const useDisconnectGoogleHealthMutation = () => {
+  return useMutation({
+    mutationFn: handleDisconnectGoogleHealth,
+  });
+};
+
+export const useManualSyncGoogleHealthMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncGoogleHealth(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
+export interface GarminStatusResponse {
+  isLinked: boolean;
+  lastUpdated: string | null;
+  tokenExpiresAt: string | null;
+}
+
+export const useGarminStatus = (userId?: string) => {
+  return useQuery({
+    queryKey: garminKeys.status,
+    queryFn: fetchGarminStatus,
+    enabled: !!userId,
+  });
+};
+
+export const useResumeGarminLoginMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: GarminMfaPayload) => resumeGarminLogin(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+    meta: {
+      successMessage: 'Garmin Connect linked successfully!',
+      errorMessage: 'Failed to submit MFA code. Please try again.',
+    },
+  });
+};

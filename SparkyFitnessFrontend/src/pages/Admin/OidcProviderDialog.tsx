@@ -1,0 +1,539 @@
+import type React from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ClipboardCopy } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { OidcProvider } from '@/types/admin';
+
+export const ProviderDialog: React.FC<{
+  provider: OidcProvider;
+  onSave: (provider: OidcProvider, logoFile: File | null) => void;
+  onClose: () => void;
+}> = ({ provider, onSave, onClose }) => {
+  const { t } = useTranslation();
+  const [editedProvider, setEditedProvider] = useState<OidcProvider>(provider);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  const suffix = `/api/auth/sso/callback/${editedProvider.provider_id || 'YOUR_ID'}`;
+
+  const [isManualRedirectUri, setIsManualRedirectUri] = useState(() => {
+    if (provider.redirect_uris?.[0]) {
+      try {
+        const url = new URL(provider.redirect_uris[0]);
+        return url.origin !== window.location.origin;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const [baseUrlOverride, setBaseUrlOverride] = useState(() => {
+    if (provider.redirect_uris?.[0]) {
+      try {
+        const url = new URL(provider.redirect_uris[0]);
+        if (url.origin !== window.location.origin) return url.origin;
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
+  const base = isManualRedirectUri
+    ? baseUrlOverride || window.location.origin
+    : window.location.origin;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const fullUri = `${cleanBase}${suffix}`;
+
+  const handleResetToDefaults = () => {
+    setEditedProvider((prev) => ({
+      ...prev,
+      scope: 'openid profile email',
+      token_endpoint_auth_method: 'client_secret_post',
+      response_types: ['code'],
+      signing_algorithm: 'RS256',
+      profile_signing_algorithm: 'none',
+      timeout: 30000,
+    }));
+    toast({
+      title: t('admin.oidcSettings.defaultsRestored', 'Defaults Restored'),
+      description: t(
+        'admin.oidcSettings.defaultsRestored',
+        'OIDC provider fields have been reset to their default values.'
+      ),
+    });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    if (id === 'redirect_uris') {
+      setEditedProvider((prev) => ({
+        ...prev,
+        [id]: value.split(',').map((uri) => uri.trim()),
+      }));
+    } else {
+      setEditedProvider((prev) => ({ ...prev, [id]: value }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setLogoFile(e.target.files[0]);
+    }
+  };
+
+  const handleSwitchChange = (id: string, checked: boolean) => {
+    setEditedProvider((prev) => ({ ...prev, [id]: checked }));
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[800px]">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSave({ ...editedProvider, redirect_uris: [fullUri] }, logoFile);
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {editedProvider.id
+                ? t('admin.oidcSettings.editProvider', 'Edit OIDC Provider')
+                : t('admin.oidcSettings.addProvider', 'Add OIDC Provider')}
+              {editedProvider.is_env_configured && (
+                <Badge
+                  variant="outline"
+                  className="ml-2 bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  {t('admin.oidcSettings.envConfigured', 'Managed by Env')}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                'admin.oidcSettings.fillDetails',
+                'Fill in the details for the OIDC provider.'
+              )}
+              {editedProvider.is_env_configured && (
+                <p className="text-blue-600 font-medium mt-1">
+                  {t(
+                    'admin.oidcSettings.envManagedNotice',
+                    'This provider is configured via environment variables. Some fields are read-only.'
+                  )}
+                </p>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto p-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="provider_id">
+                  {t('admin.oidcSettings.providerId', 'Provider ID (Slug)')}
+                </Label>
+                <Input
+                  id="provider_id"
+                  value={editedProvider.provider_id || ''}
+                  onChange={handleChange}
+                  placeholder="e.g. authentik, google, keycloak"
+                  readOnly={editedProvider.is_env_configured}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('admin.oidcSettings.providerIdInfo')}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="display_name">
+                  {t('admin.oidcSettings.displayName', 'Display Name')}
+                </Label>
+                <Input
+                  id="display_name"
+                  value={editedProvider.display_name || ''}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div className="flex items-center justify-between pt-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_active"
+                    checked={editedProvider.is_active}
+                    onCheckedChange={(c) => handleSwitchChange('is_active', c)}
+                    disabled={editedProvider.is_env_configured}
+                  />
+                  <Label htmlFor="is_active">
+                    {t('admin.oidcSettings.active', 'Active')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="auto_register"
+                    checked={editedProvider.auto_register || false}
+                    onCheckedChange={(c) =>
+                      handleSwitchChange('auto_register', c)
+                    }
+                    disabled={editedProvider.is_env_configured}
+                  />
+                  <Label htmlFor="auto_register">
+                    {t('admin.oidcSettings.autoRegister', 'Auto Register')}
+                  </Label>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="logo_file">
+                  {t('admin.oidcSettings.logoFile', 'Logo File')}
+                </Label>
+                <Input
+                  id="logo_file"
+                  type="file"
+                  onChange={handleFileChange}
+                  disabled={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="logo_url">
+                  {t('admin.oidcSettings.logoUrl', 'Logo URL')}
+                </Label>
+                <Input
+                  id="logo_url"
+                  value={editedProvider.logo_url || ''}
+                  onChange={handleChange}
+                  readOnly
+                  placeholder={t(
+                    'admin.oidcSettings.willBeSetOnUpload',
+                    'Will be set on upload'
+                  )}
+                />
+              </div>
+              <div>
+                <Label htmlFor="issuer_url">
+                  {t('admin.oidcSettings.issuerUrl', 'Issuer URL')}
+                </Label>
+                <Input
+                  id="issuer_url"
+                  value={editedProvider.issuer_url}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="domain">
+                  {t('admin.oidcSettings.domain', 'Organization Domain')}
+                </Label>
+                <Input
+                  id="domain"
+                  value={editedProvider.domain || ''}
+                  onChange={handleChange}
+                  placeholder="e.g. sparkyfitness.com"
+                  readOnly={editedProvider.is_env_configured}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('admin.oidcSettings.domainInfo')}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="client_id">
+                  {t('admin.oidcSettings.clientId', 'Client ID')}
+                </Label>
+                <Input
+                  id="client_id"
+                  value={editedProvider.client_id}
+                  onChange={handleChange}
+                  autoComplete="off"
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="client_secret">
+                  {t('admin.oidcSettings.clientSecret', 'Client Secret')}
+                </Label>
+                <Input
+                  id="client_secret"
+                  type="password"
+                  onChange={handleChange}
+                  placeholder={
+                    editedProvider.is_env_configured
+                      ? t(
+                          'admin.oidcSettings.envManagedSecret',
+                          'Secret is managed by env'
+                        )
+                      : t(
+                          'admin.oidcSettings.leaveUnchanged',
+                          'Leave unchanged if *****'
+                        )
+                  }
+                  autoComplete="new-password"
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="scope">
+                  {t('admin.oidcSettings.scope', 'Scope')}
+                </Label>
+                <Input
+                  id="scope"
+                  value={editedProvider.scope}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">
+                    {t('admin.oidcSettings.redirectUri', 'Redirect URI')}
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="manual_redirect"
+                      checked={isManualRedirectUri}
+                      onCheckedChange={(checked) => {
+                        if (
+                          checked &&
+                          !window.confirm(
+                            'WARNING: Changing the Base URL is only for advanced setups (proxies/custom domains). Incorrect values will break your login flow. Are you sure you want to proceed?'
+                          )
+                        ) {
+                          return;
+                        }
+                        setIsManualRedirectUri(checked);
+                        if (!checked) setBaseUrlOverride('');
+                      }}
+                      className="h-4 w-8"
+                    />
+                    <Label
+                      htmlFor="manual_redirect"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Expert Mode: Custom Domain
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="group relative">
+                  <div className="flex items-stretch border rounded-md overflow-hidden bg-muted/30 focus-within:ring-1 focus-within:ring-primary">
+                    <div className="flex-1 flex min-w-0">
+                      <Input
+                        id="redirect_base_url"
+                        value={
+                          isManualRedirectUri
+                            ? baseUrlOverride
+                            : window.location.origin
+                        }
+                        onChange={(e) => setBaseUrlOverride(e.target.value)}
+                        readOnly={!isManualRedirectUri}
+                        className={`border-0 rounded-none h-10 shadow-none focus-visible:ring-0 px-3 ${!isManualRedirectUri ? 'bg-transparent cursor-not-allowed opacity-60' : 'bg-background'}`}
+                        placeholder="https://fitness.example.com"
+                      />
+                      <div className="bg-muted px-3 flex items-center text-xs font-mono text-muted-foreground border-l border-r whitespace-nowrap select-none">
+                        {suffix}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-none hover:bg-muted border-l transition-colors"
+                      title="Copy full Redirect URI"
+                      onClick={() => {
+                        const base = isManualRedirectUri
+                          ? baseUrlOverride || window.location.origin
+                          : window.location.origin;
+                        const cleanBase = base.endsWith('/')
+                          ? base.slice(0, -1)
+                          : base;
+                        const fullUri = `${cleanBase}${suffix}`;
+                        navigator.clipboard.writeText(fullUri);
+                        toast({
+                          title: t('copied', 'Copied'),
+                          description: t(
+                            'admin.oidcSettings.callbackUrlCopied'
+                          ),
+                        });
+                      }}
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {isManualRedirectUri &&
+                    baseUrlOverride &&
+                    !baseUrlOverride.startsWith('http') && (
+                      <p className="text-[10px] text-red-500 mt-1 font-medium italic">
+                        ⚠️ URL must start with http:// or https://
+                      </p>
+                    )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  {!isManualRedirectUri
+                    ? '✓ Automatically synced with your current URL. Path suffix is locked for routing safety.'
+                    : '⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data.'}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="token_endpoint_auth_method">
+                  {t('admin.oidcSettings.tokenEndpointAuthMethod')}
+                </Label>
+                <Select
+                  value={editedProvider.token_endpoint_auth_method}
+                  onValueChange={(value) =>
+                    setEditedProvider((prev) => ({
+                      ...prev,
+                      token_endpoint_auth_method: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger
+                    id="token_endpoint_auth_method"
+                    className="w-full p-2 border rounded"
+                    disabled={editedProvider.is_env_configured}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client_secret_post">
+                      client_secret_post
+                    </SelectItem>
+                    <SelectItem value="client_secret_basic">
+                      client_secret_basic
+                    </SelectItem>
+                    <SelectItem value="none">none</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="signing_algorithm">
+                  {t(
+                    'admin.oidcSettings.idTokenSignedAlg',
+                    'ID Token Signed Alg'
+                  )}
+                </Label>
+                <Input
+                  id="signing_algorithm"
+                  value={editedProvider.signing_algorithm || ''}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile_signing_algorithm">
+                  {t(
+                    'admin.oidcSettings.userinfoSignedAlg',
+                    'Userinfo Signed Alg'
+                  )}
+                </Label>
+                <Input
+                  id="profile_signing_algorithm"
+                  value={editedProvider.profile_signing_algorithm || ''}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+              <div>
+                <Label htmlFor="timeout">
+                  {t(
+                    'admin.oidcSettings.requestTimeout',
+                    'Request Timeout (ms)'
+                  )}
+                </Label>
+                <Input
+                  id="timeout"
+                  type="number"
+                  value={editedProvider.timeout || ''}
+                  onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
+                />
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground mt-4">
+              <p className="mt-1">
+                {t(
+                  'admin.oidcSettings.localhostWarning',
+                  'Ensure your OIDC provider allows localhost or your local IP for development.'
+                )}
+              </p>
+              <p className="mt-2">
+                {t(
+                  'admin.oidcSettings.proxyWarning',
+                  'If using a proxy like Nginx Proxy Manager, ensure the following headers are configured:'
+                )}
+              </p>
+              <div className="relative group mt-2">
+                <pre
+                  id="proxy-config-code"
+                  className="bg-muted p-2 rounded text-xs overflow-x-auto"
+                >
+                  <code>
+                    proxy_set_header Host $host;{'\n'}
+                    proxy_set_header X-Real-IP $remote_addr;{'\n'}
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    {'\n'}
+                    proxy_set_header X-Forwarded-Proto $scheme;{'\n'}
+                    add_header X-Content-Type-Options "nosniff";{'\n'}
+                    proxy_set_header X-Forwarded-Ssl on;
+                  </code>
+                </pre>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    const codeBlock =
+                      document.getElementById('proxy-config-code');
+                    if (codeBlock) {
+                      navigator.clipboard.writeText(codeBlock.innerText);
+                      toast({
+                        title: t('copied', 'Copied!'),
+                        description: t(
+                          'admin.oidcSettings.proxyConfigCopied',
+                          'Proxy configuration copied to clipboard.'
+                        ),
+                      });
+                    }
+                  }}
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResetToDefaults}
+            >
+              {t('admin.oidcSettings.resetToDefaults', 'Reset to Defaults')}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t('admin.oidcSettings.cancel', 'Cancel')}
+            </Button>
+            <Button disabled={editedProvider.domain === ''} type="submit">
+              {t('admin.oidcSettings.save', 'Save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

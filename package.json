@@ -1,0 +1,45 @@
+{
+  "packageManager": "pnpm@10.33.4",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1"
+  },
+  "lint-staged": {
+    "SparkyFitnessFrontend/**/*.{ts,tsx}": [
+      "npx prettier --write"
+    ],
+    "SparkyFitnessServer/**/*.{js,ts}": [
+      "npx prettier --write"
+    ]
+  },
+  "pnpm": {
+    "supportedArchitectures": {
+      "os": ["current", "linux"],
+      "cpu": ["current", "x64", "arm64"]
+    },
+    "overrides": {
+      "side-channel": "1.0.6",
+      "tailwindcss": "4.2.1",
+      "assistant-cloud": "0.1.33",
+      "zustand": "5.0.14"
+    },
+    "onlyBuiltDependencies": [
+      "@scarf/scarf",
+      "@shopify/react-native-skia",
+      "@swc/core",
+      "@parcel/watcher",
+      "bcrypt",
+      "sharp",
+      "esbuild",
+      "unrs-resolver",
+      "vue-demi"
+    ]
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

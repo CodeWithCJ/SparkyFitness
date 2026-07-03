@@ -1,0 +1,461 @@
+import { renderHook, waitFor } from '@testing-library/react-native';
+import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
+import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';
+import { searchExternalFoods } from '../../src/services/api/externalFoodSearchApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import type { PaginatedExternalFoodSearchResult } from '../../src/types/externalFoods';
+
+jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
+  searchExternalFoods: jest.fn(),
+}));
+
+const mockSearchExternalFoods = jest.mocked(searchExternalFoods);
+
+function makePaginatedResult(
+  items: PaginatedExternalFoodSearchResult['items'],
+  pagination?: Partial<PaginatedExternalFoodSearchResult['pagination']>,
+): PaginatedExternalFoodSearchResult {
+  return {
+    items,
+    pagination: {
+      page: 1,
+      pageSize: 20,
+      totalCount: items.length,
+      hasMore: false,
+      ...pagination,
+    },
+  };
+}
+
+describe('useExternalFoodSearch', () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  test('does not fetch when search text is less than 3 characters', () => {
+    renderHook(() => useExternalFoodSearch('ab', 'openfoodfacts'), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('does not fetch when enabled is false', () => {
+    renderHook(
+      () => useExternalFoodSearch('chicken', 'openfoodfacts', { enabled: false }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('fetches for openfoodfacts provider type', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: '1',
+          name: 'Chicken',
+          brand: null,
+          calories: 165,
+          protein: 31,
+          carbs: 0,
+          fat: 4,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'openfoodfacts',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('openfoodfacts', 'chicken', 1, undefined, undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+    });
+  });
+
+  test('returns empty array for unsupported provider type', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'unknown_provider'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('isSearchActive is false when under 3 characters', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('ab', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isSearchActive).toBe(false);
+  });
+
+  test('handles search errors', async () => {
+    mockSearchExternalFoods.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('test', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSearchError).toBe(true);
+    });
+  });
+
+  test('reports usda as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'usda'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('fetches for usda provider type with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: '100',
+          name: 'Chicken Breast',
+          brand: null,
+          calories: 165,
+          protein: 31,
+          carbs: 0,
+          fat: 4,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'usda',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'usda', { providerId: 'provider-1' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('usda', 'chicken', 1, 'provider-1', undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('usda');
+    });
+  });
+
+  test('exposes hasNextPage and fetchNextPage', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult(
+        [
+          {
+            id: '1',
+            name: 'Food A',
+            brand: null,
+            calories: 100,
+            protein: 10,
+            carbs: 10,
+            fat: 5,
+            serving_size: 100,
+            serving_unit: 'g',
+            source: 'openfoodfacts',
+          },
+        ],
+        { page: 1, hasMore: true, totalCount: 2 },
+      ),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('food', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.hasNextPage).toBe(true);
+    });
+  });
+
+  test('flattens results from multiple pages', async () => {
+    mockSearchExternalFoods
+      .mockResolvedValueOnce(
+        makePaginatedResult(
+          [
+            {
+              id: '1',
+              name: 'Food A',
+              brand: null,
+              calories: 100,
+              protein: 10,
+              carbs: 10,
+              fat: 5,
+              serving_size: 100,
+              serving_unit: 'g',
+              source: 'openfoodfacts',
+            },
+          ],
+          { page: 1, hasMore: true, totalCount: 2 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makePaginatedResult(
+          [
+            {
+              id: '2',
+              name: 'Food B',
+              brand: null,
+              calories: 200,
+              protein: 20,
+              carbs: 20,
+              fat: 10,
+              serving_size: 100,
+              serving_unit: 'g',
+              source: 'openfoodfacts',
+            },
+          ],
+          { page: 2, hasMore: false, totalCount: 2 },
+        ),
+      );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('food', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.hasNextPage).toBe(true);
+    });
+
+    result.current.fetchNextPage();
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toHaveLength(2);
+      expect(result.current.searchResults[0].name).toBe('Food A');
+      expect(result.current.searchResults[1].name).toBe('Food B');
+      expect(result.current.hasNextPage).toBe(false);
+    });
+  });
+
+  test('fetches for fatsecret provider type with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'fs-1',
+          name: 'Chicken',
+          brand: null,
+          calories: 165,
+          protein: 31,
+          carbs: 0,
+          fat: 4,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'fatsecret',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret', { providerId: 'provider-fs' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('fatsecret', 'chicken', 1, 'provider-fs', undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('fatsecret');
+    });
+  });
+
+  test('fetches for mealie provider type with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'mealie-1',
+          name: 'Chicken Soup',
+          brand: null,
+          calories: 180,
+          protein: 15,
+          carbs: 12,
+          fat: 7,
+          serving_size: 250,
+          serving_unit: 'ml',
+          source: 'mealie',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie', { providerId: 'provider-mealie' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('mealie', 'chicken', 1, 'provider-mealie', undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('mealie');
+    });
+  });
+
+  test('fatsecret returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('mealie returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('reports tandoor as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'tandoor'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('tandoor returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'tandoor'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('reports norish as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'norish'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('norish returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'norish'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('reports fatsecret as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('reports mealie as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('reports swissfood as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'swissfood'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('fetches for swissfood provider type without providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'swiss-1',
+          name: 'Swiss Cheese',
+          brand: 'Swiss Food Composition Database',
+          calories: 380,
+          protein: 27,
+          carbs: 1,
+          fat: 31,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'swissfood',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('cheese', 'swissfood'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('swissfood', 'cheese', 1, undefined, undefined);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('swissfood');
+    });
+  });
+
+  describe('query key', () => {
+    test('includes provider type and search term', () => {
+      expect(externalFoodSearchQueryKey('openfoodfacts', 'banana')).toEqual([
+        'externalFoodSearch',
+        'openfoodfacts',
+        'banana',
+        undefined,
+      ]);
+    });
+
+    test('includes providerId when supplied', () => {
+      expect(externalFoodSearchQueryKey('usda', 'chicken', 'provider-1')).toEqual([
+        'externalFoodSearch',
+        'usda',
+        'chicken',
+        'provider-1',
+      ]);
+    });
+  });
+});

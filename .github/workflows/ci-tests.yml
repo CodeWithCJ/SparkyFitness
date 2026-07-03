@@ -1,0 +1,394 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "SparkyFitnessFrontend/**"
+      - "SparkyFitnessMobile/**"
+      - "SparkyFitnessServer/**"
+      - "SparkyFitnessGarmin/**"
+      - ".github/workflows/ci-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "SparkyFitnessFrontend/**"
+      - "SparkyFitnessMobile/**"
+      - "SparkyFitnessServer/**"
+      - "SparkyFitnessGarmin/**"
+      - ".github/workflows/ci-tests.yml"
+
+jobs:
+  # Detect which components changed
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      server: ${{ steps.filter.outputs.server }}
+      garmin: ${{ steps.filter.outputs.garmin }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'SparkyFitnessFrontend/**'
+            mobile:
+              - 'SparkyFitnessMobile/**'
+            server:
+              - 'SparkyFitnessServer/**'
+            garmin:
+              - 'SparkyFitnessGarmin/**'
+            # Files whose change can break a fresh-install migration run.
+            # Includes the jobs' own execution path (workflow + script) so a
+            # change there can't break migration CI while the jobs gate out.
+            migrations:
+              - 'SparkyFitnessServer/db/migrations/**'
+              - 'SparkyFitnessServer/db/rls_policies.sql'
+              - 'SparkyFitnessServer/db/grantPermissions.ts'
+              - 'SparkyFitnessServer/utils/dbMigrations.ts'
+              - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
+              - 'SparkyFitnessServer/tests/migrate.script.ts'
+              - 'SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts'
+              - 'SparkyFitnessServer/package.json'
+              - '.github/workflows/ci-tests.yml'
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install global dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run validation (Type Check, Lint, Format)
+        working-directory: SparkyFitnessFrontend
+        run: pnpm run validate
+
+      - name: Run tests with coverage
+        working-directory: SparkyFitnessFrontend
+        run: pnpm run test:ci
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: SparkyFitnessFrontend/coverage/
+          retention-days: 7
+
+  mobile-tests:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessMobile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run validation (Type Check, Lint)
+        run: pnpm run validate
+
+      - name: Run tests with coverage
+        run: pnpm run test:ci
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-coverage
+          path: SparkyFitnessMobile/coverage/
+          retention-days: 7
+
+  server-tests:
+    name: Server Tests
+    runs-on: ubuntu-latest
+    needs: changes
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessServer
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run validation (Type Check, Lint, Format)
+        run: pnpm run validate
+
+      - name: Run tests with coverage
+        run: pnpm run test:ci
+        env:
+          NODE_ENV: test
+          SPARKY_FITNESS_API_ENCRYPTION_KEY: WBBc73sX/IpeLHlraZa73S1BfVBiUnmZXYyzQKNgMIk=
+          # This job has no database. The RLS matrix runs by default, so skip it
+          # here; it is exercised in the migration-check job (which provisions
+          # Postgres). Without this it would fail trying to connect.
+          SKIP_RLS_MATRIX: "1"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-coverage
+          path: SparkyFitnessServer/coverage/
+          retention-days: 7
+
+  migration-check:
+    name: Fresh-install Migrations
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessServer
+
+    services:
+      postgres:
+        image: postgres:18.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sparky_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # First run applies every migration against empty DB
+      # Second run reapplies the always reapplied rls policies, simulating restart
+      - name: Apply migrations on an empty database (twice = restart simulation)
+        run: pnpm run test:migrations && pnpm run test:migrations
+        env:
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: postgres
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
+
+      # The schema + RLS policies are now applied and the non-superuser app role
+      # exists, so the permission matrix can verify every table's real RLS
+      # behaviour as the app role (superuser DB user seeds, app role is enforced).
+      - name: Verify RLS permission matrix
+        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts
+        env:
+          # Default-on (SKIP_RLS_MATRIX unset) — runs against the Postgres this
+          # job provisions, with policies already applied by the steps above.
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: postgres
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
+
+  # Prove an existing deployment can upgrade cleanly: apply the base branch's
+  # migrations to an empty database, then apply this PR's new migrations on top.
+  # Catches migrations that only break against an already-populated schema (the
+  # inverse of the fresh-install check above).
+  migration-upgrade-check:
+    name: Upgrade-path Migrations
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessServer
+
+    services:
+      postgres:
+        image: postgres:18.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sparky_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Full history so the base commit is reachable for the swap below.
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Apply base migrations, then this PR's migrations on top of the same DB.
+      # The schema_migrations table persists between runs, so phase 2 applies
+      # only the newly added migrations — exactly what an upgrade does.
+      - name: Apply base migrations, then this PR's migrations on top
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: postgres
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: sparky_app_pw
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA:-}" ] || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "::notice::No valid base commit (BASE_SHA='${BASE_SHA:-}'); skipping upgrade-path check."
+            exit 0
+          fi
+          echo "Base commit: ${BASE_SHA}"
+
+          # Phase 1: apply the base branch's migrations to the empty database.
+          # rm -rf first so migrations added only by this PR are absent at base.
+          # Only the SQL (db/migrations + rls_policies.sql) is swapped to base;
+          # the runner itself (dbMigrations.ts/grantPermissions.ts/applyRlsPolicies.ts
+          # + test:migrations) stays at HEAD. So this validates HEAD's runner
+          # applying the PR's new migrations onto a base-SQL schema, not a faithful
+          # base-deployment rebuild. Runner regressions are caught by the
+          # fresh-install job above; this job targets schema-dependent migrations.
+          rm -rf db/migrations db/rls_policies.sql
+          git checkout "${BASE_SHA}" -- db/migrations db/rls_policies.sql
+          pnpm run test:migrations
+
+          # Phase 2: restore this PR's migrations and apply the new ones on top.
+          rm -rf db/migrations db/rls_policies.sql
+          git checkout HEAD -- db/migrations db/rls_policies.sql
+          pnpm run test:migrations
+
+  garmin-tests:
+    name: Garmin Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.garmin == 'true'
+
+    defaults:
+      run:
+        working-directory: SparkyFitnessGarmin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov
+
+      - name: Run tests with coverage
+        continue-on-error: true
+        run: |
+          if [ -d tests ] || [ -f test_*.py ]; then
+            pytest --cov=. --cov-report=xml --cov-report=html
+          else
+            echo "No tests found, skipping..."
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: garmin-coverage
+          path: SparkyFitnessGarmin/htmlcov/
+          retention-days: 7

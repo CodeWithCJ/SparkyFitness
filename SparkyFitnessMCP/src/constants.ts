@@ -1,0 +1,11 @@
+export const CHARACTER_LIMIT = 25_000;
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 50;
+export const REQUEST_TIMEOUT_MS = 10_000;
+export const TOKEN_EXPIRY_SECONDS = 3600;
+export const REFRESH_TOKEN_EXPIRY_DAYS = 30;
+export const AUTH_CODE_EXPIRY_SECONDS = 600;
+export const DB_POOL_MAX = 20;
+export const DB_IDLE_TIMEOUT_MS = 30_000;
+export const DB_CONNECTION_TIMEOUT_MS = 5_000;
+export const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10_000;

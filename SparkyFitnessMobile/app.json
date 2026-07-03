@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "SparkyFitnessMobile",
+    "slug": "sparkyfitnessmobile",
+    "version": "1.4.5",
+    "scheme": "sparkyfitnessmobile",
+    "orientation": "portrait",
+    "icon": "./assets/icons/appstore.png",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "SparkyFitness reads Health data (such as activity, workouts, and body measurements) to display it in the app and sync it to your self-hosted SparkyFitness server.",
+          "NSHealthUpdateUsageDescription": "SparkyFitness writes the nutrition and hydration you log in the app to Apple Health, keeping the two in sync.",
+          "background": true
+        }
+      ],
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "react-native-health-connect",
+      "expo-web-browser",
+      "expo-font",
+      "expo-asset",
+      "expo-background-task",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SparkyFitness needs access to your camera to scan food barcodes and labels.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#e2e2e2",
+          "imageWidth": 200,
+          "image": "./assets/images/splash.png",
+          "dark": {
+            "backgroundColor": "#232323",
+            "image": "./assets/images/splash.png"
+          }
+        }
+      ],
+      [
+        "expo-notifications"
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false
+        }
+      ],
+      [
+        "@bacons/apple-targets"
+      ]
+    ],
+    "experiments": {
+      "reactCompiler": true,
+      "autolinkingModuleResolution": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "498a86c5-344f-4d2c-9033-dfd720e4a383"
+      },
+      "APP_VARIANT": "production"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+node_modules
+*/node_modules
+**/node_modules
+.cache
+**/.cache
+.pnpm-store
+pnpm-store
+dist
+docker/postgresql
+.git
+.gitignore
+.env
+supabase/.temp/
+.DS_Store
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.vscode
+logs
+*.log
+dist-ssr
+*.local
+private/
+supabase/config.toml
+
+# Supabase Functions generated files
+supabase/functions/**/*.d.ts
+supabase/functions/**/*.full.ts
+coverage/
+Thumbs.db
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Dockerfile
+docker-compose.yml
+README.md
+WIP
+
+# Mobile App Exclusions
+SparkyFitnessMobile/node_modules
+SparkyFitnessMobile/android/build
+SparkyFitnessMobile/ios/build
+SparkyFitnessMobile/web-build
+SparkyFitnessMobile/.expo
+
+# Ignore uploaded exercise files
+SparkyFitnessServer/uploads/
+SparkyFitnessServer/backup/
+SparkyFitnessServer/temp_uploads/
+
+# Docker Volume
+docker/docker_volume/
+
+# TypeScript
+*.tsbuildinfo

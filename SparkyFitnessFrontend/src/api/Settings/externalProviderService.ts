@@ -1,0 +1,608 @@
+import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
+import { apiCall } from '@/api/api';
+import { DataProvider } from '@/types/settings';
+import { ExternalProviderTypes } from '@workspace/shared';
+
+export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
+  return apiCall('/external-providers', {
+    method: 'GET',
+  });
+};
+
+export const getExternalProviderTypes = async (): Promise<
+  ExternalProviderTypes[]
+> => {
+  return apiCall('/external-providers/types', {
+    method: 'GET',
+  });
+};
+
+export interface CreateExternalProviderPayload {
+  user_id: string;
+  provider_name: string;
+  provider_type: string;
+  app_id?: string | null;
+  app_key?: string | null;
+  is_active: boolean;
+  base_url?: string | null;
+  sync_frequency?: string | null;
+}
+
+export interface ExternalProviderResponse {
+  id: string;
+  provider_type: string;
+  is_active: boolean;
+}
+
+export const createExternalProvider = async (
+  payload: CreateExternalProviderPayload
+): Promise<ExternalProviderResponse> => {
+  return apiCall('/external-providers', {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: payload.user_id,
+      provider_name: payload.provider_name,
+      provider_type: payload.provider_type,
+      app_id: [
+        'mealie',
+        'tandoor',
+        'free-exercise-db',
+        'wger',
+        'usda',
+        'norish',
+      ].includes(payload.provider_type)
+        ? null
+        : payload.app_id || null,
+      app_key: payload.app_key || null,
+      is_active: payload.is_active,
+      base_url: [
+        'mealie',
+        'tandoor',
+        'free-exercise-db',
+        'yazio',
+        'norish',
+      ].includes(payload.provider_type)
+        ? payload.base_url || null
+        : null,
+      sync_frequency: [
+        'withings',
+        'garmin',
+        'fitbit',
+        'googlehealth',
+        'strava',
+        'polar',
+      ].includes(payload.provider_type)
+        ? payload.sync_frequency
+        : null,
+    }),
+  });
+};
+
+export const handleConnectWithings = async () => {
+  try {
+    const response = await apiCall(`/withings/authorize`, {
+      method: 'GET',
+    });
+    if (response && response.authUrl) {
+      window.location.href = response.authUrl;
+    } else {
+      throw new Error('Failed to get Withings authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Withings:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectWithings = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Withings? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/withings/disconnect`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Withings:', error);
+    throw error;
+  }
+};
+
+export const handleManualSync = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/withings/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual sync:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectGarmin = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Garmin? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    // Call the Garmin unlink endpoint
+    await apiCall(`/integrations/garmin/unlink`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Garmin:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncGarmin = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    // Call the simplified sync endpoint.
+    await apiCall(`/integrations/garmin/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Garmin sync:', error);
+    throw error;
+  }
+};
+
+export const handleConnectFitbit = async () => {
+  try {
+    const response = await apiCall(`/integrations/fitbit/authorize`, {
+      method: 'GET',
+    });
+    if (response && response.authUrl) {
+      window.location.href = response.authUrl;
+    } else {
+      throw new Error('Failed to get Fitbit authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Fitbit:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectFitbit = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Fitbit? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/fitbit/disconnect`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Fitbit:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncFitbit = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/fitbit/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Fitbit sync:', error);
+    throw error;
+  }
+};
+
+export const handleConnectPolar = async (providerId: string) => {
+  try {
+    const response = await apiCall(`/integrations/polar/authorize`, {
+      method: 'GET',
+      params: { providerId },
+    });
+    if (response && response.authUrl) {
+      window.location.href = response.authUrl;
+    } else {
+      throw new Error('Failed to get Polar authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Polar:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectPolar = async (providerId: string) => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Polar? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/polar/disconnect`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId }),
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Polar:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncPolar = async (
+  providerId: string,
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/polar/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId, startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Polar sync:', error);
+    throw error;
+  }
+};
+
+export const handleConnectStrava = async () => {
+  try {
+    const response = await apiCall(`/integrations/strava/authorize`, {
+      method: 'GET',
+    });
+    if (response && response.url) {
+      window.location.href = response.url;
+    } else {
+      throw new Error('Failed to get Strava authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Strava:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectStrava = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Strava? This will revoke access.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/strava/disconnect`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Strava:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncStrava = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/strava/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Strava sync:', error);
+    throw error;
+  }
+};
+
+export const handleConnectGoogleHealth = async () => {
+  try {
+    const response = await apiCall(`/integrations/googlehealth/authorize`, {
+      method: 'GET',
+    });
+    if (response && response.authUrl) {
+      window.location.href = response.authUrl;
+    } else {
+      throw new Error('Failed to get Google Health authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Google Health:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectGoogleHealth = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Google Health? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/googlehealth/disconnect`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Google Health:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncGoogleHealth = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/googlehealth/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Google Health sync:', error);
+    throw error;
+  }
+};
+
+export const fetchBaseProviders = async (): Promise<ExternalDataProvider[]> => {
+  return apiCall('/external-providers', {
+    method: 'GET',
+    suppress404Toast: true,
+  });
+};
+
+export interface GarminStatusResponse {
+  isLinked: boolean;
+  lastUpdated: string;
+  tokenExpiresAt: string;
+}
+
+export const fetchGarminStatus = async (): Promise<GarminStatusResponse> => {
+  return apiCall('/integrations/garmin/status');
+};
+
+export interface OAuthStatusResponse {
+  lastSyncAt: string;
+  tokenExpiresAt: string;
+}
+
+export const fetchWithingsStatus = async (
+  providerId: string
+): Promise<OAuthStatusResponse> => {
+  return apiCall('/withings/status', {
+    method: 'GET',
+    params: { providerId },
+  });
+};
+
+export const fetchFitbitStatus = async (): Promise<OAuthStatusResponse> => {
+  return apiCall('/integrations/fitbit/status');
+};
+
+export const fetchPolarStatus = async (
+  providerId: string
+): Promise<OAuthStatusResponse> => {
+  return apiCall('/integrations/polar/status', {
+    method: 'GET',
+    params: { providerId },
+  });
+};
+
+export interface HevyStatusResponse {
+  connected: boolean;
+  lastSyncAt: string;
+}
+
+export const fetchHevyStatus = async (): Promise<HevyStatusResponse> => {
+  return apiCall('/integrations/hevy/status');
+};
+
+export const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
+  return apiCall('/integrations/strava/status');
+};
+
+export const getEnrichedProviders = async (): Promise<
+  ExternalDataProvider[]
+> => {
+  const baseProviders = await fetchBaseProviders();
+
+  if (!baseProviders || baseProviders.length === 0) {
+    return [];
+  }
+
+  const enrichedProviders = await Promise.all(
+    baseProviders.map(async (provider: ExternalDataProvider) => {
+      const enriched = { ...provider };
+
+      try {
+        switch (provider.provider_type) {
+          case 'garmin': {
+            const status = await fetchGarminStatus();
+            enriched.garmin_connect_status = status.isLinked
+              ? 'linked'
+              : 'disconnected';
+            enriched.garmin_last_status_check = status.lastUpdated;
+            enriched.garmin_token_expires = status.tokenExpiresAt;
+            enriched.has_token = status.isLinked;
+            break;
+          }
+          case 'withings': {
+            if (provider.has_token) {
+              const status = await fetchWithingsStatus(provider.id);
+              enriched.withings_last_sync_at = status.lastSyncAt;
+              enriched.withings_token_expires = status.tokenExpiresAt;
+            }
+            break;
+          }
+          case 'fitbit': {
+            if (provider.has_token) {
+              const status = await fetchFitbitStatus();
+              enriched.fitbit_last_sync_at = status.lastSyncAt;
+              enriched.fitbit_token_expires = status.tokenExpiresAt;
+            }
+            break;
+          }
+          case 'polar': {
+            if (provider.has_token) {
+              const status = await fetchPolarStatus(provider.id);
+              enriched.polar_last_sync_at = status.lastSyncAt;
+              enriched.polar_token_expires = status.tokenExpiresAt;
+            }
+            break;
+          }
+          case 'hevy': {
+            const status = await fetchHevyStatus();
+            enriched.hevy_connect_status = status.connected
+              ? 'connected'
+              : 'disconnected';
+            enriched.hevy_last_sync_at = status.lastSyncAt;
+            break;
+          }
+          case 'strava': {
+            if (provider.has_token) {
+              const status = await fetchStravaStatus();
+              enriched.strava_last_sync_at = status.lastSyncAt;
+              enriched.strava_token_expires = status.tokenExpiresAt;
+            }
+            break;
+          }
+        }
+      } catch (error) {
+        console.error(
+          '[getEnrichedProviders] Error enriching provider:',
+          provider.provider_name,
+          error
+        );
+        if (provider.provider_type === 'garmin') {
+          enriched.garmin_connect_status = 'disconnected';
+          enriched.garmin_last_status_check = null;
+          enriched.garmin_token_expires = null;
+          enriched.has_token = false;
+        }
+        if (provider.provider_type === 'hevy') {
+          enriched.hevy_connect_status = 'disconnected';
+        }
+      }
+
+      return enriched;
+    })
+  );
+
+  return enrichedProviders;
+};
+
+export const updateExternalProvider = async (
+  providerId: string,
+  providerData: Partial<ExternalDataProvider>
+): Promise<ExternalDataProvider> => {
+  return apiCall(`/external-providers/${providerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(providerData),
+  });
+};
+
+export const toggleProviderActiveStatus = async (
+  providerId: string,
+  isActive: boolean
+): Promise<ExternalDataProvider> => {
+  return apiCall(`/external-providers/${providerId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ is_active: isActive }),
+  });
+};
+
+export const deleteExternalProvider = async (
+  providerId: string
+): Promise<void> => {
+  return apiCall(`/external-providers/${providerId}`, {
+    method: 'DELETE',
+  });
+};
+
+export interface CreateGlobalProviderPayload {
+  provider_name: string;
+  provider_type: string;
+  app_id?: string | null;
+  app_key?: string | null;
+  base_url?: string | null;
+  is_active: boolean;
+}
+
+export const getGlobalExternalProviders = async (): Promise<
+  ExternalDataProvider[]
+> => {
+  return apiCall('/admin/external-data-providers/global', {
+    method: 'GET',
+  });
+};
+
+export const createGlobalExternalProvider = async (
+  payload: CreateGlobalProviderPayload
+): Promise<ExternalProviderResponse> => {
+  return apiCall('/admin/external-data-providers/global', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateGlobalExternalProvider = async (
+  providerId: string,
+  providerData: Partial<CreateGlobalProviderPayload>
+): Promise<ExternalDataProvider> => {
+  return apiCall(`/admin/external-data-providers/global/${providerId}`, {
+    method: 'PUT',
+    body: JSON.stringify(providerData),
+  });
+};
+
+export const deleteGlobalExternalProvider = async (
+  providerId: string
+): Promise<void> => {
+  return apiCall(`/admin/external-data-providers/global/${providerId}`, {
+    method: 'DELETE',
+  });
+};
+
+export interface GarminMfaPayload {
+  client_state: string | null;
+  mfa_code: string;
+}
+
+export interface GarminMfaResponse {
+  status: string;
+  message?: string;
+}
+
+export const resumeGarminLogin = async (
+  payload: GarminMfaPayload
+): Promise<GarminMfaResponse> => {
+  const result = await apiCall('/integrations/garmin/resume_login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  if (result.status !== 'success') {
+    throw new Error(
+      result.message || 'Failed to submit MFA code. Please try again.'
+    );
+  }
+
+  return result;
+};
