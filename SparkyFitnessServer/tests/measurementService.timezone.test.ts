@@ -313,9 +313,9 @@ describe('processHealthData timezone resolution', () => {
     measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = vi
+    measurementRepository.bulkUpsertCustomMeasurements = vi
       .fn()
-      .mockResolvedValue({ id: 'entry-1' });
+      .mockResolvedValue([{ id: 'entry-1' }]);
   });
   it('record_timezone overrides account timezone for parsedDate', async () => {
     // Account timezone is UTC. Record says Asia/Tokyo.
@@ -334,18 +334,20 @@ describe('processHealthData timezone resolution', () => {
       userId,
       actingUserId
     );
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-new',
-      72,
-      '2024-06-15', // Tokyo date, not UTC
-      expect.any(Number),
-      '2024-06-14T23:30:00.000Z',
-      undefined,
-      'Daily',
-      'HealthConnect'
-    );
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      {
+        categoryId: 'cat-new',
+        value: 72,
+        entryDate: '2024-06-15', // Tokyo date, not UTC
+        entryHour: expect.any(Number),
+        entryTimestamp: '2024-06-14T23:30:00.000Z',
+        notes: undefined,
+        frequency: 'Daily',
+        source: 'HealthConnect',
+      },
+    ]);
   });
   it('record_utc_offset_minutes overrides account timezone for parsedDate', async () => {
     const healthData = [
@@ -362,18 +364,20 @@ describe('processHealthData timezone resolution', () => {
       userId,
       actingUserId
     );
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-new',
-      72,
-      '2024-06-15', // +9h date
-      expect.any(Number),
-      '2024-06-14T23:30:00.000Z',
-      undefined,
-      'Daily',
-      'HealthConnect'
-    );
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      {
+        categoryId: 'cat-new',
+        value: 72,
+        entryDate: '2024-06-15', // +9h date
+        entryHour: expect.any(Number),
+        entryTimestamp: '2024-06-14T23:30:00.000Z',
+        notes: undefined,
+        frequency: 'Daily',
+        source: 'HealthConnect',
+      },
+    ]);
   });
   it('falls back to account timezone when no record metadata', async () => {
     // Account is America/Los_Angeles (UTC-7 in summer).
@@ -392,18 +396,20 @@ describe('processHealthData timezone resolution', () => {
       userId,
       actingUserId
     );
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-new',
-      72,
-      '2024-06-14', // LA date
-      expect.any(Number),
-      '2024-06-15T00:30:00.000Z',
-      undefined,
-      'Daily',
-      'HealthConnect'
-    );
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      {
+        categoryId: 'cat-new',
+        value: 72,
+        entryDate: '2024-06-14', // LA date
+        entryHour: expect.any(Number),
+        entryTimestamp: '2024-06-15T00:30:00.000Z',
+        notes: undefined,
+        frequency: 'Daily',
+        source: 'HealthConnect',
+      },
+    ]);
   });
   it('logs timezone fallback by type', async () => {
     const healthData = [

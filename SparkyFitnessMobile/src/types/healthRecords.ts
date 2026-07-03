@@ -1,5 +1,6 @@
 import { HealthMetric } from '../HealthMetrics';
 import { SleepStageEvent } from './mobileHealthData';
+import type { RecordSyncError } from '../services/api/healthDataApi';
 
 // ==========================================
 // RAW INPUT TYPES (for aggregation functions)
@@ -204,6 +205,12 @@ export interface SyncResult {
   error?: string;
   message?: string;
   syncErrors: SyncError[];
+  /**
+   * Per-record rejections reported by the server during upload. Deliberately
+   * separate from syncErrors (read failures): upload rejections never suppress
+   * saving the sync cursor, so a poison record cannot cause a re-sync loop.
+   */
+  uploadErrors?: RecordSyncError[];
 }
 
 /**

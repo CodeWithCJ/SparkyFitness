@@ -1,13 +1,10 @@
 import express from 'express';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
-import mobileHealthDataRoutes from './mobileHealthDataRoutes.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { instantToDay } from '@workspace/shared';
 import sleepRepository from '../../models/sleepRepository.js';
 const router = express.Router();
-// Mount the new mobile health data routes
-router.use('/mobile_data', mobileHealthDataRoutes);
 // Endpoint for receiving health data
 router.post('/', async (req, res, next) => {
   let healthDataArray = [];
@@ -20,6 +17,16 @@ router.post('/', async (req, res, next) => {
     log('error', 'Received unexpected body format:', req.body);
     return res.status(400).json({
       error: 'Invalid request body format. Expected JSON object or array.',
+    });
+  }
+  if (
+    healthDataArray.some(
+      (item: unknown) => typeof item !== 'object' || item === null
+    )
+  ) {
+    return res.status(400).json({
+      error:
+        'Invalid health data format. All entries must be non-null objects.',
     });
   }
   // Log the incoming health data JSON
@@ -38,12 +45,6 @@ router.post('/', async (req, res, next) => {
     );
     res.status(200).json(result);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('{') && error.message.endsWith('}')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      const parsedError = JSON.parse(error.message);
-      return res.status(400).json(parsedError);
-    }
     next(error);
   }
 });

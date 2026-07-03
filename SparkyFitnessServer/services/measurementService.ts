@@ -12,185 +12,18 @@ import {
 import { userAge } from '../utils/dateHelpers.js';
 import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
-import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
-import activityDetailsRepository from '../models/activityDetailsRepository.js';
-import foodRepository from '../models/foodRepository.js';
-/**
- * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
- * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
- */
-const DEFAULT_UNITS_BY_HEALTH_TYPE = {
-  step: 'steps',
-  steps: 'steps',
-  heart_rate: 'bpm',
-  HeartRate: 'bpm',
-  'Active Calories': 'kcal',
-  ActiveCaloriesBurned: 'kcal',
-  total_calories: 'kcal',
-  TotalCaloriesBurned: 'kcal',
-  distance: 'm',
-  Distance: 'm',
-  floors_climbed: 'count',
-  FloorsClimbed: 'count',
-  weight: 'kg',
-  Weight: 'kg',
-  sleep_session: 'min',
-  SleepSession: 'min',
-  stress: 'level',
-  Stress: 'level',
-  blood_pressure: 'mmHg',
-  BloodPressure: 'mmHg',
-  basal_metabolic_rate: 'kcal',
-  BasalMetabolicRate: 'kcal',
-  blood_glucose: 'mmol/L',
-  BloodGlucose: 'mmol/L',
-  body_fat: '%',
-  BodyFat: '%',
-  body_temperature: 'celsius',
-  BodyTemperature: 'celsius',
-  resting_heart_rate: 'bpm',
-  RestingHeartRate: 'bpm',
-  HRV: 'ms',
-  HRV_SDNN: 'ms',
-  respiratory_rate: 'breaths/min',
-  RespiratoryRate: 'breaths/min',
-  oxygen_saturation: '%',
-  OxygenSaturation: '%',
-  BloodOxygenSaturation: '%',
-  vo2_max: 'ml/min/kg',
-  Vo2Max: 'ml/min/kg',
-  height: 'm',
-  Height: 'm',
-  hydration: 'L',
-  Hydration: 'L',
-  lean_body_mass: 'kg',
-  LeanBodyMass: 'kg',
-  basal_body_temperature: 'celsius',
-  BasalBodyTemperature: 'celsius',
-  elevation_gained: 'm',
-  ElevationGained: 'm',
-  bone_mass: 'kg',
-  BoneMass: 'kg',
-  speed: 'm/s',
-  Speed: 'm/s',
-  power: 'watts',
-  Power: 'watts',
-  steps_cadence: 'steps/min',
-  StepsCadence: 'steps/min',
-  cycling_pedaling_cadence: 'rpm',
-  CyclingPedalingCadence: 'rpm',
-  blood_alcohol_content: '%',
-  BloodAlcoholContent: '%',
-  nutrition: 'kcal',
-  Nutrition: 'kcal',
-  // Aggregated min/max/avg types from mobile health data
-  // Chunk 1: Heart rate + vitals
-  heart_rate_min: 'bpm',
-  heart_rate_max: 'bpm',
-  heart_rate_avg: 'bpm',
-  blood_glucose_min: 'mmol/L',
-  blood_glucose_max: 'mmol/L',
-  blood_glucose_avg: 'mmol/L',
-  blood_oxygen_saturation_min: 'percent',
-  blood_oxygen_saturation_max: 'percent',
-  blood_oxygen_saturation_avg: 'percent',
-  respiratory_rate_min: 'breaths/min',
-  respiratory_rate_max: 'breaths/min',
-  respiratory_rate_avg: 'breaths/min',
-  HRV_min: 'ms',
-  HRV_max: 'ms',
-  HRV_avg: 'ms',
-  HRV_SDNN_min: 'ms',
-  HRV_SDNN_max: 'ms',
-  HRV_SDNN_avg: 'ms',
-  // Chunk 2: Running metrics
-  running_speed_min: 'm/s',
-  running_speed_max: 'm/s',
-  running_speed_avg: 'm/s',
-  running_power_min: 'W',
-  running_power_max: 'W',
-  running_power_avg: 'W',
-  running_stride_length_min: 'cm',
-  running_stride_length_max: 'cm',
-  running_stride_length_avg: 'cm',
-  running_ground_contact_min: 'ms',
-  running_ground_contact_max: 'ms',
-  running_ground_contact_avg: 'ms',
-  running_vertical_oscillation_min: 'cm',
-  running_vertical_oscillation_max: 'cm',
-  running_vertical_oscillation_avg: 'cm',
-  // Chunk 3: Cycling metrics
-  cycling_speed_min: 'm/s',
-  cycling_speed_max: 'm/s',
-  cycling_speed_avg: 'm/s',
-  cycling_power_min: 'W',
-  cycling_power_max: 'W',
-  cycling_power_avg: 'W',
-  cycling_cadence_min: 'rpm',
-  cycling_cadence_max: 'rpm',
-  cycling_cadence_avg: 'rpm',
-  // Chunk 4: Walking / mobility metrics
-  walking_speed_min: 'm/s',
-  walking_speed_max: 'm/s',
-  walking_speed_avg: 'm/s',
-  walking_step_length_min: 'cm',
-  walking_step_length_max: 'cm',
-  walking_step_length_avg: 'cm',
-  walking_asymmetry_min: 'percent',
-  walking_asymmetry_max: 'percent',
-  walking_asymmetry_avg: 'percent',
-  walking_double_support_min: 'percent',
-  walking_double_support_max: 'percent',
-  walking_double_support_avg: 'percent',
-  steps_cadence_min: 'steps/min',
-  steps_cadence_max: 'steps/min',
-  steps_cadence_avg: 'steps/min',
-  // Chunk 5: Apple ring times + dietary (sum types)
-  apple_move_time: 'seconds',
-  apple_exercise_time: 'seconds',
-  apple_stand_time: 'seconds',
-  dietary_fat_total: 'g',
-  dietary_protein: 'g',
-  dietary_sodium: 'mg',
-  // Chunk 6: Audio exposure
-  environmental_audio_exposure_min: 'dB',
-  environmental_audio_exposure_max: 'dB',
-  environmental_audio_exposure_avg: 'dB',
-  headphone_audio_exposure_min: 'dB',
-  headphone_audio_exposure_max: 'dB',
-  headphone_audio_exposure_avg: 'dB',
-  // Last types
-  cycling_ftp: 'W',
-};
-const METER_HEIGHT_UNITS = new Set(['m', 'meter', 'meters', 'metre', 'metres']);
-const CENTIMETER_HEIGHT_UNITS = new Set([
-  'cm',
-  'centimeter',
-  'centimeters',
-  'centimetre',
-  'centimetres',
-]);
-
-function normalizeHeightForCheckIn(value: unknown, unit: unknown) {
-  const numericValue =
-    typeof value === 'number' ? value : parseFloat(String(value));
-  if (isNaN(numericValue) || numericValue <= 0) {
-    return null;
-  }
-
-  const normalizedUnit =
-    typeof unit === 'string' ? unit.trim().toLowerCase() : '';
-  if (METER_HEIGHT_UNITS.has(normalizedUnit)) {
-    return parseFloat((numericValue * 100).toFixed(2));
-  }
-  if (CENTIMETER_HEIGHT_UNITS.has(normalizedUnit)) {
-    return numericValue;
-  }
-
-  return null;
-}
+import {
+  resolveHandler,
+  customMeasurementHandler,
+  createCategoryResolver,
+  HEALTH_TYPE_DISPLAY_NAMES,
+} from './healthDataHandlers.js';
+import type {
+  HandleBatchFn,
+  PreparedHealthEntry,
+} from './healthDataHandlers.js';
 /**
  * Resolve the entry date, timestamp, and hour for a health data record using
  * the per-record timezone fallback chain:
@@ -291,60 +124,6 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
       : 0,
   };
 }
-const HEALTH_CONNECT_SLEEP_SOURCES = new Set([
-  'Health Connect',
-  'HealthConnect',
-]);
-const VALID_SLEEP_STAGE_TYPES = new Set([
-  'awake',
-  'rem',
-  'light',
-  'deep',
-  'in_bed',
-  'unknown',
-]);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isHealthConnectSleepSource(source: any) {
-  return typeof source === 'string' && HEALTH_CONNECT_SLEEP_SOURCES.has(source);
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeHealthConnectSleepStageEvents(stageEvents: any) {
-  if (!Array.isArray(stageEvents)) {
-    return [];
-  }
-  return stageEvents.reduce((sanitized, stageEvent) => {
-    if (!stageEvent || typeof stageEvent !== 'object') {
-      return sanitized;
-    }
-    const stageType =
-      typeof stageEvent.stage_type === 'string'
-        ? stageEvent.stage_type.toLowerCase()
-        : null;
-    if (!stageType || !VALID_SLEEP_STAGE_TYPES.has(stageType)) {
-      return sanitized;
-    }
-    const startTime = new Date(stageEvent.start_time);
-    const endTime = new Date(stageEvent.end_time);
-    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      return sanitized;
-    }
-    let durationInSeconds = Number(stageEvent.duration_in_seconds);
-    if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
-      durationInSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-    }
-    durationInSeconds = Math.round(durationInSeconds);
-    if (durationInSeconds <= 0) {
-      return sanitized;
-    }
-    sanitized.push({
-      stage_type: stageType,
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      duration_in_seconds: durationInSeconds,
-    });
-    return sanitized;
-  }, []);
-}
 // Delete-then-insert idempotency for provider-sourced entries: groups the given
 // entries by source, computes each source's [min,max] resolved-day range, and
 // invokes deleteFn(userId, startDate, endDate, source). Shared by the exercise
@@ -386,144 +165,6 @@ async function preCleanEntriesBySourceAndDate(
   }
 }
 
-// Health Connect nutrient fields that map to dedicated food_entry columns.
-// (Vitamins/minerals without a column arrive already grouped in custom_nutrients.)
-const NUTRITION_DIRECT_COLUMNS = [
-  'calories',
-  'protein',
-  'carbs',
-  'fat',
-  'saturated_fat',
-  'polyunsaturated_fat',
-  'monounsaturated_fat',
-  'trans_fat',
-  'cholesterol',
-  'sodium',
-  'potassium',
-  'dietary_fiber',
-  'sugars',
-  'vitamin_a',
-  'vitamin_c',
-  'calcium',
-  'iron',
-] as const;
-
-// Maps the client's display label (dataEntry.source) to a stable provider tag
-// used for food deduplication and diary entry source. Unknown/missing values
-// fall back to 'health_connect' so existing Android data is byte-for-byte
-// unchanged (Android sends 'Health Connect').
-const PROVIDER_TYPE_BY_SOURCE: Record<string, string> = {
-  'Health Connect': 'health_connect',
-  HealthKit: 'healthkit',
-};
-
-function resolveProvider(source: string | undefined): {
-  providerType: string;
-  fallbackName: string;
-} {
-  const providerType =
-    PROVIDER_TYPE_BY_SOURCE[source ?? ''] ?? 'health_connect';
-  const fallbackName =
-    providerType === 'healthkit' ? 'Apple Health food' : 'Health Connect food';
-  return { providerType, fallbackName };
-}
-
-// Ingest a single health-platform NutritionRecord (Health Connect or HealthKit)
-// as a food entry.
-//
-// A NutritionRecord is a *consumed amount*, not a per-serving food definition, so
-// the food/variant is just a labelled container: we reuse one food per name
-// (provider_external_id = name) and refresh its variant to the latest values,
-// mirroring the Garmin nutrition path (findFoodByProviderExternalId /
-// updateFoodVariantNutrition). The consumed nutrients are written onto the diary
-// entry itself, so two different amounts of the same food keep their own values
-// instead of collapsing to one variant's. The entry upserts by (source,
-// source_id), so re-syncing the same record updates in place — which lets the
-// client chunk freely without a destructive range-delete.
-async function ingestNutritionFoodEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dataEntry: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  parsedDate: string
-) {
-  const { providerType, fallbackName } = resolveProvider(dataEntry.source);
-  const trimmedName =
-    typeof dataEntry.food_name === 'string' ? dataEntry.food_name.trim() : '';
-  const foodName = trimmedName || fallbackName;
-  // Named records reuse one food per name; nameless ones key off the record id so
-  // each gets its own (hidden) food instead of collapsing onto a single shared
-  // 'Health Connect food' row whose variant would churn on every sync.
-  const providerExternalId = trimmedName || dataEntry.source_id || foodName;
-
-  // Consumed nutrients (serving_size = 1, so one serving = the consumed amount).
-  // Fields the provider omitted are stored as null, never a phantom 0.
-  const nutrients: Record<string, number | null> = {};
-  for (const field of NUTRITION_DIRECT_COLUMNS) {
-    nutrients[field] = dataEntry[field] ?? null;
-  }
-
-  // Reuse this provider's food for the same external id if present (refreshing its
-  // variant to the latest values), else create it. The provider_type scoping
-  // keeps user-authored library foods untouched.
-  let food = await foodRepository.findFoodByProviderExternalId(
-    userId,
-    providerExternalId,
-    providerType
-  );
-  let variantId = food?.default_variant_id ?? food?.default_variant?.id;
-  if (food && variantId) {
-    await foodRepository.updateFoodVariantNutrition(variantId, userId, {
-      serving_size: 1,
-      serving_unit: 'serving',
-      ...nutrients,
-    });
-  } else {
-    food = await foodRepository.createFood({
-      name: foodName,
-      user_id: userId,
-      is_custom: false,
-      // Hidden from food search (these are diary-only provider entries, and the
-      // generic fallback food name would otherwise clutter results).
-      is_quick_food: true,
-      provider_type: providerType,
-      provider_external_id: providerExternalId,
-      shared_with_public: false,
-      // food_variants.source is constrained to manual|ai_estimate|imported.
-      source: 'imported',
-      serving_size: 1,
-      serving_unit: 'serving',
-      ...nutrients,
-    });
-    variantId = food.default_variant_id ?? food.default_variant?.id;
-  }
-
-  // The consumed nutrients are passed through as snapshot overrides so the entry
-  // keeps its own values; createFoodEntry upserts on (user, source, source_id).
-  return foodRepository.createFoodEntry(
-    {
-      user_id: userId,
-      food_id: food.id,
-      variant_id: variantId,
-      quantity: 1,
-      unit: 'serving',
-      entry_date: parsedDate,
-      meal_type: dataEntry.meal_type || 'snacks',
-      serving_size: 1,
-      serving_unit: 'serving',
-      food_name: foodName,
-      ...nutrients,
-      // Idempotency key. Tagged with the provider tag (not the client's display
-      // label) so it stays consistent with the food's provider_type.
-      source: providerType,
-      source_id: dataEntry.source_id || null,
-    },
-    actingUserId
-  );
-}
-
 async function processHealthData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   healthDataArray: any,
@@ -535,6 +176,7 @@ async function processHealthData(
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
+  const skipped = [];
   const tzMetadataByType = {};
   const tzFallbackByType = {};
   // Loaded at most once per batch and shared across every sleep session so we don't
@@ -555,7 +197,7 @@ async function processHealthData(
   // post-midnight stages) must NOT wipe the previously-stored full night — sleep
   // ingest is merge-based via upsertSleepStageEvent ON CONFLICT + aggregate
   // recompute (issue #1180). Nutrition is also excluded: it upserts each entry by
-  // (source, source_id) in its case below, so it needs no range-delete and can be
+  // (source, source_id) in its handler, so it needs no range-delete and can be
   // chunked freely by the client.
   await preCleanEntriesBySourceAndDate(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -567,15 +209,18 @@ async function processHealthData(
     'exercise entries',
     exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate
   );
+  // Request-scoped dependencies for the handlers: categories are fetched at
+  // most once per request (see createCategoryResolver).
+  const batchContext = {
+    userId,
+    actingUserId,
+    getSleepContext,
+    processSleepEntry,
+    resolveCategory: createCategoryResolver(),
+  };
+  const pendingBatches = new Map<HandleBatchFn, PreparedHealthEntry[]>();
   for (const dataEntry of healthDataArray) {
-    const {
-      value,
-      type,
-      date,
-      timestamp,
-      source = 'manual',
-      dataType,
-    } = dataEntry; // Added source and dataType with default
+    const { value, type, date, timestamp } = dataEntry;
     // Check for required fields. Note: 'value' is not required for complex types like SleepSession, Stress, Workout.
     const complexTypes = [
       'SleepSession',
@@ -627,434 +272,39 @@ async function processHealthData(
     const parsedDate = resolved.parsedDate;
     const entryTimestamp = resolved.entryTimestamp;
     const entryHour = resolved.entryHour;
+    // Dispatch to the type's handler (see healthDataHandlers.ts); types
+    // without a dedicated handler are stored as custom measurements.
+    const handler = resolveHandler(type) ?? customMeasurementHandler;
+    // Batch-capable types are queued and flushed after the loop; handlers
+    // sharing one handleBatch function share a write group.
+    if (handler.handleBatch) {
+      const group = pendingBatches.get(handler.handleBatch);
+      const prepared = {
+        entry: dataEntry,
+        parsedDate,
+        entryTimestamp,
+        entryHour,
+      };
+      if (group) {
+        group.push(prepared);
+      } else {
+        pendingBatches.set(handler.handleBatch, [prepared]);
+      }
+      continue;
+    }
     try {
-      let result;
-      let categoryId;
-      // Handle specific types first, then fall back to custom measurements
-      switch (type) {
-        case 'step':
-        case 'steps': {
-          const stepValue = parseInt(value, 10);
-          if (isNaN(stepValue) || !Number.isInteger(stepValue)) {
-            errors.push({
-              error: 'Invalid value for step. Must be an integer.',
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertStepData(
-            userId,
-            actingUserId,
-            stepValue,
-            parsedDate
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'water': {
-          const waterValue = parseInt(value, 10);
-          if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
-            errors.push({
-              error: 'Invalid value for water. Must be an integer.',
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertWaterData(
-            userId,
-            actingUserId,
-            waterValue,
-            parsedDate,
-            source // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'Active Calories':
-        case 'active_calories':
-        case 'ActiveCaloriesBurned': {
-          const activeCaloriesValue = parseFloat(value);
-          if (isNaN(activeCaloriesValue) || activeCaloriesValue < 0) {
-            errors.push({
-              error:
-                'Invalid value for active_calories. Must be a non-negative number.',
-              entry: dataEntry,
-            });
-            break;
-          }
-          const exerciseSource = source || 'Health Data';
-          const exerciseId = await exerciseDb.getOrCreateActiveCaloriesExercise(
-            userId,
-            exerciseSource
-          );
-          result = await exerciseEntryDb.upsertExerciseEntryData(
-            userId,
-            actingUserId,
-            exerciseId,
-            activeCaloriesValue,
-            parsedDate,
-            exerciseSource
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'weight': {
-          const numericValue = parseFloat(value);
-          if (isNaN(numericValue) || numericValue <= 0) {
-            errors.push({
-              error: `Invalid value for ${type}. Must be a positive number.`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertCheckInMeasurements(
-            userId,
-            actingUserId,
-            parsedDate,
-            { weight: numericValue }
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'body_fat_percentage':
-        case 'body_fat': {
-          const numericValue = parseFloat(value);
-          if (isNaN(numericValue) || numericValue <= 0 || numericValue > 100) {
-            errors.push({
-              error: `Invalid value for ${type}. Must be greater than 0 and at most 100.`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertCheckInMeasurements(
-            userId,
-            actingUserId,
-            parsedDate,
-            { body_fat_percentage: numericValue }
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'height':
-        case 'Height': {
-          const heightCm = normalizeHeightForCheckIn(
-            value,
-            dataEntry.unit ?? dataEntry.measurementType
-          );
-          if (heightCm === null) {
-            errors.push({
-              error: `Invalid value for ${type}. Must be a positive number in meters or centimeters.`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertCheckInMeasurements(
-            userId,
-            actingUserId,
-            parsedDate,
-            { height: heightCm }
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'SleepSession': {
-          try {
-            const stageEvents = isHealthConnectSleepSource(source)
-              ? sanitizeHealthConnectSleepStageEvents(dataEntry.stage_events)
-              : dataEntry.stage_events || [];
-            // Map the dataEntry fields to what processSleepEntry expects
-            const sleepEntryData = {
-              entry_date: parsedDate,
-              bedtime: dataEntry.bedtime
-                ? new Date(dataEntry.bedtime)
-                : new Date(timestamp),
-              wake_time: dataEntry.wake_time
-                ? new Date(dataEntry.wake_time)
-                : dataEntry.duration_in_seconds
-                  ? new Date(
-                      new Date(timestamp).getTime() +
-                        dataEntry.duration_in_seconds * 1000
-                    )
-                  : new Date(timestamp),
-              duration_in_seconds: Number(dataEntry.duration_in_seconds) || 0,
-              time_asleep_in_seconds:
-                Number(dataEntry.time_asleep_in_seconds) || 0,
-              sleep_score: Number(dataEntry.sleep_score) || 0,
-              source: source,
-              stage_events: stageEvents,
-              deep_sleep_seconds: Number(dataEntry.deep_sleep_seconds) || 0,
-              light_sleep_seconds: Number(dataEntry.light_sleep_seconds) || 0,
-              rem_sleep_seconds: Number(dataEntry.rem_sleep_seconds) || 0,
-              awake_sleep_seconds: Number(dataEntry.awake_sleep_seconds) || 0,
-            };
-            const sleepEntryResult = await processSleepEntry(
-              userId,
-              actingUserId,
-              sleepEntryData,
-              await getSleepContext()
-            );
-            processedResults.push({
-              type,
-              status: 'success',
-              data: sleepEntryResult,
-            });
-          } catch (sleepError) {
-            log(
-              'error',
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              `Error processing sleep entry: ${sleepError.message}`,
-              dataEntry
-            );
-            errors.push({
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              error: `Failed to process sleep entry: ${sleepError.message}`,
-              entry: dataEntry,
-            });
-          }
-          break;
-        }
-        // Map incoming stress data to the existing custom measurement system
-        case 'Stress': {
-          try {
-            const stressCategory = await getOrCreateCustomCategory(
-              userId,
-              actingUserId,
-              'Stress',
-              'numeric',
-              'Daily'
-            );
-            if (!stressCategory || !stressCategory.id) {
-              errors.push({
-                error: 'Failed to get or create custom category for Stress',
-                entry: dataEntry,
-              });
-              break;
-            }
-            // Check if 'value' is present, otherwise checks strictly for Stress it might be just presence?
-            // Usually Stress has a level/value. If it's just a session token (val=1), use that.
-            const stressValue =
-              value !== undefined && value !== null ? value : 1;
-            result = await measurementRepository.upsertCustomMeasurement(
-              userId,
-              actingUserId,
-              stressCategory.id,
-              stressValue,
-              parsedDate,
-              entryHour,
-              entryTimestamp,
-              `Source: ${source}`,
-              stressCategory.frequency,
-              source
-            );
-            processedResults.push({ type, status: 'success', data: result });
-          } catch (stressError) {
-            errors.push({
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              error: `Failed to process Stress entry: ${stressError.message}`,
-              entry: dataEntry,
-            });
-          }
-          break;
-        }
-        case 'ExerciseSession':
-        case 'Workout': {
-          // Redirect to processMobileHealthData logic or duplicate it here?
-          // Since processMobileHealthData has the logic, let's just use the same logic here
-          // OR call processMobileHealthData for a single entry?
-          // Creating a single-entry array to re-use processMobileHealthData might be cleaner but risky if circular.
-          // Let's implement inline as it is safer and cleaner to avoid context switching.
-          try {
-            const {
-              activityType,
-              caloriesBurned,
-              distance,
-              duration,
-              raw_data,
-              source_id,
-            } = dataEntry;
-            const exerciseName = activityType || `${source} Exercise`;
-            let exercise = await exerciseDb.findExerciseByNameAndUserId(
-              exerciseName,
-              userId
-            );
-            if (!exercise) {
-              exercise = await exerciseDb.createExercise({
-                user_id: userId,
-                name: exerciseName,
-                is_custom: true,
-                shared_with_public: false,
-                source: source,
-                category: 'Cardio',
-                calories_per_hour: caloriesBurned
-                  ? caloriesBurned / (duration / 3600)
-                  : 0,
-              });
-            }
-            const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
-              userId,
-              {
-                exercise_id: exercise.id,
-                duration_minutes: duration ? duration / 60 : 0,
-                calories_burned: caloriesBurned,
-                entry_date: parsedDate,
-                notes: `Source: ${source}, Activity Type: ${activityType}`,
-                distance: distance,
-                sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
-                source_id: source_id || null,
-              },
-              actingUserId,
-              source
-            );
-            if (raw_data) {
-              await activityDetailsRepository.createActivityDetail(userId, {
-                exercise_entry_id: exerciseEntry.id,
-                provider_name: source,
-                detail_type: `${type}_raw_data`,
-                detail_data: JSON.stringify(raw_data),
-                created_by_user_id: actingUserId,
-                updated_by_user_id: actingUserId,
-              });
-            }
-            processedResults.push({
-              type,
-              status: 'success',
-              data: exerciseEntry,
-            });
-          } catch (workoutError) {
-            errors.push({
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              error: `Failed to process Workout entry: ${workoutError.message}`,
-              entry: dataEntry,
-            });
-          }
-          break;
-        }
-        // Ingest a Health Connect NutritionRecord as a food entry
-        // (see ingestNutritionFoodEntry).
-        case 'Nutrition': {
-          // Idempotency depends on source_id (the upsert key). A record without
-          // one can't be deduped and would re-insert on every sync, so skip it
-          // rather than risk duplicates (guards against client/device variance).
-          if (!dataEntry.source_id) {
-            log(
-              'warn',
-              `[processHealthData] Skipping Nutrition record without source_id (cannot dedupe): '${dataEntry.food_name || 'unnamed'}'`
-            );
-            break;
-          }
-          try {
-            const foodEntry = await ingestNutritionFoodEntry(
-              dataEntry,
-              userId,
-              actingUserId,
-              parsedDate
-            );
-            processedResults.push({ type, status: 'success', data: foodEntry });
-          } catch (nutritionError) {
-            const errMsg =
-              nutritionError instanceof Error
-                ? nutritionError.message
-                : String(nutritionError);
-            log(
-              'error',
-              `Error processing Nutrition entry: ${errMsg}`,
-              dataEntry
-            );
-            errors.push({
-              error: `Failed to process Nutrition entry: ${errMsg}`,
-              entry: dataEntry,
-            });
-          }
-          break;
-        }
-        case 'sleep_entry': {
-          // Handle structured sleep entry data (legacy/web)
-          try {
-            const sleepEntryResult = await processSleepEntry(
-              userId,
-              actingUserId,
-              dataEntry,
-              await getSleepContext()
-            );
-            processedResults.push({
-              type,
-              status: 'success',
-              data: sleepEntryResult,
-            });
-          } catch (sleepError) {
-            log(
-              'error',
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              `Error processing sleep entry: ${sleepError.message}`,
-              dataEntry
-            );
-            errors.push({
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
-              error: `Failed to process sleep entry: ${sleepError.message}`,
-              entry: dataEntry,
-            });
-          }
-          break;
-        }
-        default: {
-          // Handle as custom measurement
-          // Use unit from payload (e.g. HealthConnect sends "unit") or default so UI does not show "N/A"
-          const unitFromPayload = dataEntry.unit ?? dataEntry.measurementType;
-          let resolvedMeasurementType;
-          if (
-            unitFromPayload &&
-            typeof unitFromPayload === 'string' &&
-            unitFromPayload.trim()
-          ) {
-            resolvedMeasurementType = unitFromPayload.trim();
-          } else {
-            resolvedMeasurementType =
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-              DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
-          }
-          const category = await getOrCreateCustomCategory(
-            userId,
-            actingUserId,
-            type,
-            dataType,
-            resolvedMeasurementType
-          );
-          if (!category || !category.id) {
-            errors.push({
-              error: `Failed to get or create custom category for type: ${type}`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          categoryId = category.id;
-          let processedValue = value;
-          if (category.data_type === 'numeric') {
-            const numericValue = parseFloat(value);
-            if (isNaN(numericValue)) {
-              errors.push({
-                error: `Invalid numeric value for custom measurement type: ${type}. Value: ${value}`,
-                entry: dataEntry,
-              });
-              break;
-            }
-            processedValue = numericValue;
-          }
-          // If data_type is 'text', we use the value as is.
-          result = await measurementRepository.upsertCustomMeasurement(
-            userId,
-            actingUserId,
-            categoryId,
-            processedValue,
-            parsedDate,
-            entryHour,
-            entryTimestamp,
-            dataEntry.notes, // Pass notes if available
-            category.frequency, // Pass the frequency from the category
-            source // Pass the source
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
+      const outcome = await handler.handle(dataEntry, {
+        ...batchContext,
+        parsedDate,
+        entryTimestamp,
+        entryHour,
+      });
+      if (outcome.status === 'success') {
+        processedResults.push({ type, status: 'success', data: outcome.data });
+      } else if (outcome.status === 'error') {
+        errors.push({ error: outcome.error, entry: dataEntry });
+      } else {
+        skipped.push({ reason: outcome.reason, entry: dataEntry });
       }
     } catch (error) {
       log(
@@ -1067,6 +317,44 @@ async function processHealthData(
         error: `Failed to process entry: ${error.message}`,
         entry: dataEntry,
       });
+    }
+  }
+  // Flush the queued batch groups: each group writes through one repository
+  // transaction; outcomes come back aligned with the group's entries.
+  for (const [handleBatch, group] of pendingBatches) {
+    let outcomes;
+    try {
+      outcomes = await handleBatch(group, batchContext);
+    } catch (error) {
+      log('error', 'Error processing health data batch:', error);
+      for (const prepared of group) {
+        errors.push({
+          // @ts-expect-error TS(2571): Object is of type 'unknown'.
+          error: `Failed to process entry: ${error.message}`,
+          entry: prepared.entry,
+        });
+      }
+      continue;
+    }
+    for (let i = 0; i < group.length; i++) {
+      const { entry } = group[i];
+      const outcome = outcomes[i];
+      if (!outcome) {
+        errors.push({
+          error: 'Failed to process entry: missing batch outcome',
+          entry,
+        });
+      } else if (outcome.status === 'success') {
+        processedResults.push({
+          type: entry.type,
+          status: 'success',
+          data: outcome.data,
+        });
+      } else if (outcome.status === 'error') {
+        errors.push({ error: outcome.error, entry });
+      } else {
+        skipped.push({ reason: outcome.reason, entry });
+      }
     }
   }
   // Log timezone metadata coverage per type for observability
@@ -1092,313 +380,19 @@ async function processHealthData(
       `[processHealthData] Timezone metadata present by type: ${details}`
     );
   }
-  if (errors.length > 0) {
-    throw new Error(
-      JSON.stringify({
-        message: 'Some health data entries could not be processed.',
-        processed: processedResults,
-        errors: errors,
-      })
-    );
-  } else {
-    return {
-      message: 'All health data successfully processed.',
-      processed: processedResults,
-    };
-  }
-}
-async function processMobileHealthData(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mobileHealthDataArray: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any
-) {
-  const tz = await loadUserTimezone(userId);
-  const processedResults = [];
-  const errors = [];
-  // Loaded at most once per batch and shared across every sleep session (see
-  // processHealthData for rationale).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let sleepContext: { tz: string; userProfile: any } | undefined;
-  const getSleepContext = async () => {
-    if (!sleepContext) {
-      sleepContext = {
-        tz,
-        userProfile: await userRepository.getUserProfile(userId),
-      };
-    }
-    return sleepContext;
+  // Per-record error contract: the request succeeded even if individual
+  // records did not, so per-record failures are reported in the body rather
+  // than thrown. `errors` and `skipped` are always present (possibly empty).
+  return {
+    message:
+      errors.length > 0
+        ? 'Some health data entries could not be processed.'
+        : 'All health data successfully processed.',
+    processed: processedResults,
+    errors,
+    skipped,
   };
-  for (const dataEntry of mobileHealthDataArray) {
-    const {
-      type,
-      source,
-      timestamp,
-      value,
-      unit,
-      bedtime,
-      wake_time,
-      duration_in_seconds,
-      time_asleep_in_seconds,
-      sleep_score,
-      stage_events,
-      activityType,
-      caloriesBurned,
-      distance,
-      duration,
-      raw_data,
-    } = dataEntry;
-    log(
-      'debug',
-      `[processMobileHealthData] Processing dataEntry with type: ${type}`
-    );
-    if (!type || !source || !timestamp) {
-      errors.push({
-        error:
-          'Missing required fields: type, source, or timestamp in one of the entries',
-        entry: dataEntry,
-      });
-      continue;
-    }
-    let parsedDate;
-    let entryTimestamp;
-    let entryHour;
-    try {
-      const dateObj = new Date(timestamp);
-      if (isNaN(dateObj.getTime())) {
-        throw new Error(`Invalid timestamp received: '${timestamp}'.`);
-      }
-      parsedDate = instantToDay(dateObj, tz);
-      entryTimestamp = dateObj.toISOString();
-      entryHour = instantHourMinute(dateObj, tz).hour;
-    } catch (e) {
-      log('error', 'Timestamp parsing error:', e);
-      errors.push({
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: `Invalid timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`,
-        entry: dataEntry,
-      });
-      continue;
-    }
-    try {
-      let result;
-      switch (type) {
-        case 'water': {
-          const waterValue = parseInt(value, 10);
-          if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
-            errors.push({
-              error: 'Invalid value for water. Must be an integer.',
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertWaterData(
-            userId,
-            actingUserId,
-            waterValue,
-            parsedDate,
-            source
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'Stress': {
-          // Map incoming stress data to the existing custom measurement system
-          const stressCategory = await getOrCreateCustomCategory(
-            userId,
-            actingUserId,
-            'Stress',
-            'numeric',
-            'Daily'
-          );
-          if (!stressCategory || !stressCategory.id) {
-            errors.push({
-              error: 'Failed to get or create custom category for Stress',
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertCustomMeasurement(
-            userId,
-            actingUserId,
-            stressCategory.id,
-            value, // Assuming 'value' holds the stress level
-            parsedDate,
-            entryHour,
-            entryTimestamp,
-            `Source: ${source}`,
-            stressCategory.frequency,
-            source
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'SleepSession': {
-          const sleepEntryData = {
-            entry_date: parsedDate,
-            bedtime: bedtime ? new Date(bedtime) : new Date(timestamp),
-            wake_time: wake_time
-              ? new Date(wake_time)
-              : new Date(
-                  new Date(timestamp).getTime() +
-                    (duration_in_seconds || 0) * 1000
-                ),
-            duration_in_seconds: duration_in_seconds,
-            time_asleep_in_seconds: time_asleep_in_seconds,
-            sleep_score: sleep_score,
-            source: source,
-            stage_events: stage_events,
-            // Add other sleep-related fields from mobileHealthData if available
-          };
-          result = await processSleepEntry(
-            userId,
-            actingUserId,
-            sleepEntryData,
-            await getSleepContext()
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-        case 'ExerciseSession':
-        case 'Workout': {
-          // Create/update exercises and exercise entries
-          const exerciseName = activityType || `${source} Exercise`;
-          let exercise = await exerciseDb.findExerciseByNameAndUserId(
-            exerciseName,
-            userId
-          );
-          if (!exercise) {
-            exercise = await exerciseDb.createExercise({
-              user_id: userId,
-              name: exerciseName,
-              is_custom: true,
-              shared_with_public: false,
-              source: source,
-              category: 'Cardio', // Default category, can be refined
-              calories_per_hour: caloriesBurned
-                ? caloriesBurned / (duration / 3600)
-                : 0, // Convert to per hour
-            });
-          }
-          const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
-            userId,
-            {
-              exercise_id: exercise.id,
-              duration_minutes: duration ? duration / 60 : 0,
-              calories_burned: caloriesBurned,
-              entry_date: parsedDate,
-              notes: `Source: ${source}, Activity Type: ${activityType}`,
-              distance: distance,
-              sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
-              // Add other exercise-related fields from mobileHealthData if available
-            },
-            actingUserId,
-            source
-          );
-          // Store raw data in activity details
-          if (raw_data) {
-            await activityDetailsRepository.createActivityDetail(userId, {
-              exercise_entry_id: exerciseEntry.id,
-              provider_name: source,
-              detail_type: `${type}_raw_data`,
-              detail_data: JSON.stringify(raw_data),
-              created_by_user_id: actingUserId,
-              updated_by_user_id: actingUserId,
-            });
-          }
-          processedResults.push({
-            type,
-            status: 'success',
-            data: exerciseEntry,
-          });
-          break;
-        }
-        default: {
-          // Route unknown types through the custom measurement system
-          // (mirrors processHealthData default case)
-          const unitFromPayload =
-            unit && typeof unit === 'string' && unit.trim()
-              ? unit.trim()
-              : undefined;
-          const resolvedUnit =
-            // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-            unitFromPayload || DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
-          const category = await getOrCreateCustomCategory(
-            userId,
-            actingUserId,
-            type,
-            'numeric',
-            resolvedUnit
-          );
-          if (!category || !category.id) {
-            errors.push({
-              error: `Failed to get or create custom category for type: ${type}`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          const numericValue = parseFloat(value);
-          if (isNaN(numericValue)) {
-            errors.push({
-              error: `Invalid numeric value for type: ${type}. Value: ${value}`,
-              entry: dataEntry,
-            });
-            break;
-          }
-          result = await measurementRepository.upsertCustomMeasurement(
-            userId,
-            actingUserId,
-            category.id,
-            numericValue,
-            parsedDate,
-            entryHour,
-            entryTimestamp,
-            dataEntry.notes,
-            category.frequency,
-            source
-          );
-          processedResults.push({ type, status: 'success', data: result });
-          break;
-        }
-      }
-    } catch (error) {
-      log(
-        'error',
-        `Error processing mobile health data entry ${JSON.stringify(dataEntry)}:`,
-        error
-      );
-      errors.push({
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: `Failed to process entry: ${error.message}`,
-        entry: dataEntry,
-      });
-    }
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      JSON.stringify({
-        message: 'Some mobile health data entries could not be processed.',
-        processed: processedResults,
-        errors: errors,
-      })
-    );
-  } else {
-    return {
-      message: 'All mobile health data successfully processed.',
-      processed: processedResults,
-    };
-  }
 }
-// Friendly display names for health-derived categories whose `type` key is technical.
-// Surfaced via custom_categories.display_name, which the web renders as
-// `display_name || name` across check-in, reports, and CSV export.
-const HEALTH_TYPE_DISPLAY_NAMES: Record<string, string> = {
-  HRV: 'HRV (RMSSD)',
-  HRV_SDNN: 'HRV (SDNN)',
-};
-
 // Helper function to get or create a custom category
 async function getOrCreateCustomCategory(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2667,7 +1661,6 @@ export const getSleepEntriesByUserIdAndDateRange =
   sleepRepository.getSleepEntriesByUserIdAndDateRange;
 export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
 export { processHealthData };
-export { processMobileHealthData };
 export { getWaterIntake };
 export { upsertWaterIntake };
 export { getWaterIntakeEntryById };
@@ -2803,7 +1796,6 @@ export { updateWaterIntakeLogTime };
 
 export default {
   processHealthData,
-  processMobileHealthData,
   getWaterIntake,
   upsertWaterIntake,
   getWaterIntakeEntryById,

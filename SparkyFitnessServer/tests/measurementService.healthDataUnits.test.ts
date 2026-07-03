@@ -22,9 +22,9 @@ describe('processHealthData default units (#567)', () => {
     measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = vi
+    measurementRepository.bulkUpsertCustomMeasurements = vi
       .fn()
-      .mockResolvedValue({ id: 'entry-1' });
+      .mockResolvedValue([{ id: 'entry-1' }]);
   });
   it('applies default unit when payload has no unit (e.g. heart_rate -> bpm)', async () => {
     const healthDataArray = [
@@ -115,9 +115,9 @@ describe('processHealthData default units (#567)', () => {
   ])(
     'stores %s %s in check-in measurements as centimeters',
     async (source, type, value, unit, expectedHeight) => {
-      measurementRepository.upsertCheckInMeasurements = vi
+      measurementRepository.bulkUpsertCheckInMeasurements = vi
         .fn()
-        .mockResolvedValue({ id: 'check-in-1', height: expectedHeight });
+        .mockResolvedValue([{ id: 'check-in-1', height: expectedHeight }]);
 
       const result = await measurementService.processHealthData(
         [
@@ -135,50 +135,51 @@ describe('processHealthData default units (#567)', () => {
 
       expect(result.processed).toHaveLength(1);
       expect(
-        measurementRepository.upsertCheckInMeasurements
-      ).toHaveBeenCalledWith(userId, actingUserId, '2025-02-01', {
-        height: expectedHeight,
-      });
+        measurementRepository.bulkUpsertCheckInMeasurements
+      ).toHaveBeenCalledWith(userId, actingUserId, [
+        { entryDate: '2025-02-01', measurements: { height: expectedHeight } },
+      ]);
       expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
       expect(
-        measurementRepository.upsertCustomMeasurement
+        measurementRepository.bulkUpsertCustomMeasurements
       ).not.toHaveBeenCalled();
     }
   );
   it('rejects height with an unsupported unit instead of guessing', async () => {
-    measurementRepository.upsertCheckInMeasurements = vi.fn();
+    measurementRepository.bulkUpsertCheckInMeasurements = vi.fn();
 
-    await expect(
-      measurementService.processHealthData(
-        [
-          {
-            type: 'height',
-            value: 70,
-            date: '2025-02-01',
-            source: 'HealthConnect',
-            unit: 'inches',
-          },
-        ],
-        userId,
-        actingUserId
-      )
-    ).rejects.toThrow(
-      'Invalid value for height. Must be a positive number in meters or centimeters.'
+    const result = await measurementService.processHealthData(
+      [
+        {
+          type: 'height',
+          value: 70,
+          date: '2025-02-01',
+          source: 'HealthConnect',
+          unit: 'inches',
+        },
+      ],
+      userId,
+      actingUserId
     );
 
+    expect(result.processed).toHaveLength(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].error).toBe(
+      'Invalid value for height. Must be a positive number in meters or centimeters.'
+    );
     expect(
-      measurementRepository.upsertCheckInMeasurements
+      measurementRepository.bulkUpsertCheckInMeasurements
     ).not.toHaveBeenCalled();
     expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
     expect(
-      measurementRepository.upsertCustomMeasurement
+      measurementRepository.bulkUpsertCustomMeasurements
     ).not.toHaveBeenCalled();
   });
 
   it('stores Health Connect body_fat in check-in measurements as body_fat_percentage', async () => {
-    measurementRepository.upsertCheckInMeasurements = vi
+    measurementRepository.bulkUpsertCheckInMeasurements = vi
       .fn()
-      .mockResolvedValue({ id: 'check-in-1', body_fat_percentage: 18.4 });
+      .mockResolvedValue([{ id: 'check-in-1', body_fat_percentage: 18.4 }]);
 
     const result = await measurementService.processHealthData(
       [
@@ -196,14 +197,52 @@ describe('processHealthData default units (#567)', () => {
 
     expect(result.processed).toHaveLength(1);
     expect(
-      measurementRepository.upsertCheckInMeasurements
-    ).toHaveBeenCalledWith(userId, actingUserId, '2025-02-01', {
-      body_fat_percentage: 18.4,
-    });
+      measurementRepository.bulkUpsertCheckInMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      {
+        entryDate: '2025-02-01',
+        measurements: { body_fat_percentage: 18.4 },
+      },
+    ]);
     expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
     expect(
-      measurementRepository.upsertCustomMeasurement
+      measurementRepository.bulkUpsertCustomMeasurements
     ).not.toHaveBeenCalled();
+  });
+
+  it('merges same-day check-in records into one bulk write', async () => {
+    measurementRepository.bulkUpsertCheckInMeasurements = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 'check-in-1', steps: 5000, weight: 70.5 },
+        { id: 'check-in-1', steps: 5000, weight: 70.5 },
+      ]);
+
+    const result = await measurementService.processHealthData(
+      [
+        { type: 'step', value: 5000, date: '2025-02-01', source: 'HealthKit' },
+        {
+          type: 'weight',
+          value: 70.5,
+          date: '2025-02-01',
+          source: 'HealthKit',
+        },
+      ],
+      userId,
+      actingUserId
+    );
+
+    expect(result.processed).toHaveLength(2);
+    // One write group, one repository call; the repo merges same-date rows.
+    expect(
+      measurementRepository.bulkUpsertCheckInMeasurements
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      measurementRepository.bulkUpsertCheckInMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      { entryDate: '2025-02-01', measurements: { steps: 5000 } },
+      { entryDate: '2025-02-01', measurements: { weight: 70.5 } },
+    ]);
   });
 });
 describe('Aggregated health metric default units', () => {
@@ -216,9 +255,9 @@ describe('Aggregated health metric default units', () => {
     measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = vi
+    measurementRepository.bulkUpsertCustomMeasurements = vi
       .fn()
-      .mockResolvedValue({ id: 'entry-1' });
+      .mockResolvedValue([{ id: 'entry-1' }]);
   });
   it.each([
     // Chunk 1: Heart rate + vitals
@@ -279,85 +318,8 @@ describe('Aggregated health metric default units', () => {
     expect(createPayload.measurement_type).toBe(expectedUnit);
     expect(createPayload.name).toBe(type);
   });
-});
-describe('processMobileHealthData aggregated types', () => {
-  const userId = 'user-123';
-  const actingUserId = 'user-123';
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(loadUserTimezone).mockResolvedValue('UTC');
-    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = vi
-      .fn()
-      .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = vi
-      .fn()
-      .mockResolvedValue({ id: 'entry-1' });
-  });
-  it('stores aggregated type as custom measurement via mobile path', async () => {
-    const mobileData = [
-      {
-        type: 'running_speed_avg',
-        value: 3.5,
-        source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
-      },
-    ];
-    const result = await measurementService.processMobileHealthData(
-      mobileData,
-      userId,
-      actingUserId
-    );
-    expect(result.processed).toHaveLength(1);
-    expect(result.processed[0]).toMatchObject({
-      type: 'running_speed_avg',
-      status: 'success',
-    });
-    expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
-    const createPayload =
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '(categoryD... Remove this comment to see the full error message
-      measurementRepository.createCustomCategory.mock.calls[0][0];
-    expect(createPayload.name).toBe('running_speed_avg');
-    expect(createPayload.measurement_type).toBe('m/s');
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledTimes(
-      1
-    );
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-new',
-      3.5,
-      '2025-06-01',
-      expect.any(Number),
-      '2025-06-01T10:00:00.000Z',
-      undefined,
-      'Daily',
-      'apple_health'
-    );
-  });
-  it('uses payload unit over default when provided', async () => {
-    const mobileData = [
-      {
-        type: 'running_speed_avg',
-        value: 8.5,
-        unit: 'km/h',
-        source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
-      },
-    ];
-    const result = await measurementService.processMobileHealthData(
-      mobileData,
-      userId,
-      actingUserId
-    );
-    expect(result.processed).toHaveLength(1);
-    const createPayload =
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '(categoryD... Remove this comment to see the full error message
-      measurementRepository.createCustomCategory.mock.calls[0][0];
-    expect(createPayload.measurement_type).toBe('km/h');
-  });
-  it('rejects entry with non-numeric value', async () => {
-    const mobileData = [
+  it('rejects custom measurement entry with non-numeric value', async () => {
+    const healthDataArray = [
       {
         type: 'running_speed_avg',
         value: 'not-a-number',
@@ -365,50 +327,22 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-    await expect(
-      measurementService.processMobileHealthData(
-        mobileData,
-        userId,
-        actingUserId
-      )
-    ).rejects.toThrow();
-    expect(
-      measurementRepository.upsertCustomMeasurement
-    ).not.toHaveBeenCalled();
-  });
-  it('handles multiple aggregated entries in one batch', async () => {
-    const mobileData = [
-      {
-        type: 'running_speed_min',
-        value: 2.8,
-        source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
-      },
-      {
-        type: 'running_speed_max',
-        value: 4.2,
-        source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
-      },
-      {
-        type: 'running_speed_avg',
-        value: 3.5,
-        source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
-      },
-    ];
-    const result = await measurementService.processMobileHealthData(
-      mobileData,
+    const result = await measurementService.processHealthData(
+      healthDataArray,
       userId,
       actingUserId
     );
-    expect(result.processed).toHaveLength(3);
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledTimes(
-      3
+    expect(result.processed).toHaveLength(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].error).toContain(
+      'Invalid numeric value for custom measurement type: running_speed_avg'
     );
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).not.toHaveBeenCalled();
   });
-  it('passes notes through when provided', async () => {
-    const mobileData = [
+  it('passes notes through to the custom measurement write when provided', async () => {
+    const healthDataArray = [
       {
         type: 'cycling_ftp',
         value: 250,
@@ -417,26 +351,28 @@ describe('processMobileHealthData aggregated types', () => {
         notes: 'New FTP test result',
       },
     ];
-    const result = await measurementService.processMobileHealthData(
-      mobileData,
+    const result = await measurementService.processHealthData(
+      healthDataArray,
       userId,
       actingUserId
     );
     expect(result.processed).toHaveLength(1);
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-new',
-      250,
-      '2025-06-01',
-      expect.any(Number),
-      '2025-06-01T10:00:00.000Z',
-      'New FTP test result',
-      'Daily',
-      'apple_health'
-    );
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      {
+        categoryId: 'cat-new',
+        value: 250,
+        entryDate: '2025-06-01',
+        entryHour: expect.any(Number),
+        entryTimestamp: '2025-06-01T10:00:00.000Z',
+        notes: 'New FTP test result',
+        frequency: 'Daily',
+        source: 'apple_health',
+      },
+    ]);
   });
-  it('reuses existing custom category instead of creating a new one', async () => {
+  it('fetches categories once and writes once for a multi-record batch', async () => {
     measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([
       {
         id: 'cat-existing',
@@ -446,32 +382,46 @@ describe('processMobileHealthData aggregated types', () => {
         data_type: 'numeric',
       },
     ]);
-    const mobileData = [
+    measurementRepository.bulkUpsertCustomMeasurements = vi
+      .fn()
+      .mockResolvedValue([{ id: 'e1' }, { id: 'e2' }, { id: 'e3' }]);
+    const healthDataArray = [
       {
         type: 'running_speed_avg',
-        value: 3.5,
+        value: 3.1,
+        date: '2025-06-01',
         source: 'apple_health',
-        timestamp: '2025-06-01T10:00:00Z',
+      },
+      {
+        type: 'running_speed_avg',
+        value: 3.2,
+        date: '2025-06-02',
+        source: 'apple_health',
+      },
+      {
+        type: 'running_speed_avg',
+        value: 3.3,
+        date: '2025-06-03',
+        source: 'apple_health',
       },
     ];
-    const result = await measurementService.processMobileHealthData(
-      mobileData,
+    const result = await measurementService.processHealthData(
+      healthDataArray,
       userId,
       actingUserId
     );
-    expect(result.processed).toHaveLength(1);
-    expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
-    expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
-      userId,
-      actingUserId,
-      'cat-existing',
-      3.5,
-      '2025-06-01',
-      expect.any(Number),
-      '2025-06-01T10:00:00.000Z',
-      undefined,
-      'Daily',
-      'apple_health'
-    );
+    expect(result.processed).toHaveLength(3);
+    expect(result.errors).toHaveLength(0);
+    // The request-scoped resolver fetches categories once per request, not
+    // once per record (N+1 regression guard).
+    expect(measurementRepository.getCustomCategories).toHaveBeenCalledTimes(1);
+    // All three records flush through a single bulk write, in payload order.
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledTimes(1);
+    const rows = vi.mocked(measurementRepository.bulkUpsertCustomMeasurements)
+      .mock.calls[0][2];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(rows.map((row: any) => row.value)).toEqual([3.1, 3.2, 3.3]);
   });
 });

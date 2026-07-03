@@ -24,11 +24,14 @@ export function useSyncHealthData(options?: {
     mutationFn: async ({ timeRange, healthMetricStates }: SyncHealthDataParams) => {
       const result = await healthConnectSyncData(timeRange, healthMetricStates);
       if (result.success) {
+        // Only read errors block the cursor; server-rejected records
+        // (uploadErrors) are logged and reported but never re-synced.
         const hadSyncErrors = result.syncErrors.length > 0;
         const newSyncedTime = hadSyncErrors ? null : await saveLastSyncedTime();
         return {
           lastSyncedTime: newSyncedTime,
           syncErrors: result.syncErrors,
+          uploadErrors: result.uploadErrors ?? [],
         };
       }
       throw new Error(result.error || 'Unknown sync error');
@@ -46,11 +49,21 @@ export function useSyncHealthData(options?: {
       refreshHealthSyncCache(queryClient);
       queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
       if (showToasts) {
-        if (data.syncErrors.length > 0) {
+        if (data.syncErrors.length > 0 || data.uploadErrors.length > 0) {
+          const details = [
+            data.syncErrors.length > 0
+              ? `${data.syncErrors.length} metric(s) could not be read. They will retry next sync.`
+              : null,
+            data.uploadErrors.length > 0
+              ? `${data.uploadErrors.length} record(s) were rejected by the server. See logs.`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' ');
           Toast.show({
             type: 'info',
             text1: 'Sync incomplete',
-            text2: `${data.syncErrors.length} metric(s) could not be read. They will retry next sync.`,
+            text2: details,
             visibilityTime: 4000,
           });
         } else {

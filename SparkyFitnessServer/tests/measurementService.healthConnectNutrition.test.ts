@@ -230,7 +230,7 @@ describe('processHealthData Nutrition ingestion', () => {
   });
 
   it('skips a Nutrition record with no source_id (cannot dedupe → would duplicate)', async () => {
-    await measurementService.processHealthData(
+    const result = await measurementService.processHealthData(
       [{ ...baseRecord, source_id: undefined }],
       'user-1',
       'user-1'
@@ -239,6 +239,11 @@ describe('processHealthData Nutrition ingestion', () => {
     expect(foodRepository.findFoodByProviderExternalId).not.toHaveBeenCalled();
     expect(foodRepository.createFood).not.toHaveBeenCalled();
     expect(foodRepository.createFoodEntry).not.toHaveBeenCalled();
+    // The skip is surfaced to callers instead of vanishing from the response.
+    expect(result.processed).toHaveLength(0);
+    expect(result.errors).toHaveLength(0);
+    expect(result.skipped).toHaveLength(1);
+    expect(result.skipped[0].reason).toContain('source_id');
   });
 
   it('does not touch foods when there are no nutrition records', async () => {

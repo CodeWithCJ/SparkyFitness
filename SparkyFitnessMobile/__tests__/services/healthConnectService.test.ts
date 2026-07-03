@@ -396,6 +396,28 @@ describe('healthConnectService.ts (Android)', () => {
 
       expect(result.success).toBe(true);
       expect(result.apiResponse).toEqual({ processed: 1, status: 'ok' });
+      // No recordErrors in the response (old server) → empty uploadErrors.
+      expect(result.uploadErrors).toEqual([]);
+    });
+
+    test('passes server record rejections through as uploadErrors without touching syncErrors', async () => {
+      mockReadRecords.mockResolvedValue({ records: [] });
+      mockAggregateGroupByPeriod.mockResolvedValue([
+        periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
+      ]);
+      const recordErrors = [
+        { error: 'Invalid value for step. Must be an integer.', entry: { type: 'step' } },
+      ];
+      mockApiSyncHealthData.mockResolvedValue({ recordsSent: 1, recordErrors });
+
+      const healthMetricStates: HealthMetricStates = { isStepsSyncEnabled: true };
+
+      const result = await androidService.syncHealthData('24h', healthMetricStates);
+
+      expect(result.success).toBe(true);
+      expect(result.uploadErrors).toEqual(recordErrors);
+      // Upload rejections are not read errors — the cursor logic keys off syncErrors.
+      expect(result.syncErrors).toEqual([]);
     });
 
     test('Distance is aggregated via native aggregateGroupByPeriod', async () => {

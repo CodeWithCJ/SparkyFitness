@@ -47,6 +47,32 @@ export interface HealthDataPayloadItem extends BaseHealthDataPayloadItem {
 
 export type HealthDataPayload = HealthDataPayloadItem[];
 
+/** Per-record rejection reported by the server for an otherwise-accepted sync request. */
+export interface RecordSyncError {
+  error: string;
+  entry?: unknown;
+}
+
+/**
+ * Outcome of a chunked health-data upload. Per-record rejections are reported
+ * here instead of thrown so the sync cursor can advance past poison records;
+ * only whole-request failures (network, auth, all-records-rejected chunks)
+ * throw.
+ */
+export interface HealthDataSyncSummary {
+  /** Records transmitted in chunks the server accepted (including partially rejected ones). */
+  recordsSent: number;
+  /** Per-record rejections aggregated across all chunks. */
+  recordErrors: RecordSyncError[];
+}
+
+/** Shape of the server's POST /api/health-data response body (fields absent on old servers). */
+interface HealthDataResponseBody {
+  processed?: unknown[];
+  errors?: RecordSyncError[];
+  skipped?: { reason?: string; entry?: unknown }[];
+}
+
 // --- Chunking, timeout, and retry constants ---
 
 export const CHUNK_SIZE = 5_000;
@@ -157,13 +183,39 @@ const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 // Nutrition upserts each food entry by (source, source_id).
 const SMALL_CHUNK_TYPES = new Set(['SleepSession', 'Nutrition']);
 
+// Old servers (pre per-record contract) 400 the whole batch when any record
+// fails, but only after processing the valid ones. A 400 whose body carries
+// per-record results with at least one processed record is that legacy partial
+// success. A 400 with no processed records (all rejected, or a malformed-body
+// {error} shape) stays a real failure.
+const parseLegacyPartialFailure = (error: unknown): RecordSyncError[] | null => {
+  if (!(error instanceof ApiError) || error.statusCode !== 400 || !error.body) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(error.body);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      Array.isArray(parsed.errors) &&
+      Array.isArray(parsed.processed) &&
+      parsed.processed.length > 0
+    ) {
+      return parsed.errors as RecordSyncError[];
+    }
+  } catch {
+    // body wasn't JSON — not a legacy partial-failure response
+  }
+  return null;
+};
+
 /** Splits the payload into request-sized chunks (see RANGE_DELETE_TYPES). */
 const sendHealthDataChunked = async (
   url: string,
   headers: Record<string, string>,
   data: HealthDataPayload,
   serverConfig: ServerConfig,
-): Promise<unknown> => {
+): Promise<HealthDataSyncSummary> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
   const smallChunkRecords: HealthDataPayloadItem[] = [];
   const rangeDeleteBySource = new Map<string, HealthDataPayloadItem[]>();
@@ -203,7 +255,7 @@ const sendHealthDataChunked = async (
 
   const totalChunks = chunks.length;
   let recordsSent = 0;
-  let lastResult: unknown;
+  const recordErrors: RecordSyncError[] = [];
 
   for (let i = 0; i < totalChunks; i++) {
     const chunk = chunks[i];
@@ -233,9 +285,45 @@ const sendHealthDataChunked = async (
         },
       );
 
-      lastResult = await response.json();
+      const result = (await response.json()) as HealthDataResponseBody | null;
+      // Old servers omit errors/skipped — treat as clean.
+      const chunkErrors = Array.isArray(result?.errors) ? result.errors : [];
+      const chunkProcessed = Array.isArray(result?.processed) ? result.processed : [];
+      const chunkSkipped = Array.isArray(result?.skipped) ? result.skipped : [];
+
+      if (chunkSkipped.length > 0) {
+        addLog(
+          `[API] Server skipped ${chunkSkipped.length} record(s) in chunk ${i + 1}/${totalChunks} (intentionally not written)`,
+          'INFO',
+        );
+      }
+
+      // A chunk where every record was rejected is indistinguishable from a
+      // systemic failure — advancing the cursor there would silently drop the
+      // whole window, so treat it like a failed chunk.
+      if (chunkErrors.length > 0 && chunkProcessed.length === 0) {
+        addLog(
+          `[API] chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records`,
+          'ERROR',
+        );
+        throw new Error(
+          `Chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records rejected.`,
+        );
+      }
+
+      recordErrors.push(...chunkErrors);
       recordsSent += chunk.length;
     } catch (error) {
+      const legacyErrors = parseLegacyPartialFailure(error);
+      if (legacyErrors) {
+        addLog(
+          `[API] Legacy server reported ${legacyErrors.length} rejected record(s) in chunk ${i + 1}/${totalChunks}; continuing`,
+          'WARNING',
+        );
+        recordErrors.push(...legacyErrors);
+        recordsSent += chunk.length;
+        continue;
+      }
       const message = error instanceof Error ? error.message : String(error);
       if (recordsSent > 0) {
         throw new Error(
@@ -246,13 +334,17 @@ const sendHealthDataChunked = async (
     }
   }
 
-  return lastResult;
+  return { recordsSent, recordErrors };
 };
 
 /**
- * Sends health data to the server.
+ * Sends health data to the server. Resolves with a summary whose recordErrors
+ * carry per-record server rejections; callers must not treat those as a failed
+ * sync (see HealthDataSyncSummary).
  */
-export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> => {
+export const syncHealthData = async (
+  data: HealthDataPayload,
+): Promise<HealthDataSyncSummary | undefined> => {
   const config = await getActiveServerConfig();
   if (!config) {
     throw new Error('Server configuration not found.');
@@ -276,7 +368,7 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   addLog(`[API] Starting sync of ${data.length} records to server`, 'INFO');
 
   try {
-    const result = await sendHealthDataChunked(
+    const summary = await sendHealthDataChunked(
       `${url}/api/health-data`,
       {
         'Content-Type': 'application/json',
@@ -287,8 +379,16 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
       config,
     );
 
-    addLog(`[API] Sync successful: ${data.length} records sent to server`, 'INFO');
-    return result;
+    if (summary.recordErrors.length > 0) {
+      addLog(
+        `[API] Sync sent ${summary.recordsSent} records; server rejected ${summary.recordErrors.length} record(s)`,
+        'WARNING',
+        summary.recordErrors.slice(0, 10).map((e) => e.error),
+      );
+    } else {
+      addLog(`[API] Sync successful: ${data.length} records sent to server`, 'INFO');
+    }
+    return summary;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[API] Sync failed: ${message}`, 'ERROR');

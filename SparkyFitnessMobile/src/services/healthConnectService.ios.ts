@@ -283,7 +283,12 @@ export const syncHealthData = async (
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
-      return { success: true, apiResponse, syncErrors };
+      return {
+        success: true,
+        apiResponse,
+        syncErrors,
+        uploadErrors: apiResponse?.recordErrors ?? [],
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[HealthKitService] Error sending data to server: ${message}`, 'ERROR');
