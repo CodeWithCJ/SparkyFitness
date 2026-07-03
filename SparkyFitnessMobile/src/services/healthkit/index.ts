@@ -22,7 +22,7 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString, mapDayStatisticsToMinMaxAvg } from './dataAggregation';
-import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from './dataTransformation';
+import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
 
 // Re-export for backward compatibility with callers importing from this module

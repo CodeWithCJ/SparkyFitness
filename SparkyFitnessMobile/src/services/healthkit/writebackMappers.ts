@@ -3,7 +3,7 @@ import type {
   QuantityTypeIdentifierWriteable,
 } from '@kingstinct/react-native-healthkit';
 import type { FoodEntry } from '../../types/foodEntries';
-import { HC_NUTRIENT_COLUMNS, G_TO_MG, G_TO_MCG, tidyNumber } from '../healthconnect/dataTransformation';
+import { HC_NUTRIENT_COLUMNS, G_TO_MG, G_TO_MCG, tidyNumber } from '../shared/dataTransformation';
 import { toLocalDateString, addDays } from '../../utils/dateUtils';
 
 // Pure mappers: SparkyFitness diary data → HealthKit write descriptors. No HealthKit
