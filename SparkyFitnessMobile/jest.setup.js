@@ -47,6 +47,7 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryQuantitySamples: jest.fn(),
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
+  queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
   queryWorkoutSamples: jest.fn(),
   queryCorrelationSamples: jest.fn(),
   // Writeback saves return the persisted sample (orchestrator reads .uuid off it);

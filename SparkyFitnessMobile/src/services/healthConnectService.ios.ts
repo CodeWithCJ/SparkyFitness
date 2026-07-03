@@ -8,7 +8,6 @@ import { HealthDataPayload } from './api/healthDataApi';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { addLog } from './LogService';
 import {
-  AggregatedHealthRecord,
   SyncResult,
   HealthMetricStates,
   type TransformedRecord,
@@ -34,13 +33,8 @@ try {
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
 export const readHealthRecords = HealthKit.readHealthRecords;
-export const readHealthRecordsDetailed = async (
-  recordType: string,
-  startDate: Date,
-  endDate: Date,
-): Promise<{ records: unknown[]; error?: string }> => ({
-  records: await HealthKit.readHealthRecords(recordType, startDate, endDate),
-});
+export const readHealthRecordsDetailed = HealthKit.readHealthRecordsDetailed;
+export const readMinMaxAvgByDayDetailed = HealthKit.readMinMaxAvgByDayDetailed;
 export const getSyncStartDate = HealthKit.getSyncStartDate;
 
 // Locked-device detection (HealthKit database inaccessible)
@@ -63,51 +57,20 @@ const NUTRITION_LOOKBACK_DAYS = 2;
 const nutritionLookbackStart = (endDate: Date): Date =>
   alignToLocalDayStart(new Date(endDate.getTime() - NUTRITION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
 
-// Deduplicated aggregation functions (use HealthKit's statistics API)
+// Deduplicated aggregation functions (use HealthKit's statistics API). The Detailed
+// variants carry a { records, error } envelope so read failures propagate to callers.
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
+export const getAggregatedStepsByDateDetailed = HealthKit.getAggregatedStepsByDateDetailed;
 export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
+export const getAggregatedActiveCaloriesByDateDetailed = HealthKit.getAggregatedActiveCaloriesByDateDetailed;
 export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
+export const getAggregatedTotalCaloriesByDateDetailed = HealthKit.getAggregatedTotalCaloriesByDateDetailed;
 export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
+export const getAggregatedDistanceByDateDetailed = HealthKit.getAggregatedDistanceByDateDetailed;
 export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
+export const getAggregatedFloorsClimbedByDateDetailed = HealthKit.getAggregatedFloorsClimbedByDateDetailed;
 export const getAggregatedBasalEnergyByDate = HealthKit.getAggregatedBasalEnergyByDate;
-
-const aggregateDetailed = async (
-  fetchRecords: (startDate: Date, endDate: Date) => Promise<AggregatedHealthRecord[]>,
-  startDate: Date,
-  endDate: Date,
-): Promise<{ records: AggregatedHealthRecord[]; error?: string }> => ({
-  records: await fetchRecords(startDate, endDate),
-});
-
-export const getAggregatedStepsByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedStepsByDate, startDate, endDate);
-
-export const getAggregatedActiveCaloriesByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedActiveCaloriesByDate, startDate, endDate);
-
-export const getAggregatedTotalCaloriesByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedTotalCaloriesByDate, startDate, endDate);
-
-export const getAggregatedDistanceByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedDistanceByDate, startDate, endDate);
-
-export const getAggregatedFloorsClimbedByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedFloorsClimbedByDate, startDate, endDate);
-
-export const getAggregatedBasalEnergyByDateDetailed = (
-  startDate: Date,
-  endDate: Date,
-) => aggregateDetailed(HealthKit.getAggregatedBasalEnergyByDate, startDate, endDate);
+export const getAggregatedBasalEnergyByDateDetailed = HealthKit.getAggregatedBasalEnergyByDateDetailed;
 
 export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
 
@@ -149,6 +112,11 @@ interface MetricResult {
   error?: { type: string; error: string };
 }
 
+const metricReadError = (
+  type: string,
+  error?: string,
+): MetricResult['error'] => error ? { type, error } : undefined;
+
 async function processMetric(
   type: string,
   startDate: Date,
@@ -161,25 +129,60 @@ async function processMetric(
   }
 
   let dataToTransform: unknown[] = [];
+  let error: MetricResult['error'];
 
-  // For cumulative metrics, use aggregation API directly (handles deduplication)
+  // For cumulative metrics, use aggregation API directly (handles deduplication).
+  // Partial results are still transformed; the read error rides along in syncErrors.
   if (type === 'Steps') {
-    dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedStepsByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else if (type === 'ActiveCaloriesBurned') {
-    dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedActiveCaloriesByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else if (type === 'Distance') {
-    dataToTransform = await HealthKit.getAggregatedDistanceByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedDistanceByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else if (type === 'FloorsClimbed') {
-    dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedFloorsClimbedByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else if (type === 'TotalCaloriesBurned') {
-    dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedTotalCaloriesByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else if (type === 'BasalMetabolicRate') {
     // iOS BMR override source: last-complete-day Resting Energy, stamped with the day it
     // applies to (D+1). Emits aggregated { date, value, type: 'basal_metabolic_rate' }
     // records, which transformHealthRecords normalizes (adds unit + source) like the other
     // aggregated metrics below.
-    dataToTransform = await HealthKit.getAggregatedBasalEnergyByDate(startDate, endDate);
+    const result = await HealthKit.getAggregatedBasalEnergyByDateDetailed(startDate, endDate);
+    dataToTransform = result.records;
+    error = metricReadError(type, result.error);
   } else {
+    // min-max-avg metrics with a verified native day-statistics spec skip the raw sample
+    // path entirely. The stats window is day-aligned even for the rolling '24h' duration,
+    // so a mid-afternoon sync recomputes yesterday's min/max/avg from the FULL day instead
+    // of overwriting full-day server values with a partial-window slice.
+    if (metricConfig.aggregationStrategy === 'min-max-avg') {
+      const statsResult = await HealthKit.readMinMaxAvgByDayDetailed(
+        metricConfig,
+        alignToLocalDayStart(startDate),
+        endDate,
+      );
+      if (statsResult) {
+        // Already day-aggregated — return before the aggregateByDay tail below, which
+        // would re-aggregate min-of-{min,max,avg} under the same type names.
+        return {
+          data: statsResult.records as HealthDataPayload,
+          error: metricReadError(type, statsResult.error),
+        };
+      }
+      // No verified spec — fall through to the raw sample path with the ORIGINAL window.
+    }
+
     // For other types, read raw records. Nutrition is frequently logged after the fact,
     // so it widens to a day-aligned rolling lookback (or keeps the requested window if
     // that already reaches further back). Idempotent: nutrition upserts by (source,
@@ -187,10 +190,12 @@ async function processMetric(
     const rawStartDate = type === 'Nutrition'
       ? new Date(Math.min(startDate.getTime(), nutritionLookbackStart(endDate).getTime()))
       : startDate;
-    const rawRecords = await HealthKit.readHealthRecords(type, rawStartDate, endDate);
+    const result = await HealthKit.readHealthRecordsDetailed(type, rawStartDate, endDate);
+    const rawRecords = result.records;
+    error = metricReadError(type, result.error);
 
     if (!rawRecords || rawRecords.length === 0) {
-      return { data: [] };
+      return { data: [], error };
     }
 
     dataToTransform = rawRecords;
@@ -211,10 +216,10 @@ async function processMetric(
       metricConfig.unit,
       metricConfig.aggregationStrategy,
     );
-    return { data: aggregated as HealthDataPayload };
+    return { data: aggregated as HealthDataPayload, error };
   }
 
-  return { data: transformed as HealthDataPayload };
+  return { data: transformed as HealthDataPayload, error };
 }
 
 export const syncHealthData = async (

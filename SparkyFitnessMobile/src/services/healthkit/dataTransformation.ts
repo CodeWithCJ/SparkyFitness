@@ -33,6 +33,10 @@ const isOwnRecord = (rec: Record<string, unknown>): boolean => {
   return (rec.sourceBundleId as string | undefined) === ownBundleId;
 };
 
+// mg/dL per mmol/L for blood glucose (molar mass of glucose ≈ 180.18 g/mol). Shared with
+// the day-statistics read in index.ts so both paths convert identically.
+export const BLOOD_GLUCOSE_MG_DL_PER_MMOL_L = 18.018;
+
 // ============================================================================
 // Transformer Infrastructure
 // ============================================================================
@@ -277,7 +281,7 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     if (level?.inMillimolesPerLiter != null) {
       value = level.inMillimolesPerLiter;
     } else if (level?.inMilligramsPerDeciliter != null) {
-      value = level.inMilligramsPerDeciliter / 18.018;
+      value = level.inMilligramsPerDeciliter / BLOOD_GLUCOSE_MG_DL_PER_MMOL_L;
     }
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;

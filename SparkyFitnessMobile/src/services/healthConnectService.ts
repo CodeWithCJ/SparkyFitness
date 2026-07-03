@@ -10,6 +10,7 @@ import {
   AggregatedHealthRecord,
   SyncResult,
   HealthMetricStates,
+  type MetricConfig,
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
@@ -37,6 +38,14 @@ export const aggregateByDay = HealthConnectAggregation.aggregateByDay;
 // Android does not have a basal-energy aggregation equivalent; display uses RAW_FORMATTERS instead.
 export const getAggregatedBasalEnergyByDate = async (_start: Date, _end: Date): Promise<AggregatedHealthRecord[]> => [];
 export const getAggregatedBasalEnergyByDateDetailed = async (_start: Date, _end: Date): Promise<{ records: AggregatedHealthRecord[]; error?: string }> => ({ records: [] });
+
+// Android has no native min-max-avg day-statistics read; returning null routes every
+// min-max-avg metric down the raw-record path (same pattern as the basal-energy stubs).
+export const readMinMaxAvgByDayDetailed = async (
+  _metric: MetricConfig,
+  _start: Date,
+  _end: Date,
+): Promise<{ records: TransformedRecord[]; error?: string } | null> => null;
 
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedStepsByDateDetailed = HealthConnect.getAggregatedStepsByDateDetailed;

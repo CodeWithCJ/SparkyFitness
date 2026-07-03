@@ -8,6 +8,7 @@ import { HEALTH_METRICS } from '../HealthMetrics';
 import {
   loadHealthPreference,
   readHealthRecordsDetailed,
+  readMinMaxAvgByDayDetailed,
   transformHealthRecords,
   aggregateSleepSessions,
   aggregateByDay,
@@ -105,6 +106,20 @@ async function processBackgroundMetric(
     dataToTransform = result.records;
     readError = result.error;
   } else {
+    // min-max-avg metrics with a verified native day-statistics spec read min/max/avg
+    // once per local day. Deliberately uses the day-aligned aggregatedStartDate (not
+    // sessionStartDate): the read emits full-day values, and a partial window would
+    // overwrite full-day server values with a partial-day min/max/avg.
+    if (metric.aggregationStrategy === 'min-max-avg') {
+      const statsResult = await readMinMaxAvgByDayDetailed(metric, aggregatedStartDate, endDate);
+      if (statsResult) {
+        // Already day-aggregated — must not fall through to the aggregateByDay tail.
+        return { data: statsResult.records as HealthDataPayload, error: statsResult.error };
+      }
+      // No verified spec (or Android) — fall through to the raw sample path with the
+      // ORIGINAL session window.
+    }
+
     // All other metrics: read raw records. Nutrition widens to its rolling lookback
     // (or keeps the session window if that already reaches further back).
     const rawStartDate = type === 'Nutrition'

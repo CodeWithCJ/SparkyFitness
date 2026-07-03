@@ -142,6 +142,56 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   return aggregatedSessions;
 };
 
+// One HealthKit statistics-collection day bucket (the subset of QueryStatisticsResponse
+// the min-max-avg mapper consumes).
+export interface DayStatisticsBucket {
+  startDate?: Date;
+  endDate?: Date;
+  minimumQuantity?: { unit: string; quantity: number };
+  maximumQuantity?: { unit: string; quantity: number };
+  averageQuantity?: { unit: string; quantity: number };
+}
+
+/**
+ * Maps day-statistics buckets to the exact records aggregateByDay's 'min-max-avg'
+ * strategy emits, so metrics converted to native day statistics keep the server payload
+ * shape identical. `unit` is the metric's configured OUTPUT unit — not the HealthKit
+ * query unit; `toValue` converts a queried value into that unit (e.g. mg/dL → mmol/L)
+ * before the 2-decimal rounding.
+ */
+export const mapDayStatisticsToMinMaxAvg = (
+  buckets: readonly DayStatisticsBucket[],
+  baseType: string,
+  unit: string,
+  source: string,
+  recordTimezone: string,
+  toValue?: (value: number) => number,
+): TransformedRecord[] => {
+  const records: TransformedRecord[] = [];
+  for (const bucket of buckets) {
+    if (bucket.startDate == null) continue;
+    const date = toLocalDateString(new Date(bucket.startDate));
+    const stats = [
+      { suffix: 'min', quantity: bucket.minimumQuantity },
+      { suffix: 'max', quantity: bucket.maximumQuantity },
+      { suffix: 'avg', quantity: bucket.averageQuantity },
+    ] as const;
+    for (const { suffix, quantity } of stats) {
+      if (quantity == null) continue;
+      const value = toValue ? toValue(quantity.quantity) : quantity.quantity;
+      records.push({
+        value: parseFloat(value.toFixed(2)),
+        type: `${baseType}_${suffix}`,
+        date,
+        unit,
+        source,
+        record_timezone: recordTimezone,
+      });
+    }
+  }
+  return records;
+};
+
 export const aggregateByDay = (
   records: TransformedRecord[],
   baseType: string,

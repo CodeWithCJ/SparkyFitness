@@ -51,6 +51,8 @@ jest.mock('../../src/services/healthConnectService', () => {
     loadHealthPreference: jest.fn(),
     readHealthRecords,
     readHealthRecordsDetailed: detailedRecords(readHealthRecords),
+    // Default null = no verified day-statistics spec → raw sample fallback (Android parity).
+    readMinMaxAvgByDayDetailed: jest.fn().mockResolvedValue(null),
     transformHealthRecords: jest.fn((data) => data),
     aggregateSleepSessions: jest.fn((data) => data),
     aggregateByDay: jest.fn((data) => data),
@@ -90,6 +92,7 @@ const healthService = require('../../src/services/healthConnectService') as {
   loadHealthPreference: jest.Mock;
   readHealthRecords: jest.Mock;
   readHealthRecordsDetailed: jest.Mock;
+  readMinMaxAvgByDayDetailed: jest.Mock;
   transformHealthRecords: jest.Mock;
   aggregateSleepSessions: jest.Mock;
   aggregateByDay: jest.Mock;
@@ -281,7 +284,38 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       );
     });
 
-    test('routes HeartRate through readHealthRecords then aggregateByDay', async () => {
+    test('routes HeartRate through the native day-statistics read when a spec exists', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isHeartRateSyncEnabled')
+      );
+      const statsRecords = [
+        { value: 48, type: 'heart_rate_min', date: '2024-01-15', unit: 'bpm', source: 'HealthKit' },
+        { value: 120, type: 'heart_rate_max', date: '2024-01-15', unit: 'bpm', source: 'HealthKit' },
+        { value: 72.4, type: 'heart_rate_avg', date: '2024-01-15', unit: 'bpm', source: 'HealthKit' },
+      ];
+      healthService.readMinMaxAvgByDayDetailed.mockResolvedValueOnce({ records: statsRecords });
+
+      await triggerManualSync();
+
+      // Day-aligned window (aggregatedStartDate), NOT the raw session window: the stats
+      // read emits full-day min/max/avg values.
+      const sessionStart = new Date(new Date('2024-01-15T08:00:00Z').getTime() - 6 * 60 * 60 * 1000);
+      const expectedAggregatedStart = new Date(sessionStart);
+      expectedAggregatedStart.setHours(0, 0, 0, 0);
+      expect(healthService.readMinMaxAvgByDayDetailed).toHaveBeenCalledWith(
+        expect.objectContaining({ recordType: 'HeartRate' }),
+        expectedAggregatedStart,
+        new Date('2024-01-15T14:30:00Z'),
+      );
+
+      // Output is already day-aggregated — no raw read, no transform, no re-aggregation.
+      expect(healthService.readHealthRecords).not.toHaveBeenCalledWith('HeartRate', expect.any(Date), expect.any(Date));
+      expect(healthService.aggregateByDay).not.toHaveBeenCalled();
+      expect(api.syncHealthData).toHaveBeenCalledWith(statsRecords);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('routes HeartRate through readHealthRecords then aggregateByDay when no spec exists', async () => {
       healthService.loadHealthPreference.mockImplementation((key: string) =>
         Promise.resolve(key === 'isHeartRateSyncEnabled')
       );
@@ -517,6 +551,25 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 300 }]);
       expect(mockRefreshHealthSyncCache).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('holds the cursor when the day-statistics read reports an error', async () => {
+      healthService.loadHealthPreference.mockImplementation((key: string) => {
+        return key === 'isStepsSyncEnabled' || key === 'isHeartRateSyncEnabled'
+          ? Promise.resolve(true)
+          : Promise.resolve(false);
+      });
+      healthService.readMinMaxAvgByDayDetailed.mockResolvedValueOnce({
+        records: [],
+        error: 'Protected health data is inaccessible',
+      });
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
 
