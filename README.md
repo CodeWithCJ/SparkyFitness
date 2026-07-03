@@ -121,6 +121,10 @@ If you are not a technical user and do not want to run SparkyFitness on your own
 
 [![Run on PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=sparkyfitness)
 
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/sparkyfitness?ref=gh)
+
+> One-click managed SparkyFitness with storage, backups, email and a free subdomain included. A share of every subscription goes back to SparkyFitness.
+
 ## 🎥 Video Tutorial
 
 [![Watch the video](https://img.youtube.com/vi/B13IiL2DeQc/maxresdefault.jpg)](https://www.youtube.com/watch?v=B13IiL2DeQc)
