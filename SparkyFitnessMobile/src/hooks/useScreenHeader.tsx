@@ -403,8 +403,12 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     <View
       className={`flex-row items-center px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
     >
-      <View className="flex-row items-center gap-4">{leftCustom}</View>
-      <View className="flex-1 px-2">
+      {/* Equal-width side cells keep the title cell geometrically centered in
+          the bar even when the left/right actions have different widths; the
+          title stays content-sized (shrinking to truncate) so it can use more
+          than a third of the width when the sides are light. */}
+      <View className="flex-1 flex-row items-center gap-4">{leftCustom}</View>
+      <View className="shrink px-2">
         {center ?? (
           <Text
             numberOfLines={1}
@@ -414,7 +418,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           </Text>
         )}
       </View>
-      <View className="flex-row items-center justify-end gap-4">{rightCustom}</View>
+      <View className="flex-1 flex-row items-center justify-end gap-4">{rightCustom}</View>
     </View>
   );
 
