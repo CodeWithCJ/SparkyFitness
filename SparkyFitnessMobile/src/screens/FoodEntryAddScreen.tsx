@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes, usePreferences, useServerConnection } from '../hooks';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
   useCreateFoodVariant,
@@ -46,9 +46,6 @@ import {
   createFoodVariant,
   type CreateFoodVariantPayload,
 } from '../services/api/foodsApi';
-import {
-  createNativeHeaderTextButtonItem,
-} from '../utils/nativeHeaderItems';
 import {
   type FoodInfoItem,
   foodItemToFoodInfo,
@@ -658,7 +655,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string];
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const buildSaveFoodPayload = useCallback(
     () => ({
@@ -1084,120 +1080,54 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const showHeaderActions = activeItem.source !== 'meal';
   const showSaveExternalAction = activeItem.source === 'external';
 
-  // iOS uses the native stack header (configured in App.tsx with the food
-  // name as the title). Drive the Edit / Save actions through native header
-  // items and hide the custom in-screen header below. Android keeps the
-  // custom header.
-  const handleSaveExternalFoodRef = useRef(handleSaveExternalFood);
-  handleSaveExternalFoodRef.current = handleSaveExternalFood;
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      title: '',
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'food-entry-add-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isActionPending,
-        }),
-      ],
-      unstable_headerRightItems: showHeaderActions
-        ? () => {
-            const items = [
-              createNativeHeaderTextButtonItem({
-                label: 'Edit',
-                identifier: 'food-entry-add-edit',
-                tintColor: headerActionColor,
-                accessibilityLabel: 'Adjust nutrition',
-                disabled: isActionPending,
-                onPress: () => handleAdjustNutrition(),
-              }),
-            ];
-            if (showSaveExternalAction) {
-              items.unshift(
-                createNativeHeaderTextButtonItem({
-                  label: 'Save',
-                  identifier: 'food-entry-add-save',
-                  tintColor: headerSaveColor,
-                  accessibilityLabel: 'Save Food',
+  // The food name lives in the body's nutrition summary, so the header title
+  // stays blank. Header actions are neutral (role:'secondary') — the sticky
+  // footer "Add Food"/"Add Meal" button is this screen's one accent action.
+  const header = useScreenHeader({
+    nativeTitle: '',
+    left: {
+      kind: 'dismiss',
+      onPress: () => navigation.goBack(),
+      disabled: isActionPending,
+      identifier: 'food-entry-add-cancel',
+    },
+    right: showHeaderActions
+      ? [
+          {
+            kind: 'icon',
+            sfSymbol: 'pencil',
+            ionicon: 'create-outline',
+            role: 'secondary',
+            disabled: isActionPending,
+            onPress: handleAdjustNutrition,
+            accessibilityLabel: 'Adjust nutrition',
+            identifier: 'food-entry-add-edit',
+          },
+          ...(showSaveExternalAction
+            ? [
+                {
+                  kind: 'icon',
+                  sfSymbol: 'bookmark',
+                  ionicon: 'bookmark-outline',
+                  role: 'secondary',
+                  busy: isSavePending || isCreateVariantPending,
                   disabled: isActionPending,
-                  onPress: () => void handleSaveExternalFoodRef.current(),
-                }),
-              );
-            }
-            return items;
-          }
-        : undefined,
-    });
-  }, [
-    navigation,
-    headerActionColor,
-    headerSaveColor,
-    headerTintColor,
-    showHeaderActions,
-    showSaveExternalAction,
-    isActionPending,
-    handleAdjustNutrition,
-  ]);
+                  onPress: () => void handleSaveExternalFood(),
+                  accessibilityLabel: 'Save Food',
+                  identifier: 'food-entry-add-save',
+                } as const,
+              ]
+            : []),
+        ]
+      : null,
+  });
 
   return (
     <View
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      {Platform.OS !== 'ios' && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-
-        {showHeaderActions && (
-          <View className="flex-row items-center ml-auto gap-4 z-10">
-            <TouchableOpacity
-              onPress={() => handleAdjustNutrition()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-              disabled={isActionPending}
-            >
-              <Icon name="pencil" size={20} color={textPrimary} />
-            </TouchableOpacity>
-
-            {showSaveExternalAction && (
-              <TouchableOpacity
-                onPress={() => {
-                  void handleSaveExternalFood();
-                }}
-                disabled={isActionPending}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Save Food"
-              >
-                {isSavePending || isCreateVariantPending ? (
-                  <ActivityIndicator size="small" color={accentColor} />
-                ) : (
-                  <Icon
-                    name="bookmark"
-                    size={22}
-                    color={accentColor}
-                  />
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
-      )}
+      {header}
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-4 gap-4">
         <FoodNutritionSummary

@@ -107,7 +107,7 @@ import ActiveWorkoutBar, {
 } from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
-import { useNativeIOSTabsActive } from './src/services/nativeTabBarPreference';
+import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -247,6 +247,7 @@ function AppContent() {
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
+  const usesNativeIOSHeaders = useNativeIOSHeadersActive();
   const rememberActiveTab = useCallback((routeName: string) => {
     if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
       lastActiveTabRef.current = routeName as NonAddTabName;
@@ -282,7 +283,7 @@ function AppContent() {
       title: string,
       options: NativeStackNavigationOptions = {},
     ): NativeStackNavigationOptions => (
-      Platform.OS === 'ios'
+      usesNativeIOSHeaders
         ? {
             ...iosSmallHeaderOptions,
             title,
@@ -295,7 +296,7 @@ function AppContent() {
             ...options,
           }
     ),
-    [iosSmallHeaderOptions],
+    [iosSmallHeaderOptions, usesNativeIOSHeaders],
   );
 
   // Determine if we're in dark mode based on current theme
@@ -843,33 +844,22 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutPresetDetail"
             component={SafeWorkoutPresetDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name, { headerBackTitle: 'Presets' })}
           />
           <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Foods' })}
           />
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={
-              Platform.OS === 'ios'
-                ? {
-                    ...iosSmallHeaderOptions,
-                    title: '',
-                    gestureEnabled: true,
-                  }
-                : {
-                    headerShown: false,
-                    gestureEnabled: true,
-                  }
-            }
+            options={createStackScreenOptions('', { headerBackTitle: 'Meals' })}
           />
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name)}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Exercises' })}
           />
           <Stack.Screen
             name="FoodSearch"
@@ -1016,17 +1006,9 @@ function AppContent() {
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
             options={({ route }) =>
-              Platform.OS === 'ios'
-                ? {
-                    ...iosSmallHeaderOptions,
-                    title: route.params?.session?.name ?? 'Workout',
-                    headerBackTitle: 'Diary',
-                    gestureEnabled: true,
-                  }
-                : {
-                    headerShown: false,
-                    gestureEnabled: true,
-                  }
+              createStackScreenOptions(route.params?.session?.name ?? 'Workout', {
+                headerBackTitle: 'Diary',
+              })
             }
           />
           <Stack.Screen

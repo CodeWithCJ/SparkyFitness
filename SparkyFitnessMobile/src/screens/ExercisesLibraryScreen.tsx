@@ -1,14 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { Platform, View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useExercisesLibrary, useServerConnection } from '../hooks';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -16,6 +16,7 @@ type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
@@ -43,20 +44,6 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       navigation.navigate('ExerciseDetail', { item: exercise });
     },
     [navigation],
-  );
-
-  const renderHeader = () => (
-    <View className="flex-row items-center px-4 pt-4 pb-5">
-      <Button
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="py-0 px-0 mr-2"
-      >
-        <Icon name="chevron-back" size={22} color={textPrimary} />
-      </Button>
-      <Text className="text-2xl font-bold text-text-primary">Exercises</Text>
-    </View>
   );
 
   const renderEmpty = () => (
@@ -161,9 +148,11 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     );
   };
 
+  const header = useScreenHeader({ title: 'Exercises', left: { kind: 'back' } });
+
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && renderHeader()}
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}

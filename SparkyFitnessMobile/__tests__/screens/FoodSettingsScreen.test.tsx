@@ -28,7 +28,13 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const navigation = { goBack: jest.fn() } as any;
+const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
+const navigation = mockNavigation;
 const route = { params: {} } as any;
 
 function renderScreen(initialPrefs: any) {

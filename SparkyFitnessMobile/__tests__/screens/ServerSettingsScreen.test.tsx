@@ -14,8 +14,13 @@ import { notifyNoConfigs } from '../../src/services/api/authService';
 import { useServerConfigs, useServerConnection } from '../../src/hooks';
 
 const mockGoBack = jest.fn();
-const mockNavigation = { goBack: mockGoBack, navigate: jest.fn() } as any;
+const mockNavigation = { goBack: mockGoBack, navigate: jest.fn(), setOptions: jest.fn() } as any;
 const mockRoute = { key: 'server-settings', name: 'ServerSettings' as const, params: undefined };
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
 
 jest.mock('../../src/services/storage', () => ({
   deleteServerConfig: jest.fn().mockResolvedValue(undefined),

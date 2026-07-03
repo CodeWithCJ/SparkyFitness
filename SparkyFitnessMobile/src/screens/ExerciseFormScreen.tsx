@@ -1,9 +1,8 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
@@ -16,7 +15,7 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 
 const CATEGORY_OPTIONS = [
   { label: 'General', value: 'general' },
@@ -411,51 +410,11 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
-    useHeaderActionColors();
-
-  const handleSaveRef = useRef(handleSave);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleSaveRef.current = handleSave;
-  });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'exercise-form-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isPending,
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Save',
-          identifier: 'exercise-create-save',
-          tintColor: headerSaveColor,
-          onPress: () => void handleSaveRef.current(),
-          disabled: isPending,
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
-
   return (
     <FormScreenChrome
       title="New Exercise"
-      saveLabel="Save"
-      savingLabel="Saving…"
+      saveLabel={SAVE_LABEL}
+      savingLabel={SAVING_LABEL}
       isSaving={isPending}
       onSave={() => {
         void handleSave();
@@ -595,51 +554,11 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     }
   };
 
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor, headerTintColor } =
-    useHeaderActionColors();
-
-  const handleSaveRef = useRef(handleSave);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleSaveRef.current = handleSave;
-  });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'exercise-form-cancel',
-          tintColor: headerActionColor,
-          onPress: () => navigation.goBack(),
-          disabled: isPending,
-        }),
-      ],
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Save Changes',
-          identifier: 'exercise-edit-save',
-          tintColor: headerSaveColor,
-          onPress: () => void handleSaveRef.current(),
-          disabled: isPending,
-          fontWeight: '600',
-        }),
-      ],
-    });
-  }, [navigation, headerActionColor, headerSaveColor, headerTintColor, isPending]);
-
   return (
     <FormScreenChrome
       title="Edit Exercise"
-      saveLabel="Save Changes"
-      savingLabel="Saving…"
+      saveLabel={SAVE_LABEL}
+      savingLabel={SAVING_LABEL}
       isSaving={isPending}
       onSave={() => {
         void handleSave();

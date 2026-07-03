@@ -1,12 +1,10 @@
 import React, { useCallback } from 'react';
-import { Platform, View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
@@ -17,7 +15,8 @@ import {
 import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
 import { toggleNutrientVisibility } from '../utils/nutrientUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
@@ -36,7 +35,7 @@ const SERVER_DEFAULT_SUMMARY_NUTRIENTS = [
   'dietary_fiber',
 ];
 
-const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navigation }) => {
+const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
@@ -44,7 +43,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     '--color-form-enabled',
     '--color-form-disabled',
   ]) as [string, string, string];
-  const { backColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
   const setFastingCardVisible = useAppPreferencesStore((s) => s.setFastingCardVisible);
@@ -162,33 +161,22 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({ navig
     );
   };
 
+  const header = useScreenHeader({ title: 'Dashboard Settings', left: { kind: 'back' } });
+
   return (
     <View
       className="flex-1 bg-background"
-      style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
+      {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingTop: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {Platform.OS !== 'ios' && (
-          <View className="flex-row items-center mb-4">
-            <Button
-              variant="ghost"
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0 mr-2"
-            >
-              <Icon name="chevron-back" size={22} color={backColor} />
-            </Button>
-            <Text className="text-2xl font-bold text-text-primary">Dashboard Settings</Text>
-          </View>
-        )}
-
         <SettingsRowGroup>
           <SettingsRow
             title="Ask Sparky"

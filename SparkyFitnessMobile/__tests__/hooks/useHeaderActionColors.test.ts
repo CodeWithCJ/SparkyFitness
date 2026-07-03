@@ -4,9 +4,9 @@ describe('resolveHeaderActionColors', () => {
   const accent = '#0A84FF';
   const text = '#111827';
 
-  it('uses accent actions on iOS when native tabs are inactive', () => {
+  it('uses a neutral default and an accent save on iOS < 26 classic headers', () => {
     expect(resolveHeaderActionColors('ios', 18, accent, text)).toEqual({
-      defaultColor: accent,
+      defaultColor: text,
       saveColor: accent,
     });
   });
@@ -18,9 +18,9 @@ describe('resolveHeaderActionColors', () => {
     });
   });
 
-  it('uses accent actions on iOS 26 when the glass tab bar is disabled', () => {
+  it('uses a neutral default and an accent save on iOS 26 when the glass tab bar is disabled', () => {
     expect(resolveHeaderActionColors('ios', '26.0', accent, text, false)).toEqual({
-      defaultColor: accent,
+      defaultColor: text,
       saveColor: accent,
     });
   });

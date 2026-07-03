@@ -1,11 +1,13 @@
 import React from 'react';
-import { Platform, View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getTodayDate } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -212,8 +214,7 @@ const PhotoMockup: React.FC = () => {
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
@@ -240,29 +241,18 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
     },
   ];
 
+  const header = useScreenHeader({ title: "What's New", left: { kind: 'back' } });
+
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {Platform.OS !== 'ios' && (
-        <View className="flex-row items-center mb-4">
-          <Button
-            variant="ghost"
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 mr-2"
-          >
-            <Icon name="chevron-back" size={22} color={textPrimary} />
-          </Button>
-          <Text className="text-2xl font-bold text-text-primary">What&apos;s New</Text>
-        </View>
-        )}
-
         {features.map((feature) => (
           <View
             key={feature.headline}

@@ -1,5 +1,5 @@
-import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -7,14 +7,14 @@ import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteMeal, useMeal, useProfile, useServerConnection, usePreferences } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
@@ -100,10 +100,9 @@ function buildMealDisplayValues(
 const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }) => {
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
-  const { defaultColor: headerActionColor, headerTintColor } = useHeaderActionColors();
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -130,34 +129,28 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   );
   const displayValues = viewMode === 'perServing' ? perServingValues : totalValues;
 
-  // iOS uses the native glass header (configured in App.tsx). The title stays
-  // blank — the meal name is shown in the body's nutrition card, so a bar title
-  // would just duplicate it; we only drive the owner-gated Edit action here once
-  // the meal loads. Android keeps the custom in-screen header below.
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      unstable_headerRightItems: canManageMeal
-        ? () => [
-            createNativeHeaderTextButtonItem({
-              label: 'Edit',
-              identifier: 'meal-detail-edit',
-              tintColor: headerActionColor,
-              accessibilityLabel: 'Edit meal',
-              onPress: () =>
-                navigation.navigate('MealAdd', {
-                  mode: 'edit',
-                  mealId: meal!.id,
-                  initialMeal: meal,
-                }),
+  // The title stays blank on both paths — the meal name is shown in the body's
+  // nutrition card, so a bar title would just duplicate it; the header only
+  // carries back plus the owner-gated Edit action once the meal loads.
+  const header = useScreenHeader({
+    borderless: true,
+    left: { kind: 'back' },
+    right: canManageMeal
+      ? {
+          kind: 'text',
+          label: 'Edit',
+          role: 'secondary',
+          onPress: () =>
+            navigation.navigate('MealAdd', {
+              mode: 'edit',
+              mealId: meal!.id,
+              initialMeal: meal,
             }),
-          ]
-        : undefined,
-    });
-  }, [navigation, meal, canManageMeal, headerActionColor, headerTintColor]);
+          accessibilityLabel: 'Edit meal',
+          identifier: 'meal-detail-edit',
+        }
+      : null,
+  });
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -201,7 +194,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
         className="flex-1 bg-background"
         contentContainerClassName="px-4 py-4 gap-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + activeWorkoutBarPadding + 16 }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
       >
         <View className="gap-2">
           <SegmentedControl
@@ -327,40 +320,13 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   // content (a ScrollView in the loaded state) as the screen root — UIKit only
   // attaches the large-title collapse to a scroll view it finds at the top of
   // the screen, so wrapping it in another View breaks the inset + collapse.
-  if (Platform.OS === 'ios') {
+  if (usesNativeHeader) {
     return renderContent();
   }
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-          accessibilityLabel="Back"
-          accessibilityRole="button"
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        {canManageMeal ? (
-          <View className="ml-auto z-10">
-            <Button
-              variant="ghost"
-              onPress={() => navigation.navigate('MealAdd', {
-                mode: 'edit',
-                mealId: meal!.id,
-                initialMeal: meal,
-              })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              textClassName="text-text-primary font-medium"
-            >
-              Edit
-            </Button>
-          </View>
-        ) : null}
-      </View>
-
+      {header}
       {renderContent()}
     </View>
   );

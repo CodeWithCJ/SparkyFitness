@@ -48,6 +48,8 @@ import {
 } from '../services/storage';
 import type { TimeRange } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
@@ -75,11 +77,11 @@ const timeRangeOptions: TimeRangeOption[] = [
   { label: "Last Year", value: "365d" },
 ];
 
-const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
+const SyncScreen: React.FC<SyncScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});
   const dateRangeSheetRef = useRef<DateRangeSheetRef>(null);
@@ -446,29 +448,15 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     syncMutation.mutate({ timeRange: selectedTimeRange, healthMetricStates });
   };
 
+  const header = useScreenHeader({ title: 'Health Data Sync', left: { kind: 'back' } });
+
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {/* Header */}
-        {Platform.OS !== 'ios' && (
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="flex-row items-center">
-            <Button
-              variant="ghost"
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0 mr-2"
-            >
-              <Icon name="chevron-back" size={22} color={textPrimary} />
-            </Button>
-            <Text className="text-2xl font-bold text-text-primary">Health Data Sync</Text>
-          </View>
-        </View>
-        )}
-
         {/* Sync Range */}
         <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">

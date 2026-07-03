@@ -1,13 +1,8 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 
 interface FormScreenChromeProps {
   title: string;
@@ -29,44 +24,36 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   children,
 }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
+
+  const header = useScreenHeader({
+    title,
+    left: { kind: 'dismiss', onPress: onCancel, disabled: isSaving },
+    right: {
+      kind: 'primary',
+      label: saveLabel,
+      busyLabel: savingLabel,
+      busy: isSaving,
+      disabled: isSaving,
+      onPress: onSave,
+    },
+  });
 
   return (
     <View
       className="flex-1 bg-background"
+      // iOS keeps no top inset even without the native header: this chrome is
+      // used by modal sheets, which already start below the status bar.
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
-      {Platform.OS !== 'ios' && (
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-          <TouchableOpacity
-            onPress={onCancel}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            disabled={isSaving}
-          >
-            <Text className="text-base text-text-primary">Cancel</Text>
-          </TouchableOpacity>
-          <Text className="text-text-primary text-lg font-semibold">{title}</Text>
-          <TouchableOpacity
-            onPress={onSave}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            disabled={isSaving}
-          >
-            <Text
-              className={`text-base font-semibold ${
-                isSaving ? 'text-text-muted' : 'text-accent-primary'
-              }`}
-            >
-              {isSaving ? savingLabel : saveLabel}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {header}
 
       <KeyboardAvoidingView className="flex-1" behavior="padding">
         <ScrollView
           className="flex-1"
           contentContainerClassName="px-4 pt-4 pb-20 gap-4"
           keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+          contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
         >
           {children}
         </ScrollView>

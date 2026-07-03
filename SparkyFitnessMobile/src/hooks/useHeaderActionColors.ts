@@ -9,11 +9,15 @@ export function resolveHeaderActionColors(
   textColor: string,
   usesNativeTabs = false,
 ) {
-  if (os === 'ios') {
-    const color = usesNativeTabs ? textColor : accentColor;
-    return { defaultColor: color, saveColor: color };
+  // Liquid Glass path (iOS 26 with the glass tab bar on): keep the header
+  // monochrome — every action, including save, takes the text color.
+  if (os === 'ios' && usesNativeTabs) {
+    return { defaultColor: textColor, saveColor: textColor };
   }
 
+  // Every non-glass path (Android, iOS < 26 classic headers, and iOS 26 with
+  // the glass tab bar off): neutral navigation/secondary actions with exactly
+  // one accented primary/save action, matching Material Design.
   return {
     defaultColor: textColor,
     saveColor: accentColor,

@@ -3,13 +3,29 @@ import { Pressable, Text, type PressableProps, type ViewStyle } from 'react-nati
 import { preview } from 'radon-ide';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'header' | 'link';
+type ButtonTone = 'accent' | 'neutral';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
   variant?: ButtonVariant;
+  /**
+   * Only affects the accent-text variants (`header`/`ghost`). `neutral` swaps
+   * the accent text for the primary text color so a header-like button can act
+   * as a secondary/navigation action. Note: this recolors the button's own text
+   * child only — an `Icon` child takes its own `color` prop, so pass that
+   * explicitly when the child is an icon.
+   */
+  tone?: ButtonTone;
   children: React.ReactNode;
   className?: string;
   textClassName?: string;
 }
+
+// Neutral-tone text overrides, per variant. Only the accent-text variants have
+// an entry; other variants ignore `tone`.
+const neutralToneText: Partial<Record<ButtonVariant, string>> = {
+  header: 'text-text-primary font-semibold',
+  ghost: 'text-text-primary font-semibold',
+};
 
 const variantClasses: Record<ButtonVariant, { container: string; text: string; pressed: string }> = {
   primary: {
@@ -46,6 +62,7 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
 
 const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
+  tone = 'accent',
   children,
   className = '',
   textClassName = '',
@@ -53,6 +70,8 @@ const Button: React.FC<ButtonProps> = ({
   ...rest
 }) => {
   const styles = variantClasses[variant];
+  const textClass =
+    tone === 'neutral' && neutralToneText[variant] ? neutralToneText[variant]! : styles.text;
 
   const basePadding = variant === 'header' ? '' : 'py-3.5 px-4';
 
@@ -68,7 +87,7 @@ const Button: React.FC<ButtonProps> = ({
       ]}
     >
       {typeof children === 'string' ? (
-        <Text className={`text-base ${styles.text} ${textClassName}`}>{children}</Text>
+        <Text className={`text-base ${textClass} ${textClassName}`}>{children}</Text>
       ) : (
         children
       )}

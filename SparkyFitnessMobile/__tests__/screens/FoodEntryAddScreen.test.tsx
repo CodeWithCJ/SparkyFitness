@@ -1,7 +1,6 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { pressAction, pressActionByAccessibilityLabel } from './helpers/nativeHeaderTestUtils';
+import { pressActionByAccessibilityLabel } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
@@ -19,10 +18,19 @@ import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 
+const mockNavigation = {
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setParams: jest.fn(),
+  dispatch: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
+    useNavigation: () => mockNavigation,
     StackActions: {
       pop: (count: number) => mockPop(count),
       popToTop: () => mockPopToTop(),
@@ -210,13 +218,7 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodEntryAddScreen', () => {
-  const navigation = {
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    setParams: jest.fn(),
-    dispatch: jest.fn(),
-    setOptions: jest.fn(),
-  } as any;
+  const navigation = mockNavigation;
 
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
@@ -1160,13 +1162,7 @@ describe('FoodEntryAddScreen', () => {
       });
 
       // Find and press the nutrition edit (pencil) button
-      if (Platform.OS === 'ios') {
-        pressAction(screen, navigation, 'Edit');
-      } else {
-        const editButtons = screen.queryAllByTestId('icon-pencil');
-        expect(editButtons.length).toBeGreaterThan(0);
-        fireEvent.press(editButtons[0]);
-      }
+      pressActionByAccessibilityLabel(screen, navigation, 'Adjust nutrition');
       expect(navigation.navigate).toHaveBeenCalledWith(
         'FoodForm',
         expect.objectContaining({

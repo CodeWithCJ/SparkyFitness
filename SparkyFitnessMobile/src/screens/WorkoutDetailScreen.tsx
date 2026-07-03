@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Pressable, Alert, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Pressable, Alert } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -31,8 +31,8 @@ import { extractActivitySummary } from '../utils/activityDetails';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   ExerciseEntryResponse,
@@ -277,13 +277,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle, textPrimary] = useCSSVariable([
+  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-border-subtle',
-    '--color-text-primary',
-  ]) as [string, string, string, string];
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
+  ]) as [string, string, string];
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -638,149 +637,61 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  // iOS: drive the native glass header. We use a SMALL inline title (set in
-  // App.tsx), never a large one — re-applying a large title via setOptions (as
-  // this screen must, for edit mode) makes it "fly in" on every return. A small
-  // title updates in place. The glass material is the same either way.
-  // - View mode: small title = workout name + an Edit action (owner only). The
-  //   in-body name <Text> stays iOS-suppressed since the name lives in the bar.
-  // - Edit mode: title becomes "Edit Workout", the back button is hidden (+
-  //   swipe-back disabled) so Cancel owns the left slot, Save on the right; the
-  //   name is edited inline in the body.
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+  // Small inline native title (set in App.tsx as a small title so re-applying it
+  // for the edit-mode swap updates in place rather than flying in a large one).
+  // View mode: name + owner-only Edit (the in-body name is suppressed since it
+  // lives in the bar). Edit mode: "Edit Workout" title, X-dismiss owning the
+  // left slot with swipe-back disabled, Save on the right; name edited in-body.
+  const header = useScreenHeader({
+    nativeTitle: isEditing ? 'Edit Workout' : name,
+    animateKey: isEditing ? 'edit' : 'view',
+    borderless: true,
+    nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
+    left: isEditing
+      ? {
+          kind: 'dismiss',
+          onPress: cancelEditing,
+          disabled: isSaving,
+          accessibilityLabel: 'Cancel',
+          identifier: 'workout-detail-cancel',
+        }
+      : { kind: 'back' },
+    right: isEditing
+      ? {
+          kind: 'primary',
+          label: SAVE_LABEL,
+          busyLabel: SAVING_LABEL,
+          busy: isSaving,
+          disabled: isSaving || !hasEditedExercisesWithSets,
+          onPress: handleSave,
+          accessibilityLabel: 'Save',
+          identifier: 'workout-detail-save',
+        }
+      : isSparky
+        ? {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: startEditing,
+            accessibilityLabel: 'Edit workout',
+            identifier: 'workout-detail-edit',
+          }
+        : null,
+  });
 
-    if (isEditing) {
-      navigation.setOptions({
-        title: 'Edit Workout',
-        headerBackVisible: false,
-        gestureEnabled: false,
-        unstable_headerLeftItems: () => [
-          createNativeHeaderTextButtonItem({
-            label: 'Cancel',
-            identifier: 'workout-detail-cancel',
-            tintColor: headerActionColor,
-            accessibilityLabel: 'Cancel',
-            disabled: isSaving,
-            onPress: () => cancelEditing(),
-          }),
-        ],
-        unstable_headerRightItems: () => [
-          createNativeHeaderTextButtonItem({
-            label: 'Save',
-            identifier: 'workout-detail-save',
-            tintColor: headerSaveColor,
-            accessibilityLabel: 'Save',
-            fontWeight: '600',
-            disabled: isSaving || !hasEditedExercisesWithSets,
-            onPress: () => handleSave(),
-          }),
-        ],
-      });
-    } else {
-      navigation.setOptions({
-        title: name,
-        headerBackVisible: true,
-        gestureEnabled: true,
-        unstable_headerLeftItems: undefined,
-        unstable_headerRightItems: isSparky
-          ? () => [
-              createNativeHeaderTextButtonItem({
-                label: 'Edit',
-                identifier: 'workout-detail-edit',
-                tintColor: headerActionColor,
-                accessibilityLabel: 'Edit workout',
-                onPress: () => startEditing(),
-              }),
-            ]
-          : undefined,
-      });
-    }
-  }, [
-    navigation,
-    isEditing,
-    isSaving,
-    hasEditedExercisesWithSets,
-    name,
-    isSparky,
-    headerActionColor,
-    headerSaveColor,
-    startEditing,
-    cancelEditing,
-    handleSave,
-  ]);
-
-  // iOS: native glass header (above) replaces the custom header, and the
-  // KeyboardAwareScrollView must be the screen root for the large title to
-  // attach. Android keeps the custom header + padded wrapper.
+  // Native-header mode: the glass header (above) replaces the custom header,
+  // and the KeyboardAwareScrollView must be the screen root for the large
+  // title to attach. Fallback mode keeps the custom header + padded wrapper.
   const content = (
     <>
-      {Platform.OS !== 'ios' && (
-      <View className="flex-row items-center px-4 py-3">
-        {isEditing ? (
-          <FadeView
-            key="header-edit"
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Button
-              variant="ghost"
-              onPress={cancelEditing}
-              disabled={isSaving}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              <Text className="text-text-primary text-base font-medium">Cancel</Text>
-            </Button>
-            <View className="flex-1" />
-            <Button
-              variant="ghost"
-              onPress={handleSave}
-              disabled={isSaving || !hasEditedExercisesWithSets}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={accentPrimary} />
-              ) : (
-                <Text className="text-accent-primary text-base font-semibold">Save</Text>
-              )}
-            </Button>
-          </FadeView>
-        ) : (
-          <FadeView
-            key="header-view"
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Button
-              variant="ghost"
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="py-0 px-0"
-            >
-              <Icon name="chevron-back" size={22} color={textPrimary} />
-            </Button>
-            <View className="flex-1" />
-            {isSparky && (
-              <Button
-                variant="ghost"
-                onPress={startEditing}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                className="py-0 px-0"
-              >
-                <Text className="text-text-primary text-base font-medium">Edit</Text>
-              </Button>
-            )}
-          </FadeView>
-        )}
-      </View>
-      )}
+      {header}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4 py-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 + activeWorkoutBarPadding }}
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
       >
         {/* Title area */}
         <View className="mb-4">
@@ -794,7 +705,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
               />
             </FadeView>
-          ) : Platform.OS !== 'ios' ? (
+          ) : !usesNativeHeader ? (
             <FadeView key="view-title">
               <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
             </FadeView>
@@ -903,7 +814,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     </>
   );
 
-  if (Platform.OS === 'ios') return content;
+  if (usesNativeHeader) return content;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

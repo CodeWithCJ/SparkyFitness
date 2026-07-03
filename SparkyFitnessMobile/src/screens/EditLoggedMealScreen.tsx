@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Platform, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,8 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -20,6 +19,7 @@ import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
@@ -68,6 +68,7 @@ function computeBaseTotals(ingredients: MealIngredientDraft[]): IngredientTotals
 const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation, route }) => {
   const { foodEntryMealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -214,7 +215,6 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
-  const { saveColor: headerSaveColor, headerTintColor } = useHeaderActionColors();
 
   const updateQuantityText = (text: string) => {
     if (DECIMAL_INPUT_REGEX.test(text)) {
@@ -295,38 +295,24 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     updateMeal(payload);
   };
 
-  const handleSaveRef = useRef(handleSave);
-  // Keep the ref pointing at the latest closure so the native header button
-  // (configured once in the layout effect below) always calls the current
-  // handler. Updated in an effect rather than during render to satisfy
-  // react-hooks/refs.
-  useLayoutEffect(() => {
-    handleSaveRef.current = handleSave;
+  // Diary drill-in, so the left slot stays a back chevron (not a modal X).
+  const header = useScreenHeader({
+    left: { kind: 'back' },
+    right: {
+      kind: 'primary',
+      label: SAVE_LABEL,
+      busyLabel: SAVING_LABEL,
+      busy: isSavePending,
+      disabled: !canSave || isRowBusy,
+      onPress: handleSave,
+      accessibilityLabel: 'Save meal',
+      identifier: 'edit-logged-meal-save',
+    },
   });
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTintColor });
-
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      unstable_headerRightItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Save',
-          identifier: 'edit-logged-meal-save',
-          tintColor: headerSaveColor,
-          accessibilityLabel: 'Save meal',
-          fontWeight: '600',
-          disabled: !canSave || isRowBusy,
-          onPress: () => handleSaveRef.current(),
-        }),
-      ],
-    });
-  }, [navigation, headerSaveColor, headerTintColor, canSave, isRowBusy]);
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background justify-center items-center" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+      <View className="flex-1 bg-background justify-center items-center" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
         <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
@@ -349,30 +335,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     baseTotals.fiber != null ? baseTotals.fiber * displayScale : undefined;
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {/* Header */}
-      {Platform.OS !== 'ios' && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        <View style={{ marginLeft: 'auto', zIndex: 10 }}>
-          <Button
-            variant="ghost"
-            onPress={handleSave}
-            disabled={!canSave || isRowBusy}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            textClassName="font-medium"
-          >
-            {isSavePending ? 'Saving...' : 'Save'}
-          </Button>
-        </View>
-      </View>
-      )}
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
 
       <ScrollView
         className="flex-1"

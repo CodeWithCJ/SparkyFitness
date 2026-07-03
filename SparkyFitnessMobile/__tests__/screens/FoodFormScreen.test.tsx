@@ -15,11 +15,19 @@ import { setPendingMealIngredientSelection } from '../../src/services/mealBuilde
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 const mockFoodForm = jest.fn();
+const mockNavigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  dispatch: jest.fn(),
+  addListener: jest.fn(() => jest.fn()),
+} as any;
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
+    useNavigation: () => mockNavigation,
     StackActions: {
       pop: (count: number) => mockPop(count),
       popToTop: () => mockPopToTop(),
@@ -161,13 +169,7 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 describe('FoodFormScreen', () => {
-  const navigation = {
-    setOptions: jest.fn(),
-    goBack: jest.fn(),
-    navigate: jest.fn(),
-    dispatch: jest.fn(),
-    addListener: jest.fn(() => jest.fn()),
-  } as any;
+  const navigation = mockNavigation;
 
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();
@@ -395,7 +397,7 @@ describe('FoodFormScreen', () => {
       screen.getByPlaceholderText('012345678905'),
       '0123456789012',
     );
-    fireEvent.press(screen.getByText('Save Food'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockSaveFoodAsync).toHaveBeenCalledWith(
@@ -411,7 +413,7 @@ describe('FoodFormScreen', () => {
     });
 
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '12345');
-    fireEvent.press(screen.getByText('Save Food'));
+    fireEvent.press(screen.getByText('Save'));
 
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockToast.show).toHaveBeenCalledWith(
@@ -469,7 +471,7 @@ describe('FoodFormScreen', () => {
       mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
     expect(adjustModeCall?.initialAutoScaleNutritionEnabled).toBe(false);
-    expect(adjustModeCall?.submitLabel).toBe('Update Values');
+    expect(adjustModeCall?.submitLabel).toBe('Save');
   });
 
   it('passes a true auto-scale default through when the shared preference is enabled', () => {
@@ -618,7 +620,7 @@ describe('FoodFormScreen', () => {
       'valueChange',
       true,
     );
-    fireEvent.press(screen.getByText('Update Values'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockCreateVariant).toHaveBeenCalledWith(
@@ -738,7 +740,7 @@ describe('FoodFormScreen', () => {
       'valueChange',
       true,
     );
-    fireEvent.press(screen.getByText('Update Values'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockCreateVariant).toHaveBeenCalledWith({
@@ -858,7 +860,7 @@ describe('FoodFormScreen', () => {
 
       fireEvent.press(screen.getByText('Select Converted Unit'));
       // Toggle stays OFF — default state. No need to interact with it.
-      fireEvent.press(screen.getByText('Update Values'));
+      fireEvent.press(screen.getByText('Save'));
 
       await waitFor(() => {
         expect(navigation.dispatch).toHaveBeenCalled();
@@ -1150,7 +1152,7 @@ describe('FoodFormScreen', () => {
     });
 
     fireEvent.press(screen.getByText('Select Converted Unit'));
-    fireEvent.press(screen.getByText('Save Changes'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(navigation.dispatch).toHaveBeenCalledWith(
@@ -1221,7 +1223,7 @@ describe('FoodFormScreen', () => {
       variantId: 'variant-1',
     });
 
-    fireEvent.press(screen.getByText('Save Changes'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(mockToast.show).toHaveBeenCalledWith(

@@ -148,7 +148,13 @@ const mockUseActiveAiServiceSetting = useActiveAiServiceSetting as jest.MockedFu
 >;
 const mockUseChatHistory = useChatHistory as jest.MockedFunction<typeof useChatHistory>;
 
-const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockNavigation,
+}));
+
+const navigation = mockNavigation;
 const route = { params: {} } as any;
 
 const initialMetrics = {

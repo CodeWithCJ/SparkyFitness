@@ -1,8 +1,8 @@
 # AGENTS.md
 
-*Last updated: 2026-06-24*
+*Last updated: 2026-07-03*
 
-SparkyFitness Mobile is a React Native 0.83.6 + Expo SDK 55 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, and the active workout HUD.
+SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
 This is the package guide for `SparkyFitnessMobile/`. Work from this directory for mobile implementation and validation. If a task crosses into the backend, frontend, or `shared/`, read that package guide too before editing outside mobile.
 
@@ -12,12 +12,13 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - Prefer small, direct changes that fit the existing screen, hook, and service boundaries.
 - For ambiguous bugs, prove which layer is failing before patching. One narrow diagnostic check beats speculative edits across multiple layers.
 - Do not replace a working implementation with a rewrite unless the requester explicitly approves that direction.
+- When asked to plan work, confirm scope with clarifying questions before exploring code or drafting the plan.
 - Run scripts from `SparkyFitnessMobile/`, except root package operations such as `pnpm install` for patched dependencies.
 - Treat `android/` and `ios/` as generated output when possible. Edit `app.config.ts`, `plugins/`, `targets/`, JS/TS sources, or patch files first, then regenerate with prebuild when needed.
 
 ## Stack And Imports
 
-- Primary stack: React 19.2, React Native 0.83.6, Expo SDK 55, React Navigation 7, TanStack Query 5, Uniwind / TailwindCSS v4, Reanimated 4, Skia, Victory Native, Expo Background Task / Task Manager / Notifications, Zustand.
+- Primary stack: React 19.2, React Native 0.85, Expo SDK 56, TypeScript 6, React Navigation 7, TanStack Query 5, Uniwind / TailwindCSS v4, Reanimated 4, Skia, Victory Native, Expo Background Task / Task Manager / Notifications, Zustand, assistant-ui + AI SDK (chat).
 - `@/*` maps to this package and `@workspace/shared` maps to `../shared/src/index.ts`.
 - Prefer `@workspace/shared` schemas, constants, date/timezone helpers, and types over local duplicates.
 - The app talks to the backend under `/api`; health uploads go to `POST /api/health-data`.
@@ -54,16 +55,21 @@ npx expo prebuild -c
 - Root stack uses `@react-navigation/native-stack`. Tabs use `@react-navigation/bottom-tabs`.
 - Tabs are `Dashboard`, `Diary`, `Add`, `Library`, and `Settings`. `Add` is a center action in `CustomTabBar`, not a content screen.
 - Native iOS Liquid Glass tabs use `@bottom-tabs/react-navigation` in `src/components/TabsLayout.tsx`; each content tab is wrapped in its own `createNativeStackNavigator` so the tab path still gets native headers.
+- `TabsLayout` switches at runtime via `useNativeIOSTabsActive()` (`services/nativeTabBarPreference.ts`): native tabs require iOS 26+ Liquid Glass support AND the user's `liquidGlassTabBarEnabled` preference (opt-in). Everything else renders `CustomTabBar` (`TAB_BAR_HEIGHT = 56`); `ActiveWorkoutBar` reads the native tab-bar height instead when native tabs are active.
 - When adding a root-stack screen, add the route to `RootStackParamList` and register a matching `<Stack.Screen>` in `App.tsx` with `createStackScreenOptions(...)` or equivalent explicit iOS native-stack header options.
+- Native header option/button builders live in `utils/nativeHeaderItems.ts` (`createIOSNativeHeaderOptions`, `createIOSSmallNativeHeaderOptions`, text/icon button items); header action colors come from `useHeaderActionColors`, which is Liquid-Glass-aware on iOS.
 - Root-stack screens with a screen-owned React header are automatically checked by `__tests__/navigation/nativeHeaderContract.test.ts`; do not add screen-specific native-header allowlists.
 - Root-stack screens with a screen-owned React header and a real back button must set `headerBackTitle` or `headerBackButtonDisplayMode: 'minimal'` in `App.tsx` so iOS back labels stay explicit or intentionally hidden; close/cancel modal headers do not need either option.
-- If a root-stack screen has custom React-header actions beyond the native back button, mirror them with `unstable_headerLeftItems` or `unstable_headerRightItems` and hide the React header on iOS.
+- Declare screen headers with `useScreenHeader(config)` (`src/hooks/useScreenHeader.tsx`), or the thin `<ScreenHeader …/>` wrapper when nothing interleaves with the bar. One declarative descriptor (`title`/`nativeTitle`, `left`/`right` items of kind `back`/`dismiss`/`text`/`icon`/`primary`, `busy`/`disabled`, `animateKey` for view↔edit cross-fades) renders both paths: on the native path it mirrors items into `unstable_header{Left,Right}Items` via a layout effect and returns `null`; on the custom path it returns the bar element for the screen to render. Hook screens must not keep hand-rolled header code (no `unstable_header*Items` blocks or custom bars alongside the hook) — the contract test enforces this.
+- Path selection is `useNativeIOSHeadersActive()` (`services/nativeTabBarPreference.ts`): always false on Android; on iOS it is true below iOS 26 (classic native headers) and follows the Liquid Glass toggle on iOS 26+, so turning the toggle off swaps in the same screen-owned fallback headers Android renders.
+- One-accent rule: exactly one primary header action per screen (`kind: 'primary'` or `role: 'primary'`), enforced with a `__DEV__` throw; save buttons use the exported `SAVE_LABEL`/`SAVING_LABEL`. Footer-save forms mark their header Save `placement: 'native-only'` so the custom bar does not duplicate the sticky-footer button. `onPress` handlers dispatch through the hook's internal ref map — do not add per-screen handler-ref effects for native header buttons.
 - If a root-stack screen is intentionally presented above `Tabs` instead of inside native-tabs mode, document it in `NATIVE_TABS_ROUTE_EXCLUSIONS` in `__tests__/navigation/nativeHeaderContract.test.ts` with a short reason.
-- If a screen uses native header items (`unstable_headerRightItems` / `unstable_headerLeftItems`), hide its screen-owned React header on iOS with a guard such as `{Platform.OS !== 'ios' && <Header />}` or `Platform.OS === 'ios' ? null : <Header />`; otherwise iOS renders both headers.
+- Screens intentionally off the hook (e.g. `FoodSearchScreen`'s bespoke anchored-menu bar) must mirror custom actions with `unstable_header{Left,Right}Items` themselves, hide the screen-owned React header behind `useNativeIOSHeadersActive()` with a guard such as `{!usesNativeHeader && <Header />}`, and gate the `useLayoutEffect` that sets native header items on the same flag; otherwise iOS renders both headers.
 - When adding a tab, update `TabParamList`, `NativeTab.Screen`, and `FallbackTab.Screen`; for content tabs also add a tab-local native stack screen using `createIOSNativeHeaderOptions(...)`.
 - `__tests__/navigation/nativeHeaderContract.test.ts` enforces this native-header wiring. If it fails, fix the route/type/navigator alignment instead of weakening the test.
 - Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
-- `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
+- `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, Ask Sparky, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
+- `useNavigationActionGuard` locks navigation-triggering actions while a native-stack transition is running (idle-callback unlock on re-focus, 5s safety release) so double-taps cannot queue duplicate screens; Library create actions use it.
 - `ActiveWorkoutBar` is mounted outside normal screen trees, uses the root navigation ref, and hides itself on modal/editor routes such as food search/forms/scan/photo, exercise search, workout/activity add, measurements, and barcode edit.
 - Most screens are wrapped with `withErrorBoundary(...)`; `SettingsScreen` also uses section-level recovery so settings remain reachable.
 
@@ -97,7 +103,7 @@ npx expo prebuild -c
 - `useWaterIntakeMutation` fetches `waterContainersQueryKey`, persists the selected container, and optimistically updates `dailySummaryQueryKey(date)`.
 - Active-server switches clear React Query state before refetching connection state.
 - Error-boundary retry flows call `queryClient.resetQueries()`.
-- Local app-only booleans use `services/booleanPreference.ts` with `useSyncExternalStore`. Current users include haptics, sounds, notifications, hydration card visibility, and fasting card visibility.
+- App-local toggles live in `stores/appPreferencesStore.ts` (Zustand `persist`, single AsyncStorage key `@SparkyFitness/app-preferences`): haptics, sounds, notifications, hydration/fasting card visibility, Ask Sparky card visibility, and the Liquid Glass tab bar opt-in. Consume via selectors (`useAppPreferencesStore((s) => s.hapticsEnabled)`) plus generated setters. A legacy-aware storage adapter migrates the old per-key `@HealthConnect:*` values once. These preferences never sync to the server.
 
 ## Health Sync
 
@@ -147,6 +153,7 @@ npx expo prebuild -c
 - Logged-meal grouped diary entries use `foodEntryMealsApi`, `FoodEntryViewScreen`, and `EditLoggedMealScreen`. Preserve stored component nutrition snapshots when editing.
 - `MealTypeDetailScreen` owns single-meal-type day views and copy-to-another-day via `useCopyFoodEntries`; be careful with custom meal types and synthetic buckets.
 - External food providers use provider-agnostic v2 endpoints where possible. Provider categories and barcode support come from server config; do not hardcode provider type allowlists unless preserving an explicit fallback.
+- "All Providers" aggregated search (`useAllProvidersSearch`) fans one debounced term out across every active provider in parallel — one `useQueries` entry per provider, results projected in the `combine` callback for structural sharing. Providers stream in independently; a slow or failing provider must not block the others. Open Food Facts calls go through the shared rate limiter.
 - Photo mode is hidden in meal-builder mode because photo estimates log to the diary.
 - `FoodPhotoFlow` is a modal native stack and wraps itself in a local `KeyboardProvider`.
 - Photo availability fetches `GET /api/chat/ai-service-settings/active` through `aiSettingsApi.ts`; food photo is attempt-all, so `isFoodPhotoAvailable` gates only on a configured provider, not a specific provider type.
@@ -177,6 +184,16 @@ npx expo prebuild -c
 - Nutrient metadata and defaults live in `constants/nutrients.ts`; aggregation and visibility toggling live in `utils/nutrientUtils.ts`.
 - Measurements and water routes are in `measurementsApi.ts`; date-sensitive flows should preserve calendar-day strings and shared timezone helpers.
 
+## Chat (Ask Sparky)
+
+- `Chat` is a root-stack route (`src/screens/ChatScreen.tsx`), reached from `AddSheet`'s "Ask Sparky" row and an optional dashboard card gated by the `askSparkyVisible` preference.
+- The thread is an assistant-ui runtime: `@assistant-ui/react-native` primitives plus `useChatRuntime` / `AssistantChatTransport` from `@assistant-ui/react-ai-sdk`, streaming from `POST /api/chat/stream` (AI SDK UI message stream protocol).
+- The transport must use `expo/fetch` — it exposes a real `ReadableStream` body. RN's global fetch buffers responses and silently breaks incremental streaming.
+- Auth and proxy headers are resolved per request through an async `headers` callback; `service_config_id` (the user's active AI provider) is merged into the request body and required by the server.
+- `chatApi.ts` is history persistence only: `GET /api/chat/sparky-chat-history` and `POST /api/chat/clear-all-history`. `useChatHistory` seeds the runtime with prior messages and uses `staleTime`/`gcTime` of 0 because the runtime ignores `messages` changes after mount — every chat open must re-seed cold.
+- Chat UI lives in `components/chat/`: `MarkdownMessage` (`react-native-enriched-markdown` + `remend` to repair unclosed streamed markdown), `ToolCallCard` (derives running/complete/error from `result`/`isError`), `TypingIndicator`. Tool-name display mapping lives in `constants/chat.ts`.
+- There is no chat Zustand store; thread state lives in the assistant-ui runtime and history seeding in React Query.
+
 ## Auth, Networking, And Settings
 
 - Server configs support `apiKey` and `session` auth. URLs/IDs are in AsyncStorage; API keys, session tokens, and proxy headers are in SecureStore.
@@ -201,8 +218,9 @@ npx expo prebuild -c
 - Styling uses Uniwind with TailwindCSS v4 tokens in `global.css`.
 - Themes are Light, Dark, AMOLED, and System. `themeService.ts` owns persistence; `App.tsx` syncs Android navigation bar style.
 - Many visual components read CSS variables with `useCSSVariable`, especially Skia charts and themed controls.
+- Animate Skia paths from Reanimated `useSharedValue` / `useDerivedValue`, not Skia's deprecated animation API.
 - `Icon.tsx` maps semantic names to SF Symbols on iOS and Ionicons on Android; verify identifiers before adding icons.
-- Use shared primitives where they fit: `FormInput`, `Button`, `SettingsRow`, `SettingsRowGroup`, `SegmentedControl`, `StepperInput`, `BottomSheetPicker`, `CalendarSheet`, `DateRangeSheet`, and `FormScreenChrome`.
+- Use shared primitives where they fit: `FormInput`, `Button`, `SettingsRow`, `SettingsRowGroup`, `SegmentedControl`, `StepperInput`, `BottomSheetPicker`, `CalendarSheet`, `DateRangeSheet`, `AnchoredMenu`, `Popover`, and `FormScreenChrome`.
 - `BottomSheetPicker`, `CalendarSheet`, and sheets shown over native modals use `FullWindowOverlay` on iOS to avoid nested-provider inset bugs.
 - Keep button text and compact cards within their stable dimensions across mobile sizes. Avoid layout shifts from dynamic labels, loading states, or icon swaps.
 
@@ -236,8 +254,9 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 - `exerciseApi.ts`, `externalExerciseSearchApi.ts`, `workoutPresetsApi.ts` - exercise history, suggested/search/import flows, preset/individual exercise sessions, workout presets.
 - `fastingApi.ts` - `POST /api/fasting/start`, `POST /api/fasting/end`, and current/stats/history reads.
 - `authService.ts`, `profileApi.ts`, `externalProvidersApi.ts`, `customNutrientsApi.ts` - auth/session/MFA, profile, configured providers, custom nutrient definitions.
+- `ChatScreen.tsx` (transport) + `chatApi.ts` - streaming chat via `POST /api/chat/stream`, history load/clear.
 
-When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix.
+When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix. Deeper endpoint docs live in mobile `docs/` (`food_api.md`, `sync_api.md`, `measurements_api.md`, `external_providers.md`, `healthkit.md`, `bg_sync.md`).
 
 ## Testing Guidance
 

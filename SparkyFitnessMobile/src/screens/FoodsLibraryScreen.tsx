@@ -1,9 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { Platform, View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
@@ -11,6 +9,8 @@ import FoodLibraryRow from '../components/FoodLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFoodsLibrary, useServerConnection } from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
 
@@ -18,9 +18,9 @@ type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
 const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -47,20 +47,6 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     await refetch();
     setRefreshing(false);
   }, [refetch]);
-
-  const renderHeader = () => (
-    <View className="flex-row items-center px-4 pt-4 pb-5">
-      <Button
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="py-0 px-0 mr-2"
-      >
-        <Icon name="chevron-back" size={22} color={textPrimary} />
-      </Button>
-      <Text className="text-2xl font-bold text-text-primary">Foods</Text>
-    </View>
-  );
 
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
@@ -141,9 +127,11 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
+  const header = useScreenHeader({ title: 'Foods', left: { kind: 'back' } });
+
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && renderHeader()}
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}

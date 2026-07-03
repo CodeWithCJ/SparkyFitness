@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -23,12 +22,12 @@ import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutFo
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { formatDateLabel } from '../utils/dateUtils';
-import { createNativeHeaderTextButtonItem } from '../utils/nativeHeaderItems';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   CreatePresetSessionRequest,
@@ -57,7 +56,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-primary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { backColor, headerTintColor } = useHeaderActionColors();
+  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -177,23 +176,16 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
-
-    navigation.setOptions({
-      headerBackVisible: false,
-      unstable_headerLeftItems: () => [
-        createNativeHeaderTextButtonItem({
-          label: 'Cancel',
-          identifier: 'workout-add-cancel',
-          tintColor: headerTintColor,
-          onPress: () => {
-            void handleCancel();
-          },
-        }),
-      ],
-    });
-  }, [handleCancel, headerTintColor, navigation]);
+  // Footer-save form: Save lives in the always-on sticky footer, so the header
+  // carries only the dismiss — a header Save would double the footer's.
+  const header = useScreenHeader({
+    left: {
+      kind: 'dismiss',
+      onPress: () => void handleCancel(),
+      disabled: isPending,
+      identifier: 'workout-add-cancel',
+    },
+  });
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
@@ -255,26 +247,14 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   ]);
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {isInitializingEditForm ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={accentPrimary} />
         </View>
       ) : (
         <>
-          {/* Header */}
-          {Platform.OS !== 'ios' && (
-          <View className="flex-row items-center px-3 py-3">
-            <Button
-              variant="ghost"
-              onPress={handleCancel}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              className="py-0 px-0"
-            >
-              <Icon name="close" size={24} color={backColor} />
-            </Button>
-          </View>
-          )}
+          {header}
 
           <KeyboardAwareScrollView
             contentContainerClassName="px-4"
@@ -368,7 +348,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-                  {isEditMode ? 'Save' : 'Finish'}
+                  {SAVE_LABEL}
                 </Text>
               )}
             </Button>

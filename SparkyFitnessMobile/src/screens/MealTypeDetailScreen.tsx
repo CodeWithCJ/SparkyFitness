@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -13,6 +13,8 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
+import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
   calculateEntryNutrition,
@@ -27,11 +29,11 @@ type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
   const { date, mealType, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
   const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
@@ -158,29 +160,24 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     );
   };
 
+  const header = useScreenHeader({
+    left: { kind: 'back' },
+    right: canCopy
+      ? {
+          kind: 'icon',
+          sfSymbol: 'doc.on.doc',
+          ionicon: 'copy-outline',
+          role: 'secondary',
+          onPress: () => copySheetRef.current?.present(date, mealType),
+          accessibilityLabel: 'Copy meal to another day',
+          identifier: 'meal-type-detail-copy',
+        }
+      : null,
+  });
+
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'ios' ? undefined : { paddingTop: insets.top }}>
-      {Platform.OS !== 'ios' && (
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
-        <View className="flex-1" />
-        {canCopy && (
-          <TouchableOpacity
-            onPress={() => copySheetRef.current?.present(date, mealType)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Copy meal to another day"
-          >
-            <Icon name="copy" size={20} color={accentColor} />
-          </TouchableOpacity>
-        )}
-      </View>
-      )}
+    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
 
       {renderContent()}
 
