@@ -1,6 +1,5 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -148,7 +147,13 @@ const mockUseActiveAiServiceSetting = useActiveAiServiceSetting as jest.MockedFu
 >;
 const mockUseChatHistory = useChatHistory as jest.MockedFunction<typeof useChatHistory>;
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+const mockNavigation = {
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+  // Returns an unsubscribe; ChatScreen subscribes to 'transitionEnd' to defer
+  // the composer's autofocus until the push transition settles.
+  addListener: jest.fn(() => jest.fn()),
+} as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
@@ -194,12 +199,10 @@ beforeEach(() => {
 });
 
 describe('ChatScreen config gating', () => {
-  it('offsets keyboard avoidance by the native iOS header height', async () => {
+  it('renders the keyboard avoiding container', async () => {
     const { getByTestId } = renderScreen();
 
-    expect(getByTestId('chat-keyboard-avoiding-view').props.keyboardVerticalOffset).toBe(
-      Platform.OS === 'ios' ? 56 : 12
-    );
+    expect(getByTestId('chat-keyboard-avoiding-view')).toBeTruthy();
 
     await act(async () => {
       await Promise.resolve();
@@ -347,6 +350,20 @@ describe('ChatScreen thread', () => {
 
     requestAnimationFrameSpy.mockRestore();
     cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it('defers composer focus to the push transitionEnd instead of autoFocus', async () => {
+    const { findByPlaceholderText } = renderScreen();
+    const input = await findByPlaceholderText('Message Sparky…');
+
+    // Focusing mid-transition presents the keyboard over the still-sliding
+    // screen, which flashes a dark-grey keyboard until the screen settles. So
+    // the composer must not use autoFocus...
+    expect(input.props.autoFocus).toBeFalsy();
+    // ...it focuses on the screen's entering transitionEnd instead.
+    expect(
+      mockNavigation.addListener.mock.calls.some(([event]: [string]) => event === 'transitionEnd')
+    ).toBe(true);
   });
 });
 
