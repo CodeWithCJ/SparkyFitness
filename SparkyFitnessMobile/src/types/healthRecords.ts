@@ -27,20 +27,43 @@ export interface HKSleepRecord {
 // INTERNAL ACCUMULATOR TYPES
 // ==========================================
 
-/** Sleep stage type including 'in_bed' */
+/** Sleep stage type including 'in_bed' (the output shape stored in stage_events) */
 export type SleepStageType = 'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'unknown';
 
-/** Internal session state during sleep aggregation (uses Date objects) */
+/**
+ * Internal sleep stage classification used only during HealthKit overlap resolution.
+ * Splits Apple-Watch 'core' from generic 'asleep' so 'awake' can rank between them
+ * (the common Watch-vs-AutoSleep conflict is Watch=awake vs AutoSleep=generic-asleep,
+ * where the Watch's awake must win). Both 'core' and 'asleep_generic' map to the same
+ * output 'light' stage. See mapHealthKitSleepStage / SLEEP_STAGE_RANK in dataAggregation.ts.
+ */
+export type InternalSleepStage =
+  | 'deep'
+  | 'rem'
+  | 'core'
+  | 'awake'
+  | 'asleep_generic'
+  | 'in_bed'
+  | 'unknown';
+
+/** One raw HealthKit sleep sample collected before overlap resolution (uses epoch ms). */
+export interface SleepRawEvent {
+  startMs: number;
+  endMs: number;
+  internalStage: InternalSleepStage;
+  /** Priority for overlap resolution; higher wins. Derived from SLEEP_STAGE_RANK. */
+  rank: number;
+}
+
+/**
+ * Internal session state during sleep aggregation (uses Date objects).
+ * Collects raw, possibly-overlapping samples from all HealthKit sources; the
+ * non-overlapping timeline and per-stage buckets are derived in finalizeSession.
+ */
 export interface SleepSessionAccumulator {
   bedtime: Date;
   wake_time: Date;
-  stage_events: SleepStageEvent[];
-  total_duration_in_seconds: number;
-  total_time_asleep_in_seconds: number;
-  deep_sleep_seconds: number;
-  light_sleep_seconds: number;
-  rem_sleep_seconds: number;
-  awake_sleep_seconds: number;
+  raw_events: SleepRawEvent[];
   /** IANA timezone from the sample that set wake_time (for server-side day derivation) */
   record_timezone?: string;
 }

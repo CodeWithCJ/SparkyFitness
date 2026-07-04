@@ -1220,6 +1220,25 @@ async function calculateSleepScore(
   // Ensure score is within 0-100 range
   return Math.round(Math.max(0, Math.min(score, maxScore)));
 }
+// "Time asleep" is the sum of the genuinely-asleep stages only: deep + light + rem.
+// It excludes 'awake', and also 'in_bed' and 'unknown' — the in-bed envelope still
+// counts toward `duration` (so efficiency = time_asleep / duration stays meaningful)
+// but must not inflate asleep time. Overlap across sources is resolved on the mobile
+// client before upload, so a plain sum over the stored stages does not double-count.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sumAsleepSeconds(stages: any[]): number {
+  if (!Array.isArray(stages)) return 0;
+  return stages.reduce((sum, stage) => {
+    if (
+      stage.stage_type === 'deep' ||
+      stage.stage_type === 'light' ||
+      stage.stage_type === 'rem'
+    ) {
+      return sum + (Math.round(Number(stage.duration_in_seconds)) || 0);
+    }
+    return sum;
+  }, 0);
+}
 async function processSleepEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1273,15 +1292,9 @@ async function processSleepEntry(
         },
       ];
     }
-    let timeAsleepInSeconds = 0;
-    // This check is now redundant but harmless as stage_events will always have at least one entry
-    if (stage_events && stage_events.length > 0) {
-      timeAsleepInSeconds = stage_events
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((event: any) => event.stage_type !== 'awake')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .reduce((sum: any, event: any) => sum + event.duration_in_seconds, 0);
-    }
+    // Transient time-asleep to seed the first upsert + score; the recompute below
+    // overwrites it from the durable merged stages. Excludes awake/in_bed/unknown.
+    const timeAsleepInSeconds = sumAsleepSeconds(stage_events);
     // User profile (age/gender) + timezone, reusing prefetched values when present.
     const userProfile = prefetched
       ? prefetched.userProfile
@@ -1403,8 +1416,11 @@ async function processSleepEntry(
   }
 }
 
-// Pure aggregate derivation from a stage list. Limitation: overlapping stage segments
-// (rare, but HealthKit can emit them) are SUMmed and would double-count.
+// Pure aggregate derivation from a stage list. The stored stages are already a
+// non-overlapping timeline (mobile resolves cross-source overlap before upload), so the
+// per-stage buckets and `duration` are plain min/max/sum. `time_asleep` counts only the
+// asleep stages (deep/light/rem) via sumAsleepSeconds; `duration` still spans the full
+// in-bed envelope so efficiency = time_asleep / duration stays meaningful.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function recomputeSleepAggregatesFromStages(stages: any[]) {
   if (!stages || stages.length === 0) {
@@ -1445,20 +1461,12 @@ function recomputeSleepAggregatesFromStages(stages: any[]) {
         awake += duration;
         break;
       default:
-        // Unknown stage type — counted in time_asleep below if not 'awake'.
+        // in_bed / unknown: bounds the envelope (min/max above) but is NOT asleep time.
         break;
     }
   }
   const durationInSeconds = Math.max(0, Math.round((maxEnd - minStart) / 1000));
-  const timeAsleep = stages
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((s: any) => s.stage_type !== 'awake')
-    .reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: number, s: any) =>
-        sum + (Math.round(Number(s.duration_in_seconds)) || 0),
-      0
-    );
+  const timeAsleep = sumAsleepSeconds(stages);
   return {
     bedtime: new Date(minStart),
     wake_time: new Date(maxEnd),
@@ -1489,14 +1497,9 @@ async function updateSleepEntry(
       entry_date,
       ...entryDetails
     } = updateData;
-    let timeAsleepInSeconds = 0;
-    if (stage_events && stage_events.length > 0) {
-      timeAsleepInSeconds = stage_events
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((event: any) => event.stage_type !== 'awake')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .reduce((sum: any, event: any) => sum + event.duration_in_seconds, 0);
-    }
+    // Web edit path: derive time asleep the same way as sync (excludes awake/in_bed/
+    // unknown) so editing a synced entry never re-inflates it with the in-bed envelope.
+    const timeAsleepInSeconds = sumAsleepSeconds(stage_events);
     // Fetch user profile to get age and gender
     const userProfile = await userRepository.getUserProfile(userId);
     const tz = await loadUserTimezone(userId);
