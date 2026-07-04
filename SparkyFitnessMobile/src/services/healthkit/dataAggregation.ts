@@ -1,6 +1,8 @@
 import { addLog } from '../LogService';
 import {
   HKSleepRecord,
+  InternalSleepStage,
+  SleepRawEvent,
   SleepSessionAccumulator,
   SleepStageType,
   AggregatedSleepSession,
@@ -12,29 +14,132 @@ import { toLocalDateString } from '../../utils/dateUtils';
 // Re-export for backward compatibility
 export { toLocalDateString };
 
-const mapHealthKitSleepStage = (hkStage: string | number): SleepStageType => {
+// Overlap-resolution priority. When multiple HealthKit sources cover the same
+// wall-clock minute (e.g. an Apple Watch's fine-grained stages under an AutoSleep
+// "in bed"/generic-"asleep" envelope), the highest-ranked stage wins that minute.
+// The load-bearing ordering is core(3) > awake(2) > asleep_generic(1): a Watch's
+// 'awake' must override AutoSleep's generic 'asleep' for the same span.
+const SLEEP_STAGE_RANK: Record<InternalSleepStage, number> = {
+  deep: 5,
+  rem: 4,
+  core: 3,
+  awake: 2,
+  asleep_generic: 1,
+  in_bed: 0,
+  unknown: -1,
+};
+
+// Internal stage -> stored output stage. 'core' and 'asleep_generic' both collapse
+// to 'light'; they are only kept distinct internally for the ranking above.
+const SLEEP_STAGE_OUTPUT: Record<InternalSleepStage, SleepStageType> = {
+  deep: 'deep',
+  rem: 'rem',
+  core: 'light',
+  awake: 'awake',
+  asleep_generic: 'light',
+  in_bed: 'in_bed',
+  unknown: 'unknown',
+};
+
+const mapHealthKitSleepStage = (hkStage: string | number): InternalSleepStage => {
   switch (hkStage) {
     case 'HKCategoryValueSleepAnalysisAsleepREM': return 'rem';
     case 'HKCategoryValueSleepAnalysisAsleepDeep': return 'deep';
-    case 'HKCategoryValueSleepAnalysisAsleepCore': return 'light';
+    case 'HKCategoryValueSleepAnalysisAsleepCore': return 'core';
     case 'HKCategoryValueSleepAnalysisAwake': return 'awake';
     case 'HKCategoryValueSleepAnalysisInBed': return 'in_bed';
-    case 'HKCategoryValueSleepAnalysisAsleep': return 'light'; // Fallback for generic asleep
+    case 'HKCategoryValueSleepAnalysisAsleep': return 'asleep_generic'; // Generic (unspecified) asleep
     // Handle numeric enum values often returned by RN HealthKit
-    case 0: return 'in_bed'; // HKCategoryValueSleepAnalysisInBed
-    case 1: return 'light';  // HKCategoryValueSleepAnalysisAsleep (Generic)
-    case 2: return 'awake';  // HKCategoryValueSleepAnalysisAwake
-    case 3: return 'light';  // HKCategoryValueSleepAnalysisAsleepCore
-    case 4: return 'deep';   // HKCategoryValueSleepAnalysisAsleepDeep
-    case 5: return 'rem';    // HKCategoryValueSleepAnalysisAsleepREM
+    // (CategoryValueSleepAnalysis: inBed=0, asleepUnspecified=1, awake=2, core=3, deep=4, REM=5)
+    case 0: return 'in_bed';         // InBed
+    case 1: return 'asleep_generic'; // Asleep (Generic / unspecified)
+    case 2: return 'awake';          // Awake
+    case 3: return 'core';           // AsleepCore
+    case 4: return 'deep';           // AsleepDeep
+    case 5: return 'rem';            // AsleepREM
     default:
       addLog(`[HealthKitService] Unknown sleep stage value: ${hkStage}`, 'WARNING');
       return 'unknown';
   }
 };
 
+/** A resolved, non-overlapping slice of the sleep timeline. */
+interface MergedSleepSegment {
+  startMs: number;
+  endMs: number;
+  stage_type: SleepStageType;
+}
+
+/**
+ * Sweep-line flatten of possibly-overlapping raw samples into one non-overlapping
+ * timeline. For each sub-interval between consecutive boundaries, the highest-ranked
+ * covering sample wins; uncovered sub-intervals (gaps) are dropped; adjacent slices
+ * with the same OUTPUT stage type are coalesced to avoid sliver spam at cross-source
+ * boundaries. N samples/night is small, so O(N^2) boundary scanning is fine.
+ */
+const flattenSleepEvents = (events: SleepRawEvent[]): MergedSleepSegment[] => {
+  if (events.length === 0) return [];
+
+  const boundarySet = new Set<number>();
+  for (const ev of events) {
+    boundarySet.add(ev.startMs);
+    boundarySet.add(ev.endMs);
+  }
+  const boundaries = Array.from(boundarySet).sort((a, b) => a - b);
+
+  const segments: MergedSleepSegment[] = [];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const a = boundaries[i];
+    const b = boundaries[i + 1];
+    if (b <= a) continue;
+
+    let best: SleepRawEvent | null = null;
+    for (const ev of events) {
+      if (ev.startMs <= a && ev.endMs >= b && (!best || ev.rank > best.rank)) {
+        best = ev;
+      }
+    }
+    if (!best) continue; // gap: no sample covers this sub-interval
+
+    const stageType = SLEEP_STAGE_OUTPUT[best.internalStage];
+    const last = segments[segments.length - 1];
+    if (last && last.stage_type === stageType && last.endMs === a) {
+      last.endMs = b; // coalesce contiguous same-type slice
+    } else {
+      segments.push({ startMs: a, endMs: b, stage_type: stageType });
+    }
+  }
+
+  return segments;
+};
+
 const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSession => {
   const totalDuration = (session.wake_time.getTime() - session.bedtime.getTime()) / 1000;
+
+  const segments = flattenSleepEvents(session.raw_events);
+  let deep = 0;
+  let light = 0;
+  let rem = 0;
+  let awake = 0;
+  const stage_events: SleepStageEvent[] = segments.map((seg) => {
+    const duration = (seg.endMs - seg.startMs) / 1000;
+    if (seg.stage_type === 'deep') deep += duration;
+    else if (seg.stage_type === 'light') light += duration;
+    else if (seg.stage_type === 'rem') rem += duration;
+    else if (seg.stage_type === 'awake') awake += duration;
+    return {
+      stage_type: seg.stage_type,
+      start_time: new Date(seg.startMs).toISOString(),
+      end_time: new Date(seg.endMs).toISOString(),
+      duration_in_seconds: duration,
+    };
+  });
+  // "Time asleep" = deep + light + rem, matching the server's authoritative recompute
+  // (sumAsleepSeconds). Excludes awake, in_bed, and unknown so mobile and server never
+  // carry two definitions of the same field. The server recomputes from stage_events
+  // and discards this value, but keeping them in sync avoids a latent divergence.
+  const timeAsleep = deep + light + rem;
+
   const result: AggregatedSleepSession = {
     type: 'SleepSession',
     source: 'HealthKit',
@@ -43,12 +148,12 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     bedtime: session.bedtime.toISOString(),
     wake_time: session.wake_time.toISOString(),
     duration_in_seconds: totalDuration,
-    time_asleep_in_seconds: session.total_time_asleep_in_seconds,
-    deep_sleep_seconds: session.deep_sleep_seconds,
-    light_sleep_seconds: session.light_sleep_seconds,
-    rem_sleep_seconds: session.rem_sleep_seconds,
-    awake_sleep_seconds: session.awake_sleep_seconds,
-    stage_events: session.stage_events,
+    time_asleep_in_seconds: timeAsleep,
+    deep_sleep_seconds: deep,
+    light_sleep_seconds: light,
+    rem_sleep_seconds: rem,
+    awake_sleep_seconds: awake,
+    stage_events,
   };
   if (session.record_timezone) {
     result.record_timezone = session.record_timezone;
@@ -71,7 +176,6 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   for (const record of sortedRecords) {
     const recordStartTime = new Date(record.startTime);
     const recordEndTime = new Date(record.endTime);
-    const duration = (recordEndTime.getTime() - recordStartTime.getTime()) / 1000;
 
     const stageType = mapHealthKitSleepStage(record.value);
     const recordTz = record.metadata?.HKTimeZone;
@@ -85,13 +189,7 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
       currentSession = {
         bedtime: recordStartTime,
         wake_time: recordEndTime,
-        stage_events: [],
-        total_duration_in_seconds: 0,
-        total_time_asleep_in_seconds: 0,
-        deep_sleep_seconds: 0,
-        light_sleep_seconds: 0,
-        rem_sleep_seconds: 0,
-        awake_sleep_seconds: 0,
+        raw_events: [],
         record_timezone: recordTz,
       };
     } else {
@@ -109,29 +207,14 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
       }
     }
 
-    // Add stage event to current session
-    const stageEvent: SleepStageEvent = {
-      stage_type: stageType,
-      start_time: recordStartTime.toISOString(),
-      end_time: recordEndTime.toISOString(),
-      duration_in_seconds: duration,
-    };
-    currentSession.stage_events.push(stageEvent);
-
-    // Sum up sleep stage durations
-    if (stageType === 'deep') {
-      currentSession.deep_sleep_seconds += duration;
-    } else if (stageType === 'light') {
-      currentSession.light_sleep_seconds += duration;
-    } else if (stageType === 'rem') {
-      currentSession.rem_sleep_seconds += duration;
-    } else if (stageType === 'awake') {
-      currentSession.awake_sleep_seconds += duration;
-    }
-
-    if (stageType !== 'awake' && stageType !== 'in_bed') {
-      currentSession.total_time_asleep_in_seconds += duration;
-    }
+    // Collect the raw sample; overlap resolution across sources happens later in
+    // finalizeSession so overlapping wall-clock time is never double-counted.
+    currentSession.raw_events.push({
+      startMs: recordStartTime.getTime(),
+      endMs: recordEndTime.getTime(),
+      internalStage: stageType,
+      rank: SLEEP_STAGE_RANK[stageType],
+    });
   }
 
   // Push the last session if it exists

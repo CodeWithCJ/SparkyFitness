@@ -512,4 +512,182 @@ describe('processHealthData sleep re-sync merge (issue #1180)', () => {
     expect(lastAggregates.light_sleep_seconds).toBe(1800);
     expect(lastAggregates.deep_sleep_seconds).toBe(1800);
   });
+
+  // Regression for issue #1379: the recompute must count only genuinely-asleep stages
+  // (deep + light + rem) as time_asleep. in_bed and unknown stages are stored and bound
+  // the duration envelope, but must NOT be counted as asleep (previously any non-'awake'
+  // stage inflated time_asleep). awake stays excluded as before.
+  it('excludes in_bed and unknown stages from recomputed time_asleep', async () => {
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'SleepSession',
+          source: 'Health Connect',
+          timestamp: '2024-06-01T22:00:00Z',
+          bedtime: '2024-06-01T22:00:00Z',
+          wake_time: '2024-06-02T06:00:00Z',
+          duration_in_seconds: 28800,
+          stage_events: [
+            // Leading in-bed margin (before the detailed stages).
+            {
+              stage_type: 'in_bed',
+              start_time: '2024-06-01T22:00:00Z',
+              end_time: '2024-06-01T22:30:00Z',
+              duration_in_seconds: 1800,
+            },
+            {
+              stage_type: 'light',
+              start_time: '2024-06-01T22:30:00Z',
+              end_time: '2024-06-01T23:30:00Z',
+              duration_in_seconds: 3600,
+            },
+            {
+              stage_type: 'deep',
+              start_time: '2024-06-01T23:30:00Z',
+              end_time: '2024-06-02T01:00:00Z',
+              duration_in_seconds: 5400,
+            },
+            {
+              stage_type: 'rem',
+              start_time: '2024-06-02T01:00:00Z',
+              end_time: '2024-06-02T02:00:00Z',
+              duration_in_seconds: 3600,
+            },
+            {
+              stage_type: 'awake',
+              start_time: '2024-06-02T02:00:00Z',
+              end_time: '2024-06-02T02:15:00Z',
+              duration_in_seconds: 900,
+            },
+            {
+              stage_type: 'unknown',
+              start_time: '2024-06-02T02:15:00Z',
+              end_time: '2024-06-02T02:30:00Z',
+              duration_in_seconds: 900,
+            },
+            // Trailing in-bed margin (after the detailed stages, to 06:00).
+            {
+              stage_type: 'in_bed',
+              start_time: '2024-06-02T02:30:00Z',
+              end_time: '2024-06-02T06:00:00Z',
+              duration_in_seconds: 12600,
+            },
+          ],
+        },
+      ],
+      userId,
+      actingUserId
+    );
+
+    // All stages are stored, including in_bed and unknown.
+    expect(storedStages).toHaveLength(7);
+    const storedTypes = storedStages.map((s) => s.stage_type).sort();
+    expect(storedTypes).toEqual([
+      'awake',
+      'deep',
+      'in_bed',
+      'in_bed',
+      'light',
+      'rem',
+      'unknown',
+    ]);
+
+    const aggCalls = (
+      sleepRepository.updateSleepEntryAggregates as unknown as {
+        mock: { calls: unknown[][] };
+      }
+    ).mock.calls;
+    const lastAggregates = aggCalls[aggCalls.length - 1][3] as {
+      duration_in_seconds: number;
+      time_asleep_in_seconds: number;
+      deep_sleep_seconds: number;
+      light_sleep_seconds: number;
+      rem_sleep_seconds: number;
+      awake_sleep_seconds: number;
+    };
+    // time_asleep = deep (5400) + light (3600) + rem (3600) = 12600.
+    // in_bed (14400) and unknown (900) and awake (900) are all excluded.
+    expect(lastAggregates.time_asleep_in_seconds).toBe(12600);
+    expect(lastAggregates.deep_sleep_seconds).toBe(5400);
+    expect(lastAggregates.light_sleep_seconds).toBe(3600);
+    expect(lastAggregates.rem_sleep_seconds).toBe(3600);
+    expect(lastAggregates.awake_sleep_seconds).toBe(900);
+    // duration still spans the full in-bed envelope (22:00–06:00 = 8h).
+    expect(lastAggregates.duration_in_seconds).toBe(28800);
+  });
+
+  // The web dashboard edit path (PUT /sleep/:id -> updateSleepEntry) round-trips a
+  // synced entry's stored stage_events. It must exclude in_bed/unknown from time_asleep
+  // too, otherwise editing a HealthKit entry would silently re-inflate it.
+  it('updateSleepEntry (web edit) excludes in_bed and unknown from time_asleep', async () => {
+    sleepRepository.updateSleepEntry = vi
+      .fn()
+      .mockResolvedValue({ id: 'entry-web-edit' });
+    sleepRepository.deleteSleepStageEventsByEntryId = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    sleepRepository.upsertSleepStageEvent = vi
+      .fn()
+      .mockResolvedValue(undefined);
+
+    await measurementService.updateSleepEntry(
+      userId,
+      'entry-web-edit',
+      actingUserId,
+      {
+        entry_date: '2024-06-02',
+        bedtime: '2024-06-01T22:00:00Z',
+        wake_time: '2024-06-02T02:30:00Z',
+        duration_in_seconds: 16200,
+        source: 'HealthKit',
+        stage_events: [
+          {
+            stage_type: 'in_bed',
+            start_time: '2024-06-01T22:00:00Z',
+            end_time: '2024-06-01T22:30:00Z',
+            duration_in_seconds: 1800,
+          },
+          {
+            stage_type: 'light',
+            start_time: '2024-06-01T22:30:00Z',
+            end_time: '2024-06-01T23:30:00Z',
+            duration_in_seconds: 3600,
+          },
+          {
+            stage_type: 'deep',
+            start_time: '2024-06-01T23:30:00Z',
+            end_time: '2024-06-02T01:00:00Z',
+            duration_in_seconds: 5400,
+          },
+          {
+            stage_type: 'rem',
+            start_time: '2024-06-02T01:00:00Z',
+            end_time: '2024-06-02T02:00:00Z',
+            duration_in_seconds: 3600,
+          },
+          {
+            stage_type: 'awake',
+            start_time: '2024-06-02T02:00:00Z',
+            end_time: '2024-06-02T02:15:00Z',
+            duration_in_seconds: 900,
+          },
+          {
+            stage_type: 'unknown',
+            start_time: '2024-06-02T02:15:00Z',
+            end_time: '2024-06-02T02:30:00Z',
+            duration_in_seconds: 900,
+          },
+        ],
+      }
+    );
+
+    const updateCall = (
+      sleepRepository.updateSleepEntry as unknown as {
+        mock: { calls: unknown[][] };
+      }
+    ).mock.calls[0];
+    const details = updateCall[3] as { time_asleep_in_seconds: number };
+    // deep (5400) + light (3600) + rem (3600) = 12600; awake/in_bed/unknown excluded.
+    expect(details.time_asleep_in_seconds).toBe(12600);
+  });
 });
