@@ -4,7 +4,7 @@ import { addLog } from './LogService';
 // Bump this whenever you add or change the cards shown in WhatsNewScreen. The
 // banner is gated on this marker rather than the app version, so a release that
 // ships no new What's New content no longer re-triggers the banner.
-export const WHATS_NEW_CONTENT_VERSION = 1;
+export const WHATS_NEW_CONTENT_VERSION = 2;
 
 const LAST_SEEN_VERSION_KEY = '@WhatsNew:lastSeenVersion';
 

@@ -1,14 +1,14 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
-import Button from '../components/ui/Button';
-import Icon from '../components/Icon';
+import Icon, { type IconName } from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getTodayDate } from '../utils/dateUtils';
+import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type WhatsNewScreenProps = RootStackScreenProps<'WhatsNew'>;
@@ -105,6 +105,108 @@ const WidgetMockup: React.FC = () => {
             <Text className="text-[9px] text-text-secondary">Out</Text>
             <Text className="text-[11px] font-medium text-text-primary">255</Text>
           </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const ChatMockup: React.FC = () => {
+  const [catViolet, accentPrimary, accentText] = useCSSVariable([
+    '--color-cat-violet',
+    '--color-accent-primary',
+    '--color-accent-text',
+  ]) as [string, string, string];
+
+  return (
+    <View
+      className="h-44 justify-center px-6"
+      style={{ backgroundColor: `${catViolet}20` }}
+    >
+      <View className="self-end bg-surface rounded-2xl rounded-tr-md shadow-sm px-3.5 py-2.5 mb-3 max-w-[75%]">
+        <Text className="text-[13px] text-text-primary">
+          What can I have for dinner with 500 calories left?
+        </Text>
+      </View>
+
+      <View className="flex-row items-end self-start max-w-[82%]">
+        <View
+          className="rounded-full items-center justify-center mr-2 shadow-sm"
+          style={{ width: 28, height: 28, backgroundColor: accentPrimary }}
+        >
+          <Icon name="sparkles" size={14} color={accentText} weight="semibold" />
+        </View>
+        <View
+          className="rounded-2xl rounded-bl-md shadow-sm px-3.5 py-2.5"
+          style={{ backgroundColor: accentPrimary }}
+        >
+          <Text className="text-[13px]" style={{ color: accentText }}>
+            Grilled salmon with a side salad keeps you right around 480 kcal.
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const LiquidGlassMockup: React.FC = () => {
+  const [textPrimary, accentPrimary] = useCSSVariable([
+    '--color-text-primary',
+    '--color-accent-primary',
+  ]) as [string, string];
+
+  const tabs: { name: IconName; label: string; active?: boolean }[] = [
+    { name: 'tab-dashboard', label: 'Dashboard' },
+    { name: 'document-text', label: 'Diary' },
+    { name: 'book', label: 'Library' },
+    { name: 'settings', label: 'Settings' },
+  ];
+
+  const glassStyle = {
+    backgroundColor: `${textPrimary}1F`,
+    borderWidth: 1,
+    borderColor: `${textPrimary}1F`,
+  };
+
+  return (
+    <View
+      className="h-44 justify-end overflow-hidden"
+      style={{
+        experimental_backgroundImage: `linear-gradient(0deg, #FFFFFF, ${accentPrimary}20)`,
+      }}
+    >
+      <View className="flex-row items-center mx-4 mb-6">
+        <View
+          className="flex-1 flex-row items-center justify-around py-2 rounded-3xl"
+          style={glassStyle}
+        >
+          {tabs.map((tab) => (
+            <View
+              key={tab.label}
+              className="items-center px-2 py-1 rounded-2xl"
+              style={tab.active ? { backgroundColor: `${textPrimary}26` } : undefined}
+            >
+              <Icon
+                name={tab.name}
+                size={20}
+                color={tab.active ? accentPrimary : "#000000" }
+                weight={tab.active ? 'semibold' : 'regular'}
+              />
+              <Text
+                className="text-[9px] mt-0.5"
+                style={{ color: tab.active ? accentPrimary : "#000000" }}
+              >
+                {tab.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View
+          className="ml-2 rounded-full items-center justify-center"
+          style={{ width: 52, height: 52, ...glassStyle }}
+        >
+          <Icon name="add" size={24} color="#000000" />
         </View>
       </View>
     </View>
@@ -215,10 +317,39 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const accentColor = useCSSVariable('--color-accent-primary') as string;
+
+  // The Liquid Glass toggle only exists on iOS 26+ devices with the glass APIs,
+  // so its card is gated on the same capability check the setting uses.
+  const showLiquidGlassCard = canUseLiquidGlass();
 
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
+    {
+      eyebrow: 'ASK SPARKY',
+      headline: 'Chat with your AI coach',
+      body: 'Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.',
+      hero: <ChatMockup />,
+      cta: {
+        label: 'Start chatting',
+        onPress: () => navigation.navigate('Chat'),
+      },
+    },
+    ...(showLiquidGlassCard
+      ? [
+          {
+            eyebrow: 'IOS 26',
+            headline: 'A Liquid Glass look',
+            body: 'Turn on Liquid Glass navigation for translucent tabs and headers that pick up the color behind them. Toggle it anytime in App settings.',
+            hero: <LiquidGlassMockup />,
+            cta: {
+              label: 'Open settings',
+              onPress: () => navigation.navigate('AppSettings'),
+            },
+          } satisfies Feature,
+        ]
+      : []),
     {
       eyebrow: 'HOME SCREEN WIDGET',
       headline: 'Calories on your home screen',
@@ -272,9 +403,22 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
               </Text>
 
               {feature.cta ? (
-                <Button variant="primary" onPress={feature.cta.onPress} className="self-start">
-                  {feature.cta.label}
-                </Button>
+                <Pressable
+                  onPress={feature.cta.onPress}
+                  className="flex-row items-center self-end"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text className="text-sm font-semibold text-accent-primary">
+                    {feature.cta.label}
+                  </Text>
+                  <Icon
+                    name="chevron-forward"
+                    size={14}
+                    color={accentColor}
+                    weight="semibold"
+                    style={{ marginLeft: 4 }}
+                  />
+                </Pressable>
               ) : null}
             </View>
           </View>
