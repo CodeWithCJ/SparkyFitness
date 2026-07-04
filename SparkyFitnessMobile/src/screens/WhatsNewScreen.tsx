@@ -405,7 +405,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
               {feature.cta ? (
                 <Pressable
                   onPress={feature.cta.onPress}
-                  className="flex-row items-center self-start"
+                  className="flex-row items-center self-end"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text className="text-sm font-semibold text-accent-primary">
