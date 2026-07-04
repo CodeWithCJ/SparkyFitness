@@ -80,7 +80,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
 const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing, onPressMealType }) => {
   if (foodEntries.length === 0) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
         <Text className="text-text-muted text-base">Tap to add food</Text>
       </Pressable>
     );
@@ -92,14 +92,14 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
 
   if (mealTypesWithEntries.length === 0 && !hasOther) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
         <Text className="text-text-muted text-base">Tap to add food</Text>
       </Pressable>
     );
   }
 
   return (
-    <View className="gap-2 my-2">
+    <View className="gap-2 mb-2">
       {mealTypesWithEntries.map((mealType) => (
         <MealSection
           key={mealType}

@@ -5,11 +5,13 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView as RNKeyboardAvoidingView,
+  Platform,
   TextInput,
   type TextInputProps,
 } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAvoidingView as KeyboardControllerAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -58,6 +60,14 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
 
 const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
 const CHAT_KEYBOARD_EXTRA_SPACING = 12;
+
+function ChatKeyboardAvoidingView(props: React.ComponentProps<typeof RNKeyboardAvoidingView>) {
+  if (Platform.OS === 'ios') {
+    return <RNKeyboardAvoidingView {...props} />;
+  }
+
+  return <KeyboardControllerAvoidingView {...props} />;
+}
 
 /**
  * Sparky chat: the assistant-ui + AI SDK runtime wired to the server's
@@ -235,14 +245,29 @@ function MessageBubble({ role }: { role: MessageRole }) {
   );
 }
 
-type LocalComposerInputProps = Omit<TextInputProps, 'value' | 'onChangeText'>;
+type LocalComposerInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
+  /** Focus the input once the screen's push transition has settled. */
+  autoFocusReady: boolean;
+};
 
-function LocalComposerInput(props: LocalComposerInputProps) {
+function LocalComposerInput({ autoFocusReady, ...props }: LocalComposerInputProps) {
   const aui = useAui();
+  const inputRef = useRef<TextInput>(null);
   const composerText = useAuiState((s) => s.composer.text);
   const [localText, setLocalText] = useState(composerText);
   const localTextRef = useRef(composerText);
   const pendingLocalTextsRef = useRef<string[]>([]);
+
+  // Focus once the screen's push transition has settled rather than via
+  // `autoFocus`. Focusing mid-transition presents the keyboard over the
+  // still-animating screen, which renders the keyboard backdrop a dark grey for
+  // the whole slide-in before it snaps to the normal light keyboard. The parent
+  // flips `autoFocusReady` on the entering `transitionEnd`; it may already be
+  // true on mount when slow config/history loads keep the composer unmounted
+  // past the transition, in which case we focus immediately.
+  useEffect(() => {
+    if (autoFocusReady) inputRef.current?.focus();
+  }, [autoFocusReady]);
 
   const applyLocalText = useCallback((value: string) => {
     localTextRef.current = value;
@@ -280,11 +305,11 @@ function LocalComposerInput(props: LocalComposerInputProps) {
     [applyLocalText, aui],
   );
 
-  return <TextInput {...props} value={localText} onChangeText={handleChangeText} />;
+  return <TextInput ref={inputRef} {...props} value={localText} onChangeText={handleChangeText} />;
 }
 
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
-function Composer() {
+function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
   const [muted, raised, textPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-raised',
@@ -296,9 +321,9 @@ function Composer() {
       style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, gap: 8 }}
     >
       <LocalComposerInput
+        autoFocusReady={autoFocusReady}
         placeholder="Message Sparky…"
         placeholderTextColor={muted}
-        autoFocus
         multiline
         style={{
           flex: 1,
@@ -350,11 +375,13 @@ function ChatThread({
   serviceConfigId,
   initialMessages,
   onRunningChange,
+  autoFocusReady,
 }: {
   baseUrl: string;
   serviceConfigId: string;
   initialMessages: InitialMessages;
   onRunningChange: (running: boolean) => void;
+  autoFocusReady: boolean;
 }) {
   const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
@@ -429,7 +456,7 @@ function ChatThread({
           </ThreadMessages>
         </View>
 
-        <Composer />
+        <Composer autoFocusReady={autoFocusReady} />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   );
@@ -466,6 +493,19 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
   const { data: setting, isLoading: loadingSetting } = useActiveAiServiceSetting();
+
+  // Gate the composer's autofocus on the push transition finishing so the
+  // keyboard doesn't animate in over the still-sliding screen (which renders it
+  // a dark grey until the screen settles). Tracked here — not in the composer —
+  // because the composer mounts behind a loading gate that can outlast the
+  // transition, missing a `transitionEnd` listener attached that late.
+  const [transitionComplete, setTransitionComplete] = useState(false);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('transitionEnd', (e) => {
+      if (!e.data.closing) setTransitionComplete(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -554,11 +594,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
     >
       {header}
 
-      {/* keyboard-controller's reworked KeyboardAvoidingView supports `padding`
-          on both platforms (RN-core's needs `undefined` on Android, but this is
-          not that component). Padding shrinks the message list by the keyboard
-          height so the composer stays pinned just above the keyboard. */}
-      <KeyboardAvoidingView
+      {/* Padding shrinks the message list by the keyboard height so the composer
+          stays pinned just above the keyboard. On iOS, RN core's
+          KeyboardAvoidingView follows keyboardWillShow with the system layout
+          animation; keyboard-controller's KAV can miss the live progress on iOS
+          26 with the custom header path and snap at keyboardDidShow. */}
+      <ChatKeyboardAvoidingView
         testID="chat-keyboard-avoiding-view"
         style={{ flex: 1 }}
         behavior="padding"
@@ -579,9 +620,10 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
             serviceConfigId={serviceConfigId}
             initialMessages={initialMessages}
             onRunningChange={setRunning}
+            autoFocusReady={transitionComplete}
           />
         )}
-      </KeyboardAvoidingView>
+      </ChatKeyboardAvoidingView>
     </View>
   );
 }

@@ -120,7 +120,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
   );
 
   return (
-    <View className="my-2">
+    <View className="mb-2">
       {onPress ? (
         <Pressable
           onPress={onPress}

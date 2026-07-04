@@ -37,14 +37,14 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
           onPress={onAddExercise}
           accessibilityRole="button"
           accessibilityLabel="Add exercise"
-          className="bg-surface rounded-xl p-4 my-2 shadow-sm items-center py-6"
+          className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
         >
           {emptyContent}
         </Pressable>
       );
     }
     return (
-      <View className="bg-surface rounded-xl p-4 my-2 shadow-sm items-center py-6">
+      <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
         {emptyContent}
       </View>
     );
