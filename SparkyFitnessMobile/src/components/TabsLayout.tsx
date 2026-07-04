@@ -237,7 +237,7 @@ export function NativeTabsLayout({
             component={DashboardStackScreen}
             options={{
               tabBarLabel: 'Dashboard',
-              tabBarIcon: () => ({ sfSymbol: 'house' } as unknown as AppleIcon),
+              tabBarIcon: () => ({ sfSymbol: 'square.grid.2x2.fill' } as unknown as AppleIcon),
             }}
           />
           <NativeTab.Screen
@@ -245,7 +245,7 @@ export function NativeTabsLayout({
             component={DiaryStackScreen}
             options={{
               tabBarLabel: 'Diary',
-              tabBarIcon: () => ({ sfSymbol: 'doc.text' } as unknown as AppleIcon),
+              tabBarIcon: () => ({ sfSymbol: 'book.fill' } as unknown as AppleIcon),
             }}
           />
           <NativeTab.Screen
@@ -270,7 +270,7 @@ export function NativeTabsLayout({
             component={LibraryStackScreen}
             options={{
               tabBarLabel: 'Library',
-              tabBarIcon: () => ({ sfSymbol: 'book' } as unknown as AppleIcon),
+              tabBarIcon: () => ({ sfSymbol: 'books.vertical.fill' } as unknown as AppleIcon),
             }}
           />
           <NativeTab.Screen
@@ -278,7 +278,7 @@ export function NativeTabsLayout({
             component={SettingsStackScreen}
             options={{
               tabBarLabel: 'Settings',
-              tabBarIcon: () => ({ sfSymbol: 'gearshape' } as unknown as AppleIcon),
+              tabBarIcon: () => ({ sfSymbol: 'gearshape.fill' } as unknown as AppleIcon),
             }}
           />
       </NativeTab.Navigator>
