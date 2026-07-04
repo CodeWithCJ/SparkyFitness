@@ -86,7 +86,18 @@ BEGIN
     'user_custom_symptoms',
     'symptom_entries',
     'user_medication_display_preferences',
-    'user_custom_symptom_locations'
+    'user_custom_symptom_locations',
+    'cycle_settings',
+    'cycle_daily_logs',
+    'cycles',
+    'user_cycle_display_preferences',
+    'cycle_test_entries',
+    'pregnancies',
+    'pregnancy_kick_sessions',
+    'pregnancy_contractions',
+    'pregnancy_photos',
+    'pregnancy_checklist_state',
+    'health_appointments'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -611,6 +622,24 @@ SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exe
 -- These tables are managed by create_medication_policy at the bottom of this file (Tier 3).
 -- Do NOT apply create_library_policy or create_diary_policy to medication tables.
 SELECT create_owner_policy('user_medication_display_preferences');
+
+-- Cycle & Pregnancy hub (see migration 20260702180000_add_cycle_tracking_schema.sql).
+-- Tier 1 — owner-only. Deliberately stricter than medications: this reproductive
+-- health data is NEVER shared or delegated in v1 (no family/caregiver access).
+SELECT create_owner_policy('cycle_settings');
+SELECT create_owner_policy('cycle_daily_logs');
+SELECT create_owner_policy('cycles');
+SELECT create_owner_policy('user_cycle_display_preferences');
+SELECT create_owner_policy('cycle_test_entries');
+
+-- Pregnancy mode (see migration 20260702200000_add_pregnancy_schema.sql). Tier 1
+-- owner-only. health_appointments is generic but still owner-only in v1.
+SELECT create_owner_policy('pregnancies');
+SELECT create_owner_policy('pregnancy_kick_sessions');
+SELECT create_owner_policy('pregnancy_contractions');
+SELECT create_owner_policy('pregnancy_photos');
+SELECT create_owner_policy('pregnancy_checklist_state');
+SELECT create_owner_policy('health_appointments');
 
 
 -- Custom policies for special cases

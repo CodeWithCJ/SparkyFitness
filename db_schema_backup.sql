@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict N96YCPYcg3UJtCdpA8mYWlcYGUKPcIVgqng4bEFvYOO0BsBL0DmEFCvczLYlqnn
+\restrict Hv9qQPu6ZWi8qrflZzXY3qwMs7b4Xcyps2s2Q6VNEwb1897POjcrYNTagHRUhG0
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1324,6 +1324,94 @@ CREATE TABLE public.custom_measurements (
 
 
 --
+-- Name: cycle_daily_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cycle_daily_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    flow_level character varying(20),
+    product_usage jsonb DEFAULT '{}'::jsonb NOT NULL,
+    bbt numeric(4,2),
+    bbt_taken_at time without time zone,
+    cervical_mucus character varying(20),
+    unusual_discharge text[] DEFAULT '{}'::text[] NOT NULL,
+    moods text[] DEFAULT '{}'::text[] NOT NULL,
+    energy smallint,
+    libido smallint,
+    notes text,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    intercourse boolean,
+    intercourse_protected boolean,
+    cervical_position character varying(30)
+);
+
+
+--
+-- Name: cycle_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cycle_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    mode character varying(20) DEFAULT 'standard'::character varying NOT NULL,
+    avg_cycle_length_override smallint,
+    avg_period_length_override smallint,
+    luteal_phase_length smallint DEFAULT 14 NOT NULL,
+    birth_control_method character varying(20) DEFAULT 'none'::character varying NOT NULL,
+    conditions text[] DEFAULT '{}'::text[] NOT NULL,
+    show_fertile_window boolean DEFAULT true NOT NULL,
+    preferred_products text[] DEFAULT '{pad,tampon}'::text[] NOT NULL,
+    dismissed_prompts text[] DEFAULT '{}'::text[] NOT NULL,
+    terminology character varying(20) DEFAULT 'default'::character varying NOT NULL,
+    discreet_mode boolean DEFAULT false NOT NULL,
+    onboarded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: cycle_test_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cycle_test_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    tested_at timestamp with time zone DEFAULT now() NOT NULL,
+    test_type character varying(10) NOT NULL,
+    result character varying(10) NOT NULL,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: cycles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cycles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    period_length smallint,
+    cycle_length smallint,
+    is_excluded boolean DEFAULT false NOT NULL,
+    source character varying(20) DEFAULT 'derived'::character varying NOT NULL,
+    birth_control_method character varying(20),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: daily_sleep_need; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1883,6 +1971,25 @@ CREATE TABLE public.goal_presets (
 
 
 --
+-- Name: health_appointments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.health_appointments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    pregnancy_id uuid,
+    scheduled_at timestamp with time zone NOT NULL,
+    appointment_type character varying(50) DEFAULT 'other'::character varying NOT NULL,
+    title text,
+    location text,
+    notes text,
+    outcome jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: injection_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2332,9 +2439,9 @@ CREATE TABLE public.onboarding_status (
     user_id uuid NOT NULL,
     full_name text,
     onboarding_complete boolean DEFAULT false NOT NULL,
-    onboarding_skipped boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    onboarding_skipped boolean DEFAULT false NOT NULL
 );
 
 
@@ -2354,6 +2461,97 @@ CREATE TABLE public.passkey (
     transports text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     aaguid text
+);
+
+
+--
+-- Name: pregnancies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pregnancies (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    due_date date NOT NULL,
+    due_date_basis character varying(20) DEFAULT 'lmp'::character varying NOT NULL,
+    lmp_date date,
+    conception_date date,
+    fetus_count smallint DEFAULT 1 NOT NULL,
+    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    ended_on date,
+    outcome character varying(30),
+    prenatal_medication_id uuid,
+    supplement_medication_id uuid,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: pregnancy_checklist_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pregnancy_checklist_state (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    pregnancy_id uuid NOT NULL,
+    template_key text,
+    custom_title text,
+    week smallint DEFAULT 0 NOT NULL,
+    completed_at timestamp with time zone,
+    dismissed boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: pregnancy_contractions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pregnancy_contractions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    pregnancy_id uuid NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    intensity smallint,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: pregnancy_kick_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pregnancy_kick_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    pregnancy_id uuid NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    kick_count smallint DEFAULT 0 NOT NULL,
+    kick_times timestamp with time zone[] DEFAULT '{}'::timestamp with time zone[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: pregnancy_photos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pregnancy_photos (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    pregnancy_id uuid NOT NULL,
+    week smallint NOT NULL,
+    entry_date date DEFAULT CURRENT_DATE NOT NULL,
+    file_path text NOT NULL,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2732,6 +2930,21 @@ CREATE TABLE public.user_custom_symptoms (
     scale_type character varying(20) DEFAULT '1-10'::character varying NOT NULL,
     unit character varying(20),
     is_glp1_flagged boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_cycle_display_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_cycle_display_preferences (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    view_group character varying(255) NOT NULL,
+    platform character varying(50) DEFAULT 'web'::character varying NOT NULL,
+    visible_items jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -3611,6 +3824,46 @@ ALTER TABLE ONLY public.check_in_photos
 
 
 --
+-- Name: cycle_daily_logs cycle_daily_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_daily_logs
+    ADD CONSTRAINT cycle_daily_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cycle_settings cycle_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_settings
+    ADD CONSTRAINT cycle_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cycle_settings cycle_settings_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_settings
+    ADD CONSTRAINT cycle_settings_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: cycle_test_entries cycle_test_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_test_entries
+    ADD CONSTRAINT cycle_test_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cycles cycles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycles
+    ADD CONSTRAINT cycles_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: daily_sleep_need daily_sleep_need_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3752,6 +4005,14 @@ ALTER TABLE ONLY public.goal_presets
 
 ALTER TABLE ONLY public.goal_presets
     ADD CONSTRAINT goal_presets_unique_name_per_user UNIQUE (user_id, preset_name);
+
+
+--
+-- Name: health_appointments health_appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_appointments
+    ADD CONSTRAINT health_appointments_pkey PRIMARY KEY (id);
 
 
 --
@@ -3939,6 +4200,46 @@ ALTER TABLE ONLY public.passkey
 
 
 --
+-- Name: pregnancies pregnancies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancies
+    ADD CONSTRAINT pregnancies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pregnancy_checklist_state pregnancy_checklist_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_checklist_state
+    ADD CONSTRAINT pregnancy_checklist_state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pregnancy_contractions pregnancy_contractions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_contractions
+    ADD CONSTRAINT pregnancy_contractions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pregnancy_kick_sessions pregnancy_kick_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_kick_sessions
+    ADD CONSTRAINT pregnancy_kick_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pregnancy_photos pregnancy_photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_photos
+    ADD CONSTRAINT pregnancy_photos_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4016,6 +4317,30 @@ ALTER TABLE ONLY public.two_factor
 
 ALTER TABLE ONLY public.two_factor
     ADD CONSTRAINT two_factor_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: cycle_daily_logs unique_user_cycle_day; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_daily_logs
+    ADD CONSTRAINT unique_user_cycle_day UNIQUE (user_id, entry_date);
+
+
+--
+-- Name: user_cycle_display_preferences unique_user_cycle_display; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_cycle_display_preferences
+    ADD CONSTRAINT unique_user_cycle_display UNIQUE (user_id, view_group, platform);
+
+
+--
+-- Name: cycles unique_user_cycle_start; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycles
+    ADD CONSTRAINT unique_user_cycle_start UNIQUE (user_id, start_date);
 
 
 --
@@ -4104,6 +4429,14 @@ ALTER TABLE ONLY public.user_custom_symptom_locations
 
 ALTER TABLE ONLY public.user_custom_symptoms
     ADD CONSTRAINT user_custom_symptoms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_cycle_display_preferences user_cycle_display_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_cycle_display_preferences
+    ADD CONSTRAINT user_cycle_display_preferences_pkey PRIMARY KEY (id);
 
 
 --
@@ -4412,6 +4745,55 @@ CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING
 
 
 --
+-- Name: idx_cycle_daily_logs_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycle_daily_logs_user_date ON public.cycle_daily_logs USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_cycle_daily_logs_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycle_daily_logs_user_id ON public.cycle_daily_logs USING btree (user_id);
+
+
+--
+-- Name: idx_cycle_settings_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycle_settings_user_id ON public.cycle_settings USING btree (user_id);
+
+
+--
+-- Name: idx_cycle_test_entries_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycle_test_entries_user_date ON public.cycle_test_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_cycle_test_entries_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycle_test_entries_user_id ON public.cycle_test_entries USING btree (user_id);
+
+
+--
+-- Name: idx_cycles_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycles_user_id ON public.cycles USING btree (user_id);
+
+
+--
+-- Name: idx_cycles_user_start; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_cycles_user_start ON public.cycles USING btree (user_id, start_date);
+
+
+--
 -- Name: idx_daily_sleep_need_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4538,6 +4920,20 @@ CREATE INDEX idx_foods_provider_type_user_id ON public.foods USING btree (provid
 
 
 --
+-- Name: idx_health_appointments_scheduled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_health_appointments_scheduled ON public.health_appointments USING btree (user_id, scheduled_at);
+
+
+--
+-- Name: idx_health_appointments_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_health_appointments_user_id ON public.health_appointments USING btree (user_id);
+
+
+--
 -- Name: idx_injection_entries_injected_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4640,6 +5036,69 @@ CREATE INDEX idx_medications_is_glp1 ON public.medications USING btree (user_id,
 --
 
 CREATE INDEX idx_medications_user_id ON public.medications USING btree (user_id);
+
+
+--
+-- Name: idx_pregnancies_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancies_user_id ON public.pregnancies USING btree (user_id);
+
+
+--
+-- Name: idx_pregnancy_checklist_pregnancy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_checklist_pregnancy ON public.pregnancy_checklist_state USING btree (pregnancy_id);
+
+
+--
+-- Name: idx_pregnancy_checklist_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_checklist_user_id ON public.pregnancy_checklist_state USING btree (user_id);
+
+
+--
+-- Name: idx_pregnancy_contractions_pregnancy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_contractions_pregnancy ON public.pregnancy_contractions USING btree (pregnancy_id);
+
+
+--
+-- Name: idx_pregnancy_contractions_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_contractions_user_id ON public.pregnancy_contractions USING btree (user_id);
+
+
+--
+-- Name: idx_pregnancy_kick_sessions_pregnancy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_kick_sessions_pregnancy ON public.pregnancy_kick_sessions USING btree (pregnancy_id);
+
+
+--
+-- Name: idx_pregnancy_kick_sessions_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_kick_sessions_user_id ON public.pregnancy_kick_sessions USING btree (user_id);
+
+
+--
+-- Name: idx_pregnancy_photos_pregnancy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_photos_pregnancy ON public.pregnancy_photos USING btree (pregnancy_id);
+
+
+--
+-- Name: idx_pregnancy_photos_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pregnancy_photos_user_id ON public.pregnancy_photos USING btree (user_id);
 
 
 --
@@ -4755,6 +5214,13 @@ CREATE INDEX idx_user_custom_symptoms_user_id ON public.user_custom_symptoms USI
 
 
 --
+-- Name: idx_user_cycle_display_preferences_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_cycle_display_preferences_user_id ON public.user_cycle_display_preferences USING btree (user_id);
+
+
+--
 -- Name: idx_user_goals_unique_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4825,6 +5291,13 @@ CREATE UNIQUE INDEX sleep_entry_stages_entry_natural_key_idx ON public.sleep_ent
 
 
 --
+-- Name: unique_active_pregnancy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX unique_active_pregnancy ON public.pregnancies USING btree (user_id) WHERE ((status)::text = 'active'::text);
+
+
+--
 -- Name: unique_backup_settings_row; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4871,6 +5344,41 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 --
 
 CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT OR UPDATE OF role ON public."user" FOR EACH ROW EXECUTE FUNCTION public.seed_global_providers_for_first_admin();
+
+
+--
+-- Name: cycle_daily_logs set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycle_daily_logs FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: cycle_settings set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycle_settings FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: cycle_test_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycle_test_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: cycles set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycles FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: health_appointments set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.health_appointments FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -4923,6 +5431,41 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.mood_entries FOR EACH ROW E
 
 
 --
+-- Name: pregnancies set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.pregnancies FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: pregnancy_checklist_state set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.pregnancy_checklist_state FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: pregnancy_contractions set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.pregnancy_contractions FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: pregnancy_kick_sessions set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.pregnancy_kick_sessions FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: pregnancy_photos set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.pregnancy_photos FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: symptom_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4948,6 +5491,13 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_symptom_locatio
 --
 
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_symptoms FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_cycle_display_preferences set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_cycle_display_preferences FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -5170,6 +5720,38 @@ ALTER TABLE ONLY public.custom_measurements
 
 ALTER TABLE ONLY public.custom_measurements
     ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cycle_daily_logs cycle_daily_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_daily_logs
+    ADD CONSTRAINT cycle_daily_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cycle_settings cycle_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_settings
+    ADD CONSTRAINT cycle_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cycle_test_entries cycle_test_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycle_test_entries
+    ADD CONSTRAINT cycle_test_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cycles cycles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cycles
+    ADD CONSTRAINT cycles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -5477,6 +6059,22 @@ ALTER TABLE ONLY public.goal_presets
 
 
 --
+-- Name: health_appointments health_appointments_pregnancy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_appointments
+    ADD CONSTRAINT health_appointments_pregnancy_id_fkey FOREIGN KEY (pregnancy_id) REFERENCES public.pregnancies(id) ON DELETE SET NULL;
+
+
+--
+-- Name: health_appointments health_appointments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_appointments
+    ADD CONSTRAINT health_appointments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: injection_entries injection_entries_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5773,6 +6371,94 @@ ALTER TABLE ONLY public.passkey
 
 
 --
+-- Name: pregnancies pregnancies_prenatal_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancies
+    ADD CONSTRAINT pregnancies_prenatal_medication_id_fkey FOREIGN KEY (prenatal_medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
+
+
+--
+-- Name: pregnancies pregnancies_supplement_medication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancies
+    ADD CONSTRAINT pregnancies_supplement_medication_id_fkey FOREIGN KEY (supplement_medication_id) REFERENCES public.medications(id) ON DELETE SET NULL;
+
+
+--
+-- Name: pregnancies pregnancies_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancies
+    ADD CONSTRAINT pregnancies_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_checklist_state pregnancy_checklist_state_pregnancy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_checklist_state
+    ADD CONSTRAINT pregnancy_checklist_state_pregnancy_id_fkey FOREIGN KEY (pregnancy_id) REFERENCES public.pregnancies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_checklist_state pregnancy_checklist_state_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_checklist_state
+    ADD CONSTRAINT pregnancy_checklist_state_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_contractions pregnancy_contractions_pregnancy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_contractions
+    ADD CONSTRAINT pregnancy_contractions_pregnancy_id_fkey FOREIGN KEY (pregnancy_id) REFERENCES public.pregnancies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_contractions pregnancy_contractions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_contractions
+    ADD CONSTRAINT pregnancy_contractions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_kick_sessions pregnancy_kick_sessions_pregnancy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_kick_sessions
+    ADD CONSTRAINT pregnancy_kick_sessions_pregnancy_id_fkey FOREIGN KEY (pregnancy_id) REFERENCES public.pregnancies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_kick_sessions pregnancy_kick_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_kick_sessions
+    ADD CONSTRAINT pregnancy_kick_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_photos pregnancy_photos_pregnancy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_photos
+    ADD CONSTRAINT pregnancy_photos_pregnancy_id_fkey FOREIGN KEY (pregnancy_id) REFERENCES public.pregnancies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: pregnancy_photos pregnancy_photos_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pregnancy_photos
+    ADD CONSTRAINT pregnancy_photos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: profiles profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5914,6 +6600,14 @@ ALTER TABLE ONLY public.user_custom_symptom_locations
 
 ALTER TABLE ONLY public.user_custom_symptoms
     ADD CONSTRAINT user_custom_symptoms_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_cycle_display_preferences user_cycle_display_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_cycle_display_preferences
+    ADD CONSTRAINT user_cycle_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -6265,6 +6959,30 @@ ALTER TABLE public.custom_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_measurements ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: cycle_daily_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cycle_daily_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: cycle_settings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cycle_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: cycle_test_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cycle_test_entries ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: cycles; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cycles ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: daily_sleep_need; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6367,6 +7085,12 @@ ALTER TABLE public.foods ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.goal_presets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: health_appointments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.health_appointments ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: injection_entries; Type: ROW SECURITY; Schema: public; Owner: -
@@ -6903,6 +7627,41 @@ CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.authe
 
 
 --
+-- Name: cycle_daily_logs owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.cycle_daily_logs USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: cycle_settings owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.cycle_settings USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: cycle_test_entries owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.cycle_test_entries USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: cycles owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.cycles USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: health_appointments owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.health_appointments USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
 -- Name: meal_plan_template_assignments owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6922,10 +7681,52 @@ CREATE POLICY owner_policy ON public.meal_plan_template_assignments USING (((EXI
 
 
 --
+-- Name: pregnancies owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.pregnancies USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: pregnancy_checklist_state owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.pregnancy_checklist_state USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: pregnancy_contractions owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.pregnancy_contractions USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: pregnancy_kick_sessions owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.pregnancy_kick_sessions USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: pregnancy_photos owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.pregnancy_photos USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
 -- Name: sparky_chat_history owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: user_cycle_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_cycle_display_preferences USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -6970,6 +7771,36 @@ CREATE POLICY owner_policy ON public.workout_plan_template_assignments USING ((E
    FROM public.workout_plan_templates wpt
   WHERE ((wpt.id = workout_plan_template_assignments.template_id) AND public.has_diary_access(wpt.user_id)))));
 
+
+--
+-- Name: pregnancies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pregnancies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: pregnancy_checklist_state; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pregnancy_checklist_state ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: pregnancy_contractions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pregnancy_contractions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: pregnancy_kick_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pregnancy_kick_sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: pregnancy_photos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pregnancy_photos ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7461,6 +8292,12 @@ ALTER TABLE public.user_custom_symptom_locations ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_custom_symptoms ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_cycle_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_cycle_display_preferences ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_dashboard_layouts; Type: ROW SECURITY; Schema: public; Owner: -
@@ -8111,6 +8948,42 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky
 
 
 --
+-- Name: TABLE cycle_daily_logs; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO sparky_uat;
+
+
+--
+-- Name: TABLE cycle_settings; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO sparky_uat;
+
+
+--
+-- Name: TABLE cycle_test_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO sparky_uat;
+
+
+--
+-- Name: TABLE cycles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO sparky_uat;
+
+
+--
 -- Name: TABLE daily_sleep_need; Type: ACL; Schema: public; Owner: -
 --
 
@@ -8270,6 +9143,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky uat
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky uat";
+
+
+--
+-- Name: TABLE health_appointments; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO sparky_uat;
 
 
 --
@@ -8462,6 +9344,51 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
 
 
 --
+-- Name: TABLE pregnancies; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO sparky_uat;
+
+
+--
+-- Name: TABLE pregnancy_checklist_state; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO sparky_uat;
+
+
+--
+-- Name: TABLE pregnancy_contractions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO sparky_uat;
+
+
+--
+-- Name: TABLE pregnancy_kick_sessions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO sparky_uat;
+
+
+--
+-- Name: TABLE pregnancy_photos; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO sparky_uat;
+
+
+--
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
@@ -8585,6 +9512,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky_uat;
+
+
+--
+-- Name: TABLE user_cycle_display_preferences; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO sparky_uat;
 
 
 --
@@ -8915,5 +9851,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict N96YCPYcg3UJtCdpA8mYWlcYGUKPcIVgqng4bEFvYOO0BsBL0DmEFCvczLYlqnn
+\unrestrict Hv9qQPu6ZWi8qrflZzXY3qwMs7b4Xcyps2s2Q6VNEwb1897POjcrYNTagHRUhG0
 

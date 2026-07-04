@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Baby at week 8: embryo about the size of a raspberry inside the womb">
+  <!-- frame -->
+  <circle cx="120" cy="120" r="112" fill="#FDF2EC"/>
+  <!-- belly hint -->
+  <path d="M28 210 Q120 150 212 210" fill="none" stroke="#E8B4A0" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+  <!-- womb -->
+  <path d="M120 62 C158 62 178 92 174 124 C170 158 150 182 120 186 C90 182 70 158 66 124 C62 92 82 62 120 62 Z"
+        fill="#F9E0D8" stroke="#EFC0B0" stroke-width="4"/>
+  <ellipse cx="120" cy="124" rx="40" ry="46" fill="#FBEAE4"/>
+  <!-- embryo: bean body with head bud -->
+  <path d="M112 118 c-6 -10 2 -22 14 -20 c10 2 14 12 10 20 c-3 7 -1 10 3 14 c-8 6 -20 4 -25 -4 c-3 -4 -2 -7 -2 -10 Z"
+        fill="#E08A70"/>
+  <circle cx="124" cy="106" r="9" fill="#E08A70"/>
+  <circle cx="121" cy="104" r="1.6" fill="#FDF2EC"/>
+  <!-- yolk sac + cord hint -->
+  <circle cx="103" cy="135" r="5" fill="#F3C8BC"/>
+  <path d="M108 132 q7 3 11 1" stroke="#D97F6C" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- floating sparkle accents -->
+  <circle cx="92" cy="102" r="2" fill="#F3C8BC"/>
+  <circle cx="148" cy="146" r="2.4" fill="#F3C8BC"/>
+</svg>

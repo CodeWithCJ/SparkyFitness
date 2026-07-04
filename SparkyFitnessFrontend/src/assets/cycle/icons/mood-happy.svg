@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Happy mood">
+  <rect width="28" height="28" rx="8" fill="#FFF1D6"/>
+  <circle cx="14" cy="14" r="8" fill="#FFD37A"/>
+  <circle cx="11" cy="12.2" r="1.2" fill="#8A5A00"/>
+  <circle cx="17" cy="12.2" r="1.2" fill="#8A5A00"/>
+  <path d="M10.5 16 q3.5 3.4 7 0" stroke="#8A5A00" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+</svg>

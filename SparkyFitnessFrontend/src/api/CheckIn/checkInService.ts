@@ -137,3 +137,15 @@ export const fetchCustomEntries = async (
     method: 'GET',
   });
 };
+
+export const createCustomCategory = async (body: {
+  name: string;
+  display_name: string;
+  measurement_type: string;
+  data_type: string;
+}): Promise<CustomCategoriesResponse> => {
+  return apiCall('/measurements/custom-categories', {
+    method: 'POST',
+    body,
+  });
+};

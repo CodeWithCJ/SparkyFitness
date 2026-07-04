@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Nausea">
+  <rect width="28" height="28" rx="8" fill="#E9F3E6"/>
+  <path d="M10 8 C10 6.5 12 6.5 12 8 v2.2 C16.8 10.8 20 14 20 17.2 c0 3.4 -2.8 5.3 -6 5.3 c-3.2 0 -6 -1.9 -6 -5.3 c0 -2.6 0.8 -4.6 2 -6 Z"
+        fill="#A8C8A0"/>
+  <path d="M12.2 16.8 q1.8 -2.4 3.6 0 q1.4 1.8 -0.4 2.6 q-1.6 0.7 -2.4 -0.8" stroke="#5F8F57"
+        stroke-width="1.6" fill="none" stroke-linecap="round"/>
+</svg>

@@ -139,6 +139,22 @@ export default function Medications() {
 
   return (
     <div className="space-y-6">
+      {/* Beta Notice */}
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 sm:p-4 flex items-start gap-3">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+            {t('medications.beta.title', 'Initial Beta Release')}
+          </h4>
+          <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mt-0.5">
+            {t(
+              'medications.beta.description',
+              'Please expect some rough edges. If you spot any bugs or issues, raise them on GitHub to help us improve!'
+            )}
+          </p>
+        </div>
+      </div>
+
       {/* Navigation & Date Filter Row */}
       <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-6 border-b pb-3 mb-6">
         {/* Navigation Pills */}

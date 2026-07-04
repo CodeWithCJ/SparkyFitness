@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Pad">
+  <rect width="28" height="28" rx="8" fill="#FDEDE9"/>
+  <ellipse cx="7" cy="14" rx="3.4" ry="4.6" fill="#F3A79A" opacity="0.55"/>
+  <ellipse cx="21" cy="14" rx="3.4" ry="4.6" fill="#F3A79A" opacity="0.55"/>
+  <rect x="8.5" y="7" width="11" height="14" rx="5.5" fill="#FFFFFF" stroke="#C9524E" stroke-width="1.5"/>
+  <rect x="12" y="10" width="4" height="8" rx="2" fill="#F3A79A"/>
+</svg>

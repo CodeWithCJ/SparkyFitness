@@ -249,7 +249,9 @@
     "foods": "Foods",
     "goals": "Goals",
     "settings": "Settings",
-    "admin": "Admin"
+    "admin": "Admin",
+    "cycle": "Cycle",
+    "pregnancy": "Pregnancy"
   },
   "nutrition": {
     "calories": "Calories",
@@ -716,6 +718,28 @@
       "tellAboutYourself": "Tell us about yourself",
       "saveProfile": "Save Profile",
       "saving": "Saving..."
+    },
+    "cycle": {
+      "title": "Cycle & Pregnancy",
+      "description": "Manage reproductive health, menstruation cycles, and pregnancy tracking",
+      "enableLabel": "Enable Cycle & Pregnancy Tracking",
+      "enableHint": "Toggle the reproductive health hub. Enabling reveals the sidebar navigation tab.",
+      "mode": "Tracker Mode",
+      "bcMethod": "Birth Control",
+      "terminology": "Terminology",
+      "terminologyDefault": "Default (Gendered)",
+      "terminologyNeutral": "Gender Neutral",
+      "avgCycleOverride": "Average Cycle Length (days)",
+      "avgPeriodOverride": "Average Period Length (days)",
+      "lutealLength": "Luteal Phase Length (days)",
+      "showFertileWindow": "Show Fertile Window Predictions",
+      "showFertileWindowHint": "Show or hide fertile days and ovulation predictions on dashboards/calendars.",
+      "conditions": "Health Conditions",
+      "learned": "Calculated from logs",
+      "successTitle": "Success",
+      "successDesc": "Cycle settings updated.",
+      "errorTitle": "Error",
+      "errorDesc": "Could not save cycle settings. Please try again."
     },
     "preferences": {
       "title": "Preferences",
@@ -2585,5 +2609,108 @@
   },
   "onboarding": {
     "completeSetup": "Complete Setup"
+  },
+  "cycle": {
+    "hub": "Cycle & Pregnancy Hub",
+    "pregnancyHub": "Pregnancy Hub",
+    "hubSubtitle": "Track, understand, and sync with your body.",
+    "tabs": {
+      "today": "Today",
+      "calendar": "Calendar",
+      "insights": "Insights",
+      "care": "Care"
+    },
+    "comingSoon": {
+      "calendarTitle": "Cycle Calendar",
+      "calendarDesc": "An interactive view of your past cycles, flow volume, and future predictions is coming in Phase 2.",
+      "insightsTitle": "Cycle Insights",
+      "insightsDesc": "Detailed graphs of basal body temperature, symptom heatmaps, and cycle length history are coming in Phase 2.",
+      "careTitle": "Care & Reminders",
+      "careDesc": "Reminders for birth control, product changes, and a doctor report PDF export are coming in Phase 5.",
+      "placeholder": "Coming soon"
+    },
+    "onboarding": {
+      "stepIndicator": "Step {{step}} of 4",
+      "step1Title": "Choose Your Tracking Goal",
+      "step1Desc": "Select the primary mode for your tracker.",
+      "step2Title": "Cycle Dates & Lengths",
+      "step2Desc": "Tell us about your typical cycle properties.",
+      "step3Title": "Your Health Profile",
+      "step3Desc": "Optional information to customize predictions (skippable).",
+      "step4Title": "Disclaimer & Confirmation",
+      "step4Desc": "Read and acknowledge before finalizing.",
+      "successTitle": "Welcome to Cycle Tracking!",
+      "successDesc": "Your cycle profile has been initialized successfully.",
+      "errorTitle": "Setup failed",
+      "errorDesc": "Could not save your preferences. Please try again.",
+      "lastPeriodStart": "When did your last period start?",
+      "avgCycleLength": "Typical cycle (days)",
+      "avgPeriodLength": "Typical period (days)",
+      "bcMethod": "Birth control method",
+      "bcHint": "Hormonal birth control will suppress fertility windows, showing bleed predictions only.",
+      "conditions": "Known conditions (Optional)",
+      "complete": "Agree & Complete"
+    },
+    "disclaimer": {
+      "title": "Important Health Disclaimer",
+      "text1": "This cycle tracking feature is intended for educational, fitness, and log keeping purposes only. It is not designed or intended to be used as a primary method of contraception or family planning.",
+      "text2": "Predictions are estimates and will vary based on individual consistency, health conditions, or cycle irregularity. Always consult a healthcare provider for medical concerns."
+    },
+    "mode": {
+      "standard": "Standard Cycle Tracking",
+      "standardDesc": "Track periods, symptoms, and predict future cycle phases.",
+      "ttc": "Trying to Conceive (TTC)",
+      "ttcDesc": "Track fertile window, ovulation, and luteal phase indicators.",
+      "pregnant": "Pregnancy Tracking",
+      "pregnantDesc": "Track fetal development milestones, contraction timers, and prenatal care."
+    },
+    "today": {
+      "cycleDay": "Cycle day",
+      "late": "{{n}} days late",
+      "periodIn": "Period in {{n}} days",
+      "nextPeriod": "Next period",
+      "ovulation": "Ovulation",
+      "cycleLength": "Cycle length",
+      "lateBanner": "Your period is {{n}} days late. Log it when it starts, or adjust your cycle length in settings."
+    },
+    "legend": {
+      "period": "Period",
+      "fertile": "Fertile",
+      "ovulation": "Ovulation"
+    },
+    "stats": {
+      "cycleAvg": "Cycle avg",
+      "periodAvg": "Period avg",
+      "lastBbt": "Last BBT"
+    },
+    "regularity": {
+      "regular": "Regular",
+      "somewhat": "Somewhat regular",
+      "irregular": "Irregular"
+    },
+    "insight": {
+      "menstrual_rest": "You are in your menstrual phase — rest and gentle movement can help.",
+      "menstrual_iron": "Iron-rich foods can support you during your period.",
+      "follicular_energy": "Energy often rises in the follicular phase — a good week for harder workouts.",
+      "fertile_window": "You are in your fertile window.",
+      "ovulation_peak": "Ovulation is around now — this is your peak fertile day.",
+      "luteal_dip": "Energy and sleep can dip in the late luteal phase. Be kind to yourself.",
+      "luteal_pms": "PMS symptoms can appear now — track how you feel.",
+      "generic_log": "Log today to improve your predictions over time."
+    },
+    "log": {
+      "title": "Today's log",
+      "saved": "Saved",
+      "flow": "Flow",
+      "products": "Period products",
+      "fewerProducts": "Show fewer",
+      "moreProducts": "+ more products",
+      "bbt": "Basal body temperature",
+      "mucus": "Cervical mucus",
+      "moods": "Mood",
+      "energy": "Energy",
+      "notes": "Notes",
+      "notesPlaceholder": "Anything else to note…"
+    }
   }
 }

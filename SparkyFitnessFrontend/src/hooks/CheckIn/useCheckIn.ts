@@ -12,6 +12,7 @@ import {
   saveCheckInMeasurements,
   saveCustomMeasurement,
   getMostRecentMeasurement,
+  createCustomCategory,
 } from '@/api/CheckIn/checkInService';
 import { checkInKeys } from '@/api/keys/checkin';
 import { dailyProgressKeys } from '@/api/keys/diary';
@@ -179,6 +180,23 @@ export const useSaveCustomMeasurementMutation = () => {
       errorMessage: t(
         'checkIn.failedToSaveCustomMeasurement',
         'Failed to save custom measurement.'
+      ),
+    },
+  });
+};
+
+export const useCreateCustomCategoryMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: createCustomCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+    },
+    meta: {
+      errorMessage: t(
+        'checkIn.failedToCreateCategory',
+        'Failed to create category.'
       ),
     },
   });
