@@ -2,8 +2,14 @@ import {
   getSyncStartDate,
   initHealthConnect,
   getAggregatedStepsByDate,
+  getAggregatedStepsByDateDetailed,
   getAggregatedTotalCaloriesByDate,
+  getAggregatedTotalCaloriesByDateDetailed,
+  getAggregatedBasalEnergyByDate,
+  getAggregatedBasalEnergyByDateDetailed,
   readHealthRecords,
+  readHealthRecordsDetailed,
+  readMinMaxAvgByDayDetailed,
   isDatabaseInaccessibleError,
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
@@ -11,14 +17,16 @@ import {
 
 import {
   isHealthDataAvailable,
-  queryStatisticsForQuantity,
+  queryStatisticsCollectionForQuantity,
   queryQuantitySamples,
   queryWorkoutSamples,
   queryCategorySamples,
   queryCorrelationSamples,
 } from '@kingstinct/react-native-healthkit';
 
-import { toLocalDateString } from '../../../src/services/healthkit/dataAggregation';
+import { aggregateByDay, toLocalDateString } from '../../../src/services/healthkit/dataAggregation';
+import { transformHealthRecords } from '../../../src/services/healthkit/dataTransformation';
+import type { TransformedRecord } from '../../../src/types/healthRecords';
 
 import type { SyncDuration } from '../../../src/services/healthkit/preferences';
 
@@ -27,11 +35,52 @@ jest.mock('../../../src/services/LogService', () => ({
 }));
 
 const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
-const mockQueryStatisticsForQuantity = queryStatisticsForQuantity as jest.Mock;
+const mockQueryStatisticsCollection = queryStatisticsCollectionForQuantity as jest.Mock;
 const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
 const mockQueryCorrelationSamples = queryCorrelationSamples as jest.Mock;
+
+// Local-time date constructor (month is 1-based) — the engine buckets by LOCAL day.
+const localDate = (y: number, m: number, d: number, h = 0, min = 0) =>
+  new Date(y, m - 1, d, h, min, 0, 0);
+
+const startOfToday = () => {
+  const day = new Date();
+  day.setHours(0, 0, 0, 0);
+  return day;
+};
+
+const daysFromToday = (days: number) => {
+  const day = startOfToday();
+  day.setDate(day.getDate() + days);
+  return day;
+};
+
+// A statistics-collection day bucket carrying a cumulative sum.
+const sumBucket = (startDate: Date, endDate: Date, sum?: number, unit = 'count') => ({
+  startDate,
+  endDate,
+  ...(sum !== undefined ? { sumQuantity: { unit, quantity: sum } } : {}),
+});
+
+// A statistics-collection day bucket carrying discrete min/max/avg.
+const statsBucket = (
+  startDate: Date,
+  endDate: Date,
+  stats?: { min: number; max: number; avg: number },
+  unit = 'count/min',
+) => ({
+  startDate,
+  endDate,
+  ...(stats
+    ? {
+      minimumQuantity: { unit, quantity: stats.min },
+      maximumQuantity: { unit, quantity: stats.max },
+      averageQuantity: { unit, quantity: stats.avg },
+    }
+    : {}),
+});
 
 describe('getSyncStartDate', () => {
   test('day-based durations return midnight (00:00:00.000)', () => {
@@ -127,11 +176,12 @@ describe('initHealthConnect', () => {
   });
 });
 
-describe('getAggregatedStepsByDate', () => {
+describe('getAggregatedStepsByDate (statistics collection)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset HealthKit availability state by calling initHealthConnect
     mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
   });
 
   test('returns empty array when HealthKit is unavailable', async () => {
@@ -139,278 +189,397 @@ describe('getAggregatedStepsByDate', () => {
     mockIsHealthDataAvailable.mockResolvedValue(false);
     await initHealthConnect();
 
-    const startDate = new Date('2024-01-15');
-    const endDate = new Date('2024-01-15');
-
-    const result = await getAggregatedStepsByDate(startDate, endDate);
+    const result = await getAggregatedStepsByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
     expect(result).toEqual([]);
+    expect(mockQueryStatisticsCollection).not.toHaveBeenCalled();
   });
 
-  test('returns formatted result for single day with data', async () => {
-    // Initialize HealthKit as available
+  test('issues ONE collection query for the whole range, anchored at local midnight', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity.mockResolvedValue({
-      sumQuantity: { quantity: 5000 },
-    });
-
-    // Use local dates to avoid timezone issues
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
-
-    const expectedDateStr = toLocalDateString(startDate);
+    const startDate = localDate(2024, 1, 15);
+    const endDate = localDate(2024, 1, 17, 23, 59);
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 5000),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 6000),
+      sumBucket(localDate(2024, 1, 17), localDate(2024, 1, 18), 7000),
+    ]);
 
     const result = await getAggregatedStepsByDate(startDate, endDate);
 
-    expect(result).toHaveLength(1);
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledTimes(1);
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierStepCount',
+      ['cumulativeSum'],
+      localDate(2024, 1, 15), // anchor = local midnight of the filter start
+      { day: 1 },
+      { filter: { date: { startDate, endDate } }, unit: 'count' },
+    );
+    expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject({
-      date: expectedDateStr,
+      date: toLocalDateString(localDate(2024, 1, 15)),
       value: 5000,
       type: 'step',
     });
+    expect(result[0].record_timezone).toBeDefined();
+    expect(result.map(r => r.value)).toEqual([5000, 6000, 7000]);
   });
 
-  test('queries each day separately for multiple days', async () => {
+  test('drops zero and empty buckets', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } })
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 6000 } })
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 7000 } });
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 5000),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 0), // zero steps
+      sumBucket(localDate(2024, 1, 17), localDate(2024, 1, 18)), // no sumQuantity
+    ]);
 
-    const startDate = new Date('2024-01-15T00:00:00Z');
-    const endDate = new Date('2024-01-17T23:59:59Z');
+    const result = await getAggregatedStepsByDate(localDate(2024, 1, 15), localDate(2024, 1, 17, 23, 59));
 
-    const result = await getAggregatedStepsByDate(startDate, endDate);
-
-    expect(result).toHaveLength(3);
-  });
-
-  test('skips days with no data (null or zero)', async () => {
-    await initHealthConnect();
-
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } })
-      .mockResolvedValueOnce(null) // No data
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 0 } }); // Zero steps
-
-    const startDate = new Date('2024-01-15T00:00:00Z');
-    const endDate = new Date('2024-01-17T23:59:59Z');
-
-    const result = await getAggregatedStepsByDate(startDate, endDate);
-
-    expect(result).toHaveLength(1); // Only the day with 5000 steps
+    expect(result).toHaveLength(1);
     expect(result[0].value).toBe(5000);
   });
 
-  test('rounds step count to integer', async () => {
+  test('rounds the daily sum to an integer', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity.mockResolvedValue({
-      sumQuantity: { quantity: 5432.7 },
-    });
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 5432.7),
+    ]);
 
-    const startDate = new Date('2024-01-15T00:00:00Z');
-    const endDate = new Date('2024-01-15T23:59:59Z');
-
-    const result = await getAggregatedStepsByDate(startDate, endDate);
+    const result = await getAggregatedStepsByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
     expect(result[0].value).toBe(5433);
     expect(Number.isInteger(result[0].value)).toBe(true);
   });
 
-  test('handles query errors gracefully and continues', async () => {
+  test('keeps a nonzero sub-0.5 day (has-data check happens before rounding)', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockRejectedValueOnce(new Error('Query failed'))
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 6000 } });
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 0.4),
+    ]);
 
-    const startDate = new Date('2024-01-15T00:00:00Z');
-    const endDate = new Date('2024-01-16T23:59:59Z');
+    const result = await getAggregatedStepsByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(0);
+  });
+
+  test('keeps the first partial-day bucket for a mid-day filter start (rolling 24h window)', async () => {
+    await initHealthConnect();
+
+    // Rolling 24h window starting at 2pm — the first bucket starts at the midnight
+    // BEFORE the filter start and must be kept (its sum covers 2pm→midnight only,
+    // because the native filter clips samples to the window).
+    const startDate = localDate(2024, 1, 15, 14);
+    const endDate = localDate(2024, 1, 16, 14);
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 3000),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 5000),
+    ]);
 
     const result = await getAggregatedStepsByDate(startDate, endDate);
 
-    // Should still return results from successful day
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ date: toLocalDateString(localDate(2024, 1, 15)), value: 3000 });
+
+    // The native filter keeps the actual 2pm start; only the ANCHOR is midnight.
+    const call = mockQueryStatisticsCollection.mock.calls[0];
+    expect(call[2]).toEqual(localDate(2024, 1, 15));
+    expect(call[4].filter.date.startDate).toEqual(startDate);
+  });
+
+  test("keeps today's in-progress bucket (ends at tomorrow's midnight)", async () => {
+    await initHealthConnect();
+
+    // Today's bucket ends AFTER the sync endDate (tomorrow midnight > now). A
+    // bucket.endDate <= endDate guard would silently drop today's steps on every sync.
+    const todayStart = startOfToday();
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(todayStart, daysFromToday(1), 800),
+    ]);
+
+    const result = await getAggregatedStepsByDate(todayStart, new Date());
+
     expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(6000);
+    expect(result[0]).toMatchObject({ date: toLocalDateString(todayStart), value: 800 });
   });
 
-  test('respects actual start time on first day for rolling 24h window', async () => {
-    // This test verifies the fix for the rolling 24h window bug where
-    // aggregations were always bucketing by full calendar days, ignoring
-    // the actual start time passed in.
+  test('clamps the native filter end to now when endDate is in the future', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 3000 } }) // First day (partial)
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } }); // Second day (full)
+    const before = Date.now();
+    await getAggregatedStepsByDate(startOfToday(), daysFromToday(2));
 
-    // Simulate a rolling 24h window starting at 2pm yesterday
-    const startDate = new Date('2024-01-15T14:00:00.000Z'); // 2pm, not midnight
-    const endDate = new Date('2024-01-16T14:00:00.000Z');   // 2pm today
-
-    await getAggregatedStepsByDate(startDate, endDate);
-
-    // Verify the first query uses the actual start time (2pm), not midnight
-    expect(mockQueryStatisticsForQuantity).toHaveBeenCalledTimes(2);
-
-    const firstCallOptions = mockQueryStatisticsForQuantity.mock.calls[0][2];
-    const firstDayStart = firstCallOptions.filter.date.startDate;
-
-    // First day should start at 2pm (14:00), not midnight (00:00)
-    expect(firstDayStart.getUTCHours()).toBe(14);
-    expect(firstDayStart.getUTCMinutes()).toBe(0);
+    const filterEnd = mockQueryStatisticsCollection.mock.calls[0][4].filter.date.endDate;
+    expect(filterEnd.getTime()).toBeGreaterThanOrEqual(before);
+    expect(filterEnd.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
-  test('uses midnight for subsequent days in multi-day range', async () => {
+  test('excludes buckets fully outside the window and sorts ascending by day', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 3000 } })
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 5000 } });
+    const startDate = localDate(2024, 1, 15);
+    const endDate = localDate(2024, 1, 16, 23, 59);
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 6000), // in (out of order)
+      sumBucket(localDate(2024, 1, 14), localDate(2024, 1, 15), 999), // ends AT filter start — out
+      sumBucket(localDate(2024, 1, 18), localDate(2024, 1, 19), 999), // starts after filter end — out
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 5000), // in
+    ]);
 
-    // Start at 2pm on day 1, but day 2 should start at midnight
-    const startDate = new Date('2024-01-15T14:00:00.000Z');
-    const endDate = new Date('2024-01-16T14:00:00.000Z');
+    const result = await getAggregatedStepsByDate(startDate, endDate);
 
-    await getAggregatedStepsByDate(startDate, endDate);
+    expect(result.map(r => r.value)).toEqual([5000, 6000]);
+  });
 
-    // Verify the second query uses midnight
-    const secondCallOptions = mockQueryStatisticsForQuantity.mock.calls[1][2];
-    const secondDayStart = secondCallOptions.filter.date.startDate;
+  test('a native error fails the whole metric instead of silently dropping days', async () => {
+    await initHealthConnect();
 
-    // Second day should start at midnight (00:00)
-    expect(secondDayStart.getHours()).toBe(0);
-    expect(secondDayStart.getMinutes()).toBe(0);
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Query failed'));
+
+    const result = await getAggregatedStepsByDate(localDate(2024, 1, 15), localDate(2024, 1, 16, 23, 59));
+
+    expect(result).toEqual([]);
+  });
+
+  test('the Detailed variant surfaces the error so the sync cursor can hold', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Query failed'));
+
+    const result = await getAggregatedStepsByDateDetailed(localDate(2024, 1, 15), localDate(2024, 1, 16, 23, 59));
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toBe('Query failed');
   });
 });
 
-describe('getAggregatedTotalCaloriesByDate', () => {
+describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
+  const mockByIdentifier = (map: Record<string, unknown[]>) =>
+    mockQueryStatisticsCollection.mockImplementation((identifier: string) =>
+      Promise.resolve(map[identifier] ?? []));
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
   });
 
   test('returns empty array when HealthKit is unavailable', async () => {
     mockIsHealthDataAvailable.mockResolvedValue(false);
     await initHealthConnect();
 
-    const startDate = new Date('2024-01-15');
-    const endDate = new Date('2024-01-15');
-
-    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+    const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
     expect(result).toEqual([]);
+    // The availability guard must short-circuit before any statistics query — without
+    // this the mock defaults to [] and the test would pass even if the guard were gone.
+    expect(mockQueryStatisticsCollection).not.toHaveBeenCalled();
   });
 
-  test('sums basal + active energy correctly', async () => {
+  test('sums basal + active per day across two collection queries', async () => {
     await initHealthConnect();
 
-    // Mock Promise.all returning both basal and active
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
+    mockByIdentifier({
+      HKQuantityTypeIdentifierBasalEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1500, 'kcal'),
+      ],
+      HKQuantityTypeIdentifierActiveEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+      ],
+    });
 
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+    const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
-    const expectedDateStr = toLocalDateString(startDate);
-
-    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledTimes(2);
+    const identifiers = mockQueryStatisticsCollection.mock.calls.map(call => call[0]);
+    expect(identifiers).toEqual(expect.arrayContaining([
+      'HKQuantityTypeIdentifierBasalEnergyBurned',
+      'HKQuantityTypeIdentifierActiveEnergyBurned',
+    ]));
+    mockQueryStatisticsCollection.mock.calls.forEach(call => {
+      expect(call[4].unit).toBe('kcal');
+    });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      date: expectedDateStr,
+      date: toLocalDateString(localDate(2024, 1, 15)),
       value: 2000, // 1500 + 500
       type: 'total_calories',
     });
   });
 
-  test('uses only active when basal returns null', async () => {
+  test('emits a day when only one side has data', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce(null) // basal is null
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 500 } }); // active
+    mockByIdentifier({
+      HKQuantityTypeIdentifierBasalEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1500, 'kcal'),
+      ],
+      HKQuantityTypeIdentifierActiveEnergyBurned: [
+        sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 400, 'kcal'),
+      ],
+    });
 
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+    const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 16, 23, 59));
 
-    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(500);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ date: toLocalDateString(localDate(2024, 1, 15)), value: 1500 });
+    expect(result[1]).toMatchObject({ date: toLocalDateString(localDate(2024, 1, 16)), value: 400 });
   });
 
-  test('uses only basal when active returns null', async () => {
+  test('skips days where both sides are zero or missing', async () => {
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 1500 } }) // basal
-      .mockResolvedValueOnce(null); // active is null
+    mockByIdentifier({
+      HKQuantityTypeIdentifierBasalEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 0, 'kcal'),
+      ],
+      HKQuantityTypeIdentifierActiveEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16)),
+      ],
+    });
 
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
-
-    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(1500);
-  });
-
-  test('skips day when both basal and active return null/zero', async () => {
-    await initHealthConnect();
-
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce(null) // basal is null
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 0 } }); // active is zero
-
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
-
-    const result = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+    const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
 
     expect(result).toHaveLength(0);
   });
 
-  test('respects actual start time on first day for rolling 24h window', async () => {
-    // This test verifies the fix for the rolling 24h window bug where
-    // aggregations were always bucketing by full calendar days, ignoring
-    // the actual start time passed in.
+  test('preserves a mid-day filter start on both queries (rolling 24h window)', async () => {
     await initHealthConnect();
 
-    // Mock responses for 2 days (basal + active for each day = 4 calls)
-    mockQueryStatisticsForQuantity
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 800 } })  // Day 1 basal
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 200 } })  // Day 1 active
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 1200 } }) // Day 2 basal
-      .mockResolvedValueOnce({ sumQuantity: { quantity: 400 } }); // Day 2 active
-
-    // Simulate a rolling 24h window starting at 2pm yesterday
-    const startDate = new Date('2024-01-15T14:00:00.000Z'); // 2pm, not midnight
-    const endDate = new Date('2024-01-16T14:00:00.000Z');   // 2pm today
+    const startDate = localDate(2024, 1, 15, 14);
+    const endDate = localDate(2024, 1, 16, 14);
 
     await getAggregatedTotalCaloriesByDate(startDate, endDate);
 
-    // First call is for basal on day 1 - verify it uses the actual start time
-    const firstCallOptions = mockQueryStatisticsForQuantity.mock.calls[0][2];
-    const firstDayStart = firstCallOptions.filter.date.startDate;
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledTimes(2);
+    mockQueryStatisticsCollection.mock.calls.forEach(call => {
+      expect(call[4].filter.date.startDate).toEqual(startDate);
+      expect(call[2]).toEqual(localDate(2024, 1, 15)); // anchor still midnight
+    });
+  });
 
-    // First day should start at 2pm (14:00), not midnight (00:00)
-    expect(firstDayStart.getUTCHours()).toBe(14);
-    expect(firstDayStart.getUTCMinutes()).toBe(0);
+  test('errors the whole metric when either query fails (all-or-nothing, cursor holds)', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockImplementation((identifier: string) =>
+      identifier === 'HKQuantityTypeIdentifierBasalEnergyBurned'
+        ? Promise.reject(new Error('Basal query failed'))
+        : Promise.resolve([sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal')]));
+
+    const result = await getAggregatedTotalCaloriesByDate(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
+    expect(result).toEqual([]);
+
+    const detailed = await getAggregatedTotalCaloriesByDateDetailed(localDate(2024, 1, 15), localDate(2024, 1, 15, 23, 59));
+    expect(detailed.records).toEqual([]);
+    expect(detailed.error).toBe('Basal query failed');
+  });
+});
+
+describe('getAggregatedBasalEnergyByDate (statistics collection)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
+  });
+
+  test('queries whole days from local midnight even for a mid-day startDate', async () => {
+    await initHealthConnect();
+
+    // Unlike the cumulative aggregator, the BMR read intentionally widens a mid-day
+    // start to local midnight: it only ever emits COMPLETE days.
+    const startDate = localDate(2024, 1, 15, 14);
+    const endDate = localDate(2024, 1, 20);
+
+    await getAggregatedBasalEnergyByDate(startDate, endDate);
+
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBasalEnergyBurned',
+      ['cumulativeSum'],
+      localDate(2024, 1, 15),
+      { day: 1 },
+      {
+        filter: { date: { startDate: localDate(2024, 1, 15), endDate } },
+        unit: 'kcal',
+      },
+    );
+  });
+
+  test("stamps yesterday's complete bucket with today's date (D+1)", async () => {
+    await initHealthConnect();
+
+    const yesterdayStart = daysFromToday(-1);
+    const todayStart = startOfToday();
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(yesterdayStart, todayStart, 1600.4, 'kcal'),
+    ]);
+
+    const result = await getAggregatedBasalEnergyByDate(yesterdayStart, new Date());
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        date: toLocalDateString(todayStart),
+        value: 1600,
+        type: 'basal_metabolic_rate',
+      }),
+    ]);
+  });
+
+  test("excludes today's partial bucket", async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(startOfToday(), daysFromToday(1), 900, 'kcal'),
+    ]);
+
+    const result = await getAggregatedBasalEnergyByDate(startOfToday(), new Date());
+
+    expect(result).toEqual([]);
+  });
+
+  test('excludes complete days ending past the requested endDate', async () => {
+    await initHealthConnect();
+
+    const endDate = localDate(2024, 1, 16, 12);
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1500, 'kcal'), // complete, in window
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 1400, 'kcal'), // ends past endDate
+    ]);
+
+    const result = await getAggregatedBasalEnergyByDate(localDate(2024, 1, 15), endDate);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ date: toLocalDateString(localDate(2024, 1, 16)), value: 1500 });
+  });
+
+  test('drops zero and empty buckets', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 0, 'kcal'),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17)),
+    ]);
+
+    const result = await getAggregatedBasalEnergyByDate(localDate(2024, 1, 15), localDate(2024, 1, 18));
+
+    expect(result).toEqual([]);
+  });
+
+  test('the Detailed variant surfaces native errors', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Query failed'));
+
+    const result = await getAggregatedBasalEnergyByDateDetailed(localDate(2024, 1, 15), localDate(2024, 1, 18));
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toBe('Query failed');
   });
 });
 
@@ -445,12 +614,14 @@ describe('readHealthRecords', () => {
     expect(result).toEqual([]);
   });
 
-  test('filters out records outside the date range (iOS workaround)', async () => {
+  test('pushes the window into the native query (limit 0) and keeps the JS range guard', async () => {
     await initHealthConnect();
 
     const startDate = new Date('2024-01-15T00:00:00Z');
     const endDate = new Date('2024-01-16T23:59:59Z');
 
+    // The native predicate matches on interval overlap, so boundary samples can still
+    // come back — the exact [startDate, endDate] guard in JS must keep filtering them.
     mockQueryQuantitySamples.mockResolvedValue([
       { startDate: '2024-01-14T23:00:00Z', quantity: 100 }, // Before range
       { startDate: '2024-01-15T12:00:00Z', quantity: 200 }, // In range
@@ -463,6 +634,17 @@ describe('readHealthRecords', () => {
     expect(result).toHaveLength(2);
     expect((result[0] as { value: number }).value).toBe(200);
     expect((result[1] as { value: number }).value).toBe(300);
+
+    // The window must reach the native query (limit: 0 = all in-window samples), not be
+    // applied as a post-filter over the newest N samples across all history.
+    expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierStepCount',
+      expect.objectContaining({
+        ascending: false,
+        limit: 0,
+        filter: { date: { startDate, endDate } },
+      }),
+    );
   });
 
   test('transforms Steps records to expected format', async () => {
@@ -634,11 +816,9 @@ describe('readHealthRecords', () => {
         },
       ]);
 
-      const result = await readHealthRecords(
-        'Workout',
-        new Date('2024-01-15T00:00:00Z'),
-        new Date('2024-01-15T23:59:59Z')
-      );
+      const startDate = new Date('2024-01-15T00:00:00Z');
+      const endDate = new Date('2024-01-15T23:59:59Z');
+      const result = await readHealthRecords('Workout', startDate, endDate);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -647,6 +827,14 @@ describe('readHealthRecords', () => {
         activityType: 37,
         duration: 3600,
       });
+      // Window pushed into the native query (options are the FIRST argument here).
+      expect(mockQueryWorkoutSamples).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ascending: false,
+          limit: 0,
+          filter: { date: { startDate, endDate } },
+        }),
+      );
     });
 
     test('uses stats from getStatistic when available', async () => {
@@ -886,11 +1074,9 @@ describe('readHealthRecords', () => {
         },
       ]);
 
-      const result = await readHealthRecords(
-        'SleepSession',
-        new Date('2024-01-15T00:00:00Z'),
-        new Date('2024-01-15T23:59:59Z')
-      );
+      const startDate = new Date('2024-01-15T00:00:00Z');
+      const endDate = new Date('2024-01-15T23:59:59Z');
+      const result = await readHealthRecords('SleepSession', startDate, endDate);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -901,6 +1087,16 @@ describe('readHealthRecords', () => {
         sourceName: 'Apple Watch',
         sourceId: 'com.apple.health',
       });
+      // Window pushed into the native query; overlap semantics keep boundary-spanning
+      // sessions (asserted below) while limit: 0 avoids the newest-N-of-all-history trap.
+      expect(mockQueryCategorySamples).toHaveBeenCalledWith(
+        'HKCategoryTypeIdentifierSleepAnalysis',
+        expect.objectContaining({
+          ascending: false,
+          limit: 0,
+          filter: { date: { startDate, endDate } },
+        }),
+      );
     });
 
     test('normalizes flattened metadataTimeZone into metadata.HKTimeZone', async () => {
@@ -1096,11 +1292,9 @@ describe('readHealthRecords', () => {
         .mockResolvedValueOnce([{ startDate: timestamp, quantity: 120 }]) // systolic
         .mockResolvedValueOnce([{ startDate: timestamp, quantity: 80 }]); // diastolic
 
-      const result = await readHealthRecords(
-        'BloodPressure',
-        new Date('2024-01-15T00:00:00Z'),
-        new Date('2024-01-15T23:59:59Z')
-      );
+      const startDate = new Date('2024-01-15T00:00:00Z');
+      const endDate = new Date('2024-01-15T23:59:59Z');
+      const result = await readHealthRecords('BloodPressure', startDate, endDate);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -1108,6 +1302,18 @@ describe('readHealthRecords', () => {
         diastolic: { inMillimetersOfMercury: 80 },
         time: timestamp,
       });
+      // Both component queries carry the native window.
+      const expectedOptions = expect.objectContaining({
+        ascending: false,
+        limit: 0,
+        filter: { date: { startDate, endDate } },
+      });
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierBloodPressureSystolic', expectedOptions,
+      );
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierBloodPressureDiastolic', expectedOptions,
+      );
     });
 
     test('merges systolic and diastolic by matching timestamp', async () => {
@@ -1400,6 +1606,352 @@ describe('readHealthRecords', () => {
   });
 });
 
+describe('readHealthRecordsDetailed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    resetDatabaseInaccessibleCount();
+  });
+
+  test('returns records without an error on success', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockResolvedValue([
+      { startDate: '2024-01-15T10:00:00Z', endDate: '2024-01-15T10:30:00Z', quantity: 500 },
+    ]);
+
+    const result = await readHealthRecordsDetailed(
+      'Steps',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.records).toHaveLength(1);
+  });
+
+  test('returns an error envelope instead of a silent empty read when the query throws', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Query failed'));
+
+    const result = await readHealthRecordsDetailed(
+      'Steps',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toBe('Query failed');
+  });
+
+  test('database-inaccessible errors both count and surface', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    const result = await readHealthRecordsDetailed(
+      'Steps',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result.error).toContain('Protected health data');
+    expect(getDatabaseInaccessibleCount()).toBe(1);
+  });
+});
+
+describe('readMinMaxAvgByDayDetailed', () => {
+  const HEART_RATE_CONFIG = { recordType: 'HeartRate', unit: 'bpm', type: 'heart_rate' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
+  });
+
+  test('returns null for metrics without a verified spec (caller falls back to samples)', async () => {
+    await initHealthConnect();
+
+    const result = await readMinMaxAvgByDayDetailed(
+      { recordType: 'RunningSpeed', unit: 'm/s', type: 'running_speed' },
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+    );
+
+    expect(result).toBeNull();
+    expect(mockQueryStatisticsCollection).not.toHaveBeenCalled();
+  });
+
+  test('queries HeartRate with the pinned QUERY unit but emits the metric unit (bpm)', async () => {
+    await initHealthConnect();
+
+    const startDate = localDate(2024, 1, 15);
+    const endDate = localDate(2024, 1, 15, 23, 59);
+    mockQueryStatisticsCollection.mockResolvedValue([
+      statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 48, max: 120, avg: 72.437 }),
+    ]);
+
+    const result = await readMinMaxAvgByDayDetailed(HEART_RATE_CONFIG, startDate, endDate);
+
+    expect(mockQueryStatisticsCollection).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierHeartRate',
+      ['discreteMin', 'discreteMax', 'discreteAverage'],
+      localDate(2024, 1, 15),
+      { day: 1 },
+      { filter: { date: { startDate, endDate } }, unit: 'count/min' },
+    );
+
+    const date = toLocalDateString(localDate(2024, 1, 15));
+    // Exactly 3 records per day — the orchestrators return this output directly, so a
+    // second aggregation pass (or a missing stat) would change this count.
+    expect(result!.records).toHaveLength(3);
+    expect(result!.records).toEqual([
+      { value: 48, type: 'heart_rate_min', date, unit: 'bpm', source: 'HealthKit', record_timezone: expect.any(String) },
+      { value: 120, type: 'heart_rate_max', date, unit: 'bpm', source: 'HealthKit', record_timezone: expect.any(String) },
+      { value: 72.44, type: 'heart_rate_avg', date, unit: 'bpm', source: 'HealthKit', record_timezone: expect.any(String) },
+    ]);
+  });
+
+  test('matches the legacy sample path (transformHealthRecords + aggregateByDay) for min/max', async () => {
+    await initHealthConnect();
+
+    const dayStart = localDate(2024, 1, 15);
+    const sample = (hour: number, bpm: number) => {
+      const iso = localDate(2024, 1, 15, hour).toISOString();
+      return { startTime: iso, endTime: iso, time: iso, value: bpm, samples: [{ beatsPerMinute: bpm }] };
+    };
+    const legacy = aggregateByDay(
+      transformHealthRecords(
+        [sample(8, 62), sample(12, 118), sample(20, 74)],
+        HEART_RATE_CONFIG,
+      ) as TransformedRecord[],
+      'heart_rate',
+      'bpm',
+      'min-max-avg',
+    );
+
+    // Same day via day statistics (avg differs by design: HealthKit's discreteAverage is
+    // time-weighted, so it is asserted against the mocked bucket, not the legacy mean).
+    mockQueryStatisticsCollection.mockResolvedValue([
+      statsBucket(dayStart, localDate(2024, 1, 16), { min: 62, max: 118, avg: 84.666 }),
+    ]);
+    const result = await readMinMaxAvgByDayDetailed(HEART_RATE_CONFIG, dayStart, localDate(2024, 1, 15, 23, 59));
+
+    const pick = (records: TransformedRecord[], type: string) => {
+      const record = records.find(r => r.type === type)!;
+      return { value: record.value, type: record.type, date: record.date, unit: record.unit, source: record.source };
+    };
+    expect(pick(result!.records, 'heart_rate_min')).toEqual(pick(legacy, 'heart_rate_min'));
+    expect(pick(result!.records, 'heart_rate_max')).toEqual(pick(legacy, 'heart_rate_max'));
+    expect(result!.records.find(r => r.type === 'heart_rate_avg')!.value).toBe(84.67);
+  });
+
+  test('emits 3 records per day across multiple day buckets', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 50, max: 100, avg: 70 }),
+      statsBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), { min: 55, max: 110, avg: 75 }),
+    ]);
+
+    const result = await readMinMaxAvgByDayDetailed(
+      HEART_RATE_CONFIG,
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 16, 23, 59),
+    );
+
+    expect(result!.records).toHaveLength(6);
+    expect(result!.records.map(r => r.date)).toEqual([
+      toLocalDateString(localDate(2024, 1, 15)),
+      toLocalDateString(localDate(2024, 1, 15)),
+      toLocalDateString(localDate(2024, 1, 15)),
+      toLocalDateString(localDate(2024, 1, 16)),
+      toLocalDateString(localDate(2024, 1, 16)),
+      toLocalDateString(localDate(2024, 1, 16)),
+    ]);
+  });
+
+  test('keeps a zero-value day', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 0, max: 0, avg: 0 }),
+    ]);
+
+    const result = await readMinMaxAvgByDayDetailed(
+      HEART_RATE_CONFIG,
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+    );
+
+    expect(result!.records).toHaveLength(3);
+    expect(result!.records.every(r => r.value === 0)).toBe(true);
+  });
+
+  test('skips buckets without stats (days with no samples)', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16)), // no data
+      statsBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), { min: 50, max: 100, avg: 70 }),
+    ]);
+
+    const result = await readMinMaxAvgByDayDetailed(
+      HEART_RATE_CONFIG,
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 16, 23, 59),
+    );
+
+    expect(result!.records).toHaveLength(3);
+    expect(result!.records[0].date).toBe(toLocalDateString(localDate(2024, 1, 16)));
+  });
+
+  test('a native error returns an error envelope, NOT null (no silent sample fallback)', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('boom'));
+
+    const result = await readMinMaxAvgByDayDetailed(
+      HEART_RATE_CONFIG,
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+    );
+
+    expect(result).toEqual({ records: [], error: 'boom' });
+  });
+
+  test('database-inaccessible errors count toward the locked-device counter', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    const result = await readMinMaxAvgByDayDetailed(
+      HEART_RATE_CONFIG,
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+    );
+
+    expect(result!.error).toContain('Protected health data');
+    expect(getDatabaseInaccessibleCount()).toBe(1);
+  });
+
+  describe('converted metrics (query unit vs emitted unit)', () => {
+    test('HeartRateVariabilitySDNN queries and emits ms', async () => {
+      await initHealthConnect();
+
+      mockQueryStatisticsCollection.mockResolvedValue([
+        statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 30, max: 52, avg: 43.333 }, 'ms'),
+      ]);
+
+      const result = await readMinMaxAvgByDayDetailed(
+        { recordType: 'HeartRateVariabilitySDNN', unit: 'ms', type: 'HRV_SDNN' },
+        localDate(2024, 1, 15),
+        localDate(2024, 1, 15, 23, 59),
+      );
+
+      expect(mockQueryStatisticsCollection.mock.calls[0][0]).toBe('HKQuantityTypeIdentifierHeartRateVariabilitySDNN');
+      expect(mockQueryStatisticsCollection.mock.calls[0][4].unit).toBe('ms');
+      expect(result!.records.map(r => ({ type: r.type, value: r.value, unit: r.unit }))).toEqual([
+        { type: 'HRV_SDNN_min', value: 30, unit: 'ms' },
+        { type: 'HRV_SDNN_max', value: 52, unit: 'ms' },
+        { type: 'HRV_SDNN_avg', value: 43.33, unit: 'ms' },
+      ]);
+    });
+
+    test("RespiratoryRate queries count/min but emits breaths/min", async () => {
+      await initHealthConnect();
+
+      mockQueryStatisticsCollection.mockResolvedValue([
+        statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 12, max: 18, avg: 14.5 }),
+      ]);
+
+      const result = await readMinMaxAvgByDayDetailed(
+        { recordType: 'RespiratoryRate', unit: 'breaths/min', type: 'respiratory_rate' },
+        localDate(2024, 1, 15),
+        localDate(2024, 1, 15, 23, 59),
+      );
+
+      expect(mockQueryStatisticsCollection.mock.calls[0][0]).toBe('HKQuantityTypeIdentifierRespiratoryRate');
+      expect(mockQueryStatisticsCollection.mock.calls[0][4].unit).toBe('count/min');
+      expect(result!.records.every(r => r.unit === 'breaths/min')).toBe(true);
+      expect(result!.records.map(r => r.value)).toEqual([12, 18, 14.5]);
+    });
+
+    test('BloodGlucose queries mg/dL, converts to mmol/L, and matches the legacy transformer', async () => {
+      await initHealthConnect();
+
+      const config = { recordType: 'BloodGlucose', unit: 'mmol/L', type: 'blood_glucose' };
+      const dayIso = localDate(2024, 1, 15, 8).toISOString();
+      // Legacy path: mg/dL sample → transformer divides by 18.018 → aggregateByDay.
+      const legacy = aggregateByDay(
+        transformHealthRecords(
+          [{ time: dayIso, level: { inMilligramsPerDeciliter: 90.09 } },
+            { time: dayIso, level: { inMilligramsPerDeciliter: 180.18 } }],
+          config,
+        ) as TransformedRecord[],
+        'blood_glucose',
+        'mmol/L',
+        'min-max-avg',
+      );
+
+      mockQueryStatisticsCollection.mockResolvedValue([
+        statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 90.09, max: 180.18, avg: 135.135 }, 'mg/dL'),
+      ]);
+      const result = await readMinMaxAvgByDayDetailed(
+        config,
+        localDate(2024, 1, 15),
+        localDate(2024, 1, 15, 23, 59),
+      );
+
+      expect(mockQueryStatisticsCollection.mock.calls[0][0]).toBe('HKQuantityTypeIdentifierBloodGlucose');
+      expect(mockQueryStatisticsCollection.mock.calls[0][4].unit).toBe('mg/dL');
+      expect(result!.records.every(r => r.unit === 'mmol/L')).toBe(true);
+      const legacyMin = legacy.find(r => r.type === 'blood_glucose_min')!;
+      const legacyMax = legacy.find(r => r.type === 'blood_glucose_max')!;
+      expect(result!.records.find(r => r.type === 'blood_glucose_min')!.value).toBe(legacyMin.value);
+      expect(result!.records.find(r => r.type === 'blood_glucose_max')!.value).toBe(legacyMax.value);
+      expect(result!.records.find(r => r.type === 'blood_glucose_avg')!.value).toBe(7.5); // 135.135 / 18.018
+    });
+
+    test('BloodOxygenSaturation queries the 0–1 fraction unit (%) and emits percent ×100', async () => {
+      await initHealthConnect();
+
+      const config = { recordType: 'BloodOxygenSaturation', unit: 'percent', type: 'blood_oxygen_saturation' };
+      mockQueryStatisticsCollection.mockResolvedValue([
+        statsBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), { min: 0.92, max: 0.99, avg: 0.9612 }, '%'),
+      ]);
+
+      const result = await readMinMaxAvgByDayDetailed(
+        config,
+        localDate(2024, 1, 15),
+        localDate(2024, 1, 15, 23, 59),
+      );
+
+      expect(mockQueryStatisticsCollection.mock.calls[0][0]).toBe('HKQuantityTypeIdentifierOxygenSaturation');
+      expect(mockQueryStatisticsCollection.mock.calls[0][4].unit).toBe('%');
+      expect(result!.records.map(r => ({ type: r.type, value: r.value, unit: r.unit }))).toEqual([
+        { type: 'blood_oxygen_saturation_min', value: 92, unit: 'percent' },
+        { type: 'blood_oxygen_saturation_max', value: 99, unit: 'percent' },
+        { type: 'blood_oxygen_saturation_avg', value: 96.12, unit: 'percent' },
+      ]);
+    });
+
+    test('the Android recordType OxygenSaturation has NO spec (avoids cross-platform key mixups)', async () => {
+      await initHealthConnect();
+
+      const result = await readMinMaxAvgByDayDetailed(
+        { recordType: 'OxygenSaturation', unit: 'percent', type: 'blood_oxygen_saturation' },
+        localDate(2024, 1, 15),
+        localDate(2024, 1, 15, 23, 59),
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+});
+
 describe('isDatabaseInaccessibleError', () => {
   test('returns true for "protected health data" error message', () => {
     const error = new Error('Protected health data is inaccessible');
@@ -1455,7 +2007,7 @@ describe('databaseInaccessibleCount', () => {
     mockIsHealthDataAvailable.mockResolvedValue(true);
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity.mockRejectedValue(new Error('Protected health data is inaccessible'));
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Protected health data is inaccessible'));
 
     const startDate = new Date('2024-01-15T00:00:00Z');
     const endDate = new Date('2024-01-15T23:59:59Z');
@@ -1469,7 +2021,7 @@ describe('databaseInaccessibleCount', () => {
     mockIsHealthDataAvailable.mockResolvedValue(true);
     await initHealthConnect();
 
-    mockQueryStatisticsForQuantity.mockRejectedValue(new Error('Protected health data is inaccessible'));
+    mockQueryStatisticsCollection.mockRejectedValue(new Error('Protected health data is inaccessible'));
 
     const startDate = new Date('2024-01-15T00:00:00Z');
     const endDate = new Date('2024-01-15T23:59:59Z');

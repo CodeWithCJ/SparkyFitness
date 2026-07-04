@@ -7,6 +7,19 @@ export interface HealthMetricPermission {
 
 export type BackgroundDeliveryFrequency = 'hourly' | 'daily' | 'none';
 
+/**
+ * How a metric's data is read from the platform health store:
+ * - 'cumulative-day': one day-bucketed native aggregation query (per-day totals).
+ * - 'min-max-avg-day': one day-bucketed native statistics query (per-day min/max/avg).
+ * - 'raw': raw record read, transformed (and optionally day-aggregated) afterwards.
+ *
+ * readKind describes intent; each platform provider decides capability. A provider
+ * with no native read for the requested kind returns null and the sync engine falls
+ * back to the raw path (e.g. Android has no basal-energy aggregation, and no native
+ * min/max/avg day statistics at all).
+ */
+export type MetricReadKind = 'cumulative-day' | 'min-max-avg-day' | 'raw';
+
 export interface HealthMetric {
   id: string;
   label: string;
@@ -22,30 +35,36 @@ export interface HealthMetric {
   enabled?: boolean; // Set to false to temporarily disable a metric
   backgroundDeliveryFrequency?: BackgroundDeliveryFrequency; // Default: 'daily'
   aggregationStrategy?: 'min-max-avg' | 'sum' | 'last';
-  // When true, background sync on iOS uses the aggregated helper instead of raw records.
-  // Android ignores this flag and always uses raw Health Connect records for this metric.
-  iosAggregatedSync?: boolean;
+  readKind?: MetricReadKind; // Default derived by metricReadKind()
+  // Day-aligned rolling lookback floor (in days) for raw reads, so records logged
+  // after the fact — event time in the past, entered recently — are still picked up.
+  rollingLookbackDays?: number;
 }
 
+export const metricReadKind = (
+  metric: Pick<HealthMetric, 'readKind' | 'aggregationStrategy'>,
+): MetricReadKind =>
+  metric.readKind ?? (metric.aggregationStrategy === 'min-max-avg' ? 'min-max-avg-day' : 'raw');
+
 const ALL_HEALTH_METRICS: HealthMetric[] = [
-  { id: 'steps', label: 'Steps', stateKey: 'isStepsSyncEnabled', preferenceKey: 'syncStepsEnabled', recordType: 'Steps', unit: 'count', icon: require('../assets/icons/health-metrics/steps.png'), permissions: [{ accessType: 'read', recordType: 'Steps' }], type: 'step', category: 'Common', backgroundDeliveryFrequency: 'hourly' },
-  { id: 'calories', label: 'Active Calories', stateKey: 'isCaloriesSyncEnabled', preferenceKey: 'syncCaloriesEnabled', recordType: 'ActiveCaloriesBurned', unit: 'kcal', icon: require('../assets/icons/health-metrics/calories.png'), permissions: [{ accessType: 'read', recordType: 'ActiveCaloriesBurned' }], type: 'Active Calories', category: 'Common', backgroundDeliveryFrequency: 'hourly' },
-  { id: 'totalCalories', label: 'Total Calories', stateKey: 'isTotalCaloriesSyncEnabled', preferenceKey: 'syncTotalCaloriesEnabled', recordType: 'TotalCaloriesBurned', unit: 'kcal', icon: require('../assets/icons/health-metrics/calories.png'), permissions: [{ accessType: 'read', recordType: 'TotalCaloriesBurned' }], type: 'Active Calories', category: 'Common', backgroundDeliveryFrequency: 'hourly' },
+  { id: 'steps', label: 'Steps', stateKey: 'isStepsSyncEnabled', preferenceKey: 'syncStepsEnabled', recordType: 'Steps', unit: 'count', icon: require('../assets/icons/health-metrics/steps.png'), permissions: [{ accessType: 'read', recordType: 'Steps' }], type: 'step', category: 'Common', backgroundDeliveryFrequency: 'hourly', readKind: 'cumulative-day' },
+  { id: 'calories', label: 'Active Calories', stateKey: 'isCaloriesSyncEnabled', preferenceKey: 'syncCaloriesEnabled', recordType: 'ActiveCaloriesBurned', unit: 'kcal', icon: require('../assets/icons/health-metrics/calories.png'), permissions: [{ accessType: 'read', recordType: 'ActiveCaloriesBurned' }], type: 'Active Calories', category: 'Common', backgroundDeliveryFrequency: 'hourly', readKind: 'cumulative-day' },
+  { id: 'totalCalories', label: 'Total Calories', stateKey: 'isTotalCaloriesSyncEnabled', preferenceKey: 'syncTotalCaloriesEnabled', recordType: 'TotalCaloriesBurned', unit: 'kcal', icon: require('../assets/icons/health-metrics/calories.png'), permissions: [{ accessType: 'read', recordType: 'TotalCaloriesBurned' }], type: 'Active Calories', category: 'Common', backgroundDeliveryFrequency: 'hourly', readKind: 'cumulative-day' },
   { id: 'heartRate', label: 'Heart Rate', stateKey: 'isHeartRateSyncEnabled', preferenceKey: 'syncHeartRateEnabled', recordType: 'HeartRate', unit: 'bpm', icon: require('../assets/icons/health-metrics/heart_rate.png'), permissions: [{ accessType: 'read', recordType: 'HeartRate' }], type: 'heart_rate', category: 'Common', backgroundDeliveryFrequency: 'hourly', aggregationStrategy: 'min-max-avg' },
   { id: 'weight', label: 'Weight', stateKey: 'isWeightSyncEnabled', preferenceKey: 'syncWeightEnabled', recordType: 'Weight', unit: 'kg', icon: require('../assets/icons/health-metrics/weight.png'), permissions: [{ accessType: 'read', recordType: 'Weight' }], type: 'weight', category: 'Common' },
   { id: 'bloodPressure', label: 'Blood Pressure', stateKey: 'isBloodPressureSyncEnabled', preferenceKey: 'syncBloodPressureEnabled', recordType: 'BloodPressure', unit: 'mmHg', icon: require('../assets/icons/health-metrics/blood_pressure.png'), permissions: [{ accessType: 'read', recordType: 'BloodPressure' }], type: 'blood_pressure', category: 'Vitals' },
-  { id: 'nutrition', label: 'Nutrition', stateKey: 'isNutritionSyncEnabled', preferenceKey: 'syncNutritionEnabled', recordType: 'Nutrition', unit: 'kcal', icon: require('../assets/icons/health-metrics/nutrition.png'), permissions: [{ accessType: 'read', recordType: 'Nutrition' }], type: 'nutrition', platforms: ['android', 'ios'], category: 'Nutrition', backgroundDeliveryFrequency: 'daily' },
+  { id: 'nutrition', label: 'Nutrition', stateKey: 'isNutritionSyncEnabled', preferenceKey: 'syncNutritionEnabled', recordType: 'Nutrition', unit: 'kcal', icon: require('../assets/icons/health-metrics/nutrition.png'), permissions: [{ accessType: 'read', recordType: 'Nutrition' }], type: 'nutrition', platforms: ['android', 'ios'], category: 'Nutrition', backgroundDeliveryFrequency: 'daily', rollingLookbackDays: 2 },
   { id: 'sleepSession', label: 'Sleep Session', stateKey: 'isSleepSessionSyncEnabled', preferenceKey: 'syncSleepSessionEnabled', recordType: 'SleepSession', unit: 'min', icon: require('../assets/icons/health-metrics/sleep_session.png'), permissions: [{ accessType: 'read', recordType: 'SleepSession' }], type: 'sleep_session', category: 'Common' },
   { id: 'stress', label: 'Stress', stateKey: 'isStressSyncEnabled', preferenceKey: 'syncStressEnabled', recordType: 'Stress', unit: 'level', icon: require('../assets/icons/health-metrics/stress.png'), permissions: [{ accessType: 'read', recordType: 'Stress' }], type: 'stress', platforms: ['ios'], category: 'Vitals', enabled: false },
   { id: 'basalBodyTemperature', label: 'Basal Body Temperature', stateKey: 'isBasalBodyTemperatureSyncEnabled', preferenceKey: 'syncBasalBodyTemperatureEnabled', recordType: 'BasalBodyTemperature', unit: 'celsius', icon: require('../assets/icons/health-metrics/basal_body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BasalBodyTemperature' }], type: 'basal_body_temperature', category: 'Vitals' },
-  { id: 'basalMetabolicRate', label: 'Basal Metabolic Rate', stateKey: 'isBasalMetabolicRateSyncEnabled', preferenceKey: 'syncBasalMetabolicRateEnabled', recordType: 'BasalMetabolicRate', unit: 'kcal', icon: require('../assets/icons/health-metrics/basal_metabolic_rate.png'), permissions: [{ accessType: 'read', recordType: 'BasalMetabolicRate' }], type: 'basal_metabolic_rate', category: 'Body Measurements', backgroundDeliveryFrequency: 'none', iosAggregatedSync: true },
+  { id: 'basalMetabolicRate', label: 'Basal Metabolic Rate', stateKey: 'isBasalMetabolicRateSyncEnabled', preferenceKey: 'syncBasalMetabolicRateEnabled', recordType: 'BasalMetabolicRate', unit: 'kcal', icon: require('../assets/icons/health-metrics/basal_metabolic_rate.png'), permissions: [{ accessType: 'read', recordType: 'BasalMetabolicRate' }], type: 'basal_metabolic_rate', category: 'Body Measurements', backgroundDeliveryFrequency: 'none', readKind: 'cumulative-day' },
   { id: 'bloodGlucose', label: 'Blood Glucose', stateKey: 'isBloodGlucoseSyncEnabled', preferenceKey: 'syncBloodGlucoseEnabled', recordType: 'BloodGlucose', unit: 'mmol/L', icon: require('../assets/icons/health-metrics/blood_glucose.png'), permissions: [{ accessType: 'read', recordType: 'BloodGlucose' }], type: 'blood_glucose', category: 'Vitals', aggregationStrategy: 'min-max-avg' },
   { id: 'bodyFat', label: 'Body Fat', stateKey: 'isBodyFatSyncEnabled', preferenceKey: 'syncBodyFatEnabled', recordType: 'BodyFat', unit: '%', icon: require('../assets/icons/health-metrics/body_fat.png'), permissions: [{ accessType: 'read', recordType: 'BodyFat' }], type: 'body_fat', category: 'Body Measurements' },
   { id: 'bodyTemperature', label: 'Body Temperature', stateKey: 'isBodyTemperatureSyncEnabled', preferenceKey: 'syncBodyTemperatureEnabled', recordType: 'BodyTemperature', unit: 'celsius', icon: require('../assets/icons/health-metrics/body_temperature.png'), permissions: [{ accessType: 'read', recordType: 'BodyTemperature' }], type: 'body_temperature', category: 'Vitals' },
-  { id: 'distance', label: 'Distance', stateKey: 'isDistanceSyncEnabled', preferenceKey: 'syncDistanceEnabled', recordType: 'Distance', unit: 'm', icon: require('../assets/icons/health-metrics/distance.png'), permissions: [{ accessType: 'read', recordType: 'Distance' }], type: 'distance', platforms: ['android', 'ios'], category: 'Common', backgroundDeliveryFrequency: 'hourly' },
+  { id: 'distance', label: 'Distance', stateKey: 'isDistanceSyncEnabled', preferenceKey: 'syncDistanceEnabled', recordType: 'Distance', unit: 'm', icon: require('../assets/icons/health-metrics/distance.png'), permissions: [{ accessType: 'read', recordType: 'Distance' }], type: 'distance', platforms: ['android', 'ios'], category: 'Common', backgroundDeliveryFrequency: 'hourly', readKind: 'cumulative-day' },
 
   { id: 'exerciseSession', label: 'Exercise Session', stateKey: 'isExerciseSessionSyncEnabled', preferenceKey: 'syncExerciseSessionEnabled', recordType: 'ExerciseSession', unit: 'min', icon: require('../assets/icons/health-metrics/exercise_session.png'), permissions: [{ accessType: 'read', recordType: 'ExerciseSession' }, { accessType: 'read', recordType: 'ActiveCaloriesBurned' }, { accessType: 'read', recordType: 'TotalCaloriesBurned' }, { accessType: 'read', recordType: 'Distance' }], type: 'exercise_session', category: 'Common', backgroundDeliveryFrequency: 'hourly' },
-  { id: 'floorsClimbed', label: 'Floors Climbed', stateKey: 'isFloorsClimbedSyncEnabled', preferenceKey: 'syncFloorsClimbedEnabled', recordType: 'FloorsClimbed', unit: 'count', icon: require('../assets/icons/health-metrics/floors_climbed.png'), permissions: [{ accessType: 'read', recordType: 'FloorsClimbed' }], type: 'floors_climbed', category: 'Activity', backgroundDeliveryFrequency: 'hourly' },
+  { id: 'floorsClimbed', label: 'Floors Climbed', stateKey: 'isFloorsClimbedSyncEnabled', preferenceKey: 'syncFloorsClimbedEnabled', recordType: 'FloorsClimbed', unit: 'count', icon: require('../assets/icons/health-metrics/floors_climbed.png'), permissions: [{ accessType: 'read', recordType: 'FloorsClimbed' }], type: 'floors_climbed', category: 'Activity', backgroundDeliveryFrequency: 'hourly', readKind: 'cumulative-day' },
   { id: 'height', label: 'Height', stateKey: 'isHeightSyncEnabled', preferenceKey: 'syncHeightEnabled', recordType: 'Height', unit: 'm', icon: require('../assets/icons/health-metrics/height.png'), permissions: [{ accessType: 'read', recordType: 'Height' }], type: 'height', category: 'Body Measurements' },
   { id: 'hydration', label: 'Hydration', stateKey: 'isHydrationSyncEnabled', preferenceKey: 'syncHydrationEnabled', recordType: 'Hydration', unit: 'ml', icon: require('../assets/icons/health-metrics/hydration.png'), permissions: [{ accessType: 'read', recordType: 'Hydration' }], type: 'water', category: 'Nutrition', aggregationStrategy: 'sum' },
   { id: 'leanBodyMass', label: 'Lean Body Mass', stateKey: 'isLeanBodyMassSyncEnabled', preferenceKey: 'syncLeanBodyMassEnabled', recordType: 'LeanBodyMass', unit: 'kg', icon: require('../assets/icons/health-metrics/lean_body_mass.png'), permissions: [{ accessType: 'read', recordType: 'LeanBodyMass' }], type: 'lean_body_mass', category: 'Body Measurements' },

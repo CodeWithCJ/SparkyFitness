@@ -1,4 +1,70 @@
-import { getSyncStartDate, SyncDuration } from '../../src/utils/syncUtils';
+import {
+  getSyncStartDate,
+  alignToLocalDayStart,
+  buildForegroundWindows,
+  buildBackgroundWindows,
+  SESSION_OVERLAP_MS,
+  SyncDuration,
+} from '../../src/utils/syncUtils';
+
+describe('alignToLocalDayStart', () => {
+  test('rounds down to local midnight without mutating the input', () => {
+    const input = new Date(2026, 6, 2, 15, 30, 45, 123);
+    const aligned = alignToLocalDayStart(input);
+
+    expect(aligned).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
+    expect(input.getHours()).toBe(15);
+  });
+});
+
+describe('buildForegroundWindows', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // Local-time constructor so day alignment is timezone-independent.
+    jest.setSystemTime(new Date(2026, 6, 3, 15, 30, 0));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test("'24h' keeps the rolling session start but aligns the aggregated start to local midnight", () => {
+    const windows = buildForegroundWindows('24h');
+
+    expect(windows.sessionStart).toEqual(new Date(2026, 6, 2, 15, 30, 0));
+    expect(windows.aggregatedStart).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
+    expect(windows.end).toEqual(new Date(2026, 6, 3, 15, 30, 0));
+  });
+
+  test("'today' produces identical session and aggregated starts (already midnight)", () => {
+    const windows = buildForegroundWindows('today');
+
+    expect(windows.sessionStart).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
+    expect(windows.aggregatedStart).toEqual(windows.sessionStart);
+  });
+});
+
+describe('buildBackgroundWindows', () => {
+  const now = new Date(2026, 6, 3, 15, 30, 0);
+
+  test('applies the 6h overlap to the cursor and day-aligns the aggregated start', () => {
+    const lastSynced = new Date(2026, 6, 3, 8, 0, 0);
+    const windows = buildBackgroundWindows(lastSynced.toISOString(), now);
+
+    expect(windows.sessionStart).toEqual(new Date(lastSynced.getTime() - SESSION_OVERLAP_MS));
+    expect(windows.aggregatedStart).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
+    expect(windows.end).toBe(now);
+  });
+
+  test('defaults to a 24h window (plus overlap) when never synced', () => {
+    const windows = buildBackgroundWindows(null, now);
+
+    expect(windows.sessionStart).toEqual(
+      new Date(now.getTime() - 24 * 60 * 60 * 1000 - SESSION_OVERLAP_MS),
+    );
+    expect(windows.aggregatedStart).toEqual(alignToLocalDayStart(windows.sessionStart));
+  });
+});
 
 describe('getSyncStartDate', () => {
   beforeEach(() => {

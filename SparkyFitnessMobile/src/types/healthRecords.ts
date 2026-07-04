@@ -1,5 +1,6 @@
 import { HealthMetric } from '../HealthMetrics';
 import { SleepStageEvent } from './mobileHealthData';
+import type { RecordSyncError } from '../services/api/healthDataApi';
 
 // ==========================================
 // RAW INPUT TYPES (for aggregation functions)
@@ -124,6 +125,16 @@ export interface TransformedExerciseSession extends RecordTimezoneMetadata {
  */
 export type MetricConfig = Pick<HealthMetric, 'recordType' | 'unit' | 'type'>;
 
+/**
+ * Platform-neutral read envelope. Read failures return the error alongside any
+ * partially collected records instead of throwing, so callers can surface the
+ * error (holding the sync cursor) while still syncing what was read.
+ */
+export interface ReadResult<T = unknown> {
+  records: T[];
+  error?: string;
+}
+
 /** Simple transformed record for API */
 export interface TransformedRecord extends RecordTimezoneMetadata {
   value: number;
@@ -204,6 +215,12 @@ export interface SyncResult {
   error?: string;
   message?: string;
   syncErrors: SyncError[];
+  /**
+   * Per-record rejections reported by the server during upload. Deliberately
+   * separate from syncErrors (read failures): upload rejections never suppress
+   * saving the sync cursor, so a poison record cannot cause a re-sync loop.
+   */
+  uploadErrors?: RecordSyncError[];
 }
 
 /**

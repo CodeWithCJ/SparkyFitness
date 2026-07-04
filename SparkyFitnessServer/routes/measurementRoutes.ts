@@ -39,9 +39,53 @@ const router = express.Router();
  *               description: Flexible health data object.
  *     responses:
  *       200:
- *         description: Health data processed successfully.
+ *         description: >
+ *           Request processed. Per-record outcomes are reported in the body:
+ *           `processed` lists successful records, `errors` lists rejected
+ *           records with their reasons, and `skipped` lists records that were
+ *           intentionally not written (e.g. Nutrition records without a
+ *           source_id). `errors` and `skipped` are always present, possibly
+ *           empty. A 200 response with a non-empty `errors` array means the
+ *           remaining records were still saved.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 processed:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [success]
+ *                       data:
+ *                         type: object
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       error:
+ *                         type: string
+ *                       entry:
+ *                         type: object
+ *                 skipped:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       reason:
+ *                         type: string
+ *                       entry:
+ *                         type: object
  *       400:
- *         description: Invalid JSON format.
+ *         description: Malformed request body (invalid JSON, or entries that are not non-null objects).
  *       401:
  *         description: Unauthorized (missing or invalid API key).
  *       403:
@@ -116,12 +160,6 @@ router.post(
       );
       res.status(200).json(result);
     } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      if (error.message.startsWith('{') && error.message.endsWith('}')) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        const parsedError = JSON.parse(error.message);
-        return res.status(400).json(parsedError);
-      }
       next(error);
     }
   }

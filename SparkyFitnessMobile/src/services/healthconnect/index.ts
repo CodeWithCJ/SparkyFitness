@@ -11,6 +11,7 @@ import {
   PermissionRequest,
   GrantedPermission,
   type HCZoneOffset,
+  type ReadResult,
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
 
@@ -91,15 +92,10 @@ interface ReadRecordsOptions {
   pageToken?: string;
 }
 
-export interface HealthConnectReadResult {
-  records: unknown[];
-  error?: string;
-}
+// Aliases of the platform-neutral ReadResult shared with iOS.
+export type HealthConnectReadResult = ReadResult;
 
-export interface HealthConnectAggregateResult {
-  records: AggregatedHealthRecord[];
-  error?: string;
-}
+export type HealthConnectAggregateResult = ReadResult<AggregatedHealthRecord>;
 
 const formatDateForLog = (date: Date): string => {
   const time = date.getTime();
@@ -338,16 +334,10 @@ const formatLocalDay = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
-/**
- * Returns a copy of `date` rounded down to local midnight. Sync paths must
- * align cumulative-metric query starts to a local-day boundary because HC's
- * aggregateGroupByPeriod anchors DAYS buckets at the supplied start.
- */
-export const alignToLocalDayStart = (date: Date): Date => {
-  const aligned = new Date(date);
-  aligned.setHours(0, 0, 0, 0);
-  return aligned;
-};
+// Canonical implementation lives with the other sync window helpers; re-exported
+// here because HC's aggregateGroupByPeriod anchors DAYS buckets at the supplied
+// start, so callers of this module align cumulative query starts with it.
+export { alignToLocalDayStart } from '../../utils/syncUtils';
 
 /**
  * Reads a single record in the range for the sole purpose of capturing one
@@ -498,6 +488,68 @@ export const getAggregatedActiveCaloriesByDate = (
   endDate: Date,
 ): Promise<AggregatedHealthRecord[]> =>
   getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
+
+export const getAggregatedTotalCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'TotalCaloriesBurned',
+      outputType: 'total_calories',
+      extractValue: (r) => (r as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories ?? 0,
+      round: true,
+    },
+    startDate,
+    endDate,
+  );
+
+export const getAggregatedTotalCaloriesByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedTotalCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
+
+export const getAggregatedDistanceByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'Distance',
+      outputType: 'distance',
+      extractValue: (r) => (r as { DISTANCE?: { inMeters?: number } }).DISTANCE?.inMeters ?? 0,
+      round: true,
+    },
+    startDate,
+    endDate,
+  );
+
+export const getAggregatedDistanceByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedDistanceByDateDetailed(startDate, endDate).then(result => result.records);
+
+export const getAggregatedFloorsClimbedByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'FloorsClimbed',
+      outputType: 'floors_climbed',
+      extractValue: (r) => (r as { FLOORS_CLIMBED_TOTAL?: number }).FLOORS_CLIMBED_TOTAL ?? 0,
+    },
+    startDate,
+    endDate,
+  );
+
+export const getAggregatedFloorsClimbedByDate = (
+  startDate: Date,
+  endDate: Date,
+): Promise<AggregatedHealthRecord[]> =>
+  getAggregatedFloorsClimbedByDateDetailed(startDate, endDate).then(result => result.records);
 
 // Distance plausibility floor: drop tiny distance aggregates on long sessions —
 // Health Sync writes a few dozen meters of passive step-distance over the
