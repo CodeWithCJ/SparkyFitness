@@ -39,7 +39,6 @@ export default function CycleSettings() {
   const [mode, setMode] = useState<CycleMode>('standard');
   const [avgCycleLength, setAvgCycleLength] = useState<number | ''>('');
   const [avgPeriodLength, setAvgPeriodLength] = useState<number | ''>('');
-  const [lutealLength, setLutealLength] = useState<number>(14);
   const [birthControlMethod, setBirthControlMethod] = useState<string>('none');
   const [conditions, setConditions] = useState<string[]>([]);
   const [showFertileWindow, setShowFertileWindow] = useState(true);
@@ -57,7 +56,6 @@ export default function CycleSettings() {
       setMode(settings.mode);
       setAvgCycleLength(settings.avg_cycle_length_override ?? '');
       setAvgPeriodLength(settings.avg_period_length_override ?? '');
-      setLutealLength(settings.luteal_phase_length);
       setBirthControlMethod(settings.birth_control_method);
       setConditions(settings.conditions ?? []);
       setShowFertileWindow(settings.show_fertile_window);
@@ -107,7 +105,7 @@ export default function CycleSettings() {
           avgCycleLength === '' ? null : Number(avgCycleLength),
         avg_period_length_override:
           avgPeriodLength === '' ? null : Number(avgPeriodLength),
-        luteal_phase_length: Number(lutealLength),
+        luteal_phase_length: 14,
         birth_control_method: birthControlMethod,
         conditions,
         show_fertile_window: showFertileWindow,
@@ -369,19 +367,13 @@ export default function CycleSettings() {
                     'Luteal Phase Length (days)'
                   )}
                 </Label>
-                <Input
-                  id="settings-luteal"
-                  type="number"
-                  value={lutealLength}
-                  onChange={(e) =>
-                    setLutealLength(
-                      Math.max(
-                        9,
-                        Math.min(18, parseInt(e.target.value, 10) || 14)
-                      )
-                    )
-                  }
-                />
+                <Input id="settings-luteal" type="number" value={14} disabled />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {t(
+                    'settings.cycle.lutealConstHelp',
+                    'Luteal phase is locked at 14 days. The follicular phase automatically adjusts to your cycle length.'
+                  )}
+                </p>
               </div>
             </div>
 

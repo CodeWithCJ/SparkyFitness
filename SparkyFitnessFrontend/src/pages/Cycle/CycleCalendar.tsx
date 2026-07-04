@@ -4,6 +4,7 @@ import {
   addDays,
   compareDays,
   todayInZone,
+  isHormonalBc,
   type FlowLevel,
 } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -205,49 +206,68 @@ export default function CycleCalendar({
     const cycleLengths = recent.map((c) => c.cycle_length!);
     const periodLengths = recent.map((c) => c.period_length!).filter(Boolean);
     return {
-      avgCycleLength: cycleLengths.length
-        ? Math.round(
-            cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length
-          )
-        : 28,
-      avgPeriodLength: periodLengths.length
-        ? Math.round(
-            periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
-          )
-        : 5,
+      avgCycleLength:
+        settings?.avg_cycle_length_override ??
+        (cycleLengths.length
+          ? Math.round(
+              cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length
+            )
+          : 28),
+      avgPeriodLength:
+        settings?.avg_period_length_override ??
+        (periodLengths.length
+          ? Math.round(
+              periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
+            )
+          : 5),
       sampleSize: cycleLengths.length,
     };
-  }, [cycles]);
+  }, [cycles, settings]);
 
   const predictions = useMemo(() => {
     const lastCycle = cycles[0]; // descending order
-    if (!lastCycle) return null;
-    return lastCycle.start_date
-      ? {
-          cycles: [
-            {
-              periodStart: addDays(lastCycle.start_date, stats.avgCycleLength),
-              periodEnd: addDays(
-                lastCycle.start_date,
-                stats.avgCycleLength + stats.avgPeriodLength - 1
-              ),
-              ovulation: addDays(
-                lastCycle.start_date,
-                stats.avgCycleLength - 14
-              ),
-              fertileStart: addDays(
-                lastCycle.start_date,
-                stats.avgCycleLength - 19
-              ),
-              fertileEnd: addDays(
-                lastCycle.start_date,
-                stats.avgCycleLength - 13
-              ),
-            },
-          ],
-        }
-      : null;
-  }, [cycles, stats]);
+    if (!lastCycle || !lastCycle.start_date) return null;
+
+    const suppressFertility =
+      settings &&
+      (isHormonalBc(settings.birth_control_method) ||
+        settings.show_fertile_window === false ||
+        settings.mode === 'pregnant' ||
+        settings.mode === 'postpartum' ||
+        settings.mode === 'menopause');
+
+    const count = 4;
+    const predictedCycles = [];
+    let currentStart = lastCycle.start_date;
+    const luteal = settings?.luteal_phase_length ?? 14;
+
+    for (let i = 0; i < count; i++) {
+      const nextStart = addDays(currentStart, stats.avgCycleLength);
+      const nextEnd = addDays(nextStart, stats.avgPeriodLength - 1);
+
+      let ovulation: string | null = null;
+      let fertileStart: string | null = null;
+      let fertileEnd: string | null = null;
+
+      if (!suppressFertility) {
+        ovulation = addDays(nextStart, -luteal);
+        fertileStart = addDays(ovulation, -5);
+        fertileEnd = addDays(ovulation, 1);
+      }
+
+      predictedCycles.push({
+        periodStart: nextStart,
+        periodEnd: nextEnd,
+        ovulation,
+        fertileStart,
+        fertileEnd,
+      });
+
+      currentStart = nextStart;
+    }
+
+    return { cycles: predictedCycles };
+  }, [cycles, stats, settings]);
 
   // Decoration mapping for grid rendering
   const decoratedDaysMap = useMemo(() => {

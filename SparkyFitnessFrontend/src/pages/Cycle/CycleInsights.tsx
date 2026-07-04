@@ -105,6 +105,8 @@ export default function CycleInsights() {
   } = typedInsights;
 
   const completedCyclesCount = cycles.filter((c) => c.cycle_length).length;
+  const avgCycleLength =
+    settings?.avg_cycle_length_override ?? stats.avgCycleLength ?? 28;
 
   return (
     <div className="space-y-6">
@@ -205,11 +207,11 @@ export default function CycleInsights() {
                     }
                   />
                   <ReferenceLine
-                    y={stats.avgCycleLength ?? 28}
+                    y={avgCycleLength}
                     stroke="#C9524E"
                     strokeDasharray="4 4"
                     label={{
-                      value: `Avg: ${stats.avgCycleLength}d`,
+                      value: `Avg: ${avgCycleLength}d`,
                       fill: '#C9524E',
                       fontSize: 10,
                       position: 'top',
