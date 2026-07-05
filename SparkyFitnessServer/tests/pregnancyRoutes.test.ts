@@ -105,7 +105,9 @@ describe('Pregnancy Routes V2', () => {
 
   it('DELETE /:id returns 404 when missing', async () => {
     vi.mocked(pregnancyRepository.deletePregnancy).mockResolvedValue(false);
-    const res = await request(app).delete('/api/v2/pregnancy/p1');
+    const res = await request(app).delete(
+      '/api/v2/pregnancy/00000000-0000-0000-0000-000000000000'
+    );
     expect(res.statusCode).toBe(404);
   });
 });
