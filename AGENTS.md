@@ -20,7 +20,7 @@ Package-level guides win. For work inside a package, follow that package's `AGEN
 - Server: `SparkyFitnessServer/AGENTS.md`
 - Mobile: `SparkyFitnessMobile/AGENTS.md`
 
-For `shared/`, `docs/`, `SparkyFitnessMCP/`, and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md` right now. Inspect the local manifest, README, and source layout before making package-specific assumptions.
+For `shared/`, `docs/`, and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md` right now. Inspect the local manifest, README, and source layout before making package-specific assumptions.
 
 ## Monorepo Map
 
@@ -29,7 +29,6 @@ For `shared/`, `docs/`, `SparkyFitnessMCP/`, and `SparkyFitnessGarmin/`, there i
 - `SparkyFitnessMobile/` - Expo SDK 54 / React Native 0.81 app.
 - `shared/` - source-first TypeScript workspace package for `@workspace/shared` schemas, constants, and timezone/day helpers.
 - `docs/` - Nuxt / Docus docs site.
-- `SparkyFitnessMCP/` - TypeScript MCP server in the `pnpm` workspace. **Deprecated** in favor of the in-process `/mcp` route on `SparkyFitnessServer`; the `codewithcj/sparkyfitness_mcp:latest` image is still published during a deprecation window, so the package stays for now.
 - `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.
 - `db_schema_backup.sql` - repo-root schema snapshot that should stay aligned with server migrations.
@@ -37,10 +36,10 @@ For `shared/`, `docs/`, `SparkyFitnessMCP/`, and `SparkyFitnessGarmin/`, there i
 
 ## Workspace Notes
 
-- `pnpm-workspace.yaml` currently lists `frontend`, `SparkyFitnessFrontend`, `shared`, `SparkyFitnessMobile`, `SparkyFitnessServer`, `docs`, and `SparkyFitnessMCP`.
+- `pnpm-workspace.yaml` currently lists `frontend`, `SparkyFitnessFrontend`, `shared`, `SparkyFitnessMobile`, `SparkyFitnessServer`, and `docs`.
 - Only `SparkyFitnessFrontend/` exists on disk right now; treat `frontend` as a legacy workspace entry unless the task is specifically about workspace cleanup.
 - `shared/` is a library package, not an app. Validate shared changes from the consuming package(s), not in isolation.
-- `SparkyFitnessMCP/` is still listed in `pnpm-workspace.yaml` (it is deprecated; Phase 3b will remove the entry). `SparkyFitnessGarmin/` is outside the current workspace. Inspect their own manifests and scripts before working there.
+- `SparkyFitnessGarmin/` is outside the current workspace. Inspect its own manifest and scripts before working there.
 
 ## Cross-Package Rules
 
@@ -94,10 +93,3 @@ pnpm dev
 pnpm run build
 ```
 
-### MCP (`SparkyFitnessMCP/`)
-
-```bash
-pnpm run dev
-pnpm run build
-pnpm test
-```

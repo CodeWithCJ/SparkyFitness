@@ -96,36 +96,6 @@ services:
   #     - sparkyfitness-db
   #     - sparkyfitness-server
 
-  # DEPRECATED: the standalone MCP service is superseded by the in-process /mcp
-  # route on sparkyfitness-server (https://<your-host>/mcp). This block is kept
-  # commented out only for the deprecation window; you do not need it to run MCP.
-  # sparkyfitness-mcp:
-  #   image: codewithcj/sparkyfitness_mcp:latest
-  #   container_name: sparkyfitness-mcp
-  #   environment:
-  #     SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
-  #     SPARKY_FITNESS_DB_HOST: ${SPARKY_FITNESS_DB_HOST:-sparkyfitness-db}
-  #     SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME}
-  #     SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
-  #     SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
-  #     SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:?Variable is required and must be set}
-  #     SPARKY_FITNESS_DB_PORT: 5432
-  #     BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Variable is required and must be set}
-  #     MCP_TRANSPORT: "http" # Default to HTTP for Docker
-  #     SPARKY_FITNESS_SERVER_HOST: ${SPARKY_FITNESS_SERVER_HOST:-sparkyfitness-server}
-  #     SPARKY_FITNESS_SERVER_PORT: ${SPARKY_FITNESS_SERVER_PORT:-3010}
-  #     SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL:-http://0.0.0.0:3004}
-  #     ALLOW_PRIVATE_NETWORK_CORS: ${ALLOW_PRIVATE_NETWORK_CORS:-false}
-  #     SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: ${SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS:-}
-  #   networks:
-  #     - sparkyfitness-network
-  #   ports:
-  #     - "3001:3001"
-  #   restart: always
-  #   depends_on:
-  #     - sparkyfitness-db
-
-
 networks:
   sparkyfitness-network:
     driver: bridge
