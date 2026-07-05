@@ -267,19 +267,32 @@ export function phaseForDay(
       return { phase: "fertile", cycleDay };
   }
 
-  // Fall back to computed ovulation for the current cycle when not suppressed.
-  const nextStart = cycles.find((c) => compareDays(c.start_date, day) > 0)?.start_date;
-  if (nextStart) {
-    const luteal = CYCLE_DEFAULTS.lutealLength;
-    const ovulation = addDays(nextStart, -luteal);
-    if (compareDays(day, ovulation) === 0) return { phase: "ovulation", cycleDay };
-    if (
-      compareDays(day, addDays(ovulation, -CYCLE_DEFAULTS.fertileBefore)) >= 0 &&
-      compareDays(day, addDays(ovulation, CYCLE_DEFAULTS.fertileAfter)) <= 0
-    )
-      return { phase: "fertile", cycleDay };
-    if (compareDays(day, ovulation) > 0) return { phase: "luteal", cycleDay };
-  }
+  // Determine this cycle's ovulation so post-fertile days resolve to luteal
+  // (not follicular). Priority: the first predicted cycle's ovulation (which is
+  // the current cycle's ovulation — it sits `luteal` days before the next
+  // period), then the day before the next actual cycle, then an estimate from
+  // the current start + expected cycle length. The last two cover the current
+  // (open) cycle where no prediction ovulation exists (e.g. hormonal BC).
+  const nextStart = cycles.find(
+    (c) => compareDays(c.start_date, day) > 0,
+  )?.start_date;
+  const luteal = CYCLE_DEFAULTS.lutealLength;
+  const ovulation =
+    prediction.cycles[0]?.ovulation ??
+    (nextStart
+      ? addDays(nextStart, -luteal)
+      : addDays(
+          current.start_date,
+          CYCLE_DEFAULTS.cycleLength - luteal,
+        ));
+
+  if (compareDays(day, ovulation) === 0) return { phase: "ovulation", cycleDay };
+  if (
+    compareDays(day, addDays(ovulation, -CYCLE_DEFAULTS.fertileBefore)) >= 0 &&
+    compareDays(day, addDays(ovulation, CYCLE_DEFAULTS.fertileAfter)) <= 0
+  )
+    return { phase: "fertile", cycleDay };
+  if (compareDays(day, ovulation) > 0) return { phase: "luteal", cycleDay };
 
   return { phase: "follicular", cycleDay };
 }
@@ -502,8 +515,10 @@ export function forecastSymptoms(
   }
 
   for (const pc of prediction.cycles) {
-    const cycleLength = 28;
-    for (let offset = 0; offset < cycleLength; offset++) {
+    // Best-effort: project symptoms across one cycle's worth of days from each
+    // predicted period start (predictions don't carry a per-cycle length).
+    const projectionDays = CYCLE_DEFAULTS.cycleLength;
+    for (let offset = 0; offset < projectionDays; offset++) {
       const dayStr = addDays(pc.periodStart, offset);
       let phase: CyclePhase = "follicular";
       if (compareDays(dayStr, pc.periodStart) >= 0 && compareDays(dayStr, pc.periodEnd) <= 0) {

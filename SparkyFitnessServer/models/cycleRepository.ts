@@ -51,8 +51,10 @@ async function upsertSettings(
        ON CONFLICT (user_id) DO UPDATE SET
          enabled = COALESCE($2, cycle_settings.enabled),
          mode = COALESCE($3, cycle_settings.mode),
-         avg_cycle_length_override = $4,
-         avg_period_length_override = $5,
+         avg_cycle_length_override = CASE WHEN $16 THEN $4
+                                          ELSE cycle_settings.avg_cycle_length_override END,
+         avg_period_length_override = CASE WHEN $17 THEN $5
+                                           ELSE cycle_settings.avg_period_length_override END,
          luteal_phase_length = COALESCE($6, cycle_settings.luteal_phase_length),
          birth_control_method = COALESCE($7, cycle_settings.birth_control_method),
          conditions = COALESCE($8::text[], cycle_settings.conditions),
@@ -82,6 +84,13 @@ async function upsertSettings(
         data.discreet_mode ?? null,
         data.mark_onboarded ?? false,
         data.reset_onboarding ?? false,
+        // Only overwrite the overrides when the caller actually sent them, so a
+        // partial update (e.g. reset onboarding) doesn't null out existing values.
+        Object.prototype.hasOwnProperty.call(data, 'avg_cycle_length_override'),
+        Object.prototype.hasOwnProperty.call(
+          data,
+          'avg_period_length_override'
+        ),
       ]
     );
     return result.rows[0];

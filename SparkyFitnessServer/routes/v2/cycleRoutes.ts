@@ -20,6 +20,9 @@ import { todayInZone } from '@workspace/shared';
 
 const router = express.Router();
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Owner-only feature: no onBehalfOf / permission middleware. authMiddleware
 // (mounted globally) supplies req.userId; RLS enforces owner-only access.
 
@@ -226,7 +229,7 @@ const putCycle: RequestHandler = async (req, res, next) => {
       res.status(400).json({ error: 'Missing cycle id' });
       return;
     }
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid cycle id' });
       return;
     }
@@ -258,7 +261,7 @@ const deleteCycleHandler: RequestHandler = async (req, res, next) => {
       res.status(400).json({ error: 'Missing cycle id' });
       return;
     }
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid cycle id' });
       return;
     }
@@ -319,7 +322,7 @@ const deleteTestEntry: RequestHandler = async (req, res, next) => {
       res.status(400).json({ error: 'Missing test entry id' });
       return;
     }
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid test entry id' });
       return;
     }

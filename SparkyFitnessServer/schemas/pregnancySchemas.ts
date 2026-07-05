@@ -50,7 +50,7 @@ export const StartKickSessionBodySchema = z
 export const UpdateKickSessionBodySchema = z
   .object({
     kick_count: z.number().int().min(0).max(1000).optional(),
-    kick_times: z.array(z.string()).optional(),
+    kick_times: z.array(z.string().datetime()).optional(),
     ended: z.boolean().optional(),
   })
   .loose();
@@ -62,15 +62,15 @@ export type UpdateKickSessionBody = z.infer<typeof UpdateKickSessionBodySchema>;
 export const CreateContractionBodySchema = z
   .object({
     pregnancy_id: z.string().uuid(),
-    started_at: z.string().optional(),
-    ended_at: z.string().nullable().optional(),
+    started_at: z.string().datetime().optional(),
+    ended_at: z.string().datetime().nullable().optional(),
     intensity: z.number().int().min(1).max(5).nullable().optional(),
   })
   .loose();
 
 export const UpdateContractionBodySchema = z
   .object({
-    ended_at: z.string().nullable().optional(),
+    ended_at: z.string().datetime().nullable().optional(),
     intensity: z.number().int().min(1).max(5).nullable().optional(),
   })
   .loose();
@@ -96,7 +96,7 @@ export type UpsertChecklistItemBody = z.infer<
 export const CreateAppointmentBodySchema = z
   .object({
     pregnancy_id: z.string().uuid().nullable().optional(),
-    scheduled_at: z.string(),
+    scheduled_at: z.string().datetime(),
     appointment_type: z.string().max(50).optional(),
     title: optionalNullableString,
     location: optionalNullableString,
@@ -107,7 +107,7 @@ export const CreateAppointmentBodySchema = z
 
 export const UpdateAppointmentBodySchema = z
   .object({
-    scheduled_at: z.string().optional(),
+    scheduled_at: z.string().datetime().optional(),
     appointment_type: z.string().max(50).optional(),
     title: optionalNullableString,
     location: optionalNullableString,

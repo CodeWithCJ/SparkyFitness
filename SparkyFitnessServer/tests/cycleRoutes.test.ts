@@ -166,13 +166,17 @@ describe('Cycle Routes V2', () => {
     vi.mocked(cycleService.recomputeCycles).mockResolvedValue([]);
 
     const res = await request(app)
-      .put('/api/v2/cycle/cycles/m1')
+      .put('/api/v2/cycle/cycles/550e8400-e29b-41d4-a716-446655440000')
       .send({ start_date: '2026-01-02' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(updatedCycle);
-    expect(cycleRepository.updateCycle).toHaveBeenCalledWith('testUser', 'm1', {
-      start_date: '2026-01-02',
-    });
+    expect(cycleRepository.updateCycle).toHaveBeenCalledWith(
+      'testUser',
+      '550e8400-e29b-41d4-a716-446655440000',
+      {
+        start_date: '2026-01-02',
+      }
+    );
   });
 
   it('DELETE /cycles/:id deletes a cycle and recomputes', async () => {
@@ -182,9 +186,14 @@ describe('Cycle Routes V2', () => {
     });
     vi.mocked(cycleService.recomputeCycles).mockResolvedValue([]);
 
-    const res = await request(app).delete('/api/v2/cycle/cycles/m1');
+    const res = await request(app).delete(
+      '/api/v2/cycle/cycles/550e8400-e29b-41d4-a716-446655440000'
+    );
     expect(res.statusCode).toBe(204);
-    expect(cycleRepository.deleteCycle).toHaveBeenCalledWith('testUser', 'm1');
+    expect(cycleRepository.deleteCycle).toHaveBeenCalledWith(
+      'testUser',
+      '550e8400-e29b-41d4-a716-446655440000'
+    );
   });
 
   it('GET /insights returns computed insights data', async () => {

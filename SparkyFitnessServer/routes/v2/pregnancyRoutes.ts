@@ -31,6 +31,9 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_UPLOADS_DIR
 
 const router = express.Router();
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function badRequest(res: express.Response, error: unknown): void {
   res.status(400).json({
     error: 'Invalid request',
@@ -77,7 +80,7 @@ const createPregnancy: RequestHandler = async (req, res, next) => {
 const updatePregnancy: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid pregnancy id' });
       return;
     }
@@ -101,7 +104,7 @@ const updatePregnancy: RequestHandler = async (req, res, next) => {
 const deletePregnancy: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid pregnancy id' });
       return;
     }
@@ -152,7 +155,7 @@ const startKick: RequestHandler = async (req, res, next) => {
 const updateKick: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid session id' });
       return;
     }
@@ -201,7 +204,7 @@ const createContraction: RequestHandler = async (req, res, next) => {
 const updateContraction: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid contraction id' });
       return;
     }
@@ -245,8 +248,6 @@ const uploadPhoto: RequestHandler = async (req, res, next) => {
     const week = Number(req.body.week ?? 0);
     // pregnancyId is used to build the upload path — it MUST be a UUID to
     // prevent path-traversal (e.g. "../../../etc"). Reject anything else.
-    const UUID_RE =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID_RE.test(pregnancyId)) {
       res.status(400).json({ error: 'A valid pregnancy_id is required' });
       return;
@@ -297,7 +298,7 @@ const listPhotos: RequestHandler = async (req, res, next) => {
 const deletePhoto: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid photo id' });
       return;
     }
@@ -370,7 +371,7 @@ const createAppointment: RequestHandler = async (req, res, next) => {
 const updateAppointmentHandler: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid appointment id' });
       return;
     }
@@ -407,7 +408,7 @@ const listAppointmentsHandler: RequestHandler = async (req, res, next) => {
 const deleteAppointmentHandler: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (typeof id !== 'string') {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
       res.status(400).json({ error: 'Invalid appointment id' });
       return;
     }

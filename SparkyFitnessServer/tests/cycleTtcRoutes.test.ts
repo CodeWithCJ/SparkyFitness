@@ -25,7 +25,7 @@ describe('Cycle TTC Routes', () => {
 
   it('POST /tests creates a test entry', async () => {
     const entry = {
-      id: 't1',
+      id: '550e8400-e29b-41d4-a716-446655440001',
       user_id: 'testUser',
       entry_date: '2026-03-12',
       test_type: 'opk',
@@ -59,7 +59,12 @@ describe('Cycle TTC Routes', () => {
 
   it('GET /tests returns tests in date range', async () => {
     const list = [
-      { id: 't1', entry_date: '2026-03-12', test_type: 'opk', result: 'peak' },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        entry_date: '2026-03-12',
+        test_type: 'opk',
+        result: 'peak',
+      },
     ];
     vi.mocked(cycleRepository.listTestEntries).mockResolvedValue(list);
 
@@ -79,19 +84,23 @@ describe('Cycle TTC Routes', () => {
   it('DELETE /tests/:id deletes a test entry', async () => {
     vi.mocked(cycleRepository.deleteTestEntry).mockResolvedValue(true);
 
-    const res = await request(app).delete('/api/v2/cycle/tests/t1');
+    const res = await request(app).delete(
+      '/api/v2/cycle/tests/550e8400-e29b-41d4-a716-446655440001'
+    );
 
     expect(res.statusCode).toBe(204);
     expect(cycleRepository.deleteTestEntry).toHaveBeenCalledWith(
       'testUser',
-      't1'
+      '550e8400-e29b-41d4-a716-446655440001'
     );
   });
 
   it('DELETE /tests/:id returns 404 if not found', async () => {
     vi.mocked(cycleRepository.deleteTestEntry).mockResolvedValue(false);
 
-    const res = await request(app).delete('/api/v2/cycle/tests/t2');
+    const res = await request(app).delete(
+      '/api/v2/cycle/tests/550e8400-e29b-41d4-a716-446655440002'
+    );
 
     expect(res.statusCode).toBe(404);
   });
