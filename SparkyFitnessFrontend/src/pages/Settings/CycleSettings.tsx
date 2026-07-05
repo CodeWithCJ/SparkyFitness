@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   BIRTH_CONTROL_METHODS,
   CYCLE_CONDITIONS,
+  localDateToDay,
   type CycleMode,
 } from '@workspace/shared';
 import {
@@ -74,7 +75,7 @@ export default function CycleSettings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cycle-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `cycle-export-${localDateToDay(new Date())}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

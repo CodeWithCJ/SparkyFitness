@@ -7,6 +7,7 @@ import {
   useUpdateKickMutation,
 } from '@/hooks/usePregnancy';
 import type { SharedKickSession } from '@workspace/shared';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Baby, Check } from 'lucide-react';
@@ -29,6 +30,7 @@ export default function KickCounter({
   recentSessions = [],
 }: KickCounterProps) {
   const { t } = useTranslation();
+  const { formatDateInUserTimezone } = usePreferences();
   const queryClient = useQueryClient();
   const startMutation = useStartKickMutation();
   const updateMutation = useUpdateKickMutation();
@@ -146,7 +148,7 @@ export default function KickCounter({
                       {t('pregnancy.kicks.movements', 'movements')}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(s.started_at).toLocaleDateString()}
+                      {formatDateInUserTimezone(s.started_at, 'MMM d')}
                     </span>
                   </div>
                 ))}

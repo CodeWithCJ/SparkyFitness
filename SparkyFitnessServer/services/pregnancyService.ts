@@ -8,6 +8,7 @@ import {
   eddFromConception,
   weightGainRange,
   addDays,
+  localDateToDay,
   type SharedContraction,
 } from '@workspace/shared';
 
@@ -207,12 +208,9 @@ async function getContractionAnalysis(userId: string) {
 }
 
 function normalizeDay(value: string | Date): string {
-  if (value instanceof Date) {
-    const y = value.getUTCFullYear();
-    const m = value.getUTCMonth() + 1;
-    const d = value.getUTCDate();
-    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
+  // pg returns DATE columns as local-midnight Date objects; use the shared
+  // helper (local getters), never UTC/toISOString which shift the day.
+  if (value instanceof Date) return localDateToDay(value);
   return value.slice(0, 10);
 }
 

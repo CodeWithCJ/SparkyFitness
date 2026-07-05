@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict LrSIbsoR8ZdRwkQ7sg6bqpGJWBgj6QbBAjx2npfKUXnSHmhjvU7e6y6PTnft2Fd
+\restrict JE9XSa3bBDxPfxaugcjjk4H12gSPpPtzWpzI01CNytm4iXmpGhz1ZMp6wVvDqkU
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1324,23 +1324,23 @@ CREATE TABLE public.custom_measurements (
 
 
 --
--- Name: cycle_daily_logs; Type: TABLE; Schema: public; Owner: -
+-- Name: cycle_daily_entries; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.cycle_daily_logs (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    entry_date date NOT NULL,
+CREATE TABLE public.cycle_daily_entries (
+    id uuid DEFAULT gen_random_uuid() CONSTRAINT cycle_daily_logs_id_not_null NOT NULL,
+    user_id uuid CONSTRAINT cycle_daily_logs_user_id_not_null NOT NULL,
+    entry_date date CONSTRAINT cycle_daily_logs_entry_date_not_null NOT NULL,
     flow_level character varying(20),
-    product_usage jsonb DEFAULT '{}'::jsonb NOT NULL,
+    product_usage jsonb DEFAULT '{}'::jsonb CONSTRAINT cycle_daily_logs_product_usage_not_null NOT NULL,
     cervical_mucus character varying(20),
-    unusual_discharge text[] DEFAULT '{}'::text[] NOT NULL,
+    unusual_discharge text[] DEFAULT '{}'::text[] CONSTRAINT cycle_daily_logs_unusual_discharge_not_null NOT NULL,
     energy smallint,
     libido smallint,
     notes text,
-    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb CONSTRAINT cycle_daily_logs_custom_fields_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT cycle_daily_logs_created_at_not_null NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() CONSTRAINT cycle_daily_logs_updated_at_not_null NOT NULL,
     intercourse boolean,
     intercourse_protected boolean,
     cervical_position character varying(30)
@@ -3852,11 +3852,11 @@ ALTER TABLE ONLY public.check_in_photos
 
 
 --
--- Name: cycle_daily_logs cycle_daily_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: cycle_daily_entries cycle_daily_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.cycle_daily_logs
-    ADD CONSTRAINT cycle_daily_logs_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.cycle_daily_entries
+    ADD CONSTRAINT cycle_daily_entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -4348,10 +4348,10 @@ ALTER TABLE ONLY public.two_factor
 
 
 --
--- Name: cycle_daily_logs unique_user_cycle_day; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: cycle_daily_entries unique_user_cycle_day; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.cycle_daily_logs
+ALTER TABLE ONLY public.cycle_daily_entries
     ADD CONSTRAINT unique_user_cycle_day UNIQUE (user_id, entry_date);
 
 
@@ -4805,17 +4805,17 @@ CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING
 
 
 --
--- Name: idx_cycle_daily_logs_user_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_cycle_daily_entries_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_cycle_daily_logs_user_date ON public.cycle_daily_logs USING btree (user_id, entry_date);
+CREATE INDEX idx_cycle_daily_entries_user_date ON public.cycle_daily_entries USING btree (user_id, entry_date);
 
 
 --
--- Name: idx_cycle_daily_logs_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_cycle_daily_entries_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_cycle_daily_logs_user_id ON public.cycle_daily_logs USING btree (user_id);
+CREATE INDEX idx_cycle_daily_entries_user_id ON public.cycle_daily_entries USING btree (user_id);
 
 
 --
@@ -5421,10 +5421,10 @@ CREATE TRIGGER seed_global_providers_on_first_admin AFTER INSERT OR UPDATE OF ro
 
 
 --
--- Name: cycle_daily_logs set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+-- Name: cycle_daily_entries set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycle_daily_logs FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.cycle_daily_entries FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -5811,10 +5811,10 @@ ALTER TABLE ONLY public.custom_measurements
 
 
 --
--- Name: cycle_daily_logs cycle_daily_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: cycle_daily_entries cycle_daily_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.cycle_daily_logs
+ALTER TABLE ONLY public.cycle_daily_entries
     ADD CONSTRAINT cycle_daily_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
@@ -7063,10 +7063,10 @@ ALTER TABLE public.custom_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_measurements ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: cycle_daily_logs; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: cycle_daily_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
-ALTER TABLE public.cycle_daily_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cycle_daily_entries ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: cycle_settings; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7738,10 +7738,10 @@ CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.authe
 
 
 --
--- Name: cycle_daily_logs owner_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: cycle_daily_entries owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.cycle_daily_logs USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+CREATE POLICY owner_policy ON public.cycle_daily_entries USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -9085,12 +9085,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky
 
 
 --
--- Name: TABLE cycle_daily_logs; Type: ACL; Schema: public; Owner: -
+-- Name: TABLE cycle_daily_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_logs TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO sparky_uat;
 
 
 --
@@ -10006,5 +10006,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict LrSIbsoR8ZdRwkQ7sg6bqpGJWBgj6QbBAjx2npfKUXnSHmhjvU7e6y6PTnft2Fd
+\unrestrict JE9XSa3bBDxPfxaugcjjk4H12gSPpPtzWpzI01CNytm4iXmpGhz1ZMp6wVvDqkU
 

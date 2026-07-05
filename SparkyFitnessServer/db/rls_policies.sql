@@ -88,7 +88,7 @@ BEGIN
     'user_medication_display_preferences',
     'user_custom_symptom_locations',
     'cycle_settings',
-    'cycle_daily_logs',
+    'cycle_daily_entries',
     'cycles',
     'user_cycle_display_preferences',
     'cycle_test_entries',
@@ -629,7 +629,7 @@ SELECT create_owner_policy('user_medication_display_preferences');
 -- Tier 1 — owner-only. Deliberately stricter than medications: this reproductive
 -- health data is NEVER shared or delegated in v1 (no family/caregiver access).
 SELECT create_owner_policy('cycle_settings');
-SELECT create_owner_policy('cycle_daily_logs');
+SELECT create_owner_policy('cycle_daily_entries');
 SELECT create_owner_policy('cycles');
 SELECT create_owner_policy('user_cycle_display_preferences');
 SELECT create_owner_policy('cycle_test_entries');

@@ -38,6 +38,10 @@ interface CycleSymptomPickerProps {
   date: string;
 }
 
+function normalizeSymptomKey(str: string): string {
+  return str.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Cycle symptom logging: pill toggles (predefined + custom) + one severity
  * slider. Writes rows to `symptom_entries` with source='cycle', which feed the
@@ -124,7 +128,8 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
     const map = new Map<string, SharedSymptomEntry[]>();
     for (const e of (entries ?? []) as SharedSymptomEntry[]) {
       if ((e.source ?? 'manual') !== 'cycle') continue;
-      const key = e.symptom_name_snapshot.toLowerCase().trim();
+      const key = normalizeSymptomKey(e.symptom_name_snapshot ?? '');
+      if (!key) continue;
       const list = map.get(key) ?? [];
       list.push(e);
       map.set(key, list);
@@ -133,8 +138,10 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
   })();
 
   const toggle = (name: string, displayName: string) => {
-    const key = name.toLowerCase().trim();
-    const existing = loggedByName.get(key);
+    const keyName = normalizeSymptomKey(name);
+    const keyDisplayName = normalizeSymptomKey(displayName);
+    const existing =
+      loggedByName.get(keyName) ?? loggedByName.get(keyDisplayName);
     if (existing && existing.length > 0) {
       existing.forEach((e) => e.id && deleteEntry.mutate(e.id));
     } else {
@@ -310,7 +317,10 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
       </div>
       <div className="flex flex-wrap gap-2">
         {visibleBuiltInSymptoms.map((s) => {
-          const active = loggedByName.has(s.name);
+          const keyName = normalizeSymptomKey(s.name);
+          const keyDisplayName = normalizeSymptomKey(s.displayName);
+          const active =
+            loggedByName.has(keyName) || loggedByName.has(keyDisplayName);
           return (
             <button
               key={s.name}
@@ -331,7 +341,10 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
         })}
         {visibleCustomSymptoms.map((s) => {
           const dn = s.display_name ?? s.name;
-          const active = loggedByName.has(s.name.toLowerCase());
+          const keyName = normalizeSymptomKey(s.name);
+          const keyDisplayName = normalizeSymptomKey(dn);
+          const active =
+            loggedByName.has(keyName) || loggedByName.has(keyDisplayName);
           return (
             <button
               key={s.id}

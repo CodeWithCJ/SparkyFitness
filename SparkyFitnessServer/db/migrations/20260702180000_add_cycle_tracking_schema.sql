@@ -41,9 +41,9 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON cycle_settings
 FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- ---------------------------------------------------------------------------
--- 2. cycle_daily_logs — one row per user+day (flow, products, BBT, mucus, mood).
+-- 2. cycle_daily_entries — one row per user+day (flow, products, BBT, mucus, mood).
 -- ---------------------------------------------------------------------------
-CREATE TABLE cycle_daily_logs (
+CREATE TABLE cycle_daily_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL,
@@ -61,9 +61,9 @@ CREATE TABLE cycle_daily_logs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_user_cycle_day UNIQUE (user_id, entry_date)
 );
-CREATE INDEX idx_cycle_daily_logs_user_id ON cycle_daily_logs(user_id);
-CREATE INDEX idx_cycle_daily_logs_user_date ON cycle_daily_logs(user_id, entry_date);
-CREATE TRIGGER set_timestamp BEFORE UPDATE ON cycle_daily_logs
+CREATE INDEX idx_cycle_daily_entries_user_id ON cycle_daily_entries(user_id);
+CREATE INDEX idx_cycle_daily_entries_user_date ON cycle_daily_entries(user_id, entry_date);
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON cycle_daily_entries
 FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- ---------------------------------------------------------------------------
@@ -138,8 +138,8 @@ CREATE INDEX idx_cycle_test_entries_user_date ON cycle_test_entries(user_id, ent
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON cycle_test_entries
 FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
--- 2. Add columns to cycle_daily_logs
-ALTER TABLE cycle_daily_logs 
+-- 2. Add columns to cycle_daily_entries
+ALTER TABLE cycle_daily_entries 
 ADD COLUMN intercourse BOOLEAN,
 ADD COLUMN intercourse_protected BOOLEAN,
 ADD COLUMN cervical_position VARCHAR(30);
@@ -356,3 +356,45 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON user_mood_display_preferences
 FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- RLS applied in db/rls_policies.sql (owner-only preference).
+
+
+-- Catch-up migration for environments that applied the ORIGINAL cycle schema
+-- (table named cycle_daily_logs, with moods/bbt/bbt_taken_at columns) before it
+-- was renamed to cycle_daily_entries and those columns were removed.
+--
+-- WHY A NEW MIGRATION: migrations are tracked by name, so editing the original
+-- 20260702180000 migration does NOT re-run on databases that already applied it
+-- (UAT, prod). This migration brings those environments to the new shape.
+--
+-- Every statement is IF EXISTS-guarded, so it is a no-op on:
+--   - fresh installs (already created as cycle_daily_entries without those cols)
+--   - the dev DB where the rename/column-drop were run manually
+--
+-- BBT moved to the 'basal_body_temperature' custom measurement; mood moved to
+-- mood_entries.mood_tags — hence the legacy column drops.
+
+-- 1. Rename the table (and keep its index/pkey names consistent with a fresh install).
+
+
+
+ALTER TABLE IF EXISTS cycle_daily_logs RENAME TO cycle_daily_entries;
+ALTER INDEX IF EXISTS idx_cycle_daily_logs_user_id
+  RENAME TO idx_cycle_daily_entries_user_id;
+ALTER INDEX IF EXISTS idx_cycle_daily_logs_user_date
+  RENAME TO idx_cycle_daily_entries_user_date;
+ALTER INDEX IF EXISTS cycle_daily_logs_pkey
+  RENAME TO cycle_daily_entries_pkey;
+
+-- 2. Drop legacy columns (now that the table is cycle_daily_entries).
+ALTER TABLE IF EXISTS cycle_daily_entries
+  DROP COLUMN IF EXISTS moods,
+  DROP COLUMN IF EXISTS bbt,
+  DROP COLUMN IF EXISTS bbt_taken_at;
+
+-- 3. Ensure the TTC columns exist (an env that applied the P1 schema before the
+--    TTC columns were merged into 20260702180000 would otherwise be missing
+--    them, and the repository reads/writes them). Idempotent.
+ALTER TABLE IF EXISTS cycle_daily_entries
+  ADD COLUMN IF NOT EXISTS intercourse BOOLEAN,
+  ADD COLUMN IF NOT EXISTS intercourse_protected BOOLEAN,
+  ADD COLUMN IF NOT EXISTS cervical_position VARCHAR(30);

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
-import { Check, Minus, Plus, Settings, Trash } from 'lucide-react';
+import { Check, Minus, Plus, Settings, Trash, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import CycleIcon from './CycleIcon';
 import CycleSymptomPicker from './CycleSymptomPicker';
@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import IntercourseLog from './ttc/IntercourseLog';
@@ -309,7 +308,7 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
                   </p>
 
                   {/* Default Products Toggles */}
-                  <div className="grid grid-cols-2 gap-2 mb-2 bg-background p-1 font-sans">
+                  <div className="space-y-1 pt-2">
                     {PERIOD_PRODUCTS.map((p) => {
                       const isVisible =
                         enabledItems.length === 0 ||
@@ -317,24 +316,33 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
                       return (
                         <div
                           key={p.value}
-                          onClick={() =>
-                            handleToggleProductVisibility(p.value, !isVisible)
-                          }
                           className={cn(
-                            'flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer select-none transition',
-                            isVisible
-                              ? 'border-primary bg-primary/5 font-medium text-foreground'
-                              : 'border-muted bg-transparent text-muted-foreground hover:bg-muted/30'
+                            'flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition',
+                            !isVisible && 'opacity-50'
                           )}
                         >
-                          <Checkbox
-                            checked={isVisible}
-                            onCheckedChange={() =>
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-rose-400 dark:bg-rose-500" />
+                            <span>{p.displayName}</span>
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() =>
                               handleToggleProductVisibility(p.value, !isVisible)
                             }
-                            className="pointer-events-none"
-                          />
-                          <span>{p.displayName}</span>
+                            aria-label={
+                              isVisible ? 'Hide product' : 'Show product'
+                            }
+                          >
+                            {isVisible ? (
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            ) : (
+                              <EyeOff className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            )}
+                          </Button>
                         </div>
                       );
                     })}
@@ -345,46 +353,51 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
                         <div
                           key={cp.value}
                           className={cn(
-                            'flex items-center justify-between p-2 rounded-lg border text-xs transition',
-                            isVisible
-                              ? 'border-primary bg-primary/5 text-foreground'
-                              : 'border-muted bg-transparent text-muted-foreground'
+                            'flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition',
+                            !isVisible && 'opacity-50'
                           )}
                         >
-                          <div
-                            onClick={() =>
-                              handleToggleProductVisibility(
-                                cp.value,
-                                !isVisible
-                              )
-                            }
-                            className="flex items-center gap-2 cursor-pointer select-none flex-1"
-                          >
-                            <Checkbox
-                              checked={isVisible}
-                              onCheckedChange={() =>
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-rose-400 dark:bg-rose-500" />
+                            <span>
+                              {cp.displayName} ({cp.capacityMl}ml)
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() =>
                                 handleToggleProductVisibility(
                                   cp.value,
                                   !isVisible
                                 )
                               }
-                              className="pointer-events-none"
-                            />
-                            <span>
-                              {cp.displayName} ({cp.capacityMl}ml)
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCustomProduct(cp.value);
-                            }}
-                          >
-                            <Trash className="h-3 w-3" />
-                          </Button>
+                              aria-label={
+                                isVisible ? 'Hide product' : 'Show product'
+                              }
+                            >
+                              {isVisible ? (
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                              ) : (
+                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCustomProduct(cp.value);
+                              }}
+                              aria-label="Delete product"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </Button>
+                          </span>
                         </div>
                       );
                     })}

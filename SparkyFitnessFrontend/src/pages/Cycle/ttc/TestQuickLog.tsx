@@ -73,7 +73,7 @@ const BADGE_STYLES: Record<string, string> = {
 
 export default function TestQuickLog({ currentCycleStart }: TestQuickLogProps) {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
+  const { timezone, formatDateInUserTimezone } = usePreferences();
   const today = useMemo(() => todayInZone(timezone), [timezone]);
 
   // Compute test range (cycle start to today + 14 days)
@@ -124,14 +124,10 @@ export default function TestQuickLog({ currentCycleStart }: TestQuickLogProps) {
     }
   };
 
-  const formatDateShort = (testedAtStr: string) => {
-    const d = new Date(testedAtStr);
-    const m = d.getMonth() + 1;
-    const dateNum = d.getDate();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const mins = String(d.getMinutes()).padStart(2, '0');
-    return `${m}/${dateNum} at ${hours}:${mins}`;
-  };
+  const formatDateShort = (testedAtStr: string) =>
+    formatDateInUserTimezone(testedAtStr, 'M/d') +
+    ' at ' +
+    formatDateInUserTimezone(testedAtStr, 'HH:mm');
 
   return (
     <Card>

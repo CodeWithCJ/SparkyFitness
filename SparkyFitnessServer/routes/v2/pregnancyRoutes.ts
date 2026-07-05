@@ -42,11 +42,6 @@ function badRequest(res: express.Response, error: unknown): void {
   });
 }
 
-function normalizeDay(value: string | Date): string {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return String(value).slice(0, 10);
-}
-
 // --- Pregnancy CRUD ---------------------------------------------------------
 
 const getCurrent: RequestHandler = async (req, res, next) => {
@@ -248,8 +243,12 @@ const uploadPhoto: RequestHandler = async (req, res, next) => {
     }
     const pregnancyId = String(req.body.pregnancy_id ?? '');
     const week = Number(req.body.week ?? 0);
-    if (!pregnancyId) {
-      res.status(400).json({ error: 'pregnancy_id is required' });
+    // pregnancyId is used to build the upload path — it MUST be a UUID to
+    // prevent path-traversal (e.g. "../../../etc"). Reject anything else.
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(pregnancyId)) {
+      res.status(400).json({ error: 'A valid pregnancy_id is required' });
       return;
     }
     const ext = getImageExtension(file.buffer) ?? 'jpg';
@@ -423,7 +422,6 @@ const deleteAppointmentHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
-void normalizeDay;
 void gestationalAge;
 
 router.get('/current', getCurrent);

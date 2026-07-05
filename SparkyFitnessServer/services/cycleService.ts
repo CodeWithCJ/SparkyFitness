@@ -18,6 +18,7 @@ import {
   addDays,
   compareDays,
   daysBetween,
+  localDateToDay,
   correlateMetricWithPhase,
   detectConditionFlags,
   type DayEvidence,
@@ -64,12 +65,9 @@ function toEvidence(rows: EvidenceRow[]): DayEvidence[] {
 
 /** DATE columns come back as 'YYYY-MM-DD' strings from pg; guard just in case. */
 function normalizeDay(value: string | Date): string {
-  if (value instanceof Date) {
-    const y = value.getUTCFullYear();
-    const m = value.getUTCMonth() + 1;
-    const d = value.getUTCDate();
-    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
+  // pg returns DATE columns as local-midnight Date objects; use local getters
+  // (not UTC/toISOString, which shift the day for servers ahead of UTC).
+  if (value instanceof Date) return localDateToDay(value);
   return value.slice(0, 10);
 }
 
@@ -256,6 +254,22 @@ async function getFertility(userId: string, targetDate: string) {
   hydrateBbt(logs, bbtMap);
   const tests = await cycleRepository.listAllTestEntries(userId);
 
+  // BBT lives in the basal_body_temperature custom measurement. Surface whether
+  // it exists and how fresh it is so the cycle tab can warn/offer to set it up.
+  const bbtCategoryExists = await cycleRepository.hasBbtCategory(userId);
+  const allBbt = seriesFromBbtMap(bbtMap);
+  const latestBbtDate = allBbt.length ? allBbt[allBbt.length - 1]!.date : null;
+  const bbtStaleDays = latestBbtDate
+    ? Math.abs(daysBetween(latestBbtDate, targetDate))
+    : null;
+
+  const bbtStatus = {
+    categoryExists: bbtCategoryExists,
+    latestDate: latestBbtDate,
+    staleDays: bbtStaleDays,
+    isStale: bbtStaleDays !== null && bbtStaleDays > 3,
+  };
+
   const lastCycle = cycles[cycles.length - 1];
   if (!lastCycle) {
     return {
@@ -268,6 +282,7 @@ async function getFertility(userId: string, targetDate: string) {
         confirmedOvulationDate: null,
         isConfirmed: false,
       },
+      bbtStatus,
     };
   }
 
@@ -324,27 +339,13 @@ async function getFertility(userId: string, targetDate: string) {
   });
   const bbtShiftStatus = detectBiphasicShift(bbtSeries);
 
-  // BBT lives in the basal_body_temperature custom measurement. Surface whether
-  // it exists and how fresh it is so the cycle tab can warn/offer to set it up.
-  const bbtCategoryExists = await cycleRepository.hasBbtCategory(userId);
-  const allBbt = seriesFromBbtMap(bbtMap);
-  const latestBbtDate = allBbt.length ? allBbt[allBbt.length - 1]!.date : null;
-  const bbtStaleDays = latestBbtDate
-    ? Math.abs(daysBetween(latestBbtDate, targetDate))
-    : null;
-
   return {
     ovulationEstimate: est,
     conceptionProbability: prob,
     fertileWindowSeries,
     dpo: dpoVal,
     bbtShiftStatus,
-    bbtStatus: {
-      categoryExists: bbtCategoryExists,
-      latestDate: latestBbtDate,
-      staleDays: bbtStaleDays,
-      isStale: bbtStaleDays !== null && bbtStaleDays > 3,
-    },
+    bbtStatus,
   };
 }
 

@@ -166,7 +166,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     sparky_chat_history: 'owner',
     user_ignored_updates: 'owner',
     user_oidc_links: 'owner',
-    cycle_daily_logs: 'owner',
+    cycle_daily_entries: 'owner',
     cycle_settings: 'owner',
     cycle_test_entries: 'owner',
     cycles: 'owner',

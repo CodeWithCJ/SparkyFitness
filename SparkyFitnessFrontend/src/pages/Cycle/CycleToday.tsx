@@ -18,7 +18,14 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Calendar,
+  Sparkles,
+  Activity,
+  Clock,
+  Droplet,
+  Gauge,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -166,8 +173,86 @@ export default function CycleToday() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Today's log + Cycle History */}
+        {/* Left Column: Today's log + KPI Stat Cards */}
         <div className="lg:col-span-7 space-y-5">
+          {/* Prediction strip */}
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              label={t('cycle.today.nextPeriod', 'Next period')}
+              value={next ? formatShort(next.periodStart) : '—'}
+              icon={Calendar}
+              bgClass="bg-rose-50/20 dark:bg-rose-950/5 hover:bg-rose-50/40 dark:hover:bg-rose-950/10"
+              borderClass="border-rose-100/70 dark:border-rose-900/10 hover:border-rose-200/80 dark:hover:border-rose-900/30"
+              iconColorClass="text-rose-500/80 dark:text-rose-400"
+            />
+            <StatCard
+              label={t('cycle.today.ovulation', 'Ovulation')}
+              value={next?.ovulation ? formatShort(next.ovulation) : '—'}
+              icon={Sparkles}
+              bgClass="bg-emerald-50/20 dark:bg-emerald-950/5 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10"
+              borderClass="border-emerald-100/70 dark:border-emerald-900/10 hover:border-emerald-200/80 dark:hover:border-emerald-900/30"
+              iconColorClass="text-emerald-500/80 dark:text-emerald-400"
+            />
+            <StatCard
+              label={t('cycle.today.cycleLength', 'Cycle length')}
+              value={`${cycleLength}d`}
+              icon={Activity}
+              bgClass="bg-blue-50/20 dark:bg-blue-950/5 hover:bg-blue-50/40 dark:hover:bg-blue-950/10"
+              borderClass="border-blue-100/70 dark:border-blue-900/10 hover:border-blue-200/80 dark:hover:border-blue-900/30"
+              iconColorClass="text-blue-500/80 dark:text-blue-400"
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={openSettings}
+                  aria-label="Edit cycle settings"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              }
+            />
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              label={t('cycle.stats.cycleAvg', 'Cycle avg')}
+              value={`${overview.settings?.avg_cycle_length_override ?? stats.avgCycleLength ?? 28}d`}
+              icon={Clock}
+              bgClass="bg-indigo-50/20 dark:bg-indigo-950/5 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10"
+              borderClass="border-indigo-100/70 dark:border-indigo-900/10 hover:border-indigo-200/80 dark:hover:border-indigo-900/30"
+              iconColorClass="text-indigo-500/80 dark:text-indigo-400"
+              sub={
+                stats.sampleSize >= 2 ? `±${stats.cycleLengthSd}` : undefined
+              }
+            />
+            <StatCard
+              label={t('cycle.stats.periodAvg', 'Period avg')}
+              value={`${overview.settings?.avg_period_length_override ?? stats.avgPeriodLength ?? 5}d`}
+              icon={Droplet}
+              bgClass="bg-amber-50/20 dark:bg-amber-950/5 hover:bg-amber-50/40 dark:hover:bg-amber-950/10"
+              borderClass="border-amber-100/70 dark:border-amber-900/10 hover:border-amber-200/80 dark:hover:border-amber-900/30"
+              iconColorClass="text-amber-500/80 dark:text-amber-400"
+              sub={
+                stats.regularity !== 'unknown'
+                  ? t(`cycle.regularity.${stats.regularity}`, stats.regularity)
+                  : undefined
+              }
+            />
+            <StatCard
+              label={t('cycle.stats.confidence', 'Prediction')}
+              value={t(
+                `cycle.confidence.${prediction.confidence}`,
+                prediction.confidence
+              )}
+              icon={Gauge}
+              bgClass="bg-teal-50/20 dark:bg-teal-950/5 hover:bg-teal-50/40 dark:hover:bg-teal-950/10"
+              borderClass="border-teal-100/70 dark:border-teal-900/10 hover:border-teal-200/80 dark:hover:border-teal-900/30"
+              iconColorClass="text-teal-500/80 dark:text-teal-400"
+            />
+          </div>
+
           {/* Daily log for the selected day */}
           <DailyLogPanel
             date={selectedDate}
@@ -176,12 +261,9 @@ export default function CycleToday() {
               overview.settings?.preferred_products ?? ['pad', 'tampon']
             }
           />
-
-          {/* Cycle history with edit / hide / delete controls */}
-          <CycleHistoryList />
         </div>
 
-        {/* Right Column: Calendar, then ring + predictions + averages */}
+        {/* Right Column: Calendar, then ring + history */}
         <div className="lg:col-span-5 space-y-5">
           {/* Late banner */}
           {late.isLate ? (
@@ -386,59 +468,8 @@ export default function CycleToday() {
             </CardContent>
           </Card>
 
-          {/* Prediction strip */}
-          <div className="grid grid-cols-3 gap-3">
-            <StatCard
-              label={t('cycle.today.nextPeriod', 'Next period')}
-              value={next ? formatShort(next.periodStart) : '—'}
-            />
-            <StatCard
-              label={t('cycle.today.ovulation', 'Ovulation')}
-              value={next?.ovulation ? formatShort(next.ovulation) : '—'}
-            />
-            <StatCard
-              label={t('cycle.today.cycleLength', 'Cycle length')}
-              value={`${cycleLength}d`}
-              action={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={openSettings}
-                  aria-label="Edit cycle settings"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              }
-            />
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
-            <StatCard
-              label={t('cycle.stats.cycleAvg', 'Cycle avg')}
-              value={`${overview.settings?.avg_cycle_length_override ?? stats.avgCycleLength ?? 28}d`}
-              sub={
-                stats.sampleSize >= 2 ? `±${stats.cycleLengthSd}` : undefined
-              }
-            />
-            <StatCard
-              label={t('cycle.stats.periodAvg', 'Period avg')}
-              value={`${overview.settings?.avg_period_length_override ?? stats.avgPeriodLength ?? 5}d`}
-              sub={
-                stats.regularity !== 'unknown'
-                  ? t(`cycle.regularity.${stats.regularity}`, stats.regularity)
-                  : undefined
-              }
-            />
-            <StatCard
-              label={t('cycle.stats.confidence', 'Prediction')}
-              value={t(
-                `cycle.confidence.${prediction.confidence}`,
-                prediction.confidence
-              )}
-            />
-          </div>
+          {/* Cycle history with edit / hide / delete controls */}
+          <CycleHistoryList />
 
           {/* BBT setup / staleness (standard + TTC modes) */}
           {showBbt && fertility && (
@@ -577,23 +608,52 @@ function StatCard({
   value,
   sub,
   action,
+  icon: Icon,
+  bgClass = 'bg-card',
+  borderClass = 'border-border',
+  iconColorClass = 'text-muted-foreground',
 }: {
   label: string;
   value: string;
   sub?: string;
   action?: ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
+  bgClass?: string;
+  borderClass?: string;
+  iconColorClass?: string;
 }) {
   return (
-    <Card className="relative">
-      <CardContent className="px-3 py-3 text-center">
-        <div className="flex items-center justify-center gap-1">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+    <Card
+      className={cn(
+        'relative overflow-hidden transition-all duration-300 hover:shadow-sm border',
+        bgClass,
+        borderClass
+      )}
+    >
+      {/* Subtle background glow */}
+      <div
+        className={cn(
+          'absolute -right-6 -top-6 h-12 w-12 rounded-full opacity-10 blur-xl transition-all duration-300',
+          iconColorClass.replace('text-', 'bg-')
+        )}
+      />
+
+      <CardContent className="p-3 text-center">
+        <div className="flex items-center justify-center gap-1.5 min-w-0">
+          {Icon && <Icon className={cn('h-4 w-4 shrink-0', iconColorClass)} />}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
             {label}
           </p>
           {action}
         </div>
-        <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
-        {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
+        <p className="mt-1.5 text-lg font-extrabold tracking-tight text-foreground leading-none tabular-nums">
+          {value}
+        </p>
+        {sub && (
+          <p className="mt-1 text-[10px] font-medium text-muted-foreground truncate leading-none">
+            {sub}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

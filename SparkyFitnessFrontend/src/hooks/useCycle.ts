@@ -136,6 +136,8 @@ export const useCreateManualCycleMutation = () => {
       cycleService.createManualCycle(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-log'] });
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
@@ -151,6 +153,8 @@ export const useUpdateCycleMutation = () => {
       cycleService.updateCycle(id, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-log'] });
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
@@ -165,6 +169,8 @@ export const useDeleteCycleMutation = () => {
     mutationFn: (id: string) => cycleService.deleteCycle(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-log'] });
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
