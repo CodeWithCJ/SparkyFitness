@@ -43,7 +43,9 @@ describe('representativeMoodValue', () => {
 
 describe('BUILT_IN_MOODS', () => {
   it('has nine banded moods covering the scale up to 100', () => {
-    const banded = BUILT_IN_MOODS.filter((m) => m.band != null);
+    const banded = BUILT_IN_MOODS.filter(
+      (m) => m.band !== null && m.band !== undefined
+    );
     expect(banded).toHaveLength(9);
     expect(banded[banded.length - 1]!.band).toBe(100);
   });
