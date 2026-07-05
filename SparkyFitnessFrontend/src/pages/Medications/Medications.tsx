@@ -29,6 +29,7 @@ import {
   useDeleteMedicationMutation,
   useMedicationEntries,
 } from '@/hooks/useMedications';
+import { useSymptomEntries } from '@/hooks/useSymptoms';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
@@ -36,6 +37,7 @@ import AddMedicationDialog, { MedTypeIcon } from './AddMedicationDialog';
 import ScheduleManager from './ScheduleManager';
 import TodayMedications from './TodayMedications';
 import SymptomDashboard from './SymptomDashboard';
+import MedicationDisclaimer from './MedicationDisclaimer';
 
 const formatDaysOfWeek = (days: number[] | null) => {
   if (!days || days.length === 0) return '';
@@ -78,6 +80,7 @@ const formatScheduleDescription = (sched: MedicationSchedule) => {
 
 export default function Medications() {
   const { t } = useTranslation();
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
     'today'
   );
@@ -113,6 +116,11 @@ export default function Medications() {
     activeOnly: false,
   });
 
+  // Also check if any symptom entries exist — either meds or symptoms means
+  // the user has already accepted the disclaimer.
+  const { data: anySymptoms = [], isLoading: loadingSymptoms } =
+    useSymptomEntries();
+
   const { data: entries = [], isLoading: loadingEntries } =
     useMedicationEntries({
       fromDate: selectedDate,
@@ -136,6 +144,18 @@ export default function Medications() {
 
   const selected =
     (meds.find((m) => m.id === selectedId) as MedicationDetail) ?? null;
+
+  // If no medications AND no symptom entries exist (and user hasn't accepted
+  // this session), show the disclaimer gate — similar to CycleOnboarding.
+  // Having any existing medication OR symptom entry means they accepted previously.
+  const hasExistingData = meds.length > 0 || anySymptoms.length > 0;
+  const stillLoading = loadingMeds || loadingSymptoms;
+
+  if (!stillLoading && !hasExistingData && !disclaimerAccepted) {
+    return (
+      <MedicationDisclaimer onAccept={() => setDisclaimerAccepted(true)} />
+    );
+  }
 
   return (
     <div className="space-y-6">
