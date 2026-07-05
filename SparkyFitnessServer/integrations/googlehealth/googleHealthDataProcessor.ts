@@ -4,12 +4,7 @@ import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
-import {
-  todayInZone,
-  instantToDay,
-  instantHourMinute,
-  addDays,
-} from '@workspace/shared';
+import { todayInZone, instantToDay } from '@workspace/shared';
 import {
   parseDurationToSeconds,
   googleTimeToIso,
@@ -635,10 +630,10 @@ async function processGoogleSleep(
     );
     if (!startIso) continue;
 
-    const startDate = instantToDay(startIso, tz);
-    // Anchor to the "sleep date": if civil start is before noon, attribute to previous day.
-    const startHour = instantHourMinute(startIso, tz).hour;
-    const sleepDate = startHour < 12 ? addDays(startDate, -1) : startDate;
+    // Anchor to the wake-up day, matching how Google Health / Fitbit file a
+    // sleep session (it belongs to the day the session ends, not the day you
+    // fell asleep). Fall back to the start day when there is no end time.
+    const sleepDate = instantToDay(endIso ?? startIso, tz);
 
     const minutesAsleep = parseInt(summary.minutesAsleep as string, 10) || 0;
     const minutesInPeriod =
