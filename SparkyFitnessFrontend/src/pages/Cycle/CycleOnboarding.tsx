@@ -47,8 +47,8 @@ export default function CycleOnboarding() {
   // State for onboarding wizard
   const [mode, setMode] = useState<'standard' | 'ttc' | 'pregnant'>('standard');
   const [lastPeriodStart, setLastPeriodStart] = useState<string>(today);
-  const [avgCycleLength, setAvgCycleLength] = useState<number>(28);
-  const [avgPeriodLength, setAvgPeriodLength] = useState<number>(5);
+  const [avgCycleLength, setAvgCycleLength] = useState<string>('28');
+  const [avgPeriodLength, setAvgPeriodLength] = useState<string>('5');
   const [birthControlMethod, setBirthControlMethod] = useState<string>('none');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,12 +70,15 @@ export default function CycleOnboarding() {
   const handleComplete = async () => {
     setLoading(true);
     try {
+      const cycleLenNum = parseInt(avgCycleLength, 10) || 28;
+      const periodLenNum = parseInt(avgPeriodLength, 10) || 5;
+
       // 1. Save settings
       await upsertSettings.mutateAsync({
         enabled: true,
         mode,
-        avg_cycle_length_override: avgCycleLength,
-        avg_period_length_override: avgPeriodLength,
+        avg_cycle_length_override: cycleLenNum,
+        avg_period_length_override: periodLenNum,
         birth_control_method: birthControlMethod,
         conditions: selectedConditions,
         mark_onboarded: true,
@@ -84,7 +87,7 @@ export default function CycleOnboarding() {
       // 2. Seed daily log history for the last period length.
       // Set the first day to medium and subsequent days to light flow.
       const seedPromises = [];
-      for (let i = 0; i < avgPeriodLength; i++) {
+      for (let i = 0; i < periodLenNum; i++) {
         const dateStr = addDays(lastPeriodStart, i);
         const flow_level = i === 0 ? 'medium' : 'light';
         seedPromises.push(
@@ -301,14 +304,17 @@ export default function CycleOnboarding() {
                     min={15}
                     max={90}
                     value={avgCycleLength}
-                    onChange={(e) =>
-                      setAvgCycleLength(
-                        Math.max(
-                          15,
-                          Math.min(90, parseInt(e.target.value, 10) || 28)
-                        )
-                      )
-                    }
+                    onChange={(e) => setAvgCycleLength(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(avgCycleLength, 10);
+                      if (isNaN(val)) {
+                        setAvgCycleLength('28');
+                      } else {
+                        setAvgCycleLength(
+                          String(Math.max(15, Math.min(90, val)))
+                        );
+                      }
+                    }}
                   />
                 </div>
 
@@ -328,14 +334,17 @@ export default function CycleOnboarding() {
                     min={1}
                     max={15}
                     value={avgPeriodLength}
-                    onChange={(e) =>
-                      setAvgPeriodLength(
-                        Math.max(
-                          1,
-                          Math.min(15, parseInt(e.target.value, 10) || 5)
-                        )
-                      )
-                    }
+                    onChange={(e) => setAvgPeriodLength(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(avgPeriodLength, 10);
+                      if (isNaN(val)) {
+                        setAvgPeriodLength('5');
+                      } else {
+                        setAvgPeriodLength(
+                          String(Math.max(1, Math.min(15, val)))
+                        );
+                      }
+                    }}
                   />
                 </div>
               </div>

@@ -38,8 +38,8 @@ export default function CycleSettings() {
   // Local draft states
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<CycleMode>('standard');
-  const [avgCycleLength, setAvgCycleLength] = useState<number | ''>('');
-  const [avgPeriodLength, setAvgPeriodLength] = useState<number | ''>('');
+  const [avgCycleLength, setAvgCycleLength] = useState<string>('');
+  const [avgPeriodLength, setAvgPeriodLength] = useState<string>('');
   const [birthControlMethod, setBirthControlMethod] = useState<string>('none');
   const [conditions, setConditions] = useState<string[]>([]);
   const [showFertileWindow, setShowFertileWindow] = useState(true);
@@ -55,8 +55,16 @@ export default function CycleSettings() {
     if (settings) {
       setEnabled(settings.enabled);
       setMode(settings.mode);
-      setAvgCycleLength(settings.avg_cycle_length_override ?? '');
-      setAvgPeriodLength(settings.avg_period_length_override ?? '');
+      setAvgCycleLength(
+        settings.avg_cycle_length_override != null
+          ? String(settings.avg_cycle_length_override)
+          : ''
+      );
+      setAvgPeriodLength(
+        settings.avg_period_length_override != null
+          ? String(settings.avg_period_length_override)
+          : ''
+      );
       setBirthControlMethod(settings.birth_control_method);
       setConditions(settings.conditions ?? []);
       setShowFertileWindow(settings.show_fertile_window);
@@ -324,13 +332,18 @@ export default function CycleSettings() {
                     'Calculated from logs'
                   )}
                   value={avgCycleLength}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAvgCycleLength(
-                      v === ''
-                        ? ''
-                        : Math.max(15, Math.min(90, parseInt(v, 10) || 28))
-                    );
+                  onChange={(e) => setAvgCycleLength(e.target.value)}
+                  onBlur={() => {
+                    if (avgCycleLength !== '') {
+                      const val = parseInt(avgCycleLength, 10);
+                      if (isNaN(val)) {
+                        setAvgCycleLength('');
+                      } else {
+                        setAvgCycleLength(
+                          String(Math.max(15, Math.min(90, val)))
+                        );
+                      }
+                    }
                   }}
                 />
               </div>
@@ -350,13 +363,18 @@ export default function CycleSettings() {
                     'Calculated from logs'
                   )}
                   value={avgPeriodLength}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAvgPeriodLength(
-                      v === ''
-                        ? ''
-                        : Math.max(1, Math.min(15, parseInt(v, 10) || 5))
-                    );
+                  onChange={(e) => setAvgPeriodLength(e.target.value)}
+                  onBlur={() => {
+                    if (avgPeriodLength !== '') {
+                      const val = parseInt(avgPeriodLength, 10);
+                      if (isNaN(val)) {
+                        setAvgPeriodLength('');
+                      } else {
+                        setAvgPeriodLength(
+                          String(Math.max(1, Math.min(15, val)))
+                        );
+                      }
+                    }
                   }}
                 />
               </div>
