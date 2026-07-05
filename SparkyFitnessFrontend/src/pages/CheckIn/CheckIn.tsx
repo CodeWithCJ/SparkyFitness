@@ -30,6 +30,7 @@ const CheckIn = () => {
     loading,
     mood,
     moodNotes,
+    moodTags,
     neck,
     recentMeasurements,
     selectedDate,
@@ -40,6 +41,7 @@ const CheckIn = () => {
     setHips,
     setMood,
     setMoodNotes,
+    setMoodTags,
     setNeck,
     setSelectedDate,
     setSteps,
@@ -68,8 +70,10 @@ const CheckIn = () => {
       <CheckInTopRow
         mood={mood}
         moodNotes={moodNotes}
+        moodTags={moodTags}
         setMood={setMood}
         setMoodNotes={setMoodNotes}
+        setMoodTags={setMoodTags}
       />
 
       <SleepEntrySection key={selectedDate} selectedDate={selectedDate} />

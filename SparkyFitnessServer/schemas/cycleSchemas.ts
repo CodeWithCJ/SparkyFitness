@@ -59,11 +59,8 @@ export const UpsertDailyLogBodySchema = z
   .object({
     flow_level: z.enum(FLOW_LEVELS).nullable().optional(),
     product_usage: z.record(z.string(), z.number().int().min(0)).optional(),
-    bbt: z.number().min(30).max(45).nullable().optional(),
-    bbt_taken_at: optionalNullableString,
     cervical_mucus: optionalNullableString,
     unusual_discharge: z.array(z.string()).optional(),
-    moods: z.array(z.string()).optional(),
     energy: z.number().int().min(1).max(5).nullable().optional(),
     libido: z.number().int().min(1).max(5).nullable().optional(),
     notes: optionalNullableString,

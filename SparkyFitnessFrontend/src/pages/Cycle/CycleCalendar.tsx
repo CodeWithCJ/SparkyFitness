@@ -487,8 +487,7 @@ export default function CycleCalendar({
                   <span>{dayNum}</span>
                   {/* Indicators */}
                   {!editMode &&
-                    (logs.find((l) => l.entry_date === dateStr)?.notes ||
-                      logs.find((l) => l.entry_date === dateStr)?.bbt) && (
+                    logs.find((l) => l.entry_date === dateStr)?.notes && (
                       <span className="absolute bottom-1 h-1 w-1 rounded-full bg-muted-foreground/60" />
                     )}
                 </button>
@@ -616,16 +615,6 @@ export default function CycleCalendar({
                   </div>
                 )}
 
-                {/* BBT */}
-                {selectedLog.bbt && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold">
-                      {t('cycle.log.bbt', 'Basal Temp')}:
-                    </span>{' '}
-                    {selectedLog.bbt.toFixed(2)} °C
-                  </p>
-                )}
-
                 {/* Cervical mucus */}
                 {selectedLog.cervical_mucus && (
                   <p className="text-xs text-muted-foreground capitalize">
@@ -634,20 +623,6 @@ export default function CycleCalendar({
                     </span>{' '}
                     {selectedLog.cervical_mucus}
                   </p>
-                )}
-
-                {/* Moods */}
-                {selectedLog.moods && selectedLog.moods.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {selectedLog.moods.map((m) => (
-                      <span
-                        key={m}
-                        className="bg-muted px-2 py-0.5 rounded-full text-[10px] capitalize"
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
                 )}
 
                 {/* Energy */}

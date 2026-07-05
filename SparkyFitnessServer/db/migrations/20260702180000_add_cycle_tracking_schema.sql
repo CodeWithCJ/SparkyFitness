@@ -49,11 +49,10 @@ CREATE TABLE cycle_daily_logs (
     entry_date DATE NOT NULL,
     flow_level VARCHAR(20),                              -- NULL = not logged; 'none' = explicit no-flow
     product_usage JSONB NOT NULL DEFAULT '{}'::jsonb,    -- {"pad":3,"tampon":2,...} counts
-    bbt NUMERIC(4,2),                                    -- stored °C canonical
-    bbt_taken_at TIME,
+    -- BBT moved to the 'basal_body_temperature' custom measurement (shared with mobile sync).
+    -- Mood moved to the shared mood_entries.mood_tags model.
     cervical_mucus VARCHAR(20),
     unusual_discharge TEXT[] NOT NULL DEFAULT '{}',
-    moods TEXT[] NOT NULL DEFAULT '{}',
     energy SMALLINT,                                     -- 1-5
     libido SMALLINT,                                     -- 1-5
     notes TEXT,
@@ -271,3 +270,89 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON health_appointments
 FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- RLS in db/rls_policies.sql: all six tables -> create_owner_policy (Tier 1).
+
+
+-- Mood unification: add multi-select mood_tags to mood_entries (keeping the
+-- numeric mood_value for Garmin sync / analytics / chatbot interop) and add a
+-- user_custom_moods table (mirrors user_custom_symptoms). Additive &
+-- non-destructive: mood_value is retained.
+
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 1. mood_tags column.
+ALTER TABLE mood_entries
+  ADD COLUMN IF NOT EXISTS mood_tags TEXT[] NOT NULL DEFAULT '{}';
+
+-- 2. Backfill each existing 0-100 mood_value into one tag (MoodMeter bands).
+UPDATE mood_entries
+SET mood_tags = ARRAY[
+  CASE
+    WHEN mood_value <= 15 THEN 'sad'
+    WHEN mood_value <= 25 THEN 'angry'
+    WHEN mood_value <= 35 THEN 'worried'
+    WHEN mood_value <= 45 THEN 'neutral'
+    WHEN mood_value <= 55 THEN 'thoughtful'
+    WHEN mood_value <= 65 THEN 'calm'
+    WHEN mood_value <= 75 THEN 'confident'
+    WHEN mood_value <= 85 THEN 'happy'
+    ELSE 'excited'
+  END
+]
+WHERE mood_tags = '{}' AND mood_value IS NOT NULL;
+
+-- 3. user_custom_moods — user-defined mood tags (mirrors user_custom_symptoms).
+CREATE TABLE IF NOT EXISTS user_custom_moods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,                                  -- stable slug
+    display_name TEXT,
+    icon VARCHAR(40),
+    color VARCHAR(20),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_user_mood_name UNIQUE (user_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_user_custom_moods_user_id ON user_custom_moods(user_id);
+DROP TRIGGER IF EXISTS set_timestamp ON user_custom_moods;
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON user_custom_moods
+FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- RLS for user_custom_moods is applied in db/rls_policies.sql. It uses the
+-- check-in policy (like custom_categories) so it follows check-in family sharing.
+
+
+
+
+-- Mood display preferences: lets a user hide/show built-in and custom moods in
+-- the check-in mood picker (parity with the cycle symptom show/hide). Dedicated
+-- table (moods are check-in data, not cycle). Owner-only preference.
+
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TABLE IF NOT EXISTS user_mood_display_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public."user"(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL DEFAULT 'web',
+    hidden_moods TEXT[] NOT NULL DEFAULT '{}',   -- mood names hidden from the picker
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_user_mood_display UNIQUE (user_id, platform)
+);
+CREATE INDEX IF NOT EXISTS idx_user_mood_display_preferences_user_id ON user_mood_display_preferences(user_id);
+DROP TRIGGER IF EXISTS set_timestamp ON user_mood_display_preferences;
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON user_mood_display_preferences
+FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- RLS applied in db/rls_policies.sql (owner-only preference).

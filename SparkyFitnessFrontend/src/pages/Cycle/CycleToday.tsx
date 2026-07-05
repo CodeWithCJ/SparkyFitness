@@ -36,6 +36,7 @@ import FertilityCard from './ttc/FertilityCard';
 import FertileWindowChart from './ttc/FertileWindowChart';
 import TestQuickLog from './ttc/TestQuickLog';
 import TwoWeekWait from './ttc/TwoWeekWait';
+import BbtStatusCard from './ttc/BbtStatusCard';
 
 const PHASE_LABELS: Record<string, string> = {
   menstrual: 'Menstrual',
@@ -106,7 +107,10 @@ export default function CycleToday() {
 
   const { prediction, stats, phase, cycleDay, currentCycleStart, late, log } =
     overview;
-  const isTtc = overview.settings?.mode === 'ttc';
+  const mode = overview.settings?.mode ?? 'standard';
+  const isTtc = mode === 'ttc';
+  // BBT confirms ovulation — relevant for cycle tracking + TTC, not pregnancy modes.
+  const showBbt = mode === 'standard' || mode === 'ttc';
   const next = prediction.cycles[0];
   const periodLength =
     overview.settings?.avg_period_length_override ?? stats.avgPeriodLength ?? 5;
@@ -428,10 +432,18 @@ export default function CycleToday() {
               }
             />
             <StatCard
-              label={t('cycle.stats.lastBbt', 'Last BBT')}
-              value={log?.bbt != null ? `${log.bbt.toFixed(2)}°` : '—'}
+              label={t('cycle.stats.confidence', 'Prediction')}
+              value={t(
+                `cycle.confidence.${prediction.confidence}`,
+                prediction.confidence
+              )}
             />
           </div>
+
+          {/* BBT setup / staleness (standard + TTC modes) */}
+          {showBbt && fertility && (
+            <BbtStatusCard bbtStatus={fertility.bbtStatus} />
+          )}
 
           {/* TTC widgets */}
           {isTtc && fertility && (

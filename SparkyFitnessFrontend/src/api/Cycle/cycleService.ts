@@ -106,6 +106,12 @@ export interface FertilityDetails {
     confirmedOvulationDate: string | null;
     isConfirmed: boolean;
   };
+  bbtStatus: {
+    categoryExists: boolean;
+    latestDate: string | null;
+    staleDays: number | null;
+    isStale: boolean;
+  };
 }
 
 export const listTestEntries = (

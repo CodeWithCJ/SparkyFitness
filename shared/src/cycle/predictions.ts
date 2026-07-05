@@ -332,7 +332,6 @@ export interface DecoratedDay {
   hasSymptoms: boolean;
   hasBbt: boolean;
   hasMucus: boolean;
-  moods: string[];
 }
 
 export function buildCalendarMonth(
@@ -381,10 +380,11 @@ export function buildCalendarMonth(
       type,
       loggedFlow: log?.flow_level ?? null,
       hasNotes: !!log?.notes,
-      hasSymptoms: log ? (log.moods.length > 0 || !!(log.custom_fields && Object.keys(log.custom_fields).length > 0)) : false,
+      hasSymptoms: log
+        ? !!(log.custom_fields && Object.keys(log.custom_fields).length > 0)
+        : false,
       hasBbt: log?.bbt != null,
       hasMucus: log?.cervical_mucus != null,
-      moods: log?.moods ?? [],
     });
   }
   return days;

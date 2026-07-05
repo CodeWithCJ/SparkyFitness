@@ -10,8 +10,8 @@ const SETTINGS_COLS = `id, user_id, enabled, mode, avg_cycle_length_override, av
   luteal_phase_length, birth_control_method, conditions, show_fertile_window, preferred_products,
   dismissed_prompts, terminology, discreet_mode, onboarded_at, created_at, updated_at`;
 
-const LOG_COLS = `id, user_id, entry_date, flow_level, product_usage, bbt, bbt_taken_at, cervical_mucus,
-  unusual_discharge, moods, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields, created_at, updated_at`;
+const LOG_COLS = `id, user_id, entry_date, flow_level, product_usage, cervical_mucus,
+  unusual_discharge, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields, created_at, updated_at`;
 
 const CYCLE_COLS = `id, user_id, start_date, end_date, period_length, cycle_length, is_excluded,
   source, birth_control_method, created_at, updated_at`;
@@ -131,25 +131,22 @@ async function upsertLog(
   try {
     const result = await client.query(
       `INSERT INTO cycle_daily_logs (
-         user_id, entry_date, flow_level, product_usage, bbt, bbt_taken_at, cervical_mucus,
-         unusual_discharge, moods, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields)
-       VALUES ($1, $2, $3, COALESCE($4, '{}'::jsonb), $5, $6, $7,
-         COALESCE($8::text[], '{}'), COALESCE($9::text[], '{}'), $10, $11, $12, $13, $14, $15, COALESCE($16, '{}'::jsonb))
+         user_id, entry_date, flow_level, product_usage, cervical_mucus,
+         unusual_discharge, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields)
+       VALUES ($1, $2, $3, COALESCE($4, '{}'::jsonb), $5,
+         COALESCE($6::text[], '{}'), $7, $8, $9, $10, $11, $12, COALESCE($13, '{}'::jsonb))
        ON CONFLICT (user_id, entry_date) DO UPDATE SET
          flow_level = COALESCE($3, cycle_daily_logs.flow_level),
          product_usage = COALESCE($4, cycle_daily_logs.product_usage),
-         bbt = COALESCE($5, cycle_daily_logs.bbt),
-         bbt_taken_at = COALESCE($6, cycle_daily_logs.bbt_taken_at),
-         cervical_mucus = COALESCE($7, cycle_daily_logs.cervical_mucus),
-         unusual_discharge = COALESCE($8::text[], cycle_daily_logs.unusual_discharge),
-         moods = COALESCE($9::text[], cycle_daily_logs.moods),
-         energy = COALESCE($10, cycle_daily_logs.energy),
-         libido = COALESCE($11, cycle_daily_logs.libido),
-         notes = COALESCE($12, cycle_daily_logs.notes),
-         intercourse = COALESCE($13, cycle_daily_logs.intercourse),
-         intercourse_protected = COALESCE($14, cycle_daily_logs.intercourse_protected),
-         cervical_position = COALESCE($15, cycle_daily_logs.cervical_position),
-         custom_fields = COALESCE($16, cycle_daily_logs.custom_fields),
+         cervical_mucus = COALESCE($5, cycle_daily_logs.cervical_mucus),
+         unusual_discharge = COALESCE($6::text[], cycle_daily_logs.unusual_discharge),
+         energy = COALESCE($7, cycle_daily_logs.energy),
+         libido = COALESCE($8, cycle_daily_logs.libido),
+         notes = COALESCE($9, cycle_daily_logs.notes),
+         intercourse = COALESCE($10, cycle_daily_logs.intercourse),
+         intercourse_protected = COALESCE($11, cycle_daily_logs.intercourse_protected),
+         cervical_position = COALESCE($12, cycle_daily_logs.cervical_position),
+         custom_fields = COALESCE($13, cycle_daily_logs.custom_fields),
          updated_at = NOW()
        RETURNING ${LOG_COLS}`,
       [
@@ -157,11 +154,8 @@ async function upsertLog(
         date,
         data.flow_level ?? null,
         data.product_usage ? JSON.stringify(data.product_usage) : null,
-        data.bbt ?? null,
-        data.bbt_taken_at ?? null,
         data.cervical_mucus ?? null,
         data.unusual_discharge ?? null,
-        data.moods ?? null,
         data.energy ?? null,
         data.libido ?? null,
         data.notes ?? null,
@@ -579,6 +573,48 @@ async function getCorrelationSources(userId: string) {
   }
 }
 
+/**
+ * BBT is stored in the shared `basal_body_temperature` custom measurement
+ * (same category the mobile app syncs into), not in cycle_daily_logs. Returns a
+ * { 'YYYY-MM-DD': °C } map for the prediction engine.
+ */
+async function getBbtMap(userId: string): Promise<Record<string, number>> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT cm.entry_date, cm.value
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cc.id = cm.category_id
+       WHERE cm.user_id = $1 AND cc.name = 'basal_body_temperature'
+       ORDER BY cm.entry_date ASC`,
+      [userId]
+    );
+    const map: Record<string, number> = {};
+    for (const row of result.rows) {
+      const v = Number(row.value);
+      if (Number.isFinite(v)) map[normalizeDay(row.entry_date)] = v;
+    }
+    return map;
+  } finally {
+    client.release();
+  }
+}
+
+/** Whether the user has the basal_body_temperature custom category set up. */
+async function hasBbtCategory(userId: string): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT 1 FROM custom_categories
+       WHERE user_id = $1 AND name = 'basal_body_temperature' LIMIT 1`,
+      [userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
 /** Full owner-scoped dump for data export (Phase 5). */
 async function exportAll(userId: string) {
   const client = await getClient(userId);
@@ -667,6 +703,8 @@ export default {
   upsertSettings,
   dismissPrompt,
   getCorrelationSources,
+  getBbtMap,
+  hasBbtCategory,
   exportAll,
   getLog,
   upsertLog,

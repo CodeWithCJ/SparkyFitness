@@ -1,5 +1,5 @@
 import { api } from '@/api/api';
-import type { MoodEntry } from '@/types/mood';
+import type { MoodEntry, CustomMood } from '@/types/mood';
 import { getErrorMessage } from '@/utils/api';
 import { debug, info, error } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
@@ -7,17 +7,24 @@ import { getUserLoggingLevel } from '@/utils/userPreferences';
 export const saveMoodEntry = async (
   moodValue: number,
   notes: string,
-  entryDate: string
+  entryDate: string,
+  moodTags?: string[]
 ): Promise<MoodEntry> => {
   try {
     const userLoggingLevel = getUserLoggingLevel();
     debug(userLoggingLevel, 'Sending mood entry:', {
       mood_value: moodValue,
+      mood_tags: moodTags,
       notes,
       entry_date: entryDate,
     });
     const response = await api.post('/mood', {
-      body: { mood_value: moodValue, notes, entry_date: entryDate },
+      body: {
+        mood_value: moodValue,
+        mood_tags: moodTags,
+        notes,
+        entry_date: entryDate,
+      },
     });
     return response.data;
   } catch (error) {
@@ -25,6 +32,37 @@ export const saveMoodEntry = async (
     throw error;
   }
 };
+
+// --- Custom moods (user-defined mood tags) ---------------------------------
+
+export const listCustomMoods = (): Promise<CustomMood[]> =>
+  api.get('/mood/custom');
+
+export const createCustomMood = (body: {
+  name: string;
+  display_name?: string;
+  icon?: string;
+  color?: string;
+}): Promise<CustomMood> => api.post('/mood/custom', { body });
+
+export const deleteCustomMood = (
+  id: string,
+  deleteAllHistory = false
+): Promise<void> =>
+  api.delete(`/mood/custom/${id}`, {
+    params: { deleteAllHistory: deleteAllHistory ? 'true' : 'false' },
+  });
+
+// --- Mood display preferences (show/hide) ----------------------------------
+
+export const getMoodDisplayPreferences = (): Promise<{
+  hidden_moods: string[];
+}> => api.get('/mood/display-preferences');
+
+export const updateMoodDisplayPreferences = (
+  hiddenMoods: string[]
+): Promise<{ hidden_moods: string[] }> =>
+  api.put('/mood/display-preferences', { body: { hidden_moods: hiddenMoods } });
 
 interface MoodEntryParams {
   startDate: string;

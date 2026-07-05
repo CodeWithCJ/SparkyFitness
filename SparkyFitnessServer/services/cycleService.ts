@@ -38,6 +38,22 @@ interface LogRow {
   [key: string]: unknown;
 }
 
+/** Ordered BBT series from the basal_body_temperature custom-measurement map. */
+function seriesFromBbtMap(
+  bbtMap: Record<string, number>
+): Array<{ date: string; bbt: number }> {
+  return Object.entries(bbtMap)
+    .map(([date, bbt]) => ({ date, bbt }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Hydrate log rows with BBT from the custom measurement (BBT is no longer a cycle column). */
+function hydrateBbt(logs: LogRow[], bbtMap: Record<string, number>): void {
+  for (const l of logs) {
+    l.bbt = bbtMap[normalizeDay(l.entry_date)] ?? null;
+  }
+}
+
 function toEvidence(rows: EvidenceRow[]): DayEvidence[] {
   return rows.map((r) => ({
     date: normalizeDay(r.entry_date),
@@ -116,6 +132,7 @@ async function getOverview(userId: string, today: string, date?: string) {
       '1970-01-01',
       '2100-01-01'
     )) as LogRow[];
+    hydrateBbt(logs, await cycleRepository.getBbtMap(userId));
     const est = estimateOvulation(
       lastCycle,
       logs as any,
@@ -164,6 +181,8 @@ async function getInsights(userId: string) {
     '1970-01-01',
     '2100-01-01'
   )) as LogRow[];
+  const bbtMap = await cycleRepository.getBbtMap(userId);
+  hydrateBbt(logs, bbtMap);
   const cycles = deriveCycles(toEvidence(evidenceRows));
   const stats = computeCycleStats(cycles);
 
@@ -210,13 +229,7 @@ async function getInsights(userId: string) {
   );
   const prodStats = productStats(cycles, logs as any);
 
-  const bbtSeries = logs
-    .filter((l) => l.bbt !== null)
-    .map((l) => ({
-      date: normalizeDay(l.entry_date),
-      bbt: Number(l.bbt),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const bbtSeries = seriesFromBbtMap(bbtMap);
 
   return {
     stats,
@@ -239,6 +252,8 @@ async function getFertility(userId: string, targetDate: string) {
     '1970-01-01',
     '2100-01-01'
   )) as LogRow[];
+  const bbtMap = await cycleRepository.getBbtMap(userId);
+  hydrateBbt(logs, bbtMap);
   const tests = await cycleRepository.listAllTestEntries(userId);
 
   const lastCycle = cycles[cycles.length - 1];
@@ -300,17 +315,23 @@ async function getFertility(userId: string, targetDate: string) {
   const nextCycleStart = cycles.find(
     (c) => compareDays(c.start_date, currentCycleStart) > 0
   )?.start_date;
-  const cycleLogs = logs.filter((l) => {
-    const afterStart = compareDays(l.entry_date, currentCycleStart) >= 0;
+  const bbtSeries = seriesFromBbtMap(bbtMap).filter((s) => {
+    const afterStart = compareDays(s.date, currentCycleStart) >= 0;
     const beforeEnd = nextCycleStart
-      ? compareDays(l.entry_date, nextCycleStart) < 0
+      ? compareDays(s.date, nextCycleStart) < 0
       : true;
     return afterStart && beforeEnd;
   });
-  const bbtSeries = cycleLogs
-    .filter((l) => l.bbt !== null)
-    .map((l) => ({ date: normalizeDay(l.entry_date), bbt: Number(l.bbt) }));
   const bbtShiftStatus = detectBiphasicShift(bbtSeries);
+
+  // BBT lives in the basal_body_temperature custom measurement. Surface whether
+  // it exists and how fresh it is so the cycle tab can warn/offer to set it up.
+  const bbtCategoryExists = await cycleRepository.hasBbtCategory(userId);
+  const allBbt = seriesFromBbtMap(bbtMap);
+  const latestBbtDate = allBbt.length ? allBbt[allBbt.length - 1]!.date : null;
+  const bbtStaleDays = latestBbtDate
+    ? Math.abs(daysBetween(latestBbtDate, targetDate))
+    : null;
 
   return {
     ovulationEstimate: est,
@@ -318,6 +339,12 @@ async function getFertility(userId: string, targetDate: string) {
     fertileWindowSeries,
     dpo: dpoVal,
     bbtShiftStatus,
+    bbtStatus: {
+      categoryExists: bbtCategoryExists,
+      latestDate: latestBbtDate,
+      staleDays: bbtStaleDays,
+      isStale: bbtStaleDays !== null && bbtStaleDays > 3,
+    },
   };
 }
 

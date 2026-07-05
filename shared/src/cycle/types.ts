@@ -46,11 +46,10 @@ export interface SharedCycleDailyLog {
   entry_date: string; // YYYY-MM-DD
   flow_level?: FlowLevel | null;
   product_usage: Record<string, number>;
+  /** Hydrated from the basal_body_temperature custom measurement, not stored on the cycle log. */
   bbt?: number | null; // canonical °C
-  bbt_taken_at?: string | null; // HH:MM[:SS]
   cervical_mucus?: string | null;
   unusual_discharge: string[];
-  moods: string[];
   energy?: number | null; // 1-5
   libido?: number | null; // 1-5
   notes?: string | null;

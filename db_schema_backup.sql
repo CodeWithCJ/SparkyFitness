@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Hv9qQPu6ZWi8qrflZzXY3qwMs7b4Xcyps2s2Q6VNEwb1897POjcrYNTagHRUhG0
+\restrict LrSIbsoR8ZdRwkQ7sg6bqpGJWBgj6QbBAjx2npfKUXnSHmhjvU7e6y6PTnft2Fd
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1333,11 +1333,8 @@ CREATE TABLE public.cycle_daily_logs (
     entry_date date NOT NULL,
     flow_level character varying(20),
     product_usage jsonb DEFAULT '{}'::jsonb NOT NULL,
-    bbt numeric(4,2),
-    bbt_taken_at time without time zone,
     cervical_mucus character varying(20),
     unusual_discharge text[] DEFAULT '{}'::text[] NOT NULL,
-    moods text[] DEFAULT '{}'::text[] NOT NULL,
     energy smallint,
     libido smallint,
     notes text,
@@ -2358,7 +2355,8 @@ CREATE TABLE public.mood_entries (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    mood_tags text[] DEFAULT '{}'::text[] NOT NULL
 );
 
 
@@ -2891,6 +2889,22 @@ CREATE TABLE public.user_allergen_preferences (
 
 
 --
+-- Name: user_custom_moods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_custom_moods (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    name text NOT NULL,
+    display_name text,
+    icon character varying(40),
+    color character varying(20),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_custom_nutrients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3041,6 +3055,20 @@ CREATE TABLE public.user_medication_display_preferences (
     view_group character varying(255) NOT NULL,
     platform character varying(50) DEFAULT 'web'::character varying NOT NULL,
     visible_items jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_mood_display_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_mood_display_preferences (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    platform character varying(50) DEFAULT 'web'::character varying NOT NULL,
+    hidden_moods text[] DEFAULT '{}'::text[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -4360,6 +4388,22 @@ ALTER TABLE ONLY public.user_medication_display_preferences
 
 
 --
+-- Name: user_mood_display_preferences unique_user_mood_display; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_mood_display_preferences
+    ADD CONSTRAINT unique_user_mood_display UNIQUE (user_id, platform);
+
+
+--
+-- Name: user_custom_moods unique_user_mood_name; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_moods
+    ADD CONSTRAINT unique_user_mood_name UNIQUE (user_id, name);
+
+
+--
 -- Name: user_custom_nutrients unique_user_nutrient_name; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4405,6 +4449,14 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 ALTER TABLE ONLY public.user_allergen_preferences
     ADD CONSTRAINT user_allergen_preferences_user_id_allergen_name_key UNIQUE (user_id, allergen_name);
+
+
+--
+-- Name: user_custom_moods user_custom_moods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_moods
+    ADD CONSTRAINT user_custom_moods_pkey PRIMARY KEY (id);
 
 
 --
@@ -4485,6 +4537,14 @@ ALTER TABLE ONLY public.user_meal_visibilities
 
 ALTER TABLE ONLY public.user_medication_display_preferences
     ADD CONSTRAINT user_medication_display_preferences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_mood_display_preferences user_mood_display_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_mood_display_preferences
+    ADD CONSTRAINT user_mood_display_preferences_pkey PRIMARY KEY (id);
 
 
 --
@@ -5200,6 +5260,13 @@ CREATE INDEX idx_symptom_entries_user_id ON public.symptom_entries USING btree (
 
 
 --
+-- Name: idx_user_custom_moods_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_custom_moods_user_id ON public.user_custom_moods USING btree (user_id);
+
+
+--
 -- Name: idx_user_custom_symptom_locations_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5253,6 +5320,13 @@ CREATE INDEX idx_user_ignored_updates_variant_id ON public.user_ignored_updates 
 --
 
 CREATE INDEX idx_user_medication_display_preferences_user_id ON public.user_medication_display_preferences USING btree (user_id);
+
+
+--
+-- Name: idx_user_mood_display_preferences_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_mood_display_preferences_user_id ON public.user_mood_display_preferences USING btree (user_id);
 
 
 --
@@ -5473,6 +5547,13 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.symptom_entries FOR EACH RO
 
 
 --
+-- Name: user_custom_moods set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_custom_moods FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: user_custom_nutrients set_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5505,6 +5586,13 @@ CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_cycle_display_preferen
 --
 
 CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_medication_display_preferences FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: user_mood_display_preferences set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.user_mood_display_preferences FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
 
 --
@@ -6579,6 +6667,14 @@ ALTER TABLE ONLY public.user_allergen_preferences
 
 
 --
+-- Name: user_custom_moods user_custom_moods_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_custom_moods
+    ADD CONSTRAINT user_custom_moods_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_custom_nutrients user_custom_nutrients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6648,6 +6744,14 @@ ALTER TABLE ONLY public.user_meal_visibilities
 
 ALTER TABLE ONLY public.user_medication_display_preferences
     ADD CONSTRAINT user_medication_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_mood_display_preferences user_mood_display_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_mood_display_preferences
+    ADD CONSTRAINT user_mood_display_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7473,6 +7577,13 @@ CREATE POLICY modify_policy ON public.user_allergen_preferences USING (public.ha
 
 
 --
+-- Name: user_custom_moods modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_custom_moods USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
 -- Name: user_custom_nutrients modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7741,6 +7852,13 @@ CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = publ
 --
 
 CREATE POLICY owner_policy ON public.user_medication_display_preferences USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: user_mood_display_preferences owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_mood_display_preferences USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -8103,6 +8221,13 @@ CREATE POLICY select_policy ON public.user_allergen_preferences FOR SELECT USING
 
 
 --
+-- Name: user_custom_moods select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_custom_moods FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
 -- Name: user_custom_nutrients select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8276,6 +8401,12 @@ CREATE POLICY update_policy ON public.food_entries FOR UPDATE USING (public.has_
 ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: user_custom_moods; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_custom_moods ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: user_custom_nutrients; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8328,6 +8459,12 @@ ALTER TABLE public.user_meal_visibilities ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_medication_display_preferences ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_mood_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_mood_display_preferences ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_nutrient_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
@@ -9488,6 +9625,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO s
 
 
 --
+-- Name: TABLE user_custom_moods; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO sparky_uat;
+
+
+--
 -- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
 --
 
@@ -9566,6 +9712,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "spa
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO sparky_uat;
+
+
+--
+-- Name: TABLE user_mood_display_preferences; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO sparky_uat;
 
 
 --
@@ -9851,5 +10006,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Hv9qQPu6ZWi8qrflZzXY3qwMs7b4Xcyps2s2Q6VNEwb1897POjcrYNTagHRUhG0
+\unrestrict LrSIbsoR8ZdRwkQ7sg6bqpGJWBgj6QbBAjx2npfKUXnSHmhjvU7e6y6PTnft2Fd
 

@@ -4,7 +4,6 @@ import {
   FLOW_LEVELS,
   PERIOD_PRODUCTS,
   CERVICAL_MUCUS_TYPES,
-  CYCLE_MOOD_TAGS,
   type SharedCycleDailyLog,
   type FlowLevel,
   type ProductDef,
@@ -13,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
-import { Check, Minus, Plus, Thermometer, Settings, Trash } from 'lucide-react';
+import { Check, Minus, Plus, Settings, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import CycleIcon from './CycleIcon';
 import CycleSymptomPicker from './CycleSymptomPicker';
@@ -48,9 +47,7 @@ interface DailyLogPanelProps {
 type Draft = {
   flow_level: FlowLevel | null;
   product_usage: Record<string, number>;
-  bbt: number | null;
   cervical_mucus: string | null;
-  moods: string[];
   energy: number | null;
   notes: string | null;
   intercourse: boolean | null;
@@ -62,9 +59,7 @@ function toDraft(log: SharedCycleDailyLog | null): Draft {
   return {
     flow_level: log?.flow_level ?? null,
     product_usage: log?.product_usage ?? {},
-    bbt: log?.bbt ?? null,
     cervical_mucus: log?.cervical_mucus ?? null,
-    moods: log?.moods ?? [],
     energy: log?.energy ?? null,
     notes: log?.notes ?? null,
     intercourse: log?.intercourse ?? null,
@@ -192,15 +187,6 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
   );
   const visibleProductsList = showAllProducts ? allProducts : activeProducts;
   const visibleProducts = visibleProductsList.map((p) => p.value);
-
-  const toggleMood = (name: string) => {
-    const has = draft.moods.includes(name);
-    save({
-      moods: has
-        ? draft.moods.filter((m) => m !== name)
-        : [...draft.moods, name],
-    });
-  };
 
   const setProduct = (value: string, count: number) => {
     const next = { ...draft.product_usage, [value]: Math.max(0, count) };
@@ -512,45 +498,8 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
           </div>
         </section>
 
-        {/* BBT */}
-        <section>
-          <p className="mb-2 flex items-center gap-1 text-sm font-medium">
-            <Thermometer className="h-4 w-4" />
-            {t('cycle.log.bbt', 'Basal body temperature')}
-          </p>
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              aria-label="Decrease temperature"
-              onClick={() =>
-                save({
-                  bbt: Math.round(((draft.bbt ?? 36.5) - 0.05) * 100) / 100,
-                })
-              }
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[80px] text-center text-2xl font-semibold tabular-nums">
-              {draft.bbt != null ? draft.bbt.toFixed(2) : '--.--'}
-              <span className="ml-1 text-sm text-muted-foreground">°C</span>
-            </span>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              aria-label="Increase temperature"
-              onClick={() =>
-                save({
-                  bbt: Math.round(((draft.bbt ?? 36.5) + 0.05) * 100) / 100,
-                })
-              }
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </section>
+        {/* BBT is tracked via the basal_body_temperature custom measurement in
+            Check-in (and can sync from mobile), then feeds cycle predictions. */}
 
         {/* Cervical mucus */}
         <section className="space-y-3">
@@ -590,31 +539,7 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
           )}
         </section>
 
-        {/* Moods */}
-        <section>
-          <p className="mb-2 text-sm font-medium">
-            {t('cycle.log.moods', 'Mood')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CYCLE_MOOD_TAGS.map((m) => (
-              <button
-                key={m.name}
-                type="button"
-                onClick={() => toggleMood(m.name)}
-                aria-pressed={draft.moods.includes(m.name)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition',
-                  draft.moods.includes(m.name)
-                    ? 'border-primary bg-primary/10 font-medium'
-                    : 'border-transparent bg-muted/40 hover:bg-muted'
-                )}
-              >
-                <CycleIcon id={m.icon} size={20} title={m.displayName} />
-                {m.displayName}
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Mood now lives in the shared mood_entries model (Check-in / Reports). */}
 
         {/* Symptoms — feeds the Insights symptom-pattern heatmap */}
         <CycleSymptomPicker date={date} />
