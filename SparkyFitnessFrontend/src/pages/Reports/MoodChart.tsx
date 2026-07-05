@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ScatterChart,
   Scatter,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -10,9 +12,15 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getMoodDisplay } from '@/utils/moodUtils';
+import { BUILT_IN_MOODS } from '@workspace/shared';
 import type { MoodEntry } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
+
+function moodTagLabel(tag: string): string {
+  const def = BUILT_IN_MOODS.find((m) => m.name === tag);
+  return def ? `${def.emoji} ${def.displayName}` : tag;
+}
 
 interface MoodChartProps {
   data: MoodEntry[];
@@ -45,6 +53,20 @@ const MoodChart = ({ data, title }: MoodChartProps) => {
     notes: entry.notes,
   }));
 
+  // Mood-tag frequency across the range (most common moods).
+  const tagFrequency = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of data) {
+      for (const tag of entry.mood_tags ?? []) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ label: moodTagLabel(tag), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12);
+  }, [data]);
+
   if (!isMounted) {
     return (
       <Card>
@@ -67,57 +89,95 @@ const MoodChart = ({ data, title }: MoodChartProps) => {
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-8">
+        {/* Most common moods (tag frequency) */}
+        {tagFrequency.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-medium">
+              {t('mood.mostCommon', 'Most common moods')}
+            </p>
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(160, tagFrequency.length * 28)}
+            >
+              <BarChart
+                data={tagFrequency}
+                layout="vertical"
+                margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
+              >
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={120}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip />
+                <Bar dataKey="count" fill="#C9524E" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Overall-mood intensity trend (numeric) */}
         {formattedData.length > 0 ? (
-          <ResponsiveContainer
-            width="100%"
-            height={500}
-            minWidth={0}
-            minHeight={0}
-            debounce={100}
-          >
-            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid />
-              <XAxis
-                dataKey="date"
-                name={t('mood.date', 'Date')}
-                tickFormatter={(tickItem) =>
-                  formatDateInUserTimezone(tickItem, 'MMM dd')
-                }
-              />
-              <YAxis
-                type="number"
-                dataKey="moodValue"
-                name={t('mood.mood', 'Mood')}
-                domain={[0, 100]}
-              />
-              <Tooltip
-                cursor={{ strokeDasharray: '3 3' }}
-                content={<CustomTooltip />}
-              />
-              <Scatter
-                name={t('mood.dailyMood', 'Daily Mood')}
-                data={formattedData}
-                fill="#8884d8"
-                shape={(props) => {
-                  const { cx, cy, payload } = props;
-                  return (
-                    <text
-                      x={cx}
-                      y={cy}
-                      dy={5}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="custom-chart-emoji"
-                    >
-                      {payload.moodDisplay.emoji}{' '}
-                      {/* Use emoji from moodDisplay */}
-                    </text>
-                  );
-                }}
-              />
-            </ScatterChart>
-          </ResponsiveContainer>
+          <div>
+            <p className="mb-2 text-sm font-medium">
+              {t('mood.intensityTrend', 'Overall mood over time')}
+            </p>
+            <ResponsiveContainer
+              width="100%"
+              height={400}
+              minWidth={0}
+              minHeight={0}
+              debounce={100}
+            >
+              <ScatterChart
+                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+              >
+                <CartesianGrid />
+                <XAxis
+                  dataKey="date"
+                  name={t('mood.date', 'Date')}
+                  tickFormatter={(tickItem) =>
+                    formatDateInUserTimezone(tickItem, 'MMM dd')
+                  }
+                />
+                <YAxis
+                  type="number"
+                  dataKey="moodValue"
+                  name={t('mood.mood', 'Mood')}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  content={<CustomTooltip />}
+                />
+                <Scatter
+                  name={t('mood.dailyMood', 'Daily Mood')}
+                  data={formattedData}
+                  fill="#8884d8"
+                  shape={(props) => {
+                    const { cx, cy, payload } = props;
+                    return (
+                      <text
+                        x={cx}
+                        y={cy}
+                        dy={5}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="custom-chart-emoji"
+                      >
+                        {payload.moodDisplay.emoji}{' '}
+                        {/* Use emoji from moodDisplay */}
+                      </text>
+                    );
+                  }}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <p>
             {t('mood.noMoodData', 'No mood data available for this period.')}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Medium flow">
+  <rect width="28" height="28" rx="8" fill="#FDEDE9"/>
+  <path d="M10.5 8 C10.5 8 7 12.6 7 15.6 a3.5 3.5 0 0 0 7 0 C14 12.6 10.5 8 10.5 8 Z"
+        fill="#E4796B" stroke="#C9524E" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M18.5 10 C18.5 10 15.5 14 15.5 16.7 a3 3 0 0 0 6 0 C21.5 14 18.5 10 18.5 10 Z"
+        fill="#F3A79A" stroke="#C9524E" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

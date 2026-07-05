@@ -6,6 +6,7 @@ import { debug, info, error } from '@/utils/logging';
 import {
   Home,
   Activity, // Used for Check-In
+  CalendarHeart,
   BarChart3,
   Utensils, // Used for Foods
   Settings as SettingsIcon,
@@ -40,6 +41,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
+import { useCycleSettings } from '@/hooks/useCycle';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
@@ -80,6 +82,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   // Fetch meal types for quick log menu
   const { data: mealTypes } = useMealTypes();
+
+  // Fetch cycle settings to determine tab visibility
+  const { data: cycleSettings } = useCycleSettings();
 
   const handleSignOut = async () => {
     info(loggingLevel, 'MainLayout: Attempting to sign out.');
@@ -196,7 +201,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     if (!isActingOnBehalf) {
       tabs.push(
         { value: '/', label: t('nav.diary'), icon: Home },
-        { value: '/checkin', label: t('nav.checkin'), icon: Activity },
+        { value: '/checkin', label: t('nav.checkin'), icon: Activity }
+      );
+      if (cycleSettings?.enabled) {
+        tabs.push({
+          value: '/cycle',
+          label: cycleSettings.discreet_mode
+            ? t('nav.wellness', 'Wellness')
+            : cycleSettings.mode === 'pregnant'
+              ? t('nav.pregnancy', 'Pregnancy')
+              : t('nav.cycle', 'Cycle'),
+          icon: cycleSettings.discreet_mode ? Activity : CalendarHeart,
+        });
+      }
+      tabs.push(
         {
           value: '/medications',
           label: t('nav.medications', 'Medications'),
@@ -249,6 +267,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     loggingLevel,
     user?.role,
     t,
+    cycleSettings,
   ]);
 
   const availableMobileTabs = useMemo(() => {
@@ -260,8 +279,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     });
     const mobileTabs = [];
     if (!isActingOnBehalf) {
+      mobileTabs.push({ value: '/', label: t('nav.diary'), icon: Home });
+      if (cycleSettings?.enabled) {
+        mobileTabs.push({
+          value: '/cycle',
+          label: cycleSettings.discreet_mode
+            ? t('nav.wellness', 'Wellness')
+            : cycleSettings.mode === 'pregnant'
+              ? t('nav.pregnancy', 'Pregnancy')
+              : t('nav.cycle', 'Cycle'),
+          icon: cycleSettings.discreet_mode ? Activity : CalendarHeart,
+        });
+      }
       mobileTabs.push(
-        { value: '/', label: t('nav.diary'), icon: Home },
         { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         {
           value: 'Add',
@@ -308,6 +338,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     user?.role,
     isAddCompOpen,
     t,
+    cycleSettings,
   ]);
 
   const handleNavigateFromAddComp = useCallback(

@@ -29,6 +29,7 @@ import {
   useDeleteMedicationMutation,
   useMedicationEntries,
 } from '@/hooks/useMedications';
+import { useSymptomEntries } from '@/hooks/useSymptoms';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
@@ -36,6 +37,7 @@ import AddMedicationDialog, { MedTypeIcon } from './AddMedicationDialog';
 import ScheduleManager from './ScheduleManager';
 import TodayMedications from './TodayMedications';
 import SymptomDashboard from './SymptomDashboard';
+import MedicationDisclaimer from './MedicationDisclaimer';
 
 const formatDaysOfWeek = (days: number[] | null) => {
   if (!days || days.length === 0) return '';
@@ -78,6 +80,7 @@ const formatScheduleDescription = (sched: MedicationSchedule) => {
 
 export default function Medications() {
   const { t } = useTranslation();
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'cabinet' | 'symptoms'>(
     'today'
   );
@@ -113,6 +116,11 @@ export default function Medications() {
     activeOnly: false,
   });
 
+  // Also check if any symptom entries exist — either meds or symptoms means
+  // the user has already accepted the disclaimer.
+  const { data: anySymptoms = [], isLoading: loadingSymptoms } =
+    useSymptomEntries();
+
   const { data: entries = [], isLoading: loadingEntries } =
     useMedicationEntries({
       fromDate: selectedDate,
@@ -137,8 +145,36 @@ export default function Medications() {
   const selected =
     (meds.find((m) => m.id === selectedId) as MedicationDetail) ?? null;
 
+  // If no medications AND no symptom entries exist (and user hasn't accepted
+  // this session), show the disclaimer gate — similar to CycleOnboarding.
+  // Having any existing medication OR symptom entry means they accepted previously.
+  const hasExistingData = meds.length > 0 || anySymptoms.length > 0;
+  const stillLoading = loadingMeds || loadingSymptoms;
+
+  if (!stillLoading && !hasExistingData && !disclaimerAccepted) {
+    return (
+      <MedicationDisclaimer onAccept={() => setDisclaimerAccepted(true)} />
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Beta Notice */}
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 sm:p-4 flex items-start gap-3">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+            {t('medications.beta.title', 'Initial Beta Release')}
+          </h4>
+          <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mt-0.5">
+            {t(
+              'medications.beta.description',
+              'Please expect some rough edges. If you spot any bugs or issues, raise them on GitHub to help us improve!'
+            )}
+          </p>
+        </div>
+      </div>
+
       {/* Navigation & Date Filter Row */}
       <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-6 border-b pb-3 mb-6">
         {/* Navigation Pills */}

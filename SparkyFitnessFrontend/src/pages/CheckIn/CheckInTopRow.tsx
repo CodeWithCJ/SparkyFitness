@@ -6,14 +6,18 @@ import { useTranslation } from 'react-i18next';
 interface CheckInTopRowProps {
   mood: number;
   moodNotes: string;
+  moodTags: string[];
   setMood: (value: number) => void;
   setMoodNotes: (value: string) => void;
+  setMoodTags: (value: string[]) => void;
 }
 export const CheckInTopRow = ({
   mood,
   moodNotes,
+  moodTags,
   setMood,
   setMoodNotes,
+  setMoodTags,
 }: CheckInTopRowProps) => {
   const { t } = useTranslation();
   return (
@@ -37,8 +41,10 @@ export const CheckInTopRow = ({
               <MoodMeter
                 mood={mood}
                 notes={moodNotes}
+                moodTags={moodTags}
                 onMoodChange={setMood}
                 onNotesChange={setMoodNotes}
+                onTagsChange={setMoodTags}
               />
             </CardContent>
           </Card>

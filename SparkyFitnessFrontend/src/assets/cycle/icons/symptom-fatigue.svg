@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Fatigue">
+  <rect width="28" height="28" rx="8" fill="#FFF4DC"/>
+  <path d="M16.5 6.5 a7.5 7.5 0 1 0 5 12.8 a8.6 8.6 0 0 1 -5 -12.8 Z" fill="#E8B54A"/>
+  <path d="M8 9 h4 l-4 4 h4 M15.5 18.5 h3 l-3 3 h3" stroke="#B07E1E" stroke-width="1.6"
+        fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

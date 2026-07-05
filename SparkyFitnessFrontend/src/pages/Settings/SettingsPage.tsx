@@ -31,6 +31,7 @@ import { DeveloperResources } from './DevloperResources';
 import { AccountSecurity } from './AccountSecurity';
 import { ApiSettings } from './ApiSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
+import CycleSettings from './CycleSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
 import { DataManagementSettings } from './DataManagementSettings';
@@ -84,6 +85,13 @@ const Settings = () => {
           className="border rounded-lg mb-4"
         >
           <WaterTrackingSettings />
+        </AccordionItem>
+
+        <AccordionItem
+          value="cycle-settings"
+          className="border rounded-lg mb-4"
+        >
+          <CycleSettings />
         </AccordionItem>
 
         <AccordionItem

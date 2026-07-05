@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Baby at week 20: curled fetus about the size of a banana inside the womb">
+  <circle cx="120" cy="120" r="112" fill="#FDF2EC"/>
+  <path d="M22 206 Q120 138 218 206" fill="none" stroke="#E8B4A0" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+  <!-- womb, larger -->
+  <path d="M120 52 C164 52 188 88 184 126 C180 166 154 192 120 196 C86 192 60 166 56 126 C52 88 76 52 120 52 Z"
+        fill="#F9E0D8" stroke="#EFC0B0" stroke-width="4"/>
+  <ellipse cx="120" cy="126" rx="52" ry="58" fill="#FBEAE4"/>
+  <!-- baby curled, head upper-left -->
+  <circle cx="103" cy="106" r="20" fill="#E08A70"/>
+  <path d="M100 124 C84 140 96 164 118 162 C138 160 146 142 138 128 C132 118 118 116 100 124 Z" fill="#E08A70"/>
+  <!-- arm tucked -->
+  <path d="M112 132 q10 2 12 10" stroke="#D97F6C" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- leg folded -->
+  <path d="M124 158 q14 -2 16 -14" stroke="#E08A70" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M118 160 q10 2 18 -4" stroke="#D97F6C" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- closed eye + tiny nose -->
+  <path d="M94 106 q3 2.5 6 0" stroke="#FDF2EC" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <circle cx="88" cy="112" r="1.4" fill="#F3C8BC"/>
+  <!-- umbilical cord -->
+  <path d="M136 140 q10 6 14 0 q4 -7 -3 -9" stroke="#D97F6C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="152" cy="102" r="2.4" fill="#F3C8BC"/>
+  <circle cx="86" cy="150" r="2" fill="#F3C8BC"/>
+</svg>

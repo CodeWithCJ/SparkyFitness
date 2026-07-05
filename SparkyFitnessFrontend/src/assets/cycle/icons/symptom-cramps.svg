@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Cramps">
+  <rect width="28" height="28" rx="8" fill="#FDE8E4"/>
+  <ellipse cx="14" cy="17" rx="8.5" ry="6.5" fill="#F3A79A"/>
+  <path d="M14.5 8 L10.5 14.5 h3 L11.5 20.5 L17.5 13 h-3 L16.5 8 Z"
+        fill="#C9524E" stroke="#C9524E" stroke-width="0.6" stroke-linejoin="round"/>
+</svg>

@@ -186,6 +186,10 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     return existingMood?.notes || '';
   }, [existingMood?.notes]);
 
+  const derivedMoodTags = useMemo(() => {
+    return existingMood?.mood_tags ?? [];
+  }, [existingMood?.mood_tags]);
+
   const { derivedCustomValues, derivedCustomNotes } = useMemo(() => {
     const newCustomValues: Record<string, string> = {};
     const newCustomNotes: Record<string, string> = {};
@@ -250,6 +254,10 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const [mood, setMood] = useDerivedState<number>(derivedMood, selectedDate);
   const [moodNotes, setMoodNotes] = useDerivedState<string>(
     derivedMoodNotes,
+    selectedDate
+  );
+  const [moodTags, setMoodTags] = useDerivedState<string[]>(
+    derivedMoodTags,
     selectedDate
   );
   const [customValues, setCustomValues] = useDerivedState<
@@ -459,6 +467,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
         moodValue: moodToSend,
         notes: moodNotes,
         entryDate: selectedDate,
+        moodTags,
       });
 
       const measurementData: UpdateCheckInMeasurementsRequest = {
@@ -672,6 +681,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     loading,
     mood,
     moodNotes,
+    moodTags,
     neck,
     recentMeasurements,
     selectedDate,
@@ -682,6 +692,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     setHips,
     setMood,
     setMoodNotes,
+    setMoodTags,
     setNeck,
     setSelectedDate,
     setSteps,

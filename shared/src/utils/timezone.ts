@@ -68,6 +68,16 @@ export function localDateToDay(date: Date): string {
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+/** Whole-day count from `a` to `b` (b - a). Negative if b precedes a. */
+export function daysBetween(a: string, b: string): number {
+  const ma = DAY_RE.exec(a);
+  const mb = DAY_RE.exec(b);
+  if (!ma || !mb) throw new Error(`Invalid day string: ${a} / ${b}`);
+  const ua = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
+  const ub = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
+  return Math.round((ub - ua) / 86_400_000);
+}
+
 // ---------------------------------------------------------------------------
 // Timezone-aware operations
 // ---------------------------------------------------------------------------
