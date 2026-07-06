@@ -45,6 +45,19 @@ else
   fail=$((fail + 1))
 fi
 
+FRONTEND_DIR="$(cd "${SCRIPT_DIR}/../SparkyFitnessFrontend" && pwd)"
+if [[ -f "${FRONTEND_DIR}/dist/index.html" ]]; then
+  if grep -qF '<base href="/" />' "${FRONTEND_DIR}/dist/index.html"; then
+    echo "PASS: built dist/index.html still emits the exact base href nginx's sub_filter expects"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: built dist/index.html does NOT contain '<base href=\"/\" />' -- nginx's sub_filter in docker/nginx.conf will silently stop matching. Update both together."
+    fail=$((fail + 1))
+  fi
+else
+  echo "SKIP: ${FRONTEND_DIR}/dist/index.html not found -- run 'pnpm run build' in SparkyFitnessFrontend/ first to include this check"
+fi
+
 echo ""
 echo "${pass} passed, ${fail} failed"
 [[ "$fail" -eq 0 ]]
