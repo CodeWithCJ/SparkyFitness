@@ -48,6 +48,7 @@ import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
 import { useCycleSettings } from '@/hooks/useCycle';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
+import { withBasePath } from '@/utils/basePath';
 
 const SHOW_SPONSOR_BUTTON = false;
 
@@ -479,7 +480,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-1">
             <img
-              src="/images/SparkyFitness.webp"
+              src={withBasePath('/images/SparkyFitness.webp')}
               alt={t('mainLayout.sparkyFitnessLogo', 'SparkyFitness Logo')}
               width={54}
               height={72}

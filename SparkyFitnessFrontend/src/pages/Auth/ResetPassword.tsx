@@ -18,6 +18,7 @@ import PasswordToggle from '@/components/PasswordToggle';
 import { useResetPasswordMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
 import { useTranslation } from 'react-i18next';
+import { withBasePath } from '@/utils/basePath';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -116,7 +117,7 @@ const ResetPassword = () => {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/images/SparkyFitness.webp"
+              src={withBasePath('/images/SparkyFitness.webp')}
               alt={t(
                 'auth.resetPassword.sparkyFitnessLogo',
                 'SparkyFitness Logo'

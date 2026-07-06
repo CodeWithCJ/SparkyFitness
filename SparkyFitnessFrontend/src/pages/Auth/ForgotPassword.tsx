@@ -13,6 +13,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
+import { withBasePath } from '@/utils/basePath';
 
 import { useTranslation } from 'react-i18next';
 const ForgotPassword = () => {
@@ -51,7 +52,7 @@ const ForgotPassword = () => {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/images/SparkyFitness.webp"
+              src={withBasePath('/images/SparkyFitness.webp')}
               alt={t(
                 'auth.forgotPasswordPage.sparkyFitnessLogo',
                 'SparkyFitness Logo'

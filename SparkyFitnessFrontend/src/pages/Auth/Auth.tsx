@@ -37,6 +37,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
 import { getErrorMessage } from '@/utils/api';
 import { useTranslation } from 'react-i18next';
+import { withBasePath } from '@/utils/basePath';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -464,7 +465,7 @@ const Auth = () => {
             <CardHeader className="text-center">
               <div className="flex items-center justify-center mb-4">
                 <img
-                  src="/images/SparkyFitness.webp"
+                  src={withBasePath('/images/SparkyFitness.webp')}
                   alt={t('auth.sparkyFitnessLogo', 'SparkyFitness Logo')}
                   className="h-10 w-10 mr-2"
                 />
