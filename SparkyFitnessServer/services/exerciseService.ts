@@ -1028,6 +1028,17 @@ async function addExternalExerciseToUserExercises(
   language: string = 'en'
 ) {
   try {
+    // Import is idempotent: re-adding an already-imported exercise returns the
+    // user's existing copy instead of violating the (user_id, source, source_id)
+    // unique index.
+    const existingExercise = await exerciseDb.getExerciseBySourceAndSourceId(
+      'wger',
+      String(wgerExerciseId),
+      authenticatedUserId
+    );
+    if (existingExercise) {
+      return existingExercise;
+    }
     const wgerExerciseDetails =
       await wgerService.getWgerExerciseDetails(wgerExerciseId);
     if (!wgerExerciseDetails) {
@@ -1082,7 +1093,9 @@ async function addExternalExerciseToUserExercises(
       user_id: authenticatedUserId,
       is_custom: true,
       shared_with_public: false,
-      source_external_id: wgerExerciseDetails.id.toString(),
+      // createExercise persists source_id (not source_external_id); the unique
+      // index and the dedup lookup above both key on it.
+      source_id: wgerExerciseDetails.id.toString(),
       source: 'wger',
       level: 'intermediate',
       force: mappedForce,
@@ -1190,6 +1203,17 @@ async function addFreeExerciseDBExerciseToUserExercises(
   const { default: freeExerciseDBService } =
     await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
   try {
+    // Import is idempotent: re-adding an already-imported exercise returns the
+    // user's existing copy instead of violating the (user_id, source, source_id)
+    // unique index.
+    const existingExercise = await exerciseDb.getExerciseBySourceAndSourceId(
+      'free-exercise-db',
+      freeExerciseDBId,
+      authenticatedUserId
+    );
+    if (existingExercise) {
+      return existingExercise;
+    }
     const exerciseDetails =
       await freeExerciseDBService.getExerciseById(freeExerciseDBId);
     if (!exerciseDetails) {

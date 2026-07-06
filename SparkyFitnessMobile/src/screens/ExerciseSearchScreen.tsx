@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -124,8 +126,13 @@ useEffect(() => {
       const exercise = await importExercise(item.source, item.id);
       queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
       handleSelectExercise(exercise);
-    } catch {
-      // Silently fail — user can retry
+    } catch (error) {
+      // apiFetch already logs the failure; surface it so the tap isn't silent.
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to add exercise',
+        text2: getApiErrorMessage(error) ?? undefined,
+      });
     }
     setImportingExerciseId(null);
   }, [queryClient, handleSelectExercise]);
