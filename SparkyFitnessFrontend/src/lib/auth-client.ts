@@ -9,10 +9,15 @@ import { apiKeyClient } from '@better-auth/api-key/client';
 import { ssoClient } from '@better-auth/sso/client';
 import { passkeyClient } from '@better-auth/passkey/client';
 import { BetterAuthClientPlugin } from 'better-auth';
+import { getBasePath } from '@/utils/basePath';
+
+export function getAuthBaseUrl(): string {
+  return window.location.origin + getBasePath() + '/api/auth';
+}
 
 export const authClient = createAuthClient({
-  // Use /api/auth as the base URL.
-  baseURL: window.location.origin + '/api/auth',
+  // Use /api/auth as the base URL, adjusted for the configured sub-path.
+  baseURL: getAuthBaseUrl(),
   plugins: [
     magicLinkClient(),
     adminClient() as unknown as BetterAuthClientPlugin,
