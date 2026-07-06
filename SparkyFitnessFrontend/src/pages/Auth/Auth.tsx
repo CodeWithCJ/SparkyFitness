@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -583,12 +583,12 @@ const Auth = () => {
                         />
                       </div>
                       <div className="text-right text-sm">
-                        <a
-                          href="/forgot-password"
+                        <Link
+                          to="/forgot-password"
                           className="font-medium text-primary hover:underline"
                         >
                           {t('auth.forgotPassword', 'Forgot password?')}
-                        </a>
+                        </Link>
                       </div>
                       <Button
                         type="submit"
