@@ -114,21 +114,24 @@ async function getExternalDataProviders(userId: any) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const providersWithVisibility = providers.map((p: any) =>
       stripCredentialSecret(
-        applyRuntimeAvailability({
-          ...redactCredentialsForNonOwner(p, userId),
+        redactCredentialsForNonOwner(
+          applyRuntimeAvailability({
+            ...p,
 
-          visibility: p.is_public
-            ? 'public'
-            : p.user_id === userId
-              ? 'private'
-              : 'family',
+            visibility: p.is_public
+              ? 'public'
+              : p.user_id === userId
+                ? 'private'
+                : 'family',
 
-          is_public: !!p.is_public,
+            is_public: !!p.is_public,
 
-          has_token:
-            p.encrypted_access_token !== null &&
-            p.encrypted_access_token !== undefined,
-        })
+            has_token:
+              p.encrypted_access_token !== null &&
+              p.encrypted_access_token !== undefined,
+          }),
+          userId
+        )
       )
     );
     // log('debug', `externalProviderService: Providers from repository for user ${userId}:`, providersWithVisibility);
