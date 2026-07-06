@@ -307,4 +307,72 @@ describe('computeCalorieTarget', () => {
     expect(result.target).toBe(1728);
     expect(result.finalTarget).toBe(1800);
   });
+
+  it('targets the adaptive TDEE exactly under maintain with sufficient data', () => {
+    const result = computeCalorieTarget({
+      goalMode: 'maintain',
+      calculationMethod: 'adaptive',
+      customPercentage: 0,
+      bmr: 1800,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: 2194,
+      adaptiveTdeeFallback: false,
+      adaptiveTdeeDaysOfData: 35,
+      weightKg: 84.5,
+      heightCm: 180,
+      age: 35,
+      gender: 'male',
+      currentGoalCalories: 2000,
+    });
+    expect(result.baselineTdee).toBe(2194);
+    expect(result.appliedDeficit).toBe(0);
+    // 2194 > max(1800 RMR, 1500 absolute), so no floor clamp
+    expect(result.finalTarget).toBe(2194);
+    expect(result.insufficientHistory).toBe(false);
+  });
+
+  it('keeps the adaptive baseline constant across all goal modes (issue #1710)', () => {
+    const goalModes = ['maintain', 'recomp', 'cut', 'high_cut', 'manual'];
+    for (const goalMode of goalModes) {
+      const result = computeCalorieTarget({
+        goalMode,
+        calculationMethod: 'adaptive',
+        // Non-zero percentage on the 'manual' iteration must not leak into the baseline
+        customPercentage: 12,
+        bmr: 1800,
+        activityLevelMultiplier: 1.2,
+        adaptiveTdee: 2194,
+        adaptiveTdeeFallback: false,
+        adaptiveTdeeDaysOfData: 35,
+        weightKg: 84.5,
+        heightCm: 180,
+        age: 35,
+        gender: 'male',
+        currentGoalCalories: 2000,
+      });
+      expect(result.baselineTdee).toBe(2194);
+    }
+  });
+
+  it('falls back to BMR x activity multiplier under maintain with insufficient history', () => {
+    const result = computeCalorieTarget({
+      goalMode: 'maintain',
+      calculationMethod: 'adaptive',
+      customPercentage: 0,
+      bmr: 1800,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: null,
+      adaptiveTdeeFallback: true,
+      adaptiveTdeeDaysOfData: 0,
+      weightKg: 84.5,
+      heightCm: 180,
+      age: 35,
+      gender: 'male',
+      currentGoalCalories: 2000,
+    });
+    expect(result.baselineTdee).toBe(2160);
+    expect(result.insufficientHistory).toBe(true);
+    expect(result.appliedDeficit).toBe(0);
+    expect(result.finalTarget).toBe(2160);
+  });
 });
