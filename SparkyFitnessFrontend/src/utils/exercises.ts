@@ -7,6 +7,7 @@ import {
   requiredHeaders,
 } from '@/constants/exercises';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
+import { withBasePath } from '@/utils/basePath';
 import {
   readNumberCell,
   parseCsv,
@@ -93,8 +94,8 @@ export function resolveExerciseImageSrc(image: string | undefined): string {
   image = image?.trim();
   if (!image) return '';
   if (/^https?:\/\//i.test(image)) return image;
-  if (image.startsWith('/')) return image;
-  return `/uploads/exercises/${image}`;
+  if (image.startsWith('/')) return withBasePath(image);
+  return withBasePath(`/uploads/exercises/${image}`);
 }
 
 /**
