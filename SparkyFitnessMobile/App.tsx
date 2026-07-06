@@ -56,6 +56,7 @@ import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import DashboardSettingsScreen from './src/screens/DashboardSettingsScreen';
 import ServerSettingsScreen from './src/screens/ServerSettingsScreen';
+import PasskeySettingsScreen from './src/screens/PasskeySettingsScreen';
 import AppSettingsScreen from './src/screens/AppSettingsScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import WhatsNewScreen from './src/screens/WhatsNewScreen';
@@ -207,6 +208,7 @@ const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSet
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
 const SafeServerSettings = withErrorBoundary(ServerSettingsScreen, 'ServerSettings', { canGoBack: true });
+const SafePasskeySettings = withErrorBoundary(PasskeySettingsScreen, 'PasskeySettings', { canGoBack: true });
 const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 const SafeWhatsNew = withErrorBoundary(WhatsNewScreen, 'WhatsNew', { canGoBack: true });
@@ -1061,6 +1063,11 @@ function AppContent() {
             name="ServerSettings"
             component={SafeServerSettings}
             options={createStackScreenOptions('Server Settings', { headerBackTitle: 'Settings' })}
+          />
+          <Stack.Screen
+            name="PasskeySettings"
+            component={SafePasskeySettings}
+            options={createStackScreenOptions('Passkeys', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="AppSettings"

@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 // @ts-expect-error TS7016
 import cookieParser from 'cookie-parser';
+import { serializeSignedCookie } from 'better-call';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
@@ -204,9 +205,52 @@ app.use(async (req, res, next) => {
   if (req.originalUrl.startsWith('/api/auth') && betterAuthHandlerInstance) {
     // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
     const isDiscovery =
-      req.path === '/api/auth/settings' || req.path === '/api/auth/mfa-factors';
+      req.path === '/api/auth/settings' ||
+      req.path === '/api/auth/mfa-factors' ||
+      req.path.startsWith('/api/auth/web-login');
     if (isDiscovery) {
       return next();
+    }
+
+    // Translate Bearer token to cookie before passing to Better Auth handler.
+    // This is required to resolve compatibility issues with Buffer secrets in @better-auth/utils/hmac.
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer ')
+    ) {
+      const token = req.headers.authorization.split(' ')[1];
+      const isApiKey = token && token.length >= 64 && !token.includes('.');
+      if (token && !isApiKey) {
+        const { auth } = authModule;
+        const prefix = auth.options.advanced?.cookiePrefix || 'better-auth';
+        const secureCookiePrefix = auth.options.advanced?.useSecureCookies
+          ? '__Secure-'
+          : '';
+        const cookieName = `${secureCookiePrefix}${prefix}.session_token`;
+        try {
+          const signed = await serializeSignedCookie(
+            '',
+            token,
+            // @ts-expect-error TS(2345)
+            auth.options.secret
+          );
+          const signedValue = signed.replace('=', '');
+          const cookieHeader = `${cookieName}=${signedValue}`;
+          req.headers.cookie = req.headers.cookie
+            ? `${req.headers.cookie}; ${cookieHeader}`
+            : cookieHeader;
+          delete req.headers.authorization;
+          log(
+            'debug',
+            'Authentication: Converted Bearer session token to cookie for early auth request.'
+          );
+        } catch (e) {
+          log(
+            'error',
+            `Failed to serialize signed cookie in early interceptor: ${e}`
+          );
+        }
+      }
     }
 
     // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete
@@ -398,6 +442,7 @@ const isPublicApiDocsEnabled =
 const publicRoutes = [
   '/api/auth/settings',
   '/api/auth/mfa-factors',
+  '/api/auth/web-login',
   '/api/health',
   '/api/version',
   '/api/uploads',

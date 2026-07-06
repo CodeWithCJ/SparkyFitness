@@ -18,6 +18,8 @@ import { apiKey } from '@better-auth/api-key';
 import { v4 } from 'uuid';
 import { emailOTP, magicLink, admin, twoFactor } from 'better-auth/plugins';
 import { sso } from '@better-auth/sso';
+import { expo } from '@better-auth/expo';
+import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
 
 const hashAsync = promisify(bcrypt.hash);
@@ -154,6 +156,21 @@ const apiKeyPlugin = apiKey({
     },
   },
 });
+let passkeyRpID: string | undefined;
+try {
+  const urlString =
+    process.env.BETTER_AUTH_URL ||
+    (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('http')
+      ? process.env.SPARKY_FITNESS_FRONTEND_URL
+      : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`);
+  if (urlString) {
+    const url = new URL(urlString);
+    passkeyRpID = url.hostname;
+  }
+} catch {
+  // Fall back to default
+}
+
 const auth = betterAuth({
   database: authPool,
   // @ts-expect-error
@@ -321,7 +338,7 @@ const auth = betterAuth({
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
   trustedOrigins: (request) => {
-    const cleanOrigins = getBaseTrustedOrigins();
+    const cleanOrigins = [...getBaseTrustedOrigins(), 'sparkyfitnessmobile://'];
     const { origin: originHeader, referer: refererHeader } =
       extractRequestHeaders(request);
     // Identify if this is a non-primary origin (IP, extra domain, etc.) or null
@@ -600,6 +617,12 @@ const auth = betterAuth({
     },
   },
   plugins: [
+    // Expo mobile app support: maps the app's expo-origin header to origin and
+    // serves /expo-authorization-proxy so the system browser carries the OAuth
+    // state cookie. The relay plugin forwards the session cookie to the app on
+    // /sso/callback redirects (the official plugin only covers /callback paths).
+    expo(),
+    expoSsoCookieRelay(),
     emailOTP({
       // @ts-expect-error
       async sendVerificationOTP({ user, otp }) {
@@ -659,6 +682,8 @@ const auth = betterAuth({
       },
     }),
     passkey({
+      rpID: passkeyRpID,
+      rpName: 'SparkyFitness',
       schema: {
         passkey: {
           modelName: 'passkey',

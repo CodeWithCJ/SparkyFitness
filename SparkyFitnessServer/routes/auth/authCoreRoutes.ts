@@ -3,6 +3,8 @@ import { log } from '../../config/logging.js';
 import globalSettingsRepository from '../../models/globalSettingsRepository.js';
 import oidcProviderRepository from '../../models/oidcProviderRepository.js';
 import userRepository from '../../models/userRepository.js';
+import authModule from '../../auth.js';
+import { serializeSignedCookie } from 'better-call';
 const router = express.Router();
 // Inline rate limiter for the /mfa-factors endpoint to prevent account enumeration.
 // This endpoint reveals whether an email has an account, so it needs tighter limits
@@ -167,4 +169,360 @@ router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
     });
   }
 });
+
+// --- Browser-Based Passkey Web Bridge Routes ---
+
+router.get('/web-login/passkey', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Passkey Login</title>
+  <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background-color: #1f2937;
+      border: 1px solid #374151;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: #3b82f6;
+    }
+    p {
+      color: #9ca3af;
+      font-size: 0.875rem;
+      margin-bottom: 25px;
+    }
+    .btn {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #2563eb;
+    }
+    .btn:disabled {
+      background-color: #4b5563;
+      cursor: not-allowed;
+    }
+    .error {
+      color: #ef4444;
+      margin-top: 15px;
+      font-size: 0.875rem;
+    }
+    .spinner {
+      border: 3px solid #374151;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="loading-spinner" class="spinner"></div>
+    <h1 id="title">Authenticating...</h1>
+    <p id="desc">Please complete the biometric passkey prompt.</p>
+    <button id="retry-btn" class="btn" style="display: none;">Retry Passkey Login</button>
+    <div id="error-msg" class="error"></div>
+  </div>
+
+  <script>
+    const { startAuthentication } = SimpleWebAuthnBrowser;
+
+    async function doAuth() {
+      const errorDiv = document.getElementById('error-msg');
+      const retryBtn = document.getElementById('retry-btn');
+      const spinner = document.getElementById('loading-spinner');
+      const title = document.getElementById('title');
+      const desc = document.getElementById('desc');
+
+      errorDiv.innerText = '';
+      retryBtn.style.display = 'none';
+      spinner.style.display = 'block';
+      title.innerText = 'Authenticating...';
+      desc.innerText = 'Please complete the biometric passkey prompt.';
+
+      try {
+        // 1. Fetch authentication options from the server
+        const optionsRes = await fetch('/api/auth/passkey/generate-authenticate-options');
+        if (!optionsRes.ok) {
+          throw new Error('Failed to generate passkey authentication options.');
+        }
+        const options = await optionsRes.json();
+
+        // 2. Trigger the browser's native passkey prompt
+        const assertion = await startAuthentication(options);
+
+        // 3. Post verification assertion to the server
+        const verifyRes = await fetch('/api/auth/passkey/verify-authentication', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ response: assertion }),
+        });
+
+        if (!verifyRes.ok) {
+          const errData = await verifyRes.json().catch(() => ({}));
+          throw new Error(errData.message || 'Passkey verification failed on server.');
+        }
+
+        // Success! Redirect to the cookie callback to return session to the app
+        title.innerText = 'Success!';
+        desc.innerText = 'Redirecting back to the app...';
+        window.location.href = '/api/auth/web-login/callback';
+      } catch (err) {
+        console.error(err);
+        spinner.style.display = 'none';
+        title.innerText = 'Login Failed';
+        desc.innerText = 'Could not authenticate with your passkey.';
+        errorDiv.innerText = err.message || String(err);
+        retryBtn.style.display = 'block';
+      }
+    }
+
+    document.getElementById('retry-btn').onclick = doAuth;
+    
+    // Auto-trigger on load
+    window.onload = doAuth;
+  </script>
+</body>
+</html>
+  `);
+});
+
+router.get('/web-login/register-passkey', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Passkey</title>
+  <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background-color: #1f2937;
+      border: 1px solid #374151;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: #3b82f6;
+    }
+    p {
+      color: #9ca3af;
+      font-size: 0.875rem;
+      margin-bottom: 25px;
+    }
+    .btn {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #2563eb;
+    }
+    .btn:disabled {
+      background-color: #4b5563;
+      cursor: not-allowed;
+    }
+    .error {
+      color: #ef4444;
+      margin-top: 15px;
+      font-size: 0.875rem;
+    }
+    .spinner {
+      border: 3px solid #374151;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="loading-spinner" class="spinner"></div>
+    <h1 id="title">Creating Passkey...</h1>
+    <p id="desc">Please complete the biometric registration prompt.</p>
+    <button id="retry-btn" class="btn" style="display: none;">Retry Registration</button>
+    <div id="error-msg" class="error"></div>
+  </div>
+
+  <script>
+    const { startRegistration } = SimpleWebAuthnBrowser;
+
+    // Get query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionToken = urlParams.get('token');
+    const passkeyName = urlParams.get('name') || 'Mobile Device';
+
+    async function doRegister() {
+      const errorDiv = document.getElementById('error-msg');
+      const retryBtn = document.getElementById('retry-btn');
+      const spinner = document.getElementById('loading-spinner');
+      const title = document.getElementById('title');
+      const desc = document.getElementById('desc');
+
+      errorDiv.innerText = '';
+      retryBtn.style.display = 'none';
+      spinner.style.display = 'block';
+      title.innerText = 'Creating Passkey...';
+      desc.innerText = 'Please complete the biometric registration prompt.';
+
+      if (!sessionToken) {
+        spinner.style.display = 'none';
+        title.innerText = 'Setup Failed';
+        errorDiv.innerText = 'No session token was provided to register the passkey.';
+        return;
+      }
+
+      try {
+        // 1. Fetch registration options from server
+        const optionsRes = await fetch('/api/auth/passkey/generate-register-options?name=' + encodeURIComponent(passkeyName), {
+          headers: { 'Authorization': 'Bearer ' + sessionToken }
+        });
+        if (!optionsRes.ok) {
+          const errData = await optionsRes.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to generate registration options.');
+        }
+        const options = await optionsRes.json();
+
+        // 2. Trigger browser's native passkey registration
+        const credential = await startRegistration(options);
+
+        // 3. Post verification credential back to server
+        const verifyRes = await fetch('/api/auth/passkey/verify-registration', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + sessionToken 
+          },
+          body: JSON.stringify({
+            response: credential,
+            name: passkeyName,
+          }),
+        });
+
+        if (!verifyRes.ok) {
+          const errData = await verifyRes.json().catch(() => ({}));
+          throw new Error(errData.message || 'Passkey registration verification failed.');
+        }
+
+        // Success! Redirect back to the mobile app callback with success status
+        title.innerText = 'Success!';
+        desc.innerText = 'Your passkey was registered. Redirecting back...';
+        window.location.href = 'sparkyfitnessmobile://oauth-callback?status=success';
+      } catch (err) {
+        console.error(err);
+        spinner.style.display = 'none';
+        title.innerText = 'Registration Failed';
+        desc.innerText = 'Could not register your passkey.';
+        errorDiv.innerText = err.message || String(err);
+        retryBtn.style.display = 'block';
+      }
+    }
+
+    document.getElementById('retry-btn').onclick = doRegister;
+    
+    // Auto-trigger on load
+    window.onload = doRegister;
+  </script>
+</body>
+</html>
+  `);
+});
+
+router.get('/web-login/callback', async (req, res) => {
+  const { auth } = authModule;
+
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session || !session.session) {
+      log('error', '[WEB LOGIN] Callback: No active session found.');
+      return res.status(400).send('No active session found.');
+    }
+
+    const token = session.session.token;
+    const email = session.user.email;
+    const role = (session.user as any).role || '';
+
+    // Redirect to the mobile app schema with session details in query parameters
+    res.redirect(
+      `sparkyfitnessmobile://oauth-callback?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`
+    );
+  } catch (err) {
+    log('error', `[WEB LOGIN] Callback error: ${err}`);
+    res.status(500).send('Failed to prepare session token callback.');
+  }
+});
+
 export default router;
