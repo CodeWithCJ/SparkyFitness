@@ -5,6 +5,7 @@ import {
   loadChatHistory,
   clearChatHistory,
 } from '@/api/Chatbot/sparkyChatService';
+export { getChatStreamUrl } from '@/api/Chatbot/sparkyChatService';
 import { chatbotKeys } from '@/api/keys/ai';
 
 export const useChatPreferencesQuery = () => {

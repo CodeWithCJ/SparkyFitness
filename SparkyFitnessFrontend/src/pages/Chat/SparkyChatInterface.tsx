@@ -1,6 +1,4 @@
 import { formatDateToYYYYMMDD } from '@/lib/utils';
-// eslint-disable-next-line no-restricted-imports
-import { API_BASE_URL } from '@/api/api';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -10,6 +8,7 @@ import {
 import {
   useChatPreferencesQuery,
   useChatHistoryQuery,
+  getChatStreamUrl,
 } from '@/hooks/AI/useSparkyChat';
 import {
   AssistantChatTransport,
@@ -153,7 +152,7 @@ const SparkyChatInner = ({
 
   const runtime = useChatRuntime({
     transport: new AssistantChatTransport({
-      api: `${API_BASE_URL}/chat/stream`,
+      api: getChatStreamUrl(),
       body: {
         service_config_id: activeAIServiceSetting?.id,
         user_date: userDate,
