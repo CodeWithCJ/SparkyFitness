@@ -37,7 +37,7 @@ export SPARKY_BASE_PATH="/sparky/"
 
 envsubst "${NGINX_TEMPLATE_VARS}" < "${SCRIPT_DIR}/nginx.conf" > "$TMP_CONF"
 
-if grep -qF 'sub_filter '"'"'<base href="/">'"'"' '"'"'<base href="/sparky/">'"'"';' "$TMP_CONF"; then
+if grep -qF 'sub_filter '"'"'<base href="/" />'"'"' '"'"'<base href="/sparky/" />'"'"';' "$TMP_CONF"; then
   echo "PASS: sub_filter substitutes SPARKY_BASE_PATH into base href"
   pass=$((pass + 1))
 else
