@@ -87,6 +87,27 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
   const targetBaseline = previewResult.baselineTdee;
+  // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
+  // the baseline is only a TDEE under the adaptive method.
+  let baselineLabel: string;
+  if (isAdaptiveMethod) {
+    baselineLabel = previewResult.insufficientHistory
+      ? t('settings.goalMode.baselineEstimatedTdee', 'Estimated TDEE')
+      : t(
+          'settings.goalMode.baselineAdaptiveTdee',
+          'Adaptive TDEE (Expenditure)'
+        );
+  } else if (calorieGoalAdjustmentMode === 'adaptive') {
+    baselineLabel = t(
+      'settings.goalMode.baselineAdaptiveGoal',
+      'Baseline (Adaptive Goal)'
+    );
+  } else {
+    baselineLabel = t(
+      'settings.goalMode.baselineManualGoal',
+      'Baseline (Manual Goal)'
+    );
+  }
   const deficitPct = getGoalModeDeficit(goalMode, goalModeCustomPercentage);
   const calculatedDeficitAmount = previewResult.appliedDeficit;
   const safetyRmr = previewResult.rmr;
@@ -430,7 +451,7 @@ Calculated: ${bfp.toFixed(1)}%`;
         </div>
         <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
           <div>
-            <span className="font-medium">Baseline TDEE (Expenditure):</span>{' '}
+            <span className="font-medium">{baselineLabel}:</span>{' '}
             {isAdaptiveMethod ? (
               previewResult.insufficientHistory ? (
                 <span>

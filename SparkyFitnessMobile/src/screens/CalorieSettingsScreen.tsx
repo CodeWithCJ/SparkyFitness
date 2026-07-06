@@ -22,7 +22,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
 
 const modeOptions = [
-  { label: 'Adaptive TDEE', value: 'adaptive' },
+  { label: 'Adaptive Goal', value: 'adaptive' },
   { label: 'Dynamic Goal', value: 'dynamic' },
   { label: 'Fixed Goal', value: 'fixed' },
   { label: 'Percentage Earn-Back', value: 'percentage' },

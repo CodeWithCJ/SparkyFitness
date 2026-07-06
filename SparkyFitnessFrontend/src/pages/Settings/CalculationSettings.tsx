@@ -219,18 +219,6 @@ const CalculationSettings = () => {
     contextGoalModeCustomPercentage,
   ]);
 
-  // Reset calculation method and custom percentage when Goal Mode is 'maintain' to avoid stale values
-  useEffect(() => {
-    if (goalMode === 'maintain') {
-      if (goalModeCalculationMethod !== 'manual') {
-        setGoalModeCalculationMethod('manual');
-      }
-      if (goalModeCustomPercentage !== 0) {
-        setGoalModeCustomPercentage(0);
-      }
-    }
-  }, [goalMode, goalModeCalculationMethod, goalModeCustomPercentage]);
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -361,6 +349,35 @@ const CalculationSettings = () => {
   });
 
   const deficitPct = getGoalModeDeficit(goalMode, goalModeCustomPercentage);
+
+  // Measured adaptive TDEE, shown only when the same sufficiency test used by
+  // computeCalorieTarget passes; constant across goal modes and methods.
+  const measuredAdaptiveTdee =
+    adaptiveTdeeData?.isFallback === false &&
+    adaptiveTdeeData.tdee != null &&
+    (adaptiveTdeeData.daysOfData ?? 0) >= 14
+      ? adaptiveTdeeData.tdee
+      : null;
+
+  let baselineLabel: string;
+  if (goalModeCalculationMethod === 'adaptive') {
+    baselineLabel = previewResult.insufficientHistory
+      ? t('settings.goalMode.baselineEstimatedTdee', 'Estimated TDEE')
+      : t(
+          'settings.goalMode.baselineAdaptiveTdee',
+          'Adaptive TDEE (Expenditure)'
+        );
+  } else if (calorieGoalAdjustmentMode === 'adaptive') {
+    baselineLabel = t(
+      'settings.goalMode.baselineAdaptiveGoal',
+      'Baseline (Adaptive Goal)'
+    );
+  } else {
+    baselineLabel = t(
+      'settings.goalMode.baselineManualGoal',
+      'Baseline (Manual Goal)'
+    );
+  }
 
   const getCoachingAdvice = () => {
     if (goalMode === 'maintain') {
@@ -617,7 +634,7 @@ const CalculationSettings = () => {
               <span className="font-medium">
                 {t(
                   'settings.calorieGoalAdjustment.adaptiveGoal',
-                  'Adaptive TDEE'
+                  'Adaptive Goal'
                 )}
                 :
               </span>{' '}
@@ -993,13 +1010,8 @@ const CalculationSettings = () => {
               onValueChange={(value: GoalModeCalculationMethod) =>
                 setGoalModeCalculationMethod(value)
               }
-              disabled={goalMode === 'maintain'}
             >
-              <SelectTrigger
-                id="calculation-method-select"
-                className={goalMode === 'maintain' ? 'opacity-50' : ''}
-                disabled={goalMode === 'maintain'}
-              >
+              <SelectTrigger id="calculation-method-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1049,7 +1061,7 @@ const CalculationSettings = () => {
             </p>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Estimated TDEE:</span>{' '}
+                <span className="text-muted-foreground">{baselineLabel}:</span>{' '}
                 <span className="font-semibold">
                   {Math.round(
                     convertEnergy(
@@ -1093,6 +1105,27 @@ const CalculationSettings = () => {
                 </span>
               </div>
             </div>
+
+            {/* Measured adaptive TDEE — independent of goal mode and method */}
+            {measuredAdaptiveTdee != null && (
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'settings.goalMode.measuredAdaptiveTdee',
+                  'Measured Adaptive TDEE'
+                )}
+                :{' '}
+                <span className="font-medium">
+                  {Math.round(
+                    convertEnergy(measuredAdaptiveTdee, 'kcal', energyUnit)
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}
+                </span>{' '}
+                {t(
+                  'settings.goalMode.measuredAdaptiveTdeeHint',
+                  '(does not change with Goal Mode)'
+                )}
+              </p>
+            )}
 
             {/* Projected Weekly Loss Rate */}
             {goalMode !== 'maintain' && (
@@ -1239,8 +1272,7 @@ const CalculationSettings = () => {
             )}
 
           {/* Adaptive History Info Banner */}
-          {goalMode !== 'maintain' &&
-            goalModeCalculationMethod === 'adaptive' &&
+          {goalModeCalculationMethod === 'adaptive' &&
             previewResult.insufficientHistory && (
               <div className="p-4 bg-blue-50/50 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/50 rounded-xl flex gap-3 text-sm text-blue-800 dark:text-blue-300">
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
