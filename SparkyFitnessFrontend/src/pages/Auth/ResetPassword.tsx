@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -180,9 +180,9 @@ const ResetPassword = () => {
               </p>
             )}
             <div className="text-center text-sm">
-              <a href="/" className="font-medium text-primary hover:underline">
+              <Link to="/" className="font-medium text-primary hover:underline">
                 Back to Sign In
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>

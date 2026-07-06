@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -85,9 +86,9 @@ const ForgotPassword = () => {
               </p>
             )}
             <div className="text-center text-sm">
-              <a href="/" className="font-medium text-primary hover:underline">
+              <Link to="/" className="font-medium text-primary hover:underline">
                 Back to Sign In
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>
