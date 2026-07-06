@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { withBasePath } from '@/utils/basePath';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -401,7 +402,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                       src={
                         url.startsWith('http')
                           ? url
-                          : `/uploads/exercises/${url}`
+                          : withBasePath(`/uploads/exercises/${url}`)
                       }
                       className="w-full h-full object-cover rounded"
                       alt=""

@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EXERCISE_CATEGORY_META } from '@/constants/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { withBasePath } from '@/utils/basePath';
 import { Exercise } from '@/types/exercises';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import {
@@ -102,7 +103,9 @@ export const ExerciseSearchListItem = ({
             src={
               exercise.source
                 ? exercise.images![currentImageIndex]
-                : '/uploads/exercises/' + exercise.images![currentImageIndex]
+                : withBasePath(
+                    '/uploads/exercises/' + exercise.images![currentImageIndex]
+                  )
             }
             alt={exercise.name}
             className="w-full h-full object-contain"

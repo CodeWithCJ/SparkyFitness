@@ -17,6 +17,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { withBasePath } from '@/utils/basePath';
 import {
   Select,
   SelectContent,
@@ -419,7 +420,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     if (img.startsWith('http')) return img;
 
     // Otherwise, it's a local upload, so we MUST prefix it
-    return `/uploads/exercises/${img}`;
+    return withBasePath(`/uploads/exercises/${img}`);
   }, [images, currentImageIndex]);
 
   useEffect(() => {

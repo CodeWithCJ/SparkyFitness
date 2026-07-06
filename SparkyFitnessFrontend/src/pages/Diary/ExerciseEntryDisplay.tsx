@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { withBasePath } from '@/utils/basePath';
 import {
   Dialog,
   DialogContent,
@@ -121,7 +122,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
     ? exerciseEntry.image_url
     : snapshot?.images && snapshot.images.length > 0
       ? exerciseEntry.source
-        ? `/uploads/exercises/${snapshot.images[0]}`
+        ? withBasePath(`/uploads/exercises/${snapshot.images[0]}`)
         : snapshot.images[0]
       : null;
 
