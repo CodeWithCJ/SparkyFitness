@@ -18,6 +18,43 @@
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "format": "prettier . --write"
   },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/tests/setupTests.ts"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
+      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1"
+    },
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "esModuleInterop": true,
+            "module": "ESNext",
+            "moduleResolution": "node",
+            "types": [
+              "jest",
+              "@testing-library/jest-dom",
+              "node"
+            ],
+            "isolatedModules": true
+          }
+        }
+      ]
+    },
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ]
+  },
   "dependencies": {
     "@ai-sdk/react": "^3.0.193",
     "@assistant-ui/react": "^0.14.23",
