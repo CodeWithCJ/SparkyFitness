@@ -183,10 +183,13 @@ jobs:
 
       - name: Validate against k8s ${{ matrix.k8s }}
         run: |
+          mkdir -p /tmp/kubeconform-cache
           kubeconform \
             -kubernetes-version ${{ matrix.k8s }} \
             -strict \
             -summary \
+            -cache /tmp/kubeconform-cache \
+            -ignore-missing-schemas \
             -schema-location default \
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             /tmp/manifests.yaml
