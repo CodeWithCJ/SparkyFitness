@@ -176,6 +176,58 @@ describe('POST /mcp', () => {
     );
   });
 
+  it('tools/call normalizes null values to undefined in arguments', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
+
+    const res = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'sparky_get_goal_snapshot',
+          arguments: { target_date: null },
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.result.content).toEqual([
+      { type: 'text', text: JSON.stringify({ calories: 2000 }) },
+    ]);
+    expect(goalService.getUserGoals).toHaveBeenCalledWith(
+      TEST_USER,
+      todayInZone('UTC')
+    );
+  });
+
+  it('returns a per-action validation error instead of -32602 when a required field is passed as null', async () => {
+    const res = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: {
+          name: 'sparky_manage_goals',
+          arguments: {
+            action: 'set_goals',
+            start_date: null,
+            calories: 2000,
+          },
+        },
+      });
+
+    expect(res.status).toBe(200);
+    const text = res.body.result.content[0].text;
+    expect(text).toContain('Error [VALIDATION]');
+    expect(text).toContain('start_date');
+  });
+
   it('rejects unauthenticated requests with 401', async () => {
     const res = await request(app)
       .post('/mcp')
