@@ -22,6 +22,7 @@ export const exerciseEntrySetsSchema = z.object({
   created_at: z.date().nullable(),
   updated_at: z.date().nullable(),
   rpe: z.number().nullable(),
+  completed_at: z.date().nullable(),
 });
 
 export const exerciseEntrySetsInitializerSchema = z.object({
@@ -37,6 +38,7 @@ export const exerciseEntrySetsInitializerSchema = z.object({
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
+  completed_at: z.date().optional().nullable(),
 });
 
 export const exerciseEntrySetsMutatorSchema = z.object({
@@ -52,6 +54,7 @@ export const exerciseEntrySetsMutatorSchema = z.object({
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
+  completed_at: z.date().optional().nullable(),
 });
 
 export type ExerciseEntrySets = z.infer<typeof exerciseEntrySetsSchema>;

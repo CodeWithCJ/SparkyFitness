@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
+import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import Icon from './Icon';
 import AnchoredMenu, {
   measureAnchoredMenuTrigger,
@@ -17,7 +18,7 @@ export interface ExerciseProgress {
 
 export function buildExerciseProgress(
   session: PresetSessionResponse,
-  completedSetIds: Record<string, true>,
+  completedSetIds: CompletedSetMap,
 ): ExerciseProgress[] {
   return session.exercises.map((exercise) => ({
     entryId: exercise.id,

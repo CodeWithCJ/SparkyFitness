@@ -7,6 +7,8 @@ import type {
   PresetSessionResponse,
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
+// Type-only, so the store's runtime import of this module stays acyclic.
+import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -277,7 +279,7 @@ export function buildExercisesPayload(
     sets: exercise.sets.map((set, setIndex) => {
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
-      // The server set UPDATE writes all eight columns with `set.x ?? null`,
+      // The server set UPDATE writes all nine columns with `set.x ?? null`,
       // so fields the form has no UI for must still be round-tripped
       // explicitly — omitting them silently wipes the stored values.
       return {
@@ -292,6 +294,7 @@ export function buildExercisesPayload(
         ...(set.restTime != null ? { rest_time: set.restTime } : {}),
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
+        completed_at: set.completedAt ?? null,
       };
     }),
   }));
@@ -363,8 +366,13 @@ export function isTempSetId(id: number): boolean {
  * string parsing.
  *
  * Every set column is emitted explicitly — the server set UPDATE writes all
- * eight columns with `set.x ?? null`, so an omitted field silently wipes it.
+ * nine columns with `set.x ?? null`, so an omitted field silently wipes it.
  * Exercise-level `notes` behaves the same way.
+ *
+ * `completed_at` comes from `completedSetIds` (the store's completion map,
+ * the local source of truth during a live workout), not from the session's
+ * set objects — an unmapped set deliberately sends `null` so unchecking a
+ * set propagates as a clear.
  *
  * Ids follow the server's "all or none" rule for exercises: if any exercise
  * is client-added (temp id), every exercise AND set id is stripped so the
@@ -374,6 +382,7 @@ export function isTempSetId(id: number): boolean {
  */
 export function buildSessionExercisesPayload(
   session: PresetSessionResponse,
+  completedSetIds: CompletedSetMap,
 ): PresetSessionExerciseRequest[] {
   const allExercisesHaveServerId =
     session.exercises.length > 0 &&
@@ -388,17 +397,21 @@ export function buildSessionExercisesPayload(
     // `?? null` also normalizes `undefined` from sessions persisted before
     // the superset upgrade.
     superset_group: exercise.superset_group ?? null,
-    sets: exercise.sets.map((set, setIndex) => ({
-      ...(allExercisesHaveServerId && !isTempSetId(set.id) ? { id: set.id } : {}),
-      set_number: setIndex + 1,
-      set_type: set.set_type ?? null,
-      reps: set.reps ?? null,
-      weight: set.weight ?? null,
-      duration: set.duration ?? null,
-      rest_time: set.rest_time ?? null,
-      notes: set.notes ?? null,
-      rpe: set.rpe ?? null,
-    })),
+    sets: exercise.sets.map((set, setIndex) => {
+      const completedMs = completedSetIds[String(set.id)];
+      return {
+        ...(allExercisesHaveServerId && !isTempSetId(set.id) ? { id: set.id } : {}),
+        set_number: setIndex + 1,
+        set_type: set.set_type ?? null,
+        reps: set.reps ?? null,
+        weight: set.weight ?? null,
+        duration: set.duration ?? null,
+        rest_time: set.rest_time ?? null,
+        notes: set.notes ?? null,
+        rpe: set.rpe ?? null,
+        completed_at: completedMs != null ? new Date(completedMs).toISOString() : null,
+      };
+    }),
   }));
 }
 
@@ -496,6 +509,7 @@ function makeDefaultStartSet(setNumber: number): ExerciseEntrySetRequest {
     rest_time: DEFAULT_REST_SEC,
     notes: null,
     rpe: null,
+    completed_at: null,
   };
 }
 
@@ -530,6 +544,7 @@ export function buildPresetStartExercisesPayload(
             rest_time: set.rest_time ?? null,
             notes: set.notes ?? null,
             rpe: null,
+            completed_at: null,
           })),
   }));
 }

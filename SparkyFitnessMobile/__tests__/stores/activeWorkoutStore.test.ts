@@ -71,6 +71,7 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
             rest_time: 60,
             notes: null,
             rpe: null,
+            completed_at: null,
           },
           {
             id: 102,
@@ -82,6 +83,7 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
             rest_time: 60,
             notes: null,
             rpe: null,
+            completed_at: null,
           },
         ],
       } as any,
@@ -115,6 +117,7 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
             rest_time: 120,
             notes: null,
             rpe: null,
+            completed_at: null,
           },
         ],
       } as any,
@@ -162,6 +165,45 @@ describe('activeWorkoutStore', () => {
       expect(state.rest.state).toBe('ready');
       expect(state.rest.endsAt).toBeNull();
       expect(state.completedSetIds).toEqual({});
+    });
+
+    it('seeds completion from server completed_at and lands on the first uncompleted step', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = '2026-03-20T10:00:00.000Z';
+      useActiveWorkoutStore.getState().startWorkout(session);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds).toEqual({
+        '101': Date.parse('2026-03-20T10:00:00.000Z'),
+      });
+      expect(state.activeSetId).toBe('102');
+      // Server already knows these completions — nothing to save.
+      expect(state.hasUnsavedChanges).toBe(false);
+    });
+
+    it('lands the cursor on the first hole in a non-contiguous completion map', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = '2026-03-20T10:00:00.000Z';
+      session.exercises[1].sets[0].completed_at = '2026-03-20T10:05:00.000Z';
+      useActiveWorkoutStore.getState().startWorkout(session);
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+    });
+
+    it('starts finished (activeSetId null) when every set is completed', () => {
+      const session = makeSession();
+      for (const exercise of session.exercises) {
+        for (const s of exercise.sets) s.completed_at = '2026-03-20T10:00:00.000Z';
+      }
+      useActiveWorkoutStore.getState().startWorkout(session);
+      expect(useActiveWorkoutStore.getState().activeSetId).toBeNull();
+    });
+
+    it('ignores unparseable completed_at values', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = 'not-a-date';
+      useActiveWorkoutStore.getState().startWorkout(session);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds).toEqual({});
+      expect(state.activeSetId).toBe('101');
     });
 
     it('derives restSec from the first set per exercise', () => {
@@ -233,9 +275,11 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
       const state = useActiveWorkoutStore.getState();
       expect(state.sessionId).toBe('session-1');
-      expect(state.completedSetIds).toEqual({ '101': true });
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW });
       expect(state.activeSetId).toBe('102');
       expect(state.rest.state).toBe('ready');
+      // The newly stamped prior needs to reach the server.
+      expect(state.hasUnsavedChanges).toBe(true);
     });
 
     it('seeds no completions when target is the first set', () => {
@@ -244,12 +288,41 @@ describe('activeWorkoutStore', () => {
       expect(state.completedSetIds).toEqual({});
       expect(state.activeSetId).toBe('101');
       expect(state.rest.state).toBe('ready');
+      expect(state.hasUnsavedChanges).toBe(false);
+    });
+
+    it('preserves later server completions when restarting at an earlier set', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = '2026-03-20T10:00:00.000Z';
+      session.exercises[1].sets[0].completed_at = '2026-03-20T10:10:00.000Z';
+      useActiveWorkoutStore.getState().startWorkoutAtSet(session, '102');
+      const state = useActiveWorkoutStore.getState();
+      // Resume-with-holes: the later set stays checked, nothing is cleared.
+      expect(state.completedSetIds).toEqual({
+        '101': Date.parse('2026-03-20T10:00:00.000Z'),
+        '201': Date.parse('2026-03-20T10:10:00.000Z'),
+      });
+      expect(state.activeSetId).toBe('102');
+      // No priors were newly stamped — nothing to save.
+      expect(state.hasUnsavedChanges).toBe(false);
+    });
+
+    it('keeps server timestamps on already-completed priors and stamps only new ones', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = '2026-03-20T10:00:00.000Z';
+      useActiveWorkoutStore.getState().startWorkoutAtSet(session, '201');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds).toEqual({
+        '101': Date.parse('2026-03-20T10:00:00.000Z'),
+        '102': FIXED_NOW,
+      });
+      expect(state.hasUnsavedChanges).toBe(true);
     });
 
     it('seeds all prior sets across exercises when target is the last set', () => {
       useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '201');
       const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds).toEqual({ '101': true, '102': true });
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '102': FIXED_NOW });
       expect(state.activeSetId).toBe('201');
     });
 
@@ -285,11 +358,43 @@ describe('activeWorkoutStore', () => {
     it('marks the active set complete and advances activeSetId to the next step', async () => {
       useActiveWorkoutStore.getState().completeActiveSet();
       const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds['101']).toBe(true);
+      expect(state.completedSetIds['101']).toBe(FIXED_NOW);
       expect(state.activeSetId).toBe('102');
       expect(state.rest.state).toBe('resting');
       expect(state.rest.endsAt).toBe(FIXED_NOW + 60000);
       expect(state.rest.instanceToken).toBeGreaterThan(0);
+      await flushPromises();
+    });
+
+    it('stamps completion with now and marks the session dirty', async () => {
+      const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+      useActiveWorkoutStore.getState().completeActiveSet();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds['101']).toBe(FIXED_NOW);
+      expect(state.sessionRevision).toBe(revBefore + 1);
+      expect(state.hasUnsavedChanges).toBe(true);
+      await flushPromises();
+    });
+
+    it('skips already-completed steps when advancing', async () => {
+      useActiveWorkoutStore.getState().recompleteSet('102'); // hole ahead of the cursor
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done → skips 102
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('201');
+      // Rest keys off the step actually landed on (Squat's 120s).
+      expect(state.rest.durationSec).toBe(120);
+      await flushPromises();
+    });
+
+    it('finishes when only completed steps remain ahead', async () => {
+      useActiveWorkoutStore.getState().recompleteSet('102');
+      useActiveWorkoutStore.getState().recompleteSet('201');
+      mockSchedule.mockClear();
+      useActiveWorkoutStore.getState().completeActiveSet();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBeNull();
+      expect(state.rest.state).toBe('ready');
+      expect(mockSchedule).not.toHaveBeenCalled();
       await flushPromises();
     });
 
@@ -332,7 +437,7 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeActiveSet();
       const state = useActiveWorkoutStore.getState();
 
-      expect(state.completedSetIds).toEqual({ '101': true, '102': true, '201': true });
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '102': FIXED_NOW, '201': FIXED_NOW });
       expect(state.activeSetId).toBeNull();
       expect(state.rest.state).toBe('ready');
       // Session snapshot + steps stay put — the user still has to hit X.
@@ -446,7 +551,7 @@ describe('activeWorkoutStore', () => {
 
     it('removes the set from completedSetIds without touching activeSetId or rest', () => {
       const before = useActiveWorkoutStore.getState();
-      expect(before.completedSetIds['101']).toBe(true);
+      expect(before.completedSetIds['101']).toBe(FIXED_NOW);
       expect(before.activeSetId).toBe('102');
 
       useActiveWorkoutStore.getState().uncompleteSet('101');
@@ -460,6 +565,14 @@ describe('activeWorkoutStore', () => {
       const before = useActiveWorkoutStore.getState();
       useActiveWorkoutStore.getState().uncompleteSet('201');
       expect(useActiveWorkoutStore.getState()).toEqual(before);
+    });
+
+    it('bumps the revision and marks the session dirty so the clear propagates', () => {
+      const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+      useActiveWorkoutStore.getState().uncompleteSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sessionRevision).toBe(revBefore + 1);
+      expect(state.hasUnsavedChanges).toBe(true);
     });
   });
 
@@ -481,7 +594,7 @@ describe('activeWorkoutStore', () => {
 
       useActiveWorkoutStore.getState().recompleteSet('101');
       const after = useActiveWorkoutStore.getState();
-      expect(after.completedSetIds['101']).toBe(true);
+      expect(after.completedSetIds['101']).toBe(FIXED_NOW);
       expect(after.activeSetId).toBe('102');
       expect(after.rest).toBe(before.rest); // same reference — rest untouched
     });
@@ -492,6 +605,15 @@ describe('activeWorkoutStore', () => {
       const before = useActiveWorkoutStore.getState();
       useActiveWorkoutStore.getState().recompleteSet('101');
       expect(useActiveWorkoutStore.getState()).toEqual(before);
+    });
+
+    it('stamps the re-completion with now and bumps the revision', () => {
+      const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+      useActiveWorkoutStore.getState().recompleteSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds['101']).toBe(FIXED_NOW);
+      expect(state.sessionRevision).toBe(revBefore + 1);
+      expect(state.hasUnsavedChanges).toBe(true);
     });
 
     it('is a no-op when the setId does not exist in steps', () => {
@@ -515,7 +637,7 @@ describe('activeWorkoutStore', () => {
       expect(useActiveWorkoutStore.getState().completedSetIds['201']).toBeUndefined();
       useActiveWorkoutStore.getState().recompleteSet('201');
       const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds['201']).toBe(true);
+      expect(state.completedSetIds['201']).toBe(FIXED_NOW);
       expect(state.activeSetId).toBeNull(); // stays finished
     });
   });
@@ -529,8 +651,24 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().jumpToSet('201');
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('201');
-      expect(state.completedSetIds).toEqual({ '101': true, '102': true });
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '102': FIXED_NOW });
       expect(state.rest.state).toBe('ready');
+    });
+
+    it('keeps existing stamps, stamps new priors with now, and bumps the revision', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 stamped at FIXED_NOW
+      await flushPromises();
+      jest.setSystemTime(new Date(FIXED_NOW + 5_000));
+      const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+
+      useActiveWorkoutStore.getState().jumpToSet('201');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds).toEqual({
+        '101': FIXED_NOW, // original stamp kept
+        '102': FIXED_NOW + 5_000, // newly seeded prior
+      });
+      expect(state.sessionRevision).toBe(revBefore + 1);
+      expect(state.hasUnsavedChanges).toBe(true);
     });
 
     it('cancels a running rest notification on jump', async () => {
@@ -881,7 +1019,7 @@ describe('activeWorkoutStore', () => {
       updated.exercises[0].sets[0].weight = 65; // editing weight
       useActiveWorkoutStore.getState().reconcileWithSession(updated);
 
-      expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(true);
+      expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(FIXED_NOW);
       expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
     });
 
@@ -964,12 +1102,13 @@ describe('activeWorkoutStore', () => {
         rest_time: 60,
         notes: null,
         rpe: null,
+        completed_at: null,
       } as any);
 
       useActiveWorkoutStore.getState().reconcileWithSession(updated);
       const { steps, completedSetIds } = useActiveWorkoutStore.getState();
       expect(steps.find((s) => s.setId === '103')).toBeDefined();
-      expect(completedSetIds['101']).toBe(true);
+      expect(completedSetIds['101']).toBe(FIXED_NOW);
     });
 
     it('refreshes restSec on every step when first set rest_time changes', () => {
@@ -1017,7 +1156,7 @@ describe('activeWorkoutStore', () => {
 
         useActiveWorkoutStore.getState().updateSetField('102', { weight: 72.5 });
         const state = useActiveWorkoutStore.getState();
-        expect(state.completedSetIds['101']).toBe(true);
+        expect(state.completedSetIds['101']).toBe(FIXED_NOW);
         expect(state.activeSetId).toBe('102');
         expect(state.rest).toBe(restBefore);
       });
@@ -1088,7 +1227,7 @@ describe('activeWorkoutStore', () => {
       it('prunes completion for the deleted set', async () => {
         useActiveWorkoutStore.getState().completeActiveSet();
         await flushPromises();
-        expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(true);
+        expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(FIXED_NOW);
 
         useActiveWorkoutStore.getState().deleteSet('101');
         expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBeUndefined();
@@ -1218,7 +1357,7 @@ describe('activeWorkoutStore', () => {
 
       useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds).toEqual({ '501': true });
+      expect(state.completedSetIds).toEqual({ '501': FIXED_NOW });
       expect(state.activeSetId).toBe('502');
     });
 
@@ -1301,7 +1440,7 @@ describe('activeWorkoutStore', () => {
 
       useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds).toEqual({ '501': true });
+      expect(state.completedSetIds).toEqual({ '501': FIXED_NOW });
       expect(state.activeSetId).toBe('502');
       expect(state.rest).toBe(restBefore); // graft never touches rest
     });
@@ -1411,6 +1550,7 @@ describe('activeWorkoutStore', () => {
             rest_time: 45,
             notes: null,
             rpe: null,
+            completed_at: null,
           },
         ],
       } as any;
@@ -1489,7 +1629,7 @@ describe('activeWorkoutStore', () => {
         useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
         useActiveWorkoutStore.getState().jumpToSet('202');
         const state = useActiveWorkoutStore.getState();
-        expect(state.completedSetIds).toEqual({ '101': true, '201': true, '102': true });
+        expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '201': FIXED_NOW, '102': FIXED_NOW });
         expect(state.activeSetId).toBe('202');
       });
     });
@@ -1585,7 +1725,7 @@ describe('activeWorkoutStore', () => {
         useActiveWorkoutStore.getState().supersetWith('ex-uuid-1', 'ex-uuid-3');
 
         const state = useActiveWorkoutStore.getState();
-        expect(state.completedSetIds).toEqual({ '101': true });
+        expect(state.completedSetIds).toEqual({ '101': FIXED_NOW });
         expect(state.activeSetId).toBe('102');
         expect(state.rest).toBe(restBefore); // untouched — cursor didn't move
       });
@@ -1700,7 +1840,7 @@ describe('activeWorkoutStore', () => {
               restSec: 60,
             },
           ],
-          completedSetIds: { '101': true },
+          completedSetIds: { '101': now - 120_000 },
           activeSetId: '102',
           rest: {
             state: 'resting',
@@ -1711,7 +1851,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 2,
+        version: 4,
       };
       mockHaptic.mockClear();
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
@@ -1741,7 +1881,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 2,
+        version: 4,
       };
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
       await useActiveWorkoutStore.persist.rehydrate();
@@ -1750,237 +1890,14 @@ describe('activeWorkoutStore', () => {
       expect(rest.endsAt).toBe(now + 60_000);
     });
 
-    describe('v1 → v2 migration', () => {
-      function buildV1Payload(activeRest: unknown, extras: Record<string, unknown> = {}) {
+    describe('pre-v4 migration discard', () => {
+      /** v3 shape: completedSetIds values were `true`, sets had no completed_at. */
+      function buildPreV4Payload(version: number) {
         return {
           state: {
             sessionId: 'session-1',
             session: null,
-            steps: [
-              {
-                exerciseId: 'ex-uuid-1',
-                setId: '101',
-                exerciseName: 'Bench Press',
-                exerciseImage: 'bench.jpg',
-                restSec: 60,
-              },
-              {
-                exerciseId: 'ex-uuid-1',
-                setId: '102',
-                exerciseName: 'Bench Press',
-                exerciseImage: 'bench.jpg',
-                restSec: 60,
-              },
-              {
-                exerciseId: 'ex-uuid-2',
-                setId: '201',
-                exerciseName: 'Squat',
-                exerciseImage: 'squat.jpg',
-                restSec: 120,
-              },
-            ],
-            completedSetIds: { '101': true },
-            activeRest,
-            ...extras,
-          },
-          version: 1,
-        };
-      }
-
-      it('derives activeSetId from first uncompleted step and remaps running → resting', async () => {
-        jest.useRealTimers();
-        const now = Date.now();
-        const persisted = buildV1Payload({
-          setId: '101',
-          state: 'running',
-          durationSec: 60,
-          endsAt: now + 30_000,
-          pausedRemainingMs: null,
-          scheduledNotificationId: 'notif-carried-over',
-          instanceToken: 7,
-        });
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.sessionId).toBe('session-1');
-        expect(state.activeSetId).toBe('102');
-        expect(state.completedSetIds).toEqual({ '101': true });
-        expect(state.rest.state).toBe('resting');
-        expect(state.rest.endsAt).toBe(now + 30_000);
-        expect(state.rest.scheduledNotificationId).toBe('notif-carried-over');
-        expect(state.rest.instanceToken).toBe(7);
-      });
-
-      it('remaps paused rest', async () => {
-        jest.useRealTimers();
-        const persisted = buildV1Payload({
-          setId: '101',
-          state: 'paused',
-          durationSec: 60,
-          endsAt: null,
-          pausedRemainingMs: 25_000,
-          scheduledNotificationId: null,
-          instanceToken: 3,
-        });
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBe('102');
-        expect(state.rest.state).toBe('paused');
-        expect(state.rest.pausedRemainingMs).toBe(25_000);
-        expect(state.rest.durationSec).toBe(60);
-      });
-
-      it('collapses complete rest to ready', async () => {
-        jest.useRealTimers();
-        const persisted = buildV1Payload({
-          setId: '101',
-          state: 'complete',
-          durationSec: 60,
-          endsAt: null,
-          pausedRemainingMs: null,
-          scheduledNotificationId: null,
-          instanceToken: 5,
-        });
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBe('102');
-        expect(state.rest.state).toBe('ready');
-        expect(state.rest.endsAt).toBeNull();
-      });
-
-      it('collapses null activeRest to ready', async () => {
-        jest.useRealTimers();
-        const persisted = buildV1Payload(null);
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBe('102');
-        expect(state.rest.state).toBe('ready');
-      });
-
-      it('sets activeSetId to null when every step is already completed', async () => {
-        jest.useRealTimers();
-        const persisted = buildV1Payload(null, {
-          completedSetIds: { '101': true, '102': true, '201': true },
-        });
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBeNull();
-        expect(state.rest.state).toBe('ready');
-        expect(state.sessionId).toBe('session-1');
-      });
-
-      it('drops carried-over rest when activeSetId ends up null', async () => {
-        jest.useRealTimers();
-        // Every set complete + stale 'running' activeRest from v1 — migration
-        // should not hand back a rest with no set to attach it to.
-        const persisted = buildV1Payload(
-          {
-            setId: '201',
-            state: 'running',
-            durationSec: 60,
-            endsAt: Date.now() + 60_000,
-            pausedRemainingMs: null,
-            scheduledNotificationId: 'stale',
-            instanceToken: 9,
-          },
-          { completedSetIds: { '101': true, '102': true, '201': true } },
-        );
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBeNull();
-        expect(state.rest.state).toBe('ready');
-        expect(state.rest.scheduledNotificationId).toBeNull();
-      });
-
-      it('v1 → v2 with running + already-expired endsAt snaps to ready via merge', async () => {
-        jest.useRealTimers();
-        const now = Date.now();
-        const persisted = buildV1Payload({
-          setId: '101',
-          state: 'running',
-          durationSec: 60,
-          endsAt: now - 1_000, // expired
-          pausedRemainingMs: null,
-          scheduledNotificationId: 'notif-old',
-          instanceToken: 1,
-        });
-        mockHaptic.mockClear();
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const state = useActiveWorkoutStore.getState();
-        // migrate produces rest={state:'resting',endsAt:past}, then merge snaps to ready.
-        expect(state.rest.state).toBe('ready');
-        expect(state.rest.endsAt).toBeNull();
-        expect(mockHaptic).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('v2 → v3 migration', () => {
-      it('backfills startedAt with now when a session is live', async () => {
-        jest.useRealTimers();
-        const before = Date.now();
-        const persisted = {
-          state: {
-            sessionId: 'session-1',
-            session: null,
-            steps: [],
-            completedSetIds: {},
-            activeSetId: '101',
-            rest: {
-              state: 'ready',
-              durationSec: 0,
-              endsAt: null,
-              pausedRemainingMs: null,
-              scheduledNotificationId: null,
-              instanceToken: 0,
-            },
-          },
-          version: 2,
-        };
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        const { startedAt } = useActiveWorkoutStore.getState();
-        expect(startedAt).not.toBeNull();
-        expect(startedAt!).toBeGreaterThanOrEqual(before);
-        expect(startedAt!).toBeLessThanOrEqual(Date.now());
-      });
-
-      it('leaves startedAt null when no session is live', async () => {
-        jest.useRealTimers();
-        const persisted = {
-          state: {
-            sessionId: null,
-            session: null,
-            steps: [],
-            completedSetIds: {},
-            activeSetId: null,
-            rest: {
-              state: 'ready',
-              durationSec: 0,
-              endsAt: null,
-              pausedRemainingMs: null,
-              scheduledNotificationId: null,
-              instanceToken: 0,
-            },
-          },
-          version: 2,
-        };
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
-        await useActiveWorkoutStore.persist.rehydrate();
-        expect(useActiveWorkoutStore.getState().startedAt).toBeNull();
-      });
-
-      it('v1 payloads also gain a backfilled startedAt (chained migration)', async () => {
-        jest.useRealTimers();
-        const persisted = {
-          state: {
-            sessionId: 'session-1',
-            session: null,
+            startedAt: Date.now(),
             steps: [
               {
                 exerciseId: 'ex-uuid-1',
@@ -1990,16 +1907,57 @@ describe('activeWorkoutStore', () => {
                 restSec: 60,
               },
             ],
-            completedSetIds: {},
-            activeRest: null,
+            completedSetIds: { '101': true },
+            activeSetId: '102',
+            rest: {
+              state: 'ready',
+              durationSec: 0,
+              endsAt: null,
+              pausedRemainingMs: null,
+              scheduledNotificationId: null,
+              instanceToken: 0,
+            },
+            hasUnsavedChanges: true,
+            createdByLiveStart: false,
           },
-          version: 1,
+          version,
         };
-        await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
+      }
+
+      it.each([1, 2, 3])('discards persisted version %i wholesale', async (version) => {
+        jest.useRealTimers();
+        await AsyncStorage.setItem(
+          '@SparkyFitness/active-workout',
+          JSON.stringify(buildPreV4Payload(version)),
+        );
         await useActiveWorkoutStore.persist.rehydrate();
         const state = useActiveWorkoutStore.getState();
-        expect(state.activeSetId).toBe('101');
-        expect(state.startedAt).not.toBeNull();
+        expect(state.sessionId).toBeNull();
+        expect(state.session).toBeNull();
+        expect(state.steps).toEqual([]);
+        expect(state.completedSetIds).toEqual({});
+        expect(state.activeSetId).toBeNull();
+        expect(state.hasUnsavedChanges).toBe(false);
+      });
+
+      it('keeps version-4 state intact', async () => {
+        jest.useRealTimers();
+        const persisted = {
+          state: {
+            ...buildPreV4Payload(4).state,
+            completedSetIds: { '101': 1_699_999_000_000 },
+          },
+          version: 4,
+        };
+        await AsyncStorage.setItem(
+          '@SparkyFitness/active-workout',
+          JSON.stringify(persisted),
+        );
+        await useActiveWorkoutStore.persist.rehydrate();
+        const state = useActiveWorkoutStore.getState();
+        expect(state.sessionId).toBe('session-1');
+        expect(state.completedSetIds).toEqual({ '101': 1_699_999_000_000 });
+        expect(state.activeSetId).toBe('102');
       });
     });
 
@@ -2020,7 +1978,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 2,
+        version: 4,
       };
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
       await useActiveWorkoutStore.persist.rehydrate();

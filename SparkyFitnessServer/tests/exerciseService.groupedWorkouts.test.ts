@@ -689,6 +689,98 @@ describe('exerciseService grouped workouts', () => {
       expect(createCalls[1][2]).toMatchObject({ superset_group: null });
     });
 
+    it('forwards set completed_at through the reconcile path', async () => {
+      setupExistingSession();
+
+      const completedAt = '2026-07-06T15:04:05.123Z';
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [
+                {
+                  id: 1,
+                  set_number: 1,
+                  reps: 10,
+                  weight: 110,
+                  completed_at: completedAt,
+                },
+              ],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              sets: [
+                {
+                  id: 2,
+                  set_number: 1,
+                  reps: 5,
+                  weight: 200,
+                  completed_at: null,
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-a', [
+        expect.objectContaining({ id: 1, completed_at: completedAt }),
+      ]);
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-b', [
+        expect.objectContaining({ id: 2, completed_at: null }),
+      ]);
+    });
+
+    it('carries set completed_at through the delete-and-recreate path', async () => {
+      setupExistingSession();
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+        id: 'new-entry',
+      });
+
+      const completedAt = '2026-07-06T15:04:05.123Z';
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [
+                { set_number: 1, reps: 10, completed_at: completedAt },
+                { set_number: 2, reps: 8, completed_at: null },
+              ],
+            },
+          ],
+        }
+      );
+
+      const createCalls = vi.mocked(
+        exerciseEntryDb._createExerciseEntryWithClient
+      ).mock.calls;
+      expect(createCalls[0][2].sets).toEqual([
+        expect.objectContaining({ completed_at: completedAt }),
+        expect.objectContaining({ completed_at: null }),
+      ]);
+    });
+
     it('falls through to the legacy delete-and-recreate path when no ids are provided', async () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
@@ -814,5 +906,31 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
     );
     expect(deleteCall).toBeDefined();
     expect(deleteCall!.params[0]).toEqual([2]);
+  });
+
+  it('writes completed_at on updates and inserts, clearing it when omitted', async () => {
+    const client = makeClient([1, 2]);
+    const completedAt = '2026-07-06T15:04:05.123Z';
+    await reconcile(client, 'entry-a', [
+      { id: 1, set_number: 1, reps: 10, completed_at: completedAt },
+      { id: 2, set_number: 2, reps: 8 },
+      { set_number: 3, reps: 6, completed_at: completedAt },
+    ]);
+
+    const updates = client.calls.filter(({ sql }) =>
+      /UPDATE exercise_entry_sets/.test(sql)
+    );
+    expect(updates).toHaveLength(2);
+    expect(updates[0].sql).toMatch(/completed_at = \$9/);
+    expect(updates[0].params[8]).toBe(completedAt);
+    // Omitted completed_at means "not completed" and must clear the column.
+    expect(updates[1].params[8]).toBeNull();
+
+    const insert = client.calls.find(({ sql }) =>
+      /INSERT INTO exercise_entry_sets/.test(sql)
+    );
+    expect(insert).toBeDefined();
+    expect(insert!.sql).toContain('completed_at');
+    expect(insert!.sql).toContain(completedAt);
   });
 });

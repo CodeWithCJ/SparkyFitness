@@ -11,6 +11,8 @@ export interface WorkoutDraftSet {
   duration?: number | null;
   notes?: string | null;
   rpe?: number | null;
+  /** Round-tripped opaquely; the form has no completion UI. */
+  completedAt?: string | null;
 }
 
 export interface WorkoutDraftExercise {

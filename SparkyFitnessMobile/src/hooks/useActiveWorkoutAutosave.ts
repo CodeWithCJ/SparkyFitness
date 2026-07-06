@@ -39,7 +39,7 @@ export async function saveActiveWorkoutSession(
   const sentEntryIds = state.session.exercises.map((e) => e.id);
   try {
     const result = await updateWorkout(state.sessionId, {
-      exercises: buildSessionExercisesPayload(state.session),
+      exercises: buildSessionExercisesPayload(state.session, state.completedSetIds),
     });
     useActiveWorkoutStore.getState().applyServerSession(result, sentRevision, sentEntryIds);
     syncExerciseSessionInCache(queryClient, result);

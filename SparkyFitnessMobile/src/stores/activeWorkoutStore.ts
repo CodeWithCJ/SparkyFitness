@@ -34,6 +34,13 @@ export interface WorkoutStep {
 }
 
 /**
+ * Completed set ids → epoch-ms timestamp of when the set was checked off.
+ * This map is the local source of truth for completion during an active
+ * workout; the autosave payload derives each set's `completed_at` from it.
+ */
+export type CompletedSetMap = Record<string, number>;
+
+/**
  * Rest-timer state for the currently-active workout. The rest always
  * represents "the rest period before `activeSetId`" — i.e., when the user
  * completes a set, `activeSetId` immediately advances to the next set and
@@ -74,7 +81,7 @@ export interface ActiveWorkoutState {
   /** Epoch ms when the workout was started. Drives the elapsed clock. */
   startedAt: number | null;
   steps: WorkoutStep[];
-  completedSetIds: Record<string, true>;
+  completedSetIds: CompletedSetMap;
   /**
    * The set the user is currently on — the cursor advances strictly forward
    * through `steps`. `null` means the workout is finished (either every step
@@ -366,7 +373,25 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
     rest_time: DEFAULT_REST_SEC,
     notes: null,
     rpe: null,
+    completed_at: null,
   };
+}
+
+/**
+ * Seed the completion map from server-persisted `completed_at` timestamps so
+ * a workout started from a session with prior progress resumes where it left
+ * off. Missing or unparseable timestamps count as not completed.
+ */
+function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
+  const seeded: CompletedSetMap = {};
+  for (const exercise of session.exercises) {
+    for (const s of exercise.sets) {
+      if (s.completed_at == null) continue;
+      const ms = Date.parse(s.completed_at);
+      if (!Number.isNaN(ms)) seeded[String(s.id)] = ms;
+    }
+  }
+  return seeded;
 }
 
 /**
@@ -412,9 +437,9 @@ function buildSessionEditState(
   const newSteps = buildStepsFromSession(nextSession);
   const newSetIds = new Set(newSteps.map((s) => s.setId));
 
-  const nextCompleted: Record<string, true> = {};
+  const nextCompleted: CompletedSetMap = {};
   for (const id of Object.keys(state.completedSetIds)) {
-    if (newSetIds.has(id)) nextCompleted[id] = true;
+    if (newSetIds.has(id)) nextCompleted[id] = state.completedSetIds[id];
   }
 
   // If the cursor's set was deleted (or the workout was finished and a new
@@ -513,13 +538,17 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       startWorkout: (session, opts) => {
         cancelCurrentRestNotification(get().rest);
         const steps = buildStepsFromSession(session);
+        // Server-persisted completions seed the map, and the cursor lands on
+        // the first uncompleted step (null = every step already done). The
+        // store stays clean — the server already knows these completions.
+        const completedSetIds = seedCompletionFromSession(session);
         set({
           sessionId: session.id,
           session,
           startedAt: Date.now(),
           steps,
-          completedSetIds: {},
-          activeSetId: steps[0]?.setId ?? null,
+          completedSetIds,
+          activeSetId: steps.find((s) => completedSetIds[s.setId] == null)?.setId ?? null,
           rest: READY_REST,
           sessionRevision: 0,
           hasUnsavedChanges: false,
@@ -533,9 +562,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const targetIndex = steps.findIndex((s) => s.setId === setId);
         if (targetIndex < 0) return;
 
-        const completedSetIds: Record<string, true> = {};
+        // Server-persisted completions are preserved wholesale — restarting
+        // at a middle set resumes with holes rather than clearing later
+        // checkmarks. Priors the server doesn't know about are stamped now,
+        // and only those make the session dirty.
+        const completedSetIds = seedCompletionFromSession(session);
+        let addedPriors = false;
         for (let i = 0; i < targetIndex; i++) {
-          completedSetIds[steps[i].setId] = true;
+          const id = steps[i].setId;
+          if (completedSetIds[id] == null) {
+            completedSetIds[id] = Date.now();
+            addedPriors = true;
+          }
         }
 
         set({
@@ -546,8 +584,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           completedSetIds,
           activeSetId: setId,
           rest: READY_REST,
-          sessionRevision: 0,
-          hasUnsavedChanges: false,
+          sessionRevision: addedPriors ? 1 : 0,
+          hasUnsavedChanges: addedPriors,
           createdByLiveStart: false,
         });
       },
@@ -570,15 +608,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         cancelCurrentRestNotification(state.rest);
 
-        const completedSetIds: Record<string, true> = { ...state.completedSetIds };
+        const completedSetIds: CompletedSetMap = { ...state.completedSetIds };
         for (let i = 0; i < targetIndex; i++) {
-          completedSetIds[state.steps[i].setId] = true;
+          const id = state.steps[i].setId;
+          if (completedSetIds[id] == null) completedSetIds[id] = Date.now();
         }
 
         set({
           completedSetIds,
           activeSetId: setId,
           rest: READY_REST,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
         });
       },
 
@@ -596,18 +637,26 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         cancelCurrentRestNotification(state.rest);
 
-        const completedSetIds = {
+        const completedSetIds: CompletedSetMap = {
           ...state.completedSetIds,
-          [state.activeSetId]: true as const,
+          [state.activeSetId]: Date.now(),
         };
 
-        const nextStep = state.steps[activeIndex + 1];
+        // Advance to the next *uncompleted* step — completion maps can have
+        // holes (server completions preserved across a mid-workout restart,
+        // or an upcoming set re-checked via recompleteSet), and landing on a
+        // done row would strand the cursor.
+        const nextStep = state.steps
+          .slice(activeIndex + 1)
+          .find((s) => completedSetIds[s.setId] == null);
         if (!nextStep) {
-          // Last set complete: workout is done. No final rest timer.
+          // No uncompleted step remains: workout is done. No final rest timer.
           set({
             completedSetIds,
             activeSetId: null,
             rest: READY_REST,
+            sessionRevision: state.sessionRevision + 1,
+            hasUnsavedChanges: true,
           });
           return;
         }
@@ -618,23 +667,31 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // A zero-rest step (superset round interior, or an explicit
           // rest_time of 0) advances straight to ready — no timer flash.
           rest: nextStep.restSec > 0 ? startRestForStep(state.steps, nextStep.setId) : READY_REST,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
         });
       },
 
       uncompleteSet: (setId) => {
         const state = get();
-        if (!state.completedSetIds[setId]) return;
+        if (state.completedSetIds[setId] == null) return;
         const next = { ...state.completedSetIds };
         delete next[setId];
-        set({ completedSetIds: next });
+        set({
+          completedSetIds: next,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
+        });
       },
 
       recompleteSet: (setId) => {
         const state = get();
-        if (state.completedSetIds[setId]) return;
+        if (state.completedSetIds[setId] != null) return;
         if (!state.steps.some((s) => s.setId === setId)) return;
         set({
-          completedSetIds: { ...state.completedSetIds, [setId]: true },
+          completedSetIds: { ...state.completedSetIds, [setId]: Date.now() },
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
         });
       },
 
@@ -758,9 +815,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const newSteps = buildStepsFromSession(session);
         const newSetIds = new Set(newSteps.map((s) => s.setId));
 
-        const nextCompleted: Record<string, true> = {};
+        const nextCompleted: CompletedSetMap = {};
         for (const id of Object.keys(state.completedSetIds)) {
-          if (newSetIds.has(id)) nextCompleted[id] = true;
+          if (newSetIds.has(id)) nextCompleted[id] = state.completedSetIds[id];
         }
 
         // If the cursor points at a set that no longer exists, fall back to
@@ -827,7 +884,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const tempId = nextTempSetId(session);
         const lastSet = exercise.sets[exercise.sets.length - 1];
         // Clone the last set's plan (weight/reps/rest/type/duration) but not
-        // its outcomes (notes/rpe) — those describe a performed set.
+        // its outcomes (notes/rpe/completed_at) — those describe a performed set.
         const newSet: ExerciseEntrySetResponse = lastSet
           ? {
               ...lastSet,
@@ -835,6 +892,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               set_number: exercise.sets.length + 1,
               notes: null,
               rpe: null,
+              completed_at: null,
             }
           : makeDefaultSet(tempId, 1);
 
@@ -1076,9 +1134,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           const grafted = graftServerSessionIds(local, serverSession);
           const newSteps = buildStepsFromSession(grafted);
 
-          const nextCompleted: Record<string, true> = {};
+          const nextCompleted: CompletedSetMap = {};
           for (const id of Object.keys(state.completedSetIds)) {
-            nextCompleted[setIdMap.get(id) ?? id] = true;
+            nextCompleted[setIdMap.get(id) ?? id] = state.completedSetIds[id];
           }
           const nextActiveSetId =
             state.activeSetId == null
@@ -1099,10 +1157,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const newSteps = buildStepsFromSession(serverSession);
         const newSetIds = new Set(newSteps.map((s) => s.setId));
 
-        const nextCompleted: Record<string, true> = {};
+        const nextCompleted: CompletedSetMap = {};
         for (const id of Object.keys(state.completedSetIds)) {
           const mapped = setIdMap.get(id) ?? id;
-          if (newSetIds.has(mapped)) nextCompleted[mapped] = true;
+          if (newSetIds.has(mapped)) nextCompleted[mapped] = state.completedSetIds[id];
         }
 
         // Remap the cursor in place: an id change that still points at the
@@ -1133,7 +1191,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         sessionId: state.sessionId,
@@ -1149,24 +1207,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         createdByLiveStart: state.createdByLiveStart,
       }),
       migrate: (persistedState, version) => {
-        if (!persistedState || typeof persistedState !== 'object') {
-          return persistedState as ActiveWorkoutState;
+        // v4 changed `completedSetIds` values from `true` to epoch-ms tap
+        // timestamps (backing the server-persisted `completed_at` column).
+        // Pre-v4 state predates any release of the active-workout feature
+        // and only holds local progress for an in-flight workout — the
+        // session itself lives on the server — so it is discarded rather
+        // than migrated.
+        if (version < 4) {
+          return { ...initialData } as ActiveWorkoutState;
         }
-
-        let migrated = persistedState as ActiveWorkoutState;
-        if (version < 2) {
-          migrated = migrateV1ToV2(migrated);
-        }
-        if (version < 3) {
-          // v2 → v3: `startedAt` didn't exist. Backfill "now" for a live
-          // session (one-time elapsed-clock reset) so the elapsed display
-          // never shows garbage; dead sessions stay null.
-          migrated = {
-            ...migrated,
-            startedAt: migrated.sessionId != null ? Date.now() : null,
-          };
-        }
-        return migrated;
+        return persistedState as ActiveWorkoutState;
       },
       merge: (persisted, current) => {
         const merged = {
@@ -1186,81 +1236,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     },
   ),
 );
-
-// v1 → v2:
-//  - Split `activeRest` (which tracked "the rest after the just-completed
-//    set") into an `activeSetId` cursor (the *next* set) plus a `rest`
-//    object that sits before it.
-//  - Rename rest states: 'running' → 'resting', 'complete' → 'ready'.
-//  - Drop any final rest timer (v2 doesn't start one after the last set),
-//    which naturally falls out of "first uncompleted step".
-function migrateV1ToV2(persistedState: unknown): ActiveWorkoutState {
-  const v1 = persistedState as {
-    sessionId?: string | null;
-    session?: ActiveWorkoutState['session'];
-    steps?: WorkoutStep[];
-    completedSetIds?: Record<string, true>;
-    activeRest?: {
-      setId: string;
-      state: 'running' | 'paused' | 'complete';
-      durationSec: number;
-      endsAt: number | null;
-      pausedRemainingMs: number | null;
-      scheduledNotificationId: string | null;
-      instanceToken: number;
-    } | null;
-  };
-
-  const steps = Array.isArray(v1.steps) ? v1.steps : [];
-  const completedSetIds: Record<string, true> =
-    v1.completedSetIds && typeof v1.completedSetIds === 'object'
-      ? v1.completedSetIds
-      : {};
-
-  // The new cursor is the first uncompleted step. This matches what v1
-  // implicitly computed at the call sites of "next pending set", so a
-  // user mid-rest in v1 lands on the same set in v2.
-  const nextStep = steps.find((s) => !completedSetIds[s.setId]);
-  const activeSetId = nextStep?.setId ?? null;
-
-  // Rest carries over only if (a) there's somewhere to point it and
-  // (b) it wasn't already finished. 'complete' and null both collapse
-  // to READY_REST — the user can just tap the next set.
-  let rest: Rest = { ...READY_REST };
-  const oldRest = v1.activeRest;
-  if (oldRest && activeSetId != null) {
-    if (oldRest.state === 'running') {
-      rest = {
-        state: 'resting',
-        durationSec: oldRest.durationSec ?? 0,
-        endsAt: oldRest.endsAt ?? null,
-        pausedRemainingMs: null,
-        scheduledNotificationId: oldRest.scheduledNotificationId ?? null,
-        instanceToken: oldRest.instanceToken ?? 0,
-      };
-    } else if (oldRest.state === 'paused') {
-      rest = {
-        state: 'paused',
-        durationSec: oldRest.durationSec ?? 0,
-        endsAt: null,
-        pausedRemainingMs: oldRest.pausedRemainingMs ?? null,
-        scheduledNotificationId: null,
-        instanceToken: oldRest.instanceToken ?? 0,
-      };
-    }
-    // 'complete' → already ready; nothing to migrate.
-  }
-
-  return {
-    ...initialData,
-    sessionId: v1.sessionId ?? null,
-    session: v1.session ?? null,
-    steps,
-    completedSetIds,
-    activeSetId,
-    rest,
-  } as ActiveWorkoutState;
-}
 
 /**
  * Test-only helper — resets store state to initial data while preserving

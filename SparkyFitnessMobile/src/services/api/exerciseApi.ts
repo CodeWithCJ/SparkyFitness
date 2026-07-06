@@ -299,6 +299,7 @@ export interface CreateExerciseEntryPayload {
     rest_time?: number | null;
     notes?: string | null;
     rpe?: number | null;
+    completed_at?: string | null;
   }[];
 }
 

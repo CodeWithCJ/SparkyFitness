@@ -578,7 +578,7 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[1].reps).toBe('8');
     });
 
-    it('round-trips set_type, duration, notes, and rpe into the draft so edit-saves cannot wipe them', () => {
+    it('round-trips set_type, duration, notes, rpe, and completed_at into the draft so edit-saves cannot wipe them', () => {
       const state = makeEmptyDraft();
       const session = makeSession({
         exercises: [
@@ -598,7 +598,8 @@ describe('workoutFormReducer', () => {
                 rest_time: 90,
                 notes: 'slow tempo',
                 rpe: 7.5,
-              } as ExerciseEntrySetResponse,
+                completed_at: '2026-03-15T10:30:00.000Z',
+              } as unknown as ExerciseEntrySetResponse,
             ],
           } as any,
         ],
@@ -610,6 +611,7 @@ describe('workoutFormReducer', () => {
       expect(set.duration).toBe(30);
       expect(set.notes).toBe('slow tempo');
       expect(set.rpe).toBe(7.5);
+      expect(set.completedAt).toBe('2026-03-15T10:30:00.000Z');
     });
 
     it('converts weight from kg to lbs', () => {
@@ -983,6 +985,7 @@ describe('workoutFormReducer', () => {
               duration: null,
               notes: null,
               rpe: null,
+              completed_at: null,
             },
           ],
         },

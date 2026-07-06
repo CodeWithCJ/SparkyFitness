@@ -291,6 +291,78 @@ describe('Exercise entry API schemas', () => {
     });
   });
 
+  describe('completed_at', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+    };
+
+    const baseSetResponse = {
+      id: 7,
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+      duration: null,
+      rest_time: null,
+      notes: null,
+      rpe: null,
+    };
+
+    it('accepts ISO, null, and omitted completed_at on set requests', () => {
+      const withIso = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: '2026-07-06T15:04:05.123Z',
+      });
+      expect(withIso.success).toBe(true);
+      expect(withIso.data.completed_at).toBe('2026-07-06T15:04:05.123Z');
+
+      const withNull = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: null,
+      });
+      expect(withNull.success).toBe(true);
+      expect(withNull.data.completed_at).toBeNull();
+
+      const omitted = runSchema(
+        'exerciseEntrySetRequestSchema',
+        baseSetRequest
+      );
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('completed_at');
+    });
+
+    it('rejects non-ISO completed_at on set requests', () => {
+      const result = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: 'yesterday at noon',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires completed_at on set responses', () => {
+      const missing = runSchema(
+        'exerciseEntrySetResponseSchema',
+        baseSetResponse
+      );
+      expect(missing.success).toBe(false);
+
+      const withValue = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        completed_at: '2026-07-06T15:04:05.123Z',
+      });
+      expect(withValue.success).toBe(true);
+
+      const withNull = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        completed_at: null,
+      });
+      expect(withNull.success).toBe(true);
+    });
+  });
+
   // #1353: RN's whatwg-fetch appends `_=<timestamp>` to GET URLs when callers
   // pass `cache: 'no-store'`. The strict history query schema must tolerate it.
   it('accepts the whatwg-fetch `_` cache-buster param', () => {

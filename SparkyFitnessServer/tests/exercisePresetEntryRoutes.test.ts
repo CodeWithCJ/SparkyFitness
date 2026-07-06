@@ -101,6 +101,7 @@ const presetSessionResponseSchema = z
                 rest_time: z.number().nullable(),
                 notes: z.string().nullable(),
                 rpe: z.number().nullable(),
+                completed_at: z.string().nullable(),
               })
               .strict()
           ),
@@ -257,6 +258,7 @@ const groupedSessionFixture = presetSessionResponseSchema.parse({
           rest_time: null,
           notes: null,
           rpe: null,
+          completed_at: null,
         },
       ],
       exercise_snapshot: {

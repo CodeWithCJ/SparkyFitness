@@ -63,7 +63,8 @@ const SETS_SUBQUERY = `COALESCE(
   (SELECT json_agg(set_data ORDER BY set_data.set_number)
    FROM (
      SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
-            ees.duration, ees.rest_time, ees.notes, ees.rpe
+            ees.duration, ees.rest_time, ees.notes, ees.rpe,
+            to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at
      FROM exercise_entry_sets ees
      WHERE ees.exercise_entry_id = ee.id
    ) AS set_data

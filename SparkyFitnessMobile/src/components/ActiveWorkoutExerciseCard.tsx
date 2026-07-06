@@ -20,7 +20,7 @@ import {
   formatVolume,
   getExerciseVolumeKg,
 } from '../utils/workoutSession';
-import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
+import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
 
 export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
@@ -42,7 +42,7 @@ function buildWorkingSetNumbers(sets: ExerciseEntryResponse['sets']): number[] {
 interface ActiveWorkoutExerciseCardProps {
   exercise: ExerciseEntryResponse;
   expanded: boolean;
-  completedSetIds: Record<string, true>;
+  completedSetIds: CompletedSetMap;
   activeSetId: string | null;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';

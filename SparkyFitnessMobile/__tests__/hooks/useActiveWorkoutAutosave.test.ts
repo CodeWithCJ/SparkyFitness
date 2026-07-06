@@ -163,6 +163,49 @@ describe('useActiveWorkoutAutosave', () => {
       expect(mockUpdateWorkout).not.toHaveBeenCalled();
     });
 
+    it('completing a set fires a debounced save carrying completed_at', async () => {
+      renderAutosave();
+      act(() => {
+        getStore().startWorkout(makeSession());
+      });
+
+      let completedMs = 0;
+      act(() => {
+        completedMs = Date.now();
+        getStore().completeActiveSet();
+      });
+
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+      const payload = mockUpdateWorkout.mock.calls[0][1] as {
+        exercises: { sets: { completed_at: string | null }[] }[];
+      };
+      expect(payload.exercises[0].sets[0].completed_at).toBe(
+        new Date(completedMs).toISOString(),
+      );
+      expect(payload.exercises[0].sets[1].completed_at).toBeNull();
+    });
+
+    it('unchecking a set fires a debounced save clearing completed_at', async () => {
+      renderAutosave();
+      act(() => {
+        getStore().startWorkout(makeSession());
+        getStore().completeActiveSet();
+      });
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        getStore().uncompleteSet('101');
+      });
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(2);
+      const payload = mockUpdateWorkout.mock.calls[1][1] as {
+        exercises: { sets: { completed_at: string | null }[] }[];
+      };
+      expect(payload.exercises[0].sets[0].completed_at).toBeNull();
+    });
+
     it('saves once, AUTOSAVE_DEBOUNCE_MS after the last edit', async () => {
       renderAutosave();
       startAndEdit();

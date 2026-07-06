@@ -69,9 +69,10 @@ interface SetTableRowProps {
   set: ExerciseEntrySetResponse;
   onLongPress: (setId: string) => void;
   weightUnit: string;
+  successColor: string;
 }
 
-const SetTableRow = React.memo(({ set, onLongPress, weightUnit }: SetTableRowProps) => {
+const SetTableRow = React.memo(({ set, onLongPress, weightUnit, successColor }: SetTableRowProps) => {
   const displayWeight = set.weight != null
     ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
     : '\u2014';
@@ -88,6 +89,13 @@ const SetTableRow = React.memo(({ set, onLongPress, weightUnit }: SetTableRowPro
       </View>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+      {/* Last-saved server state: a live session's just-tapped checkmarks
+          appear here only after the autosave lands. */}
+      <View className="w-6 items-center justify-center">
+        {set.completed_at != null && (
+          <Icon name="checkmark" size={14} color={successColor} weight="bold" />
+        )}
+      </View>
     </Pressable>
   );
 });
@@ -101,6 +109,7 @@ interface ExerciseRowProps {
   getImageSource: ReturnType<typeof useExerciseImageSource>['getImageSource'];
   accentPrimary: string;
   textMuted: string;
+  successColor: string;
   weightUnit: string;
   showRestChip: boolean;
   onLongPressSet: (setId: string) => void;
@@ -113,6 +122,7 @@ const ExerciseRow = React.memo(({
   getImageSource,
   accentPrimary,
   textMuted,
+  successColor,
   weightUnit,
   showRestChip,
   onLongPressSet,
@@ -140,6 +150,7 @@ const ExerciseRow = React.memo(({
           <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
           <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
           <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+          <View className="w-6" />
         </View>
         {exercise.sets.map(set => (
           <SetTableRow
@@ -147,6 +158,7 @@ const ExerciseRow = React.memo(({
             set={set}
             onLongPress={onLongPressSet}
             weightUnit={weightUnit}
+            successColor={successColor}
           />
         ))}
       </View>
@@ -234,11 +246,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textMuted, borderSubtle, successColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-border-subtle',
-  ]) as [string, string, string];
+    '--color-icon-success',
+  ]) as [string, string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   // Superset display (view mode only): grouped members get a flat left rail
@@ -490,6 +503,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             getImageSource={getImageSource}
             accentPrimary={accentPrimary}
             textMuted={textMuted}
+            successColor={successColor}
             weightUnit={weightUnit}
             showRestChip={isSparky}
             onLongPressSet={handleLongPressSet}

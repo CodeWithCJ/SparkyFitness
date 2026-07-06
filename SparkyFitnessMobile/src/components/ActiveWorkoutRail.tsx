@@ -5,6 +5,7 @@ import type { ExerciseEntryResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 
 const THUMB_SIZE = 52;
@@ -21,7 +22,7 @@ export interface SupersetBorder {
 
 interface ActiveWorkoutRailProps {
   exercises: ExerciseEntryResponse[];
-  completedSetIds: Record<string, true>;
+  completedSetIds: CompletedSetMap;
   /** The exercise highlighted with the accent ring (cursor or scroll focus). */
   focusedEntryId: string | null;
   /** Superset membership: grouped thumbs get a flat bottom bar in the group color. */

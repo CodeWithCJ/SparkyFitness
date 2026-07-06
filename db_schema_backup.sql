@@ -1558,7 +1558,8 @@ CREATE TABLE public.exercise_entry_sets (
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    rpe numeric(3,1)
+    rpe numeric(3,1),
+    completed_at timestamp with time zone
 );
 
 
@@ -1567,6 +1568,13 @@ CREATE TABLE public.exercise_entry_sets (
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.rpe IS 'Rate of Perceived Exertion (usually 1-10 scale)';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.completed_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.completed_at IS 'Client-recorded moment the set was checked off during a live workout. NULL = not completed.';
 
 
 --

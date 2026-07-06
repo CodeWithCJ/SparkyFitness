@@ -951,6 +951,24 @@ describe('workoutSession', () => {
       expect(payload[2].superset_group).toBeNull();
     });
 
+    it('round-trips completedAt opaquely and emits null for sets without it', () => {
+      const completedAt = '2026-03-20T10:30:00.000Z';
+      const payload = buildExercisesPayload(
+        [
+          makeDraftExercise({
+            sets: [
+              { clientId: 's1', weight: '100', reps: '10', completedAt },
+              { clientId: 's2', weight: '90', reps: '8' },
+            ],
+          }),
+        ],
+        'kg',
+      );
+      expect(payload[0].sets[0].completed_at).toBe(completedAt);
+      // A new form set has no completion — the server stores null.
+      expect(payload[0].sets[1].completed_at).toBeNull();
+    });
+
     it('handles exercise with empty sets array', () => {
       const exercise = makeDraftExercise({ sets: [] });
       const payload = buildExercisesPayload([exercise], 'kg');
@@ -1336,6 +1354,7 @@ describe('workoutSession', () => {
       rest_time: 90,
       notes: null,
       rpe: 8,
+      completed_at: null,
       ...overrides,
     });
 
@@ -1382,7 +1401,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0].id).toBe(ENTRY_A);
       expect(payload[0].exercise_id).toBe(EX_1);
       expect(payload[0].sets[0]).toEqual({
@@ -1395,6 +1414,7 @@ describe('workoutSession', () => {
         rest_time: 90,
         notes: null,
         rpe: null,
+        completed_at: null,
       });
       expect(payload[0].sets[1]).toEqual({
         id: 102,
@@ -1406,6 +1426,7 @@ describe('workoutSession', () => {
         rest_time: 90,
         notes: 'felt heavy',
         rpe: 9,
+        completed_at: null,
       });
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
       expectNoTempIds(payload);
@@ -1420,7 +1441,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0].id).toBe(ENTRY_A);
       expect((payload[0].sets[0] as any).id).toBe(101);
       expect(payload[0].sets[1]).not.toHaveProperty('id');
@@ -1441,7 +1462,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0]).not.toHaveProperty('id');
       expect(payload[0].sets[0]).not.toHaveProperty('id');
       expect(payload[1]).not.toHaveProperty('id');
@@ -1455,7 +1476,7 @@ describe('workoutSession', () => {
       const session = makePreset({
         exercises: [makeExercise({ sets: [makeSet({ weight: 102.5 })] })],
       });
-      expect(buildSessionExercisesPayload(session)[0].sets[0].weight).toBe(102.5);
+      expect(buildSessionExercisesPayload(session, {})[0].sets[0].weight).toBe(102.5);
     });
 
     it('assigns positional set_number and sort_order regardless of stored values', () => {
@@ -1470,7 +1491,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0].sort_order).toBe(0);
       expect(payload[1].sort_order).toBe(1);
       expect(payload[0].sets[0].set_number).toBe(1);
@@ -1481,14 +1502,14 @@ describe('workoutSession', () => {
       const session = makePreset({
         exercises: [makeExercise({ notes: 'superset next time', duration_minutes: 25 })],
       });
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0].notes).toBe('superset next time');
       expect(payload[0].duration_minutes).toBe(25);
     });
 
     it('emits explicit nulls for absent exercise notes', () => {
       const session = makePreset({ exercises: [makeExercise({ notes: null })] });
-      expect(buildSessionExercisesPayload(session)[0].notes).toBeNull();
+      expect(buildSessionExercisesPayload(session, {})[0].notes).toBeNull();
     });
 
     it('round-trips superset_group and normalizes undefined to null', () => {
@@ -1503,11 +1524,52 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session);
+      const payload = buildSessionExercisesPayload(session, {});
       expect(payload[0].superset_group).toBe(1);
       expect(payload[1].superset_group).toBeNull();
       expect(payload[2].superset_group).toBeNull();
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+    });
+
+    it('emits completed_at from the completion map: ISO for mapped ids, null otherwise', () => {
+      const completedMs = Date.UTC(2026, 2, 20, 10, 30, 0, 123);
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session, { '101': completedMs });
+      expect(payload[0].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
+      // Unmapped sets send an explicit null so unchecking propagates as a clear.
+      expect(payload[0].sets[1].completed_at).toBeNull();
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+    });
+
+    it('keeps completed_at on id-less sets in the recreate path', () => {
+      const completedMs = Date.UTC(2026, 2, 20, 10, 30, 0);
+      const session = makePreset({
+        exercises: [
+          makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
+          makeExercise({
+            id: 'temp-abc123',
+            exercise_id: EX_2,
+            sets: [makeSet({ id: -1 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session, {
+        '101': completedMs,
+        '-1': completedMs,
+      });
+      // Ids are stripped (delete-and-recreate), but completion travels in the rows.
+      expect(payload[0].sets[0]).not.toHaveProperty('id');
+      expect(payload[0].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
+      expect(payload[1].sets[0]).not.toHaveProperty('id');
+      expect(payload[1].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
     });
   });
 
@@ -1589,6 +1651,7 @@ describe('workoutSession', () => {
                 rest_time: 60,
                 notes: 'slow tempo',
                 rpe: null,
+                completed_at: null,
               },
             ],
           },
@@ -1637,6 +1700,7 @@ describe('workoutSession', () => {
             rest_time: DEFAULT_REST_SEC,
             notes: null,
             rpe: null,
+            completed_at: null,
           },
         ]);
       });
@@ -1677,6 +1741,7 @@ describe('workoutSession', () => {
                 rest_time: DEFAULT_REST_SEC,
                 notes: null,
                 rpe: null,
+                completed_at: null,
               },
             ],
           },
