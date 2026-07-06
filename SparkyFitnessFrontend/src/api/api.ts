@@ -1,6 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import * as logging from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
+import { getBasePath } from '@/utils/basePath';
 
 interface ApiCallOptions extends RequestInit {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,7 +16,7 @@ interface ApiCallOptions extends RequestInit {
 
 class HttpApiError extends Error {}
 
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = `${getBasePath()}/api`;
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
 // A single-use guard so a reload triggered by gateway interception (see

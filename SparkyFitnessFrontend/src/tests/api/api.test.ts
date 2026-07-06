@@ -124,3 +124,28 @@ describe('apiCall gateway interception handling', () => {
     expect(mockReload).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('API_BASE_URL', () => {
+  afterEach(() => {
+    document.head.innerHTML = '';
+    jest.resetModules();
+  });
+
+  it('is /api at root', () => {
+    document.head.innerHTML = '<base href="/">';
+    let apiModule: typeof import('@/api/api');
+    jest.isolateModules(() => {
+      apiModule = require('@/api/api');
+    });
+    expect(apiModule!.API_BASE_URL).toBe('/api');
+  });
+
+  it('is prefixed with the sub-path when deployed at /sparky/', () => {
+    document.head.innerHTML = '<base href="/sparky/">';
+    let apiModule: typeof import('@/api/api');
+    jest.isolateModules(() => {
+      apiModule = require('@/api/api');
+    });
+    expect(apiModule!.API_BASE_URL).toBe('/sparky/api');
+  });
+});
