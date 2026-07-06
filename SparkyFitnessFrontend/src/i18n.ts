@@ -3,6 +3,11 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import HttpApi from 'i18next-http-backend';
 import { getSupportedLanguages } from './utils/languageUtils';
+import { withBasePath } from './utils/basePath';
+
+export function getLocalesLoadPath(): string {
+  return withBasePath('/locales/{{lng}}/{{ns}}.json');
+}
 
 i18n
   .use(HttpApi)
@@ -23,7 +28,7 @@ i18n
       caches: ['localStorage', 'cookie'],
     },
     backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json',
+      loadPath: getLocalesLoadPath(),
     },
     react: {
       useSuspense: false,
