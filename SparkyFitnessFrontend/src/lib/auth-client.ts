@@ -8,10 +8,15 @@ import {
 import { apiKeyClient } from '@better-auth/api-key/client';
 import { ssoClient } from '@better-auth/sso/client';
 import { passkeyClient } from '@better-auth/passkey/client';
+import { getBasePath } from '@/utils/basePath';
+
+export function getAuthBaseUrl(): string {
+  return window.location.origin + getBasePath() + '/api/auth';
+}
 
 export const authClient = createAuthClient({
-  // Use /api/auth as the base URL.
-  baseURL: window.location.origin + '/api/auth',
+  // Use /api/auth as the base URL, adjusted for the configured sub-path.
+  baseURL: getAuthBaseUrl(),
   // Every plugin must keep its own inferred type. Widening any one of them to
   // the bare `BetterAuthClientPlugin` interface (`adminClient() as unknown as
   // BetterAuthClientPlugin` used to sit here) erases that plugin's actions, and

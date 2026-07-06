@@ -19,66 +19,6 @@
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "format": "prettier . --write --log-level warn"
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": [
-      "<rootDir>/src/tests/setupTests.ts"
-    ],
-    "moduleNameMapper": {
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
-      "^@/(.*)$": "<rootDir>/src/$1",
-      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
-      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1",
-      "^better-auth$": "<rootDir>/src/tests/stubs/betterAuth.ts",
-      "^better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts",
-      "^@better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts",
-      "^react-markdown$": "<rootDir>/src/tests/stubs/reactMarkdown.tsx",
-      "^remark-gfm$": "<rootDir>/src/tests/stubs/remarkGfm.ts"
-    },
-    "transform": {
-      "^.+\\.tsx?$": [
-        "ts-jest",
-        {
-          "useESM": true,
-          "tsconfig": {
-            "jsx": "react-jsx",
-            "esModuleInterop": true,
-            "module": "ESNext",
-            "moduleResolution": "bundler",
-            "rootDir": ".",
-            "types": [
-              "jest",
-              "@testing-library/jest-dom",
-              "node"
-            ],
-            "isolatedModules": true
-          }
-        }
-      ],
-      "^.+\\.jsx?$": [
-        "ts-jest",
-        {
-          "useESM": true,
-          "tsconfig": {
-            "allowJs": true,
-            "esModuleInterop": true,
-            "module": "ESNext",
-            "moduleResolution": "bundler",
-            "rootDir": ".",
-            "isolatedModules": true
-          }
-        }
-      ]
-    },
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
-    "transformIgnorePatterns": [
-      "node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?@tanstack/)"
-    ]
-  },
   "dependencies": {
     "@ai-sdk/react": "^4.0.154",
     "@assistant-ui/react": "^0.15.31",
