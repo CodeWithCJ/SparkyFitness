@@ -1,6 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import * as logging from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
+import { getBasePath } from '@/utils/basePath';
 
 import i18n from 'i18next';
 interface ApiCallOptions extends RequestInit {
@@ -32,7 +33,7 @@ export class HttpApiError extends Error {
   }
 }
 
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = `${getBasePath()}/api`;
 
 // Requests the server has refused for this session with a DEMO_ code, mapped
 // to the message it gave. Module scope, so it resets on reload; cleared on any
