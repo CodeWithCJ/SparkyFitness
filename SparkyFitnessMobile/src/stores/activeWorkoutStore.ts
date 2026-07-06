@@ -1,7 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { PresetSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseEntryResponse,
+  ExerciseEntrySetResponse,
+  ExerciseSnapshotResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
+import type { Exercise } from '../types/exercise';
+import { TEMP_EXERCISE_ENTRY_ID_PREFIX, isTempExerciseEntryId } from '../utils/workoutSession';
 import {
   cancelScheduledNotification,
   fireRestCompleteHaptic,
@@ -60,6 +67,8 @@ export interface ActiveWorkoutState {
    * screens where the history cache hasn't been warmed yet.
    */
   session: PresetSessionResponse | null;
+  /** Epoch ms when the workout was started. Drives the elapsed clock. */
+  startedAt: number | null;
   steps: WorkoutStep[];
   completedSetIds: Record<string, true>;
   /**
@@ -70,6 +79,18 @@ export interface ActiveWorkoutState {
    */
   activeSetId: string | null;
   rest: Rest;
+  /**
+   * Transient monotonic counter bumped on every local session edit (and on
+   * `reconcileWithSession`). The autosave hook captures it at send time and
+   * hands it back to `applyServerSession` so a response can tell whether
+   * edits landed while the request was in flight.
+   */
+  sessionRevision: number;
+  /**
+   * True while local session edits haven't been confirmed saved. Persisted so
+   * edits made just before a cold exit are flushed on next launch.
+   */
+  hasUnsavedChanges: boolean;
 
   startWorkout: (session: PresetSessionResponse) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
@@ -84,26 +105,70 @@ export interface ActiveWorkoutState {
   recompleteSet: (setId: string) => void;
   pauseRest: () => void;
   resumeRest: () => void;
+  /**
+   * Add/remove seconds on the current rest. Resting → shifts the deadline and
+   * reschedules the notification; crossing zero behaves like `markRestReady`.
+   * Paused → adjusts the captured remaining time. Ready → no-op.
+   */
+  adjustRest: (deltaSec: number) => void;
   /** Skip the current rest — clears to 'ready' without advancing the cursor. */
   dismissRest: () => void;
   /** Guarded transition fired by the HUD tick when `endsAt` passes. */
   markRestReady: () => void;
   reconcileWithSession: (session: PresetSessionResponse) => void;
+
+  /** Patch value fields on a set. Weight is in kg — UI converts before calling. */
+  updateSetField: (setId: string, patch: ActiveSetPatch) => void;
+  /** Append a set to an exercise, cloning the last set's plan. Uses a negative temp id. */
+  addSetToExercise: (entryId: string) => void;
+  /**
+   * Delete a set, renumbering the rest. Deleting an exercise's last remaining
+   * set removes the exercise from the session entirely.
+   */
+  deleteSet: (setId: string) => void;
+  /** Set rest_time on every set of an exercise. */
+  setExerciseRest: (entryId: string, seconds: number) => void;
+  /** Append a client-built exercise entry (temp string id) with one default set. */
+  addExercise: (exercise: Exercise) => void;
+  /**
+   * Fold an autosave response back into the store. `sentRevision` is the
+   * `sessionRevision` captured when the request's payload was built: if no
+   * edits landed mid-flight the server session is adopted wholesale (and the
+   * dirty flag cleared); otherwise only server ids are grafted positionally
+   * into the local session, which keeps its newer values and stays dirty.
+   */
+  applyServerSession: (serverSession: PresetSessionResponse, sentRevision: number) => void;
 }
+
+/** Fields the active-workout screen can edit on a set. */
+export type ActiveSetPatch = Partial<
+  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'rpe' | 'set_type'>
+>;
 
 const initialData: Pick<
   ActiveWorkoutState,
-  'sessionId' | 'session' | 'steps' | 'completedSetIds' | 'activeSetId' | 'rest'
+  | 'sessionId'
+  | 'session'
+  | 'startedAt'
+  | 'steps'
+  | 'completedSetIds'
+  | 'activeSetId'
+  | 'rest'
+  | 'sessionRevision'
+  | 'hasUnsavedChanges'
 > = {
   sessionId: null,
   session: null,
+  startedAt: null,
   steps: [],
   completedSetIds: {},
   activeSetId: null,
   rest: READY_REST,
+  sessionRevision: 0,
+  hasUnsavedChanges: false,
 };
 
-function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
+export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
   for (const exercise of session.exercises) {
     const exerciseName = exercise.exercise_snapshot?.name ?? 'Exercise';
@@ -124,6 +189,148 @@ function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
 }
 
 /**
+ * Map local set ids → server set ids by position (exercise index, set index).
+ *
+ * Valid because the autosave payload preserves order, the server recreates in
+ * order, and every shape-changing edit action is append-only (`addSet`/
+ * `addExercise` append, `deleteSet` shifts down). If reorder or insert-in-
+ * middle is ever added, this positional mapping must be revisited.
+ *
+ * Positions beyond the shorter side are unmapped — callers keep the local id
+ * (temp ids re-save on the next autosave; id churn only, no data loss).
+ */
+export function buildPositionalSetIdMap(
+  local: PresetSessionResponse,
+  server: PresetSessionResponse,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  const exerciseCount = Math.min(local.exercises.length, server.exercises.length);
+  for (let i = 0; i < exerciseCount; i++) {
+    const localSets = local.exercises[i].sets;
+    const serverSets = server.exercises[i].sets;
+    const setCount = Math.min(localSets.length, serverSets.length);
+    for (let j = 0; j < setCount; j++) {
+      map.set(String(localSets[j].id), String(serverSets[j].id));
+    }
+  }
+  return map;
+}
+
+/**
+ * Return a copy of `local` whose exercise and set ids are replaced by the ids
+ * the server assigned at the same positions. Local values (weight/reps/etc.)
+ * are kept untouched; entries beyond the server response length keep their
+ * (temp) ids. See `buildPositionalSetIdMap` for why positional is safe.
+ */
+export function graftServerSessionIds(
+  local: PresetSessionResponse,
+  server: PresetSessionResponse,
+): PresetSessionResponse {
+  return {
+    ...local,
+    exercises: local.exercises.map((exercise, i) => {
+      const serverExercise = server.exercises[i];
+      if (!serverExercise) return exercise;
+      return {
+        ...exercise,
+        id: serverExercise.id,
+        sets: exercise.sets.map((set, j) => {
+          const serverSet = serverExercise.sets[j];
+          return serverSet ? { ...set, id: serverSet.id } : set;
+        }),
+      };
+    }),
+  };
+}
+
+/**
+ * Next negative placeholder id for a client-added set. Derived from the
+ * session (not a module counter) so ids stay unique across cold restarts
+ * while unsaved temp sets are still present.
+ */
+function nextTempSetId(session: PresetSessionResponse): number {
+  let min = 0;
+  for (const exercise of session.exercises) {
+    for (const set of exercise.sets) {
+      if (set.id < min) min = set.id;
+    }
+  }
+  return min - 1;
+}
+
+/** Next `temp-N` placeholder id for a client-added exercise entry. */
+function nextTempExerciseEntryId(session: PresetSessionResponse): string {
+  let max = 0;
+  for (const exercise of session.exercises) {
+    if (isTempExerciseEntryId(exercise.id)) {
+      const n = parseInt(exercise.id.slice(TEMP_EXERCISE_ENTRY_ID_PREFIX.length), 10);
+      if (!Number.isNaN(n) && n > max) max = n;
+    }
+  }
+  return `${TEMP_EXERCISE_ENTRY_ID_PREFIX}${max + 1}`;
+}
+
+function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse {
+  return {
+    id,
+    set_number: setNumber,
+    set_type: 'normal',
+    reps: null,
+    weight: null,
+    duration: null,
+    rest_time: DEFAULT_REST_SEC,
+    notes: null,
+    rpe: null,
+  };
+}
+
+/**
+ * Shared tail of every session-edit action: rebuild steps from the edited
+ * session, prune/repoint completion and cursor (same rules as
+ * `reconcileWithSession`), bump the revision, and mark unsaved changes.
+ * Returns the partial state for the caller to `set()`.
+ */
+function buildSessionEditState(
+  state: Pick<
+    ActiveWorkoutState,
+    'completedSetIds' | 'activeSetId' | 'rest' | 'sessionRevision'
+  >,
+  nextSession: PresetSessionResponse,
+): Partial<ActiveWorkoutState> {
+  const newSteps = buildStepsFromSession(nextSession);
+  const newSetIds = new Set(newSteps.map((s) => s.setId));
+
+  const nextCompleted: Record<string, true> = {};
+  for (const id of Object.keys(state.completedSetIds)) {
+    if (newSetIds.has(id)) nextCompleted[id] = true;
+  }
+
+  // If the cursor's set was deleted (or the workout was finished and a new
+  // set appeared), fall back to the first uncompleted step.
+  let nextActiveSetId = state.activeSetId;
+  if (nextActiveSetId == null || !newSetIds.has(nextActiveSetId)) {
+    const fallback = newSteps.find((s) => !nextCompleted[s.setId]);
+    nextActiveSetId = fallback?.setId ?? null;
+  }
+
+  let nextRest = state.rest;
+  if (nextActiveSetId !== state.activeSetId) {
+    cancelCurrentRestNotification(state.rest);
+    nextRest = READY_REST;
+  }
+
+  return {
+    session: nextSession,
+    steps: newSteps,
+    completedSetIds: nextCompleted,
+    activeSetId: nextActiveSetId,
+    rest: nextRest,
+    sessionRevision: state.sessionRevision + 1,
+    hasUnsavedChanges: true,
+  };
+}
+
+/**
  * Cancel any pending notification attached to the current rest. Safe to call
  * from any action that replaces or clears the rest state.
  */
@@ -131,6 +338,34 @@ function cancelCurrentRestNotification(rest: Rest): void {
   if (rest.scheduledNotificationId) {
     void cancelScheduledNotification(rest.scheduledNotificationId);
   }
+}
+
+/**
+ * Schedule the rest-complete notification for the rest identified by `token`,
+ * writing the notification id back into state only if that exact rest is still
+ * running by the time the async schedule resolves. Otherwise (paused, cleared,
+ * dismissed, or replaced) the late-arriving OS notification is cancelled.
+ */
+function scheduleGuardedRestNotification(
+  exerciseName: string,
+  seconds: number,
+  token: number,
+): void {
+  void scheduleRestNotification(exerciseName, seconds).then((notifId) => {
+    if (!notifId) return;
+    const current = useActiveWorkoutStore.getState().rest;
+    if (
+      current.instanceToken === token &&
+      current.state === 'resting' &&
+      current.scheduledNotificationId === null
+    ) {
+      useActiveWorkoutStore.setState({
+        rest: { ...current, scheduledNotificationId: notifId },
+      });
+    } else {
+      void cancelScheduledNotification(notifId);
+    }
+  });
 }
 
 /**
@@ -153,23 +388,7 @@ function startRestForStep(steps: WorkoutStep[], setId: string): Rest {
     instanceToken: token,
   };
 
-  const exerciseName = step?.exerciseName ?? 'Rest';
-  void scheduleRestNotification(exerciseName, durationSec).then((notifId) => {
-    if (!notifId) return;
-    const current = useActiveWorkoutStore.getState().rest;
-    if (
-      current.instanceToken === token &&
-      current.state === 'resting' &&
-      current.scheduledNotificationId === null
-    ) {
-      useActiveWorkoutStore.setState({
-        rest: { ...current, scheduledNotificationId: notifId },
-      });
-    } else {
-      // Rest was paused, cleared, dismissed, or replaced. Cancel the OS notification.
-      void cancelScheduledNotification(notifId);
-    }
-  });
+  scheduleGuardedRestNotification(step?.exerciseName ?? 'Rest', durationSec, token);
 
   return rest;
 }
@@ -185,10 +404,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           sessionId: session.id,
           session,
+          startedAt: Date.now(),
           steps,
           completedSetIds: {},
           activeSetId: steps[0]?.setId ?? null,
           rest: READY_REST,
+          sessionRevision: 0,
+          hasUnsavedChanges: false,
         });
       },
 
@@ -206,10 +428,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           sessionId: session.id,
           session,
+          startedAt: Date.now(),
           steps,
           completedSetIds,
           activeSetId: setId,
           rest: READY_REST,
+          sessionRevision: 0,
+          hasUnsavedChanges: false,
         });
       },
 
@@ -335,22 +560,58 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
         const exerciseName = step?.exerciseName ?? 'Rest';
         const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
+        scheduleGuardedRestNotification(exerciseName, seconds, token);
+      },
 
-        void scheduleRestNotification(exerciseName, seconds).then((notifId) => {
-          if (!notifId) return;
-          const current = useActiveWorkoutStore.getState().rest;
-          if (
-            current.instanceToken === token &&
-            current.state === 'resting' &&
-            current.scheduledNotificationId === null
-          ) {
-            useActiveWorkoutStore.setState({
-              rest: { ...current, scheduledNotificationId: notifId },
-            });
-          } else {
-            void cancelScheduledNotification(notifId);
+      adjustRest: (deltaSec) => {
+        const state = get();
+        const { rest, steps, activeSetId } = state;
+        const deltaMs = deltaSec * 1000;
+
+        if (rest.state === 'resting' && rest.endsAt != null) {
+          const newEndsAt = rest.endsAt + deltaMs;
+          if (newEndsAt <= Date.now()) {
+            // Shrunk past zero — same outcome as the countdown hitting zero.
+            cancelCurrentRestNotification(rest);
+            set({ rest: READY_REST });
+            fireRestCompleteHaptic();
+            return;
           }
-        });
+
+          cancelCurrentRestNotification(rest);
+          const token = ++restInstanceCounter;
+          set({
+            rest: {
+              ...rest,
+              durationSec: Math.max(1, rest.durationSec + deltaSec),
+              endsAt: newEndsAt,
+              scheduledNotificationId: null,
+              instanceToken: token,
+            },
+          });
+
+          const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
+          const seconds = Math.max(1, Math.ceil((newEndsAt - Date.now()) / 1000));
+          scheduleGuardedRestNotification(step?.exerciseName ?? 'Rest', seconds, token);
+          return;
+        }
+
+        if (rest.state === 'paused' && rest.pausedRemainingMs != null) {
+          const newRemainingMs = rest.pausedRemainingMs + deltaMs;
+          if (newRemainingMs <= 0) {
+            set({ rest: READY_REST });
+            fireRestCompleteHaptic();
+            return;
+          }
+          set({
+            rest: {
+              ...rest,
+              durationSec: Math.max(1, rest.durationSec + deltaSec),
+              pausedRemainingMs: newRemainingMs,
+            },
+          });
+        }
+        // 'ready' → no-op.
       },
 
       markRestReady: () => {
@@ -409,98 +670,266 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           completedSetIds: nextCompleted,
           activeSetId: nextActiveSetId,
           rest: nextRest,
+          // Reconcile is the second session writer (WorkoutDetail edit-save).
+          // Bumping the revision forces an in-flight autosave response into
+          // applyServerSession's graft branch instead of letting it adopt a
+          // stale server session wholesale over the newer reconciled one.
+          sessionRevision: state.sessionRevision + 1,
+        });
+      },
+
+      updateSetField: (setId, patch) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+
+        let changed = false;
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((exercise) => {
+            if (!exercise.sets.some((s) => String(s.id) === setId)) return exercise;
+            changed = true;
+            return {
+              ...exercise,
+              sets: exercise.sets.map((s) =>
+                String(s.id) === setId ? { ...s, ...patch } : s,
+              ),
+            };
+          }),
+        };
+        if (!changed) return;
+        set(buildSessionEditState(state, next));
+      },
+
+      addSetToExercise: (entryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) => e.id === entryId);
+        if (!exercise) return;
+
+        const tempId = nextTempSetId(session);
+        const lastSet = exercise.sets[exercise.sets.length - 1];
+        // Clone the last set's plan (weight/reps/rest/type/duration) but not
+        // its outcomes (notes/rpe) — those describe a performed set.
+        const newSet: ExerciseEntrySetResponse = lastSet
+          ? {
+              ...lastSet,
+              id: tempId,
+              set_number: exercise.sets.length + 1,
+              notes: null,
+              rpe: null,
+            }
+          : makeDefaultSet(tempId, 1);
+
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id === entryId ? { ...e, sets: [...e.sets, newSet] } : e,
+          ),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      deleteSet: (setId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) =>
+          e.sets.some((s) => String(s.id) === setId),
+        );
+        if (!exercise) return;
+
+        // Deleting an exercise's last remaining set removes the exercise —
+        // this doubles as the escape hatch for a mistakenly added exercise.
+        const next: PresetSessionResponse =
+          exercise.sets.length <= 1
+            ? {
+                ...session,
+                exercises: session.exercises.filter((e) => e.id !== exercise.id),
+              }
+            : {
+                ...session,
+                exercises: session.exercises.map((e) =>
+                  e.id !== exercise.id
+                    ? e
+                    : {
+                        ...e,
+                        sets: e.sets
+                          .filter((s) => String(s.id) !== setId)
+                          .map((s, idx) => ({ ...s, set_number: idx + 1 })),
+                      },
+                ),
+              };
+        set(buildSessionEditState(state, next));
+      },
+
+      setExerciseRest: (entryId, seconds) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        if (!session.exercises.some((e) => e.id === entryId)) return;
+
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id === entryId
+              ? { ...e, sets: e.sets.map((s) => ({ ...s, rest_time: seconds })) }
+              : e,
+          ),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      addExercise: (exercise) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+
+        const snapshot: ExerciseSnapshotResponse = {
+          id: exercise.id,
+          name: exercise.name,
+          category: exercise.category ?? null,
+          images: exercise.images ?? null,
+          primary_muscles: exercise.primary_muscles ?? null,
+          secondary_muscles: exercise.secondary_muscles ?? null,
+          equipment: exercise.equipment ?? null,
+          instructions: exercise.instructions ?? null,
+          force: exercise.force ?? null,
+          level: exercise.level ?? null,
+          mechanic: exercise.mechanic ?? null,
+          calories_per_hour: exercise.calories_per_hour ?? null,
+        };
+
+        const entry: ExerciseEntryResponse = {
+          id: nextTempExerciseEntryId(session),
+          exercise_id: exercise.id,
+          duration_minutes: 0,
+          calories_burned: 0,
+          entry_date: session.entry_date,
+          notes: null,
+          distance: null,
+          avg_heart_rate: null,
+          source: null,
+          exercise_snapshot: snapshot,
+          activity_details: [],
+          sets: [makeDefaultSet(nextTempSetId(session), 1)],
+        };
+
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: [...session.exercises, entry],
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      applyServerSession: (serverSession, sentRevision) => {
+        const state = get();
+        // The workout may have been cleared or replaced while the save was in
+        // flight — a response for a different (or no) session is dropped.
+        if (state.sessionId == null || serverSession.id !== state.sessionId) return;
+        const local = state.session;
+        if (!local) return;
+
+        const setIdMap = buildPositionalSetIdMap(local, serverSession);
+
+        if (state.sessionRevision !== sentRevision) {
+          // Edits landed after the payload was built. Keep the newer local
+          // values; only graft the server-assigned ids into place. Every
+          // logical set survives this, so the rest timer is never touched.
+          const grafted = graftServerSessionIds(local, serverSession);
+          const newSteps = buildStepsFromSession(grafted);
+
+          const nextCompleted: Record<string, true> = {};
+          for (const id of Object.keys(state.completedSetIds)) {
+            nextCompleted[setIdMap.get(id) ?? id] = true;
+          }
+          const nextActiveSetId =
+            state.activeSetId == null
+              ? null
+              : (setIdMap.get(state.activeSetId) ?? state.activeSetId);
+
+          set({
+            session: grafted,
+            steps: newSteps,
+            completedSetIds: nextCompleted,
+            activeSetId: nextActiveSetId,
+            // hasUnsavedChanges stays true — the newer edits still need a save.
+          });
+          return;
+        }
+
+        // No edits landed mid-flight: adopt the server session wholesale.
+        const newSteps = buildStepsFromSession(serverSession);
+        const newSetIds = new Set(newSteps.map((s) => s.setId));
+
+        const nextCompleted: Record<string, true> = {};
+        for (const id of Object.keys(state.completedSetIds)) {
+          const mapped = setIdMap.get(id) ?? id;
+          if (newSetIds.has(mapped)) nextCompleted[mapped] = true;
+        }
+
+        // Remap the cursor in place: an id change that still points at the
+        // same logical set must NOT clear a running rest. Only when the
+        // logical target set is gone does the cursor fall back (and the rest
+        // clear with it).
+        let nextActiveSetId =
+          state.activeSetId == null
+            ? null
+            : (setIdMap.get(state.activeSetId) ?? state.activeSetId);
+        let nextRest = state.rest;
+        if (nextActiveSetId != null && !newSetIds.has(nextActiveSetId)) {
+          const fallback = newSteps.find((s) => !nextCompleted[s.setId]);
+          nextActiveSetId = fallback?.setId ?? null;
+          cancelCurrentRestNotification(state.rest);
+          nextRest = READY_REST;
+        }
+
+        set({
+          session: serverSession,
+          steps: newSteps,
+          completedSetIds: nextCompleted,
+          activeSetId: nextActiveSetId,
+          rest: nextRest,
+          hasUnsavedChanges: false,
         });
       },
     }),
     {
       name: STORAGE_KEY,
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         sessionId: state.sessionId,
         session: state.session,
+        startedAt: state.startedAt,
         steps: state.steps,
         completedSetIds: state.completedSetIds,
         activeSetId: state.activeSetId,
         rest: state.rest,
+        // Persisted so edits made just before a cold exit are flushed on the
+        // next launch. sessionRevision is deliberately transient.
+        hasUnsavedChanges: state.hasUnsavedChanges,
       }),
       migrate: (persistedState, version) => {
-        if (version >= 2 || !persistedState || typeof persistedState !== 'object') {
+        if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as ActiveWorkoutState;
         }
 
-        // v1 → v2:
-        //  - Split `activeRest` (which tracked "the rest after the just-
-        //    completed set") into an `activeSetId` cursor (the *next* set)
-        //    plus a `rest` object that sits before it.
-        //  - Rename rest states: 'running' → 'resting', 'complete' → 'ready'.
-        //  - Drop any final rest timer (v2 doesn't start one after the last
-        //    set), which naturally falls out of "first uncompleted step".
-        const v1 = persistedState as {
-          sessionId?: string | null;
-          session?: ActiveWorkoutState['session'];
-          steps?: WorkoutStep[];
-          completedSetIds?: Record<string, true>;
-          activeRest?: {
-            setId: string;
-            state: 'running' | 'paused' | 'complete';
-            durationSec: number;
-            endsAt: number | null;
-            pausedRemainingMs: number | null;
-            scheduledNotificationId: string | null;
-            instanceToken: number;
-          } | null;
-        };
-
-        const steps = Array.isArray(v1.steps) ? v1.steps : [];
-        const completedSetIds: Record<string, true> =
-          v1.completedSetIds && typeof v1.completedSetIds === 'object'
-            ? v1.completedSetIds
-            : {};
-
-        // The new cursor is the first uncompleted step. This matches what v1
-        // implicitly computed at the call sites of "next pending set", so a
-        // user mid-rest in v1 lands on the same set in v2.
-        const nextStep = steps.find((s) => !completedSetIds[s.setId]);
-        const activeSetId = nextStep?.setId ?? null;
-
-        // Rest carries over only if (a) there's somewhere to point it and
-        // (b) it wasn't already finished. 'complete' and null both collapse
-        // to READY_REST — the user can just tap the next set.
-        let rest: Rest = { ...READY_REST };
-        const oldRest = v1.activeRest;
-        if (oldRest && activeSetId != null) {
-          if (oldRest.state === 'running') {
-            rest = {
-              state: 'resting',
-              durationSec: oldRest.durationSec ?? 0,
-              endsAt: oldRest.endsAt ?? null,
-              pausedRemainingMs: null,
-              scheduledNotificationId: oldRest.scheduledNotificationId ?? null,
-              instanceToken: oldRest.instanceToken ?? 0,
-            };
-          } else if (oldRest.state === 'paused') {
-            rest = {
-              state: 'paused',
-              durationSec: oldRest.durationSec ?? 0,
-              endsAt: null,
-              pausedRemainingMs: oldRest.pausedRemainingMs ?? null,
-              scheduledNotificationId: null,
-              instanceToken: oldRest.instanceToken ?? 0,
-            };
-          }
-          // 'complete' → already ready; nothing to migrate.
+        let migrated = persistedState as ActiveWorkoutState;
+        if (version < 2) {
+          migrated = migrateV1ToV2(migrated);
         }
-
-        return {
-          ...initialData,
-          sessionId: v1.sessionId ?? null,
-          session: v1.session ?? null,
-          steps,
-          completedSetIds,
-          activeSetId,
-          rest,
-        } as ActiveWorkoutState;
+        if (version < 3) {
+          // v2 → v3: `startedAt` didn't exist. Backfill "now" for a live
+          // session (one-time elapsed-clock reset) so the elapsed display
+          // never shows garbage; dead sessions stay null.
+          migrated = {
+            ...migrated,
+            startedAt: migrated.sessionId != null ? Date.now() : null,
+          };
+        }
+        return migrated;
       },
       merge: (persisted, current) => {
         const merged = {
@@ -520,6 +949,81 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     },
   ),
 );
+
+// v1 → v2:
+//  - Split `activeRest` (which tracked "the rest after the just-completed
+//    set") into an `activeSetId` cursor (the *next* set) plus a `rest`
+//    object that sits before it.
+//  - Rename rest states: 'running' → 'resting', 'complete' → 'ready'.
+//  - Drop any final rest timer (v2 doesn't start one after the last set),
+//    which naturally falls out of "first uncompleted step".
+function migrateV1ToV2(persistedState: unknown): ActiveWorkoutState {
+  const v1 = persistedState as {
+    sessionId?: string | null;
+    session?: ActiveWorkoutState['session'];
+    steps?: WorkoutStep[];
+    completedSetIds?: Record<string, true>;
+    activeRest?: {
+      setId: string;
+      state: 'running' | 'paused' | 'complete';
+      durationSec: number;
+      endsAt: number | null;
+      pausedRemainingMs: number | null;
+      scheduledNotificationId: string | null;
+      instanceToken: number;
+    } | null;
+  };
+
+  const steps = Array.isArray(v1.steps) ? v1.steps : [];
+  const completedSetIds: Record<string, true> =
+    v1.completedSetIds && typeof v1.completedSetIds === 'object'
+      ? v1.completedSetIds
+      : {};
+
+  // The new cursor is the first uncompleted step. This matches what v1
+  // implicitly computed at the call sites of "next pending set", so a
+  // user mid-rest in v1 lands on the same set in v2.
+  const nextStep = steps.find((s) => !completedSetIds[s.setId]);
+  const activeSetId = nextStep?.setId ?? null;
+
+  // Rest carries over only if (a) there's somewhere to point it and
+  // (b) it wasn't already finished. 'complete' and null both collapse
+  // to READY_REST — the user can just tap the next set.
+  let rest: Rest = { ...READY_REST };
+  const oldRest = v1.activeRest;
+  if (oldRest && activeSetId != null) {
+    if (oldRest.state === 'running') {
+      rest = {
+        state: 'resting',
+        durationSec: oldRest.durationSec ?? 0,
+        endsAt: oldRest.endsAt ?? null,
+        pausedRemainingMs: null,
+        scheduledNotificationId: oldRest.scheduledNotificationId ?? null,
+        instanceToken: oldRest.instanceToken ?? 0,
+      };
+    } else if (oldRest.state === 'paused') {
+      rest = {
+        state: 'paused',
+        durationSec: oldRest.durationSec ?? 0,
+        endsAt: null,
+        pausedRemainingMs: oldRest.pausedRemainingMs ?? null,
+        scheduledNotificationId: null,
+        instanceToken: oldRest.instanceToken ?? 0,
+      };
+    }
+    // 'complete' → already ready; nothing to migrate.
+  }
+
+  return {
+    ...initialData,
+    sessionId: v1.sessionId ?? null,
+    session: v1.session ?? null,
+    steps,
+    completedSetIds,
+    activeSetId,
+    rest,
+  } as ActiveWorkoutState;
+}
 
 /**
  * Test-only helper — resets store state to initial data while preserving

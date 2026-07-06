@@ -10,6 +10,7 @@ export interface WorkoutDraftSet {
   setType?: string;
   duration?: number | null;
   notes?: string | null;
+  rpe?: number | null;
 }
 
 export interface WorkoutDraftExercise {

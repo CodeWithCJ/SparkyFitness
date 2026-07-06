@@ -210,6 +210,10 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             clientId: generateClientId(),
             serverId: set.id,
             restTime: set.rest_time,
+            setType: set.set_type ?? undefined,
+            duration: set.duration,
+            notes: set.notes,
+            rpe: set.rpe,
             weight: set.weight != null
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',

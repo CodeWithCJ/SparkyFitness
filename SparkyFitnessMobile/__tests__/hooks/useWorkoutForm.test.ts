@@ -577,6 +577,40 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[1].reps).toBe('8');
     });
 
+    it('round-trips set_type, duration, notes, and rpe into the draft so edit-saves cannot wipe them', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            exercise_id: 'ex-1',
+            exercise_snapshot: { id: 'ex-1', name: 'Bench Press', category: 'Strength', calories_per_hour: 400, source: 'system' },
+            duration_minutes: 20,
+            calories_burned: 150,
+            sets: [
+              {
+                id: 'set-1',
+                set_number: 1,
+                weight: 60,
+                reps: 10,
+                set_type: 'warmup',
+                duration: 30,
+                rest_time: 90,
+                notes: 'slow tempo',
+                rpe: 7.5,
+              } as ExerciseEntrySetResponse,
+            ],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      const set = result.exercises[0].sets[0];
+      expect(set.setType).toBe('warmup');
+      expect(set.duration).toBe(30);
+      expect(set.notes).toBe('slow tempo');
+      expect(set.rpe).toBe(7.5);
+    });
+
     it('converts weight from kg to lbs', () => {
       const state = makeEmptyDraft();
       const session = makeSession();
@@ -896,7 +930,17 @@ describe('workoutFormReducer', () => {
           exercise_id: 'uuid-1',
           sort_order: 0,
           duration_minutes: 0,
-          sets: [{ set_number: 1, weight: 225, reps: 5 }],
+          sets: [
+            {
+              set_number: 1,
+              weight: 225,
+              reps: 5,
+              set_type: null,
+              duration: null,
+              notes: null,
+              rpe: null,
+            },
+          ],
         },
       ]);
     });

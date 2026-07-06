@@ -14,6 +14,15 @@ import {
   calculateExerciseDuration,
   buildExercisesPayload,
   buildPresetExercisesPayload,
+  buildSessionExercisesPayload,
+  isTempExerciseEntryId,
+  isTempSetId,
+  epley1RmKg,
+  estimateRepMaxKg,
+  setVolumeKg,
+  getExerciseVolumeKg,
+  formatVolume,
+  getRpeTone,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
@@ -1040,6 +1049,48 @@ describe('workoutSession', () => {
         expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
       });
     });
+
+    describe('round-trip columns (server nulls omitted fields)', () => {
+      it('emits set_type, duration, notes, and rpe explicitly as null when absent', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              sets: [{ clientId: 's1', weight: '100', reps: '10' }],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0].sets[0].set_type).toBeNull();
+        expect(payload[0].sets[0].duration).toBeNull();
+        expect(payload[0].sets[0].notes).toBeNull();
+        expect(payload[0].sets[0].rpe).toBeNull();
+      });
+
+      it('round-trips set_type, duration, notes, and rpe from the draft', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              sets: [
+                {
+                  clientId: 's1',
+                  weight: '100',
+                  reps: '10',
+                  setType: 'warmup',
+                  duration: 45,
+                  notes: 'easy',
+                  rpe: 7.5,
+                },
+              ],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0].sets[0].set_type).toBe('warmup');
+        expect(payload[0].sets[0].duration).toBe(45);
+        expect(payload[0].sets[0].notes).toBe('easy');
+        expect(payload[0].sets[0].rpe).toBe(7.5);
+      });
+    });
   });
 
   describe('buildPresetExercisesPayload', () => {
@@ -1238,6 +1289,264 @@ describe('workoutSession', () => {
       expect(payload[0].sets[1].set_number).toBe(2);
       expect(payload[1].sort_order).toBe(1);
       expect(payload[1].sets[0].set_number).toBe(1);
+    });
+  });
+
+  describe('buildSessionExercisesPayload', () => {
+    const ENTRY_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const ENTRY_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const EX_1 = '11111111-1111-4111-8111-111111111111';
+    const EX_2 = '22222222-2222-4222-8222-222222222222';
+
+    type SessionExercise = PresetSession['exercises'][number];
+    type SessionSet = SessionExercise['sets'][number];
+
+    const makeSet = (overrides?: Partial<SessionSet>): SessionSet => ({
+      id: 101,
+      set_number: 1,
+      set_type: 'normal',
+      reps: 10,
+      weight: 60,
+      duration: null,
+      rest_time: 90,
+      notes: null,
+      rpe: 8,
+      ...overrides,
+    });
+
+    const makeExercise = (overrides?: Partial<SessionExercise>): SessionExercise => ({
+      id: ENTRY_A,
+      exercise_id: EX_1,
+      duration_minutes: 20,
+      calories_burned: 150,
+      entry_date: '2026-03-20',
+      notes: null,
+      distance: null,
+      avg_heart_rate: null,
+      source: null,
+      exercise_snapshot: null,
+      activity_details: [],
+      sets: [makeSet()],
+      ...overrides,
+    });
+
+    /** No `temp-` exercise id and no negative set id may ever reach the server. */
+    function expectNoTempIds(payload: ReturnType<typeof buildSessionExercisesPayload>) {
+      for (const exercise of payload) {
+        if ('id' in exercise && exercise.id != null) {
+          expect(isTempExerciseEntryId(String(exercise.id))).toBe(false);
+        }
+        for (const set of exercise.sets) {
+          if ('id' in set && typeof set.id === 'number') {
+            expect(isTempSetId(set.id)).toBe(false);
+          }
+        }
+      }
+    }
+
+    it('reconcile path: keeps exercise + set ids and emits every set column explicitly', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            sets: [
+              makeSet({ id: 101, set_type: 'warmup', weight: 40, reps: 12, rpe: null }),
+              makeSet({ id: 102, set_number: 2, weight: 60, notes: 'felt heavy', rpe: 9 }),
+            ],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0].id).toBe(ENTRY_A);
+      expect(payload[0].exercise_id).toBe(EX_1);
+      expect(payload[0].sets[0]).toEqual({
+        id: 101,
+        set_number: 1,
+        set_type: 'warmup',
+        reps: 12,
+        weight: 40,
+        duration: null,
+        rest_time: 90,
+        notes: null,
+        rpe: null,
+      });
+      expect(payload[0].sets[1]).toEqual({
+        id: 102,
+        set_number: 2,
+        set_type: 'normal',
+        reps: 10,
+        weight: 60,
+        duration: null,
+        rest_time: 90,
+        notes: 'felt heavy',
+        rpe: 9,
+      });
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+      expectNoTempIds(payload);
+    });
+
+    it('reconcile path: omits negative temp set ids so the server inserts them', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            sets: [makeSet({ id: 101 }), makeSet({ id: -2, set_number: 2 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0].id).toBe(ENTRY_A);
+      expect((payload[0].sets[0] as any).id).toBe(101);
+      expect(payload[0].sets[1]).not.toHaveProperty('id');
+      expect(payload[0].sets[1].set_number).toBe(2);
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+      expectNoTempIds(payload);
+    });
+
+    it('recreate path: a temp exercise id strips ALL exercise and set ids', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
+          makeExercise({
+            id: 'temp-abc123',
+            exercise_id: EX_2,
+            sets: [makeSet({ id: -1 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0]).not.toHaveProperty('id');
+      expect(payload[0].sets[0]).not.toHaveProperty('id');
+      expect(payload[1]).not.toHaveProperty('id');
+      expect(payload[1].sets[0]).not.toHaveProperty('id');
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
+      expectNoTempIds(payload);
+    });
+
+    it('passes weight through in kg without conversion', () => {
+      const session = makePreset({
+        exercises: [makeExercise({ sets: [makeSet({ weight: 102.5 })] })],
+      });
+      expect(buildSessionExercisesPayload(session)[0].sets[0].weight).toBe(102.5);
+    });
+
+    it('assigns positional set_number and sort_order regardless of stored values', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            id: ENTRY_B,
+            exercise_id: EX_2,
+            sets: [makeSet({ id: 201, set_number: 7 }), makeSet({ id: 202, set_number: 3 })],
+          }),
+          makeExercise({ id: ENTRY_A, exercise_id: EX_1 }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0].sort_order).toBe(0);
+      expect(payload[1].sort_order).toBe(1);
+      expect(payload[0].sets[0].set_number).toBe(1);
+      expect(payload[0].sets[1].set_number).toBe(2);
+    });
+
+    it('round-trips exercise-level notes and duration_minutes', () => {
+      const session = makePreset({
+        exercises: [makeExercise({ notes: 'superset next time', duration_minutes: 25 })],
+      });
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0].notes).toBe('superset next time');
+      expect(payload[0].duration_minutes).toBe(25);
+    });
+
+    it('emits explicit nulls for absent exercise notes', () => {
+      const session = makePreset({ exercises: [makeExercise({ notes: null })] });
+      expect(buildSessionExercisesPayload(session)[0].notes).toBeNull();
+    });
+  });
+
+  describe('set metrics', () => {
+    describe('epley1RmKg', () => {
+      it('returns the weight itself for a single rep', () => {
+        expect(epley1RmKg(100, 1)).toBe(100);
+      });
+
+      it('applies the Epley formula for multiple reps', () => {
+        expect(epley1RmKg(100, 5)).toBeCloseTo(116.667, 2);
+        expect(epley1RmKg(60, 10)).toBeCloseTo(80, 5);
+      });
+
+      it('returns 0 for missing or non-positive inputs', () => {
+        expect(epley1RmKg(null, 5)).toBe(0);
+        expect(epley1RmKg(100, null)).toBe(0);
+        expect(epley1RmKg(0, 5)).toBe(0);
+        expect(epley1RmKg(100, 0)).toBe(0);
+      });
+    });
+
+    describe('estimateRepMaxKg', () => {
+      it('is the identity at the same rep count', () => {
+        expect(estimateRepMaxKg(60, 10, 10)).toBeCloseTo(60, 5);
+      });
+
+      it('estimates a 10RM from a 5-rep set', () => {
+        // e1RM = 116.667 → 10RM = 116.667 / (1 + 10/30) = 87.5
+        expect(estimateRepMaxKg(100, 5, 10)).toBeCloseTo(87.5, 2);
+      });
+
+      it('returns 0 when the source set is empty', () => {
+        expect(estimateRepMaxKg(null, null, 10)).toBe(0);
+      });
+    });
+
+    describe('setVolumeKg / getExerciseVolumeKg', () => {
+      const set = (weight: number | null, reps: number | null, set_type = 'normal') =>
+        ({ id: 1, set_number: 1, set_type, reps, weight, duration: null, rest_time: null, notes: null, rpe: null });
+
+      it('computes weight × reps, treating null as 0', () => {
+        expect(setVolumeKg(set(60, 10))).toBe(600);
+        expect(setVolumeKg(set(null, 10))).toBe(0);
+        expect(setVolumeKg(set(60, null))).toBe(0);
+      });
+
+      it('excludes warmup sets from exercise volume', () => {
+        const exercise = {
+          id: 'e1',
+          exercise_id: 'x1',
+          duration_minutes: 0,
+          calories_burned: 0,
+          entry_date: null,
+          notes: null,
+          distance: null,
+          avg_heart_rate: null,
+          source: null,
+          exercise_snapshot: null,
+          activity_details: [],
+          sets: [set(40, 12, 'warmup'), set(60, 10), set(70, 8)],
+        };
+        expect(getExerciseVolumeKg(exercise as any)).toBe(600 + 560);
+      });
+    });
+
+    describe('formatVolume', () => {
+      it('rounds and appends the unit, converting for lbs', () => {
+        expect(formatVolume(1000, 'kg')).toBe(`${fmt(1000)} kg`);
+        // 1000 kg ≈ 2204.6 lbs
+        expect(formatVolume(1000, 'lbs')).toBe(`${fmt(2205)} lbs`);
+      });
+    });
+
+    describe('getRpeTone', () => {
+      it('buckets RPE into easy/moderate/hard/max', () => {
+        expect(getRpeTone(6)).toBe('easy');
+        expect(getRpeTone(7)).toBe('easy');
+        expect(getRpeTone(7.5)).toBe('moderate');
+        expect(getRpeTone(8.5)).toBe('moderate');
+        expect(getRpeTone(9)).toBe('hard');
+        expect(getRpeTone(9.5)).toBe('hard');
+        expect(getRpeTone(10)).toBe('max');
+      });
     });
   });
 });

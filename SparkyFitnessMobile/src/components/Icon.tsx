@@ -30,6 +30,7 @@ const ICON_MAP = {
   'remove': { sf: 'minus', ion: 'remove' },
   'arrow-up': { sf: 'arrow.up', ion: 'arrow-up' },
   'close': { sf: 'xmark', ion: 'close' },
+  'ellipsis-horizontal': { sf: 'ellipsis', ion: 'ellipsis-horizontal' },
   'search': { sf: 'magnifyingglass', ion: 'search-outline' },
   'save': { sf: 'square.and.arrow.down', ion: 'save-outline' },
   'share': { sf: 'square.and.arrow.up', ion: 'share-outline' },

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -11,7 +12,13 @@ import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
 import RestPeriodChip from '../components/RestPeriodChip';
-import { getSourceLabel, getWorkoutSummary, CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import {
+  getSourceLabel,
+  getWorkoutSummary,
+  getExerciseVolumeKg,
+  formatVolume,
+  CATEGORY_ICON_MAP,
+} from '../utils/workoutSession';
 import {
   useDeleteWorkout,
   useUpdateWorkout,
@@ -42,12 +49,6 @@ import type {
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
-function getExerciseVolume(exercise: ExerciseEntryResponse): number {
-  return exercise.sets.reduce((total, set) => {
-    return total + (set.weight ?? 0) * (set.reps ?? 0);
-  }, 0);
-}
-
 function getExerciseSetSummary(exercise: ExerciseEntryResponse, weightUnit: string): string {
   if (exercise.sets.length === 0) return '';
   const firstSet = exercise.sets[0];
@@ -61,74 +62,34 @@ function getExerciseSetSummary(exercise: ExerciseEntryResponse, weightUnit: stri
   return `${exercise.sets.length} sets`;
 }
 
-function formatVolume(volumeKg: number, weightUnit: string): string {
-  const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
-  return `${Math.round(value).toLocaleString()} ${weightUnit}`;
-}
-
-interface ActiveWorkoutSetRowProps {
+interface SetTableRowProps {
   set: ExerciseEntrySetResponse;
-  isWorkoutActive: boolean;
   onLongPress: (setId: string) => void;
-  onPress: (setId: string) => void;
-  accentPrimary: string;
   weightUnit: string;
 }
 
-const ActiveWorkoutSetRow = React.memo(({
-  set,
-  isWorkoutActive,
-  onLongPress,
-  onPress,
-  accentPrimary,
-  weightUnit,
-}: ActiveWorkoutSetRowProps) => {
-  const setIdStr = String(set.id);
-  const isComplete = useActiveWorkoutStore((s) =>
-    Boolean(s.completedSetIds[setIdStr]),
-  );
-  const isActiveSet = useActiveWorkoutStore((s) => s.activeSetId === setIdStr);
-
+const SetTableRow = React.memo(({ set, onLongPress, weightUnit }: SetTableRowProps) => {
   const displayWeight = set.weight != null
     ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
     : '\u2014';
   const displayReps = set.reps != null ? String(set.reps) : '\u2014';
 
-  const indicator = (() => {
-    if (!isWorkoutActive) {
-      return <Text className="text-sm text-text-muted">{set.set_number}</Text>;
-    }
-    if (isComplete) {
-      return <Icon name="checkmark-circle" size={22} color={accentPrimary} />;
-    }
-    // Uncompleted during an active workout: highlight the active set with a
-    // filled radio, dim everything else.
-    return (
-      <Icon
-        name={isActiveSet ? 'radio-button-on' : 'radio-button-off'}
-        size={22}
-        color={isActiveSet ? accentPrimary : '#9CA3AF'}
-      />
-    );
-  })();
-
   return (
     <Pressable
-      onLongPress={() => onLongPress(setIdStr)}
-      onPress={() => {
-        if (isWorkoutActive) onPress(setIdStr);
-      }}
+      onLongPress={() => onLongPress(String(set.id))}
       delayLongPress={400}
       className="flex-row items-center py-1.5"
     >
-      <View className="w-10 items-center justify-center">{indicator}</View>
+      <View className="w-10 items-center justify-center">
+        <Text className="text-sm text-text-muted">{set.set_number}</Text>
+      </View>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
     </Pressable>
   );
 });
 
-ActiveWorkoutSetRow.displayName = 'ActiveWorkoutSetRow';
+SetTableRow.displayName = 'SetTableRow';
 
 interface ExerciseRowProps {
   exercise: ExerciseEntryResponse;
@@ -138,10 +99,8 @@ interface ExerciseRowProps {
   accentPrimary: string;
   textMuted: string;
   weightUnit: string;
-  isWorkoutActive: boolean;
   showRestChip: boolean;
   onLongPressSet: (setId: string) => void;
-  onPressSet: (setId: string) => void;
 }
 
 const ExerciseRow = React.memo(({
@@ -152,14 +111,12 @@ const ExerciseRow = React.memo(({
   accentPrimary,
   textMuted,
   weightUnit,
-  isWorkoutActive,
   showRestChip,
   onLongPressSet,
-  onPressSet,
 }: ExerciseRowProps) => {
   const snapshot = exercise.exercise_snapshot;
   const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
-  const volume = getExerciseVolume(exercise);
+  const volume = getExerciseVolumeKg(exercise);
   const exerciseIcon = (snapshot?.category && CATEGORY_ICON_MAP[snapshot.category]) || 'exercise-weights';
 
   const rotation = useSharedValue(isExpanded ? 0 : -90);
@@ -182,13 +139,10 @@ const ExerciseRow = React.memo(({
           <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
         </View>
         {exercise.sets.map(set => (
-          <ActiveWorkoutSetRow
+          <SetTableRow
             key={set.id}
             set={set}
-            isWorkoutActive={isWorkoutActive}
             onLongPress={onLongPressSet}
-            onPress={onPressSet}
-            accentPrimary={accentPrimary}
             weightUnit={weightUnit}
           />
         ))}
@@ -415,6 +369,20 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [session]);
 
+  // Reverse direction: while this session is the live workout, the store's
+  // snapshot is the source of truth (the active-workout screen autosaves it,
+  // and a recreate save replaces every exercise/set id). Refresh the local
+  // copy on focus — otherwise edit-saves built from the stale
+  // route.params.session would send dead ids and 400.
+  useFocusEffect(
+    useCallback(() => {
+      const store = useActiveWorkoutStore.getState();
+      if (store.sessionId === session.id && store.session != null && store.session !== session) {
+        setSession(store.session);
+      }
+    }, [session]),
+  );
+
   const handleStartWorkout = () => {
     if (useActiveWorkoutStore.getState().sessionId !== null) {
       Alert.alert('Another workout is in progress', 'Finish or clear it first.');
@@ -422,6 +390,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     void ensureNotificationPermission();
     useActiveWorkoutStore.getState().startWorkout(session);
+    navigation.navigate('ActiveWorkout');
   };
 
   const handleLongPressSet = (setId: string) => {
@@ -445,61 +414,15 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           }
           void ensureNotificationPermission();
           useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
+          navigation.navigate('ActiveWorkout');
         },
       });
-    } else {
-      // Forward-only jump. Reject backward targets silently. When the workout
-      // is finished (`activeSetId == null`) the cursor is past the last set,
-      // so every target is behind it and no jump is possible.
-      const storeState = useActiveWorkoutStore.getState();
-      const activeIndex =
-        storeState.activeSetId == null
-          ? storeState.steps.length
-          : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
-      const targetIndex = storeState.steps.findIndex((s) => s.setId === setId);
-      if (targetIndex >= 0 && targetIndex > activeIndex) {
-        buttons.push({
-          text: 'Jump to this set',
-          onPress: () => {
-            useActiveWorkoutStore.getState().jumpToSet(setId);
-          },
-        });
-      }
     }
 
     if (buttons.length === 0) return;
 
     buttons.push({ text: 'Cancel', style: 'cancel' });
     Alert.alert(name, undefined, buttons);
-  };
-
-  const handlePressSet = (setId: string) => {
-    if (!isWorkoutActive) return;
-    const storeState = useActiveWorkoutStore.getState();
-    // Tap on a completed set unchecks it (without moving the cursor).
-    if (storeState.completedSetIds[setId]) {
-      storeState.uncompleteSet(setId);
-      return;
-    }
-    // Tap on the active set completes it and advances.
-    if (storeState.activeSetId === setId) {
-      storeState.completeActiveSet();
-      return;
-    }
-    // Tap on an uncompleted non-active set: allow re-check only if it's
-    // behind the cursor (something the user previously completed and then
-    // unchecked by accident). Taps on future sets stay a no-op — long-press
-    // is the explicit path for jumping forward. When the workout is finished
-    // (`activeSetId == null`) the cursor is past the end, so every set
-    // counts as behind and is re-checkable.
-    const setIndex = storeState.steps.findIndex((s) => s.setId === setId);
-    const activeIndex =
-      storeState.activeSetId == null
-        ? storeState.steps.length
-        : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
-    if (setIndex >= 0 && setIndex < activeIndex) {
-      storeState.recompleteSet(setId);
-    }
   };
 
   const openExerciseSearch = () => {
@@ -556,10 +479,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           accentPrimary={accentPrimary}
           textMuted={textMuted}
           weightUnit={weightUnit}
-          isWorkoutActive={isWorkoutActive}
           showRestChip={isSparky}
           onLongPressSet={handleLongPressSet}
-          onPressSet={handlePressSet}
         />
       ))}
     </View>
@@ -602,7 +523,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           const r = parseInt(set.reps, 10);
           return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
         }, sum), 0)
-      : session.exercises.reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
+      : session.exercises.reduce((sum, ex) => sum + getExerciseVolumeKg(ex), 0);
 
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({

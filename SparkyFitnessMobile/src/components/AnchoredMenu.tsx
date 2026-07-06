@@ -25,6 +25,28 @@ export type AnchoredMenuItem = {
   onPress: () => void;
 };
 
+/**
+ * Measure a menu trigger for use as an AnchoredMenu anchor. Under Fabric,
+ * `measureInWindow` invokes its callback synchronously; under Jest it never
+ * fires, so fall back to a zero rect — the menu still opens and behaves, only
+ * its position is meaningless (which tests don't assert).
+ */
+export function measureAnchoredMenuTrigger(
+  node: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  } | null,
+  onAnchor: (anchor: AnchorRect) => void,
+): void {
+  let fired = false;
+  node?.measureInWindow((x, y, width, height) => {
+    fired = true;
+    onAnchor({ x, y, width, height });
+  });
+  if (!fired) onAnchor({ x: 0, y: 0, width: 0, height: 0 });
+}
+
 type Props = {
   visible: boolean;
   anchor: AnchorRect | null;

@@ -1,4 +1,10 @@
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseEntryResponse,
+  ExerciseEntrySetResponse,
+  ExerciseSessionResponse,
+  PresetSessionExerciseRequest,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
@@ -265,16 +271,125 @@ export function buildExercisesPayload(
     sets: exercise.sets.map((set, setIndex) => {
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
+      // The server set UPDATE writes all eight columns with `set.x ?? null`,
+      // so fields the form has no UI for must still be round-tripped
+      // explicitly — omitting them silently wipes the stored values.
       return {
         ...(allExercisesHaveServerId && set.serverId !== undefined
           ? { id: set.serverId }
           : {}),
         set_number: setIndex + 1,
+        set_type: set.setType ?? null,
         weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
         reps: isNaN(reps) ? null : reps,
+        duration: set.duration ?? null,
         ...(set.restTime != null ? { rest_time: set.restTime } : {}),
+        notes: set.notes ?? null,
+        rpe: set.rpe ?? null,
       };
     }),
+  }));
+}
+
+// --- Set metrics (active-workout log column + volume summaries) ---
+
+/** Epley estimated one-rep max. Returns 0 when weight or reps are missing/zero. */
+export function epley1RmKg(weightKg: number | null, reps: number | null): number {
+  if (weightKg == null || reps == null || weightKg <= 0 || reps <= 0) return 0;
+  if (reps === 1) return weightKg;
+  return weightKg * (1 + reps / 30);
+}
+
+/** Estimated weight liftable for `targetReps`, derived from the Epley 1RM. */
+export function estimateRepMaxKg(
+  weightKg: number | null,
+  reps: number | null,
+  targetReps: number,
+): number {
+  const oneRm = epley1RmKg(weightKg, reps);
+  if (oneRm === 0 || targetReps <= 0) return 0;
+  return oneRm / (1 + targetReps / 30);
+}
+
+export function setVolumeKg(set: Pick<ExerciseEntrySetResponse, 'weight' | 'reps'>): number {
+  return (set.weight ?? 0) * (set.reps ?? 0);
+}
+
+/** Total working volume for an exercise entry. Warmup sets are excluded. */
+export function getExerciseVolumeKg(exercise: ExerciseEntryResponse): number {
+  return exercise.sets.reduce(
+    (total, set) => (set.set_type === 'warmup' ? total : total + setVolumeKg(set)),
+    0,
+  );
+}
+
+export function formatVolume(volumeKg: number, weightUnit: string): string {
+  const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
+  return `${Math.round(value).toLocaleString()} ${weightUnit}`;
+}
+
+export type RpeTone = 'easy' | 'moderate' | 'hard' | 'max';
+
+/** Effort bucket for tinting a logged RPE value. */
+export function getRpeTone(rpe: number): RpeTone {
+  if (rpe <= 7) return 'easy';
+  if (rpe < 9) return 'moderate';
+  if (rpe < 10) return 'hard';
+  return 'max';
+}
+
+export const TEMP_EXERCISE_ENTRY_ID_PREFIX = 'temp-';
+
+/** Client-added exercise entries carry `temp-` string ids until saved. */
+export function isTempExerciseEntryId(id: string): boolean {
+  return id.startsWith(TEMP_EXERCISE_ENTRY_ID_PREFIX);
+}
+
+/** Client-added sets carry negative placeholder ids until the server assigns real ones. */
+export function isTempSetId(id: number): boolean {
+  return id < 0;
+}
+
+/**
+ * Build the `exercises` payload for a preset-session PUT from a live session
+ * snapshot (the active-workout autosave path). Session values are already
+ * metric (kg), so unlike the draft builder there is no unit conversion or
+ * string parsing.
+ *
+ * Every set column is emitted explicitly — the server set UPDATE writes all
+ * eight columns with `set.x ?? null`, so an omitted field silently wipes it.
+ * Exercise-level `notes` behaves the same way.
+ *
+ * Ids follow the server's "all or none" rule for exercises: if any exercise
+ * is client-added (temp id), every exercise AND set id is stripped so the
+ * server takes its delete-and-recreate path. Otherwise exercise ids are kept
+ * and only real (non-negative) set ids are sent — temp ids must never reach
+ * the server, where an unknown id is a 400.
+ */
+export function buildSessionExercisesPayload(
+  session: PresetSessionResponse,
+): PresetSessionExerciseRequest[] {
+  const allExercisesHaveServerId =
+    session.exercises.length > 0 &&
+    session.exercises.every((e) => !isTempExerciseEntryId(e.id));
+
+  return session.exercises.map((exercise, index) => ({
+    ...(allExercisesHaveServerId ? { id: exercise.id } : {}),
+    exercise_id: exercise.exercise_id,
+    sort_order: index,
+    duration_minutes: exercise.duration_minutes ?? 0,
+    notes: exercise.notes ?? null,
+    sets: exercise.sets.map((set, setIndex) => ({
+      ...(allExercisesHaveServerId && !isTempSetId(set.id) ? { id: set.id } : {}),
+      set_number: setIndex + 1,
+      set_type: set.set_type ?? null,
+      reps: set.reps ?? null,
+      weight: set.weight ?? null,
+      duration: set.duration ?? null,
+      rest_time: set.rest_time ?? null,
+      notes: set.notes ?? null,
+      rpe: set.rpe ?? null,
+    })),
   }));
 }
 
