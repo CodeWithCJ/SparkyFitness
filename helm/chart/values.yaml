@@ -327,7 +327,7 @@ frontend:
     digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
-  port: 8080
+  port: 80
   # -- nginx rate limit zone for /api/auth/ endpoints (passed as NGINX_RATE_LIMIT
   # to the image entrypoint, which envsubsts it into the rendered nginx config).
   # Format: "<requests>r/s" or "<requests>r/m".
@@ -369,9 +369,13 @@ frontend:
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
+      # -- NET_BIND_SERVICE is required because nginx in the upstream image
+      # binds port 80. The file capability on the nginx binary is stripped
+      # at execve under allowPrivilegeEscalation: false (NoNewPrivs=1), so
+      # the cap must be granted via the pod spec instead.
+      add: [NET_BIND_SERVICE]
   service:
     type: ClusterIP
-    port: 80
     annotations: {}
   # -- NetworkPolicy ingress restriction for the frontend pod.
   # Only relevant when networkPolicy.enabled=true. Each item is a
