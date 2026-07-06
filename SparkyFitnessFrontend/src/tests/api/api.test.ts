@@ -135,6 +135,7 @@ describe('API_BASE_URL', () => {
     document.head.innerHTML = '<base href="/">';
     let apiModule: typeof import('@/api/api');
     jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       apiModule = require('@/api/api');
     });
     expect(apiModule!.API_BASE_URL).toBe('/api');
@@ -144,6 +145,7 @@ describe('API_BASE_URL', () => {
     document.head.innerHTML = '<base href="/sparky/">';
     let apiModule: typeof import('@/api/api');
     jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       apiModule = require('@/api/api');
     });
     expect(apiModule!.API_BASE_URL).toBe('/sparky/api');
